@@ -1,0 +1,10 @@
+.*.haste_cache.*
+*~
+/node_modules
+/lib
+npm-debug.log
+.DS_Store
+build/
+.vscode
+test/internal
+

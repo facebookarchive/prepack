@@ -1,0 +1,26 @@
+machine:
+  node:
+    version: 6.1.0
+  environment:
+    PATH: "${PATH}:${HOME}/${CIRCLE_PROJECT_REPONAME}/node_modules/.bin"
+
+compile:
+  override:
+    - npm run build
+
+test:
+  override:
+    - npm run lint
+    - npm run flow -- check
+    - npm run test-serialiser-with-coverage
+    - npm run test-sourcemaps
+    - npm run test-test262 -- --statusFile $CIRCLE_ARTIFACTS/test262-status.txt --timeout 1000 --cpuScale 0.25 --verbose:
+        timeout: 1800
+  post:
+    - mv lib/coverage/lcov-report $CIRCLE_ARTIFACTS/coverage-report
+    - mv lib/coverage-sourcemapped $CIRCLE_ARTIFACTS/coverage-report-sourcemapped
+
+checkout:
+  post:
+    - git submodule sync
+    - git submodule update --init # use submodules

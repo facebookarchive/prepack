@@ -1,0 +1,15 @@
+[ignore]
+.*/node_modules/babel.*
+.*/test262/.*
+.*/node_modules/.*\.json
+.*/lib/.*
+.*/test/serialiser/.*
+
+[include]
+
+[libs]
+
+[options]
+suppress_comment= \\(.\\|\n\\)*\\$FlowFixMe
+esproposal.class_static_fields=enable
+esproposal.class_instance_fields=enable

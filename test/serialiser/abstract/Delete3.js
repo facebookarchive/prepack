@@ -1,0 +1,13 @@
+let x = global.__abstract ? __abstract("boolean", "true") : true;
+
+let ob1 = { x : 123 };
+let ob2 = { y : 456 };
+let o = x ? ob1 : ob2;
+
+delete o.x;
+
+z = o.x;
+z1 = ob1.x;
+z2 = ob2.x;
+
+inspect = function() { return "" + z + z1 + z2; }

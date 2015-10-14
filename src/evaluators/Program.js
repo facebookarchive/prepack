@@ -1,0 +1,242 @@
+/**
+ * Copyright (c) 2017-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+/* @flow */
+
+import type { Realm } from "../realm.js";
+import type { LexicalEnvironment } from "../environment.js";
+import type { Reference } from "../environment.js";
+import { Value, EmptyValue, StringValue } from "../values/index.js";
+import { GlobalEnvironmentRecord } from "../environment.js";
+import { FindVarScopedDeclarations } from "../methods/function.js";
+import { BoundNames } from "../methods/index.js";
+import { ThrowCompletion } from "../completions.js";
+import { Construct } from "../methods/construct.js";
+import IsStrict from "../utils/strict.js";
+import invariant from "../invariant.js";
+import traverse from "../traverse.js";
+import type { BabelNodeProgram } from "babel-types";
+
+// ECMA262 15.1.11
+function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env: LexicalEnvironment, strictCode: boolean) {
+  // 1. Let envRec be env's EnvironmentRecord.
+  let envRec = env.environmentRecord;
+
+  // 2. Assert: envRec is a global Environment Record.
+  invariant(envRec instanceof GlobalEnvironmentRecord, "expected global environment record");
+
+  // 3. Let lexNames be the LexicallyDeclaredNames of script.
+  let lexNames = [];
+
+  // 4. Let varNames be the VarDeclaredNames of script.
+  let varNames = [];
+
+  traverse(ast, function (node) {
+    if (node.type === "VariableDeclaration") {
+      if (node.kind === "var") {
+        varNames = varNames.concat(BoundNames(realm, node));
+      } else {
+        lexNames = lexNames.concat(BoundNames(realm, node));
+      }
+    } else if (node.type === "FunctionExpression" || node.type === "FunctionDeclaration") {
+      return true;
+    }
+    return false;
+  });
+
+  // 5. For each name in lexNames, do
+  for (let name of lexNames) {
+    // a. If envRec.HasVarDeclaration(name) is true, throw a SyntaxError exception.
+    if (envRec.HasVarDeclaration(name)) {
+      throw new ThrowCompletion(
+        Construct(realm, realm.intrinsics.SyntaxError,
+           [new StringValue(realm, name + " already declared with var")])
+      );
+    }
+
+    // b. If envRec.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
+    if (envRec.HasLexicalDeclaration(name)) {
+      throw new ThrowCompletion(
+        Construct(realm, realm.intrinsics.SyntaxError,
+           [new StringValue(realm, name + " already declared with let or const")])
+      );
+    }
+
+    // c. Let hasRestrictedGlobal be ? envRec.HasRestrictedGlobalProperty(name).
+    let hasRestrictedGlobal = envRec.HasRestrictedGlobalProperty(name);
+
+    // d. If hasRestrictedGlobal is true, throw a SyntaxError exception.
+    if (hasRestrictedGlobal) {
+      throw new ThrowCompletion(
+        Construct(realm, realm.intrinsics.SyntaxError,
+           [new StringValue(realm, name + " global object is restricted")])
+      );
+    }
+  }
+
+  // 6. For each name in varNames, do
+  for (let name of varNames) {
+    // a. If envRec.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
+    if (envRec.HasLexicalDeclaration(name)) {
+      throw new ThrowCompletion(
+        Construct(realm, realm.intrinsics.SyntaxError,
+           [new StringValue(realm, name + " already declared with let or const")])
+      );
+    }
+  }
+
+  // 7. Let varDeclarations be the VarScopedDeclarations of script.
+  let varDeclarations = FindVarScopedDeclarations(ast);
+
+  // 8. Let functionsToInitialize be a new empty List.
+  let functionsToInitialize = [];
+
+  // 9. Let declaredFunctionNames be a new empty List.
+  let declaredFunctionNames = [];
+
+  // 10. For each d in varDeclarations, in reverse list order do
+  for (let d of varDeclarations.reverse()) {
+    // a. If d is neither a VariableDeclaration or a ForBinding, then
+    if (d.type !== "VariableDeclaration") {
+      // i. Assert: d is either a FunctionDeclaration or a GeneratorDeclaration.
+      invariant(d.type === "FunctionDeclaration", "expected function");
+
+      // ii. NOTE If there are multiple FunctionDeclarations for the same name, the last declaration is used.
+
+      // iii. Let fn be the sole element of the BoundNames of d.
+      let fn = BoundNames(realm, d)[0];
+
+      // iv. If fn is not an element of declaredFunctionNames, then
+      if (declaredFunctionNames.indexOf(fn) < 0) {
+        // 1. Let fnDefinable be ? envRec.CanDeclareGlobalFunction(fn).
+        let fnDefinable = envRec.CanDeclareGlobalFunction(fn);
+
+        // 2. If fnDefinable is false, throw a TypeError exception.
+        if (!fnDefinable) {
+          throw new ThrowCompletion(
+            Construct(realm, realm.intrinsics.TypeError,
+               [new StringValue(realm, fn + ": global function declarations are not allowed")])
+          );
+        }
+
+        // 3. Append fn to declaredFunctionNames.
+        declaredFunctionNames.push(fn);
+
+        // 4. Insert d as the first element of functionsToInitialize.
+        functionsToInitialize.unshift(d);
+      }
+    }
+  }
+
+  // 11. Let declaredVarNames be a new empty List.
+  let declaredVarNames = [];
+
+  // 12. For each d in varDeclarations, do
+  for (let d of varDeclarations) {
+    // a. If d is a VariableDeclaration or a ForBinding, then
+    if (d.type === "VariableDeclaration") {
+      // i. For each String vn in the BoundNames of d, do
+      for (let vn of BoundNames(realm, d)) {
+        // ii. If vn is not an element of declaredFunctionNames, then
+        if (declaredFunctionNames.indexOf(vn) < 0) {
+          // 1. Let vnDefinable be ? envRec.CanDeclareGlobalVar(vn).
+          let vnDefinable = envRec.CanDeclareGlobalVar(vn);
+
+          // 2. If vnDefinable is false, throw a TypeError exception.
+          if (!vnDefinable) {
+            throw new ThrowCompletion(
+              Construct(realm, realm.intrinsics.TypeError,
+                 [new StringValue(realm, vn + ": global variable declarations are not allowed")])
+            );
+          }
+
+          // 3. If vn is not an element of declaredVarNames, then
+          if (declaredVarNames.indexOf(vn) < 0) {
+            // a. Append vn to declaredVarNames.
+            declaredVarNames.push(vn);
+          }
+        }
+      }
+    }
+  }
+
+  // 13. NOTE: No abnormal terminations occur after this algorithm step if the global object is an ordinary object. However, if the global object is a Proxy exotic object it may exhibit behaviours that cause abnormal terminations in some of the following steps.
+
+  // 14. NOTE: Annex B.3.3.2 adds additional steps at this point.
+
+  // 15. Let lexDeclarations be the LexicallyScopedDeclarations of script.
+  let lexDeclarations = [];
+  for (let s of ast.body) {
+    if (s.type === "VariableDeclaration" && s.kind !== "var") {
+      lexDeclarations.push(s);
+    }
+  }
+
+  // 16. For each element d in lexDeclarations do
+  for (let d of lexDeclarations) {
+    // a. NOTE Lexically declared names are only instantiated here but not initialized.
+
+    // b. For each element dn of the BoundNames of d do
+    for (let dn of BoundNames(realm, d)) {
+      // i. If IsConstantDeclaration of d is true, then
+      if (d.kind === "const") {
+        // 1. Perform ? envRec.CreateImmutableBinding(dn, true).
+        envRec.CreateImmutableBinding(dn, true);
+      } else { // ii. Else,
+        // 1. Perform ? envRec.CreateMutableBinding(dn, false).
+        envRec.CreateMutableBinding(dn, false);
+      }
+    }
+  }
+
+  // 17. For each production f in functionsToInitialize, do
+  for (let f of functionsToInitialize) {
+    // a. Let fn be the sole element of the BoundNames of f.
+    let fn = BoundNames(realm, f)[0];
+
+    // b. Let fo be the result of performing InstantiateFunctionObject for f with argument env.
+    let fo = env.evaluate(f, strictCode);
+    invariant(fo instanceof Value);
+
+    // c. Perform ? envRec.CreateGlobalFunctionBinding(fn, fo, false).
+    envRec.CreateGlobalFunctionBinding(fn, fo, false);
+  }
+
+  // 18. For each String vn in declaredVarNames, in list order do
+  for (let vn of declaredVarNames) {
+    // a. Perform ? envRec.CreateGlobalVarBinding(vn, false).
+    envRec.CreateGlobalVarBinding(vn, false);
+  }
+
+  // 19. Return NormalCompletion(empty).
+  return realm.intrinsics.empty;
+}
+
+export default function (ast: BabelNodeProgram, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+  strictCode = IsStrict(ast);
+
+  GlobalDeclarationInstantiation(realm, ast, env, strictCode);
+
+  let val;
+
+  for (let node of ast.body) {
+    if (node.type !== "FunctionDeclaration") {
+      let potentialVal = env.evaluate(node, strictCode);
+      if (!(potentialVal instanceof EmptyValue)) val = potentialVal;
+    }
+  }
+
+  let directives = ast.directives;
+  if (!val && directives && directives.length) {
+    let directive = directives[directives.length - 1];
+    val = env.evaluate(directive, strictCode);
+  }
+
+  return val || realm.intrinsics.empty;
+}
