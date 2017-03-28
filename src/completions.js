@@ -53,6 +53,15 @@ export class ComposedAbruptCompletion extends AbruptCompletion {
 
   priorCompletion: NormalCompletion;
   subsequentCompletion: AbruptCompletion;
+
+  throwIntrospectionError<T>(): T {
+    if (this.priorCompletion instanceof PossiblyNormalCompletion)
+      return Value.throwIntrospectionError(this.priorCompletion.joinCondition);
+    if (this.subsequentCompletion instanceof PossiblyNormalCompletion)
+      return Value.throwIntrospectionError(this.subsequentCompletion.joinCondition);
+    invariant(this.subsequentCompletion instanceof ComposedPossiblyNormalCompletion);
+    return this.subsequentCompletion.throwIntrospectionError();
+  }
 }
 
 export class JoinedAbruptCompletions extends AbruptCompletion {
@@ -60,22 +69,16 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
       realm: Realm,
       joinCondition: AbstractValue,
       consequent: AbruptCompletion,
-      consequentEffects: Effects,
-      alternate: AbruptCompletion,
-      alternateEffects: Effects) {
+      alternate: AbruptCompletion) {
     super(realm.intrinsics.empty, undefined);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
-    this.consequentEffects = consequentEffects;
     this.alternate = alternate;
-    this.alternateEffects = alternateEffects;
   }
 
   joinCondition: AbstractValue;
   consequent: AbruptCompletion;
-  consequentEffects: Effects;
   alternate: AbruptCompletion;
-  alternateEffects: Effects;
 }
 
 // Possibly normal completions have to be treated like normal completions

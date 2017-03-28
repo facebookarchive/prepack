@@ -54,7 +54,7 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
 
   // Evaluate ast.right in a sandbox to get its effects
   let [compl2, gen2, bindings2, properties2, createdObj2] =
-    realm.partially_evaluate(ast.right, strictCode, env);
+    realm.partially_evaluate_node(ast.right, strictCode, env);
 
   // todo: don't just give up on abrupt completions, but try to join states
   // eg. foo || throwSomething()

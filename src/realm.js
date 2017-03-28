@@ -202,14 +202,11 @@ export class Realm {
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
-  partially_evaluate(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
-    return this.internal_partially_evaluate(() => {
-      let compl = env.evaluateCompletion(ast, strictCode);
-      return (compl instanceof Reference) ? GetValue(this, compl) : compl;
-    });
+  partially_evaluate_node(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
+    return this.partially_evaluate(() => env.evaluateCompletion(ast, strictCode));
   }
 
-  internal_partially_evaluate(f: () => Value | Completion): Effects {
+  partially_evaluate(f: () => Completion | Value | Reference): Effects {
     // Save old state and set up empty state for ast
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
@@ -217,26 +214,81 @@ export class Realm {
     this.generator = new Generator(this);
     this.createdObjects = new Set();
 
-    let c = f();
+    try {
+      let c = f();
+      if (c instanceof Reference) c = GetValue(this, c);
 
-    invariant(this.generator !== undefined);
-    invariant(this.modifiedBindings !== undefined);
-    invariant(this.modifiedProperties !== undefined);
-    invariant(this.createdObjects !== undefined);
-    let astGenerator = this.generator;
-    let astBindings = this.modifiedBindings;
-    let astProperties = this.modifiedProperties;
-    let astCreatedObjects = this.createdObjects;
+      invariant(this.generator !== undefined);
+      invariant(this.modifiedBindings !== undefined);
+      invariant(this.modifiedProperties !== undefined);
+      invariant(this.createdObjects !== undefined);
+      let astGenerator = this.generator;
+      let astBindings = this.modifiedBindings;
+      let astProperties = this.modifiedProperties;
+      let astCreatedObjects = this.createdObjects;
 
-    // Roll back the state changes
-    this.restoreProperties(astProperties);
-    this.restoreBindings(astBindings);
-    this.generator = saved_generator;
-    this.modifiedBindings = savedBindings;
-    this.modifiedProperties = savedProperties;
-    this.createdObjects = saved_createdObjects;
-    // Return the captured state changes and evaluation result
-    return [c, astGenerator, astBindings, astProperties, astCreatedObjects];
+      // Return the captured state changes and evaluation result
+      return [c, astGenerator, astBindings, astProperties, astCreatedObjects];
+    } finally {
+      // Roll back the state changes
+      this.restoreBindings(this.modifiedBindings);
+      this.restoreProperties(this.modifiedProperties);
+      this.generator = saved_generator;
+      this.modifiedBindings = savedBindings;
+      this.modifiedProperties = savedProperties;
+      this.createdObjects = saved_createdObjects;
+    }
+  }
+
+  // Apply the given effects to the global state
+  apply_effects(effects: Effects) {
+    let [completion, generator, bindings, properties, createdObjects] = effects;
+
+    // ignore completion
+    completion;
+
+    // Add generated code for property modifications
+    let realmGenerator = this.generator;
+    invariant(realmGenerator);
+    let realmGeneratorBody = realmGenerator.body;
+    generator.body.forEach((v, k, a) => realmGeneratorBody.push(v));
+
+    // Restore bindings
+    this.restoreBindings(bindings);
+    this.restoreProperties(properties);
+
+    // track bindings
+    let realmModifiedBindings = this.modifiedBindings;
+    if (realmModifiedBindings !== undefined) {
+      bindings.forEach((val, key, m) => {
+        invariant(realmModifiedBindings !== undefined);
+        if (!realmModifiedBindings.has(key)) {
+          realmModifiedBindings.set(key, val);
+        }
+      });
+    }
+    let realmModifiedProperties = this.modifiedProperties;
+    if (realmModifiedProperties !== undefined) {
+      properties.forEach((desc, propertyBinding, m) => {
+        invariant(realmModifiedProperties !== undefined);
+        if (!realmModifiedProperties.has(propertyBinding)) {
+          realmModifiedProperties.set(propertyBinding, desc);
+        }
+      });
+    }
+
+    // add created objects
+    if (createdObjects.size > 0) {
+      let realmCreatedObjects = this.createdObjects;
+      if (realmCreatedObjects === undefined)
+        this.createdObjects = new Set(createdObjects);
+      else {
+        createdObjects.forEach((ob, a) => {
+          invariant(realmCreatedObjects !== undefined);
+          realmCreatedObjects.add(ob);
+        });
+      }
+    }
   }
 
   throwReadOnlyError(msg: string) {

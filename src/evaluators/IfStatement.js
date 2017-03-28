@@ -47,36 +47,24 @@ export function evaluateWithAbstractConditional(condValue: AbstractValue,
     env: LexicalEnvironment, realm: Realm): NormalCompletion | Value | Reference {
   // Evaluate consequent and alternate in sandboxes and get their effects.
   let [compl1, gen1, bindings1, properties1, createdObj1] =
-    realm.partially_evaluate(consequent, strictCode, env);
+    realm.partially_evaluate_node(consequent, strictCode, env);
 
   let [compl2, gen2, bindings2, properties2, createdObj2] =
     alternate ?
-      realm.partially_evaluate(alternate, strictCode, env) :
+      realm.partially_evaluate_node(alternate, strictCode, env) :
       construct_empty_effects(realm);
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of condValue.
-  let [completion, generator, bindings, properties, createdObjects] =
+  let joinedEffects =
     joinEffects(realm, condValue,
       [compl1, gen1, bindings1, properties1, createdObj1],
       [compl2, gen2, bindings2, properties2, createdObj2]);
-
-  // Apply the joined effects to the global state
-  realm.restoreBindings(bindings);
-  realm.restoreProperties(properties);
-
-  // Add generated code for property modifications
-  let realmGenerator = realm.generator;
-  invariant(realmGenerator);
-  let realmGeneratorBody = realmGenerator.body;
-  generator.body.forEach((v, k, a) => realmGeneratorBody.push(v));
-
-  // Ignore created Objects
-  createdObjects;
+  realm.apply_effects(joinedEffects);
 
   // return or throw completion
-  if (completion instanceof AbruptCompletion)
-    throw completion;
+  let completion = joinedEffects[0];
+  if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof NormalCompletion || completion instanceof Value || completion instanceof Reference);
   return completion;
 

@@ -13,7 +13,7 @@ import type { BabelNodeBlockStatement } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
-import { AbruptCompletion, ComposedAbruptCompletion, ComposedPossiblyNormalCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, ComposedAbruptCompletion, ComposedPossiblyNormalCompletion, NormalCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { EmptyValue, StringValue, Value } from "../values/index.js";
 import { NewDeclarativeEnvironment, BlockDeclarationInstantiation } from "../methods/index.js";
@@ -58,7 +58,8 @@ export default function (ast: BabelNodeBlockStatement, strictCode: boolean, env:
             if (res instanceof Value)
               blockValue.value = res;
             else {
-              invariant(res instanceof NormalCompletion);
+              invariant(res instanceof PossiblyNormalCompletion ||
+              res instanceof ComposedPossiblyNormalCompletion);
               blockValue = new ComposedPossiblyNormalCompletion(blockValue, res);
             }
           }

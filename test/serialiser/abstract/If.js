@@ -1,13 +1,24 @@
 let x = global.__abstract ? __abstract("boolean", "true") : true;
+let xx = global.__abstract ? __abstract("boolean", "false") : false;
 let y = 1;
 let yy = 2;
 let ob = { a: 1, b: 2 };
 a = 10;
 if (x) {
   y = 2;
-  a = 20;
   ob.a = 10;
-  ob.b = 20;
+  if (xx) {
+    y = 3;
+    a = 30;
+    let b = 40;
+    ob.a = 20;
+    ob.b = 30;
+  } else {
+    y = 4;
+    a = 40;
+    ob.a = 30;
+    ob.b = 40;
+  }
 } else {
   y = 3;
   yy = 6;

@@ -34,10 +34,11 @@ export function joinEffects(realm: Realm, joinCondition: AbstractValue,
   let result = joinResults(realm, joinCondition, result1, result2, e1, e2);
   if (result1 instanceof AbruptCompletion) {
     if (!(result2 instanceof AbruptCompletion)) {
+      invariant(result instanceof PossiblyNormalCompletion);
       return [result, gen2, bindings2, properties2, createdObj2];
     }
-    throw result;
   } else if (result2 instanceof AbruptCompletion) {
+    invariant(result instanceof PossiblyNormalCompletion);
     return [result, gen1, bindings1, properties1, createdObj1];
   }
 
@@ -82,7 +83,7 @@ function joinResults(realm: Realm, joinCondition: AbstractValue,
     return new ThrowCompletion(val);
   }
   if (result1 instanceof AbruptCompletion && result2 instanceof AbruptCompletion) {
-    return new JoinedAbruptCompletions(realm, joinCondition, result1, e1, result2, e2);
+    return new JoinedAbruptCompletions(realm, joinCondition, result1, result2);
   }
   if (result1 instanceof Value && result2 instanceof Value)
     return joinValues(realm, result1, result2, getAbstractValue);
