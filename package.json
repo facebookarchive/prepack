@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "description": "Execute a JS bundle, serialise global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebookexperimental/prepack",
-  "repository": "git://github.com/facebookexperimental/prepack.git",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/facebookexperimental/prepack.git"
+  },
   "bugs": {
     "url": "https://github.com/facebookexperimental/prepack/issues"
   },
@@ -25,7 +28,8 @@
     "test": "npm run test-serialiser && npm run test-sourcemaps && npm run test-test262 && npm run test-internal",
     "repl": "node lib/repl.js",
     "prepack": "npm run build && node lib/prepack.js",
-    "validate": "npm run build && npm run lint && npm run flow && npm test"
+    "validate": "npm run build && npm run lint && npm run flow && npm test",
+    "prepublish": "npm run build"
   },
   "dependencies": {
     "babel-core": "^6.8.0",
