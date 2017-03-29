@@ -41,14 +41,6 @@ function run_internal(name: string, raw: string, map: string = "", compatibility
 }
 
 export function run(inFn: string, compat?: "browser" | "jsc" = "browser", mathRandSeed: void | string, outFn?: string, inputMap?: string, outMap?: string, speculateOpt?: boolean) {
-  console.log("running args:")
-  console.log(inFn);
-  console.log(compat);
-  console.log(mathRandSeed);
-  console.log(outFn);
-  console.log(inputMap);
-  console.log(outMap);
-  console.log(speculateOpt);
   let input = fs.readFileSync(inFn, "utf8");
   let map = "";
   let mapFile = inputMap ? inputMap : inFn + ".map";
