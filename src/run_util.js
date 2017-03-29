@@ -9,14 +9,7 @@
 
 /* @flow */
 
-import Serialiser from "./serialiser.js";
-import invariant from "./invariant.js";
-import run from "./prepack.js";
-
-let fs        = require("fs");
-
-let oldwfs = fs.writeFileSync;
-fs.writeFileSync = (fn, txt) => { console.log(`writing ${fn}`); oldwfs(fn, txt); };
+import { run } from "./prepack.js";
 
 let args = Array.from(process.argv);
 args.splice(0, 2);
