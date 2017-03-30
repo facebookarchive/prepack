@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
 import { ThrowCompletion, AbruptCompletion } from "../completions.js";
-import { Value, UndefinedValue, ObjectValue } from "../values/index.js";
+import { NumberValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
 import {
   GetMethod,
   Call,
@@ -121,7 +121,7 @@ export function CreateMapIterator(realm: Realm, map: Value, kind: IterationKind)
   iterator.$Map = map;
 
   // 5. Set iterator's [[MapNextIndex]] internal slot to 0.
-  iterator.$MapNextIndex = 0;
+  iterator.$MapNextIndex = new NumberValue(realm, 0);
 
   // 6. Set iterator's [[MapIterationKind]] internal slot to kind.
   iterator.$MapIterationKind = kind;

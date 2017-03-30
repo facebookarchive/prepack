@@ -99,7 +99,6 @@ export function OrdinaryGet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, R
       // even in the case when it is empty.
       return descValue;
     }
-    invariant(parent instanceof ObjectValue);
 
     // c. Return ? parent.[[Get]](P, Receiver).
     if (descValue.mightHaveBeenDeleted()) {

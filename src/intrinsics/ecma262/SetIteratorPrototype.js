@@ -13,7 +13,6 @@ import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue, UndefinedValue } from "../../values/index.js";
 import { CreateIterResultObject, CreateArrayFromList } from "../../methods/create.js";
 import { Construct } from "../../methods/construct.js";
-import { ThrowIfInternalSlotNotWritable } from "../../methods/properties.js";
 import { ThrowCompletion } from "../../completions.js";
 import invariant from "../../invariant.js";
 
@@ -68,7 +67,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
       index = index + 1;
 
       // c. Set O.[[SetNextIndex]] to index.
-      ThrowIfInternalSlotNotWritable(realm, O, "$SetNextIndex").$SetNextIndex = index;
+      O.$SetNextIndex = index;
 
       // d. If e is not empty, then
       if (e) {
@@ -83,7 +82,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 11. Set O.[[IteratedSet]] to undefined.
-    ThrowIfInternalSlotNotWritable(realm, O, "$IteratedSet").$IteratedSet = realm.intrinsics.undefined;
+    O.$IteratedSet = realm.intrinsics.undefined;
 
     // 12. Return CreateIterResultObject(undefined, true).
     return CreateIterResultObject(realm, realm.intrinsics.undefined, true);

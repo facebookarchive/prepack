@@ -28,7 +28,7 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
   invariant(!!F.$Construct, "expected construct internal method");
 
   // 3. Assert: F is an extensible object that does not have a prototype own property.
-  invariant(F.$Extensible === true, "expected extensible object that doesn't have prototype own property");
+  invariant(F.getExtensible(), "expected extensible object that doesn't have prototype own property");
 
   // 4. If the writablePrototype argument was not provided, let writablePrototype be true.
   if (writablePrototype === null || writablePrototype === undefined) {

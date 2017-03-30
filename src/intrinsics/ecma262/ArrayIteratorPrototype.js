@@ -14,7 +14,6 @@ import { CreateIterResultObject, CreateArrayFromList } from "../../methods/creat
 import { NumberValue, ObjectValue, UndefinedValue, StringValue } from "../../values/index.js";
 import { ToLength } from "../../methods/to.js";
 import { Get } from "../../methods/get.js";
-import { ThrowIfInternalSlotNotWritable } from "../../methods/properties.js";
 import { Construct } from "../../methods/construct.js";
 import { ThrowCompletion } from "../../completions.js";
 import invariant from "../../invariant.js";
@@ -33,7 +32,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have all of the internal slots of an Array Iterator Instance (22.1.5.3), throw a TypeError exception.
-    if (!('$IteratedObject' in O) || !('$ArrayIteratorNextIndex' in O) || !('$ArrayIterationKind' in O)) {
+    if (O.$IteratedObject === undefined || O.$ArrayIteratorNextIndex === undefined || O.$ArrayIterationKind === undefined) {
       throw new ThrowCompletion(
         Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "ArrayIteratorPrototype.next isn't generic")])
       );
@@ -49,8 +48,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 6. Let index be the value of the [[ArrayIteratorNextIndex]] internal slot of O.
-    let index = O.$ArrayIteratorNextIndex;
-    invariant(typeof index === "number");
+    let index = O.$ArrayIteratorNextIndex.value;
 
     // 7. Let itemKind be the value of the [[ArrayIterationKind]] internal slot of O.
     let itemKind = O.$ArrayIterationKind;
@@ -69,14 +67,14 @@ export default function (realm: Realm, obj: ObjectValue): void {
     // 10. If index ≥ len, then
     if (index >= len) {
       // a. Set the value of the [[IteratedObject]] internal slot of O to undefined.
-      ThrowIfInternalSlotNotWritable(realm, O, "$IteratedObject").$IteratedObject = realm.intrinsics.undefined;
+      O.$IteratedObject = realm.intrinsics.undefined;
 
       // b. Return CreateIterResultObject(undefined, true).
       return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     }
 
     // 11. Set the value of the [[ArrayIteratorNextIndex]] internal slot of O to index+1.
-    ThrowIfInternalSlotNotWritable(realm, O, "$ArrayIteratorNextIndex").$ArrayIteratorNextIndex = index + 1;
+    O.$ArrayIteratorNextIndex = new NumberValue(realm, index + 1);
 
     // 12. If itemKind is "key", return CreateIterResultObject(index, false).
     if (itemKind === "key") {

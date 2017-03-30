@@ -14,7 +14,6 @@ import { ThrowCompletion } from "../../completions.js";
 import { CreateIterResultObject } from "../../methods/create.js";
 import { ObjectValue, StringValue } from "../../values/index.js";
 import { Construct } from "../../methods/construct.js";
-import { ThrowIfInternalSlotNotWritable } from "../../methods/properties.js";
 import invariant from "../../invariant.js";
 
 export default function (realm: Realm, obj: ObjectValue): void {
@@ -55,7 +54,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     // 8. If position ≥ len, then
     if (position >= len) {
       // a. Set O.[[IteratedString]] to undefined.
-      ThrowIfInternalSlotNotWritable(realm, O, "$IteratedString").$IteratedString = undefined;
+      O.$IteratedString = undefined;
 
       // b. Return CreateIterResultObject(undefined, true).
       return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
@@ -83,7 +82,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let resultSize = resultString.length;
 
     // 13. Set O.[[StringIteratorNextIndex]] to position + resultSize.
-    ThrowIfInternalSlotNotWritable(realm, O, "$StringIteratorNextIndex").$StringIteratorNextIndex = position + resultSize;
+    O.$StringIteratorNextIndex = position + resultSize;
 
     // 14. Return CreateIterResultObject(resultString, false).
     return CreateIterResultObject(realm, new StringValue(realm, resultString), false);

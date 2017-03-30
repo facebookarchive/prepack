@@ -64,7 +64,7 @@ export function StringCreate(realm: Realm, value: StringValue, prototype: Object
   S.$Prototype = prototype;
 
   // 8. Set the [[Extensible]] internal slot of S to true.
-  S.$Extensible = true;
+  S.setExtensible(true);
 
   // 9. Let length be the number of code unit elements in value.
   let length = value.value.length;
@@ -259,7 +259,7 @@ export function CreateArrayIterator(realm: Realm, array: ObjectValue, kind: Iter
   iterator.$IteratedObject = array;
 
   // 4. Set iterator's [[ArrayIteratorNextIndex]] internal slot to 0.
-  iterator.$ArrayIteratorNextIndex = 0;
+  iterator.$ArrayIteratorNextIndex = new NumberValue(realm, 0);
 
   // 5. Set iterator's [[ArrayIterationKind]] internal slot to kind.
   iterator.$ArrayIterationKind = kind;
@@ -296,7 +296,7 @@ export function ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): 
   A.$Prototype = proto;
 
   // 9. Set the [[Extensible]] internal slot of A to true.
-  A.$Extensible = true;
+  A.setExtensible(true);
 
   // 10. Perform ! OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
   OrdinaryDefineOwnProperty(realm, A, "length", {
@@ -434,7 +434,7 @@ export function CreateMappedArgumentsObject(realm: Realm, func: FunctionValue, f
   obj.$Prototype = realm.intrinsics.ObjectPrototype;
 
   // 11. Set the [[Extensible]] internal slot of obj to true.
-  obj.$Extensible = true;
+  obj.setExtensible(true);
 
   // 12. Let map be ObjectCreate(null).
   let map = new ObjectValue(realm);
@@ -590,7 +590,7 @@ export function ObjectCreate(realm: Realm, proto: ObjectValue | NullValue, inter
   obj.$Prototype = proto;
 
   // 5. Set the [[Extensible]] internal slot of obj to true.
-  obj.$Extensible = true;
+  obj.setExtensible(true);
 
   // 6. Return obj.
   return obj;

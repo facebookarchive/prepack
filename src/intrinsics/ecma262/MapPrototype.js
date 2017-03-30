@@ -233,7 +233,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of M's [[MapData]] internal slot.
-    let entries = ThrowIfInternalSlotNotWritable(realm, M, "$MapData").$MapData;
+    let entries = M.$MapData;
     invariant(entries !== undefined);
 
     // 5. Repeat for each Record {[[Key]], [[Value]]} p that is an element of entries,

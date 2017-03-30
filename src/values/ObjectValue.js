@@ -13,22 +13,53 @@ import type { Realm, ExecutionContext } from "../realm.js";
 import type { IterationKind, PromiseCapability, PromiseReaction, DataBlock, PropertyKeyValue, PropertyBinding, Descriptor } from "../types.js";
 import { Value, AbstractValue, ConcreteValue, BooleanValue, StringValue, SymbolValue, NumberValue, UndefinedValue, NullValue, NativeFunctionValue } from "./index.js";
 import type { NativeFunctionCallback } from "./index.js";
-import { OrdinarySetPrototypeOf, OrdinaryDefineOwnProperty, OrdinaryDelete, OrdinaryOwnPropertyKeys, OrdinaryGetOwnProperty, OrdinaryGet, OrdinaryHasProperty, OrdinarySet, OrdinaryIsExtensible, OrdinaryPreventExtensions, ThrowIfMightHaveBeenDeleted, ThrowIfInternalSlotNotWritable } from "../methods/index.js";
+import { OrdinarySetPrototypeOf, OrdinaryDefineOwnProperty, OrdinaryDelete, OrdinaryOwnPropertyKeys, OrdinaryGetOwnProperty, OrdinaryGet, OrdinaryHasProperty, OrdinarySet, OrdinaryIsExtensible, OrdinaryPreventExtensions, ThrowIfMightHaveBeenDeleted } from "../methods/index.js";
 
 import invariant from "../invariant.js";
 
 export default class ObjectValue extends ConcreteValue {
   constructor(realm: Realm, proto?: ObjectValue | NullValue, intrinsicName?: string) {
     super(realm, intrinsicName);
+    realm.recordNewObject(this);
+    if (realm.isPartial) this.setupBindings();
     this.$Prototype = proto || (realm.intrinsics && realm.intrinsics.null);
-    this.$Extensible = true;
+    this.$Extensible = realm.intrinsics.true;
+    this._isPartial = realm.intrinsics.false;
+    this._isSimple = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
-    realm.recordNewObject(this);
+  }
+
+  static trackedProperties = ["$Prototype", "$Extensible", "$SetNextIndex", "$IteratedSet",
+   "$MapNextIndex", "$MapData", "$Map", "$DateValue", "$ArrayIteratorNextIndex", "$IteratedObject",
+   "$StringIteratorNextIndex", "$IteratedString", "_isPartial", "_isSimple"];
+
+  setupBindings() {
+    for (let propName of ObjectValue.trackedProperties) {
+      let desc = { writeable: true, value: undefined };
+      (this: any)[propName + "_binding"] = { descriptor: desc, object: this, key: propName };
+    }
+  }
+
+  static setupTrackedPropertyAccessors() {
+    for (let propName of ObjectValue.trackedProperties) {
+      Object.defineProperty(ObjectValue.prototype, propName,
+        { configurable: true,
+          get: function() {
+            let binding = this[propName + "_binding"];
+            return binding.descriptor.value;
+          },
+          set: function(v) {
+            let binding = this[propName + "_binding"];
+            this.$Realm.recordModifiedProperty(binding);
+            binding.descriptor.value = v;
+          }
+        });
+    }
   }
 
   $Prototype: ObjectValue | NullValue;
-  $Extensible: boolean;
+  $Extensible: BooleanValue;
 
   $ParameterMap: void | ObjectValue;
   $SymbolData: void | SymbolValue;
@@ -68,7 +99,7 @@ export default class ObjectValue extends ConcreteValue {
 
   // map
   $MapIterationKind: void | IterationKind;
-  $MapNextIndex: void | number;
+  $MapNextIndex: void | NumberValue;
   $MapData: void | Array<{$Key: void | Value, $Value: void | Value}>;
   $Map: void | ObjectValue | UndefinedValue;
 
@@ -83,7 +114,7 @@ export default class ObjectValue extends ConcreteValue {
 
   // array
   $ArrayIterationKind: void | IterationKind;
-  $ArrayIteratorNextIndex: void | number;
+  $ArrayIteratorNextIndex: void | NumberValue;
   $IteratedObject: void | UndefinedValue | ObjectValue;
 
   // regex
@@ -115,11 +146,11 @@ export default class ObjectValue extends ConcreteValue {
   $ArrayLength: void | number;
 
   // partial objects
-  _isPartial: void | boolean;
+  _isPartial: BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
-  _isSimple: boolean = false;
+  _isSimple: BooleanValue;
 
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
@@ -133,23 +164,31 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   makeNotPartial(): void {
-    ThrowIfInternalSlotNotWritable(this.$Realm, this, "_isPartial")._isPartial = false;
+    this._isPartial = this.$Realm.intrinsics.false;
   }
 
   makePartial(): void {
-    ThrowIfInternalSlotNotWritable(this.$Realm, this, "_isPartial")._isPartial = true;
+    this._isPartial = this.$Realm.intrinsics.true;
   }
 
   makeSimple(): void {
-    ThrowIfInternalSlotNotWritable(this.$Realm, this, "_isSimple")._isSimple = true;
+    this._isSimple = this.$Realm.intrinsics.true;
   }
 
   isPartial(): boolean {
-    return !!this._isPartial;
+    return this._isPartial.value;
   }
 
   isSimple(): boolean {
-    return !!this._isSimple;
+    return this._isSimple.value;
+  }
+
+  getExtensible(): boolean {
+    return this.$Extensible.value;
+  }
+
+  setExtensible(v: boolean) {
+    this.$Extensible = v ? this.$Realm.intrinsics.true : this.$Realm.intrinsics.false;
   }
 
   defineNativeMethod(name: SymbolValue | string, length: number, callback: NativeFunctionCallback, desc?: Descriptor = {}) {
