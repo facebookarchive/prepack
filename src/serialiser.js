@@ -23,6 +23,7 @@ import generate from "babel-generator";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
 import invariant from "./invariant.js";
+import * as base62 from "base62";
 
 function isSameNode(left, right) {
   let type = left.type;
@@ -226,6 +227,7 @@ export default class Serialiser {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
+    this.uidCounter = 0;
   }
 
   globalReasons: {
@@ -258,6 +260,7 @@ export default class Serialiser {
   require: Value;
   requireReturns: Map<number | string, BabelNodeExpression>;
   initialiseMoreModules: boolean;
+  uidCounter: number;
 
   // Wraps a query that might potentially execute user code.
   tryQuery<T>(f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean): T {
@@ -417,14 +420,9 @@ export default class Serialiser {
     return val instanceof PrimitiveValue;
   }
 
-  inferName(val: Value): string {
-    /*
-    if (val instanceof ObjectValue && HasProperty(this.realm, val, "name")) {
-      let name = Get(this.realm, val, "name");
-      if (name instanceof StringValue) return t.toBindingIdentifierName(name.value);
-    }
-    */
-    return this.preludeGenerator.generateUid();
+  generateUid(): string {
+    let id = "_" + base62.encode(this.uidCounter++);
+    return id;
   }
 
   isNumberWithValue(value: ?Value, n: number): boolean {
@@ -596,7 +594,7 @@ export default class Serialiser {
       descriptorsKey = descriptorsKey.join(",");
       let descriptorId = this.descriptors.get(descriptorsKey);
       if (descriptorId === undefined) {
-        descriptorId = t.identifier(this.preludeGenerator.generateUid());
+        descriptorId = t.identifier(this.generateUid());
         let declar = t.variableDeclaration("var", [
           t.variableDeclarator(descriptorId, t.objectExpression(descProps))]);
         this.body.push(declar);
@@ -690,7 +688,7 @@ export default class Serialiser {
       return res;
     }
 
-    let name = this.inferName(val);
+    let name = this.generateUid(val);
     let id = t.identifier(name);
     this.refs.set(val, id);
     this.serialisationStack.push(val);
@@ -710,8 +708,6 @@ export default class Serialiser {
          let declar = t.variableDeclaration((bindingType ? bindingType : "var"), [
            t.variableDeclarator(id, init)
          ]);
-
-         declar.leadingComments = [];
 
          this.body.push(declar);
        }
@@ -1108,67 +1104,81 @@ export default class Serialiser {
     context.variableEnvironment = env;
     context.realm = realm;
     realm.contextStack.push(context);
-    for (let round = 0; !this._hasErrors; round++) {
-      let count = 0;
-      let introspectionErrors = Object.create(null);
-      for (let moduleId of this.requiredModules) {
-        if (this.requireReturns.has(moduleId)) continue; // already known to be initialized
-        let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
+    let count = 0;
+    let introspectionErrors = Object.create(null);
+    for (let moduleId of this.requiredModules) {
+      if (this.requireReturns.has(moduleId)) continue; // already known to be initialized
+      let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-        let [compl, gen, bindings, properties, createdObjects] =
-          realm.partially_evaluate(node, true, env, false);
+      let [compl, gen, bindings, properties, createdObjects] =
+        realm.partially_evaluate(node, true, env, false);
 
-        if (compl instanceof Completion) {
-          if (IsIntrospectionErrorCompletion(realm, compl)) {
-            let value = compl.value;
-            invariant(value instanceof ObjectValue);
-            realm.restoreBindings(bindings);
-            realm.restoreProperties(properties);
-            let message = ToStringPartial(realm, Get(realm, value, "message"));
-            realm.restoreBindings(bindings);
-            realm.restoreProperties(properties);
-            let moduleIds = introspectionErrors[message] = introspectionErrors[message] || [];
-            moduleIds.push(moduleId);
-            continue;
-          }
-
-          console.log(`=== UNEXPECTED ERROR during speculative initialization of module ${moduleId} ===`);
+      if (compl instanceof Completion) {
+        if (IsIntrospectionErrorCompletion(realm, compl)) {
+          let value = compl.value;
+          invariant(value instanceof ObjectValue);
           realm.restoreBindings(bindings);
           realm.restoreProperties(properties);
-          this.logCompletion(compl);
-          break;
+          let message = ToStringPartial(realm, Get(realm, value, "message"));
+          realm.restoreBindings(bindings);
+          realm.restoreProperties(properties);
+          let moduleIds = introspectionErrors[message] = introspectionErrors[message] || [];
+          moduleIds.push(moduleId);
+          continue;
         }
 
-        invariant(compl instanceof Value);
-
-        // Apply the joined effects to the global state
-        anyHeapChanges = true;
+        console.log(`=== UNEXPECTED ERROR during speculative initialization of module ${moduleId} ===`);
         realm.restoreBindings(bindings);
         realm.restoreProperties(properties);
-
-        // Add generated code for property modifications
-        let realmGenerator = this.realm.generator;
-        invariant(realmGenerator);
-        for (let bodyEntry of gen.body) realmGenerator.body.push(bodyEntry);
-
-        this.requireReturns.set(moduleId, this.serialiseValue(compl));
-
-        // Ignore created objects
-        createdObjects;
-        count++;
-      }
-      if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
-      if (count === 0) {
-        if (!this.collectValToRefCountOnly) {
-          let a = [];
-          for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
-          a.sort((x, y) => y[0].length - x[0].length);
-          if (a.length) {
-            console.log(`=== speculative module initialization failures ordered by frequency`);
-            for (let [moduleIds, n] of a) console.log(`${moduleIds.length}x ${n} [${moduleIds.join(",")}]`);
-          }
-        }
+        this.logCompletion(compl);
         break;
+      }
+
+      invariant(compl instanceof Value);
+
+      // Apply the joined effects to the global state
+      anyHeapChanges = true;
+      realm.restoreBindings(bindings);
+      realm.restoreProperties(properties);
+
+      // Add generated code for property modifications
+      let realmGenerator = this.realm.generator;
+      invariant(realmGenerator);
+      let first = true;
+      for (let bodyEntry of gen.body) {
+        let id = bodyEntry.declaresDerivedId;
+        let originalBuildNode = bodyEntry.buildNode;
+        let buildNode = originalBuildNode;
+        if (first) {
+          first = false;
+          buildNode = (nodes, f) => {
+            let n = originalBuildNode(nodes, f);
+            n.leadingComments = [({ type: "BlockComment", value: `Speculative initialization of module ${moduleId}` }: any)];
+            return n;
+          };
+        }
+        realmGenerator.body.push({ declaresDerivedId: id, args: bodyEntry.args, buildNode: buildNode });
+        if (id !== undefined) {
+          this.declaredDerivedIds.add(id);
+        }
+      }
+
+      this.requireReturns.set(moduleId, this.serialiseValue(compl));
+
+      // Ignore created objects
+      createdObjects;
+      count++;
+    }
+    if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
+    if (count === 0) {
+      if (!this.collectValToRefCountOnly) {
+        let a = [];
+        for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
+        a.sort((x, y) => y[0].length - x[0].length);
+        if (a.length) {
+          console.log(`=== speculative module initialization failures ordered by frequency`);
+          for (let [moduleIds, n] of a) console.log(`${moduleIds.length}x ${n} [${moduleIds.join(",")}]`);
+        }
       }
     }
     realm.contextStack.pop();
@@ -1233,7 +1243,7 @@ export default class Serialiser {
         for (let name in names) {
           let serialisedBinding: SerialisedBinding = serialisedBindings[name];
           if (serialisedBinding.modified && !serialisedBinding.referentialised) {
-            let serialisedBindingId = t.identifier(this.preludeGenerator.generateUid());
+            let serialisedBindingId = t.identifier(this.generateUid());
             let declar = t.variableDeclaration("var", [
               t.variableDeclarator(serialisedBindingId, serialisedBinding.serialisedValue)]);
             getFunctionBody(instance).push(declar);
@@ -1294,7 +1304,7 @@ export default class Serialiser {
           getFunctionBody(instance).push(funcNode);
         }
       } else {
-        let factoryId = t.identifier(this.preludeGenerator.generateUid());
+        let factoryId = t.identifier(this.generateUid());
 
         // filter included variables to only include those that are different
         let factoryNames: Array<string> = [];
@@ -1583,7 +1593,7 @@ export default class Serialiser {
         rootFactoryProps.push(t.objectProperty(keyNode, t.identifier(key)));
       }
 
-      let rootFactoryId = t.identifier(this.preludeGenerator.generateUid());
+      let rootFactoryId = t.identifier(this.generateUid());
       let rootFactoryBody = t.blockStatement([
         t.returnStatement(t.objectExpression(rootFactoryProps))
       ]);
@@ -1664,7 +1674,7 @@ export default class Serialiser {
           }
         }
 
-        let subFactoryId = t.identifier(this.preludeGenerator.generateUid());
+        let subFactoryId = t.identifier(this.generateUid());
         let subFactoryBody = t.blockStatement([
           t.returnStatement(t.callExpression(rootFactoryId, subFactoryArgs))
         ]);
@@ -1688,14 +1698,12 @@ export default class Serialiser {
       sourceMaps?: boolean = false, onError?: (Realm, Value) => void) {
     this.execute(filename, code, map, onError);
     if (this._hasErrors) return undefined;
-    let savedPG = this.preludeGenerator.save();
     let anyHeapChanges = true;
     this.collectValToRefCountOnly = true;
     while (anyHeapChanges) {
       this.valToRefCount = new Map();
       anyHeapChanges = !!this.serialise(filename, code, sourceMaps).anyHeapChanges;
       if (this._hasErrors) return undefined;
-      this.preludeGenerator.restore(savedPG);
       this._resetSerializeStates();
     }
     this.collectValToRefCountOnly = false;
