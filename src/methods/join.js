@@ -27,18 +27,18 @@ import invariant from "../invariant.js";
 import * as t from "babel-types";
 
 export function joinEffects(realm: Realm, joinCondition: AbstractValue,
-    e1: Effects, e2: Effects, consoleToGenerator: ?boolean): Effects {
-  let [result1, gen1, bindings1, properties1, createdObj1, consoleOut1] = e1;
-  let [result2, gen2, bindings2, properties2, createdObj2, consoleOut2] = e2;
+    e1: Effects, e2: Effects): Effects {
+  let [result1, gen1, bindings1, properties1, createdObj1] = e1;
+  let [result2, gen2, bindings2, properties2, createdObj2] = e2;
 
   let result = joinResults(realm, joinCondition, result1, result2, e1, e2);
   if (result1 instanceof AbruptCompletion) {
     if (!(result2 instanceof AbruptCompletion)) {
-      return [result, gen2, bindings2, properties2, createdObj2, consoleOut2];
+      return [result, gen2, bindings2, properties2, createdObj2];
     }
     throw result;
   } else if (result2 instanceof AbruptCompletion) {
-    return [result, gen1, bindings1, properties1, createdObj1, consoleOut1];
+    return [result, gen1, bindings1, properties1, createdObj1];
   }
 
   let bindings = joinBindings(realm, joinCondition, bindings1, bindings2);
@@ -52,23 +52,9 @@ export function joinEffects(realm: Realm, joinCondition: AbstractValue,
     createdObjects.add(o);
   });
 
-  let consoleOut = [];
-  if (consoleToGenerator) {
-    // By adding it to the generator, we know that only one of the branches output
-    // will be shown
-    consoleOut1.forEach((str) => {
-      gen1.emitConsoleLog(str);
-    });
-    consoleOut2.forEach((str) => {
-      gen2.emitConsoleLog(str);
-    });
-  } else {
-    // Otherwise, for now join console output by concatenating the arrays
-    consoleOut = consoleOut1.concat(consoleOut2);
-  }
   let generator = joinGenerators(realm, joinCondition, gen1, gen2, result1, result2);
 
-  return [result, generator, bindings, properties, createdObjects, consoleOut];
+  return [result, generator, bindings, properties, createdObjects];
 }
 
 function joinResults(realm: Realm, joinCondition: AbstractValue,

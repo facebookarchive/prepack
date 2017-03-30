@@ -44,6 +44,7 @@ function exec(code: string): string {
 report(inspect());`, { cachedDataProduced: false });
 
   let result = "";
+  let logOutput = "";
   script.runInNewContext({
     setTimeout: setTimeout,
     setInterval: setInterval,
@@ -52,11 +53,11 @@ report(inspect());`, { cachedDataProduced: false });
     },
     console: {
       log(s) {
-        console.log(s);
+        logOutput += "\n" + s;
       }
     }
   });
-  return result;
+  return result + logOutput;
 }
 
 class Success {}

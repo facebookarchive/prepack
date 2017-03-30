@@ -1115,16 +1115,8 @@ export default class Serialiser {
         if (this.requireReturns.has(moduleId)) continue; // already known to be initialized
         let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-        let [compl, gen, bindings, properties, createdObjects, consoleOutput] =
+        let [compl, gen, bindings, properties, createdObjects] =
           realm.partially_evaluate(node, true, env, false);
-
-        if (consoleOutput.length > 0) {
-          console.log(`=== console output during speculative initialization of module ${moduleId} ===`);
-          // Dump any console output
-          consoleOutput.forEach((line) => {
-            realm.outputToConsole(line);
-          });
-        }
 
         if (compl instanceof Completion) {
           if (IsIntrospectionErrorCompletion(realm, compl)) {
@@ -1199,7 +1191,7 @@ export default class Serialiser {
     for (let moduleId of this.requiredModules) {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let [compl, gen, bindings, properties, createdObjects, consoleOutput] =
+      let [compl, gen, bindings, properties, createdObjects] =
         realm.partially_evaluate(node, true, env, false);
       // for lint unused
       invariant(bindings);
@@ -1207,7 +1199,7 @@ export default class Serialiser {
       if (compl instanceof AbruptCompletion) continue;
       invariant(compl instanceof Value);
 
-      if (gen.body.length !== 0 || consoleOutput.length !== 0 ||
+      if (gen.body.length !== 0 ||
         (compl instanceof ObjectValue && createdObjects.has(compl))) continue;
       // Check for escaping property assignments, if none escape, we're safe
       // to replace the require with its exports object
