@@ -27,7 +27,7 @@
     "test-internal": "node lib/scripts/test-internal.js",
     "test": "npm run test-serialiser && npm run test-sourcemaps && npm run test-test262 && npm run test-internal",
     "repl": "node lib/repl.js",
-    "prepack": "npm run build && node lib/prepack.js",
+    "prepack": "npm run build && node lib/run_util.js",
     "validate": "npm run build && npm run lint && npm run flow && npm test",
     "prepublish": "npm run build"
   },
