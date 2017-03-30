@@ -49,11 +49,11 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
   }
 
   // Create empty effects for the case where ast.left is defined
-  let [compl1, gen1, bindings1, properties1, createdObj1, consoleOut1] =
+  let [compl1, gen1, bindings1, properties1, createdObj1] =
     construct_empty_effects(realm);
 
   // Evaluate ast.right in a sandbox to get its effects
-  let [compl2, gen2, bindings2, properties2, createdObj2, consoleOut2] =
+  let [compl2, gen2, bindings2, properties2, createdObj2] =
     realm.partially_evaluate(ast.right, strictCode, env);
 
   // todo: don't just give up on abrupt completions, but try to join states
@@ -63,15 +63,15 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of ast.left.
-  let [completion, generator, bindings, properties, createdObjects, consoleOut] =
+  let [completion, generator, bindings, properties, createdObjects] =
     ast.operator === "&&" ?
       joinEffects(realm, lval,
-        [compl2, gen2, bindings2, properties2, createdObj2, consoleOut2],
-        [compl1, gen1, bindings1, properties1, createdObj1, consoleOut1], true)
+        [compl2, gen2, bindings2, properties2, createdObj2],
+        [compl1, gen1, bindings1, properties1, createdObj1])
     :
       joinEffects(realm, lval,
-        [compl1, gen1, bindings1, properties1, createdObj1, consoleOut1],
-        [compl2, gen2, bindings2, properties2, createdObj2, consoleOut2], true);
+        [compl1, gen1, bindings1, properties1, createdObj1],
+        [compl2, gen2, bindings2, properties2, createdObj2]);
 
 
   // Apply the joined effects to the global state
@@ -83,11 +83,6 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
   invariant(realmGenerator);
   let realmGeneratorBody = realmGenerator.body;
   generator.body.forEach((v, k, a) => realmGeneratorBody.push(v));
-
-  // Dump any console output
-  consoleOut.forEach((line) => {
-    realm.outputToConsole(line);
-  });
 
   // Ignore the joined completion
   completion;

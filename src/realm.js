@@ -82,11 +82,10 @@ export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue | AbstractObjectValue>;
-export type ConsoleOutput = Array<string>;
-export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects, ConsoleOutput];
+export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
 export function construct_empty_effects(realm: Realm): Effects {
-  return [realm.intrinsics.empty, new Generator(realm), new Map(), new Map(), new Set(), []];
+  return [realm.intrinsics.empty, new Generator(realm), new Map(), new Map(), new Set()];
 }
 
 export class Realm {
@@ -135,7 +134,6 @@ export class Realm {
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
-  consoleOutput: void | ConsoleOutput;
 
   createdObjects: void | CreatedObjects;
 
@@ -216,10 +214,8 @@ export class Realm {
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
-    let saved_consoleOutput = this.consoleOutput;
     this.generator = new Generator(this);
     this.createdObjects = new Set();
-    this.consoleOutput = [];
 
     let c = f();
 
@@ -227,12 +223,10 @@ export class Realm {
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
-    invariant(this.consoleOutput !== undefined);
     let astGenerator = this.generator;
     let astBindings = this.modifiedBindings;
     let astProperties = this.modifiedProperties;
     let astCreatedObjects = this.createdObjects;
-    let astConsoleOutput = this.consoleOutput;
 
     // Roll back the state changes
     this.restoreProperties(astProperties);
@@ -241,9 +235,8 @@ export class Realm {
     this.modifiedBindings = savedBindings;
     this.modifiedProperties = savedProperties;
     this.createdObjects = saved_createdObjects;
-    this.consoleOutput = saved_consoleOutput;
     // Return the captured state changes and evaluation result
-    return [c, astGenerator, astBindings, astProperties, astCreatedObjects, astConsoleOutput];
+    return [c, astGenerator, astBindings, astProperties, astCreatedObjects];
   }
 
   throwReadOnlyError(msg: string) {
@@ -252,10 +245,11 @@ export class Realm {
 
   outputToConsole(str: string): void {
     if (this.isReadOnly) this.throwReadOnlyError("Trying to create console output in read-only realm");
-    if (this.consoleOutput === undefined) {
-      console.log(str);
+    if (this.isPartial) {
+      invariant(this.generator !== undefined);
+      this.generator.emitConsoleLog(str);
     } else {
-      this.consoleOutput.push(str);
+      console.log(str);
     }
   }
 
