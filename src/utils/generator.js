@@ -188,13 +188,6 @@ export class Generator {
   }
 }
 
-function copyPG (from: PreludeGenerator, to: PreludeGenerator) {
-  to.prelude = from.prelude.slice(0);
-  to.derivedIds = new Set(from.derivedIds);
-  to.memoisedRefs = new Map(from.memoisedRefs);
-  to.uidCounter = from.uidCounter;
-}
-
 export class PreludeGenerator {
   constructor() {
     this.prelude = [];
@@ -216,7 +209,7 @@ export class PreludeGenerator {
   }
 
   generateUid(): string {
-    let id = "_" + base62.encode(this.uidCounter++);
+    let id = "_$" + base62.encode(this.uidCounter++);
     return id;
   }
 
@@ -231,15 +224,4 @@ export class PreludeGenerator {
     this.memoisedRefs.set(key, ref);
     return ref;
   }
-
-  save(): PreludeGenerator {
-    let saved = new PreludeGenerator();
-    copyPG(this, saved);
-    return saved;
-  }
-
-  restore(saved: PreludeGenerator) {
-    copyPG(saved, this);
-  }
-
 }
