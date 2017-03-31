@@ -22,10 +22,8 @@ let ouputMap;
 let speculate = false;
 while (args.length) {
   let arg = args[0]; args.shift();
-  console.log(arg);
   if (arg === "--out") {
     arg = args[0]; args.shift();
-    console.log(arg);
     outputFilename = arg;
   } else if (arg === "--compatibility") {
     arg = args[0]; args.shift();

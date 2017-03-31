@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "./realm.js";
-import { Value, StringValue, BooleanValue, ObjectValue, FunctionValue, NativeFunctionValue, AbstractValue, AbstractObjectValue } from "./values/index.js";
+import { Value, StringValue, BooleanValue, ObjectValue, FunctionValue, NativeFunctionValue, AbstractValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
 import { ToStringPartial } from "./methods/index.js";
 import { ThrowCompletion } from "./completions.js";
 import { Construct, ObjectCreate } from "./methods/index.js";
@@ -76,7 +76,7 @@ export default function (realm: Realm): ObjectValue {
   });
 
   function parseTypeNameOrTemplate(typeNameOrTemplate): { type: typeof Value, template: void | ObjectValue } {
-    if (typeNameOrTemplate === undefined) {
+    if (typeNameOrTemplate === undefined || typeNameOrTemplate instanceof UndefinedValue) {
       return { type: Value, template: undefined };
     } else if (typeNameOrTemplate instanceof StringValue) {
       let typeNameString = ToStringPartial(realm, typeNameOrTemplate);
@@ -217,31 +217,33 @@ export default function (realm: Realm): ObjectValue {
     configurable: true
   });
 
-  // __makePartial(object) marks an object as partial.
+  // __makePartial(object) marks an (abstract) object as partial.
   obj.$DefineOwnProperty("__makePartial", {
     value: new NativeFunctionValue(realm, "global.__makePartial", "__isPartial", 1, (context, [object]) => {
-      if (!(object instanceof ObjectValue)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an object")])
-        );
+      // casting to any to avoid Flow bug
+      if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
+        (object: any).makePartial();
+        return context.$Realm.intrinsics.undefined;
       }
-      object.makePartial();
-      return context.$Realm.intrinsics.undefined;
+      throw new ThrowCompletion(
+        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an (abstract) object")])
+      );
     }),
     writable: true,
     enumerable: false,
     configurable: true
   });
 
-  // __makeSimple(object) marks an abstract object as one that has no getters or setters.
+  // __makeSimple(object) marks an (abstract) object as one that has no getters or setters.
   obj.$DefineOwnProperty("__makeSimple", {
     value: new NativeFunctionValue(realm, "global.__makeSimple", "__makeSimple", 1, (context, [object]) => {
-      if (object instanceof AbstractObjectValue) {
-        object.makeSimple();
+      // casting to any to avoid Flow bug
+      if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
+        (object: any).makeSimple();
         return context.$Realm.intrinsics.undefined;
       }
       throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an abstract object")])
+        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an (abstract) object")])
       );
     }),
     writable: true,
