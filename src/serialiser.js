@@ -1111,7 +1111,7 @@ export default class Serialiser {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
       let [compl, gen, bindings, properties, createdObjects] =
-        realm.partially_evaluate(node, true, env, false);
+        realm.partially_evaluate_node(node, true, env, false);
 
       if (compl instanceof Completion) {
         if (IsIntrospectionErrorCompletion(realm, compl)) {
