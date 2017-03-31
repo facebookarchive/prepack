@@ -1170,16 +1170,12 @@ export default class Serialiser {
       count++;
     }
     if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
-    if (count === 0) {
-      if (!this.collectValToRefCountOnly) {
-        let a = [];
-        for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
-        a.sort((x, y) => y[0].length - x[0].length);
-        if (a.length) {
-          console.log(`=== speculative module initialization failures ordered by frequency`);
-          for (let [moduleIds, n] of a) console.log(`${moduleIds.length}x ${n} [${moduleIds.join(",")}]`);
-        }
-      }
+    let a = [];
+    for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
+    a.sort((x, y) => y[0].length - x[0].length);
+    if (a.length) {
+      console.log(`=== speculative module initialization failures ordered by frequency`);
+      for (let [moduleIds, n] of a) console.log(`${moduleIds.length}x ${n} [${moduleIds.join(",")}]`);
     }
     realm.contextStack.pop();
     return anyHeapChanges;
@@ -1705,6 +1701,7 @@ export default class Serialiser {
       anyHeapChanges = !!this.serialise(filename, code, sourceMaps).anyHeapChanges;
       if (this._hasErrors) return undefined;
       this._resetSerializeStates();
+      this.initialiseMoreModules = false; // no need to do it again
     }
     this.collectValToRefCountOnly = false;
     let serialised = this.serialise(filename, code, sourceMaps);
