@@ -274,7 +274,7 @@ export default class Serialiser {
     // We use partial evaluation so that we can throw away any state mutations
     try {
       let result;
-      let effects = realm.internal_partially_evaluate(() => {
+      let effects = realm.partially_evaluate(() => {
         try {
           result = f();
         } catch (e) {
@@ -1111,7 +1111,7 @@ export default class Serialiser {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
       let [compl, gen, bindings, properties, createdObjects] =
-        realm.partially_evaluate(node, true, env, false);
+        realm.partially_evaluate_node(node, true, env, false);
 
       if (compl instanceof Completion) {
         if (IsIntrospectionErrorCompletion(realm, compl)) {
@@ -1198,7 +1198,7 @@ export default class Serialiser {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
       let [compl, gen, bindings, properties, createdObjects] =
-        realm.partially_evaluate(node, true, env, false);
+        realm.partially_evaluate_node(node, true, env, false);
       // for lint unused
       invariant(bindings);
 
