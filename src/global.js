@@ -132,7 +132,6 @@ export default function (realm: Realm): ObjectValue {
       let result = realm.createAbstract(types, values, [], buildNode, undefined, nameString);
       if (template) {
         template.makePartial();
-        template.intrinsicName = nameString;
         if (nameString) realm.rebuildNestedProperties(result, nameString);
       }
       return result;

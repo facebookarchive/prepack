@@ -466,7 +466,6 @@ export default function (realm: Realm): ObjectValue {
       if (clonedValue instanceof ObjectValue) {
         let iName = result.intrinsicName;
         invariant(iName);
-        clonedValue.intrinsicName = iName;
         realm.rebuildNestedProperties(result, iName);
       }
       return result;
@@ -512,7 +511,6 @@ export default function (realm: Realm): ObjectValue {
       let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
       unfiltered = realm.deriveAbstract(types, values, [text], buildNode, "JSON.parse(...)");
       if (template) {
-        template.intrinsicName = unfiltered.intrinsicName;
         invariant(unfiltered.intrinsicName);
         realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
       }

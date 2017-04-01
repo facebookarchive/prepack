@@ -16,7 +16,7 @@ import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { initialise as initialiseIntrinsics } from "./intrinsics/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
+import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted, IsIntrospectionErrorCompletion } from "./methods/index.js";
 import type { Completion, NormalCompletion } from "./completions.js";
 import { ThrowCompletion } from "./completions.js";
 import invariant from "./invariant.js";
@@ -217,6 +217,7 @@ export class Realm {
     try {
       let c = f();
       if (c instanceof Reference) c = GetValue(this, c);
+      if (IsIntrospectionErrorCompletion(c)) throw c;
 
       invariant(this.generator !== undefined);
       invariant(this.modifiedBindings !== undefined);
@@ -388,9 +389,11 @@ export class Realm {
     return new Constructor(this, types, values, args, buildNode, kind, intrinsicName);
   }
 
-  rebuildNestedProperties(abstractValue: AbstractValue, path: void | string) {
+  rebuildNestedProperties(abstractValue: AbstractValue, path: string) {
     if (!(abstractValue instanceof AbstractObjectValue)) return;
     let template = abstractValue.getTemplate();
+    invariant(!template.intrinsicName || template.intrinsicName === path);
+    template.intrinsicName = path;
     for (let [key, binding] of template.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
       invariant(binding.descriptor !== undefined);
@@ -399,11 +402,6 @@ export class Realm {
       if (value === undefined) Value.throwIntrospectionError(abstractValue, key);
       if (!(value instanceof AbstractValue)) continue;
       if (!value.isIntrinsic()) {
-        if (!path) {
-          throw new ThrowCompletion(
-            Construct(this, this.intrinsics.TypeError, [new StringValue(this, "don't know how to refer to nested properties")])
-          );
-        }
         value.intrinsicName = `${path}.${key}`;
         value.args = [abstractValue];
         value._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
