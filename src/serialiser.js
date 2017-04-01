@@ -65,6 +65,8 @@ function shouldVisit(node, data) {
 //       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
 let closureRefReplacer = {
   ReferencedIdentifier(path, state) {
+    if (ignorePath(path)) return;
+
     let serialisedBindings = state.serialisedBindings;
     let innerName = path.node.name;
     if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
@@ -121,9 +123,16 @@ function visitName(state, name, modified) {
   if (modified) state.functionInfo.modified[name] = true;
 }
 
+function ignorePath(path) {
+  let parent = path.parent;
+  return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
+}
+
 // TODO doesn't check that `arguments` and `this` is in top function
 let closureRefVisitor = {
   ReferencedIdentifier(path, state) {
+    if (ignorePath(path)) return;
+
     let innerName = path.node.name;
     if (innerName === "arguments") {
       state.functionInfo.usesArguments = true;
