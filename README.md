@@ -169,7 +169,7 @@ You can run individual test suites as follows.
 ## How to run Prepack
 
 0. Get the code
-1. Make sure the code is built, either by running `npm run build` or `npm run watch.
+1. Make sure the code is built, either by running `npm run build` or `npm run watch`.
 2. Have a JavaScript file handy that you want to prepack, for example:  
    `echo "function hello() { return 'hello'; } function world() { return 'world'; } s = hello() + ' ' + world();" >/tmp/sample.js`
 
