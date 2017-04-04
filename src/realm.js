@@ -17,8 +17,8 @@ import { initialise as initialiseIntrinsics } from "./intrinsics/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted, IsIntrospectionErrorCompletion } from "./methods/index.js";
-import type { Completion, NormalCompletion } from "./completions.js";
-import { ThrowCompletion } from "./completions.js";
+import type { NormalCompletion } from "./completions.js";
+import { Completion, ThrowCompletion } from "./completions.js";
 import invariant from "./invariant.js";
 import initialiseGlobal from "./global.js";
 import seedrandom from "seedrandom";
@@ -217,7 +217,7 @@ export class Realm {
     try {
       let c = f();
       if (c instanceof Reference) c = GetValue(this, c);
-      if (IsIntrospectionErrorCompletion(c)) throw c;
+      if (c instanceof Completion && IsIntrospectionErrorCompletion(this, c)) throw c;
 
       invariant(this.generator !== undefined);
       invariant(this.modifiedBindings !== undefined);
