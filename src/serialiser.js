@@ -175,7 +175,7 @@ let closureRefVisitor = {
 type FunctionInstance = {
   serialisedBindings: SerialisedBindings;
   functionValue: FunctionValue;
-  bodyIndex: number;
+  bodyReference?: BodyReference;
 };
 
 type FunctionInfo = {
@@ -198,6 +198,11 @@ function AreSameSerialisedBindings(x, y) {
   if (x.serialisedValue === y.serialisedValue) return true;
   if (x.value && x.value === y.value) return true;
   return false;
+}
+
+type BodyReference = {
+  body: Array<BabelNodeStatement>;
+  index: number;
 }
 
 export default class Serialiser {
@@ -270,6 +275,10 @@ export default class Serialiser {
   requireReturns: Map<number | string, BabelNodeExpression>;
   initialiseMoreModules: boolean;
   uidCounter: number;
+
+  _getBodyReference() {
+    return { body: this.body, index: this.body.length };
+  }
 
   // Wraps a query that might potentially execute user code.
   tryQuery<T>(f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean): T {
@@ -917,7 +926,6 @@ export default class Serialiser {
     let instance = {
       serialisedBindings,
       functionValue: val,
-      bodyIndex: -1
     };
     let delayed = 0;
     for (let innerName in functionInfo.names) {
@@ -959,7 +967,7 @@ export default class Serialiser {
           invariant(functionInfo);
           if (functionInfo.modified[innerName]) serialisedBinding.modified = true;
           if (--delayed === 0) {
-            instance.bodyIndex = this.body.length;
+            instance.bodyReference = this._getBodyReference();
             this.functionInstances.push(instance);
           }
         });
@@ -973,7 +981,7 @@ export default class Serialiser {
     }
 
     if (delayed === 0) {
-      instance.bodyIndex = this.body.length;
+      instance.bodyReference = this._getBodyReference();
       this.functionInstances.push(instance);
     }
     functionInfo.instances.push(instance);
@@ -1405,8 +1413,10 @@ export default class Serialiser {
     for (let instance of this.functionInstances.reverse()) {
       let functionBody = functionBodies.get(instance);
       invariant(functionBody !== undefined);
-      invariant(instance.bodyIndex >= 0);
-      Array.prototype.splice.apply(this.body, ([instance.bodyIndex, 0]: Array<any>).concat((functionBody: Array<any>)));
+      let bodyReference = instance.bodyReference;
+      invariant(bodyReference instanceof Object);
+      invariant(bodyReference.index >= 0);
+      Array.prototype.splice.apply(bodyReference.body, ([bodyReference.index, 0]: Array<any>).concat((functionBody: Array<any>)));
     }
 
     if (requireStatistics.replaced > 0 && !this.collectValToRefCountOnly) {
