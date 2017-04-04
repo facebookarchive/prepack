@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue, StringValue, ObjectValue } from "../../values/index.js";
-import { ToInteger, ToNumber, ToPrimitive } from "../../methods/to.js";
+import { ToInteger, ToNumber, ToPrimitive, ToString } from "../../methods/to.js";
 import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
 import { MakeTime, MakeDate, MakeDay, TimeClip, UTC, ToDateString, thisTimeValue } from "../../methods/date.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
@@ -189,7 +189,13 @@ export default function (realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.3.3.2
   func.defineNativeMethod("parse", 1, (context, [string]) => {
-    throw new Error("TODO: Implement Date.parse");
+    let concreteString = string.throwIfNotConcrete();
+    let s = ToString(realm, concreteString);
+    if ((s.length > 0 && s.charAt(s.length - 1) !== 'Z') ||
+        (s.length > 6 && s.search(/(\+|-)([0-1][0-9]|2[0-3]):[0-5][0-9]$/) !== -1)) {
+      throw new Error("TODO: Unsupported date with no timezone");
+    }
+    return new NumberValue(realm, Date.parse(s));
   });
 
   // ECMA262 20.3.3.4
