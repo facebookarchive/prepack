@@ -250,6 +250,41 @@ export default function (realm: Realm): ObjectValue {
     configurable: true
   });
 
+  // Helper function that emits a check whether a given object property has a particular value.
+  obj.$DefineOwnProperty("__assumeDataProperty", {
+    value: new NativeFunctionValue(realm, "global.__assumeDataProperty", "__assumeDataProperty", 3, (context, [object, propertyName, value]) => {
+      if (!realm.isPartial) {
+        throw new ThrowCompletion(
+          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "realm is not partial")])
+        );
+      }
+
+      let key = ToStringPartial(realm, propertyName);
+
+      // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
+      if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
+        let generator = realm.generator;
+        if (generator)
+          generator.emitInvariant([object, value], ([objectNode, valueNode]) =>
+            t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode));
+        realm.generator = undefined; // don't emit code during the following $Set call
+        // casting to due to Flow workaround above
+        (object: any).$Set(key, value, object);
+        realm.generator = generator;
+        if (object.intrinsicName)
+          realm.rebuildObjectProperty(object, key, value, object.intrinsicName);
+        return context.$Realm.intrinsics.undefined;
+      }
+
+      throw new ThrowCompletion(
+        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an (abstract) object")])
+      );
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
+
   for (let name of [
     "undefined",
     "NaN",

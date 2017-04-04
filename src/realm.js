@@ -389,6 +389,16 @@ export class Realm {
     return new Constructor(this, types, values, args, buildNode, kind, intrinsicName);
   }
 
+  rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
+    if (!(propertyValue instanceof AbstractValue)) return;
+    if (!propertyValue.isIntrinsic()) {
+      propertyValue.intrinsicName = `${path}.${key}`;
+      propertyValue.args = [object];
+      propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
+      this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
+    }
+  }
+
   rebuildNestedProperties(abstractValue: AbstractValue, path: string) {
     if (!(abstractValue instanceof AbstractObjectValue)) return;
     let template = abstractValue.getTemplate();
@@ -399,14 +409,8 @@ export class Realm {
       invariant(binding.descriptor !== undefined);
       let value = binding.descriptor.value;
       ThrowIfMightHaveBeenDeleted(value);
-      if (value === undefined) Value.throwIntrospectionError(abstractValue, key);
-      if (!(value instanceof AbstractValue)) continue;
-      if (!value.isIntrinsic()) {
-        value.intrinsicName = `${path}.${key}`;
-        value.args = [abstractValue];
-        value._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
-        this.rebuildNestedProperties(value, value.intrinsicName);
-      }
+      if (value === undefined) return Value.throwIntrospectionError(abstractValue, key);
+      this.rebuildObjectProperty(abstractValue, key, value, path);
     }
   }
 
