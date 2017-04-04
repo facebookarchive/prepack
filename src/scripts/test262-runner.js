@@ -13,7 +13,7 @@ import { ThrowCompletion } from "../completions.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import { DetachArrayBuffer } from "../methods/arraybuffer.js";
-import { ToString } from "../methods/to.js";
+import { ToStringPartial } from "../methods/to.js";
 import { Get } from "../methods/get.js";
 import invariant from "../invariant.js";
 
@@ -1011,15 +1011,13 @@ function runTest(
       // Not expecting an error, but got one.
       try {
         if (err && err instanceof ThrowCompletion) {
-          let interpreterStack: string;
+          let interpreterStack: void | string;
 
           if (err.value instanceof ObjectValue) {
             if (err.value.$HasProperty("stack")) {
-              // $FlowFixMe
-              interpreterStack = ToString(realm, Get(realm, err.value, "stack"));
+              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "stack"));
             } else {
-              // $FlowFixMe
-              interpreterStack = ToString(realm, Get(realm, err.value, "message"));
+              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "message"));
             }
             // filter out if the error stack is due to async
             if (interpreterStack.includes("async ")) {
