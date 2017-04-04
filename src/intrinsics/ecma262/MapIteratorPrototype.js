@@ -10,10 +10,9 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { StringValue, ObjectValue, UndefinedValue } from "../../values/index.js";
+import { StringValue, NumberValue, ObjectValue, UndefinedValue } from "../../values/index.js";
 import { CreateIterResultObject, CreateArrayFromList } from "../../methods/create.js";
 import { Construct } from "../../methods/construct.js";
-import { ThrowIfInternalSlotNotWritable } from "../../methods/properties.js";
 import { ThrowCompletion } from "../../completions.js";
 import invariant from "../../invariant.js";
 
@@ -31,7 +30,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have all of the internal slots of a Set Iterator Instance (23.2.5.3), throw a TypeError exception.
-    if (!('$Map' in O) || !('$MapNextIndex' in O) || !('$MapIterationKind' in O)) {
+    if (O.$Map === undefined || O.$MapNextIndex === undefined || O.$MapIterationKind === undefined) {
       throw new ThrowCompletion(
         Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "MapIteratorPrototype.next isn't generic")])
       );
@@ -41,8 +40,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let m = O.$Map;
 
     // 5. Let index be O.[[MapNextIndex]].
-    let index = O.$MapNextIndex;
-    invariant(typeof index === "number");
+    let index = O.$MapNextIndex.value;
 
     // 6. Let itemKind be O.[[MapIterationKind]].
     let itemKind = O.$MapIterationKind;
@@ -67,7 +65,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
       index = index + 1;
 
       // c. Set O.[[MapNextIndex]] to index.
-      ThrowIfInternalSlotNotWritable(realm, O, "$MapNextIndex").$MapNextIndex = index;
+      O.$MapNextIndex = new NumberValue(realm, index);
 
       // d. If e.[[Key]] is not empty, then
       if (e.$Key !== undefined) {
@@ -93,7 +91,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 11. Set O.[[Map]] to undefined.
-    ThrowIfInternalSlotNotWritable(realm, O, "$Map").$Map = realm.intrinsics.undefined;
+    O.$Map = realm.intrinsics.undefined;
 
     // 12. Return CreateIterResultObject(undefined, true).
     return CreateIterResultObject(realm, realm.intrinsics.undefined, true);

@@ -77,7 +77,7 @@ export function IsDataDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
 // ECMA262 9.1.3.1
 export function OrdinaryIsExtensible(realm: Realm, O: ObjectValue): boolean {
   // 1. Return the value of the [[Extensible]] internal slot of O.
-  return !!O.$Extensible;
+  return O.getExtensible();
 }
 
 // ECMA262 7.2.5

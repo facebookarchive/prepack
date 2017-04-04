@@ -117,6 +117,7 @@ export class Realm {
     if (this.isPartial) {
       this.preludeGenerator = new PreludeGenerator();
       this.generator        = new Generator(this);
+      ObjectValue.setupTrackedPropertyAccessors();
     }
 
     this.evaluators = Object.create(null);

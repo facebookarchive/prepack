@@ -210,7 +210,6 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
-    invariant(this === Receiver, "TODO");
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -225,7 +224,7 @@ export default class AbstractObjectValue extends AbstractValue {
                ([node]) => t.memberExpression(node, t.identifier(pname)));
           }
         }
-        return cv.$Get(P, cv);
+        return cv.$Get(P, Receiver);
       }
       invariant(false);
     } else {

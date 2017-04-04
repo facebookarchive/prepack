@@ -448,7 +448,7 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
 // ECMA262 9.2.11
 export function SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyValue, prefix?: string): boolean {
   // 1. Assert: F is an extensible object that does not have a name own property.
-  invariant(F.$Extensible, "expected object to be extensible and not have a name property");
+  invariant(F.getExtensible(), "expected object to be extensible and not have a name property");
 
   // 2. Assert: Type(name) is either Symbol or String.
   invariant(typeof name === "string" || name instanceof StringValue || name instanceof SymbolValue, "expected name to be a string or symbol");
@@ -492,7 +492,7 @@ export function FunctionInitialize(realm: Realm, F: FunctionValue, kind: "normal
   invariant(realm.isNewObject(F));
 
   // 1. Assert: F is an extensible object that does not have a length own property.
-  invariant(F.$Extensible === true, "expected to be extensible and no length property");
+  invariant(F.getExtensible(), "expected to be extensible and no length property");
 
   // 2. Let len be the ExpectedArgumentCount of ParameterList.
   let len = 0;
@@ -744,7 +744,7 @@ export function FunctionAllocate(realm: Realm, functionPrototype: ObjectValue, s
   F.$Prototype = functionPrototype;
 
   // 13. Set the [[Extensible]] internal slot of F to true.
-  F.$Extensible = true;
+  F.setExtensible(true);
 
   // 14. Set the [[Realm]] internal slot of F to the current Realm Record.
   F.$Realm = realm;
@@ -824,7 +824,7 @@ export function BoundFunctionCreate(realm: Realm, targetFunction: ObjectValue, b
   obj.$Prototype = proto;
 
   // 8. Set the [[Extensible]] internal slot of obj to true.
-  obj.$Extensible = true;
+  obj.setExtensible(true);
 
   // 9. Set the [[BoundTargetFunction]] internal slot of obj to targetFunction.
   obj.$BoundTargetFunction = targetFunction;

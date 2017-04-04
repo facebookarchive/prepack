@@ -39,7 +39,6 @@ import {
   UTC,
   Construct,
   OrdinaryToPrimitive,
-  ThrowIfInternalSlotNotWritable
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
@@ -271,7 +270,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let u = TimeClip(realm, UTC(realm, newDate));
 
     // 5. Set the [[DateValue]] internal slot of this Date object to u.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = u;
+    context.$DateValue = u;
 
     // 6. Return u.
     return u;
@@ -302,7 +301,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let u = TimeClip(realm, UTC(realm, newDate));
 
     // 8. Set the [[DateValue]] internal slot of this Date object to u.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = u;
+    context.$DateValue = u;
 
     // 9. Return u.
     return u;
@@ -333,7 +332,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let u = TimeClip(realm, UTC(realm, date));
 
     // 8. Set the [[DateValue]] internal slot of this Date object to u.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = u;
+    context.$DateValue = u;
 
     // 9. Return u.
     return u;
@@ -355,7 +354,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let u = TimeClip(realm, UTC(realm, MakeDate(realm, Day(realm, t), time)));
 
     // 5. Set the [[DateValue]] internal slot of this Date object to u.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = u;
+    context.$DateValue = u;
 
     // 6. Return u.
     return u;
@@ -383,7 +382,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let u = TimeClip(realm, UTC(realm, date));
 
     // 7. Set the [[DateValue]] internal slot of this Date object to u.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = u;
+    context.$DateValue = u;
 
     // 8. Return u.
     return u;
@@ -408,7 +407,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let u = TimeClip(realm, UTC(realm, newDate));
 
     // 6. Set the [[DateValue]] internal slot of this Date object to u.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = u;
+    context.$DateValue = u;
 
     // 7. Return u.
     return u;
@@ -433,7 +432,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let u = TimeClip(realm, UTC(realm, date));
 
     // 6. Set the [[DateValue]] internal slot of this Date object to u.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = u;
+    context.$DateValue = u;
 
     // 7. Return u.
     return u;
@@ -452,7 +451,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let v = TimeClip(realm, t);
 
     // 4. Set the [[DateValue]] internal slot of this Date object to v.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = v;
+    context.$DateValue = v;
 
     // 5. Return v.
     return v;
@@ -474,7 +473,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let v = TimeClip(realm, newDate);
 
     // 5. Set the [[DateValue]] internal slot of this Date object to v.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = v;
+    context.$DateValue = v;
 
     // 6. Return v.
     return v;
@@ -505,7 +504,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let v = TimeClip(realm, newDate);
 
     // 8. Set the [[DateValue]] internal slot of this Date object to v.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = v;
+    context.$DateValue = v;
 
     // 9. Return v.
     return v;
@@ -536,7 +535,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let v = TimeClip(realm, newDate);
 
     // 8. Set the [[DateValue]] internal slot of this Date object to v.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = v;
+    context.$DateValue = v;
 
     // 9. Return v.
     return v;
@@ -558,7 +557,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let v = TimeClip(realm, MakeDate(realm, Day(realm, t), time));
 
     // 5. Set the [[DateValue]] internal slot of this Date object to v.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = v;
+    context.$DateValue = v;
 
     // 6. Return v.
     return v;
@@ -598,7 +597,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let v = TimeClip(realm, date);
 
     // 9. Set the [[DateValue]] internal slot of this Date object to v.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = v;
+    context.$DateValue = v;
 
     // 10. Return v.
     return v;
@@ -629,7 +628,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let v = TimeClip(realm, newDate);
 
     // 7. Set the [[DateValue]] internal slot of this Date object to v.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = v;
+    context.$DateValue = v;
 
     // 8. Return v.
     return v;
@@ -660,7 +659,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let v = TimeClip(realm, date);
 
     // 7. Set the [[DateValue]] internal slot of this Date object to v.
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = v;
+    context.$DateValue = v;
 
     // 8. Return v.
     return v;
@@ -805,7 +804,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If y is NaN, set the [[DateValue]] internal slot of this Date object to NaN and return NaN.
     if (isNaN(y)) {
-      ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = realm.intrinsics.NaN;
+      context.$DateValue = realm.intrinsics.NaN;
       return realm.intrinsics.NaN;
     }
 
@@ -825,7 +824,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 9. Set the [[DateValue]] internal slot of this Date object to TimeClip(date).
     let dateValue = TimeClip(realm, date);
-    ThrowIfInternalSlotNotWritable(realm, context, "$DateValue").$DateValue = dateValue;
+    context.$DateValue = dateValue;
 
     // 10. Return the value of the [[DateValue]] internal slot of this Date object.
     return dateValue;

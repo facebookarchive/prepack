@@ -278,7 +278,7 @@ export function FromPropertyDescriptor(realm: Realm, Desc: ?Descriptor): Value {
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
   // 3. Assert: obj is an extensible ordinary object with no own properties.
-  invariant(obj.$Extensible, "expected an extensible object");
+  invariant(obj.getExtensible(), "expected an extensible object");
   invariant(!obj.properties.size, "expected an object with no own properties");
 
   // 4. If Desc has a [[Value]] field, then
@@ -623,7 +623,7 @@ export function OrdinaryDefineOwnProperty(realm: Realm, O: ObjectValue, P: Prope
   let current = O.$GetOwnProperty(P);
 
   // 2. Let extensible be the value of the [[Extensible]] internal slot of O.
-  let extensible = !!O.$Extensible;
+  let extensible = O.getExtensible();
 
   // 3. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).
   return ValidateAndApplyPropertyDescriptor(realm, O, P, extensible, Desc, current);
@@ -975,7 +975,7 @@ export function OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectVa
   invariant(V instanceof ObjectValue || V instanceof NullValue);
 
   // 2. Let extensible be the value of the [[Extensible]] internal slot of O.
-  let extensible = O.$Extensible;
+  let extensible = O.getExtensible();
 
   // 3. Let current be the value of the [[Prototype]] internal slot of O.
   let current = O.$Prototype;
@@ -1008,7 +1008,7 @@ export function OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectVa
   }
 
   // 9. Set the value of the [[Prototype]] internal slot of O to V.
-  ThrowIfInternalSlotNotWritable(realm, O, "$Prototype").$Prototype = V;
+  O.$Prototype = V;
 
   // 10. Return true.
   return true;

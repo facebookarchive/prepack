@@ -64,7 +64,7 @@ export function IntegerIndexedObjectCreate(realm: Realm, prototype: ObjectValue,
   A.$Prototype = prototype;
 
   // 11. Set A.[[Extensible]] to true.
-  A.$Extensible = true;
+  A.setExtensible(true);
 
   // 12. Return A.
   return A;

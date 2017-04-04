@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import { ObjectValue } from "../values/index.js";
-import { IsExtensible, IsDataDescriptor, IsAccessorDescriptor, ThrowIfMightHaveBeenDeleted, ThrowIfInternalSlotNotWritable } from "./index.js";
+import { IsExtensible, IsDataDescriptor, IsAccessorDescriptor, ThrowIfMightHaveBeenDeleted } from "./index.js";
 import { DefinePropertyOrThrow } from "./properties.js";
 import invariant from "../invariant.js";
 
@@ -20,7 +20,7 @@ type IntegrityLevels = "sealed" | "frozen";
 // ECMA262 9.1.4.1
 export function OrdinaryPreventExtensions(realm: Realm, O: ObjectValue): boolean {
   // 1. Set the value of the [[Extensible]] internal slot of O to false.
-  ThrowIfInternalSlotNotWritable(realm, O, "$Extensible").$Extensible = false;
+  O.setExtensible(false);
 
   // 2. Return true.
   return true;

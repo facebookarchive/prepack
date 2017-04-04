@@ -19,7 +19,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
     // ECMA262 9.2.7.1
-  func.$Extensible = false;
+  func.setExtensible(false);
 
   // ECMA262 9.2.7.1
   func.$DefineOwnProperty("length", {
