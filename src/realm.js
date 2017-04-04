@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
-import type { FunctionValue } from "./values/index.js";
+import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { initialise as initialiseIntrinsics } from "./intrinsics/index.js";
@@ -446,7 +446,7 @@ export class Realm {
     //}
   }
 
-  createErrorThrowCompletion(type: typeof Error, message?: void | string | StringValue): ThrowCompletion {
+  createErrorThrowCompletion(type: NativeFunctionValue, message?: void | string | StringValue): ThrowCompletion {
     if (message === undefined) message = "TODO";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
