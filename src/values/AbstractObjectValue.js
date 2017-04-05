@@ -12,6 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import { AbstractValue, BooleanValue, ObjectValue, StringValue, Value } from "./index.js";
+import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, joinValuesAsConditional, cloneDescriptor, equalDescriptors } from "../methods/index.js";
 import type { BabelNodeExpression } from "babel-types";
@@ -24,7 +25,7 @@ export default class AbstractObjectValue extends AbstractValue {
       types: TypesDomain,
       values: ValuesDomain,
       args: Array<Value>,
-      buildNode: (Array<BabelNodeExpression> => BabelNodeExpression) | BabelNodeExpression,
+      buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
       kind?: string,
       intrinsicName?: string) {
     super(realm, types, values, args, buildNode, kind, intrinsicName);

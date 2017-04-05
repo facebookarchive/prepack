@@ -200,7 +200,11 @@ function AreSameSerialisedBindings(x, y) {
   return false;
 }
 
-type BodyReference = {
+class BodyReference {
+  constructor(body: Array<BabelNodeStatement>, index: number) {
+    this.body = body;
+    this.index = index;
+  }
   body: Array<BabelNodeStatement>;
   index: number;
 }
@@ -277,7 +281,7 @@ export default class Serialiser {
   uidCounter: number;
 
   _getBodyReference() {
-    return { body: this.body, index: this.body.length };
+    return new BodyReference(this.body, this.body.length);
   }
 
   // Wraps a query that might potentially execute user code.
@@ -828,28 +832,32 @@ export default class Serialiser {
       let key = i + "";
       let elem;
       if (HasProperty(realm, val, key)) {
-        let elemVal = this.tryQuery(() => Get(realm, val, key), undefined, true);
-        if (elemVal === undefined) continue;
-        let delayReason = this._shouldDelayValue(elemVal);
-        if (delayReason) {
-          // handle self recursion
-          this._delay(delayReason, [elemVal], () => {
-            let id = this._getValIdForReference(val);
-            this.body.push(t.expressionStatement(t.assignmentExpression(
-              "=",
-              t.memberExpression(id, t.numericLiteral(i), true),
-              this.serialiseValue(
-                elemVal,
-                reasons.concat(`Declared in array ${name} at index ${key}`)
-              )
-            )));
-          });
+        let elemVal: void | Value = this.tryQuery(() => Get(realm, val, key), undefined, true);
+        if (elemVal === undefined) {
           elem = null;
         } else {
-          elem = this.serialiseValue(
-            elemVal,
-            reasons.concat(`Declared in array ${name} at index ${key}`)
-          );
+          let delayReason = this._shouldDelayValue(elemVal);
+          if (delayReason) {
+            // handle self recursion
+            this._delay(delayReason, [elemVal], () => {
+              invariant(elemVal !== undefined);
+              let id = this._getValIdForReference(val);
+              this.body.push(t.expressionStatement(t.assignmentExpression(
+                "=",
+                t.memberExpression(id, t.numericLiteral(i), true),
+                this.serialiseValue(
+                  elemVal,
+                  reasons.concat(`Declared in array ${name} at index ${key}`)
+                )
+              )));
+            });
+            elem = null;
+          } else {
+            elem = this.serialiseValue(
+              elemVal,
+              reasons.concat(`Declared in array ${name} at index ${key}`)
+            );
+          }
         }
       } else {
         elem = null;
@@ -923,7 +931,7 @@ export default class Serialiser {
 
 
     let serialisedBindings = Object.create(null);
-    let instance = {
+    let instance: FunctionInstance = {
       serialisedBindings,
       functionValue: val,
     };
@@ -1140,7 +1148,7 @@ export default class Serialiser {
             invariant(value instanceof ObjectValue);
             realm.restoreBindings(bindings);
             realm.restoreProperties(properties);
-            let message = this.tryQuery(() => ToStringPartial(realm, Get(realm, value, "message")), "(cannot get message)", false);
+            let message: string = this.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
             realm.restoreBindings(bindings);
             realm.restoreProperties(properties);
             let moduleIds = introspectionErrors[message] = introspectionErrors[message] || [];
@@ -1414,7 +1422,7 @@ export default class Serialiser {
       let functionBody = functionBodies.get(instance);
       invariant(functionBody !== undefined);
       let bodyReference = instance.bodyReference;
-      invariant(bodyReference instanceof Object);
+      invariant(bodyReference instanceof BodyReference);
       invariant(bodyReference.index >= 0);
       Array.prototype.splice.apply(bodyReference.body, ([bodyReference.index, 0]: Array<any>).concat((functionBody: Array<any>)));
     }
@@ -1424,14 +1432,28 @@ export default class Serialiser {
     }
   }
 
-  _emitGenerator(generator: Generator) {
-    let reasons = ["Abstract mutation"];
-    let serializeValue = this.serialiseValue.bind(this);
-    for (let bodyEntry of generator.body) {
-      let nodes = bodyEntry.args.map((boundArg, i) => this.serialiseValue(boundArg, reasons));
-      this.body.push(bodyEntry.buildNode(nodes, serializeValue));
-      let id = bodyEntry.declaresDerivedId;
-      if (id !== undefined) {
+  _getContext(reasons: Array<string>) {
+    // TODO: Values serialised by nested generators would currently only get defined
+    // along the code of the nested generator; their definitions need to get hoisted
+    // or repeated so that they are accessible and defined from all using scopes
+    let bodies;
+    return {
+      reasons,
+      serialiseValue: this.serialiseValue.bind(this),
+      startBody: () => {
+        if (bodies === undefined) bodies = [];
+        bodies.push(this.body);
+        let body = [];
+        this.body = body;
+        return body;
+      },
+      endBody: (body: Array<BabelNodeStatement>) => {
+        invariant(body === this.body);
+        invariant(bodies !== undefined);
+        invariant(bodies.length > 0);
+        this.body = bodies.pop();
+      },
+      announceDeclaredDerivedId: (id: BabelNodeIdentifier) => {
         this.declaredDerivedIds.add(id);
         let a = this.delayedKeyedSerialisations.get(id);
         if (a !== undefined) {
@@ -1444,7 +1466,11 @@ export default class Serialiser {
           this.delayedKeyedSerialisations.delete(id);
         }
       }
-    }
+    };
+  }
+
+  _emitGenerator(generator: Generator) {
+    generator.serialise(this.body, this._getContext(["Root generator"]));
     invariant(this.delayedKeyedSerialisations.size === 0);
   }
 

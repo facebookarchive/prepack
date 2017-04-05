@@ -11,6 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import { AbstractValue, Value, FunctionValue, UndefinedValue, NullValue, StringValue, BooleanValue, NumberValue, SymbolValue, ObjectValue } from "../values/index.js";
+import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as base62 from "base62";
@@ -18,10 +19,20 @@ import * as t from "babel-types";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeStatement, BabelNodeMemberExpression } from "babel-types";
 
+export type SerialisationContext = {
+  reasons: Array<string>;
+  serialiseValue: Value => BabelNodeExpression;
+  startBody: () => Array<BabelNodeStatement>;
+  endBody: Array<BabelNodeStatement> => void;
+  announceDeclaredDerivedId: BabelNodeIdentifier => void;
+}
+
+export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerialisationContext) => BabelNodeStatement;
+
 export type BodyEntry = {
   declaresDerivedId?: BabelNodeIdentifier;
   args: Array<Value>;
-  buildNode: (Array<BabelNodeExpression>, Value => BabelNodeExpression) => BabelNodeStatement;
+  buildNode: GeneratorBuildNodeFunction;
 }
 
 export class Generator {
@@ -143,7 +154,7 @@ export class Generator {
       } });
   }
 
-  derive(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: (Array<BabelNodeExpression> => BabelNodeExpression) | BabelNodeExpression, kind?: string): AbstractValue {
+  derive(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression, kind?: string): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.generateUid());
     this.preludeGenerator.derivedIds.add(id);
@@ -151,7 +162,7 @@ export class Generator {
       declaresDerivedId: id,
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => t.variableDeclaration("var", [
-        t.variableDeclarator(id, (buildNode_: any) instanceof Function ? ((buildNode_: any): (Array<BabelNodeExpression> => BabelNodeExpression))(nodes) : ((buildNode_: any): BabelNodeExpression))
+        t.variableDeclarator(id, (buildNode_: any) instanceof Function ? ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes) : ((buildNode_: any): BabelNodeExpression))
       ])
     });
     let res = this.realm.createAbstract(types, values, args, id, kind);
@@ -185,6 +196,15 @@ export class Generator {
     }
 
     return res;
+  }
+
+  serialise(body: Array<BabelNodeStatement>, context: SerialisationContext) {
+    for (let bodyEntry of this.body) {
+      let nodes = bodyEntry.args.map((boundArg, i) => context.serialiseValue(boundArg, context.reasons));
+      body.push(bodyEntry.buildNode(nodes, context));
+      let id = bodyEntry.declaresDerivedId;
+      if (id !== undefined) context.announceDeclaredDerivedId(id);
+    }
   }
 }
 
