@@ -596,8 +596,8 @@ export function $Call(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
     result = OrdinaryCallEvaluateBody(realm, F, argsList);
   } finally {
     // 8. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
-    realm.contextStack.pop();
-    invariant(realm.contextStack[realm.contextStack.length - 1] === callerContext);
+    realm.popContext(calleeContext);
+    invariant(realm.getRunningContext() === callerContext);
   }
 
   // 9. If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
@@ -661,8 +661,8 @@ export function $Construct(realm: Realm, F: FunctionValue, argumentsList: Array<
   } finally {
 
     // 12. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
-    realm.contextStack.pop();
-    invariant(realm.contextStack[realm.contextStack.length - 1] === callerContext);
+    realm.popContext(calleeContext);
+    invariant(realm.getRunningContext() === callerContext);
   }
 
   // 13. If result.[[Type]] is return, then
@@ -915,7 +915,7 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
   evalCxt.lexicalEnvironment = lexEnv;
 
   // 19. Push evalCxt on to the execution context stack; evalCxt is now the running execution context.
-  realm.contextStack.push(evalCxt);
+  realm.pushContext(evalCxt);
 
   let result;
   try {
@@ -946,11 +946,12 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
   } finally {
     // 23. Suspend evalCxt and remove it from the execution context stack.
     evalCxt.suspend();
-    realm.contextStack.pop();
+    realm.popContext(evalCxt);
   }
 
   // 24. Resume the context that is now on the top of the execution context stack as the running execution context.
-  realm.getRunningContext().resume();
+  invariant(realm.getRunningContext() === ctx);
+  ctx.resume();
 
   // 25. Return Completion(result).
   if (result instanceof Value) {
