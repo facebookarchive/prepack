@@ -200,7 +200,7 @@ export function PrepareForOrdinaryCall(realm: Realm, F: FunctionValue, newTarget
   callerContext.suspend();
 
   // 12. Push calleeContext onto the execution context stack; calleeContext is now the running execution context.
-  realm.contextStack.push(calleeContext);
+  realm.pushContext(calleeContext);
 
   // 13. NOTE Any exception objects produced after this point are associated with calleeRealm.
 
@@ -341,7 +341,7 @@ export function PrepareForTailCall(realm: Realm) {
 
   // 3. Pop leafContext from the execution context stack. The execution context now on the
   //    top of the stack becomes the running execution context.
-  realm.contextStack.pop();
+  realm.popContext(leafContext);
 
   // TODO 4. Assert: leafContext has no further use. It will never be activated as the running execution context.
 }

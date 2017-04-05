@@ -24,7 +24,7 @@ function serialise(realm: Realm, res: Value | AbruptCompletion): any {
 
   if (res && res instanceof ThrowCompletion) {
     let context = new ExecutionContext();
-    realm.contextStack.push(context);
+    realm.pushContext(context);
     let err;
     try {
       let value = res.value;
@@ -36,7 +36,7 @@ function serialise(realm: Realm, res: Value | AbruptCompletion): any {
         err = new Error(ToStringPartial(realm, value));
       }
     } finally {
-      realm.contextStack.pop(context);
+      realm.popContext(context);
     }
     return err;
   }

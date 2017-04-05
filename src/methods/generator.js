@@ -112,7 +112,7 @@ export function GeneratorResume(realm: Realm, generator: Value, value: Value): V
   ThrowIfInternalSlotNotWritable(realm, generator, "$GeneratorState").$GeneratorState = "executing";
 
   // 8. Push genContext onto the execution context stack; genContext is now the running execution context.
-  realm.contextStack.push(genContext);
+  realm.pushContext(genContext);
 
   // 9. Resume the suspended evaluation of genContext using NormalCompletion(value) as the result of the operation that suspended it. Let result be the value returned by the resumed computation.
 

@@ -1004,7 +1004,7 @@ export class LexicalEnvironment {
     context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
-    this.realm.contextStack.push(context);
+    this.realm.pushContext(context);
 
     let ast, res;
     try {
@@ -1012,7 +1012,7 @@ export class LexicalEnvironment {
       res = this.evaluateCompletion(ast, false);
       if (map.length > 0) this.fixup_source_locations(ast, map);
     } finally {
-      this.realm.contextStack.pop();
+      this.realm.popContext(context);
     }
     if (res instanceof AbruptCompletion) return res;
 

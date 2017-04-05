@@ -898,7 +898,7 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   let realm = new Realm({ timeout: timeout * 1000 });
   let executionContext = new ExecutionContext();
   executionContext.realm = realm;
-  realm.contextStack.push(executionContext);
+  realm.pushContext(executionContext);
 
   // Create the Host-Defined functions.
   let $ = new ObjectValue(realm);
