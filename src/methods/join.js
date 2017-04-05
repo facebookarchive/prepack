@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeExpression, BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeBlockStatement } from "babel-types";
 import type { Binding } from "../environment.js";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
@@ -21,6 +21,7 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Reference } from "../environment.js";
 import { cloneDescriptor, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Generator } from "../utils/generator.js";
+import type { SerialisationContext } from "../utils/generator.js";
 import { AbstractValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
@@ -97,9 +98,9 @@ function joinGenerators(realm: Realm, joinCondition: AbstractValue,
   if (!generator1.empty() || !generator2.empty()) {
     result.body.push({
       args: [joinCondition],
-      buildNode: function ([cond], serializeValue) {
-        let block1 = generator1.empty() ? null : serialiseBody(generator1, serializeValue);
-        let block2 = generator2.empty() ? null : serialiseBody(generator2, serializeValue);
+      buildNode: function ([cond], context) {
+        let block1 = generator1.empty() ? null : serialiseBody(generator1, context);
+        let block2 = generator2.empty() ? null : serialiseBody(generator2, context);
         if (block1) return t.ifStatement(cond, block1, block2);
         invariant(block2);
         return t.ifStatement(t.unaryExpression("!", cond), block2);
@@ -111,13 +112,11 @@ function joinGenerators(realm: Realm, joinCondition: AbstractValue,
 
 function serialiseBody(
   generator: Generator,
-  serialiseValue: (Value => BabelNodeExpression)
+  context: SerialisationContext
 ): BabelNodeBlockStatement {
-  let statements = [];
-  for (let bodyEntry of generator.body) {
-    let nodes = bodyEntry.args.map((boundArg, i) => serialiseValue(boundArg));
-    statements.push(bodyEntry.buildNode(nodes, serialiseValue));
-  }
+  let statements = context.startBody();
+  generator.serialise(statements, context);
+  context.endBody(statements);
   return t.blockStatement(statements);
 }
 

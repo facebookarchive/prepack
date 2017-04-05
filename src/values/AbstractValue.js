@@ -16,13 +16,15 @@ import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeIdentifier } from "babel-types";
 import * as t from "babel-types";
 
+export type AbstractValueBuildNodeFunction = (Array<BabelNodeExpression>) => BabelNodeExpression;
+
 export default class AbstractValue extends Value {
   constructor(
       realm: Realm,
       types: TypesDomain,
       values: ValuesDomain,
       args: Array<Value>,
-      buildNode: (Array<BabelNodeExpression> => BabelNodeExpression) | BabelNodeExpression,
+      buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
       kind?: string,
       intrinsicName?: string) {
     invariant(realm.isPartial);
@@ -58,11 +60,11 @@ export default class AbstractValue extends Value {
   types: TypesDomain;
   values: ValuesDomain;
   args: Array<Value>;
-  _buildNode: (Array<BabelNodeExpression> => BabelNodeExpression) | BabelNodeExpression;
+  _buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression;
 
   buildNode(args: Array<BabelNodeExpression>): BabelNodeExpression {
     return this._buildNode instanceof Function
-      ? ((this._buildNode: any): (Array<BabelNodeExpression> => BabelNodeExpression))(args)
+      ? ((this._buildNode: any): AbstractValueBuildNodeFunction)(args)
       : ((this._buildNode: any): BabelNodeExpression);
   }
 
