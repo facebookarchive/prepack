@@ -224,10 +224,10 @@ export class Realm {
     this.generator = new Generator(this);
     this.createdObjects = new Set();
 
+    let c;
     try {
-      let c = f();
+      c = f();
       if (c instanceof Reference) c = GetValue(this, c);
-      if (c instanceof Completion && IsIntrospectionErrorCompletion(this, c)) throw c;
 
       invariant(this.generator !== undefined);
       invariant(this.modifiedBindings !== undefined);
@@ -241,6 +241,14 @@ export class Realm {
       // Return the captured state changes and evaluation result
       return [c, astGenerator, astBindings, astProperties, astCreatedObjects];
     } finally {
+      let errorPropVals;
+      if (c instanceof ThrowCompletion && IsIntrospectionErrorCompletion(this, c)) {
+        invariant(c.value instanceof ObjectValue);
+        errorPropVals =
+          { $ContextStack: c.value.$ContextStack,
+            message: c.value.$Get("message", c.value) };
+      }
+
       // Roll back the state changes
       this.restoreBindings(this.modifiedBindings);
       this.restoreProperties(this.modifiedProperties);
@@ -248,6 +256,15 @@ export class Realm {
       this.modifiedBindings = savedBindings;
       this.modifiedProperties = savedProperties;
       this.createdObjects = saved_createdObjects;
+
+      if (errorPropVals !== undefined) {
+        invariant(errorPropVals.message instanceof StringValue);
+        let etc = this.createErrorThrowCompletion(
+          this.intrinsics.__IntrospectionError, errorPropVals.message);
+        invariant(etc.value instanceof ObjectValue);
+        etc.value.$ContextStack = errorPropVals.$ContextStack;
+        throw etc;
+      }
     }
   }
 
