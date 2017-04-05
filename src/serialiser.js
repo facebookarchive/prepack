@@ -341,8 +341,10 @@ export default class Serialiser {
         let referencedName: string = (reference.referencedName: any);
         if (typeof referencedName !== "string") return false;
         let value;
-        if (reference.base instanceof GlobalEnvironmentRecord) value = Get(realm, realm.$GlobalObject, innerName);
-        else {
+        if (reference.base instanceof GlobalEnvironmentRecord) {
+          value = serialiser.tryQuery(() =>
+            Get(realm, realm.$GlobalObject, innerName), realm.intrinsics.undefined, false);
+        } else {
           invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
           let binding = referencedBase.bindings[referencedName];
           if (!binding.initialized) return false;
@@ -811,13 +813,14 @@ export default class Serialiser {
     let realm = this.realm;
     let elems = [];
 
-    // TODO: this shouldn't trigger any user code
+    // An array's length property cannot be redefined, so this won't run user code
     let len = ToLength(realm, Get(realm, val, "length"));
     for (let i = 0; i < len; i++) {
       let key = i + "";
       let elem;
       if (HasProperty(realm, val, key)) {
-        let elemVal = Get(realm, val, key);
+        let elemVal = this.tryQuery(() => Get(realm, val, key), undefined, true);
+        if (elemVal === undefined) continue;
         let delayReason = this._shouldDelayValue(elemVal);
         if (delayReason) {
           // handle self recursion
@@ -1129,7 +1132,7 @@ export default class Serialiser {
             invariant(value instanceof ObjectValue);
             realm.restoreBindings(bindings);
             realm.restoreProperties(properties);
-            let message = ToStringPartial(realm, Get(realm, value, "message"));
+            let message = this.tryQuery(() => ToStringPartial(realm, Get(realm, value, "message")), "(cannot get message)", false);
             realm.restoreBindings(bindings);
             realm.restoreProperties(properties);
             let moduleIds = introspectionErrors[message] = introspectionErrors[message] || [];
@@ -1438,7 +1441,7 @@ export default class Serialiser {
   serialise(filename: string, code: string, sourceMaps: boolean): { anyHeapChanges?: boolean, generated?: { code: string, map?: string } } {
     let realm = this.realm;
 
-    this.require = Get(realm, realm.$GlobalObject, "require");
+    this.require = this.tryQuery(() => Get(realm, realm.$GlobalObject, "require"), realm.intrinsics.undefined, false);
 
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
