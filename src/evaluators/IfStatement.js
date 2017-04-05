@@ -9,29 +9,44 @@
 
 /* @flow */
 
-import { AbruptCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
+import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { GetValue, joinEffects, ToBoolean } from "../methods/index.js";
+import { GetValue, joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.js";
 import type { BabelNode, BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
 
 export function evaluate (
     ast: BabelNodeIfStatement, strictCode: boolean, env: LexicalEnvironment,
-    realm: Realm): NormalCompletion | Value | Reference {
+    realm: Realm): Completion | Value | Reference {
+  // 1. Let exprRef be the result of evaluating Expression
   let exprRef = env.evaluate(ast.test, strictCode);
+  // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
   let exprValue = GetValue(realm, exprRef);
 
+  let stmtCompletion = EmptyValue;
   if (exprValue instanceof ConcreteValue) {
     if (ToBoolean(realm, exprValue)) {
-      env.evaluate(ast.consequent, strictCode);
+      // 3.a. Let stmtCompletion be the result of evaluating the first Statement
+      stmtCompletion = env.evaluateCompletion(ast.consequent, strictCode);
     } else {
-      if (ast.alternate) env.evaluate(ast.alternate, strictCode);
+      if (ast.alternate)
+        // 4.a. Let stmtCompletion be the result of evaluating the second Statement
+        stmtCompletion = env.evaluateCompletion(ast.alternate, strictCode);
+      else
+        // 3 (of the if only statement). Return NormalCompletion(undefined)
+        return realm.intrinsics.undefined;
     }
-    return realm.intrinsics.empty;
+    // 5. Return Completion(UpdateEmpty(stmtCompletion, undefined)
+    if (stmtCompletion instanceof Reference)
+      return stmtCompletion;
+    if (stmtCompletion instanceof AbruptCompletion) {
+      throw UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
+    }
+    return UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
   }
   invariant(exprValue instanceof AbstractValue);
 
