@@ -1,8 +1,9 @@
 // throws introspection error
+let x = __abstract("boolean", "true");
 
 try {
   var obj = __abstract("object");
-  delete obj.someProperty;
+  if (x) delete obj.someProperty;
 } catch(err) {
   throw new Error("Cannot catch");
 } finally {
