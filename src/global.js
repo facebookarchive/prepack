@@ -220,8 +220,8 @@ export default function (realm: Realm): ObjectValue {
   obj.$DefineOwnProperty("__makePartial", {
     value: new NativeFunctionValue(realm, "global.__makePartial", "__isPartial", 1, (context, [object]) => {
       // casting to any to avoid Flow bug
-      if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
-        (object: any).makePartial();
+      if (object instanceof AbstractObjectValue || object instanceof ObjectValue) {
+        object.makePartial();
         return context.$Realm.intrinsics.undefined;
       }
       throw new ThrowCompletion(
