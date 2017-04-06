@@ -1,2 +1,0 @@
-// no effect
-(function(){})()
