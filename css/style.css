@@ -1,0 +1,124 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
+}
+
+/* HEADER */
+
+header, .repl-container {
+  left: 0;
+  right: 0;
+}
+
+header {
+  position: fixed;
+  top: 0;
+  padding: 0 20px;
+  height: 50px;
+  background-color: #222;
+  color: #fafafa;
+  line-height: 50px;
+}
+
+.repl-container {
+  position: absolute;
+  top: 50px;
+  bottom: 0;
+  background-color: #f7f7f7;
+}
+
+header p {
+  float: left;
+  margin: 0;
+  margin-left: 20px;
+}
+
+h1 {
+  margin: 0;
+  padding-right: 10px;
+  font-size: 20px;
+  float: left;
+}
+
+nav ul.right {
+  float: right;
+}
+
+nav ul, nav li {
+  float: left;
+  padding: 0;
+  margin: 0;
+}
+
+nav ul li {
+  list-style: none;
+}
+
+nav a {
+  display: block;
+  padding: 0 15px;
+  color: inherit;
+  text-decoration: none;
+}
+
+nav a:hover {
+  color: #fff;
+}
+
+nav a.active {
+  position: relative;
+  background-color: #333;
+}
+
+nav a.active:after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-bottom: 3px solid #a3cedf;
+}
+
+/* CONTENT */
+
+.content-container {
+  width: 1140px;
+  margin: 0 auto;
+}
+
+.content {
+  margin-top: 50px;
+  padding: 20px 0;
+}
+
+/* REPL */
+
+.input, .output {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+
+.input {
+  box-sizing: border-box;
+  left: 0;
+  border-right: 1px solid #ddd;
+}
+
+.output {
+  right: 0;
+}
+
+.repl, .error {
+  width: 100%;
+  height: 100%;
+}
+
+.error {
+  padding: 10px;
+  font-family: "Operator Mono", "Fira Code", "Ubuntu Mono", "Droid Sans Mono", "Liberation Mono", "Source Code Pro", Menlo, Monaco, Consolas, "Courier New", monospace;
+  color: #c7254e;
+  white-space: pre;
+}
