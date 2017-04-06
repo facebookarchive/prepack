@@ -1,4 +1,4 @@
-# Prepack [![Circle CI](https://circleci.com/gh/facebookexperimental/prepack.png?style=shield&circle-token=895f5afce135b05dc3d680ce35f701685968781a)](https://circleci.com/gh/facebookexperimental/prepack)
+# Prepack [![Circle CI](https://circleci.com/gh/facebook/prepack.png?style=shield&circle-token=895f5afce135b05dc3d680ce35f701685968781a)](https://circleci.com/gh/facebook/prepack)
 
 Prepack is a partial evaluator for JavaScript. Prepack rewrites a JavaScript bundle, resulting in JavaScript code that executes more efficiently.
 For initialization-heavy code, Prepack works best in an environment where JavaScript parsing is effectively cached.
@@ -120,8 +120,8 @@ becomes
 
 ## Status
 
-- [test262 status on master branch](https://circleci.com/api/v1/project/facebookexperimental/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/test262-status.txt?branch=master)
-- [code coverage report for serialisation tests](https://circleci.com/api/v1/project/facebookexperimental/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/coverage-report-sourcemapped/index.html?branch=master)
+- [test262 status on master branch](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/test262-status.txt?branch=master)
+- [code coverage report for serialisation tests](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/coverage-report-sourcemapped/index.html?branch=master)
 - To see the status for a pull request, look for the message *All checks have passed* or *All checks have failed*. Click on *Show all checks*, *Details*, *Artifacts*, and then *test262-status.txt* or *coverage-report-sourcemapped/index.html*.
 
 ## Roadmap

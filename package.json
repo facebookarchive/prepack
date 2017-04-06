@@ -2,13 +2,13 @@
   "name": "prepack",
   "version": "0.1.0",
   "description": "Execute a JS bundle, serialise global state and side effects to a snapshot that can be quickly restored.",
-  "homepage": "https://github.com/facebookexperimental/prepack",
+  "homepage": "https://github.com/facebook/prepack",
   "repository": {
     "type": "git",
-    "url": "git://github.com/facebookexperimental/prepack.git"
+    "url": "git://github.com/facebook/prepack.git"
   },
   "bugs": {
-    "url": "https://github.com/facebookexperimental/prepack/issues"
+    "url": "https://github.com/facebook/prepack/issues"
   },
   "files": [
     "src/*",
