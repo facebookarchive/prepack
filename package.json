@@ -24,7 +24,7 @@
     "test-serialiser-with-coverage": "cd lib && ../node_modules/.bin/istanbul cover scripts/test-runner.js && ../node_modules/.bin/remap-istanbul -i coverage/coverage.json -o coverage-sourcemapped -t html && echo You can find coverage reports here: && echo   lib/coverage/lcov-report/index.html && echo   lib/coverage-sourcemapped/index.html",
     "test-sourcemaps": "node lib/scripts/generate-sourcemaps-test.js && bash < src/scripts/test-sourcemaps.sh",
     "test-test262": "node lib/scripts/test262-runner.js",
-    "test-internal": "node lib/scripts/test-internal.js",
+    "test-internal": "node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=8192 lib/scripts/test-internal.js",
     "test": "npm run test-serialiser && npm run test-sourcemaps && npm run test-test262 && npm run test-internal",
     "repl": "node lib/repl.js",
     "prepack": "node lib/run_util.js",
