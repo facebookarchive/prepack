@@ -917,7 +917,9 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
   // 2. If O does not have an own property with key P, return undefined.
   let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
   if (!existingBinding) {
-    if (O.isPartial() && !O.isSimple()) Value.throwIntrospectionError(O, P);
+    if (O.isPartial() && !O.isSimple()) {
+      Value.throwIntrospectionError(O, P);
+    }
     return undefined;
   }
   if (!existingBinding.descriptor) return undefined;

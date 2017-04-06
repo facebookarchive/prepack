@@ -16,7 +16,7 @@ import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { initialise as initialiseIntrinsics } from "./intrinsics/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted, IsIntrospectionErrorCompletion } from "./methods/index.js";
+import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, ThrowCompletion } from "./completions.js";
 import invariant from "./invariant.js";
@@ -241,14 +241,6 @@ export class Realm {
       // Return the captured state changes and evaluation result
       return [c, astGenerator, astBindings, astProperties, astCreatedObjects];
     } finally {
-      let errorPropVals;
-      if (c instanceof ThrowCompletion && IsIntrospectionErrorCompletion(this, c)) {
-        invariant(c.value instanceof ObjectValue);
-        errorPropVals =
-          { $ContextStack: c.value.$ContextStack,
-            message: c.value.$Get("message", c.value) };
-      }
-
       // Roll back the state changes
       this.restoreBindings(this.modifiedBindings);
       this.restoreProperties(this.modifiedProperties);
@@ -256,15 +248,6 @@ export class Realm {
       this.modifiedBindings = savedBindings;
       this.modifiedProperties = savedProperties;
       this.createdObjects = saved_createdObjects;
-
-      if (errorPropVals !== undefined) {
-        invariant(errorPropVals.message instanceof StringValue);
-        let etc = this.createErrorThrowCompletion(
-          this.intrinsics.__IntrospectionError, errorPropVals.message);
-        invariant(etc.value instanceof ObjectValue);
-        etc.value.$ContextStack = errorPropVals.$ContextStack;
-        throw etc;
-      }
     }
   }
 
