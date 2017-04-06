@@ -1143,11 +1143,11 @@ export default class Serialiser {
           realm.partially_evaluate_node(node, true, env, false);
 
         if (compl instanceof Completion) {
+          realm.restoreBindings(bindings);
+          realm.restoreProperties(properties);
           if (IsIntrospectionErrorCompletion(realm, compl)) {
             let value = compl.value;
             invariant(value instanceof ObjectValue);
-            realm.restoreBindings(bindings);
-            realm.restoreProperties(properties);
             let message: string = this.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
             realm.restoreBindings(bindings);
             realm.restoreProperties(properties);
@@ -1157,9 +1157,9 @@ export default class Serialiser {
           }
 
           console.log(`=== UNEXPECTED ERROR during speculative initialization of module ${moduleId} ===`);
+          this.logCompletion(compl);
           realm.restoreBindings(bindings);
           realm.restoreProperties(properties);
-          this.logCompletion(compl);
           break;
         }
 
