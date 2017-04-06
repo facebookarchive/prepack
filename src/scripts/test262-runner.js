@@ -611,7 +611,8 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22121 || numPassedES6 < 7567)) {
+  if (args.timeout === 10) numPassedES5 += 4;
+  if (!args.filterString && (numPassedES5 < 22878 || numPassedES6 < 7703)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -1137,9 +1138,6 @@ function testFilterByContents(
 
   let esid_pending = testFileContents.indexOf("esid: pending");
   if (esid_pending > 0 && esid_pending < end_of_comment) return false;
-
-  // temporarily disable tests which use eval. (ES5)
-  if (testFileContents.includes("eval(")) return false;
 
   // disable tests that require parser to throw SyntaxError in strict Mode
   if (test.location.includes("/directive-prologue/") &&
