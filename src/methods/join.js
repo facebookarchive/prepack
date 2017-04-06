@@ -14,7 +14,8 @@ import type { Binding } from "../environment.js";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
-import { AbruptCompletion, BreakCompletion, ContinueCompletion,
+import { AbruptCompletion, BreakCompletion, Completion, ContinueCompletion,
+   ComposedAbruptCompletion, ComposedPossiblyNormalCompletion,
    PossiblyNormalCompletion, JoinedAbruptCompletions,
    ReturnCompletion, ThrowCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -26,6 +27,39 @@ import { AbstractValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
+
+export function joinEffectsAndRemoveNestedReturnCompletions(
+    realm: Realm, c: Completion | Value, e: Effects, nested_effects?: Effects): Effects {
+  if (c instanceof Value)
+    return e;
+  if (c instanceof AbruptCompletion) {
+    invariant(nested_effects !== undefined);
+    return nested_effects;
+  }
+  if (c instanceof PossiblyNormalCompletion) {
+    let e1 = joinEffectsAndRemoveNestedReturnCompletions(realm, c.consequent, e, c.consequentEffects);
+    let e2 = joinEffectsAndRemoveNestedReturnCompletions(realm, c.alternate, e, c.alternateEffects);
+    if (e1[0] instanceof ReturnCompletion) {
+      invariant(e2[0] instanceof Value); // otherwise c cannot possibly be normal
+      e2[0] = new ReturnCompletion(realm.intrinsics.undefined);
+      return joinEffects(realm, c.joinCondition, e1, e2);
+    } else if (e2[0] instanceof ReturnCompletion) {
+      invariant(e1[0] instanceof Value); // otherwise c cannot possibly be normal
+      e1[0] = new ReturnCompletion(realm.intrinsics.undefined);
+      return joinEffects(realm, c.joinCondition, e1, e2);
+    } else {
+      return Value.throwIntrospectionError(c.joinCondition);
+    }
+  }
+  if (c instanceof JoinedAbruptCompletions) {
+    return Value.throwIntrospectionError(c.joinCondition);
+  } else if (c instanceof ComposedAbruptCompletion) {
+    return c.throwIntrospectionError();
+  } else if (c instanceof ComposedPossiblyNormalCompletion) {
+    return c.throwIntrospectionError();
+  }
+  invariant(false);
+}
 
 export function joinEffects(realm: Realm, joinCondition: AbstractValue,
     e1: Effects, e2: Effects): Effects {
