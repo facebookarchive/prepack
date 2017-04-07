@@ -1,10 +1,17 @@
-self.importScripts('prepack-build.js');
+self.importScripts('prepack.min.js');
 
 onmessage = function(e) {
   try {
-    // TODO ADD HERE
-    postMessage({type: 'success', data: e.data});
+    var result = new prepack.default(
+      {
+        partial: true,
+        compatibility: 'browser'
+      },
+      false
+    ).init('repl', e.data, false, false);
+
+    postMessage({type: 'success', data: result.code});
   } catch (err) {
-    postMessage({type: 'error', data: err.stack});
+    postMessage({type: 'error', data: err.nativeStack});
   }
 };
