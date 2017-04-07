@@ -12,8 +12,8 @@ import Serializer from "./serializer/index.js";
 import invariant from "./invariant.js";
 let fs        = require("fs");
 
-function run_internal(name: string, raw: string, map: string = "", compatibility?: "browser" | "jsc" = "browser", mathRandomSeed: void | string, outputFilename?: string, outputMap?: string, speculate: boolean = false) {
-  let serialized = new Serializer({ partial: true, compatibility, mathRandomSeed }, { initializeMoreModules: speculate, internalDebug: true }).init(name, raw, map, outputMap !== undefined);
+function run_internal(name: string, raw: string, map: string = "", compatibility?: "browser" | "jsc" = "browser", mathRandomSeed: void | string, outputFilename?: string, outputMap?: string, speculate: boolean = false, logCalls: boolean = false) {
+  let serialized = new Serializer({ partial: true, compatibility, mathRandomSeed }, { initializeMoreModules: speculate, internalDebug: true, logCalls }).init(name, raw, map, outputMap !== undefined);
   if (!serialized) {
     process.exit(1);
     invariant(false);
@@ -40,7 +40,7 @@ function run_internal(name: string, raw: string, map: string = "", compatibility
   }
 }
 
-export function run(inFn: string, compat?: "browser" | "jsc" = "browser", mathRandSeed: void | string, outFn?: string, inputMap?: string, outMap?: string, speculateOpt?: boolean) {
+export function run(inFn: string, compat?: "browser" | "jsc" = "browser", mathRandSeed: void | string, outFn?: string, inputMap?: string, outMap?: string, speculateOpt?: boolean, logCalls?: boolean) {
   let input = fs.readFileSync(inFn, "utf8");
   let map = "";
   let mapFile = inputMap ? inputMap : inFn + ".map";
@@ -49,5 +49,5 @@ export function run(inFn: string, compat?: "browser" | "jsc" = "browser", mathRa
   } catch (_e) {
     console.log(`No sourcemap found at ${mapFile}.`);
   }
-  run_internal(inFn, input, map, compat, mathRandSeed, outFn, outMap, speculateOpt);
+  run_internal(inFn, input, map, compat, mathRandSeed, outFn, outMap, speculateOpt, logCalls);
 }

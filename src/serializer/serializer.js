@@ -30,6 +30,7 @@ import { BodyReference, AreSameSerializedBindings } from "./types.js";
 import { ClosureRefVisitor, ClosureRefReplacer } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
+import { LoggingCallObserver } from "./LoggingCallObserver.js";
 
 function isSameNode(left, right) {
   let type = left.type;
@@ -59,6 +60,7 @@ export class Serializer {
     invariant(this.realm.isPartial);
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
     this.modules = new Modules(this.realm, this.logger);
+    if (serializerOptions.logCalls) this.realm.callObserver = new LoggingCallObserver(this.realm);
 
     let realmGenerator = this.realm.generator;
     invariant(realmGenerator);

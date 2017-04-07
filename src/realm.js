@@ -18,7 +18,7 @@ import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./enviro
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
-import { Completion, IntrospectionThrowCompletion, ThrowCompletion } from "./completions.js";
+import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion } from "./completions.js";
 import invariant from "./invariant.js";
 import initializeGlobal from "./global.js";
 import seedrandom from "seedrandom";
@@ -34,6 +34,16 @@ export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue | AbstractObjectValue>;
 export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
+
+export class CallObserver {
+  before(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {
+    throw new Error("abstract method; implement me");
+  }
+
+  after(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {
+    throw new Error("abstract method; implement me");
+  }
+}
 
 export class ExecutionContext {
   function: ?FunctionValue;
@@ -156,6 +166,7 @@ export class Realm {
   evaluators: { [key: string]: (ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any) => NormalCompletion | Value | Reference };
 
   annotations: Map<FunctionValue, string>;
+  callObserver: void | CallObserver;
 
   // Checks if there is a let binding at global scope with the given name
   // returning it if so
