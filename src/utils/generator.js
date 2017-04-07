@@ -21,7 +21,7 @@ import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeStatement, Babe
 
 export type SerialisationContext = {
   reasons: Array<string>;
-  serialiseValue: Value => BabelNodeExpression;
+  serializeValue: Value => BabelNodeExpression;
   startBody: () => Array<BabelNodeStatement>;
   endBody: Array<BabelNodeStatement> => void;
   announceDeclaredDerivedId: BabelNodeIdentifier => void;
@@ -112,7 +112,7 @@ export class Generator {
             descProps.push(t.objectProperty(t.identifier("set"), setNode));
           }
           return t.expressionStatement(t.callExpression(
-            this.preludeGenerator.memoiseReference("Object.defineProperty"),
+            this.preludeGenerator.memoizeReference("Object.defineProperty"),
             [objectNode, t.stringLiteral(key), t.objectExpression(descProps)]
           ));
         }
@@ -198,9 +198,9 @@ export class Generator {
     return res;
   }
 
-  serialise(body: Array<BabelNodeStatement>, context: SerialisationContext) {
+  serialize(body: Array<BabelNodeStatement>, context: SerialisationContext) {
     for (let bodyEntry of this.body) {
-      let nodes = bodyEntry.args.map((boundArg, i) => context.serialiseValue(boundArg, context.reasons));
+      let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg, context.reasons));
       body.push(bodyEntry.buildNode(nodes, context));
       let id = bodyEntry.declaresDerivedId;
       if (id !== undefined) context.announceDeclaredDerivedId(id);
@@ -212,13 +212,13 @@ export class PreludeGenerator {
   constructor() {
     this.prelude = [];
     this.derivedIds = new Set();
-    this.memoisedRefs = new Map();
+    this.memoizedRefs = new Map();
     this.uidCounter = 0;
   }
 
   prelude: Array<BabelNodeStatement>;
   derivedIds: Set<BabelNodeIdentifier>;
-  memoisedRefs: Map<string, BabelNodeIdentifier | BabelNodeMemberExpression>;
+  memoizedRefs: Map<string, BabelNodeIdentifier | BabelNodeMemberExpression>;
   uidCounter: number;
 
   convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression {
@@ -233,15 +233,15 @@ export class PreludeGenerator {
     return id;
   }
 
-  memoiseReference(key: string): BabelNodeIdentifier | BabelNodeMemberExpression {
-    let ref = this.memoisedRefs.get(key);
+  memoizeReference(key: string): BabelNodeIdentifier | BabelNodeMemberExpression {
+    let ref = this.memoizedRefs.get(key);
     if (ref) return ref;
 
     ref = t.identifier(this.generateUid());
     this.prelude.push(t.variableDeclaration("var", [
       t.variableDeclarator(ref, this.convertStringToMember(key))
     ]));
-    this.memoisedRefs.set(key, ref);
+    this.memoizedRefs.set(key, ref);
     return ref;
   }
 }

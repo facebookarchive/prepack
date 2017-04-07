@@ -646,7 +646,7 @@ export function $Construct(realm: Realm, F: FunctionValue, argumentsList: Array<
   try {
     // 8. If kind is "base", perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
     if (kind === "base") {
-      invariant(thisArgument, "this wasn't initialised for some reason");
+      invariant(thisArgument, "this wasn't initialized for some reason");
       OrdinaryCallBindThis(realm, F, calleeContext, thisArgument);
     }
 
@@ -674,7 +674,7 @@ export function $Construct(realm: Realm, F: FunctionValue, argumentsList: Array<
 
     // b. If kind is "base", return NormalCompletion(thisArgument).
     if (kind === "base") {
-      invariant(thisArgument, "this wasn't initialised for some reason");
+      invariant(thisArgument, "this wasn't initialized for some reason");
       return thisArgument;
     }
 

@@ -67,7 +67,7 @@ export default function (realm: Realm): ObjectValue {
 
   obj.$DefineOwnProperty("dump", {
     value: new NativeFunctionValue(realm, "global.dump", "dump", 0, (context, args) => {
-      console.log("dump", args.map((arg) => arg.serialise()));
+      console.log("dump", args.map((arg) => arg.serialize()));
       return context;
     }),
     writable: true,

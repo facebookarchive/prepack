@@ -14,145 +14,145 @@ import type { Realm } from "../realm.js";
 import { NumberValue, StringValue, NullValue, UndefinedValue, EmptyValue, ObjectValue, SymbolValue, BooleanValue, NativeFunctionValue } from "../values/index.js";
 import { AddRestrictedFunctionProperties } from "../methods/function.js";
 
-import initialiseObject from "./ecma262/Object.js";
-import initialiseObjectPrototype from "./ecma262/ObjectPrototype.js";
+import initializeObject from "./ecma262/Object.js";
+import initializeObjectPrototype from "./ecma262/ObjectPrototype.js";
 
-import initialiseError from "./ecma262/Error.js";
-import initialiseErrorPrototype from "./ecma262/ErrorPrototype.js";
+import initializeError from "./ecma262/Error.js";
+import initializeErrorPrototype from "./ecma262/ErrorPrototype.js";
 
-import initialiseTypeError from "./ecma262/TypeError.js";
-import initialiseTypeErrorPrototype from "./ecma262/TypeErrorPrototype.js";
+import initializeTypeError from "./ecma262/TypeError.js";
+import initializeTypeErrorPrototype from "./ecma262/TypeErrorPrototype.js";
 
-import initialiseRangeError from "./ecma262/RangeError.js";
-import initialiseRangeErrorPrototype from "./ecma262/RangeErrorPrototype.js";
+import initializeRangeError from "./ecma262/RangeError.js";
+import initializeRangeErrorPrototype from "./ecma262/RangeErrorPrototype.js";
 
-import initialiseReferenceError from "./ecma262/ReferenceError.js";
-import initialiseReferenceErrorPrototype from "./ecma262/ReferenceErrorPrototype.js";
+import initializeReferenceError from "./ecma262/ReferenceError.js";
+import initializeReferenceErrorPrototype from "./ecma262/ReferenceErrorPrototype.js";
 
-import initialiseSyntaxError from "./ecma262/SyntaxError.js";
-import initialiseSyntaxErrorPrototype from "./ecma262/SyntaxErrorPrototype.js";
+import initializeSyntaxError from "./ecma262/SyntaxError.js";
+import initializeSyntaxErrorPrototype from "./ecma262/SyntaxErrorPrototype.js";
 
-import initialiseURIError from "./ecma262/URIError.js";
-import initialiseURIErrorPrototype from "./ecma262/URIErrorPrototype.js";
+import initializeURIError from "./ecma262/URIError.js";
+import initializeURIErrorPrototype from "./ecma262/URIErrorPrototype.js";
 
-import initialiseEvalError from "./ecma262/EvalError.js";
-import initialiseEvalErrorPrototype from "./ecma262/EvalErrorPrototype.js";
+import initializeEvalError from "./ecma262/EvalError.js";
+import initializeEvalErrorPrototype from "./ecma262/EvalErrorPrototype.js";
 
-import initialiseFunction from "./ecma262/Function.js";
-import initialiseFunctionPrototype from "./ecma262/FunctionPrototype.js";
+import initializeFunction from "./ecma262/Function.js";
+import initializeFunctionPrototype from "./ecma262/FunctionPrototype.js";
 
-import initialiseGenerator from "./ecma262/Generator.js";
-import initialiseGeneratorFunction from "./ecma262/GeneratorFunction.js";
-import initialiseGeneratorPrototype from "./ecma262/GeneratorPrototype.js";
+import initializeGenerator from "./ecma262/Generator.js";
+import initializeGeneratorFunction from "./ecma262/GeneratorFunction.js";
+import initializeGeneratorPrototype from "./ecma262/GeneratorPrototype.js";
 
-import initialiseArray from "./ecma262/Array.js";
-import initialiseArrayPrototype from "./ecma262/ArrayPrototype.js";
+import initializeArray from "./ecma262/Array.js";
+import initializeArrayPrototype from "./ecma262/ArrayPrototype.js";
 
-import initialiseDate from "./ecma262/Date.js";
-import initialiseDatePrototype from "./ecma262/DatePrototype.js";
+import initializeDate from "./ecma262/Date.js";
+import initializeDatePrototype from "./ecma262/DatePrototype.js";
 
-import initialiseRegExp from "./ecma262/RegExp.js";
-import initialiseRegExpPrototype from "./ecma262/RegExpPrototype.js";
+import initializeRegExp from "./ecma262/RegExp.js";
+import initializeRegExpPrototype from "./ecma262/RegExpPrototype.js";
 
-import initialiseSymbol from "./ecma262/Symbol.js";
-import initialiseSymbolPrototype from "./ecma262/SymbolPrototype.js";
+import initializeSymbol from "./ecma262/Symbol.js";
+import initializeSymbolPrototype from "./ecma262/SymbolPrototype.js";
 
-import initialiseString from "./ecma262/String.js";
-import initialiseStringPrototype from "./ecma262/StringPrototype.js";
+import initializeString from "./ecma262/String.js";
+import initializeStringPrototype from "./ecma262/StringPrototype.js";
 
-import initialiseNumber from "./ecma262/Number.js";
-import initialiseNumberPrototype from "./ecma262/NumberPrototype.js";
+import initializeNumber from "./ecma262/Number.js";
+import initializeNumberPrototype from "./ecma262/NumberPrototype.js";
 
-import initialiseBoolean from "./ecma262/Boolean.js";
-import initialiseBooleanPrototype from "./ecma262/BooleanPrototype.js";
+import initializeBoolean from "./ecma262/Boolean.js";
+import initializeBooleanPrototype from "./ecma262/BooleanPrototype.js";
 
-import initialiseDataView from "./ecma262/DataView.js";
-import initialiseDataViewPrototype from "./ecma262/DataViewPrototype.js";
+import initializeDataView from "./ecma262/DataView.js";
+import initializeDataViewPrototype from "./ecma262/DataViewPrototype.js";
 
-import initialiseTypedArray from "./ecma262/TypedArray.js";
-import initialiseTypedArrayPrototype from "./ecma262/TypedArrayPrototype.js";
+import initializeTypedArray from "./ecma262/TypedArray.js";
+import initializeTypedArrayPrototype from "./ecma262/TypedArrayPrototype.js";
 
-import initialiseFloat32Array from "./ecma262/Float32Array.js";
-import initialiseFloat32ArrayPrototype from "./ecma262/Float32ArrayPrototype.js";
+import initializeFloat32Array from "./ecma262/Float32Array.js";
+import initializeFloat32ArrayPrototype from "./ecma262/Float32ArrayPrototype.js";
 
-import initialiseFloat64Array from "./ecma262/Float64Array.js";
-import initialiseFloat64ArrayPrototype from "./ecma262/Float64ArrayPrototype.js";
+import initializeFloat64Array from "./ecma262/Float64Array.js";
+import initializeFloat64ArrayPrototype from "./ecma262/Float64ArrayPrototype.js";
 
-import initialiseInt8Array from "./ecma262/Int8Array.js";
-import initialiseInt8ArrayPrototype from "./ecma262/Int8ArrayPrototype.js";
+import initializeInt8Array from "./ecma262/Int8Array.js";
+import initializeInt8ArrayPrototype from "./ecma262/Int8ArrayPrototype.js";
 
-import initialiseInt16Array from "./ecma262/Int16Array.js";
-import initialiseInt16ArrayPrototype from "./ecma262/Int16ArrayPrototype.js";
+import initializeInt16Array from "./ecma262/Int16Array.js";
+import initializeInt16ArrayPrototype from "./ecma262/Int16ArrayPrototype.js";
 
-import initialiseInt32Array from "./ecma262/Int32Array.js";
-import initialiseInt32ArrayPrototype from "./ecma262/Int32ArrayPrototype.js";
+import initializeInt32Array from "./ecma262/Int32Array.js";
+import initializeInt32ArrayPrototype from "./ecma262/Int32ArrayPrototype.js";
 
-import initialiseMap from "./ecma262/Map.js";
-import initialiseMapPrototype from "./ecma262/MapPrototype.js";
+import initializeMap from "./ecma262/Map.js";
+import initializeMapPrototype from "./ecma262/MapPrototype.js";
 
-import initialiseWeakMap from "./ecma262/WeakMap.js";
-import initialiseWeakMapPrototype from "./ecma262/WeakMapPrototype.js";
+import initializeWeakMap from "./ecma262/WeakMap.js";
+import initializeWeakMapPrototype from "./ecma262/WeakMapPrototype.js";
 
-import initialiseSet from "./ecma262/Set.js";
-import initialiseSetPrototype from "./ecma262/SetPrototype.js";
+import initializeSet from "./ecma262/Set.js";
+import initializeSetPrototype from "./ecma262/SetPrototype.js";
 
-import initialisePromise from "./ecma262/Promise.js";
-import initialisePromisePrototype from "./ecma262/PromisePrototype.js";
+import initializePromise from "./ecma262/Promise.js";
+import initializePromisePrototype from "./ecma262/PromisePrototype.js";
 
-import initialiseUint8Array from "./ecma262/Uint8Array.js";
-import initialiseUint8ArrayPrototype from "./ecma262/Uint8ArrayPrototype.js";
+import initializeUint8Array from "./ecma262/Uint8Array.js";
+import initializeUint8ArrayPrototype from "./ecma262/Uint8ArrayPrototype.js";
 
-import initialiseUint8ClampedArray from "./ecma262/Uint8ClampedArray.js";
-import initialiseUint8ClampedArrayPrototype from "./ecma262/Uint8ClampedArrayPrototype.js";
+import initializeUint8ClampedArray from "./ecma262/Uint8ClampedArray.js";
+import initializeUint8ClampedArrayPrototype from "./ecma262/Uint8ClampedArrayPrototype.js";
 
-import initialiseUint16Array from "./ecma262/Uint16Array.js";
-import initialiseUint16ArrayPrototype from "./ecma262/Uint16ArrayPrototype.js";
+import initializeUint16Array from "./ecma262/Uint16Array.js";
+import initializeUint16ArrayPrototype from "./ecma262/Uint16ArrayPrototype.js";
 
-import initialiseUint32Array from "./ecma262/Uint32Array.js";
-import initialiseUint32ArrayPrototype from "./ecma262/Uint32ArrayPrototype.js";
+import initializeUint32Array from "./ecma262/Uint32Array.js";
+import initializeUint32ArrayPrototype from "./ecma262/Uint32ArrayPrototype.js";
 
-import initialiseWeakSet from "./ecma262/WeakSet.js";
-import initialiseWeakSetPrototype from "./ecma262/WeakSetPrototype.js";
+import initializeWeakSet from "./ecma262/WeakSet.js";
+import initializeWeakSetPrototype from "./ecma262/WeakSetPrototype.js";
 
-import initialiseArrayBuffer from "./ecma262/ArrayBuffer.js";
-import initialiseArrayBufferPrototype from "./ecma262/ArrayBufferPrototype.js";
+import initializeArrayBuffer from "./ecma262/ArrayBuffer.js";
+import initializeArrayBufferPrototype from "./ecma262/ArrayBufferPrototype.js";
 
-import initialiseJSON from "./ecma262/JSON.js";
-import initialiseReflect from "./ecma262/Reflect.js";
-import initialiseMath from "./ecma262/Math.js";
-import initialiseConsole from "./ecma262/console.js";
+import initializeJSON from "./ecma262/JSON.js";
+import initializeReflect from "./ecma262/Reflect.js";
+import initializeMath from "./ecma262/Math.js";
+import initializeConsole from "./ecma262/console.js";
 
-import initialiseProxy from "./ecma262/Proxy.js";
+import initializeProxy from "./ecma262/Proxy.js";
 
-import initialiseParseInt from "./ecma262/parseInt.js";
-import initialiseParseFloat from "./ecma262/parseFloat.js";
-import initialiseIsFinite from "./ecma262/isFinite.js";
-import initialiseDecodeURI from "./ecma262/decodeURI.js";
-import initialiseDecodeURIComponent from "./ecma262/decodeURIComponent.js";
-import initialiseEncodeURI from "./ecma262/encodeURI.js";
-import initialiseEncodeURIComponent from "./ecma262/encodeURIComponent.js";
-import initialiseEval from "./ecma262/eval.js";
-import initialiseIsNaN from "./ecma262/isNaN.js";
+import initializeParseInt from "./ecma262/parseInt.js";
+import initializeParseFloat from "./ecma262/parseFloat.js";
+import initializeIsFinite from "./ecma262/isFinite.js";
+import initializeDecodeURI from "./ecma262/decodeURI.js";
+import initializeDecodeURIComponent from "./ecma262/decodeURIComponent.js";
+import initializeEncodeURI from "./ecma262/encodeURI.js";
+import initializeEncodeURIComponent from "./ecma262/encodeURIComponent.js";
+import initializeEval from "./ecma262/eval.js";
+import initializeIsNaN from "./ecma262/isNaN.js";
 
-import initialiseArrayIteratorPrototype from "./ecma262/ArrayIteratorPrototype.js";
-import initialiseStringIteratorPrototype from "./ecma262/StringIteratorPrototype.js";
-import initialiseMapIteratorPrototype from "./ecma262/MapIteratorPrototype.js";
-import initialiseSetIteratorPrototype from "./ecma262/SetIteratorPrototype.js";
-import initialiseIteratorPrototype from "./ecma262/IteratorPrototype.js";
-import initialiseArrayProto_values from "./ecma262/ArrayProto_values.js";
-import initialiseArrayProto_toString from "./ecma262/ArrayProto_toString.js";
-import initialiseObjectProto_toString from "./ecma262/ObjectProto_toString.js";
-import initialiseTypedArrayProto_values from "./ecma262/TypedArrayProto_values.js";
-import initialiseThrowTypeError from "./ecma262/ThrowTypeError.js";
+import initializeArrayIteratorPrototype from "./ecma262/ArrayIteratorPrototype.js";
+import initializeStringIteratorPrototype from "./ecma262/StringIteratorPrototype.js";
+import initializeMapIteratorPrototype from "./ecma262/MapIteratorPrototype.js";
+import initializeSetIteratorPrototype from "./ecma262/SetIteratorPrototype.js";
+import initializeIteratorPrototype from "./ecma262/IteratorPrototype.js";
+import initializeArrayProto_values from "./ecma262/ArrayProto_values.js";
+import initializeArrayProto_toString from "./ecma262/ArrayProto_toString.js";
+import initializeObjectProto_toString from "./ecma262/ObjectProto_toString.js";
+import initializeTypedArrayProto_values from "./ecma262/TypedArrayProto_values.js";
+import initializeThrowTypeError from "./ecma262/ThrowTypeError.js";
 
-import initialiseDocument from "./dom/document.js";
-import initialise__IntrospectionError from "./__IntrospectionError.js";
-import initialise__IntrospectionErrorPrototype from "./__IntrospectionErrorPrototype.js";
-import initialise__ReadOnlyError from "./__ReadOnlyError.js";
-import initialise__ReadOnlyErrorPrototype from "./__ReadOnlyErrorPrototype.js";
+import initializeDocument from "./dom/document.js";
+import initialize__IntrospectionError from "./__IntrospectionError.js";
+import initialize__IntrospectionErrorPrototype from "./__IntrospectionErrorPrototype.js";
+import initialize__ReadOnlyError from "./__ReadOnlyError.js";
+import initialize__ReadOnlyErrorPrototype from "./__ReadOnlyErrorPrototype.js";
 
 
-export function initialise(i: Intrinsics, realm: Realm): Intrinsics {
+export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.undefined = new UndefinedValue(realm);
   i.empty = new EmptyValue(realm);
   i.null = new NullValue(realm);
@@ -171,12 +171,12 @@ export function initialise(i: Intrinsics, realm: Realm): Intrinsics {
   i.FunctionPrototype = new NativeFunctionValue(realm, "Function.prototype", "",
     0, (context) => i.undefined, false);
 
-  i.parseFloat = initialiseParseFloat(realm);
-  i.parseInt = initialiseParseInt(realm);
+  i.parseFloat = initializeParseFloat(realm);
+  i.parseInt = initializeParseInt(realm);
 
   i.SymbolPrototype = new ObjectValue(realm, i.ObjectPrototype, "Symbol.prototype");
 
-  // initialise common symbols
+  // initialize common symbols
   i.SymbolIsConcatSpreadable = new SymbolValue(realm, "Symbol.isConcatSpreadable");
   i.SymbolSpecies = new SymbolValue(realm, "Symbol.species");
   i.SymbolReplace = new SymbolValue(realm, "Symbol.replace");
@@ -190,15 +190,15 @@ export function initialise(i: Intrinsics, realm: Realm): Intrinsics {
   i.SymbolUnscopables = new SymbolValue(realm, "Symbol.unscopables");
 
   //
-  i.ArrayProto_values = initialiseArrayProto_values(realm);
-  i.ArrayProto_toString = initialiseArrayProto_toString(realm);
+  i.ArrayProto_values = initializeArrayProto_values(realm);
+  i.ArrayProto_toString = initializeArrayProto_toString(realm);
 
   //
-  i.ObjectProto_toString = initialiseObjectProto_toString(realm);
+  i.ObjectProto_toString = initializeObjectProto_toString(realm);
 
   //
   if (realm.compatibility !== 'jsc')
-  i.TypedArrayProto_values = initialiseTypedArrayProto_values(realm);
+  i.TypedArrayProto_values = initializeTypedArrayProto_values(realm);
 
   //
   i.ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Array.prototype");
@@ -251,104 +251,104 @@ export function initialise(i: Intrinsics, realm: Realm): Intrinsics {
   i.StringIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "StringIteratorPrototype");
 
   //
-  initialiseObjectPrototype(realm, i.ObjectPrototype);
-  initialiseFunctionPrototype(realm, i.FunctionPrototype);
-  initialiseArrayPrototype(realm, i.ArrayPrototype);
-  initialiseDatePrototype(realm, i.DatePrototype);
-  initialiseRegExpPrototype(realm, i.RegExpPrototype);
-  initialiseStringPrototype(realm, i.StringPrototype);
-  initialiseBooleanPrototype(realm, i.BooleanPrototype);
-  initialiseNumberPrototype(realm, i.NumberPrototype);
-  initialiseSymbolPrototype(realm, i.SymbolPrototype);
-  initialiseErrorPrototype(realm, i.ErrorPrototype);
-  initialiseTypeErrorPrototype(realm, i.TypeErrorPrototype);
-  initialiseRangeErrorPrototype(realm, i.RangeErrorPrototype);
-  initialiseReferenceErrorPrototype(realm, i.ReferenceErrorPrototype);
-  initialiseURIErrorPrototype(realm, i.URIErrorPrototype);
-  initialiseEvalErrorPrototype(realm, i.EvalErrorPrototype);
-  initialiseSyntaxErrorPrototype(realm, i.SyntaxErrorPrototype);
-  initialise__IntrospectionErrorPrototype(realm, i.__IntrospectionErrorPrototype);
-  initialise__ReadOnlyErrorPrototype(realm, i.__ReadOnlyErrorPrototype);
-  initialiseDataViewPrototype(realm, i.DataViewPrototype);
+  initializeObjectPrototype(realm, i.ObjectPrototype);
+  initializeFunctionPrototype(realm, i.FunctionPrototype);
+  initializeArrayPrototype(realm, i.ArrayPrototype);
+  initializeDatePrototype(realm, i.DatePrototype);
+  initializeRegExpPrototype(realm, i.RegExpPrototype);
+  initializeStringPrototype(realm, i.StringPrototype);
+  initializeBooleanPrototype(realm, i.BooleanPrototype);
+  initializeNumberPrototype(realm, i.NumberPrototype);
+  initializeSymbolPrototype(realm, i.SymbolPrototype);
+  initializeErrorPrototype(realm, i.ErrorPrototype);
+  initializeTypeErrorPrototype(realm, i.TypeErrorPrototype);
+  initializeRangeErrorPrototype(realm, i.RangeErrorPrototype);
+  initializeReferenceErrorPrototype(realm, i.ReferenceErrorPrototype);
+  initializeURIErrorPrototype(realm, i.URIErrorPrototype);
+  initializeEvalErrorPrototype(realm, i.EvalErrorPrototype);
+  initializeSyntaxErrorPrototype(realm, i.SyntaxErrorPrototype);
+  initialize__IntrospectionErrorPrototype(realm, i.__IntrospectionErrorPrototype);
+  initialize__ReadOnlyErrorPrototype(realm, i.__ReadOnlyErrorPrototype);
+  initializeDataViewPrototype(realm, i.DataViewPrototype);
   if (realm.compatibility !== 'jsc') {
-    initialiseTypedArrayPrototype(realm, i.TypedArrayPrototype);
-    initialiseWeakSetPrototype(realm, i.WeakSetPrototype);
-    initialiseWeakMapPrototype(realm, i.WeakMapPrototype);
+    initializeTypedArrayPrototype(realm, i.TypedArrayPrototype);
+    initializeWeakSetPrototype(realm, i.WeakSetPrototype);
+    initializeWeakMapPrototype(realm, i.WeakMapPrototype);
   }
-  initialiseFloat32ArrayPrototype(realm, i.Float32ArrayPrototype);
-  initialiseFloat64ArrayPrototype(realm, i.Float64ArrayPrototype);
-  initialiseInt8ArrayPrototype(realm, i.Int8ArrayPrototype);
-  initialiseInt16ArrayPrototype(realm, i.Int16ArrayPrototype);
-  initialiseInt32ArrayPrototype(realm, i.Int32ArrayPrototype);
-  initialiseMapPrototype(realm, i.MapPrototype);
-  initialiseSetPrototype(realm, i.SetPrototype);
-  initialisePromisePrototype(realm, i.PromisePrototype);
-  initialiseUint8ArrayPrototype(realm, i.Uint8ArrayPrototype);
-  initialiseUint8ClampedArrayPrototype(realm, i.Uint8ClampedArrayPrototype);
-  initialiseUint16ArrayPrototype(realm, i.Uint16ArrayPrototype);
-  initialiseUint32ArrayPrototype(realm, i.Uint32ArrayPrototype);
-  initialiseArrayBufferPrototype(realm, i.ArrayBufferPrototype);
+  initializeFloat32ArrayPrototype(realm, i.Float32ArrayPrototype);
+  initializeFloat64ArrayPrototype(realm, i.Float64ArrayPrototype);
+  initializeInt8ArrayPrototype(realm, i.Int8ArrayPrototype);
+  initializeInt16ArrayPrototype(realm, i.Int16ArrayPrototype);
+  initializeInt32ArrayPrototype(realm, i.Int32ArrayPrototype);
+  initializeMapPrototype(realm, i.MapPrototype);
+  initializeSetPrototype(realm, i.SetPrototype);
+  initializePromisePrototype(realm, i.PromisePrototype);
+  initializeUint8ArrayPrototype(realm, i.Uint8ArrayPrototype);
+  initializeUint8ClampedArrayPrototype(realm, i.Uint8ClampedArrayPrototype);
+  initializeUint16ArrayPrototype(realm, i.Uint16ArrayPrototype);
+  initializeUint32ArrayPrototype(realm, i.Uint32ArrayPrototype);
+  initializeArrayBufferPrototype(realm, i.ArrayBufferPrototype);
 
   // iterator prototypes
-  initialiseIteratorPrototype(realm, i.IteratorPrototype);
-  initialiseArrayIteratorPrototype(realm, i.ArrayIteratorPrototype);
-  initialiseStringIteratorPrototype(realm, i.StringIteratorPrototype);
-  initialiseMapIteratorPrototype(realm, i.MapIteratorPrototype);
-  initialiseSetIteratorPrototype(realm, i.SetIteratorPrototype);
+  initializeIteratorPrototype(realm, i.IteratorPrototype);
+  initializeArrayIteratorPrototype(realm, i.ArrayIteratorPrototype);
+  initializeStringIteratorPrototype(realm, i.StringIteratorPrototype);
+  initializeMapIteratorPrototype(realm, i.MapIteratorPrototype);
+  initializeSetIteratorPrototype(realm, i.SetIteratorPrototype);
 
   // browser
-  i.document = initialiseDocument(realm);
+  i.document = initializeDocument(realm);
 
   //
-  i.Object = initialiseObject(realm);
-  i.Function = initialiseFunction(realm);
-  i.Array = initialiseArray(realm);
-  i.RegExp = initialiseRegExp(realm);
-  i.Date = initialiseDate(realm);
-  i.String = initialiseString(realm);
-  i.Math = initialiseMath(realm);
-  i.Boolean = initialiseBoolean(realm);
-  i.Number = initialiseNumber(realm);
-  i.Symbol = initialiseSymbol(realm);
-  i.JSON = initialiseJSON(realm);
-  i.Proxy = initialiseProxy(realm);
+  i.Object = initializeObject(realm);
+  i.Function = initializeFunction(realm);
+  i.Array = initializeArray(realm);
+  i.RegExp = initializeRegExp(realm);
+  i.Date = initializeDate(realm);
+  i.String = initializeString(realm);
+  i.Math = initializeMath(realm);
+  i.Boolean = initializeBoolean(realm);
+  i.Number = initializeNumber(realm);
+  i.Symbol = initializeSymbol(realm);
+  i.JSON = initializeJSON(realm);
+  i.Proxy = initializeProxy(realm);
   if (realm.compatibility !== 'jsc')
-  i.Reflect = initialiseReflect(realm);
-  i.Promise = initialisePromise(realm);
-  i.DataView = initialiseDataView(realm);
+  i.Reflect = initializeReflect(realm);
+  i.Promise = initializePromise(realm);
+  i.DataView = initializeDataView(realm);
 
   // collections
-  i.Set = initialiseSet(realm);
-  i.Map = initialiseMap(realm);
+  i.Set = initializeSet(realm);
+  i.Map = initializeMap(realm);
   if (realm.compatibility !== 'jsc') {
-    i.WeakMap = initialiseWeakMap(realm);
-    i.WeakSet = initialiseWeakSet(realm);
+    i.WeakMap = initializeWeakMap(realm);
+    i.WeakSet = initializeWeakSet(realm);
   }
-  i.ArrayBuffer = initialiseArrayBuffer(realm);
+  i.ArrayBuffer = initializeArrayBuffer(realm);
 
   // typed arrays
   if (realm.compatibility !== 'jsc')
-  i.TypedArray = initialiseTypedArray(realm);
-  i.Float32Array = initialiseFloat32Array(realm);
-  i.Float64Array = initialiseFloat64Array(realm);
-  i.Int8Array = initialiseInt8Array(realm);
-  i.Int16Array = initialiseInt16Array(realm);
-  i.Int32Array = initialiseInt32Array(realm);
-  i.Uint8Array = initialiseUint8Array(realm);
-  i.Uint8ClampedArray = initialiseUint8ClampedArray(realm);
-  i.Uint16Array = initialiseUint16Array(realm);
-  i.Uint32Array = initialiseUint32Array(realm);
+  i.TypedArray = initializeTypedArray(realm);
+  i.Float32Array = initializeFloat32Array(realm);
+  i.Float64Array = initializeFloat64Array(realm);
+  i.Int8Array = initializeInt8Array(realm);
+  i.Int16Array = initializeInt16Array(realm);
+  i.Int32Array = initializeInt32Array(realm);
+  i.Uint8Array = initializeUint8Array(realm);
+  i.Uint8ClampedArray = initializeUint8ClampedArray(realm);
+  i.Uint16Array = initializeUint16Array(realm);
+  i.Uint32Array = initializeUint32Array(realm);
 
   //
-  i.Error = initialiseError(realm);
-  i.TypeError = initialiseTypeError(realm);
-  i.RangeError = initialiseRangeError(realm);
-  i.ReferenceError = initialiseReferenceError(realm);
-  i.URIError = initialiseURIError(realm);
-  i.EvalError = initialiseEvalError(realm);
-  i.SyntaxError = initialiseSyntaxError(realm);
-  i.__IntrospectionError = initialise__IntrospectionError(realm);
-  i.__ReadOnlyError = initialise__ReadOnlyError(realm);
+  i.Error = initializeError(realm);
+  i.TypeError = initializeTypeError(realm);
+  i.RangeError = initializeRangeError(realm);
+  i.ReferenceError = initializeReferenceError(realm);
+  i.URIError = initializeURIError(realm);
+  i.EvalError = initializeEvalError(realm);
+  i.SyntaxError = initializeSyntaxError(realm);
+  i.__IntrospectionError = initialize__IntrospectionError(realm);
+  i.__ReadOnlyError = initialize__ReadOnlyError(realm);
 
   //
   let builtins = [
@@ -415,10 +415,10 @@ export function initialise(i: Intrinsics, realm: Realm): Intrinsics {
 
   //
   i.GeneratorPrototype = new ObjectValue(realm, i.FunctionPrototype, "Generator.prototype");
-  initialiseGeneratorPrototype(realm, i.GeneratorPrototype);
+  initializeGeneratorPrototype(realm, i.GeneratorPrototype);
   i.Generator = new ObjectValue(realm, i.FunctionPrototype, "Generator");
-  initialiseGenerator(realm, i.Generator);
-  i.GeneratorFunction = initialiseGeneratorFunction(realm);
+  initializeGenerator(realm, i.Generator);
+  i.GeneratorFunction = initializeGeneratorFunction(realm);
 
   i.Generator.$DefineOwnProperty("prototype", {
     value: i.GeneratorPrototype,
@@ -447,15 +447,15 @@ export function initialise(i: Intrinsics, realm: Realm): Intrinsics {
   });
 
   //
-  i.isNaN = initialiseIsNaN(realm);
-  i.isFinite = initialiseIsFinite(realm);
-  i.decodeURI = initialiseDecodeURI(realm);
-  i.decodeURIComponent = initialiseDecodeURIComponent(realm);
-  i.encodeURI = initialiseEncodeURI(realm);
-  i.encodeURIComponent = initialiseEncodeURIComponent(realm);
-  i.ThrowTypeError = initialiseThrowTypeError(realm);
-  i.eval = initialiseEval(realm);
-  i.console = initialiseConsole(realm);
+  i.isNaN = initializeIsNaN(realm);
+  i.isFinite = initializeIsFinite(realm);
+  i.decodeURI = initializeDecodeURI(realm);
+  i.decodeURIComponent = initializeDecodeURIComponent(realm);
+  i.encodeURI = initializeEncodeURI(realm);
+  i.encodeURIComponent = initializeEncodeURIComponent(realm);
+  i.ThrowTypeError = initializeThrowTypeError(realm);
+  i.eval = initializeEval(realm);
+  i.console = initializeConsole(realm);
 
   // 8.2.2, step 12
   AddRestrictedFunctionProperties(i.FunctionPrototype, realm);

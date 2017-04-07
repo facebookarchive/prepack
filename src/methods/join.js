@@ -133,8 +133,8 @@ function joinGenerators(realm: Realm, joinCondition: AbstractValue,
     result.body.push({
       args: [joinCondition],
       buildNode: function ([cond], context) {
-        let block1 = generator1.empty() ? null : serialiseBody(generator1, context);
-        let block2 = generator2.empty() ? null : serialiseBody(generator2, context);
+        let block1 = generator1.empty() ? null : serializeBody(generator1, context);
+        let block2 = generator2.empty() ? null : serializeBody(generator2, context);
         if (block1) return t.ifStatement(cond, block1, block2);
         invariant(block2);
         return t.ifStatement(t.unaryExpression("!", cond), block2);
@@ -144,12 +144,12 @@ function joinGenerators(realm: Realm, joinCondition: AbstractValue,
   return result;
 }
 
-function serialiseBody(
+function serializeBody(
   generator: Generator,
   context: SerialisationContext
 ): BabelNodeBlockStatement {
   let statements = context.startBody();
-  generator.serialise(statements, context);
+  generator.serialize(statements, context);
   context.endBody(statements);
   return t.blockStatement(statements);
 }

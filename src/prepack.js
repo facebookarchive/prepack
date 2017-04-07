@@ -8,17 +8,17 @@
  */
 
 /* @flow */
-import Serialiser from "./serialiser.js";
+import { Serializer } from "./serializer/index.js";
 import invariant from "./invariant.js";
 let fs        = require("fs");
 
 function run_internal(name: string, raw: string, map: string = "", compatibility?: "browser" | "jsc" = "browser", mathRandomSeed: void | string, outputFilename?: string, outputMap?: string, speculate: boolean = false) {
-  let serialised = new Serialiser({ partial: true, compatibility, mathRandomSeed }, speculate).init(name, raw, map, outputMap !== undefined);
-  if (!serialised) {
+  let serialized = new Serializer({ partial: true, compatibility, mathRandomSeed }, speculate).init(name, raw, map, outputMap !== undefined);
+  if (!serialized) {
     process.exit(1);
     invariant(false);
   }
-  let code = serialised.code;
+  let code = serialized.code;
 
   if (code.length >= 1000 || outputFilename) {
     let filename = outputFilename || (name + "-processed.js");

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import Serialiser from "../serialiser.js";
+import { Serializer } from "../serializer/index.js";
 import { IsIntrospectionError } from  "../methods/index.js";
 
 let chalk = require("chalk");
@@ -37,7 +37,7 @@ function search(dir, relative) {
   return tests;
 }
 
-let tests = search(`${__dirname}/../../test/serialiser`, "test/serialiser");
+let tests = search(`${__dirname}/../../test/serializer`, "test/serializer");
 
 function exec(code: string): string {
   let script = new vm.Script(`var global = this; var self = this; ${code}; // keep newline here as code may end with comment
@@ -66,15 +66,15 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   let compatibility = code.includes("// jsc") ? "jsc" : undefined;
   let opts = { partial: true, compatibility };
-  let initialiseMoreModules = code.includes("// initialise more modules");
+  let initializeMoreModules = code.includes("// initialize more modules");
   if (code.includes("// throws introspection error")) {
     let onError = (realm, e) => {
       if (IsIntrospectionError(realm, e))
         throw new Success();
     };
     try {
-      let serialised = new Serialiser(opts, initialiseMoreModules).init(name, code, "", false, onError);
-      if (!serialised) {
+      let serialized = new Serializer(opts, initializeMoreModules).init(name, code, "", false, onError);
+      if (!serialized) {
         console.log(chalk.red("Error during serialisation"));
       } else {
         console.log(chalk.red("Test should have caused introspection error!"));
@@ -87,19 +87,19 @@ function runTest(name: string, code: string): boolean {
     return false;
   } else if (code.includes("// no effect")) {
     try {
-      let serialised = new Serialiser(opts, initialiseMoreModules).init(name, code);
-      if (!serialised) {
+      let serialized = new Serializer(opts, initializeMoreModules).init(name, code);
+      if (!serialized) {
         console.log(chalk.red("Error during serialisation!"));
         return false;
       }
-      if (!serialised.code.trim()) {
+      if (!serialized.code.trim()) {
         return true;
       }
       console.log(chalk.red("Generated code should be empty but isn't!"));
       console.log(chalk.underline("original code"));
       console.log(code);
       console.log(chalk.underline(`generated code`));
-      console.log(serialised.code);
+      console.log(serialized.code);
     } catch (err) {
       console.log(err);
     }
@@ -123,12 +123,12 @@ function runTest(name: string, code: string): boolean {
       let max = 4;
       let oldCode = code;
       for (; i < max; i++) {
-        let serialised = new Serialiser(opts, initialiseMoreModules).init(name, oldCode);
-        if (!serialised) {
+        let serialized = new Serializer(opts, initializeMoreModules).init(name, oldCode);
+        if (!serialized) {
           console.log(chalk.red("Error during serialisation!"));
           break;
         }
-        let newCode = serialised.code;
+        let newCode = serialized.code;
         codeIterations.push(newCode);
         if (find_pos !== -1 && newCode.indexOf(to_find, find_pos) !== -1) {
           console.log(chalk.red("Output contains forbidden string: " + to_find));

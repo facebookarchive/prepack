@@ -794,7 +794,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
       locales = undefined;
     } else {
       // TODO filter locales for only serialisable values
-      if (locales) locales = locales.serialise();
+      if (locales) locales = locales.serialize();
     }
 
     if (realm.isPartial && (type === "LocaleUpper" || type === "LocaleLower")) {

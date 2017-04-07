@@ -20,7 +20,7 @@ export default class StringValue extends PrimitiveValue {
 
   value: string;
 
-  _serialise(): string {
+  _serialize(): string {
     return this.value;
   }
 }
