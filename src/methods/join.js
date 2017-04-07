@@ -17,7 +17,7 @@ import type { Descriptor, PropertyBinding } from "../types.js";
 import { AbruptCompletion, BreakCompletion, Completion, ContinueCompletion,
    ComposedAbruptCompletion, ComposedPossiblyNormalCompletion,
    PossiblyNormalCompletion, JoinedAbruptCompletions,
-   ReturnCompletion, ThrowCompletion } from "../completions.js";
+   ReturnCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Reference } from "../environment.js";
 import { cloneDescriptor, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
@@ -66,6 +66,8 @@ export function joinEffects(realm: Realm, joinCondition: AbstractValue,
   let [result1, gen1, bindings1, properties1, createdObj1] = e1;
   let [result2, gen2, bindings2, properties2, createdObj2] = e2;
 
+  if (result1 instanceof IntrospectionThrowCompletion) return e1;
+  if (result2 instanceof IntrospectionThrowCompletion) return e2;
   let result = joinResults(realm, joinCondition, result1, result2, e1, e2);
   if (result1 instanceof AbruptCompletion) {
     if (!(result2 instanceof AbruptCompletion)) {

@@ -18,7 +18,7 @@ import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./enviro
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
-import { Completion, ThrowCompletion } from "./completions.js";
+import { Completion, IntrospectionThrowCompletion, ThrowCompletion } from "./completions.js";
 import invariant from "./invariant.js";
 import initializeGlobal from "./global.js";
 import seedrandom from "seedrandom";
@@ -499,6 +499,8 @@ export class Realm {
     if (message === undefined) message = "TODO";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
+    if (type === this.intrinsics.__IntrospectionError)
+      return new IntrospectionThrowCompletion(Construct(this, type, [message]));
     return new ThrowCompletion(Construct(this, type, [message]));
   }
 }

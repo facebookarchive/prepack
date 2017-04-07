@@ -13,7 +13,7 @@ import type { BabelNodeBlockStatement } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
-import { AbruptCompletion, ComposedAbruptCompletion, ComposedPossiblyNormalCompletion, NormalCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, ComposedAbruptCompletion, ComposedPossiblyNormalCompletion, NormalCompletion, PossiblyNormalCompletion, IntrospectionThrowCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { EmptyValue, StringValue, Value } from "../values/index.js";
 import { NewDeclarativeEnvironment, BlockDeclarationInstantiation } from "../methods/index.js";
@@ -52,7 +52,11 @@ export default function (ast: BabelNodeBlockStatement, strictCode: boolean, env:
             if (res instanceof AbruptCompletion) throw res;
             invariant(res instanceof NormalCompletion || res instanceof Value);
             blockValue = res;
+          } else if (res instanceof IntrospectionThrowCompletion) {
+            throw res;
           } else if (res instanceof AbruptCompletion) {
+            // todo: this is a join point. Join up all of the effects that
+            // lead here, apply them and then throw.
             throw new ComposedAbruptCompletion(blockValue, res);
           } else if (blockValue instanceof NormalCompletion) {
             if (res instanceof Value)

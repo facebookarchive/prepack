@@ -12,8 +12,8 @@
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
 import { Realm, ExecutionContext } from "./realm.js";
 import type { RealmOptions, Descriptor } from "./types.js";
-import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, ToStringPartial, Get, InstanceofOperator, IsIntrospectionErrorCompletion } from "./methods/index.js";
-import { Completion, AbruptCompletion, ThrowCompletion } from "./completions.js";
+import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, ToStringPartial, Get, InstanceofOperator } from "./methods/index.js";
+import { Completion, AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "./completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, StringValue, NativeFunctionValue, UndefinedValue } from "./values/index.js";
 import { describeLocation } from "./intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
@@ -1146,7 +1146,7 @@ export default class Serialiser {
         if (compl instanceof Completion) {
           realm.restoreBindings(bindings);
           realm.restoreProperties(properties);
-          if (IsIntrospectionErrorCompletion(realm, compl)) {
+          if (compl instanceof IntrospectionThrowCompletion) {
             let value = compl.value;
             invariant(value instanceof ObjectValue);
             let message: string = this.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
