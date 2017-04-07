@@ -967,11 +967,15 @@ export class LexicalEnvironment {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
       if (err instanceof JoinedAbruptCompletions) {
-        Value.throwIntrospectionError(err.joinCondition);
+        return Value.throwIntrospectionError(err.joinCondition);
       } else if (err instanceof ComposedAbruptCompletion) {
-        return Value.throwIntrospectionError(err.priorCompletion.joinCondition);
-      } if (err instanceof AbruptCompletion) {
+        return err.throwIntrospectionError();
+      } else if (err instanceof AbruptCompletion) {
         return err;
+      } else if (err instanceof PossiblyNormalCompletion) {
+        Value.throwIntrospectionError(err.joinCondition);
+      } else if (err instanceof ComposedPossiblyNormalCompletion) {
+        return err.throwIntrospectionError();
       } else if (err instanceof Error) {
         // rethrowing Error should preserve stack trace
         throw err;

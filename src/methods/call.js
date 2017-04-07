@@ -28,10 +28,11 @@ import {
   IteratorStep,
   IteratorValue,
   HasSomeCompatibleType,
+  joinEffectsAndRemoveNestedReturnCompletions,
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
-import { ThrowCompletion, ReturnCompletion, AbruptCompletion } from "../completions.js";
+import { ThrowCompletion, ReturnCompletion, AbruptCompletion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion, ComposedPossiblyNormalCompletion } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import invariant from "../invariant.js";
 import type { BabelNode, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
@@ -292,7 +293,39 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
 
     // 2. Return the result of EvaluateBody of the parsed code that is the value of F's
     //    [[ECMAScriptCode]] internal slot passing F as the argument.
-    return realm.getRunningContext().lexicalEnvironment.evaluateCompletion(F.$ECMAScriptCode, F.$Strict);
+    let c = realm.getRunningContext().lexicalEnvironment.evaluateAbstractCompletion(F.$ECMAScriptCode, F.$Strict);
+    let e = realm.get_captured_effects();
+    if (e !== undefined) {
+      realm.stop_effect_capture();
+      let [_c, _g, b, p, _o] = e;
+      _c; _g; _o;
+      realm.restoreBindings(b);
+      realm.restoreProperties(p);
+    }
+    if (c instanceof JoinedAbruptCompletions) {
+      if (e !== undefined) realm.apply_effects(e);
+      return Value.throwIntrospectionError(c.joinCondition);
+    } else if (c instanceof ComposedAbruptCompletion) {
+      if (e !== undefined) realm.apply_effects(e);
+      return c.throwIntrospectionError();
+    } else if (c instanceof ComposedPossiblyNormalCompletion) {
+      if (e !== undefined) realm.apply_effects(e);
+      return c.throwIntrospectionError();
+    } else if (c instanceof PossiblyNormalCompletion) {
+      // If the abrupt part of the completion is a return completion, then the
+      // effects of its independent control path must be joined with the effects
+      // from the normal path, which is to say the currently tracked effects
+      // in the realm.
+      invariant(e !== undefined);
+      let joinedEffects = joinEffectsAndRemoveNestedReturnCompletions(realm, c, e);
+      realm.apply_effects(joinedEffects);
+      invariant(joinedEffects[0] instanceof ReturnCompletion);
+      return joinedEffects[0];
+    } else {
+      invariant(c instanceof Value || c instanceof AbruptCompletion);
+      if (e !== undefined) realm.apply_effects(e);
+      return c;
+    }
   }
 }
 

@@ -28,6 +28,13 @@ import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import * as evaluators from "./evaluators/index.js";
 
+export type Bindings = Map<Binding, void | Value>;
+export type EvaluationResult = Completion | Reference | Value;
+export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
+
+export type CreatedObjects = Set<ObjectValue | AbstractObjectValue>;
+export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
+
 export class ExecutionContext {
   function: ?FunctionValue;
   caller: ?ExecutionContext;
@@ -37,6 +44,7 @@ export class ExecutionContext {
   variableEnvironment: LexicalEnvironment;
   lexicalEnvironment: LexicalEnvironment;
   isReadOnly: boolean;
+  savedEffects: void | Effects;
 
   setCaller(context: ExecutionContext): void {
     this.caller = context;
@@ -76,13 +84,6 @@ export class ExecutionContext {
     // TODO: resume
   }
 }
-
-export type Bindings = Map<Binding, void | Value>;
-export type EvaluationResult = Completion | Reference | Value;
-export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
-
-export type CreatedObjects = Set<ObjectValue | AbstractObjectValue>;
-export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
 export function construct_empty_effects(realm: Realm): Effects {
   return [realm.intrinsics.empty, new Generator(realm), new Map(), new Map(), new Set()];
@@ -248,6 +249,45 @@ export class Realm {
       this.modifiedBindings = savedBindings;
       this.modifiedProperties = savedProperties;
       this.createdObjects = saved_createdObjects;
+    }
+  }
+
+  capture_effects() {
+    let context = this.getRunningContext();
+    if (context.savedEffects !== undefined) {
+      // Already called capture_effects in this context, just carry on
+      return;
+    }
+    context.savedEffects = [this.intrinsics.undefined, this.generator,
+      this.modifiedBindings, this.modifiedProperties, this.createdObjects];
+    this.generator = new Generator(this);
+    this.modifiedBindings = new Map();
+    this.modifiedProperties = new Map();
+    this.createdObjects = new Set();
+  }
+
+  get_captured_effects(v?: Value): void | Effects {
+    let context = this.getRunningContext();
+    if (context.savedEffects === undefined) return undefined;
+    if (v === undefined) v = this.intrinsics.undefined;
+    invariant(this.generator !== undefined);
+    invariant(this.modifiedBindings !== undefined);
+    invariant(this.modifiedProperties !== undefined);
+    invariant(this.createdObjects !== undefined);
+    return [v, this.generator, this.modifiedBindings,
+       this.modifiedProperties, this.createdObjects];
+  }
+
+  stop_effect_capture() {
+    let context = this.getRunningContext();
+    if (context.savedEffects !== undefined) {
+      let [c, g, b, p, o] = context.savedEffects;
+      c;
+      context.savedEffects = undefined;
+      this.generator = g;
+      this.modifiedBindings = b;
+      this.modifiedProperties = p;
+      this.createdObjects = o;
     }
   }
 
