@@ -7,4 +7,4 @@ npm-debug.log
 build/
 .vscode
 test/internal
-
+prepack.min.js
