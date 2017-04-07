@@ -16,7 +16,8 @@
   ],
   "main": "lib/prepack.js",
   "scripts": {
-    "build": "babel src --out-dir lib --source-maps",
+    "build": "babel src --out-dir lib --source-maps && npm run build-bundle",
+    "build-bundle": "webpack",
     "watch": "babel src --out-dir lib --watch --source-maps",
     "lint": "eslint src",
     "flow": "flow",
@@ -68,7 +69,8 @@
     "eslint-plugin-header": "^1.0.0",
     "flow-bin": "^0.43.0",
     "graceful-fs": "^4.1.11",
-    "kcheck": "^2.0.0"
+    "kcheck": "^2.0.0",
+    "webpack": "^2.3.3"
   },
   "engines": {
     "node": ">=6.1.0 <7.0.0"
