@@ -9,4 +9,5 @@
 
 /* @flow */
 
-export { Serializer } from "./Serializer.js";
+import { Serializer } from "./Serializer.js";
+export default Serializer;

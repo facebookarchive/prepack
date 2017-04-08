@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Serializer } from "../serializer/index.js";
+import Serializer from "../serializer/index.js";
 
 let chalk = require("chalk");
 let path  = require("path");

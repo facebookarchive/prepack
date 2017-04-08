@@ -8,7 +8,7 @@
  */
 
 /* @flow */
-import { Serializer } from "./serializer/index.js";
+import Serializer from "./serializer/index.js";
 import invariant from "./invariant.js";
 let fs        = require("fs");
 

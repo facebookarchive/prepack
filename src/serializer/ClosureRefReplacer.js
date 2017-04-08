@@ -1,0 +1,79 @@
+/**
+ * Copyright (c) 2017-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+/* @flow */
+
+import { shouldIgnorePath } from "./Serializer.js";
+import type { ClosureRefReplacerState } from "./Serializer.js";
+import { BabelTraversePath } from "babel-traverse";
+
+function markVisited(node, data) {
+  (node: any)._renamedOnce = data;
+}
+
+function shouldVisit(node, data) {
+  return (node: any)._renamedOnce !== data;
+}
+
+// replaceWith causes the node to be re-analyzed, so to prevent double replacement
+// we add this property on the node to mark it such that it does not get replaced
+// again on this pass
+// TODO: Make this work when replacing with arbitrary BabelNodeExpressions. Currently
+//       if the node that we're substituting contains identifiers as children,
+//       they will be visited again and possibly transformed.
+//       If necessary we could implement this by following node.parentPath and checking
+//       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
+export default {
+  ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefReplacerState) {
+    if (shouldIgnorePath(path)) return;
+
+    let serializedBindings = state.serializedBindings;
+    let innerName = path.node.name;
+    if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
+
+    let serializedBinding = serializedBindings[innerName];
+    if (serializedBinding && shouldVisit(path.node, serializedBindings)) {
+      markVisited(serializedBinding.serializedValue, serializedBindings);
+      path.replaceWith(serializedBinding.serializedValue);
+    }
+  },
+
+  CallExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
+    // Here we apply the require optimization by replacing require calls with their
+    // corresponding initialized modules.
+    let requireReturns = state.requireReturns;
+    if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
+    state.requireStatistics.count++;
+    if (state.modified[path.node.callee.name]) return;
+
+    let moduleId = path.node.arguments[0].value;
+    let new_node = requireReturns.get(moduleId);
+    if (new_node !== undefined) {
+      markVisited(new_node, state.serializedBindings);
+      path.replaceWith(new_node);
+      state.requireStatistics.replaced++;
+    }
+  },
+
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: ClosureRefReplacerState) {
+    let serializedBindings = state.serializedBindings;
+    let ids = path.getBindingIdentifierPaths();
+
+    for (let innerName in ids) {
+      let nestedPath = ids[innerName];
+      if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
+
+      let serializedBinding = serializedBindings[innerName];
+      if (serializedBinding && shouldVisit(nestedPath.node, serializedBindings)) {
+        markVisited(serializedBinding.serializedValue, serializedBindings);
+        nestedPath.replaceWith(serializedBinding.serializedValue);
+      }
+    }
+  }
+};

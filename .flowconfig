@@ -3,7 +3,7 @@
 .*/test262/.*
 .*/node_modules/.*\.json
 .*/lib/.*
-.*/test/serialiser/.*
+.*/test/serializer/.*
 
 [include]
 
