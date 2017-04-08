@@ -13,15 +13,28 @@
  * https://github.com/flowtype/flow-typed
  */
 
-import { BabelNode } from "babel-types";
+import type { BabelNode, BabelNodeIdentifier } from "babel-types";
 
 declare module 'babel-traverse' {
-  declare module.exports: (
+  declare export class BabelTraversePath {
+    getBindingIdentifierPaths(): { [key: string]: BabelTraversePath };
+    getBindingIdentifiers(): { [key: string]: BabelNodeIdentifier };
+    replaceWith(node: BabelNode): void;
+    scope: BabelTraverseScope;
+    node: BabelNode;
+    parent: BabelNode;
+  }
+
+  declare export class BabelTraverseScope {
+    hasBinding(name: string, noGlobals: boolean): boolean;
+  }
+
+  declare export default (
     parent?: BabelNode | Array<BabelNode>,
     opts?: Object,
-    scope: ?Object,
+    scope: ?BabelTraverseScope,
     state: Object,
-    parentPath?: Object,
+    parentPath?: BabelTraversePath,
   ) => void;
 }
 
