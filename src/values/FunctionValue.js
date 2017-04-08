@@ -32,7 +32,7 @@ export default class FunctionValue extends ObjectValue {
   loc: ?BabelNodeSourceLocation;
 
   // Indicates whether this function has been referenced by a __residual call.
-  // If true, the serialiser will check that the function does not access any
+  // If true, the serializer will check that the function does not access any
   // identifiers defined outside of the local scope.
   isResidual: void | true;
 

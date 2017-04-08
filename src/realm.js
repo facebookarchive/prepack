@@ -13,14 +13,14 @@ import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descript
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
-import { initialise as initialiseIntrinsics } from "./intrinsics/index.js";
+import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, ThrowCompletion } from "./completions.js";
 import invariant from "./invariant.js";
-import initialiseGlobal from "./global.js";
+import initializeGlobal from "./global.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeExpression } from "babel-types";
@@ -109,9 +109,9 @@ export class Realm {
     this.compatibility = opts.compatibility || "browser";
 
     let i = this.intrinsics = ({}: any);
-    initialiseIntrinsics(i, this);
+    initializeIntrinsics(i, this);
 
-    this.$GlobalObject = initialiseGlobal(this);
+    this.$GlobalObject = initializeGlobal(this);
     this.$GlobalEnv    = NewGlobalEnvironment(this, this.$GlobalObject, this.$GlobalObject);
     this.$TemplateMap  = [];
 

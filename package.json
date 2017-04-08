@@ -1,7 +1,7 @@
 {
   "name": "prepack",
   "version": "0.1.0",
-  "description": "Execute a JS bundle, serialise global state and side effects to a snapshot that can be quickly restored.",
+  "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
     "type": "git",
@@ -21,12 +21,12 @@
     "watch": "babel src --out-dir lib --watch --source-maps",
     "lint": "eslint src",
     "flow": "flow",
-    "test-serialiser": "node lib/scripts/test-runner.js",
-    "test-serialiser-with-coverage": "cd lib && ../node_modules/.bin/istanbul cover scripts/test-runner.js && ../node_modules/.bin/remap-istanbul -i coverage/coverage.json -o coverage-sourcemapped -t html && echo You can find coverage reports here: && echo   lib/coverage/lcov-report/index.html && echo   lib/coverage-sourcemapped/index.html",
+    "test-serializer": "node lib/scripts/test-runner.js",
+    "test-serializer-with-coverage": "cd lib && ../node_modules/.bin/istanbul cover scripts/test-runner.js && ../node_modules/.bin/remap-istanbul -i coverage/coverage.json -o coverage-sourcemapped -t html && echo You can find coverage reports here: && echo   lib/coverage/lcov-report/index.html && echo   lib/coverage-sourcemapped/index.html",
     "test-sourcemaps": "node lib/scripts/generate-sourcemaps-test.js && bash < src/scripts/test-sourcemaps.sh",
     "test-test262": "node lib/scripts/test262-runner.js",
     "test-internal": "node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=8192 lib/scripts/test-internal.js",
-    "test": "npm run test-serialiser && npm run test-sourcemaps && npm run test-test262 && npm run test-internal",
+    "test": "npm run test-serializer && npm run test-sourcemaps && npm run test-test262 && npm run test-internal",
     "repl": "node lib/repl.js",
     "prepack": "node lib/run_util.js",
     "validate": "npm run build && npm run lint && npm run flow && npm test",
@@ -67,7 +67,7 @@
     "eslint-plugin-flow-header": "^0.1.1",
     "eslint-plugin-flowtype": "^2.20.0",
     "eslint-plugin-header": "^1.0.0",
-    "flow-bin": "^0.43.0",
+    "flow-bin": "^0.43.1",
     "graceful-fs": "^4.1.11",
     "kcheck": "^2.0.0",
     "webpack": "^2.3.3"

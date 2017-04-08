@@ -154,8 +154,8 @@ becomes
 2. `npm test`
 
 You can run individual test suites as follows.
-- `npm run test-serialiser`  
-  This tests the interpreter and serialiser. All tests should pass.
+- `npm run test-serializer`  
+  This tests the interpreter and serializer. All tests should pass.
 - `npm run test-test262`  
   This tests conformance against the test262 suite. Not all will pass, increasing conformance is work in progress.
 

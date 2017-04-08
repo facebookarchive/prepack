@@ -9,10 +9,5 @@
 
 /* @flow */
 
-import { PrimitiveValue } from "./index.js";
-
-export default class NullValue extends PrimitiveValue {
-  _serialize(): null {
-    return null;
-  }
-}
+import { Serializer } from "./Serializer.js";
+export default Serializer;

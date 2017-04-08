@@ -25,7 +25,7 @@ export default class NumberValue extends PrimitiveValue {
     return this;
   }
 
-  _serialise(): number {
+  _serialize(): number {
     return this.value;
   }
 }

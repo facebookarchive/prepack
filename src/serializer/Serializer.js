@@ -9,21 +9,44 @@
 
 /* @flow */
 
-import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
-import { Realm, ExecutionContext } from "./realm.js";
-import type { RealmOptions, Descriptor } from "./types.js";
-import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, ToStringPartial, Get, InstanceofOperator, IsIntrospectionErrorCompletion } from "./methods/index.js";
-import { Completion, AbruptCompletion, ThrowCompletion } from "./completions.js";
-import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, StringValue, NativeFunctionValue, UndefinedValue } from "./values/index.js";
-import { describeLocation } from "./intrinsics/ecma262/Error.js";
+import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
+import { Realm, ExecutionContext } from "../realm.js";
+import type { RealmOptions, Descriptor } from "../types.js";
+import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, ToStringPartial, Get, InstanceofOperator, IsIntrospectionErrorCompletion } from "../methods/index.js";
+import { Completion, AbruptCompletion, ThrowCompletion } from "../completions.js";
+import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, StringValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
+import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelNodeCallExpression, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
-import { Generator, PreludeGenerator } from "./utils/generator.js";
+import { Generator, PreludeGenerator } from "../utils/generator.js";
 import generate from "babel-generator";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
-import invariant from "./invariant.js";
+import { BabelTraversePath } from "babel-traverse";
+import invariant from "../invariant.js";
 import * as base62 from "base62";
+import ClosureRefReplacer from "./ClosureRefReplacer.js";
+import ClosureRefVisitor from "./ClosureRefVisitor.js";
+
+export type ClosureRefVisitorState = {
+  serializer: Serializer,
+  val: FunctionValue;
+  reasons: Array<string>;
+  name: string;
+  functionInfo: FunctionInfo;
+  map: Names;
+  realm: Realm;
+  requiredModules: Set<number | string>;
+  isRequire: void | (scope: any, node: BabelNodeCallExpression) => boolean;
+};
+
+export type ClosureRefReplacerState = {
+  serializedBindings: any,
+  modified: Names;
+  requireReturns: Map<number | string, BabelNodeExpression>;
+  requireStatistics: { replaced: 0, count: 0 };
+  isRequire: void | (scope: any, node: BabelNodeCallExpression) => boolean;
+}
 
 function isSameNode(left, right) {
   let type = left.type;
@@ -47,155 +70,37 @@ function isSameNode(left, right) {
   return false;
 }
 
-function markVisited(node, data) {
-  node._renamedOnce = data;
-}
-
-function shouldVisit(node, data) {
-  return node._renamedOnce !== data;
-}
-
-// replaceWith causes the node to be re-analysed, so to prevent double replacement
-// we add this property on the node to mark it such that it does not get replaced
-// again on this pass
-// TODO: Make this work when replacing with arbitrary BabelNodeExpressions. Currently
-//       if the node that we're substituting contains identifiers as children,
-//       they will be visited again and possibly transformed.
-//       If necessary we could implement this by following node.parentPath and checking
-//       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
-let closureRefReplacer = {
-  ReferencedIdentifier(path, state) {
-    if (ignorePath(path)) return;
-
-    let serialisedBindings = state.serialisedBindings;
-    let innerName = path.node.name;
-    if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
-
-    let serialisedBinding = serialisedBindings[innerName];
-    if (serialisedBinding && shouldVisit(path.node, serialisedBindings)) {
-      markVisited(serialisedBinding.serialisedValue, serialisedBindings);
-      path.replaceWith(serialisedBinding.serialisedValue);
-    }
-  },
-
-  CallExpression(path, state) {
-    // Here we apply the require optimization by replacing require calls with their
-    // corresponding initialized modules.
-    let requireReturns = state.requireReturns;
-    if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
-    state.requireStatistics.count++;
-    if (state.modified[path.node.callee.name]) return;
-
-    let moduleId = path.node.arguments[0].value;
-    let new_node = requireReturns.get(moduleId);
-    if (new_node !== undefined) {
-      markVisited(new_node, state.serialisedBindings);
-      path.replaceWith(new_node);
-      state.requireStatistics.replaced++;
-    }
-  },
-
-  "AssignmentExpression|UpdateExpression"(path, state) {
-    let serialisedBindings = state.serialisedBindings;
-    let ids = path.getBindingIdentifierPaths();
-
-    for (let innerName in ids) {
-      let nestedPath = ids[innerName];
-      if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
-
-      let serialisedBinding = serialisedBindings[innerName];
-      if (serialisedBinding && shouldVisit(nestedPath.node, serialisedBindings)) {
-        markVisited(serialisedBinding.serialisedValue, serialisedBindings);
-        nestedPath.replaceWith(serialisedBinding.serialisedValue);
-      }
-    }
-  }
-};
-
-function visitName(state, name, modified) {
-  let doesNotMatter = true;
-  let ref = state.serialiser.tryQuery(
-    () => ResolveBinding(state.realm, name, doesNotMatter, state.val.$Environment),
-    undefined, true);
-  if (ref === undefined) return;
-  if (IsUnresolvableReference(state.realm, ref)) return;
-  state.map[name] = true;
-  if (modified) state.functionInfo.modified[name] = true;
-}
-
-function ignorePath(path) {
+export function shouldIgnorePath(path: BabelTraversePath) {
   let parent = path.parent;
   return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
 }
 
-// TODO doesn't check that `arguments` and `this` is in top function
-let closureRefVisitor = {
-  ReferencedIdentifier(path, state) {
-    if (ignorePath(path)) return;
-
-    let innerName = path.node.name;
-    if (innerName === "arguments") {
-      state.functionInfo.usesArguments = true;
-      return;
-    }
-    if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
-    visitName(state, innerName, false);
-  },
-
-  ThisExpression(path, state) {
-    state.functionInfo.usesThis = true;
-  },
-
-  CallExpression(path, state) {
-    /*
-    This optimization replaces requires to initialized modules with their return
-    values. It does this by checking whether the require call has any side effects
-    (e.g. modifications to the global module table). Conceptually if a call has
-    no side effects, it should be safe to replace with its return value.
-
-    This optimization is not safe in general because it allows for reads to mutable
-    global state, but in the case of require, the return value is guaranteed to always
-    be the same regardless of that global state modification (because we should
-    only be reading from the global module table).
-    */
-    if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
-
-    let moduleId = path.node.arguments[0].value;
-    state.requiredModules.add(moduleId);
-  },
-
-  "AssignmentExpression|UpdateExpression"(path, state) {
-    for (let name in path.getBindingIdentifiers()) {
-      if (path.scope.hasBinding(name, /*noGlobals*/true)) continue;
-      visitName(state, name, true);
-    }
-  }
-};
-
 type FunctionInstance = {
-  serialisedBindings: SerialisedBindings;
+  serializedBindings: SerializedBindings;
   functionValue: FunctionValue;
   bodyReference?: BodyReference;
 };
 
+type Names = { [key: string]: true };
+
 type FunctionInfo = {
-  names: { [key: string]: true };
-  modified: { [key: string]: true };
+  names: Names;
+  modified: Names;
   instances: Array<FunctionInstance>;
   usesArguments: boolean;
   usesThis: boolean;
 }
 
-type SerialisedBindings = { [key: string]: SerialisedBinding };
-type SerialisedBinding = {
-  serialisedValue: BabelNodeExpression;
+type SerializedBindings = { [key: string]: SerializedBinding };
+type SerializedBinding = {
+  serializedValue: BabelNodeExpression;
   value?: Value;
-  referentialised?: boolean;
+  referentialized?: boolean;
   modified?: boolean;
 }
 
-function AreSameSerialisedBindings(x, y) {
-  if (x.serialisedValue === y.serialisedValue) return true;
+function AreSameSerializedBindings(x, y) {
+  if (x.serializedValue === y.serializedValue) return true;
   if (x.value && x.value === y.value) return true;
   return false;
 }
@@ -209,8 +114,8 @@ class BodyReference {
   index: number;
 }
 
-export default class Serialiser {
-  constructor(opts: RealmOptions = {}, initialiseMoreModules: boolean = true) {
+export class Serializer {
+  constructor(opts: RealmOptions = {}, initializeMoreModules: boolean = true) {
     this.origOpts = opts;
     this.realm = new Realm(opts);
     invariant(this.realm.isPartial);
@@ -222,7 +127,7 @@ export default class Serialiser {
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
 
-    this.initialiseMoreModules = initialiseMoreModules;
+    this.initializeMoreModules = initializeMoreModules;
     this.requiredModules = new Set();
     this._resetSerializeStates();
   }
@@ -253,7 +158,7 @@ export default class Serialiser {
   };
 
   origOpts: RealmOptions;
-  declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, SerialisedBindings>;
+  declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, SerializedBindings>;
   serialisationStack: Array<Value>;
   delayedSerialisations: Array<() => void>;
   delayedKeyedSerialisations: Map<BabelNodeIdentifier, Array<{values: Array<Value>, func: () => void}>>;
@@ -277,7 +182,7 @@ export default class Serialiser {
   needsEmptyVar: boolean;
   require: Value;
   requireReturns: Map<number | string, BabelNodeExpression>;
-  initialiseMoreModules: boolean;
+  initializeMoreModules: boolean;
   uidCounter: number;
 
   _getBodyReference() {
@@ -319,7 +224,7 @@ export default class Serialiser {
   _getIsRequire(formalParameters: Array<BabelNodeLVal>, functions: Array<FunctionValue>) {
     let realm = this.realm;
     let globalRequire = this.require;
-    let serialiser = this;
+    let serializer = this;
     return function (scope: any, node: BabelNodeCallExpression) {
       if (!t.isIdentifier(node.callee) ||
         node.arguments.length !== 1 ||
@@ -342,7 +247,7 @@ export default class Serialiser {
         }
 
         let doesNotMatter = true;
-        let reference = serialiser.tryQuery(
+        let reference = serializer.tryQuery(
           () => ResolveBinding(realm, innerName, doesNotMatter, f.$Environment),
           undefined, false);
         if (reference === undefined) {
@@ -355,7 +260,7 @@ export default class Serialiser {
         if (typeof referencedName !== "string") return false;
         let value;
         if (reference.base instanceof GlobalEnvironmentRecord) {
-          value = serialiser.tryQuery(() =>
+          value = serializer.tryQuery(() =>
             Get(realm, realm.$GlobalObject, innerName), realm.intrinsics.undefined, false);
         } else {
           invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
@@ -529,13 +434,13 @@ export default class Serialiser {
 
     /*
     for (let symbol of val.symbols.keys()) {
-      // TODO: serialise symbols
+      // TODO: serialize symbols
     }
     */
 
     let proto = val.$GetPrototypeOf();
     if (proto.isIntrinsic()) {
-      // TODO: serialise modified prototypes that are intrinsic objects
+      // TODO: serialize modified prototypes that are intrinsic objects
       proto = null;
     }
 
@@ -556,18 +461,18 @@ export default class Serialiser {
     if (proto) {
       this._eagerOrDelay([proto, val], () => {
         invariant(proto);
-        let serialisedProto = this.serialiseValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
+        let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
         let uid = this._getValIdForReference(val);
         if (this.realm.compatibility !== "jsc")
           this.body.push(t.expressionStatement(t.callExpression(
-            this.preludeGenerator.memoiseReference("Object.setPrototypeOf"),
-            [uid, serialisedProto]
+            this.preludeGenerator.memoizeReference("Object.setPrototypeOf"),
+            [uid, serializedProto]
           )));
         else {
           this.body.push(t.expressionStatement(t.assignmentExpression(
             "=",
             t.memberExpression(uid, t.identifier("__proto__")),
-            serialisedProto
+            serializedProto
           )));
         }
       });
@@ -583,7 +488,7 @@ export default class Serialiser {
       this.body.push(t.expressionStatement(t.assignmentExpression(
         "=",
         t.memberExpression(uid, key, !t.isIdentifier(key)),
-          this.serialiseValue(
+          this.serializeValue(
             descValue,
             reasons.concat(`Referred to in the object ${name} for the value ${((key: any): BabelNodeIdentifier).name || ((key: any): BabelNodeStringLiteral).value}`)
           )
@@ -632,7 +537,7 @@ export default class Serialiser {
           this.body.push(t.expressionStatement(t.assignmentExpression(
             "=",
             t.memberExpression(descriptorId, t.identifier(descKey)),
-            this.serialiseValue(
+            this.serializeValue(
               descValue,
               reasons.concat(`Referred to in the object ${name} for the key ${((key: any): BabelNodeIdentifier).name || ((key: any): BabelNodeStringLiteral).value} in the descriptor property ${descKey}`)
             )
@@ -644,31 +549,31 @@ export default class Serialiser {
       if (t.isIdentifier(keyRaw)) keyRaw = t.stringLiteral(((keyRaw: any): BabelNodeIdentifier).name);
 
       this.body.push(t.expressionStatement(t.callExpression(
-        this.preludeGenerator.memoiseReference("Object.defineProperty"),
+        this.preludeGenerator.memoizeReference("Object.defineProperty"),
         [uid, keyRaw, descriptorId]
       )));
     }
   }
 
-  _serialiseDeclarativeEnvironmentRecordBinding(r: DeclarativeEnvironmentRecord, n: string, functionName: string, reasons: Array<string>): SerialisedBinding {
-    let serialisedBindings = this.declarativeEnvironmentRecordsBindings.get(r);
-    if (!serialisedBindings) {
-      serialisedBindings = Object.create(null);
-      this.declarativeEnvironmentRecordsBindings.set(r, serialisedBindings);
+  _serializeDeclarativeEnvironmentRecordBinding(r: DeclarativeEnvironmentRecord, n: string, functionName: string, reasons: Array<string>): SerializedBinding {
+    let serializedBindings = this.declarativeEnvironmentRecordsBindings.get(r);
+    if (!serializedBindings) {
+      serializedBindings = Object.create(null);
+      this.declarativeEnvironmentRecordsBindings.set(r, serializedBindings);
     }
-    let serialisedBinding: ?SerialisedBinding = serialisedBindings[n];
-    if (!serialisedBinding) {
+    let serializedBinding: ?SerializedBinding = serializedBindings[n];
+    if (!serializedBinding) {
       let realm = this.realm;
       let binding = r.bindings[n];
       // TODO: handle binding.deletable, binding.mutable
       let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
-      let serialisedValue = this.serialiseValue(
+      let serializedValue = this.serializeValue(
         value,
         reasons.concat(`access in ${functionName} to ${n}`));
-      serialisedBinding = { serialisedValue, value };
-      serialisedBindings[n] = serialisedBinding;
+      serializedBinding = { serializedValue, value };
+      serializedBindings[n] = serializedBinding;
     }
-    return serialisedBinding;
+    return serializedBinding;
   }
 
   _getValIdForReference(val: Value): BabelNodeIdentifier {
@@ -698,7 +603,7 @@ export default class Serialiser {
     }
   }
 
-  serialiseValue(val: Value, reasons?: Array<string>, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
+  serializeValue(val: Value, reasons?: Array<string>, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
 
     let ref = this._getValIdForReferenceOptional(val);
     if (ref) {
@@ -707,7 +612,7 @@ export default class Serialiser {
 
     reasons = reasons || [];
     if (!referenceOnly && this.shouldInline(val)) {
-      let res = this._serialiseValue("", val, reasons);
+      let res = this._serializeValue("", val, reasons);
       invariant(res !== undefined);
       return res;
     }
@@ -716,7 +621,7 @@ export default class Serialiser {
     let id = t.identifier(name);
     this.refs.set(val, id);
     this.serialisationStack.push(val);
-    let init = this._serialiseValue(name, val, reasons);
+    let init = this._serializeValue(name, val, reasons);
     let result = id;
     this._incrementValToRefCount(val);
 
@@ -746,15 +651,15 @@ export default class Serialiser {
     if (this.serialisationStack.length === 0) {
       while (this.delayedSerialisations.length) {
         invariant(this.serialisationStack.length === 0);
-        let serialiser = this.delayedSerialisations.shift();
-        serialiser();
+        let serializer = this.delayedSerialisations.shift();
+        serializer();
       }
     }
 
     return result;
   }
 
-  _serialiseValueIntrinsic(val: Value): BabelNodeExpression {
+  _serializeValueIntrinsic(val: Value): BabelNodeExpression {
     invariant(val.intrinsicName);
     return this.preludeGenerator.convertStringToMember(val.intrinsicName);
   }
@@ -813,16 +718,16 @@ export default class Serialiser {
     return this.serialisationStack.indexOf(val) >= 0;
   }
 
-  _eagerOrDelay(values: Array<Value>, serialiser: () => void) {
+  _eagerOrDelay(values: Array<Value>, serializer: () => void) {
     let delayReason = this._shouldDelayValues(values);
     if (delayReason) {
-      this._delay(delayReason, values, serialiser);
+      this._delay(delayReason, values, serializer);
     } else {
-      serialiser();
+      serializer();
     }
   }
 
-  _serialiseValueArray(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
+  _serializeValueArray(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
     let realm = this.realm;
     let elems = [];
 
@@ -845,7 +750,7 @@ export default class Serialiser {
               this.body.push(t.expressionStatement(t.assignmentExpression(
                 "=",
                 t.memberExpression(id, t.numericLiteral(i), true),
-                this.serialiseValue(
+                this.serializeValue(
                   elemVal,
                   reasons.concat(`Declared in array ${name} at index ${key}`)
                 )
@@ -853,7 +758,7 @@ export default class Serialiser {
             });
             elem = null;
           } else {
-            elem = this.serialiseValue(
+            elem = this.serializeValue(
               elemVal,
               reasons.concat(`Declared in array ${name} at index ${key}`)
             );
@@ -869,22 +774,22 @@ export default class Serialiser {
     return t.arrayExpression(elems);
   }
 
-  _serialiseValueFunction(name: string, val: FunctionValue, reasons: Array<string>): void | BabelNodeExpression {
+  _serializeValueFunction(name: string, val: FunctionValue, reasons: Array<string>): void | BabelNodeExpression {
     if (val instanceof BoundFunctionValue) {
       return t.callExpression(
         t.memberExpression(
-          this.serialiseValue(val.$BoundTargetFunction, reasons.concat(`Bound by ${name}`)),
+          this.serializeValue(val.$BoundTargetFunction, reasons.concat(`Bound by ${name}`)),
           t.identifier("bind")
         ),
         [].concat(
-          this.serialiseValue(val.$BoundThis, reasons.concat(`Bound this of ${name}`)),
-          val.$BoundArguments.map((boundArg, i) => this.serialiseValue(boundArg, reasons.concat(`Bound argument ${i} of ${name}`)))
+          this.serializeValue(val.$BoundThis, reasons.concat(`Bound this of ${name}`)),
+          val.$BoundArguments.map((boundArg, i) => this.serializeValue(boundArg, reasons.concat(`Bound argument ${i} of ${name}`)))
         )
       );
     }
 
     if (val instanceof NativeFunctionValue) {
-      throw new Error("TODO: do not know how to serialise non-intrinsic native function value");
+      throw new Error("TODO: do not know how to serialize non-intrinsic native function value");
     }
 
     invariant(val.constructor === FunctionValue);
@@ -903,10 +808,13 @@ export default class Serialiser {
       };
       this.functions.set(val.$ECMAScriptCode, functionInfo);
 
-      let state = { serialiser: this, val, reasons, name, functionInfo,
+      let state: ClosureRefVisitorState = {
+        serializer: this,
+        val, reasons, name, functionInfo,
         map: functionInfo.names, realm: this.realm,
         requiredModules: this.requiredModules,
-        isRequire: this._getIsRequire(val.$FormalParameters, [val]) };
+        isRequire: this._getIsRequire(val.$FormalParameters, [val])
+      };
 
       traverse(
         t.file(t.program([
@@ -918,7 +826,7 @@ export default class Serialiser {
             )
           )
         ])),
-        closureRefVisitor,
+        ClosureRefVisitor,
         null,
         state
       );
@@ -930,34 +838,34 @@ export default class Serialiser {
 
 
 
-    let serialisedBindings = Object.create(null);
+    let serializedBindings = Object.create(null);
     let instance: FunctionInstance = {
-      serialisedBindings,
+      serializedBindings,
       functionValue: val,
     };
     let delayed = 0;
     for (let innerName in functionInfo.names) {
       let referencedValues = [];
-      let serialiseBindingFunc;
+      let serializeBindingFunc;
       let doesNotMatter = true;
       let reference = this.tryQuery(
         () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
         undefined, true);
       if (reference === undefined) {
-        serialiseBindingFunc = () => this._serialiseGlobalBinding(innerName);
+        serializeBindingFunc = () => this._serializeGlobalBinding(innerName);
       } else {
         invariant(!IsUnresolvableReference(this.realm, reference));
         let referencedBase = reference.base;
         let referencedName: string = (reference.referencedName: any);
         if (typeof referencedName !== "string") {
-          throw new Error("TODO: do not know how to serialise reference with symbol");
+          throw new Error("TODO: do not know how to serialize reference with symbol");
         }
         if (reference.base instanceof GlobalEnvironmentRecord) {
-          serialiseBindingFunc = () => this._serialiseGlobalBinding(referencedName);
+          serializeBindingFunc = () => this._serializeGlobalBinding(referencedName);
         } else if (referencedBase instanceof DeclarativeEnvironmentRecord) {
-          serialiseBindingFunc = () => {
+          serializeBindingFunc = () => {
             invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
-            return this._serialiseDeclarativeEnvironmentRecordBinding(referencedBase, referencedName, name, reasons);
+            return this._serializeDeclarativeEnvironmentRecordBinding(referencedBase, referencedName, name, reasons);
           };
           let binding = referencedBase.bindings[referencedName];
           if (binding.initialized && binding.value) referencedValues.push(binding.value);
@@ -969,22 +877,22 @@ export default class Serialiser {
       if (delayReason) {
         delayed++;
         this._delay(delayReason, referencedValues, () => {
-          let serialisedBinding = serialiseBindingFunc();
-          invariant(serialisedBinding);
-          serialisedBindings[innerName] = serialisedBinding;
+          let serializedBinding = serializeBindingFunc();
+          invariant(serializedBinding);
+          serializedBindings[innerName] = serializedBinding;
           invariant(functionInfo);
-          if (functionInfo.modified[innerName]) serialisedBinding.modified = true;
+          if (functionInfo.modified[innerName]) serializedBinding.modified = true;
           if (--delayed === 0) {
             instance.bodyReference = this._getBodyReference();
             this.functionInstances.push(instance);
           }
         });
       } else {
-        let serialisedBinding = serialiseBindingFunc();
-        invariant(serialisedBinding);
-        serialisedBindings[innerName] = serialisedBinding;
+        let serializedBinding = serializeBindingFunc();
+        invariant(serializedBinding);
+        serializedBindings[innerName] = serializedBinding;
         invariant(functionInfo);
-        if (functionInfo.modified[innerName]) serialisedBinding.modified = true;
+        if (functionInfo.modified[innerName]) serializedBinding.modified = true;
       }
     }
 
@@ -1001,7 +909,7 @@ export default class Serialiser {
     return !!prop.writable && !!prop.configurable === configurable && !!prop.enumerable && !prop.set && !prop.get;
   }
 
-  _serialiseValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
+  _serializeValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
     let props = [];
 
     for (let [key, propertyBinding] of val.properties) {
@@ -1023,14 +931,14 @@ export default class Serialiser {
             this.body.push(t.expressionStatement(t.assignmentExpression(
               "=",
               t.memberExpression(id, keyNode, t.isStringLiteral(keyNode)),
-              this.serialiseValue(
+              this.serializeValue(
                 propValue,
                 reasons.concat(`Referenced in object ${name} with key ${key}`)
               )
             )));
           });
         } else {
-          props.push(t.objectProperty(keyNode, this.serialiseValue(
+          props.push(t.objectProperty(keyNode, this.serializeValue(
             propValue,
             reasons.concat(`Referenced in object ${name} with key ${key}`)
           )));
@@ -1050,78 +958,78 @@ export default class Serialiser {
     }
   }
 
-  _serialiseValueSymbol(val: SymbolValue): BabelNodeExpression {
+  _serializeValueSymbol(val: SymbolValue): BabelNodeExpression {
     let args = [];
     if (val.$Description) args.push(t.stringLiteral(val.$Description));
     return t.callExpression(t.identifier("Symbol"), args);
   }
 
-  _serialiseValueProxy(name: string, val: ProxyValue, reasons: Array<string>): BabelNodeExpression {
+  _serializeValueProxy(name: string, val: ProxyValue, reasons: Array<string>): BabelNodeExpression {
     return t.newExpression(t.identifier("Proxy"), [
-      this.serialiseValue(val.$ProxyTarget, reasons.concat(`Proxy target of ${name}`)),
-      this.serialiseValue(val.$ProxyHandler, reasons.concat(`Proxy handler of ${name}`))
+      this.serializeValue(val.$ProxyTarget, reasons.concat(`Proxy target of ${name}`)),
+      this.serializeValue(val.$ProxyHandler, reasons.concat(`Proxy handler of ${name}`))
     ]);
   }
 
-  _serialiseAbstractValue(name: string, val: AbstractValue, reasons: Array<string>): BabelNodeExpression {
-    let serialisedArgs = val.args.map((abstractArg, i) => this.serialiseValue(abstractArg, reasons.concat(`Argument ${i} of ${name}`)));
-    let serialisedValue = val.buildNode(serialisedArgs);
-    if (serialisedValue.type === "Identifier") {
-      let id = ((serialisedValue: any): BabelNodeIdentifier);
+  _serializeAbstractValue(name: string, val: AbstractValue, reasons: Array<string>): BabelNodeExpression {
+    let serializedArgs = val.args.map((abstractArg, i) => this.serializeValue(abstractArg, reasons.concat(`Argument ${i} of ${name}`)));
+    let serializedValue = val.buildNode(serializedArgs);
+    if (serializedValue.type === "Identifier") {
+      let id = ((serializedValue: any): BabelNodeIdentifier);
       invariant(!this.preludeGenerator.derivedIds.has(id) ||
         this.declaredDerivedIds.has(id));
     }
-    return serialisedValue;
+    return serializedValue;
   }
 
-  _serialiseValue(name: string, val: Value, reasons: Array<string>): void | BabelNodeExpression {
+  _serializeValue(name: string, val: Value, reasons: Array<string>): void | BabelNodeExpression {
     if (val instanceof AbstractValue) {
-      return this._serialiseAbstractValue(name, val, reasons);
+      return this._serializeAbstractValue(name, val, reasons);
     } else if (val.isIntrinsic()) {
-      return this._serialiseValueIntrinsic(val);
+      return this._serializeValueIntrinsic(val);
     } else if (val instanceof EmptyValue) {
       this.needsEmptyVar = true;
       return t.identifier("__empty");
     } else if (this.shouldInline(val)) {
-      return t.valueToNode(val.serialise());
+      return t.valueToNode(val.serialize());
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
-      return this._serialiseValueArray(name, val, reasons);
+      return this._serializeValueArray(name, val, reasons);
     } else if (val instanceof ProxyValue) {
-      return this._serialiseValueProxy(name, val, reasons);
+      return this._serializeValueProxy(name, val, reasons);
     } else if (val instanceof FunctionValue) {
-      return this._serialiseValueFunction(name, val, reasons);
+      return this._serializeValueFunction(name, val, reasons);
     } else if (val instanceof SymbolValue) {
-      return this._serialiseValueSymbol(val);
+      return this._serializeValueSymbol(val);
     } else if (val instanceof ObjectValue) {
-      return this._serialiseValueObject(name, val, reasons);
+      return this._serializeValueObject(name, val, reasons);
     } else {
       invariant(false);
     }
   }
 
-  _serialiseGlobalBinding(key: string): void | SerialisedBinding {
+  _serializeGlobalBinding(key: string): void | SerializedBinding {
     if (t.isValidIdentifier(key)) {
       let value = this.realm.getGlobalLetBinding(key);
       // Check for let binding vs global property
       if (value) {
-        let id = this.serialiseValue(value, ["global let binding"], true, "let");
+        let id = this.serializeValue(value, ["global let binding"], true, "let");
         // increment ref count one more time as the value has been
-        // referentialised (stored in a variable) by serialiseValue
+        // referentialized (stored in a variable) by serializeValue
         this._incrementValToRefCount(value);
         return {
-          serialisedValue: id,
-          modified: true, referentialised: true
+          serializedValue: id,
+          modified: true, referentialized: true
         };
       } else {
-        return { serialisedValue: t.identifier(key), modified: true, referentialised: true };
+        return { serializedValue: t.identifier(key), modified: true, referentialized: true };
       }
     } else {
-      return { serialisedValue: t.stringLiteral(key), modified: true, referentialised: true };
+      return { serializedValue: t.stringLiteral(key), modified: true, referentialized: true };
     }
   }
 
-  _initialiseMoreModules() {
+  _initializeMoreModules() {
     // partially evaluate all factory methods by calling require
     let realm = this.realm;
     let anyHeapChanges = false;
@@ -1192,7 +1100,7 @@ export default class Serialiser {
           }
         }
 
-        this.requireReturns.set(moduleId, this.serialiseValue(compl));
+        this.requireReturns.set(moduleId, this.serializeValue(compl));
 
         // Ignore created objects
         createdObjects;
@@ -1246,7 +1154,7 @@ export default class Serialiser {
         }
         if (escapes) continue;
 
-        this.requireReturns.set(moduleId, this.serialiseValue(compl));
+        this.requireReturns.set(moduleId, this.serializeValue(compl));
       }
     } finally {
       realm.popContext(context);
@@ -1268,16 +1176,16 @@ export default class Serialiser {
     let functionEntries: Array<[BabelNodeBlockStatement, FunctionInfo]> = Array.from(this.functions.entries());
     for (let [, { instances, names }] of functionEntries) {
       for (let instance of instances) {
-        let serialisedBindings = instance.serialisedBindings;
+        let serializedBindings = instance.serializedBindings;
         for (let name in names) {
-          let serialisedBinding: SerialisedBinding = serialisedBindings[name];
-          if (serialisedBinding.modified && !serialisedBinding.referentialised) {
-            let serialisedBindingId = t.identifier(this.generateUid());
+          let serializedBinding: SerializedBinding = serializedBindings[name];
+          if (serializedBinding.modified && !serializedBinding.referentialized) {
+            let serializedBindingId = t.identifier(this.generateUid());
             let declar = t.variableDeclaration("var", [
-              t.variableDeclarator(serialisedBindingId, serialisedBinding.serialisedValue)]);
+              t.variableDeclarator(serializedBindingId, serializedBinding.serializedValue)]);
             getFunctionBody(instance).push(declar);
-            serialisedBinding.serialisedValue = serialisedBindingId;
-            serialisedBinding.referentialised = true;
+            serializedBinding.serializedValue = serializedBindingId;
+            serializedBinding.referentialized = true;
           }
         }
       }
@@ -1295,29 +1203,29 @@ export default class Serialiser {
       // TODO: instead of completely giving up creating factories if there are modified bindings,
       // figure out which instances share all they modified bindings, and then create factories for
       // those batches.
-      let anySerialisedBindingModified = false;
+      let anySerializedBindingModified = false;
       for (let instance of instances) {
-        let serialisedBindings = instance.serialisedBindings;
+        let serializedBindings = instance.serializedBindings;
         for (let name in names) {
-          let serialisedBinding: SerialisedBinding = serialisedBindings[name];
-          if (serialisedBinding.modified) {
-            anySerialisedBindingModified = true;
+          let serializedBinding: SerializedBinding = serializedBindings[name];
+          if (serializedBinding.modified) {
+            anySerializedBindingModified = true;
           }
         }
       }
 
-      if (shouldInline || instances.length === 1 || usesArguments || anySerialisedBindingModified) {
+      if (shouldInline || instances.length === 1 || usesArguments || anySerializedBindingModified) {
         for (let instance of instances) {
-          let { functionValue, serialisedBindings } = instance;
+          let { functionValue, serializedBindings } = instance;
           let id = this._getValIdForReference(functionValue);
           let funcParams = params.slice();
           let funcNode = t.functionDeclaration(id, funcParams, ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement));
 
           traverse(
             t.file(t.program([funcNode])),
-            closureRefReplacer,
+            ClosureRefReplacer,
             null,
-            { serialisedBindings,
+            { serializedBindings,
               modified,
               requireReturns: this.requireReturns,
               requireStatistics,
@@ -1337,17 +1245,17 @@ export default class Serialiser {
 
         // filter included variables to only include those that are different
         let factoryNames: Array<string> = [];
-        let sameSerialisedBindings = Object.create(null);
+        let sameSerializedBindings = Object.create(null);
         for (let name in names) {
           let isDifferent = false;
           let lastBinding;
 
-          for (let { serialisedBindings } of instances) {
-            let serialisedBinding = serialisedBindings[name];
-            invariant(!serialisedBinding.modified);
+          for (let { serializedBindings } of instances) {
+            let serializedBinding = serializedBindings[name];
+            invariant(!serializedBinding.modified);
             if (!lastBinding) {
-              lastBinding = serialisedBinding;
-            } else if (!AreSameSerialisedBindings(serialisedBinding, lastBinding)) {
+              lastBinding = serializedBinding;
+            } else if (!AreSameSerializedBindings(serializedBinding, lastBinding)) {
               isDifferent = true;
               break;
             }
@@ -1357,7 +1265,7 @@ export default class Serialiser {
             factoryNames.push(name);
           } else {
             invariant(lastBinding);
-            sameSerialisedBindings[name] = { serialisedValue: lastBinding.serialisedValue };
+            sameSerializedBindings[name] = { serializedValue: lastBinding.serializedValue };
           }
         }
         //
@@ -1373,9 +1281,9 @@ export default class Serialiser {
 
         traverse(
           t.file(t.program([factoryNode])),
-          closureRefReplacer,
+          ClosureRefReplacer,
           null,
-          { serialisedBindings: sameSerialisedBindings,
+          { serializedBindings: sameSerializedBindings,
             modified,
             requireReturns: this.requireReturns,
             requireStatistics,
@@ -1385,9 +1293,9 @@ export default class Serialiser {
         //
 
         for (let instance of instances) {
-          let { functionValue, serialisedBindings } = instance;
+          let { functionValue, serializedBindings } = instance;
           let id = this._getValIdForReference(functionValue);
-          let flatArgs: Array<BabelNodeExpression> = factoryNames.map((name) => serialisedBindings[name].serialisedValue);
+          let flatArgs: Array<BabelNodeExpression> = factoryNames.map((name) => serializedBindings[name].serializedValue);
           let node;
           if (usesThis) {
             let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
@@ -1433,13 +1341,13 @@ export default class Serialiser {
   }
 
   _getContext(reasons: Array<string>) {
-    // TODO: Values serialised by nested generators would currently only get defined
+    // TODO: Values serialized by nested generators would currently only get defined
     // along the code of the nested generator; their definitions need to get hoisted
     // or repeated so that they are accessible and defined from all using scopes
     let bodies;
     return {
       reasons,
-      serialiseValue: this.serialiseValue.bind(this),
+      serializeValue: this.serializeValue.bind(this),
       startBody: () => {
         if (bodies === undefined) bodies = [];
         bodies.push(this.body);
@@ -1470,11 +1378,11 @@ export default class Serialiser {
   }
 
   _emitGenerator(generator: Generator) {
-    generator.serialise(this.body, this._getContext(["Root generator"]));
+    generator.serialize(this.body, this._getContext(["Root generator"]));
     invariant(this.delayedKeyedSerialisations.size === 0);
   }
 
-  serialise(filename: string, code: string, sourceMaps: boolean): { anyHeapChanges?: boolean, generated?: { code: string, map?: string } } {
+  serialize(filename: string, code: string, sourceMaps: boolean): { anyHeapChanges?: boolean, generated?: { code: string, map?: string } } {
     let realm = this.realm;
 
     this.require = this.tryQuery(() => Get(realm, realm.$GlobalObject, "require"), realm.intrinsics.undefined, false);
@@ -1484,7 +1392,7 @@ export default class Serialiser {
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
-    // TODO serialise symbols
+    // TODO serialize symbols
     // for (let symbol of globalObj.symbols.keys());
 
     // TODO add timers
@@ -1492,9 +1400,9 @@ export default class Serialiser {
     // TODO add event listeners
 
     this._resolveRequireReturns();
-    if (this.initialiseMoreModules) {
+    if (this.initializeMoreModules) {
       // Note: This may mutate heap state, and render
-      if (this._initialiseMoreModules()) return { anyHeapChanges: true };
+      if (this._initializeMoreModules()) return { anyHeapChanges: true };
     }
     this._spliceFunctions();
 
@@ -1751,15 +1659,15 @@ export default class Serialiser {
     this.collectValToRefCountOnly = true;
     while (anyHeapChanges) {
       this.valToRefCount = new Map();
-      anyHeapChanges = !!this.serialise(filename, code, sourceMaps).anyHeapChanges;
+      anyHeapChanges = !!this.serialize(filename, code, sourceMaps).anyHeapChanges;
       if (this._hasErrors) return undefined;
       this._resetSerializeStates();
-      this.initialiseMoreModules = false; // no need to do it again
+      this.initializeMoreModules = false; // no need to do it again
     }
     this.collectValToRefCountOnly = false;
-    let serialised = this.serialise(filename, code, sourceMaps);
-    invariant(!serialised.anyHeapChanges);
+    let serialized = this.serialize(filename, code, sourceMaps);
+    invariant(!serialized.anyHeapChanges);
     invariant(!this._hasErrors);
-    return serialised.generated;
+    return serialized.generated;
   }
 }
