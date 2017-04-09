@@ -11,7 +11,7 @@
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
 import { Realm, ExecutionContext } from "./realm.js";
-import type { RealmOptions, Descriptor } from "./types.js";
+import type { RealmOptions, Descriptor, PropertyBinding } from "./types.js";
 import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, ToStringPartial, Get, InstanceofOperator } from "./methods/index.js";
 import { Completion, AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "./completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, StringValue, NativeFunctionValue, UndefinedValue } from "./values/index.js";
@@ -515,10 +515,10 @@ export default class Serializer {
     return false;
   }
 
-  addProperties(name: string, val: ObjectValue, ignoreEmbedded: boolean, reasons: Array<string>) {
+  addProperties(name: string, val: ObjectValue, ignoreEmbedded: boolean, reasons: Array<string>, alternateProperties: ?Map<string, PropertyBinding>) {
     let descriptors = [];
 
-    for (let [key, propertyBinding] of val.properties) {
+    for (let [key, propertyBinding] of alternateProperties || val.properties) {
       invariant(propertyBinding);
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; //deleted
@@ -827,10 +827,16 @@ export default class Serializer {
     let realm = this.realm;
     let elems = [];
 
+    let remainingProperties = new Map();
+    for (let [k, v] of val.properties) {
+      remainingProperties.set(k, v);
+    }
+
     // An array's length property cannot be redefined, so this won't run user code
     let len = ToLength(realm, Get(realm, val, "length"));
     for (let i = 0; i < len; i++) {
       let key = i + "";
+      remainingProperties.delete(key);
       let elem;
       if (HasProperty(realm, val, key)) {
         let elemVal: void | Value = this.tryQuery(() => Get(realm, val, key), undefined, true);
@@ -866,7 +872,7 @@ export default class Serializer {
       elems.push(elem);
     }
 
-    this.addProperties(name, val, true, reasons);
+    this.addProperties(name, val, false, reasons, remainingProperties);
     return t.arrayExpression(elems);
   }
 
