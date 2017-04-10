@@ -190,7 +190,7 @@ type SerialisedBindings = { [key: string]: SerialisedBinding };
 type SerialisedBinding = {
   serialisedValue: BabelNodeExpression;
   value?: Value;
-  referentialised?: boolean;
+  referentialized?: boolean;
   modified?: boolean;
 }
 
@@ -210,7 +210,7 @@ class BodyReference {
 }
 
 export default class Serialiser {
-  constructor(opts: RealmOptions = {}, initialiseMoreModules: boolean = true) {
+  constructor(opts: RealmOptions = {}, initializeMoreModules: boolean = true) {
     this.origOpts = opts;
     this.realm = new Realm(opts);
     invariant(this.realm.isPartial);
@@ -222,7 +222,7 @@ export default class Serialiser {
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
 
-    this.initialiseMoreModules = initialiseMoreModules;
+    this.initializeMoreModules = initializeMoreModules;
     this.requiredModules = new Set();
     this._resetSerializeStates();
   }
@@ -277,7 +277,7 @@ export default class Serialiser {
   needsEmptyVar: boolean;
   require: Value;
   requireReturns: Map<number | string, BabelNodeExpression>;
-  initialiseMoreModules: boolean;
+  initializeMoreModules: boolean;
   uidCounter: number;
 
   _getBodyReference() {
@@ -560,7 +560,7 @@ export default class Serialiser {
         let uid = this._getValIdForReference(val);
         if (this.realm.compatibility !== "jsc")
           this.body.push(t.expressionStatement(t.callExpression(
-            this.preludeGenerator.memoiseReference("Object.setPrototypeOf"),
+            this.preludeGenerator.memoizeReference("Object.setPrototypeOf"),
             [uid, serialisedProto]
           )));
         else {
@@ -644,7 +644,7 @@ export default class Serialiser {
       if (t.isIdentifier(keyRaw)) keyRaw = t.stringLiteral(((keyRaw: any): BabelNodeIdentifier).name);
 
       this.body.push(t.expressionStatement(t.callExpression(
-        this.preludeGenerator.memoiseReference("Object.defineProperty"),
+        this.preludeGenerator.memoizeReference("Object.defineProperty"),
         [uid, keyRaw, descriptorId]
       )));
     }
@@ -1107,21 +1107,21 @@ export default class Serialiser {
       if (value) {
         let id = this.serialiseValue(value, ["global let binding"], true, "let");
         // increment ref count one more time as the value has been
-        // referentialised (stored in a variable) by serialiseValue
+        // referentialized (stored in a variable) by serialiseValue
         this._incrementValToRefCount(value);
         return {
           serialisedValue: id,
-          modified: true, referentialised: true
+          modified: true, referentialized: true
         };
       } else {
-        return { serialisedValue: t.identifier(key), modified: true, referentialised: true };
+        return { serialisedValue: t.identifier(key), modified: true, referentialized: true };
       }
     } else {
-      return { serialisedValue: t.stringLiteral(key), modified: true, referentialised: true };
+      return { serialisedValue: t.stringLiteral(key), modified: true, referentialized: true };
     }
   }
 
-  _initialiseMoreModules() {
+  _initializeMoreModules() {
     // partially evaluate all factory methods by calling require
     let realm = this.realm;
     let anyHeapChanges = false;
@@ -1271,13 +1271,13 @@ export default class Serialiser {
         let serialisedBindings = instance.serialisedBindings;
         for (let name in names) {
           let serialisedBinding: SerialisedBinding = serialisedBindings[name];
-          if (serialisedBinding.modified && !serialisedBinding.referentialised) {
+          if (serialisedBinding.modified && !serialisedBinding.referentialized) {
             let serialisedBindingId = t.identifier(this.generateUid());
             let declar = t.variableDeclaration("var", [
               t.variableDeclarator(serialisedBindingId, serialisedBinding.serialisedValue)]);
             getFunctionBody(instance).push(declar);
             serialisedBinding.serialisedValue = serialisedBindingId;
-            serialisedBinding.referentialised = true;
+            serialisedBinding.referentialized = true;
           }
         }
       }
@@ -1492,9 +1492,9 @@ export default class Serialiser {
     // TODO add event listeners
 
     this._resolveRequireReturns();
-    if (this.initialiseMoreModules) {
+    if (this.initializeMoreModules) {
       // Note: This may mutate heap state, and render
-      if (this._initialiseMoreModules()) return { anyHeapChanges: true };
+      if (this._initializeMoreModules()) return { anyHeapChanges: true };
     }
     this._spliceFunctions();
 
@@ -1754,7 +1754,7 @@ export default class Serialiser {
       anyHeapChanges = !!this.serialise(filename, code, sourceMaps).anyHeapChanges;
       if (this._hasErrors) return undefined;
       this._resetSerializeStates();
-      this.initialiseMoreModules = false; // no need to do it again
+      this.initializeMoreModules = false; // no need to do it again
     }
     this.collectValToRefCountOnly = false;
     let serialised = this.serialise(filename, code, sourceMaps);

@@ -66,14 +66,14 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   let compatibility = code.includes("// jsc") ? "jsc" : undefined;
   let opts = { partial: true, compatibility };
-  let initialiseMoreModules = code.includes("// initialise more modules");
+  let initializeMoreModules = code.includes("// initialize more modules");
   if (code.includes("// throws introspection error")) {
     let onError = (realm, e) => {
       if (IsIntrospectionError(realm, e))
         throw new Success();
     };
     try {
-      let serialised = new Serialiser(opts, initialiseMoreModules).init(name, code, "", false, onError);
+      let serialised = new Serialiser(opts, initializeMoreModules).init(name, code, "", false, onError);
       if (!serialised) {
         console.log(chalk.red("Error during serialisation"));
       } else {
@@ -87,7 +87,7 @@ function runTest(name: string, code: string): boolean {
     return false;
   } else if (code.includes("// no effect")) {
     try {
-      let serialised = new Serialiser(opts, initialiseMoreModules).init(name, code);
+      let serialised = new Serialiser(opts, initializeMoreModules).init(name, code);
       if (!serialised) {
         console.log(chalk.red("Error during serialisation!"));
         return false;
@@ -123,7 +123,7 @@ function runTest(name: string, code: string): boolean {
       let max = 4;
       let oldCode = code;
       for (; i < max; i++) {
-        let serialised = new Serialiser(opts, initialiseMoreModules).init(name, oldCode);
+        let serialised = new Serialiser(opts, initializeMoreModules).init(name, oldCode);
         if (!serialised) {
           console.log(chalk.red("Error during serialisation!"));
           break;
