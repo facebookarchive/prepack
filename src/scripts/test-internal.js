@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import Serialiser from "../serialiser.js";
+import Serializer from "../serializer.js";
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -41,9 +41,9 @@ let tests = search(`${__dirname}/../../test/internal`, "test/internal");
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
-    let serialised = new Serialiser({ partial: true, compatibility: "jsc", mathRandomSeed: "0" }).init(name, code, "", false);
-    if (!serialised) {
-      console.log(chalk.red("Error during serialisation"));
+    let serialized = new Serializer({ partial: true, compatibility: "jsc", mathRandomSeed: "0" }).init(name, code, "", false);
+    if (!serialized) {
+      console.log(chalk.red("Error during serialization"));
       return false;
     } else {
       return true;

@@ -19,15 +19,15 @@ import * as t from "babel-types";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeStatement, BabelNodeMemberExpression } from "babel-types";
 
-export type SerialisationContext = {
+export type SerializationContext = {
   reasons: Array<string>;
-  serialiseValue: Value => BabelNodeExpression;
+  serializeValue: Value => BabelNodeExpression;
   startBody: () => Array<BabelNodeStatement>;
   endBody: Array<BabelNodeStatement> => void;
   announceDeclaredDerivedId: BabelNodeIdentifier => void;
 }
 
-export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerialisationContext) => BabelNodeStatement;
+export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
 export type BodyEntry = {
   declaresDerivedId?: BabelNodeIdentifier;
@@ -198,9 +198,9 @@ export class Generator {
     return res;
   }
 
-  serialise(body: Array<BabelNodeStatement>, context: SerialisationContext) {
+  serialize(body: Array<BabelNodeStatement>, context: SerializationContext) {
     for (let bodyEntry of this.body) {
-      let nodes = bodyEntry.args.map((boundArg, i) => context.serialiseValue(boundArg, context.reasons));
+      let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg, context.reasons));
       body.push(bodyEntry.buildNode(nodes, context));
       let id = bodyEntry.declaresDerivedId;
       if (id !== undefined) context.announceDeclaredDerivedId(id);

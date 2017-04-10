@@ -281,24 +281,24 @@ export default class ObjectValue extends ConcreteValue {
     return keyArray;
   }
 
-  _serialise(set: Function, stack: Map<Value, any>): any {
+  _serialize(set: Function, stack: Map<Value, any>): any {
     let obj = set({});
 
     for (let [key, propertyBinding] of this.properties) {
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; // deleted
       ThrowIfMightHaveBeenDeleted(desc.value);
-      let serialisedDesc: any = { enumerable: desc.enumerable, configurable: desc.configurable };
+      let serializedDesc: any = { enumerable: desc.enumerable, configurable: desc.configurable };
       if (desc.value) {
-        serialisedDesc.writable = desc.writable;
-        serialisedDesc.value = desc.value.serialise(stack);
+        serializedDesc.writable = desc.writable;
+        serializedDesc.value = desc.value.serialize(stack);
       } else {
         invariant(desc.get !== undefined);
-        serialisedDesc.get = desc.get.serialise(stack);
+        serializedDesc.get = desc.get.serialize(stack);
         invariant(desc.set !== undefined);
-        serialisedDesc.set = desc.set.serialise(stack);
+        serializedDesc.set = desc.set.serialize(stack);
       }
-      Object.defineProperty(obj, key, serialisedDesc);
+      Object.defineProperty(obj, key, serializedDesc);
     }
     return obj;
   }
