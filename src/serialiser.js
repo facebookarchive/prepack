@@ -24,6 +24,7 @@ import generate from "babel-generator";
 import traverse from "babel-traverse";
 import invariant from "./invariant.js";
 import * as base62 from "base62";
+import { BabelTraversePath } from "babel-traverse";
 
 function isSameNode(left, right) {
   let type = left.type;
@@ -64,7 +65,7 @@ function shouldVisit(node, data) {
 //       If necessary we could implement this by following node.parentPath and checking
 //       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
 let closureRefReplacer = {
-  ReferencedIdentifier(path, state) {
+  ReferencedIdentifier(path: BabelTraversePath, state) {
     if (ignorePath(path)) return;
 
     let serialisedBindings = state.serialisedBindings;
@@ -78,7 +79,7 @@ let closureRefReplacer = {
     }
   },
 
-  CallExpression(path, state) {
+  CallExpression(path: BabelTraversePath, state) {
     // Here we apply the require optimization by replacing require calls with their
     // corresponding initialized modules.
     let requireReturns = state.requireReturns;
@@ -95,7 +96,7 @@ let closureRefReplacer = {
     }
   },
 
-  "AssignmentExpression|UpdateExpression"(path, state) {
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state) {
     let serialisedBindings = state.serialisedBindings;
     let ids = path.getBindingIdentifierPaths();
 
@@ -123,14 +124,14 @@ function visitName(state, name, modified) {
   if (modified) state.functionInfo.modified[name] = true;
 }
 
-function ignorePath(path) {
+function ignorePath(path: BabelTraversePath) {
   let parent = path.parent;
   return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
 }
 
 // TODO doesn't check that `arguments` and `this` is in top function
 let closureRefVisitor = {
-  ReferencedIdentifier(path, state) {
+  ReferencedIdentifier(path: BabelTraversePath, state) {
     if (ignorePath(path)) return;
 
     let innerName = path.node.name;
@@ -142,11 +143,11 @@ let closureRefVisitor = {
     visitName(state, innerName, false);
   },
 
-  ThisExpression(path, state) {
+  ThisExpression(path: BabelTraversePath, state) {
     state.functionInfo.usesThis = true;
   },
 
-  CallExpression(path, state) {
+  CallExpression(path: BabelTraversePath, state) {
     /*
     This optimization replaces requires to initialized modules with their return
     values. It does this by checking whether the require call has any side effects
@@ -164,7 +165,7 @@ let closureRefVisitor = {
     state.requiredModules.add(moduleId);
   },
 
-  "AssignmentExpression|UpdateExpression"(path, state) {
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state) {
     for (let name in path.getBindingIdentifiers()) {
       if (path.scope.hasBinding(name, /*noGlobals*/true)) continue;
       visitName(state, name, true);
