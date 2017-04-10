@@ -1,5 +1,5 @@
 // does not contain:r(0)
-// initialise more modules
+// initialize more modules
 
 var modules = Object.create(null);
 
