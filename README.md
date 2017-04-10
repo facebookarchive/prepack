@@ -121,7 +121,7 @@ becomes
 ## Status
 
 - [test262 status on master branch](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/test262-status.txt?branch=master)
-- [code coverage report for serialisation tests](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/coverage-report-sourcemapped/index.html?branch=master)
+- [code coverage report for serialization tests](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/coverage-report-sourcemapped/index.html?branch=master)
 - To see the status for a pull request, look for the message *All checks have passed* or *All checks have failed*. Click on *Show all checks*, *Details*, *Artifacts*, and then *test262-status.txt* or *coverage-report-sourcemapped/index.html*.
 
 ## Roadmap
@@ -154,8 +154,8 @@ becomes
 2. `npm test`
 
 You can run individual test suites as follows.
-- `npm run test-serialiser`  
-  This tests the interpreter and serialiser. All tests should pass.
+- `npm run test-serializer`  
+  This tests the interpreter and serializer. All tests should pass.
 - `npm run test-test262`  
   This tests conformance against the test262 suite. Not all will pass, increasing conformance is work in progress.
 

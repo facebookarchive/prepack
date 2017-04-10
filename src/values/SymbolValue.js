@@ -20,7 +20,7 @@ export default class SymbolValue extends PrimitiveValue {
 
   $Description: ?string;
 
-  _serialise(): Symbol {
+  _serialize(): Symbol {
     return Symbol(this.$Description);
   }
 }

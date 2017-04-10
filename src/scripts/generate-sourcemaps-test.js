@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import Serialiser from "../serialiser.js";
+import Serializer from "../serializer.js";
 import invariant from "../invariant.js";
 
 let chalk = require("chalk");
@@ -43,7 +43,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
   console.log(chalk.inverse(name));
   let newCode1, newMap1, newCode2, newMap2;
   try {
-    let s = new Serialiser({ partial: true }).init(test_path, code, "", true);
+    let s = new Serializer({ partial: true }).init(test_path, code, "", true);
     if (!s) {
       process.exit(1);
       invariant(false);
@@ -52,7 +52,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
     fs.writeFileSync(name + ".new1.js", newCode1);
     newMap1 = s.map;
     fs.writeFileSync(name + ".new1.js.map", JSON.stringify(newMap1));
-    s = new Serialiser({ partial: true, compatibility: "node" }).init(
+    s = new Serializer({ partial: true, compatibility: "node" }).init(
       test_path, newCode1, JSON.stringify(newMap1), true);
     if (!s) {
       process.exit(1);

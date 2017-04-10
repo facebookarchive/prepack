@@ -12,7 +12,7 @@
 import { PrimitiveValue } from "./index.js";
 
 export default class UndefinedValue extends PrimitiveValue {
-  _serialise() {
+  _serialize() {
     return undefined;
   }
 }

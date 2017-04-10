@@ -12,7 +12,7 @@
 import { PrimitiveValue } from "./index.js";
 
 export default class NullValue extends PrimitiveValue {
-  _serialise(): null {
+  _serialize(): null {
     return null;
   }
 }

@@ -11,7 +11,7 @@ const path = require('path');
 const webpack = require('webpack');
 
 const WebpackConfig = {
-    entry: "./lib/serialiser.js",
+    entry: "./lib/serializer.js",
     output: {
         path: path.join(__dirname),
         filename: "prepack.min.js",

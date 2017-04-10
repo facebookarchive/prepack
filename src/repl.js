@@ -17,9 +17,9 @@ import { Value, ObjectValue } from "./values/index.js";
 // $FlowFixMe: Why does Flow not know about this Node module?
 let repl = require("repl");
 
-function serialise(realm: Realm, res: Value | AbruptCompletion): any {
+function serialize(realm: Realm, res: Value | AbruptCompletion): any {
   if (res && res instanceof Value) {
-    return res.serialise();
+    return res.serialize();
   }
 
   if (res && res instanceof ThrowCompletion) {
@@ -53,7 +53,7 @@ repl.start({
   eval(code, context, filename, callback) {
     try {
       let res = realm.$GlobalEnv.execute(code, "repl");
-      res = serialise(realm, res);
+      res = serialize(realm, res);
       if (res instanceof Error) {
         callback(res);
       } else {

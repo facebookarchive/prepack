@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Compatibility } from "./types.js";
-import Serialiser from "./serialiser.js";
+import Serializer from "./serializer.js";
 import invariant from "./invariant.js";
 
 let chalk     = require("chalk");
@@ -130,12 +130,12 @@ function dump(name: string, raw: string, min: string = raw, compatibility?: "bro
   let beforeStats = line("Before", min, compatibility);
 
   let start = Date.now();
-  let serialised = new Serialiser({ partial: true, compatibility }).init(name, raw);
-  if (!serialised) {
+  let serialized = new Serializer({ partial: true, compatibility }).init(name, raw);
+  if (!serialized) {
     process.exit(1);
     invariant(false);
   }
-  let code  = serialised.code;
+  let code  = serialized.code;
   let total = Date.now() - start;
 
   if (code.length >= 1000 || outputFilename) {

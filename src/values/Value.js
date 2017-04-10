@@ -97,22 +97,22 @@ export default class Value {
     throw new Error("abstract method; please override");
   }
 
-  serialise(stack: Map<Value, any> = new Map()): any {
+  serialize(stack: Map<Value, any> = new Map()): any {
     if (stack.has(this)) {
       return stack.get(this);
-    } else if (this._serialise) {
+    } else if (this._serialize) {
       let set = (val) => {
         stack.set(this, val);
         return val;
       };
 
-      return set(this._serialise(set, stack));
+      return set(this._serialize(set, stack));
     } else {
-      throw new Error("can't serialise this type");
+      throw new Error("can't serialize this type");
     }
   }
 
-  _serialise(set: Function, stack: Map<Value, any>): any {
+  _serialize(set: Function, stack: Map<Value, any>): any {
     throw new Error("abstract method; please override");
   }
 
