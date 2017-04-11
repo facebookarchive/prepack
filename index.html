@@ -23,7 +23,107 @@
     </header>
 
     <div class="content content-container">
-      CONTENT
+      <h2>What is Prepack?</h2>
+      <p>
+        Prepack is a partial evaluator for JavaScript. It rewrites a JavaScript bundle, optimizing the initialization code.
+      </p>
+      <h2>How does it work?</h2>
+      <p>
+        Prepack fully evaluates the initialization code in a JavaScript bundle and persists the resulting initialized heap as straightforward JavaScript code that efficiently rebuilds the heap without creating any temporary objects or values. The code for any functions that are referenced by the initialization code and are reachable from the initialized heap is retained in the residual program. Prepack may speculatively partially evaluate such residual functions, in particular residual module   factory functions.
+      </p>
+      <p>
+        <a href="/repl.html">Try it yourself!</a>
+      </p>
+      <h2>Examples!</h2>
+      <h3>Hello World</h3>
+      <pre>
+      (function () {
+        function hello() { return 'hello'; }
+        function world() { return 'world'; }
+        global.s = hello() + ' ' + world();
+      })();
+      </pre>
+      becomes
+      </pre>
+      (function () {
+        s = "hello world";
+      })();
+      </pre>
+      <h3>Fibonacci</h3>
+      <pre>
+      (function () {
+        function fibonacci(x) {
+          return x <= 1 ? x : fibonacci(x - 1) + fibonacci(x - 2);
+        }
+        global.x = fibonacci(23);
+      })();
+      </pre>
+      becomes
+      <pre>
+      (function () {
+        x = 28657;
+      })();
+      </pre>
+      <h3>Module Initialization</h3>
+      <pre>
+      (function () {
+        let moduleTable = {};
+        function define(id, f) { moduleTable[id] = f; }
+        function require(id) {
+          let x = moduleTable[id];
+          return x instanceof Function ? (moduleTable[id] = x()) : x;
+        }
+        global.require = require;
+        define("one", function() { return 1; }, "one");
+        define("two", function() { return require("one") + require("one"); });
+        define("three", function() { return require("two") + require("one"); });
+        define("four", function() { return require("three") + require("one"); });
+      })();
+      three = require("three");
+      </pre>
+      becomes
+      <pre>
+      (function () {
+        function _2() {
+          return 3 + 1;
+        }
+
+        var _1 = {
+          one: 1,
+          two: 2,
+          three: 3,
+          four: _2
+        };
+
+        function _0(id) {
+          let x = _1[id];
+          return x instanceof Function ? _1[id] = x() : x;
+        }
+
+        require = _0;
+        three = 3;
+      })();
+      </pre>
+      Note how most computations have been pre-initialized. However, the function that computes four (_2) remains in the residual program.
+      <h3>Environment Interactions and Branching</h3>
+      <pre>
+      (function(){
+        function fib(x) { return x <= 1 ? x : fib(x - 1) + fib(x - 2); }
+        let x = Date.now();
+        if (x === 0) x = fib(10);
+        global.result = x;
+      })();
+      </pre>
+      becomes
+      <pre>
+      (function () {
+        var _0 = Date.now();
+        if (typeof _0 !== "number") {
+          throw new Error("Prepack model invariant violation");
+        }
+        result = _0 === 0 ? 55 : _0;
+      })();
+      </pre>
     </div>
   </body>
 </html>
