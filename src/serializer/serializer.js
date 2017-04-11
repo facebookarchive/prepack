@@ -9,22 +9,24 @@
 
 /* @flow */
 
-import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
-import { Realm, ExecutionContext } from "./realm.js";
-import type { RealmOptions, Descriptor, PropertyBinding } from "./types.js";
-import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, ToStringPartial, Get, InstanceofOperator } from "./methods/index.js";
-import { Completion, AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "./completions.js";
-import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, StringValue, NativeFunctionValue, UndefinedValue } from "./values/index.js";
-import { describeLocation } from "./intrinsics/ecma262/Error.js";
+import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
+import { Realm, ExecutionContext } from "../realm.js";
+import type { RealmOptions, Descriptor, PropertyBinding } from "../types.js";
+import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, ToStringPartial, Get, InstanceofOperator } from "../methods/index.js";
+import { Completion, AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
+import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, StringValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
+import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelNodeCallExpression, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
-import { Generator, PreludeGenerator } from "./utils/generator.js";
+import { Generator, PreludeGenerator } from "../utils/generator.js";
 import generate from "babel-generator";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
-import invariant from "./invariant.js";
+import invariant from "../invariant.js";
 import * as base62 from "base62";
-import { BabelTraversePath } from "babel-traverse";
+import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance } from "./types.js";
+import { BodyReference, AreSameSerializedBindings } from "./types.js";
+import { ClosureRefVisitor, ClosureRefReplacer } from "./visitors.js";
 
 function isSameNode(left, right) {
   let type = left.type;
@@ -48,169 +50,7 @@ function isSameNode(left, right) {
   return false;
 }
 
-function markVisited(node, data) {
-  node._renamedOnce = data;
-}
-
-function shouldVisit(node, data) {
-  return node._renamedOnce !== data;
-}
-
-// replaceWith causes the node to be re-analysed, so to prevent double replacement
-// we add this property on the node to mark it such that it does not get replaced
-// again on this pass
-// TODO: Make this work when replacing with arbitrary BabelNodeExpressions. Currently
-//       if the node that we're substituting contains identifiers as children,
-//       they will be visited again and possibly transformed.
-//       If necessary we could implement this by following node.parentPath and checking
-//       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
-let closureRefReplacer = {
-  ReferencedIdentifier(path: BabelTraversePath, state) {
-    if (ignorePath(path)) return;
-
-    let serializedBindings = state.serializedBindings;
-    let innerName = path.node.name;
-    if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
-
-    let serializedBinding = serializedBindings[innerName];
-    if (serializedBinding && shouldVisit(path.node, serializedBindings)) {
-      markVisited(serializedBinding.serializedValue, serializedBindings);
-      path.replaceWith(serializedBinding.serializedValue);
-    }
-  },
-
-  CallExpression(path: BabelTraversePath, state) {
-    // Here we apply the require optimization by replacing require calls with their
-    // corresponding initialized modules.
-    let requireReturns = state.requireReturns;
-    if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
-    state.requireStatistics.count++;
-    if (state.modified[path.node.callee.name]) return;
-
-    let moduleId = path.node.arguments[0].value;
-    let new_node = requireReturns.get(moduleId);
-    if (new_node !== undefined) {
-      markVisited(new_node, state.serializedBindings);
-      path.replaceWith(new_node);
-      state.requireStatistics.replaced++;
-    }
-  },
-
-  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state) {
-    let serializedBindings = state.serializedBindings;
-    let ids = path.getBindingIdentifierPaths();
-
-    for (let innerName in ids) {
-      let nestedPath = ids[innerName];
-      if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
-
-      let serializedBinding = serializedBindings[innerName];
-      if (serializedBinding && shouldVisit(nestedPath.node, serializedBindings)) {
-        markVisited(serializedBinding.serializedValue, serializedBindings);
-        nestedPath.replaceWith(serializedBinding.serializedValue);
-      }
-    }
-  }
-};
-
-function visitName(state, name, modified) {
-  let doesNotMatter = true;
-  let ref = state.serializer.tryQuery(
-    () => ResolveBinding(state.realm, name, doesNotMatter, state.val.$Environment),
-    undefined, true);
-  if (ref === undefined) return;
-  if (IsUnresolvableReference(state.realm, ref)) return;
-  state.map[name] = true;
-  if (modified) state.functionInfo.modified[name] = true;
-}
-
-function ignorePath(path: BabelTraversePath) {
-  let parent = path.parent;
-  return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
-}
-
-// TODO doesn't check that `arguments` and `this` is in top function
-let closureRefVisitor = {
-  ReferencedIdentifier(path: BabelTraversePath, state) {
-    if (ignorePath(path)) return;
-
-    let innerName = path.node.name;
-    if (innerName === "arguments") {
-      state.functionInfo.usesArguments = true;
-      return;
-    }
-    if (path.scope.hasBinding(innerName, /*noGlobals*/true)) return;
-    visitName(state, innerName, false);
-  },
-
-  ThisExpression(path: BabelTraversePath, state) {
-    state.functionInfo.usesThis = true;
-  },
-
-  CallExpression(path: BabelTraversePath, state) {
-    /*
-    This optimization replaces requires to initialized modules with their return
-    values. It does this by checking whether the require call has any side effects
-    (e.g. modifications to the global module table). Conceptually if a call has
-    no side effects, it should be safe to replace with its return value.
-
-    This optimization is not safe in general because it allows for reads to mutable
-    global state, but in the case of require, the return value is guaranteed to always
-    be the same regardless of that global state modification (because we should
-    only be reading from the global module table).
-    */
-    if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
-
-    let moduleId = path.node.arguments[0].value;
-    state.requiredModules.add(moduleId);
-  },
-
-  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state) {
-    for (let name in path.getBindingIdentifiers()) {
-      if (path.scope.hasBinding(name, /*noGlobals*/true)) continue;
-      visitName(state, name, true);
-    }
-  }
-};
-
-type FunctionInstance = {
-  serializedBindings: SerializedBindings;
-  functionValue: FunctionValue;
-  bodyReference?: BodyReference;
-};
-
-type FunctionInfo = {
-  names: { [key: string]: true };
-  modified: { [key: string]: true };
-  instances: Array<FunctionInstance>;
-  usesArguments: boolean;
-  usesThis: boolean;
-}
-
-type SerializedBindings = { [key: string]: SerializedBinding };
-type SerializedBinding = {
-  serializedValue: BabelNodeExpression;
-  value?: Value;
-  referentialized?: boolean;
-  modified?: boolean;
-}
-
-function AreSameSerializedBindings(x, y) {
-  if (x.serializedValue === y.serializedValue) return true;
-  if (x.value && x.value === y.value) return true;
-  return false;
-}
-
-class BodyReference {
-  constructor(body: Array<BabelNodeStatement>, index: number) {
-    this.body = body;
-    this.index = index;
-  }
-  body: Array<BabelNodeStatement>;
-  index: number;
-}
-
-export default class Serializer {
+export class Serializer {
   constructor(opts: RealmOptions = {}, initializeMoreModules: boolean = true) {
     this.origOpts = opts;
     this.realm = new Realm(opts);
@@ -910,7 +750,7 @@ export default class Serializer {
       };
       this.functions.set(val.$ECMAScriptCode, functionInfo);
 
-      let state = { serializer: this, val, reasons, name, functionInfo,
+      let state = { tryQuery: this.tryQuery.bind(this), val, reasons, name, functionInfo,
         map: functionInfo.names, realm: this.realm,
         requiredModules: this.requiredModules,
         isRequire: this._getIsRequire(val.$FormalParameters, [val]) };
@@ -925,7 +765,7 @@ export default class Serializer {
             )
           )
         ])),
-        closureRefVisitor,
+        ClosureRefVisitor,
         null,
         state
       );
@@ -1322,7 +1162,7 @@ export default class Serializer {
 
           traverse(
             t.file(t.program([funcNode])),
-            closureRefReplacer,
+            ClosureRefReplacer,
             null,
             { serializedBindings,
               modified,
@@ -1380,7 +1220,7 @@ export default class Serializer {
 
         traverse(
           t.file(t.program([factoryNode])),
-          closureRefReplacer,
+          ClosureRefReplacer,
           null,
           { serializedBindings: sameSerializedBindings,
             modified,

@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Compatibility } from "./types.js";
-import Serializer from "./serializer.js";
+import Serializer from "./serializer/index.js";
 import invariant from "./invariant.js";
 
 let chalk     = require("chalk");
