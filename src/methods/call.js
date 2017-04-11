@@ -32,7 +32,7 @@ import {
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
-import { ThrowCompletion, ReturnCompletion, AbruptCompletion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion, ComposedPossiblyNormalCompletion } from "../completions.js";
+import { ThrowCompletion, ReturnCompletion, AbruptCompletion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -308,9 +308,6 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
       if (e !== undefined) realm.apply_effects(e);
       return Value.throwIntrospectionError(c.joinCondition);
     } else if (c instanceof ComposedAbruptCompletion) {
-      if (e !== undefined) realm.apply_effects(e);
-      return c.throwIntrospectionError();
-    } else if (c instanceof ComposedPossiblyNormalCompletion) {
       if (e !== undefined) realm.apply_effects(e);
       return c.throwIntrospectionError();
     } else if (c instanceof PossiblyNormalCompletion) {
