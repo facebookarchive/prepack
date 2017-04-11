@@ -24,7 +24,7 @@ import generate from "babel-generator";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import * as base62 from "base62";
-import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance } from "./types.js";
+import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
 import { BodyReference, AreSameSerializedBindings } from "./types.js";
 import { ClosureRefVisitor, ClosureRefReplacer } from "./visitors.js";
 
@@ -51,9 +51,8 @@ function isSameNode(left, right) {
 }
 
 export class Serializer {
-  constructor(opts: RealmOptions = {}, initializeMoreModules: boolean = true) {
-    this.origOpts = opts;
-    this.realm = new Realm(opts);
+  constructor(realmOptions: RealmOptions = {}, serializerOptions: SerializerOptions = {}) {
+    this.realm = new Realm(realmOptions);
     invariant(this.realm.isPartial);
 
     let realmGenerator = this.realm.generator;
@@ -63,7 +62,8 @@ export class Serializer {
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
 
-    this.initializeMoreModules = initializeMoreModules;
+    this.initializeMoreModules = !!serializerOptions.initializeMoreModules;
+    this.internalDebug = !!serializerOptions.internalDebug;
     this.requiredModules = new Set();
     this._resetSerializeStates();
   }
@@ -93,7 +93,6 @@ export class Serializer {
     [filename: string]: Array<string>
   };
 
-  origOpts: RealmOptions;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, SerializedBindings>;
   serializationStack: Array<Value>;
   delayedSerializations: Array<() => void>;
@@ -120,6 +119,7 @@ export class Serializer {
   requireReturns: Map<number | string, BabelNodeExpression>;
   initializeMoreModules: boolean;
   uidCounter: number;
+  internalDebug: boolean;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -214,7 +214,7 @@ export class Serializer {
   logCompletion(res: Completion) {
     let realm = this.realm;
     let value = res.value;
-    console.error(`=== ${res.constructor.name} ===`);
+    if (this.internalDebug) console.error(`=== ${res.constructor.name} ===`);
     if (this.tryQuery(() => value instanceof ObjectValue && InstanceofOperator(realm, value, realm.intrinsics.Error), false, false)) {
       let object = ((value: any): ObjectValue);
       try {
@@ -222,7 +222,7 @@ export class Serializer {
         err.stack = this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "stack")), "(unknown stack)", false);
         console.error(err.message);
         console.error(err.stack);
-        if (res instanceof ThrowCompletion) console.error(res.nativeStack);
+        if (this.internalDebug && res instanceof ThrowCompletion) console.error(res.nativeStack);
       } catch (err) {
         let message = object.properties.get("message");
         console.error((message && message.descriptor && message.descriptor.value instanceof StringValue) ? message.descriptor.value.value : "(no message available)");
@@ -236,7 +236,7 @@ export class Serializer {
         value = err.message;
       }
       console.error(value);
-      if (res instanceof ThrowCompletion) console.error(res.nativeStack);
+      if (this.internalDebug && res instanceof ThrowCompletion) console.error(res.nativeStack);
     }
     this._hasErrors = true;
   }
