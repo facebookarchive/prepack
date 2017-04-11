@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
+import { IntrospectionThrowCompletion } from "../completions.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { ObjectValue, AbstractValue, ConcreteValue, Value } from "../values/index.js";
@@ -56,9 +57,15 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
   let [compl2, gen2, bindings2, properties2, createdObj2] =
     realm.partially_evaluate_node(ast.right, strictCode, env);
 
+  if (compl2 instanceof IntrospectionThrowCompletion) {
+    realm.restoreBindings(bindings2);
+    realm.restoreProperties(properties2);
+    throw compl2;
+  }
   // todo: don't just give up on abrupt completions, but try to join states
   // eg. foo || throwSomething()
-  if (!(compl2 instanceof Value)) Value.throwIntrospectionError(lval);
+  if (!(compl2 instanceof Value))
+    Value.throwIntrospectionError(lval);
   invariant(compl2 instanceof Value);
 
   // Join the effects, creating an abstract view of what happened, regardless
