@@ -39,6 +39,26 @@
         At the core of Prepack is an almost ECMAScript 5 compatible interpreter. 
         Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code>document</code> or <code>window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code>undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
       </p>
+      <p>The following helper functions aid in writing models.
+      <pre>
+        // Assume that a certain property has a simple known value.
+        __assumeDataProperty(global, "obscure", undefined);
+        // Assume that a certain property has a simple unknown value.
+        __assumeDataProperty(global, "notSoObscure", __abstract());
+        // Assume that a richly structured value exists
+        __assumeDataProperty(global, "rich", __abstract({
+          x: __abstract("number"),
+          y: __abstract("boolean"),
+          z: __abstract("string"),
+          nested: __abstract({
+            x: __abstract()
+          })
+        }));
+        // Forbid any accesses to an object except at known positions
+        __makePartial(global);
+        // At this point, accessing global.obscure, global.notSoObscure, global.rich.nested.x is okay, 
+        // but accessing global.unknown or global.rich.unknown would cause an introspection error.
+      </pre>
       <h2>Examples!</h2>
       <h3>Hello World</h3>
       <pre>
@@ -49,7 +69,7 @@
       })();
       </pre>
       becomes
-      </pre>
+      <pre>
       (function () {
         s = "hello world";
       })();
