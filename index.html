@@ -29,10 +29,15 @@
       </p>
       <h2>How does it work?</h2>
       <p>
-        Prepack fully evaluates the initialization code in a JavaScript bundle and persists the resulting initialized heap as straightforward JavaScript code that efficiently rebuilds the heap without creating any temporary objects or values. The code for any functions that are referenced by the initialization code and are reachable from the initialized heap is retained in the residual program. Prepack may speculatively partially evaluate such residual functions, in particular residual module   factory functions.
+        Prepack fully evaluates the initialization code in a JavaScript bundle and persists the resulting initialized heap as straightforward JavaScript code that efficiently rebuilds the heap without creating any temporary objects or values. The code for any functions that are referenced by the initialization code and are reachable from the initialized heap is retained in the residual program. Prepack may speculatively partially evaluate such residual functions, in particular residual module factory functions.
       </p>
       <p>
         <a href="repl.html">Try it yourself!</a>
+      </p>
+      <h2>The Environment matters!</h2>
+      <p>
+        At the core of Prepack is an almost ECMAScript 5 compatible interpreter. 
+        Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code>document</code> or <code>window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code>undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
       </p>
       <h2>Examples!</h2>
       <h3>Hello World</h3>
