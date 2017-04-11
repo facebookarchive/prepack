@@ -12,13 +12,14 @@
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import type { RealmOptions, Descriptor, PropertyBinding } from "../types.js";
-import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, ToStringPartial, Get, InstanceofOperator } from "../methods/index.js";
-import { Completion, AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
-import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, StringValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
+import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, Get } from "../methods/index.js";
+import { Completion } from "../completions.js";
+import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
-import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelNodeCallExpression, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
+import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
 import { Generator, PreludeGenerator } from "../utils/generator.js";
+import type { SerializationContext } from "../utils/generator.js";
 import generate from "babel-generator";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
@@ -27,6 +28,8 @@ import * as base62 from "base62";
 import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
 import { BodyReference, AreSameSerializedBindings } from "./types.js";
 import { ClosureRefVisitor, ClosureRefReplacer } from "./visitors.js";
+import { Logger } from "./logger.js";
+import { Modules } from "./modules.js";
 
 function isSameNode(left, right) {
   let type = left.type;
@@ -54,6 +57,8 @@ export class Serializer {
   constructor(realmOptions: RealmOptions = {}, serializerOptions: SerializerOptions = {}) {
     this.realm = new Realm(realmOptions);
     invariant(this.realm.isPartial);
+    this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
+    this.modules = new Modules(this.realm, this.logger);
 
     let realmGenerator = this.realm.generator;
     invariant(realmGenerator);
@@ -63,8 +68,6 @@ export class Serializer {
     this.preludeGenerator = realmPreludeGenerator;
 
     this.initializeMoreModules = !!serializerOptions.initializeMoreModules;
-    this.internalDebug = !!serializerOptions.internalDebug;
-    this.requiredModules = new Set();
     this._resetSerializeStates();
   }
 
@@ -109,141 +112,17 @@ export class Serializer {
   body: Array<BabelNodeStatement>;
   realm: Realm;
   declaredDerivedIds: Set<BabelNodeIdentifier>;
-  _hasErrors: boolean;
   preludeGenerator: PreludeGenerator;
   generator: Generator;
-  requiredModules: Set<number | string>;
   descriptors: Map<string, BabelNodeIdentifier>;
   needsEmptyVar: boolean;
-  require: Value;
-  requireReturns: Map<number | string, BabelNodeExpression>;
   initializeMoreModules: boolean;
   uidCounter: number;
-  internalDebug: boolean;
+  logger: Logger;
+  modules: Modules;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
-  }
-
-  // Wraps a query that might potentially execute user code.
-  tryQuery<T>(f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean): T {
-    let context = new ExecutionContext();
-    let realm = this.realm;
-    let env = realm.$GlobalEnv;
-    context.lexicalEnvironment = env;
-    context.variableEnvironment = env;
-    context.realm = realm;
-    realm.pushContext(context);
-    // We use partial evaluation so that we can throw away any state mutations
-    try {
-      let result;
-      let effects = realm.partially_evaluate(() => {
-        try {
-          result = f();
-        } catch (e) {
-          if (e instanceof Completion) {
-            if (logCompletion) this.logCompletion(e);
-            result = onCompletion instanceof Function ? onCompletion(e) : onCompletion;
-          } else {
-            throw e;
-          }
-        }
-        return realm.intrinsics.undefined;
-      });
-      invariant(effects[0] === realm.intrinsics.undefined);
-      return ((result: any): T);
-    } finally {
-      realm.popContext(context);
-    }
-  }
-
-  _getIsRequire(formalParameters: Array<BabelNodeLVal>, functions: Array<FunctionValue>) {
-    let realm = this.realm;
-    let globalRequire = this.require;
-    let serializer = this;
-    return function (scope: any, node: BabelNodeCallExpression) {
-      if (!t.isIdentifier(node.callee) ||
-        node.arguments.length !== 1 ||
-        !node.arguments[0]) return false;
-      let argument = node.arguments[0];
-      if (!t.isNumericLiteral(argument) && !t.isStringLiteral(argument)) return false;
-
-      invariant(node.callee);
-      let innerName = ((node.callee: any): BabelNodeIdentifier).name;
-
-      for (let f of functions) {
-        let scopedBinding = scope.getBinding(innerName);
-        if (scopedBinding) {
-          if (realm.annotations.get(f) === "FACTORY_FUNCTION" && formalParameters[1] === scopedBinding.path.node) {
-            invariant(scopedBinding.kind === "param");
-            continue;
-          }
-          // The name binds to some local entity, but nothing we'd know what exactly it is
-          return false;
-        }
-
-        let doesNotMatter = true;
-        let reference = serializer.tryQuery(
-          () => ResolveBinding(realm, innerName, doesNotMatter, f.$Environment),
-          undefined, false);
-        if (reference === undefined) {
-          // We couldn't resolve as we came across some behavior that we cannot deal with abstractly
-          return false;
-        }
-        if (IsUnresolvableReference(realm, reference)) return false;
-        let referencedBase = reference.base;
-        let referencedName: string = (reference.referencedName: any);
-        if (typeof referencedName !== "string") return false;
-        let value;
-        if (reference.base instanceof GlobalEnvironmentRecord) {
-          value = serializer.tryQuery(() =>
-            Get(realm, realm.$GlobalObject, innerName), realm.intrinsics.undefined, false);
-        } else {
-          invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
-          let binding = referencedBase.bindings[referencedName];
-          if (!binding.initialized) return false;
-          value = binding.value;
-        }
-        if (value !== globalRequire) return false;
-      }
-
-      return true;
-    };
-  }
-
-  logCompletion(res: Completion) {
-    let realm = this.realm;
-    let value = res.value;
-    if (this.internalDebug) console.error(`=== ${res.constructor.name} ===`);
-    if (this.tryQuery(() => value instanceof ObjectValue && InstanceofOperator(realm, value, realm.intrinsics.Error), false, false)) {
-      let object = ((value: any): ObjectValue);
-      try {
-        let err = new Error(this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "message")), "(unknown message)", false));
-        err.stack = this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "stack")), "(unknown stack)", false);
-        console.error(err.message);
-        console.error(err.stack);
-        if (this.internalDebug && res instanceof ThrowCompletion) console.error(res.nativeStack);
-      } catch (err) {
-        let message = object.properties.get("message");
-        console.error((message && message.descriptor && message.descriptor.value instanceof StringValue) ? message.descriptor.value.value : "(no message available)");
-        console.error(err.stack);
-        console.error(object.$ContextStack);
-      }
-    } else {
-      try {
-        value = ToStringPartial(realm, value);
-      } catch (err) {
-        value = err.message;
-      }
-      console.error(value);
-      if (this.internalDebug && res instanceof ThrowCompletion) console.error(res.nativeStack);
-    }
-    this._hasErrors = true;
-  }
-
-  logError(message: string) {
-    console.error(message);
-    this._hasErrors = true;
   }
 
   execute(filename: string, code: string, map: string,
@@ -258,7 +137,7 @@ export class Serializer {
         if (onError) {
           onError(realm, res.value);
         }
-        this.logCompletion(res);
+        this.logger.logCompletion(res);
       } finally {
         realm.popContext(context);
       }
@@ -679,7 +558,7 @@ export class Serializer {
       remainingProperties.delete(key);
       let elem;
       if (HasProperty(realm, val, key)) {
-        let elemVal: void | Value = this.tryQuery(() => Get(realm, val, key), undefined, true);
+        let elemVal: void | Value = this.logger.tryQuery(() => Get(realm, val, key), undefined, true);
         if (elemVal === undefined) {
           elem = null;
         } else {
@@ -750,10 +629,10 @@ export class Serializer {
       };
       this.functions.set(val.$ECMAScriptCode, functionInfo);
 
-      let state = { tryQuery: this.tryQuery.bind(this), val, reasons, name, functionInfo,
+      let state = { tryQuery: this.logger.tryQuery.bind(this.logger), val, reasons, name, functionInfo,
         map: functionInfo.names, realm: this.realm,
-        requiredModules: this.requiredModules,
-        isRequire: this._getIsRequire(val.$FormalParameters, [val]) };
+        requiredModules: this.modules.requiredModules,
+        isRequire: this.modules.getIsRequire(val.$FormalParameters, [val]) };
 
       traverse(
         t.file(t.program([
@@ -771,7 +650,7 @@ export class Serializer {
       );
 
       if (val.isResidual && Object.keys(functionInfo.names).length) {
-        this.logError(`residual function ${describeLocation(this.realm, val, undefined, val.$ECMAScriptCode.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
+        this.logger.logError(`residual function ${describeLocation(this.realm, val, undefined, val.$ECMAScriptCode.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
       }
     }
 
@@ -787,7 +666,7 @@ export class Serializer {
       let referencedValues = [];
       let serializeBindingFunc;
       let doesNotMatter = true;
-      let reference = this.tryQuery(
+      let reference = this.logger.tryQuery(
         () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
         undefined, true);
       if (reference === undefined) {
@@ -968,139 +847,6 @@ export class Serializer {
     }
   }
 
-  _initializeMoreModules() {
-    // partially evaluate all factory methods by calling require
-    let realm = this.realm;
-    let anyHeapChanges = false;
-    // setup execution environment
-    let context = new ExecutionContext();
-    let env = realm.$GlobalEnv;
-    context.lexicalEnvironment = env;
-    context.variableEnvironment = env;
-    context.realm = realm;
-    realm.pushContext(context);
-    try {
-      let count = 0;
-      let introspectionErrors = Object.create(null);
-      for (let moduleId of this.requiredModules) {
-        if (this.requireReturns.has(moduleId)) continue; // already known to be initialized
-        let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
-
-        let [compl, gen, bindings, properties, createdObjects] =
-          realm.partially_evaluate_node(node, true, env, false);
-
-        if (compl instanceof Completion) {
-          realm.restoreBindings(bindings);
-          realm.restoreProperties(properties);
-          if (compl instanceof IntrospectionThrowCompletion) {
-            let value = compl.value;
-            invariant(value instanceof ObjectValue);
-            let message: string = this.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
-            realm.restoreBindings(bindings);
-            realm.restoreProperties(properties);
-            let moduleIds = introspectionErrors[message] = introspectionErrors[message] || [];
-            moduleIds.push(moduleId);
-            continue;
-          }
-
-          console.log(`=== UNEXPECTED ERROR during speculative initialization of module ${moduleId} ===`);
-          this.logCompletion(compl);
-          realm.restoreBindings(bindings);
-          realm.restoreProperties(properties);
-          break;
-        }
-
-        invariant(compl instanceof Value);
-
-        // Apply the joined effects to the global state
-        anyHeapChanges = true;
-        realm.restoreBindings(bindings);
-        realm.restoreProperties(properties);
-
-        // Add generated code for property modifications
-        let realmGenerator = this.realm.generator;
-        invariant(realmGenerator);
-        let first = true;
-        for (let bodyEntry of gen.body) {
-          let id = bodyEntry.declaresDerivedId;
-          let originalBuildNode = bodyEntry.buildNode;
-          let buildNode = originalBuildNode;
-          if (first) {
-            first = false;
-            buildNode = (nodes, f) => {
-              let n = originalBuildNode(nodes, f);
-              n.leadingComments = [({ type: "BlockComment", value: `Speculative initialization of module ${moduleId}` }: any)];
-              return n;
-            };
-          }
-          realmGenerator.body.push({ declaresDerivedId: id, args: bodyEntry.args, buildNode: buildNode });
-          if (id !== undefined) {
-            this.declaredDerivedIds.add(id);
-          }
-        }
-
-        this.requireReturns.set(moduleId, this.serializeValue(compl));
-
-        // Ignore created objects
-        createdObjects;
-        count++;
-      }
-      if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
-      let a = [];
-      for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
-      a.sort((x, y) => y[0].length - x[0].length);
-      if (a.length) {
-        console.log(`=== speculative module initialization failures ordered by frequency`);
-        for (let [moduleIds, n] of a) console.log(`${moduleIds.length}x ${n} [${moduleIds.join(",")}]`);
-      }
-    } finally {
-      realm.popContext(context);
-    }
-    return anyHeapChanges;
-  }
-
-  _resolveRequireReturns() {
-    // partial evaluate all possible requires and see which are possible to inline
-    let realm = this.realm;
-    this.requireReturns = new Map();
-    // setup execution environment
-    let context = new ExecutionContext();
-    let env = realm.$GlobalEnv;
-    context.lexicalEnvironment = env;
-    context.variableEnvironment = env;
-    context.realm = realm;
-    realm.pushContext(context);
-    let oldReadOnly = realm.setReadOnly(true);
-    try {
-      for (let moduleId of this.requiredModules) {
-        let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
-
-        let [compl, gen, bindings, properties, createdObjects] =
-          realm.partially_evaluate_node(node, true, env, false);
-        // for lint unused
-        invariant(bindings);
-
-        if (compl instanceof AbruptCompletion) continue;
-        invariant(compl instanceof Value);
-
-        if (gen.body.length !== 0 ||
-          (compl instanceof ObjectValue && createdObjects.has(compl))) continue;
-        // Check for escaping property assignments, if none escape, we're safe
-        // to replace the require with its exports object
-        let escapes = false;
-        for (let [binding] of properties) {
-          if (!createdObjects.has(binding.object)) escapes = true;
-        }
-        if (escapes) continue;
-
-        this.requireReturns.set(moduleId, this.serializeValue(compl));
-      }
-    } finally {
-      realm.popContext(context);
-      realm.setReadOnly(oldReadOnly);
-    }
-  }
-
   _spliceFunctions() {
     let functionBodies = new Map();
     function getFunctionBody(instance: FunctionInstance): Array<BabelNodeStatement> {
@@ -1166,9 +912,9 @@ export class Serializer {
             null,
             { serializedBindings,
               modified,
-              requireReturns: this.requireReturns,
+              requireReturns: this.modules.requireReturns,
               requireStatistics,
-              isRequire: this._getIsRequire(funcParams, [functionValue]) }
+              isRequire: this.modules.getIsRequire(funcParams, [functionValue]) }
           );
 
           if (functionValue.$Strict) {
@@ -1224,9 +970,9 @@ export class Serializer {
           null,
           { serializedBindings: sameSerializedBindings,
             modified,
-            requireReturns: this.requireReturns,
+            requireReturns: this.modules.requireReturns,
             requireStatistics,
-            isRequire: this._getIsRequire(factoryParams, instances.map(instance => instance.functionValue)) }
+            isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)) }
         );
 
         //
@@ -1275,11 +1021,11 @@ export class Serializer {
     }
 
     if (requireStatistics.replaced > 0 && !this.collectValToRefCountOnly) {
-      console.log(`=== ${this.requireReturns.size} of ${this.requiredModules.size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`);
+      console.log(`=== ${this.modules.requireReturns.size} of ${this.modules.requiredModules.size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`);
     }
   }
 
-  _getContext(reasons: Array<string>) {
+  _getContext(reasons: Array<string>): SerializationContext {
     // TODO: Values serialized by nested generators would currently only get defined
     // along the code of the nested generator; their definitions need to get hoisted
     // or repeated so that they are accessible and defined from all using scopes
@@ -1324,8 +1070,6 @@ export class Serializer {
   serialize(filename: string, code: string, sourceMaps: boolean): { anyHeapChanges?: boolean, generated?: { code: string, map?: string } } {
     let realm = this.realm;
 
-    this.require = this.tryQuery(() => Get(realm, realm.$GlobalObject, "require"), realm.intrinsics.undefined, false);
-
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 
@@ -1338,10 +1082,10 @@ export class Serializer {
 
     // TODO add event listeners
 
-    this._resolveRequireReturns();
+    this.modules.resolveRequireReturns(this._getContext(["Require returns"]));
     if (this.initializeMoreModules) {
       // Note: This may mutate heap state, and render
-      if (this._initializeMoreModules()) return { anyHeapChanges: true };
+      if (this.modules.initializeMoreModules()) return { anyHeapChanges: true };
     }
     this._spliceFunctions();
 
@@ -1593,20 +1337,20 @@ export class Serializer {
   init(filename: string, code: string, map?: string = "",
       sourceMaps?: boolean = false, onError?: (Realm, Value) => void) {
     this.execute(filename, code, map, onError);
-    if (this._hasErrors) return undefined;
+    if (this.logger.hasErrors()) return undefined;
     let anyHeapChanges = true;
     this.collectValToRefCountOnly = true;
     while (anyHeapChanges) {
       this.valToRefCount = new Map();
       anyHeapChanges = !!this.serialize(filename, code, sourceMaps).anyHeapChanges;
-      if (this._hasErrors) return undefined;
+      if (this.logger.hasErrors()) return undefined;
       this._resetSerializeStates();
       this.initializeMoreModules = false; // no need to do it again
     }
     this.collectValToRefCountOnly = false;
     let serialized = this.serialize(filename, code, sourceMaps);
     invariant(!serialized.anyHeapChanges);
-    invariant(!this._hasErrors);
+    invariant(!this.logger.hasErrors());
     return serialized.generated;
   }
 }
