@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { EmptyValue, UndefinedValue, NullValue, BooleanValue, StringValue, SymbolValue, NumberValue, ObjectValue, ConcreteValue, AbstractValue, AbstractObjectValue } from "./index.js";
+import { EmptyValue, UndefinedValue, NullValue, BooleanValue, StringValue, SymbolValue, NumberValue, ObjectValue, ConcreteValue, AbstractValue, AbstractObjectValue, FunctionValue } from "./index.js";
 import type { PropertyKeyValue } from "../types.js";
 
 import invariant from "../invariant.js";
@@ -37,6 +37,7 @@ export default class Value {
       case "symbol": return SymbolValue;
       case "number": return NumberValue;
       case "object": return ObjectValue;
+      case "function": return FunctionValue;
       default: return undefined;
     }
   }

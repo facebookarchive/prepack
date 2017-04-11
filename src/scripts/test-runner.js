@@ -52,8 +52,8 @@ report(inspect());`, { cachedDataProduced: false });
       result = s;
     },
     console: {
-      log(s) {
-        logOutput += "\n" + s;
+      log(...s) {
+        logOutput += "\n" + s.join("");
       }
     }
   });
