@@ -10,7 +10,8 @@
 /* @flow */
 
 import { Reference } from "../environment.js";
-import { Realm, CallObserver } from "../realm.js";
+import { Realm, Tracer } from "../realm.js";
+import type { Effects } from "../realm.js";
 import { ToStringPartial, Get } from "../methods/index.js";
 import { ThrowCompletion, AbruptCompletion } from "../completions.js";
 import { FunctionValue, Value, NumberValue, BooleanValue, StringValue, UndefinedValue, NullValue, ObjectValue, AbstractValue } from "../values/index.js";
@@ -27,23 +28,40 @@ function describeValue(realm: Realm, v: Value): string {
   invariant(false);
 }
 
-export class LoggingCallObserver extends CallObserver {
+export class LoggingTracer extends Tracer {
   constructor(realm: Realm) {
     super();
     this.realm = realm;
-    this.calls = [];
-  }
-  realm: Realm;
-  calls: Array<string>;
-  before(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {
-    let realm = this.realm;
-    let name = describeValue(realm, F);
-    console.log(`${this.calls.map(_ => "  ").join("")}>${name}(${argumentsList.map(v => describeValue(realm, v)).join(", ")})`);
-    this.calls.push(name);
+    this.nesting = [];
   }
 
-  after(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {
-    let name = this.calls.pop();
-    console.log(`${this.calls.map(_ => "  ").join("")}<${name}${result instanceof ThrowCompletion ? ": error" : ""}`);
+  realm: Realm;
+  nesting: Array<string>;
+
+  log(message: string) {
+    console.log(`${this.nesting.map(_ => "  ").join("")}${message}`);
+  }
+
+  beginPartialEvaluation() {
+    this.log(`>partial evaluation`);
+    this.nesting.push("(partial evaluation)");
+  }
+
+  endPartialEvaluation(effects: void | Effects) {
+    let name = this.nesting.pop();
+    invariant(name === "(partial evaluation)");
+    this.log(`<partial evaluation`);
+  }
+
+  beforeCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {
+    let realm = this.realm;
+    let name = describeValue(realm, F);
+    this.log(`>${name}(${argumentsList.map(v => describeValue(realm, v)).join(", ")})`);
+    this.nesting.push(name);
+  }
+
+  afterCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {
+    let name = this.nesting.pop();
+    this.log(`<${name}${result instanceof ThrowCompletion ? ": error" : ""}`);
   }
 }

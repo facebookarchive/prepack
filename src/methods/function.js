@@ -586,8 +586,8 @@ export function $Call(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
 
   let result;
   try {
-    if (realm.callObserver !== undefined)
-      realm.callObserver.before(F, thisArgument, argsList, undefined);
+    for (let t1 of realm.tracers)
+      t1.beforeCall(F, thisArgument, argsList, undefined);
 
     // 5. Assert: calleeContext is now the running execution context.
     invariant(realm.getRunningContext() === calleeContext, "calleeContext should be current execution context");
@@ -602,8 +602,8 @@ export function $Call(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
     realm.popContext(calleeContext);
     invariant(realm.getRunningContext() === callerContext);
 
-    if (realm.callObserver !== undefined)
-      realm.callObserver.after(F, thisArgument, argsList, undefined, result);
+    for (let t2 of realm.tracers)
+      t2.afterCall(F, thisArgument, argsList, undefined, result);
   }
 
   // 9. If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
@@ -650,8 +650,8 @@ export function $Construct(realm: Realm, F: FunctionValue, argumentsList: Array<
 
   let result, envRec;
   try {
-    if (realm.callObserver !== undefined)
-      realm.callObserver.before(F, thisArgument, argumentsList, newTarget);
+    for (let t1 of realm.tracers)
+      t1.beforeCall(F, thisArgument, argumentsList, newTarget);
 
     // 8. If kind is "base", perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
     if (kind === "base") {
@@ -672,8 +672,8 @@ export function $Construct(realm: Realm, F: FunctionValue, argumentsList: Array<
     realm.popContext(calleeContext);
     invariant(realm.getRunningContext() === callerContext);
 
-    if (realm.callObserver !== undefined)
-      realm.callObserver.after(F, thisArgument, argumentsList, newTarget, result);
+    for (let t2 of realm.tracers)
+      t2.afterCall(F, thisArgument, argumentsList, newTarget, result);
   }
 
   // 13. If result.[[Type]] is return, then

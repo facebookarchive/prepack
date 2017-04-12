@@ -56,5 +56,5 @@ export class BodyReference {
 export type SerializerOptions = {
   initializeMoreModules?: boolean;
   internalDebug?: boolean;
-  logCalls?: boolean;
+  trace?: boolean;
 }

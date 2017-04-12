@@ -35,14 +35,11 @@ export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 export type CreatedObjects = Set<ObjectValue | AbstractObjectValue>;
 export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
-export class CallObserver {
-  before(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {
-    throw new Error("abstract method; implement me");
-  }
-
-  after(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {
-    throw new Error("abstract method; implement me");
-  }
+export class Tracer {
+  beginPartialEvaluation() {}
+  endPartialEvaluation(effects: void | Effects) {}
+  beforeCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {}
+  afterCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {}
 }
 
 export class ExecutionContext {
@@ -135,6 +132,7 @@ export class Realm {
     for (let name in evaluators) this.evaluators[name] = evaluators[name];
 
     this.annotations = new Map();
+    this.tracers = [];
   }
 
   start: number;
@@ -166,7 +164,7 @@ export class Realm {
   evaluators: { [key: string]: (ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any) => NormalCompletion | Value | Reference };
 
   annotations: Map<FunctionValue, string>;
-  callObserver: void | CallObserver;
+  tracers: Array<Tracer>;
 
   // Checks if there is a let binding at global scope with the given name
   // returning it if so
@@ -236,7 +234,10 @@ export class Realm {
     this.generator = new Generator(this);
     this.createdObjects = new Set();
 
+    for (let t1 of this.tracers) t1.beginPartialEvaluation();
+
     let c;
+    let result;
     try {
       c = f();
       if (c instanceof Reference) c = GetValue(this, c);
@@ -251,7 +252,8 @@ export class Realm {
       let astCreatedObjects = this.createdObjects;
 
       // Return the captured state changes and evaluation result
-      return [c, astGenerator, astBindings, astProperties, astCreatedObjects];
+      result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
+      return result;
     } finally {
       // Roll back the state changes
       this.restoreBindings(this.modifiedBindings);
@@ -260,6 +262,8 @@ export class Realm {
       this.modifiedBindings = savedBindings;
       this.modifiedProperties = savedProperties;
       this.createdObjects = saved_createdObjects;
+
+      for (let t2 of this.tracers) t2.endPartialEvaluation(result);
     }
   }
 
