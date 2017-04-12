@@ -265,8 +265,9 @@ export default function (realm: Realm): ObjectValue {
       if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
         let generator = realm.generator;
         if (generator)
-          generator.emitInvariant([object, value], ([objectNode, valueNode]) =>
-            t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode));
+          generator.emitInvariant([object, value, object], ([objectNode, valueNode]) =>
+            t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode),
+          (objnode) => t.memberExpression(objnode, t.identifier(key)));
         realm.generator = undefined; // don't emit code during the following $Set call
         // casting to due to Flow workaround above
         (object: any).$Set(key, value, object);
