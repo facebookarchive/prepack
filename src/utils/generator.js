@@ -146,7 +146,9 @@ export class Generator {
         let throwString = t.stringLiteral("Prepack model invariant violation");
         if (appendLastToInvariantFn) {
           let last = nodes.pop();
-          throwString = t.binaryExpression("+", throwString, appendLastToInvariantFn(last));
+          throwString = t.binaryExpression("+",
+            t.stringLiteral("Prepack model invariant violation: "),
+            appendLastToInvariantFn(last));
         }
         let condition = violationConditionFn(nodes);
         let throwblock = t.blockStatement([
