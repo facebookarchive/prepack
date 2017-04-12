@@ -20,7 +20,7 @@ let mathRandomSeed;
 let inputMap;
 let ouputMap;
 let speculate = false;
-let logCalls = false;
+let trace = false;
 while (args.length) {
   let arg = args[0]; args.shift();
   if (arg === "--out") {
@@ -42,10 +42,10 @@ while (args.length) {
     ouputMap = args[0]; args.shift();
   } else if (arg === "--speculate") {
     speculate = true;
-  } else if (arg === "--logCalls") {
-    logCalls = true;
+  } else if (arg === "--trace") {
+    trace = true;
   } else if (arg === "--help") {
-    console.log("Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --logCalls ] [ -- | input.js ]");
+    console.log("Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ]");
   } else if (!arg.startsWith("--")) {
     inputFilename = arg;
   } else {
@@ -57,5 +57,5 @@ if (!inputFilename) {
   console.error("Missing input file.");
   process.exit(1);
 } else {
-  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, speculate, logCalls);
+  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, speculate, trace);
 }
