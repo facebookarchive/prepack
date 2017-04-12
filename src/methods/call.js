@@ -13,7 +13,7 @@ import type { PropertyKeyValue } from "../types.js";
 import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
-import { FunctionValue, StringValue, ObjectValue, NullValue, UndefinedValue, NativeFunctionValue, AbstractObjectValue } from "../values/index.js";
+import { FunctionValue, StringValue, ObjectValue, NullValue, UndefinedValue, NativeFunctionValue, AbstractObjectValue, AbstractValue } from "../values/index.js";
 import {
   GetBase,
   GetValue,
@@ -34,8 +34,10 @@ import { GeneratorStart } from "../methods/generator.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
 import { ThrowCompletion, ReturnCompletion, AbruptCompletion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion, ComposedPossiblyNormalCompletion } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
-import type { BabelNode, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
+import type { BabelNode, BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
+import * as t from "babel-types";
 
 // ECMA262 12.3.6.1
 export function ArgumentListEvaluation(realm: Realm, strictCode: boolean, env: LexicalEnvironment, argNodes: Array<BabelNode> | BabelNodeTemplateLiteral): Array<Value> {
@@ -333,6 +335,19 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
 export function EvaluateDirectCall(realm: Realm, strictCode: boolean, env: LexicalEnvironment, ref: Value | Reference, func: Value, thisValue: Value, args: Array<BabelNode> | BabelNodeTemplateLiteral, tailPosition?: boolean): Value {
   // 1. Let argList be ? ArgumentListEvaluation(arguments).
   let argList = ArgumentListEvaluation(realm, strictCode, env, args);
+
+  if (func instanceof AbstractValue && func.getType() === FunctionValue) {
+    let fullArgs = [func].concat(argList);
+    return realm.deriveAbstract(
+      TypesDomain.topVal,
+      ValuesDomain.topVal,
+      fullArgs,
+      (nodes) => {
+        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+        return t.callExpression(nodes[0], fun_args);
+      });
+  }
+  func = func.throwIfNotConcrete();
 
   // 2. If Type(func) is not Object, throw a TypeError exception.
   if (!(func instanceof ObjectValue)) {
