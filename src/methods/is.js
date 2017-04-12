@@ -18,7 +18,6 @@ import { FunctionValue, NullValue, ProxyValue, ArrayValue, StringValue,  SymbolV
 import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
-import { Completion, ThrowCompletion } from "../completions.js";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal } from "babel-types";
 
 // ECMA262 22.1.3.1.1
