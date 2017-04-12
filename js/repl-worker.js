@@ -16,14 +16,20 @@ onmessage = function(e) {
     var result = new prepack.default(
       {
         partial: true,
+        timeout: 1000, // 1s
         compatibility: 'browser'
       },
       false
     ).init('repl', e.data, false, false);
-
-    postMessage({type: 'success', data: result.code});
+    if (result) {
+      postMessage({type: 'success', data: result.code});
+    } else {
+      // A well-defined error occurred.
+      postMessage({type: 'error', data: buffer});
+    }
   } catch (err) {
-    postMessage({type: 'error', data: buffer || err.nativeStack});
+    // Something went horribly wrong.
+    postMessage({type: 'error', data: buffer + err.message});
   } finally {
     console.error = originalError;
     console.warn = originalWarn;
