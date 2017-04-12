@@ -130,7 +130,7 @@ export default class Value {
     if (propertyName instanceof SymbolValue) location = `at symbol [${propertyName.$Description || "(no description)"}]`;
     else if (propertyName instanceof StringValue) location = `at ${propertyName.value}`;
     else if (typeof propertyName === "string") location = `at ${propertyName}`;
-    else location = "at [implementation " + (new Error()).stack.split("\n").slice(2, 4).join(" ***") + "]";
+    else location = "";
 
     let type = val instanceof AbstractValue ? "abstract value" : val instanceof ObjectValue ? `${val.isSimple() ? "simple " : " "}${val.isPartial() ? "partial " : " "}object` : "value";
 

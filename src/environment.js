@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
+import type { BabelNode } from "babel-types";
 import type { NormalCompletion } from "./completions.js";
 import type { Realm } from "./realm.js";
 import type { SourceType } from "./types.js";
@@ -33,7 +33,6 @@ import {
   HasOwnProperty,
   IsDataDescriptor,
   ThrowIfMightHaveBeenDeleted,
-  ThrowIfInternalSlotNotWritable,
 } from "./methods/index.js";
 
 const sourceMap = require('source-map');
@@ -1056,26 +1055,12 @@ export class LexicalEnvironment {
   }
 
   evaluateAbstract(ast: BabelNode, strictCode: boolean, metadata?: any): NormalCompletion | Value | Reference {
+    this.realm.currentLocation = ast.loc;
     if (this.realm.timeout) this.realm.testTimeout();
 
     let evaluator = this.realm.evaluators[(ast.type: string)];
     if (evaluator) {
-      try {
-        return evaluator(ast, strictCode, this, this.realm, metadata);
-      } catch (e) {
-        if (ast.loc && e instanceof ThrowCompletion && !e.pushedContext && e.value instanceof ObjectValue && "$ErrorData" in e.value) {
-          let value = e.value;
-          invariant(value instanceof ObjectValue);
-          let context = new ExecutionContext();
-          context.realm = this.realm;
-          context.setCaller(this.realm.getRunningContext());
-          context.setLocation(((ast.loc: any): null | BabelNodeSourceLocation));
-          ThrowIfInternalSlotNotWritable(this.realm, value, "$ContextStack").$ContextStack.push(context);
-          e.pushedContext = true;
-        }
-
-        throw e;
-      }
+      return evaluator(ast, strictCode, this, this.realm, metadata);
     }
 
     let err = new TypeError(`Unsupported node type ${ast.type}`);
