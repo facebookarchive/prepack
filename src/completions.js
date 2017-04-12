@@ -38,7 +38,9 @@ export class ThrowCompletion extends AbruptCompletion {
 
   nativeStack: string;
 }
-export class IntrospectionThrowCompletion extends ThrowCompletion {}
+export class IntrospectionThrowCompletion extends ThrowCompletion {
+  reason: void | "readonly";
+}
 export class ContinueCompletion extends AbruptCompletion {}
 export class BreakCompletion extends AbruptCompletion {}
 export class ReturnCompletion extends AbruptCompletion {}

@@ -214,8 +214,6 @@ export type Intrinsics = {
   GeneratorPrototype: ObjectValue,
   GeneratorFunction: NativeFunctionValue,
 
-  __ReadOnlyError: NativeFunctionValue,
-  __ReadOnlyErrorPrototype: ObjectValue,
   __IntrospectionError: NativeFunctionValue,
   __IntrospectionErrorPrototype: ObjectValue,
 };
