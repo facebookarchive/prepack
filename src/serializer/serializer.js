@@ -1034,12 +1034,7 @@ export class Serializer {
             };
           }
           realmGenerator.body.push({ declaresDerivedId: id, args: bodyEntry.args, buildNode: buildNode });
-          if (id !== undefined) {
-            this.declaredDerivedIds.add(id);
-          }
         }
-
-        this.requireReturns.set(moduleId, this.serializeValue(compl));
 
         // Ignore created objects
         createdObjects;
