@@ -52,3 +52,8 @@ export class BodyReference {
   body: Array<BabelNodeStatement>;
   index: number;
 }
+
+export type SerializerOptions = {
+  initializeMoreModules?: boolean;
+  internalDebug?: boolean;
+}

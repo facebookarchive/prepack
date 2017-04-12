@@ -1008,11 +1008,17 @@ export class LexicalEnvironment {
     context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
+
     this.realm.pushContext(context);
 
     let ast, res;
     try {
-      ast = parse(this.realm, code, filename, sourceType);
+      try {
+        ast = parse(this.realm, code, filename, sourceType);
+      } catch (e) {
+        if (e instanceof ThrowCompletion) return e;
+        throw e;
+      }
       res = this.evaluateCompletion(ast, false);
       if (map.length > 0) this.fixup_source_locations(ast, map);
     } finally {

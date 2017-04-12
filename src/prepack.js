@@ -13,7 +13,7 @@ import invariant from "./invariant.js";
 let fs        = require("fs");
 
 function run_internal(name: string, raw: string, map: string = "", compatibility?: "browser" | "jsc" = "browser", mathRandomSeed: void | string, outputFilename?: string, outputMap?: string, speculate: boolean = false) {
-  let serialized = new Serializer({ partial: true, compatibility, mathRandomSeed }, speculate).init(name, raw, map, outputMap !== undefined);
+  let serialized = new Serializer({ partial: true, compatibility, mathRandomSeed }, { initializeMoreModules: speculate, internalDebug: true }).init(name, raw, map, outputMap !== undefined);
   if (!serialized) {
     process.exit(1);
     invariant(false);

@@ -139,16 +139,23 @@ export class Generator {
   }
 
   // Pushes "if (violationConditionFn()) { throw new Error("invariant violation"); }"
-  emitInvariant(args: Array<Value>, violationConditionFn: (Array<BabelNodeExpression> => BabelNodeExpression)): void {
+  emitInvariant(args: Array<Value>, violationConditionFn: (Array<BabelNodeExpression> => BabelNodeExpression), appendLastToInvariantFn?: (BabelNodeExpression => BabelNodeExpression)): void {
     this.body.push({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
+        let throwString = t.stringLiteral("Prepack model invariant violation");
+        if (appendLastToInvariantFn) {
+          let last = nodes.pop();
+          throwString = t.binaryExpression("+",
+            t.stringLiteral("Prepack model invariant violation: "),
+            appendLastToInvariantFn(last));
+        }
         let condition = violationConditionFn(nodes);
         let throwblock = t.blockStatement([
           t.throwStatement(
             t.newExpression(
               t.identifier("Error"),
-              [t.stringLiteral("Prepack model invariant violation")]))
+              [throwString]))
           ]);
         return t.ifStatement(condition, throwblock);
       } });
@@ -181,7 +188,7 @@ export class Generator {
       // Verify that the types are as expected, a failure of this invariant
       // should mean the model is wrong.
       this.emitInvariant(
-        [res],
+        [res, res],
         (nodes) => {
           invariant(typeofString !== undefined);
           let condition =
@@ -192,7 +199,8 @@ export class Generator {
               t.logicalExpression("||", condition,
                 t.binaryExpression("===", nodes[0], t.nullLiteral()));
           return condition;
-        });
+        },
+        (node) => node);
     }
 
     return res;
