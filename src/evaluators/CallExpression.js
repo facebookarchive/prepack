@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { AbstractValue, FunctionValue } from "../values/index.js";
+import { ConcreteValue, AbstractValue, FunctionValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { PerformEval } from "../methods/function.js";
 import {
@@ -41,6 +41,7 @@ export default function (ast: BabelNodeCallExpression, strictCode: boolean, env:
 
   // 2. Let func be ? GetValue(ref).
   let func = GetValue(realm, ref);
+
   if (func instanceof AbstractValue && func.getType() === FunctionValue) {
     let args =
       [func].concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
@@ -58,7 +59,7 @@ export default function (ast: BabelNodeCallExpression, strictCode: boolean, env:
   // 3. If Type(ref) is Reference and IsPropertyReference(ref) is false and GetReferencedName(ref) is "eval", then
   if (ref instanceof Reference && !IsPropertyReference(realm, ref) && GetReferencedName(realm, ref) === "eval") {
     // a. If SameValue(func, %eval%) is true, then
-    if (SameValue(realm, func, realm.intrinsics.eval)) {
+    if (func instanceof ConcreteValue && SameValue(realm, func, realm.intrinsics.eval)) {
       // i. Let argList be ? ArgumentListEvaluation(Arguments).
       let argList = ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>));
       // ii. If argList has no elements, return undefined.
