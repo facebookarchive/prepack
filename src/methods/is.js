@@ -330,14 +330,3 @@ export function IsIntrospectionError(realm: Realm, value: Value): boolean {
   value = value.throwIfNotConcreteObject();
   return value.$GetPrototypeOf() === realm.intrinsics.__IntrospectionErrorPrototype;
 }
-
-export function IsReadOnlyError(realm: Realm, value: Value): boolean {
-  if (!value.mightBeObject()) return false;
-  value = value.throwIfNotConcreteObject();
-  return value.$GetPrototypeOf() === realm.intrinsics.__ReadOnlyErrorPrototype;
-}
-
-export function IsReadOnlyErrorCompletion(realm: Realm, completion: Completion): boolean {
-  if (!(completion instanceof ThrowCompletion)) return false;
-  return IsReadOnlyError(realm, completion.value);
-}

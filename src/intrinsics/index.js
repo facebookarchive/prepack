@@ -148,8 +148,6 @@ import initializeThrowTypeError from "./ecma262/ThrowTypeError.js";
 import initializeDocument from "./dom/document.js";
 import initialize__IntrospectionError from "./__IntrospectionError.js";
 import initialize__IntrospectionErrorPrototype from "./__IntrospectionErrorPrototype.js";
-import initialize__ReadOnlyError from "./__ReadOnlyError.js";
-import initialize__ReadOnlyErrorPrototype from "./__ReadOnlyErrorPrototype.js";
 
 
 export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
@@ -220,7 +218,6 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.EvalErrorPrototype = new ObjectValue(realm, i.ErrorPrototype, "EvalError.prototype");
   i.SyntaxErrorPrototype = new ObjectValue(realm, i.ErrorPrototype, "SyntaxError.prototype");
   i.__IntrospectionErrorPrototype = new ObjectValue(realm, i.ErrorPrototype, "__IntrospectionError.prototype");
-  i.__ReadOnlyErrorPrototype = new ObjectValue(realm, i.ErrorPrototype, "__ReadOnlyError.prototype");
 
   // collection prototypes
   i.MapPrototype = new ObjectValue(realm, i.ObjectPrototype, "Map.prototype");
@@ -268,7 +265,6 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initializeEvalErrorPrototype(realm, i.EvalErrorPrototype);
   initializeSyntaxErrorPrototype(realm, i.SyntaxErrorPrototype);
   initialize__IntrospectionErrorPrototype(realm, i.__IntrospectionErrorPrototype);
-  initialize__ReadOnlyErrorPrototype(realm, i.__ReadOnlyErrorPrototype);
   initializeDataViewPrototype(realm, i.DataViewPrototype);
   if (realm.compatibility !== 'jsc') {
     initializeTypedArrayPrototype(realm, i.TypedArrayPrototype);
@@ -348,7 +344,6 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.EvalError = initializeEvalError(realm);
   i.SyntaxError = initializeSyntaxError(realm);
   i.__IntrospectionError = initialize__IntrospectionError(realm);
-  i.__ReadOnlyError = initialize__ReadOnlyError(realm);
 
   //
   let builtins = [

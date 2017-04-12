@@ -124,6 +124,7 @@ export class Modules {
             let value = compl.value;
             invariant(value instanceof ObjectValue);
             let message: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
+            if (compl.reason !== undefined) message = `[${compl.reason}] ${message}`;
             let stack: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "stack")), "", false);
             let i = stack.indexOf("\n");
             if (i >= 0) stack = stack.slice(i);

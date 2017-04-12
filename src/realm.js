@@ -355,7 +355,10 @@ export class Realm {
   }
 
   throwReadOnlyError(msg: string) {
-    throw this.createErrorThrowCompletion(this.intrinsics.__ReadOnlyError, msg);
+    let completion = this.createErrorThrowCompletion(this.intrinsics.__IntrospectionError, msg);
+    invariant(completion instanceof IntrospectionThrowCompletion);
+    completion.reason = "readonly";
+    throw completion;
   }
 
   outputToConsole(str: string): void {
