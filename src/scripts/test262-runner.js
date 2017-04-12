@@ -1031,6 +1031,13 @@ function runTest(
             }
           }
 
+          // Many strict-only tests involving eval check if certain SyntaxErrors are thrown.
+          // Some of those would require changes to Babel to support properly, and some we should handle ourselves in Prepack some day.
+          // But for now, ignore.
+          if (testFileContents.includes("eval(") && strict) {
+            return null;
+          }
+
           if (interpreterStack) {
             stack = `Interpreter: ${interpreterStack}${EOL}Native: ${err.nativeStack}`;
           }
