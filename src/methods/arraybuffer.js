@@ -16,11 +16,11 @@ import { Value, ObjectValue, NumberValue, EmptyValue, NullValue, StringValue, Un
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
 import { Construct, SpeciesConstructor } from "../methods/construct.js";
 import { IsConstructor } from "../methods/index.js";
-import { ToIndexPartial, ToBooleanPartial, ToNumber } from "../methods/to.js";
-import { ElementSize, ElementConv } from "../types.js";
+import { ToIndexPartial, ToBooleanPartial, ToNumber, ElementConv } from "./to.js";
 import { IsDetachedBuffer } from "../methods/is.js";
 import { ThrowIfInternalSlotNotWritable } from "../methods/properties.js";
 import invariant from "../invariant.js";
+import { ElementSize } from "../types.js";
 
 // ECMA262 6.2.6.1
 export function CreateByteDataBlock(realm: Realm, size: number): DataBlock {

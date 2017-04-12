@@ -22,6 +22,16 @@ import { ThrowCompletion } from "../completions.js";
 import { Value, ConcreteValue, PrimitiveValue, UndefinedValue, BooleanValue, ObjectValue, SymbolValue, StringValue, NumberValue, NullValue, AbstractValue, AbstractObjectValue } from "../values/index.js";
 import invariant from "../invariant.js";
 
+export const ElementConv = {
+  Int8: ToInt8,
+  Int16: ToInt16,
+  Int32: ToInt32,
+  Uint8: ToUint8,
+  Uint16: ToUint16,
+  Uint32: ToUint32,
+  Uint8Clamped: ToUint8Clamp
+};
+
 type numberOrValue = number | Value;
 
 function modulo(x: number, y: number): number {
