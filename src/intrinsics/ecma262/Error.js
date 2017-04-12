@@ -92,7 +92,7 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
     let O = OrdinaryCreateFromConstructor(realm, newTarget, `${name}Prototype`, { $ErrorData: undefined });
 
     // Build a text description of the stack.
-    O.$ContextStack = realm.contextStack.slice(0, -1);
+    O.$ContextStack = realm.contextStack.slice(1);
     let stackDesc = {
       value: buildStack(realm, O),
       enumerable: false,

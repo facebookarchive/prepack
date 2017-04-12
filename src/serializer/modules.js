@@ -124,10 +124,13 @@ export class Modules {
             let value = compl.value;
             invariant(value instanceof ObjectValue);
             let message: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
+            let stack: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "stack")), "", false);
+            let i = stack.indexOf("\n");
+            if (i >= 0) stack = stack.slice(i);
             realm.restoreBindings(bindings);
             realm.restoreProperties(properties);
-            let moduleIds = introspectionErrors[message] = introspectionErrors[message] || [];
-            moduleIds.push(moduleId);
+            let stacks = introspectionErrors[message] = introspectionErrors[message] || [];
+            stacks.push(stack);
             continue;
           }
 
@@ -174,7 +177,7 @@ export class Modules {
       a.sort((x, y) => y[0].length - x[0].length);
       if (a.length) {
         console.log(`=== speculative module initialization failures ordered by frequency`);
-        for (let [moduleIds, n] of a) console.log(`${moduleIds.length}x ${n} [${moduleIds.join(",")}]`);
+        for (let [stacks, n] of a) console.log(`${stacks.length}x ${n} ${stacks.join("\nas well as")}]`);
       }
     } finally {
       realm.popContext(context);

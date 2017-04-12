@@ -149,6 +149,7 @@ export class Realm {
 
   createdObjects: void | CreatedObjects;
 
+  currentLocation: ?BabelNodeSourceLocation;
   nextContextLocation: ?BabelNodeSourceLocation;
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
@@ -510,6 +511,7 @@ export class Realm {
     if (message === undefined) message = "TODO";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
+    this.nextContextLocation = this.currentLocation;
     if (type === this.intrinsics.__IntrospectionError)
       return new IntrospectionThrowCompletion(Construct(this, type, [message]));
     return new ThrowCompletion(Construct(this, type, [message]));
