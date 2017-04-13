@@ -154,7 +154,7 @@ export class Serializer {
     }
 
     if (val instanceof AbstractValue && val.hasIdentifier()) {
-      invariant(!this.preludeGenerator.derivedIds.has(val.getIdentifier()) ||
+      invariant(!this.preludeGenerator.derivedIds.has(val.getIdentifier().name) ||
         this.declaredDerivedIds.has(val.getIdentifier()));
       return true;
     }
@@ -796,7 +796,7 @@ export class Serializer {
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
-      invariant(!this.preludeGenerator.derivedIds.has(id) ||
+      invariant(!this.preludeGenerator.derivedIds.has(id.name) ||
         this.declaredDerivedIds.has(id));
     }
     return serializedValue;
