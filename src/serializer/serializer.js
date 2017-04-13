@@ -92,6 +92,7 @@ export class Serializer {
     this.descriptors = new Map();
     this.needsEmptyVar = false;
     this.uidCounter = 0;
+    this.requireReturns = new Map();
   }
 
   globalReasons: {
@@ -122,6 +123,7 @@ export class Serializer {
   uidCounter: number;
   logger: Logger;
   modules: Modules;
+  requireReturns: Map<number | string, BabelNodeExpression>;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -918,7 +920,7 @@ export class Serializer {
             null,
             { serializedBindings,
               modified,
-              requireReturns: this.modules.requireReturns,
+              requireReturns: this.requireReturns,
               requireStatistics,
               isRequire: this.modules.getIsRequire(funcParams, [functionValue]) }
           );
@@ -976,7 +978,7 @@ export class Serializer {
           null,
           { serializedBindings: sameSerializedBindings,
             modified,
-            requireReturns: this.modules.requireReturns,
+            requireReturns: this.requireReturns,
             requireStatistics,
             isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)) }
         );
@@ -1027,7 +1029,7 @@ export class Serializer {
     }
 
     if (requireStatistics.replaced > 0 && !this.collectValToRefCountOnly) {
-      console.log(`=== ${this.modules.requireReturns.size} of ${this.modules.moduleIds.size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`);
+      console.log(`=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds.size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`);
     }
   }
 
@@ -1073,7 +1075,7 @@ export class Serializer {
     invariant(this.delayedKeyedSerializations.size === 0);
   }
 
-  serialize(filename: string, code: string, sourceMaps: boolean): { anyHeapChanges?: boolean, generated?: { code: string, map?: string } } {
+  serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
     let realm = this.realm;
 
     this._emitGenerator(this.generator);
@@ -1088,11 +1090,9 @@ export class Serializer {
 
     // TODO add event listeners
 
-    this.modules.resolveRequireReturns(this._getContext(["Require returns"]));
-    if (this.initializeMoreModules) {
-      // Note: This may mutate heap state, and render
-      if (this.modules.initializeMoreModules()) return { anyHeapChanges: true };
-    }
+    for (let [moduleId, moduleValue] of this.modules.initializedModules)
+      this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
+
     this._spliceFunctions();
 
     // add strict modes
@@ -1342,20 +1342,25 @@ export class Serializer {
 
   init(filename: string, code: string, map?: string = "",
       sourceMaps?: boolean = false, onError?: (Realm, Value) => void) {
+    // Phase 1: Let's interpret.
     this.execute(filename, code, map, onError);
     if (this.logger.hasErrors()) return undefined;
-    let anyHeapChanges = true;
-    this.collectValToRefCountOnly = true;
-    while (anyHeapChanges) {
-      this.valToRefCount = new Map();
-      anyHeapChanges = !!this.serialize(filename, code, sourceMaps).anyHeapChanges;
+    this.modules.resolveInitializedModules();
+    if (this.initializeMoreModules) {
+      this.modules.initializeMoreModules();
       if (this.logger.hasErrors()) return undefined;
-      this._resetSerializeStates();
-      this.initializeMoreModules = false; // no need to do it again
     }
+
+    // Phase 2: Let's serialize the heap and generate code.
+    // Serialize for the first time in order to gather reference counts
+    this.collectValToRefCountOnly = true;
+    this.valToRefCount = new Map();
+    this.serialize(filename, code, sourceMaps);
+    if (this.logger.hasErrors()) return undefined;
+    // Serialize for a second time, using reference counts to minimize number of generated identifiers
+    this._resetSerializeStates();
     this.collectValToRefCountOnly = false;
     let serialized = this.serialize(filename, code, sourceMaps);
-    invariant(!serialized.anyHeapChanges);
     invariant(!this.logger.hasErrors());
     return serialized.generated;
   }
