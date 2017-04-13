@@ -15,7 +15,7 @@ import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue } f
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
+import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion } from "./completions.js";
 import invariant from "./invariant.js";
@@ -112,12 +112,11 @@ export class Realm {
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
 
-    this.$GlobalEnv    = NewGlobalEnvironment(this, this.$GlobalObject, this.$GlobalObject);
+
     this.$TemplateMap  = [];
 
     if (this.isPartial) {
       this.preludeGenerator = new PreludeGenerator();
-      this.generator        = new Generator(this);
       ObjectValue.setupTrackedPropertyAccessors();
     }
 
@@ -128,6 +127,7 @@ export class Realm {
     this.intrinsics = ({}: any);
     this.$GlobalObject = (({}: any): ObjectValue);
     this.evaluators = (Object.create(null): any);
+    this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
   }
 
   start: number;

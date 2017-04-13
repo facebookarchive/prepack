@@ -14,12 +14,17 @@ import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import initializeGlobal from "./global.js";
 import type { RealmOptions } from "./types.js";
 import * as evaluators from "./evaluators/index.js";
+import { NewGlobalEnvironment } from "./methods/index.js";
+import { Generator } from "./utils/generator.js";
 
 
 export default function(opts: RealmOptions = {}): Realm {
   let r = new Realm(opts);
-  initializeIntrinsics(r.intrinsics, r);
+  let i = r.intrinsics;
+  initializeIntrinsics(i, r);
   r.$GlobalObject = initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
+  r.$GlobalEnv =  NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
+  r.generator = new Generator(r);
   return r;
 }
