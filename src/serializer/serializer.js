@@ -631,10 +631,14 @@ export class Serializer {
       };
       this.functions.set(val.$ECMAScriptCode, functionInfo);
 
-      let state = { tryQuery: this.logger.tryQuery.bind(this.logger), val, reasons, name, functionInfo,
-        map: functionInfo.names, realm: this.realm,
-        requiredModules: this.modules.requiredModules,
-        isRequire: this.modules.getIsRequire(val.$FormalParameters, [val]) };
+      let state = {
+        tryQuery: this.logger.tryQuery.bind(this.logger),
+        val,
+        reasons,
+        name,
+        functionInfo,
+        map: functionInfo.names,
+        realm: this.realm };
 
       traverse(
         t.file(t.program([
@@ -1023,7 +1027,7 @@ export class Serializer {
     }
 
     if (requireStatistics.replaced > 0 && !this.collectValToRefCountOnly) {
-      console.log(`=== ${this.modules.requireReturns.size} of ${this.modules.requiredModules.size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`);
+      console.log(`=== ${this.modules.requireReturns.size} of ${this.modules.moduleIds.size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`);
     }
   }
 

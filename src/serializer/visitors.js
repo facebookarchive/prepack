@@ -25,8 +25,6 @@ export type ClosureRefVisitorState = {
   functionInfo: FunctionInfo;
   map: Names;
   realm: Realm;
-  requiredModules: Set<number | string>;
-  isRequire: void | (scope: any, node: BabelNodeCallExpression) => boolean;
 };
 
 export type ClosureRefReplacerState = {
@@ -134,24 +132,6 @@ export let ClosureRefVisitor = {
 
   ThisExpression(path: BabelTraversePath, state: ClosureRefVisitorState) {
     state.functionInfo.usesThis = true;
-  },
-
-  CallExpression(path: BabelTraversePath, state: ClosureRefVisitorState) {
-    /*
-    This optimization replaces requires to initialized modules with their return
-    values. It does this by checking whether the require call has any side effects
-    (e.g. modifications to the global module table). Conceptually if a call has
-    no side effects, it should be safe to replace with its return value.
-
-    This optimization is not safe in general because it allows for reads to mutable
-    global state, but in the case of require, the return value is guaranteed to always
-    be the same regardless of that global state modification (because we should
-    only be reading from the global module table).
-    */
-    if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
-
-    let moduleId = path.node.arguments[0].value;
-    state.requiredModules.add(moduleId);
   },
 
   "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: ClosureRefVisitorState) {

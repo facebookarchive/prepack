@@ -10,6 +10,7 @@ function require(moduleId) {
   return module && module.isInitialized ? module.exports : guardedLoadModule(moduleIdReallyIsNumber, module);
 }
 
+__d = define;
 function define(factory, moduleId, dependencyMap) {
   if (moduleId in modules) {
     return;
@@ -27,7 +28,6 @@ function define(factory, moduleId, dependencyMap) {
     modules[moduleId].verboseName = _verboseName;
     verboseNamesToModuleIds[_verboseName] = moduleId;
   }
-  if (global.__annotate) __annotate(factory, "FACTORY_FUNCTION");
 }
 
 var inGuard = false;

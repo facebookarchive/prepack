@@ -131,7 +131,6 @@ export class Realm {
     this.evaluators = Object.create(null);
     for (let name in evaluators) this.evaluators[name] = evaluators[name];
 
-    this.annotations = new Map();
     this.tracers = [];
   }
 
@@ -164,7 +163,6 @@ export class Realm {
   timeoutCounterThreshold: number;
   evaluators: { [key: string]: (ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any) => NormalCompletion | Value | Reference };
 
-  annotations: Map<FunctionValue, string>;
   tracers: Array<Tracer>;
 
   // Checks if there is a let binding at global scope with the given name
