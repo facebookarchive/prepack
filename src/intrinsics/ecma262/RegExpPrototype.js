@@ -72,7 +72,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If R does not have a [[RegExpMatcher]] internal slot, throw a TypeError exception.
-    if (!('$RegExpMatcher' in R)) {
+    if (R.$RegExpMatcher === undefined) {
       throw new ThrowCompletion(
         Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "R does not have a [[RegExpMatcher]] internal slot")])
       );
@@ -464,7 +464,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Assert: R has an [[OriginalFlags]] internal slot.
-    invariant('$OriginalFlags' in R, "R has an [[OriginalFlags]] internal slot");
+    invariant(R.$OriginalFlags !== undefined, "R has an [[OriginalFlags]] internal slot");
 
     // 5. Let src be R.[[OriginalSource]].
     let src = R.$OriginalSource;

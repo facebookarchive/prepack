@@ -36,9 +36,9 @@ export function RegExpAlloc(realm: Realm, newTarget: ObjectValue): ObjectValue {
   // 1. Let obj be ? OrdinaryCreateFromConstructor(newTarget, "%RegExpPrototype%", « [[RegExpMatcher]],
   //    [[OriginalSource]], [[OriginalFlags]] »).
   let obj = OrdinaryCreateFromConstructor(realm, newTarget, "RegExpPrototype", {
-    $RegExpMatcher: undefined,
-    $OriginalSource: undefined,
-    $OriginalFlags: undefined
+    $RegExpMatcher: undefined, // always initialized to not undefined before use
+    $OriginalSource: undefined, // ditto
+    $OriginalFlags: undefined // ditto
   });
 
   // 2. Perform ! DefinePropertyOrThrow(obj, "lastIndex", PropertyDescriptor {[[Writable]]: true,
@@ -181,7 +181,7 @@ export function RegExpExec(realm: Realm, R: ObjectValue, S: string): ObjectValue
   }
 
   // 5. If R does not have a [[RegExpMatcher]] internal slot, throw a TypeError exception.
-  if (!R.$RegExpMatcher) {
+  if (R.$RegExpMatcher === undefined) {
     throw new ThrowCompletion(
       Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "R does not have a [[RegExpMatcher]] internal slot")])
     );
@@ -194,7 +194,7 @@ export function RegExpExec(realm: Realm, R: ObjectValue, S: string): ObjectValue
 // ECMA262 21.2.5.2.2
 export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): ObjectValue | NullValue {
   // 1. Assert: R is an initialized RegExp instance.
-  invariant('$RegExpMatcher' in R && '$OriginalSource' in R && '$OriginalFlags' in R, "R is an initialized RegExp instance");
+  invariant(R.$RegExpMatcher !== undefined && R.$OriginalSource !== undefined && R.$OriginalFlags !== undefined, "R is an initialized RegExp instance");
 
   // 2. Assert: Type(S) is String.
   invariant(typeof S === "string", "Type(S) is String");

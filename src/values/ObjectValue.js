@@ -61,20 +61,20 @@ export default class ObjectValue extends ConcreteValue {
   $Prototype: ObjectValue | NullValue;
   $Extensible: BooleanValue;
 
-  $ParameterMap: void | ObjectValue;
+  $ParameterMap: void | ObjectValue; // undefined when the property is "missing"
   $SymbolData: void | SymbolValue;
   $StringData: void | StringValue;
   $NumberData: void | NumberValue;
   $BooleanData: void | BooleanValue;
 
   // error
-  $ErrorData: void;
+  $ErrorData: void | ObjectValue; // undefined when the property is "missing"
   $ContextStack: void | Array<ExecutionContext>;
 
 
   // function
-  $Call: ?(thisArgument: Value, argumentsList: Array<Value>) => Value;
-  $Construct: ?(argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue;
+  $Call: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value);
+  $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue);
 
   // promise
   $Promise: ?ObjectValue;
@@ -110,7 +110,7 @@ export default class ObjectValue extends ConcreteValue {
   $WeakSetData: void | Array<void | Value>;
 
   // date
-  $DateValue: void | Value; // of type number
+  $DateValue: void | NumberValue | AbstractValue; // of type number
 
   // array
   $ArrayIterationKind: void | IterationKind;

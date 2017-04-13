@@ -58,7 +58,7 @@ export const ElementConv = {
 //
 
 declare class _CallableObjectValue extends ObjectValue {
-  $Call: ?(thisArgument: Value, argsList: Array<Value>) => Value;
+  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value);
 }
 export type CallableObjectValue = _CallableObjectValue | FunctionValue | NativeFunctionValue;
 

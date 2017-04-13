@@ -172,7 +172,7 @@ export function thisBooleanValue(realm: Realm, value: Value): BooleanValue {
   if (value instanceof BooleanValue) return value;
 
   // 2. If Type(value) is Object and value has a [[BooleanData]] internal slot, then
-  if (value instanceof ObjectValue && "$BooleanData" in value) {
+  if (value instanceof ObjectValue && value.$BooleanData) {
     // a. Assert: value's [[BooleanData]] internal slot is a Boolean value.
     invariant(value.$BooleanData instanceof BooleanValue, "expected boolean data internal slot to be a boolean value");
 
@@ -192,7 +192,7 @@ export function thisNumberValue(realm: Realm, value: Value): NumberValue {
   if (value instanceof NumberValue) return value;
 
   // 2. If Type(value) is Object and value has a [[NumberData]] internal slot, then
-  if (value instanceof ObjectValue && "$NumberData" in value) {
+  if (value instanceof ObjectValue && value.$NumberData) {
     // a. Assert: value's [[NumberData]] internal slot is a Number value.
     invariant(value.$NumberData instanceof NumberValue, "expected number data internal slot to be a number value");
 
@@ -212,7 +212,7 @@ export function thisStringValue(realm: Realm, value: Value): StringValue {
   if (value instanceof StringValue) return value;
 
   // 2. If Type(value) is Object and value has a [[StringData]] internal slot, then
-  if (value instanceof ObjectValue && "$StringData" in value) {
+  if (value instanceof ObjectValue && value.$StringData) {
     // a. Assert: value's [[StringData]] internal slot is a String value.
     invariant(value.$StringData instanceof StringValue, "expected string data internal slot to be a string value");
 

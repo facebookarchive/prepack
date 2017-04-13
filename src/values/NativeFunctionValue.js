@@ -33,7 +33,7 @@ export default class NativeFunctionValue extends FunctionValue {
       };
     } else {
       this.$ConstructorKind = undefined;
-      this.$Construct = null;
+      this.$Construct = undefined;
     }
 
     this.$Environment = realm.$GlobalEnv;

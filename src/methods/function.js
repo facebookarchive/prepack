@@ -789,7 +789,7 @@ function $BoundConstruct(realm: Realm, F: BoundFunctionValue, argumentsList: Arr
   let target = F.$BoundTargetFunction;
 
   // 2. Assert: target has a [[Construct]] internal method.
-  invariant(target.$Construct, "doesn't have a construct internal method");
+  invariant(target.$Construct !== undefined, "doesn't have a construct internal method");
 
   // 3. Let boundArgs be the value of F's [[BoundArguments]] internal slot.
   let boundArgs = F.$BoundArguments;
