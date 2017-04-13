@@ -284,7 +284,7 @@ function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValu
     let value = binding.descriptor.value;
     ThrowIfMightHaveBeenDeleted(value);
     if (value === undefined) {
-      Value.throwIntrospectionError(val, key); // cannot handle accessors
+      AbstractValue.throwIntrospectionError(val, key); // cannot handle accessors
       invariant(false);
     }
     CreateDataProperty(realm, template, key, InternalJSONClone(realm, value));

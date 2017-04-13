@@ -9,11 +9,14 @@
 
 /* @flow */
 
+import type { BabelNodeExpression, BabelNodeIdentifier } from "babel-types";
 import type { Realm } from "../realm.js";
-import { AbstractObjectValue, BooleanValue, ConcreteValue, EmptyValue, NullValue, NumberValue, ObjectValue, UndefinedValue, Value } from "./index.js";
+import type { PropertyKeyValue } from "../types.js";
+
+import { AbstractObjectValue, BooleanValue, ConcreteValue, EmptyValue, NullValue, NumberValue, ObjectValue, StringValue, SymbolValue, UndefinedValue, Value } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression, BabelNodeIdentifier } from "babel-types";
+
 import * as t from "babel-types";
 
 export type AbstractValueBuildNodeFunction = (Array<BabelNodeExpression>) => BabelNodeExpression;
@@ -124,20 +127,42 @@ export default class AbstractValue extends Value {
   }
 
   throwIfNotConcrete(): ConcreteValue {
-    return Value.throwIntrospectionError(this);
+    return AbstractValue.throwIntrospectionError(this);
   }
 
   throwIfNotConcreteNumber(): NumberValue {
-    return Value.throwIntrospectionError(this);
+    return AbstractValue.throwIntrospectionError(this);
   }
 
   throwIfNotConcreteObject(): ObjectValue {
-    return Value.throwIntrospectionError(this);
+    return AbstractValue.throwIntrospectionError(this);
   }
 
   throwIfNotObject(): AbstractObjectValue {
     invariant(!(this instanceof AbstractObjectValue));
-    return Value.throwIntrospectionError(this);
+    return AbstractValue.throwIntrospectionError(this);
+  }
+
+  static throwIntrospectionError<T>(val: Value, propertyName: void | PropertyKeyValue): T {
+    let realm = val.$Realm;
+
+    let identity;
+    if (val === realm.$GlobalObject) identity = "global";
+    if (!identity) identity = val.intrinsicName;
+    if (!identity && val instanceof AbstractValue) identity = "(some abstract value)";
+    if (!identity) identity = "(some value)";
+
+    let location;
+    if (propertyName instanceof SymbolValue) location = `at symbol [${propertyName.$Description || "(no description)"}]`;
+    else if (propertyName instanceof StringValue) location = `at ${propertyName.value}`;
+    else if (typeof propertyName === "string") location = `at ${propertyName}`;
+    else location = "";
+
+    let type = val instanceof AbstractValue ? "abstract value" : val instanceof ObjectValue ? `${val.isSimple() ? "simple " : " "}${val.isPartial() ? "partial " : " "}object` : "value";
+
+    let message = `Introspection of ${identity} ${location} is not allowed on ${type}`;
+
+    throw realm.createErrorThrowCompletion(realm.intrinsics.__IntrospectionError, message);
   }
 
 }

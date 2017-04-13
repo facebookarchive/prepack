@@ -17,7 +17,7 @@ import type { SourceType } from "./types.js";
 import { AbruptCompletion, Completion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
-import { NullValue, SymbolValue, BooleanValue, FunctionValue, StringValue, ObjectValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
+import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, StringValue, ObjectValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverse from "./traverse.js";
@@ -966,13 +966,13 @@ export class LexicalEnvironment {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
       if (err instanceof JoinedAbruptCompletions) {
-        return Value.throwIntrospectionError(err.joinCondition);
+        return AbstractValue.throwIntrospectionError(err.joinCondition);
       } else if (err instanceof ComposedAbruptCompletion) {
         return err.throwIntrospectionError();
       } else if (err instanceof AbruptCompletion) {
         return err;
       } else if (err instanceof PossiblyNormalCompletion) {
-        Value.throwIntrospectionError(err.joinCondition);
+        AbstractValue.throwIntrospectionError(err.joinCondition);
       } else if (err instanceof Error) {
         // rethrowing Error should preserve stack trace
         throw err;
@@ -1045,7 +1045,7 @@ export class LexicalEnvironment {
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     if (res instanceof PossiblyNormalCompletion)
-      return Value.throwIntrospectionError(res.joinCondition);
+      return AbstractValue.throwIntrospectionError(res.joinCondition);
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;
   }
