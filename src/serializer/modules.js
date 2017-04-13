@@ -9,43 +9,100 @@
 
 /* @flow */
 
+import { Reference } from "../environment.js";
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
-import { Realm, ExecutionContext } from "../realm.js";
+import { Realm, ExecutionContext, Tracer } from "../realm.js";
+import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, ToStringPartial, Get } from "../methods/index.js";
 import { Completion, AbruptCompletion, IntrospectionThrowCompletion } from "../completions.js";
-import { Value, FunctionValue, ObjectValue, UndefinedValue } from "../values/index.js";
+import { Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import type { SerializationContext } from "../utils/generator.js";
 
+class ModuleTracer extends Tracer {
+  constructor(modules: Modules) {
+    super();
+    this.modules = modules;
+    this.partialEvaluation = 0;
+  }
+
+  modules: Modules;
+  partialEvaluation: number;
+
+  beginPartialEvaluation() {
+    this.partialEvaluation++;
+  }
+
+  endPartialEvaluation(effects: void | Effects) {
+    this.partialEvaluation--;
+  }
+
+  beforeCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {
+    if (F === this.modules.getDefine()) {
+      if (this.partialEvaluation !== 0) this.modules.logger.logError("Defining a module in nested partial evaluation is not supported.");
+      let factoryFunction = argumentsList[0];
+      if (factoryFunction instanceof FunctionValue) this.modules.factoryFunctions.add(factoryFunction);
+      else this.modules.logger.logError("First argument to define function is not a function value.");
+      let moduleId = argumentsList[1];
+      if (moduleId instanceof NumberValue || moduleId instanceof StringValue) this.modules.moduleIds.add(moduleId.value);
+      else this.modules.logger.logError("Second argument to define function is not a number or string value.");
+    }
+  }
+
+  afterCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {
+  }
+}
+
+
 export class Modules {
   constructor(realm: Realm, logger: Logger) {
     this.realm = realm;
     this.logger = logger;
-    this.requiredModules = new Set();
     this._require = realm.intrinsics.undefined;
+    this._define = realm.intrinsics.undefined;
+    this.factoryFunctions = new Set();
+    this.moduleIds = new Set();
+    realm.tracers.push(new ModuleTracer(this));
   }
 
   realm: Realm;
   logger: Logger;
-  requiredModules: Set<number | string>;
   _require: Value;
+  _define: Value;
   requireReturns: Map<number | string, BabelNodeExpression>;
+  factoryFunctions: Set<FunctionValue>;
+  moduleIds: Set<number | string>;
+  active: boolean;
+
+  _getGlobalProperty(name: string) {
+    if (this.active) return this.realm.intrinsics.undefined;
+    this.active = true;
+    try {
+      let realm = this.realm;
+      return this.logger.tryQuery(() => Get(realm, realm.$GlobalObject, name), realm.intrinsics.undefined, false);
+    } finally {
+      this.active = false;
+    }
+  }
 
   getRequire(): Value {
-    if (this._require instanceof UndefinedValue) {
-      let realm = this.realm;
-      this._require = this.logger.tryQuery(() => Get(realm, realm.$GlobalObject, "require"), realm.intrinsics.undefined, false);
-    }
+    if (!(this._require instanceof FunctionValue)) this._require = this._getGlobalProperty("require");
     return this._require;
+  }
+
+  getDefine(): Value {
+    if (!(this._define instanceof FunctionValue)) this._define = this._getGlobalProperty("__d");
+    return this._define;
   }
 
   getIsRequire(formalParameters: Array<BabelNodeLVal>, functions: Array<FunctionValue>): (scope: any, node: BabelNodeCallExpression) => boolean {
     let realm = this.realm;
     let globalRequire = this.getRequire();
     let logger = this.logger;
+    let modules = this;
     return function (scope: any, node: BabelNodeCallExpression) {
       if (!t.isIdentifier(node.callee) ||
         node.arguments.length !== 1 ||
@@ -59,7 +116,7 @@ export class Modules {
       for (let f of functions) {
         let scopedBinding = scope.getBinding(innerName);
         if (scopedBinding) {
-          if (realm.annotations.get(f) === "FACTORY_FUNCTION" && formalParameters[1] === scopedBinding.path.node) {
+          if (modules.factoryFunctions.has(f) && formalParameters[1] === scopedBinding.path.node) {
             invariant(scopedBinding.kind === "param");
             continue;
           }
@@ -110,7 +167,7 @@ export class Modules {
     try {
       let count = 0;
       let introspectionErrors = Object.create(null);
-      for (let moduleId of this.requiredModules) {
+      for (let moduleId of this.moduleIds) {
         if (this.requireReturns.has(moduleId)) continue; // already known to be initialized
         let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
@@ -199,7 +256,7 @@ export class Modules {
     realm.pushContext(context);
     let oldReadOnly = realm.setReadOnly(true);
     try {
-      for (let moduleId of this.requiredModules) {
+      for (let moduleId of this.moduleIds) {
         let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
         let [compl, gen, bindings, properties, createdObjects] =
