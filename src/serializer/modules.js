@@ -9,7 +9,6 @@
 
 /* @flow */
 
-import { Reference } from "../environment.js";
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
@@ -17,10 +16,9 @@ import { IsUnresolvableReference, ResolveBinding, ToStringPartial, Get } from ".
 import { Completion, AbruptCompletion, IntrospectionThrowCompletion } from "../completions.js";
 import { Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
+import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
-import type { SerializationContext } from "../utils/generator.js";
 
 class ModuleTracer extends Tracer {
   constructor(modules: Modules) {
