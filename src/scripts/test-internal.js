@@ -42,7 +42,7 @@ let tests = search(`${__dirname}/../../test/internal`, "test/internal");
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
-    let serialized = new Serializer(construct_realm({ partial: true, compatibility: "jsc", mathRandomSeed: "0" }), { internalDebug: true }).init(name, code, "", false);
+    let serialized = new Serializer(construct_realm({ partial: true, compatibility: "jsc", mathRandomSeed: "0" }), { internalDebug: true, initializeMoreModules: true }).init(name, code, "", false);
     if (!serialized) {
       console.log(chalk.red("Error during serialization"));
       return false;

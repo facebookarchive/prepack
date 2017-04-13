@@ -164,7 +164,7 @@ export class Generator {
   derive(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression, kind?: string): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.generateUid());
-    this.preludeGenerator.derivedIds.add(id);
+    this.preludeGenerator.derivedIds.set(id.name, args);
     this.body.push({
       declaresDerivedId: id,
       args,
@@ -219,13 +219,13 @@ export class Generator {
 export class PreludeGenerator {
   constructor() {
     this.prelude = [];
-    this.derivedIds = new Set();
+    this.derivedIds = new Map();
     this.memoizedRefs = new Map();
     this.uidCounter = 0;
   }
 
   prelude: Array<BabelNodeStatement>;
-  derivedIds: Set<BabelNodeIdentifier>;
+  derivedIds: Map<string, Array<Value>>;
   memoizedRefs: Map<string, BabelNodeIdentifier | BabelNodeMemberExpression>;
   uidCounter: number;
 
