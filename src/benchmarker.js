@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Compatibility } from "./types.js";
+import construct_realm from "./construct_realm.js";
 import Serializer from "./serializer/index.js";
 import invariant from "./invariant.js";
 
@@ -130,7 +131,7 @@ function dump(name: string, raw: string, min: string = raw, compatibility?: "bro
   let beforeStats = line("Before", min, compatibility);
 
   let start = Date.now();
-  let serialized = new Serializer({ partial: true, compatibility }).init(name, raw);
+  let serialized = new Serializer(construct_realm({ partial: true, compatibility })).init(name, raw);
   if (!serialized) {
     process.exit(1);
     invariant(false);

@@ -981,6 +981,7 @@ export class LexicalEnvironment {
         throw new Error(err);
       }
     }
+    return this.realm.intrinsics.undefined;
   }
 
   evaluateAbstractCompletion(ast: BabelNode, strictCode: boolean, metadata?: any): Completion | Value | Reference {

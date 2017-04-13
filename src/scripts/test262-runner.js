@@ -12,6 +12,7 @@
 import { ThrowCompletion } from "../completions.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 import { Realm, ExecutionContext } from "../realm.js";
+import construct_realm from "../construct_realm.js";
 import { DetachArrayBuffer } from "../methods/arraybuffer.js";
 import { ToStringPartial } from "../methods/to.js";
 import { Get } from "../methods/get.js";
@@ -896,7 +897,7 @@ function prepareTest(
 
 function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create a new realm.
-  let realm = new Realm({ timeout: timeout * 1000 });
+  let realm = construct_realm({ timeout: timeout * 1000 });
   let executionContext = new ExecutionContext();
   executionContext.realm = realm;
   realm.pushContext(executionContext);
@@ -919,8 +920,11 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
 
   $.defineNativeProperty("global", realm.$GlobalObject);
 
-  realm.$GlobalObject.defineNativeProperty("$", $);
-  realm.$GlobalObject.defineNativeMethod("print", 1, (context, [arg]) => { });
+  let glob = ((realm.$GlobalObject: any): ObjectValue);
+  glob.defineNativeProperty("$", $);
+  glob.defineNativeMethod("print", 1, (context, [arg]) => {
+    return realm.intrinsics.undefined;
+  });
 
   return { realm, $ };
 }
