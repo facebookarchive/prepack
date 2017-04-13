@@ -51,9 +51,6 @@ class ModuleTracer extends Tracer {
       else this.modules.logger.logError("Second argument to define function is not a number or string value.");
     }
   }
-
-  afterCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {
-  }
 }
 
 
@@ -65,6 +62,7 @@ export class Modules {
     this._define = realm.intrinsics.undefined;
     this.factoryFunctions = new Set();
     this.moduleIds = new Set();
+    this.initializedModules = new Map();
     realm.tracers.push(new ModuleTracer(this));
   }
 
@@ -72,9 +70,9 @@ export class Modules {
   logger: Logger;
   _require: Value;
   _define: Value;
-  requireReturns: Map<number | string, BabelNodeExpression>;
   factoryFunctions: Set<FunctionValue>;
   moduleIds: Set<number | string>;
+  initializedModules: Map<number | string, Value>;
   active: boolean;
 
   _getGlobalProperty(name: string) {
@@ -100,7 +98,6 @@ export class Modules {
 
   getIsRequire(formalParameters: Array<BabelNodeLVal>, functions: Array<FunctionValue>): (scope: any, node: BabelNodeCallExpression) => boolean {
     let realm = this.realm;
-    let globalRequire = this.getRequire();
     let logger = this.logger;
     let modules = this;
     return function (scope: any, node: BabelNodeCallExpression) {
@@ -146,17 +143,16 @@ export class Modules {
           if (!binding.initialized) return false;
           value = binding.value;
         }
-        if (value !== globalRequire) return false;
+        if (value !== modules.getRequire()) return false;
       }
 
       return true;
     };
   }
 
-  initializeMoreModules(): boolean {
+  initializeMoreModules() {
     // partially evaluate all factory methods by calling require
     let realm = this.realm;
-    let anyHeapChanges = false;
     // setup execution environment
     let context = new ExecutionContext();
     let env = realm.$GlobalEnv;
@@ -168,7 +164,8 @@ export class Modules {
       let count = 0;
       let introspectionErrors = Object.create(null);
       for (let moduleId of this.moduleIds) {
-        if (this.requireReturns.has(moduleId)) continue; // already known to be initialized
+        if (this.initializedModules.has(moduleId)) continue;
+
         let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
         let [compl, gen, bindings, properties, createdObjects] =
@@ -202,7 +199,6 @@ export class Modules {
         invariant(compl instanceof Value);
 
         // Apply the joined effects to the global state
-        anyHeapChanges = true;
         realm.restoreBindings(bindings);
         realm.restoreProperties(properties);
 
@@ -228,6 +224,7 @@ export class Modules {
         // Ignore created objects
         createdObjects;
         count++;
+        this.initializedModules.set(moduleId, compl);
       }
       if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
       let a = [];
@@ -240,13 +237,11 @@ export class Modules {
     } finally {
       realm.popContext(context);
     }
-    return anyHeapChanges;
   }
 
-  resolveRequireReturns(serializationContext: SerializationContext): void {
+  resolveInitializedModules(): void {
     // partial evaluate all possible requires and see which are possible to inline
     let realm = this.realm;
-    this.requireReturns = new Map();
     // setup execution environment
     let context = new ExecutionContext();
     let env = realm.$GlobalEnv;
@@ -277,7 +272,7 @@ export class Modules {
         }
         if (escapes) continue;
 
-        this.requireReturns.set(moduleId, serializationContext.serializeValue(compl));
+        this.initializedModules.set(moduleId, compl);
       }
     } finally {
       realm.popContext(context);
