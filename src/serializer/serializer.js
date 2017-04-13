@@ -268,9 +268,8 @@ export class Serializer {
       if (this.canIgnoreProperty(val, key, desc)) continue;
       invariant(desc !== undefined);
       this._eagerOrDelay(this._getDescriptorValues(desc).concat(val), () => {
-        let uid = this._getValIdForReference(val);
         invariant(desc !== undefined);
-        return this._emitProperty(name, uid, key, desc, ignoreEmbedded, reasons);
+        return this._emitProperty(name, val, key, desc, ignoreEmbedded, reasons);
       });
     }
 
@@ -296,12 +295,13 @@ export class Serializer {
     }
   }
 
-  _emitProperty(name: string, uid: BabelNodeIdentifier, key: BabelNodeIdentifier | BabelNodeStringLiteral, desc: Descriptor, ignoreEmbedded: boolean, reasons: Array<string>): void {
+  _emitProperty(name: string, val: Value, key: BabelNodeIdentifier | BabelNodeStringLiteral, desc: Descriptor, ignoreEmbedded: boolean, reasons: Array<string>): void {
     if (this._canEmbedProperty(desc, true)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       if (ignoreEmbedded) return;
 
+      let uid = this._getValIdForReference(val);
       this.body.push(t.expressionStatement(t.assignmentExpression(
         "=",
         t.memberExpression(uid, key, !t.isIdentifier(key)),
@@ -365,6 +365,7 @@ export class Serializer {
       let keyRaw = key;
       if (t.isIdentifier(keyRaw)) keyRaw = t.stringLiteral(((keyRaw: any): BabelNodeIdentifier).name);
 
+      let uid = this._getValIdForReference(val);
       this.body.push(t.expressionStatement(t.callExpression(
         this.preludeGenerator.memoizeReference("Object.defineProperty"),
         [uid, keyRaw, descriptorId]
@@ -408,7 +409,6 @@ export class Serializer {
   }
 
   _incrementValToRefCount(val: Value) {
-
     if (this.collectValToRefCountOnly) {
       let refCount = this.valToRefCount.get(val);
       if (refCount) {
