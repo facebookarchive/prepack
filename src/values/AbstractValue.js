@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeExpression, BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeSourceLocation } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 
@@ -80,6 +80,45 @@ export default class AbstractValue extends Value {
     return ((this._buildNode: any): BabelNodeIdentifier);
   }
 
+  addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>) {
+    if (!(this._buildNode instanceof Function)) {
+      if (this._buildNode.loc) locations.push(this._buildNode.loc);
+    }
+    for (let val of this.args) {
+      if (val instanceof AbstractValue) val.addSourceLocationsTo(locations);
+    }
+  }
+
+  addSourceNamesTo(names: Array<string>) {
+    let gen = this.$Realm.preludeGenerator;
+    function add_instrinsic(name: string) {
+      if (name.startsWith("_$")) {
+        if (gen === undefined) return;
+        add_args(gen.derivedIds.get(name));
+      } else if (names.indexOf(name) < 0) {
+        names.push(name);
+      }
+    }
+    function add_args(args: void | Array<Value>) {
+      if (args === undefined) return;
+      for (let val of args) {
+        if (val.intrinsicName) {
+          add_instrinsic(val.intrinsicName);
+        } else if (val instanceof AbstractValue) {
+          val.addSourceNamesTo(names);
+        } else if (val instanceof StringValue) {
+          if (val.value.startsWith("__")) {
+            names.push(val.value.slice(2));
+          }
+        }
+      }
+    }
+    if (this.intrinsicName) {
+      add_instrinsic(this.intrinsicName);
+    }
+    add_args(this.args);
+  }
+
   mightBeNumber(): boolean {
     let valueType = this.getType();
     if (valueType === NumberValue) return true;
@@ -147,20 +186,29 @@ export default class AbstractValue extends Value {
     let realm = val.$Realm;
 
     let identity;
-    if (val === realm.$GlobalObject) identity = "global";
-    if (!identity) identity = val.intrinsicName;
-    if (!identity && val instanceof AbstractValue) identity = "(some abstract value)";
-    if (!identity) identity = "(some value)";
+    if (val === realm.$GlobalObject)
+      identity = "global";
+    else if (val instanceof AbstractValue) {
+      let names = [];
+      val.addSourceNamesTo(names);
+      if (names.length === 0) {
+        val.addSourceNamesTo(names);
+      }
+      identity = `abstract value${names.length > 1 ? 's' : ''} ${names.join(" and ")}`;
+    } else
+      identity = val.intrinsicName || "(some value)";
+
+    let source_locations = [];
+    if (val instanceof AbstractValue)
+      val.addSourceLocationsTo(source_locations);
 
     let location;
     if (propertyName instanceof SymbolValue) location = `at symbol [${propertyName.$Description || "(no description)"}]`;
     else if (propertyName instanceof StringValue) location = `at ${propertyName.value}`;
     else if (typeof propertyName === "string") location = `at ${propertyName}`;
-    else location = "";
+    else location = source_locations.length === 0 ? "" : `at ${source_locations.join("\n")}`;
 
-    let type = val instanceof AbstractValue ? "abstract value" : val instanceof ObjectValue ? `${val.isSimple() ? "simple " : " "}${val.isPartial() ? "partial " : " "}object` : "value";
-
-    let message = `Introspection of ${identity} ${location} is not allowed on ${type}`;
+    let message = `This operation is not yet supported on ${identity} ${location}`;
 
     throw realm.createErrorThrowCompletion(realm.intrinsics.__IntrospectionError, message);
   }
