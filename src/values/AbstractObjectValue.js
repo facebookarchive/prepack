@@ -48,7 +48,7 @@ export default class AbstractObjectValue extends AbstractValue {
         break;
       }
     }
-    return Value.throwIntrospectionError(this);
+    return AbstractValue.throwIntrospectionError(this);
   }
 
   isPartial(): boolean {
@@ -58,10 +58,10 @@ export default class AbstractObjectValue extends AbstractValue {
       if (result === undefined)
         result = element.isPartial();
       else if (result !== element.isPartial())
-        Value.throwIntrospectionError(this);
+        AbstractValue.throwIntrospectionError(this);
     }
     if (result === undefined)
-      return Value.throwIntrospectionError(this);
+      return AbstractValue.throwIntrospectionError(this);
     return result;
   }
 
@@ -123,7 +123,7 @@ export default class AbstractObjectValue extends AbstractValue {
             if  (!IsDataDescriptor(this.$Realm, d)) continue;
           } else {
             if (!equalDescriptors(d, desc))
-              return Value.throwIntrospectionError(this, P);
+              return AbstractValue.throwIntrospectionError(this, P);
             if  (!IsDataDescriptor(this.$Realm, desc)) continue;
             // values may be different
             let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
@@ -134,7 +134,7 @@ export default class AbstractObjectValue extends AbstractValue {
         }
       }
       if (hasProp && doesNotHaveProp)
-        return Value.throwIntrospectionError(this, P);
+        return AbstractValue.throwIntrospectionError(this, P);
       return desc;
     }
   }
@@ -152,7 +152,7 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(false);
     } else {
       if (!IsDataDescriptor(this.$Realm, Desc))
-        return Value.throwIntrospectionError(this, P);
+        return AbstractValue.throwIntrospectionError(this, P);
       let desc = {
         value: 'value' in Desc ? Desc.value : this.$Realm.intrinsics.undefined,
         writable: 'writable' in Desc ? Desc.writable : false,
@@ -166,7 +166,7 @@ export default class AbstractObjectValue extends AbstractValue {
         invariant(cv instanceof ObjectValue);
         let d = cv.$GetOwnProperty(P);
         if (d !== undefined && !equalDescriptors(d, desc))
-          return Value.throwIntrospectionError(this, P);
+          return AbstractValue.throwIntrospectionError(this, P);
         let dval = d === undefined || d.vale === undefined ?
          this.$Realm.intrinsics.empty : d.value;
         let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
@@ -179,7 +179,7 @@ export default class AbstractObjectValue extends AbstractValue {
           sawFalse = true;
       }
       if (sawTrue && sawFalse)
-        return Value.throwIntrospectionError(this, P);
+        return AbstractValue.throwIntrospectionError(this, P);
       return sawTrue;
     }
   }
@@ -203,7 +203,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (cv.$HasProperty(P)) hasProp = true; else doesNotHaveProp = true;
       }
       if (hasProp && doesNotHaveProp)
-        return Value.throwIntrospectionError(this, P);
+        return AbstractValue.throwIntrospectionError(this, P);
       return hasProp;
     }
   }
@@ -271,7 +271,7 @@ export default class AbstractObjectValue extends AbstractValue {
         invariant(cv instanceof ObjectValue);
         let d = cv.$GetOwnProperty(P);
         if (d !== undefined && !IsDataDescriptor(this.$Realm, d))
-          return Value.throwIntrospectionError(this, P);
+          return AbstractValue.throwIntrospectionError(this, P);
         let oldVal = d === undefined ? this.$Realm.intrinsics.empty : d.value;
         let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
           [this, cv],
@@ -280,7 +280,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (cv.$Set(P, v, cv)) sawTrue = true; else sawFalse = true;
       }
       if (sawTrue && sawFalse)
-        return Value.throwIntrospectionError(this, P);
+        return AbstractValue.throwIntrospectionError(this, P);
       return sawTrue;
     }
   }
@@ -304,7 +304,7 @@ export default class AbstractObjectValue extends AbstractValue {
         let d = cv.$GetOwnProperty(P);
         if (d === undefined) continue;
         if (!IsDataDescriptor(this.$Realm, d))
-          Value.throwIntrospectionError(this, P);
+          AbstractValue.throwIntrospectionError(this, P);
         let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
           [this, cv],
           ([x, y]) => t.binaryExpression("===", x, y));
@@ -312,7 +312,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (cv.$Set(P, v, cv)) sawTrue = true; else sawFalse = true;
       }
       if (sawTrue && sawFalse)
-        return Value.throwIntrospectionError(this, P);
+        return AbstractValue.throwIntrospectionError(this, P);
       return sawTrue;
     }
   }
@@ -326,7 +326,7 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       invariant(false);
     } else {
-      return Value.throwIntrospectionError(this);
+      return AbstractValue.throwIntrospectionError(this);
     }
   }
 

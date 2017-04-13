@@ -59,9 +59,9 @@ export class ComposedAbruptCompletion extends AbruptCompletion {
 
   throwIntrospectionError<T>(): T {
     if (this.priorCompletion instanceof PossiblyNormalCompletion)
-      return Value.throwIntrospectionError(this.priorCompletion.joinCondition);
+      return AbstractValue.throwIntrospectionError(this.priorCompletion.joinCondition);
     invariant(this.subsequentCompletion instanceof PossiblyNormalCompletion);
-    return Value.throwIntrospectionError(this.subsequentCompletion.joinCondition);
+    return AbstractValue.throwIntrospectionError(this.subsequentCompletion.joinCondition);
   }
 }
 

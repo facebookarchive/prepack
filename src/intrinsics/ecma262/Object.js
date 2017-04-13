@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ObjectValue, NullValue, UndefinedValue, StringValue, BooleanValue, SymbolValue, Value } from "../../values/index.js";
+import { AbstractValue, ObjectValue, NullValue, UndefinedValue, StringValue, BooleanValue, SymbolValue } from "../../values/index.js";
 import {
   ToObject,
   ToObjectPartial,
@@ -93,7 +93,7 @@ export default function (realm: Realm): NativeFunctionValue {
         // properties at runtime that will overwrite current properties in to.
         // For now, just throw if this happens.
         let to_keys = to.$OwnPropertyKeys();
-        if (to_keys.length !== 0) Value.throwIntrospectionError(nextSource);
+        if (to_keys.length !== 0) AbstractValue.throwIntrospectionError(nextSource);
       }
 
       invariant(frm, "from required");

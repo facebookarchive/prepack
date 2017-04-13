@@ -10,8 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { EmptyValue, UndefinedValue, NullValue, BooleanValue, StringValue, SymbolValue, NumberValue, ObjectValue, ConcreteValue, AbstractValue, AbstractObjectValue, FunctionValue } from "./index.js";
-import type { PropertyKeyValue } from "../types.js";
+import { EmptyValue, UndefinedValue, NullValue, BooleanValue, StringValue, SymbolValue, NumberValue, ObjectValue, ConcreteValue, AbstractObjectValue, FunctionValue } from "./index.js";
 
 import invariant from "../invariant.js";
 
@@ -115,28 +114,6 @@ export default class Value {
 
   _serialize(set: Function, stack: Map<Value, any>): any {
     throw new Error("abstract method; please override");
-  }
-
-  static throwIntrospectionError<T>(val: Value, propertyName: void | PropertyKeyValue): T {
-    let realm = val.$Realm;
-
-    let identity;
-    if (val === realm.$GlobalObject) identity = "global";
-    if (!identity) identity = val.intrinsicName;
-    if (!identity && val instanceof AbstractValue) identity = "(some abstract value)";
-    if (!identity) identity = "(some value)";
-
-    let location;
-    if (propertyName instanceof SymbolValue) location = `at symbol [${propertyName.$Description || "(no description)"}]`;
-    else if (propertyName instanceof StringValue) location = `at ${propertyName.value}`;
-    else if (typeof propertyName === "string") location = `at ${propertyName}`;
-    else location = "";
-
-    let type = val instanceof AbstractValue ? "abstract value" : val instanceof ObjectValue ? `${val.isSimple() ? "simple " : " "}${val.isPartial() ? "partial " : " "}object` : "value";
-
-    let message = `Introspection of ${identity} ${location} is not allowed on ${type}`;
-
-    throw realm.createErrorThrowCompletion(realm.intrinsics.__IntrospectionError, message);
   }
 
 }

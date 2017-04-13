@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { ThrowCompletion } from "../../completions.js";
-import { Value, UndefinedValue, NumberValue, ObjectValue, StringValue, NullValue } from "../../values/index.js";
+import { AbstractValue, UndefinedValue, NumberValue, ObjectValue, StringValue, NullValue } from "../../values/index.js";
 import { IsCallable, IsRegExp } from "../../methods/is.js";
 import { GetMethod, GetSubstitution } from "../../methods/get.js";
 import { Construct } from "../../methods/construct.js";
@@ -799,7 +799,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
     if (realm.isPartial && (type === "LocaleUpper" || type === "LocaleLower")) {
       // The locale is environment-dependent
-      Value.throwIntrospectionError(O);
+      AbstractValue.throwIntrospectionError(O);
     }
 
     // Omit the rest of the arguments. Just use the native impl.

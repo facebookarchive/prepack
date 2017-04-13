@@ -478,7 +478,7 @@ export class Realm {
       invariant(binding.descriptor !== undefined);
       let value = binding.descriptor.value;
       ThrowIfMightHaveBeenDeleted(value);
-      if (value === undefined) return Value.throwIntrospectionError(abstractValue, key);
+      if (value === undefined) return AbstractValue.throwIntrospectionError(abstractValue, key);
       this.rebuildObjectProperty(abstractValue, key, value, path);
     }
   }

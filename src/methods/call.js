@@ -306,7 +306,7 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     }
     if (c instanceof JoinedAbruptCompletions) {
       if (e !== undefined) realm.apply_effects(e);
-      return Value.throwIntrospectionError(c.joinCondition);
+      return AbstractValue.throwIntrospectionError(c.joinCondition);
     } else if (c instanceof ComposedAbruptCompletion) {
       if (e !== undefined) realm.apply_effects(e);
       return c.throwIntrospectionError();

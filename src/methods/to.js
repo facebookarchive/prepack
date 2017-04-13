@@ -438,7 +438,7 @@ export function ToNumber(realm: Realm, val: numberOrValue): number {
   if (typeof val === "number") {
     return val;
   } else if (val instanceof AbstractValue) {
-    return Value.throwIntrospectionError(val);
+    return AbstractValue.throwIntrospectionError(val);
   } else if (val instanceof UndefinedValue) {
     return NaN;
   } else if (val instanceof NullValue) {

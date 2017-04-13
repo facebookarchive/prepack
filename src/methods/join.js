@@ -95,7 +95,7 @@ export function joinEffectsAndRemoveNestedReturnCompletions(
       e1[0] = new ReturnCompletion(realm.intrinsics.undefined);
       return joinEffects(realm, c.joinCondition, e1, e2);
     } else {
-      return Value.throwIntrospectionError(c.joinCondition);
+      return AbstractValue.throwIntrospectionError(c.joinCondition);
     }
   }
   invariant(false);
@@ -142,7 +142,7 @@ function joinResults(realm: Realm, joinCondition: AbstractValue,
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }
   if (result1 instanceof Reference || result2 instanceof Reference)
-    return Value.throwIntrospectionError(joinCondition);
+    return AbstractValue.throwIntrospectionError(joinCondition);
   if (result1 instanceof BreakCompletion && result2 instanceof BreakCompletion &&
       result1.target === result2.target) {
     return new BreakCompletion(realm.intrinsics.empty, result1.target);
