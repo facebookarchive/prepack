@@ -60,10 +60,8 @@ export class ComposedAbruptCompletion extends AbruptCompletion {
   throwIntrospectionError<T>(): T {
     if (this.priorCompletion instanceof PossiblyNormalCompletion)
       return Value.throwIntrospectionError(this.priorCompletion.joinCondition);
-    if (this.subsequentCompletion instanceof PossiblyNormalCompletion)
-      return Value.throwIntrospectionError(this.subsequentCompletion.joinCondition);
-    invariant(this.subsequentCompletion instanceof ComposedPossiblyNormalCompletion);
-    return this.subsequentCompletion.throwIntrospectionError();
+    invariant(this.subsequentCompletion instanceof PossiblyNormalCompletion);
+    return Value.throwIntrospectionError(this.subsequentCompletion.joinCondition);
   }
 }
 
@@ -72,16 +70,22 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
       realm: Realm,
       joinCondition: AbstractValue,
       consequent: AbruptCompletion,
-      alternate: AbruptCompletion) {
+      consequentEffects: Effects,
+      alternate: AbruptCompletion,
+      alternateEffects: Effects) {
     super(realm.intrinsics.empty, undefined);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
+    this.consequentEffects = consequentEffects;
     this.alternate = alternate;
+    this.alternateEffects = alternateEffects;
   }
 
   joinCondition: AbstractValue;
   consequent: AbruptCompletion;
+  consequentEffects: Effects;
   alternate: AbruptCompletion;
+  alternateEffects: Effects;
 }
 
 // Possibly normal completions have to be treated like normal completions
@@ -96,6 +100,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
       alternateEffects: Effects) {
     invariant(consequent instanceof NormalCompletion || consequent instanceof Value ||
        alternate instanceof NormalCompletion || alternate instanceof Value);
+    invariant(consequent instanceof AbruptCompletion || alternate instanceof AbruptCompletion);
     super(alternate instanceof Value ? alternate : alternate.value);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
@@ -109,26 +114,4 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   consequentEffects: Effects;
   alternate: Completion | Value;
   alternateEffects: Effects;
-}
-
-export class ComposedPossiblyNormalCompletion extends NormalCompletion {
-  constructor(
-      priorCompletion: NormalCompletion,
-      subsequentCompletion: NormalCompletion) {
-    super(subsequentCompletion.value, subsequentCompletion.target);
-    this.priorCompletion = priorCompletion;
-    this.subsequentCompletion = subsequentCompletion;
-  }
-
-  priorCompletion: NormalCompletion;
-  subsequentCompletion: NormalCompletion;
-
-  throwIntrospectionError<T>(): T {
-    if (this.priorCompletion instanceof PossiblyNormalCompletion)
-      return Value.throwIntrospectionError(this.priorCompletion.joinCondition);
-    if (this.subsequentCompletion instanceof PossiblyNormalCompletion)
-      return Value.throwIntrospectionError(this.subsequentCompletion.joinCondition);
-    invariant(this.subsequentCompletion instanceof ComposedPossiblyNormalCompletion);
-    return this.subsequentCompletion.throwIntrospectionError();
-  }
 }
