@@ -25,7 +25,7 @@ export default function(opts: RealmOptions = {}): Realm {
   r.$GlobalObject = initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
   r.$GlobalEnv =  NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
-  if (opts.isPartial) {
+  if (opts.partial) {
     r.generator = new Generator(r);
   }
   return r;
