@@ -157,7 +157,7 @@ export class Serializer {
     }
 
     if (val instanceof AbstractValue && val.hasIdentifier()) {
-      invariant(!this.preludeGenerator.derivedIds.has(val.getIdentifier()) ||
+      invariant(!this.preludeGenerator.derivedIds.has(val.getIdentifier().name) ||
         this.declaredDerivedIds.has(val.getIdentifier()));
       return true;
     }
