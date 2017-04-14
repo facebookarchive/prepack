@@ -54,7 +54,7 @@ export default function (realm: Realm): NativeFunctionValue {
   else if (O.$NumberData) builtinTag = "Number";
 
   // 12. Else, if O has a [[DateValue]] internal slot, let builtinTag be "Date".
-  else if (O.$DateValue !== undefined) builtinTag = "Date";
+  else if (O.$DateValue) builtinTag = "Date";
 
   // 13. Else, if O has a [[RegExpMatcher]] internal slot, let builtinTag be "RegExp".
   else if (O.$RegExpMatcher) builtinTag = "RegExp";
