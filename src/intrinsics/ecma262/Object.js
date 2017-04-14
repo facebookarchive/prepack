@@ -93,7 +93,8 @@ export default function (realm: Realm): NativeFunctionValue {
         // properties at runtime that will overwrite current properties in to.
         // For now, just throw if this happens.
         let to_keys = to.$OwnPropertyKeys();
-        if (to_keys.length !== 0) AbstractValue.throwIntrospectionError(nextSource);
+        if (to_keys.length !== 0)
+          throw AbstractValue.createIntrospectionErrorThrowCompletion(nextSource);
       }
 
       invariant(frm, "from required");

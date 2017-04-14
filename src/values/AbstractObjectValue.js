@@ -48,7 +48,7 @@ export default class AbstractObjectValue extends AbstractValue {
         break;
       }
     }
-    return AbstractValue.throwIntrospectionError(this);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
   }
 
   isPartial(): boolean {
@@ -58,10 +58,10 @@ export default class AbstractObjectValue extends AbstractValue {
       if (result === undefined)
         result = element.isPartial();
       else if (result !== element.isPartial())
-        AbstractValue.throwIntrospectionError(this);
+        throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
     }
     if (result === undefined)
-      return AbstractValue.throwIntrospectionError(this);
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
     return result;
   }
 
@@ -123,7 +123,7 @@ export default class AbstractObjectValue extends AbstractValue {
             if  (!IsDataDescriptor(this.$Realm, d)) continue;
           } else {
             if (!equalDescriptors(d, desc))
-              return AbstractValue.throwIntrospectionError(this, P);
+              throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
             if  (!IsDataDescriptor(this.$Realm, desc)) continue;
             // values may be different
             let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
@@ -134,7 +134,7 @@ export default class AbstractObjectValue extends AbstractValue {
         }
       }
       if (hasProp && doesNotHaveProp)
-        return AbstractValue.throwIntrospectionError(this, P);
+        throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
       return desc;
     }
   }
@@ -152,7 +152,7 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(false);
     } else {
       if (!IsDataDescriptor(this.$Realm, Desc))
-        return AbstractValue.throwIntrospectionError(this, P);
+        throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
       let desc = {
         value: 'value' in Desc ? Desc.value : this.$Realm.intrinsics.undefined,
         writable: 'writable' in Desc ? Desc.writable : false,
@@ -166,7 +166,7 @@ export default class AbstractObjectValue extends AbstractValue {
         invariant(cv instanceof ObjectValue);
         let d = cv.$GetOwnProperty(P);
         if (d !== undefined && !equalDescriptors(d, desc))
-          return AbstractValue.throwIntrospectionError(this, P);
+          throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
         let dval = d === undefined || d.vale === undefined ?
          this.$Realm.intrinsics.empty : d.value;
         let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
@@ -179,7 +179,7 @@ export default class AbstractObjectValue extends AbstractValue {
           sawFalse = true;
       }
       if (sawTrue && sawFalse)
-        return AbstractValue.throwIntrospectionError(this, P);
+        throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
       return sawTrue;
     }
   }
@@ -203,7 +203,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (cv.$HasProperty(P)) hasProp = true; else doesNotHaveProp = true;
       }
       if (hasProp && doesNotHaveProp)
-        return AbstractValue.throwIntrospectionError(this, P);
+        throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
       return hasProp;
     }
   }
@@ -235,7 +235,7 @@ export default class AbstractObjectValue extends AbstractValue {
         let d = cv.$GetOwnProperty(P);
         // We do not currently join property getters
         if (d !== undefined && !IsDataDescriptor(this.$Realm, d))
-          return AbstractValue.throwIntrospectionError(this, P);
+          throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
         let cvVal = d === undefined ? this.$Realm.intrinsics.undefined : d.value;
         if (result === undefined)
           result = cvVal;
@@ -271,7 +271,7 @@ export default class AbstractObjectValue extends AbstractValue {
         invariant(cv instanceof ObjectValue);
         let d = cv.$GetOwnProperty(P);
         if (d !== undefined && !IsDataDescriptor(this.$Realm, d))
-          return AbstractValue.throwIntrospectionError(this, P);
+          throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
         let oldVal = d === undefined ? this.$Realm.intrinsics.empty : d.value;
         let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
           [this, cv],
@@ -280,7 +280,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (cv.$Set(P, v, cv)) sawTrue = true; else sawFalse = true;
       }
       if (sawTrue && sawFalse)
-        return AbstractValue.throwIntrospectionError(this, P);
+        throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
       return sawTrue;
     }
   }
@@ -304,7 +304,7 @@ export default class AbstractObjectValue extends AbstractValue {
         let d = cv.$GetOwnProperty(P);
         if (d === undefined) continue;
         if (!IsDataDescriptor(this.$Realm, d))
-          AbstractValue.throwIntrospectionError(this, P);
+          throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
         let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
           [this, cv],
           ([x, y]) => t.binaryExpression("===", x, y));
@@ -312,7 +312,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (cv.$Set(P, v, cv)) sawTrue = true; else sawFalse = true;
       }
       if (sawTrue && sawFalse)
-        return AbstractValue.throwIntrospectionError(this, P);
+        throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
       return sawTrue;
     }
   }
@@ -326,7 +326,7 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       invariant(false);
     } else {
-      return AbstractValue.throwIntrospectionError(this);
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
     }
   }
 

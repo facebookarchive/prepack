@@ -65,8 +65,7 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
   // todo: don't just give up on abrupt completions, but try to join states
   // eg. foo || throwSomething()
   if (!(compl2 instanceof Value))
-    AbstractValue.throwIntrospectionError(lval);
-  invariant(compl2 instanceof Value);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(lval);
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of ast.left.

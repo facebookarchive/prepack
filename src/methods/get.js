@@ -125,7 +125,7 @@ export function OrdinaryGet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, R
   if (IsDataDescriptor(realm, desc)) return descValue;
   if (dataOnly) {
     invariant(descValue instanceof AbstractValue);
-    return AbstractValue.throwIntrospectionError(descValue);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(descValue);
   }
 
   // 5. Assert: IsAccessorDescriptor(desc) is true.

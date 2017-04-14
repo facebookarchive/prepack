@@ -477,7 +477,7 @@ export function Type(realm: Realm, val: Value): string {
     return "Object";
   } else {
     invariant(val instanceof AbstractValue);
-    return AbstractValue.throwIntrospectionError(val);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(val);
   }
 }
 

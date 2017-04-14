@@ -965,26 +965,17 @@ export class LexicalEnvironment {
     try {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof JoinedAbruptCompletions || err instanceof ComposedAbruptCompletion || err instanceof PossiblyNormalCompletion) {
-        try {
-          if (err instanceof ComposedAbruptCompletion) {
-            return err.throwIntrospectionError();
-          } else {
-            return AbstractValue.throwIntrospectionError(err.joinCondition);
-          }
-         } catch (e) {
-           return e;
-         }
-      }
-      if (err instanceof AbruptCompletion) {
+      if (err instanceof ComposedAbruptCompletion)
+        return err.createIntrospectionErrorThrowCompletion();
+      if (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion)
+        return AbstractValue.createIntrospectionErrorThrowCompletion(err.joinCondition);
+      if (err instanceof AbruptCompletion)
         return err;
-      } else if (err instanceof Error) {
+      if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;
-      } else {
-        // let's wrap into a proper Error to create stack trace
-        throw new Error(err);
-      }
+      // let's wrap into a proper Error to create stack trace
+      throw new Error(err);
     }
   }
 
@@ -992,15 +983,13 @@ export class LexicalEnvironment {
     try {
       return this.evaluateAbstract(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof AbruptCompletion) {
+      if (err instanceof AbruptCompletion)
         return err;
-      } else if (err instanceof Error) {
+      if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;
-      } else {
-        // let's wrap into a proper Error to create stack trace
-        throw new Error(err);
-      }
+      // let's wrap into a proper Error to create stack trace
+      throw new Error(err);
     }
   }
 
@@ -1050,7 +1039,7 @@ export class LexicalEnvironment {
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     if (res instanceof PossiblyNormalCompletion)
-      return AbstractValue.throwIntrospectionError(res.joinCondition);
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(res.joinCondition);
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;
   }

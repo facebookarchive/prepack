@@ -799,7 +799,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
     if (realm.isPartial && (type === "LocaleUpper" || type === "LocaleLower")) {
       // The locale is environment-dependent
-      AbstractValue.throwIntrospectionError(O);
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(O);
     }
 
     // Omit the rest of the arguments. Just use the native impl.
