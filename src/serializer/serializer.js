@@ -572,30 +572,31 @@ export class Serializer {
       let propertyBinding = remainingProperties.get(key);
       let elem = null;
       if (propertyBinding !== undefined) {
-        remainingProperties.delete(key);
         let descriptor = propertyBinding.descriptor;
-        if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
-        if (this._canEmbedProperty(descriptor)) {
-          let elemVal = descriptor.value;
-          invariant(elemVal instanceof Value);
-          let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-          let delayReason = mightHaveBeenDeleted || this._shouldDelayValue(elemVal);
-          if (delayReason) {
-            // handle self recursion
-            this._delay(delayReason, [elemVal], () => {
-              this._assignProperty(
-                () => t.memberExpression(this._getValIdForReference(val), t.numericLiteral(i), true),
-                () => {
-                  invariant(elemVal !== undefined);
-                  return this.serializeValue(elemVal, reasons.concat(`Declared in array ${name} at index ${key}`));
-                },
-                mightHaveBeenDeleted);
-            });
-          } else {
-            elem = this.serializeValue(
-              elemVal,
-              reasons.concat(`Declared in array ${name} at index ${key}`)
-            );
+        if (descriptor !== undefined && descriptor.value !== undefined) { // deleted
+          remainingProperties.delete(key);
+          if (this._canEmbedProperty(descriptor)) {
+            let elemVal = descriptor.value;
+            invariant(elemVal instanceof Value);
+            let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
+            let delayReason = mightHaveBeenDeleted || this._shouldDelayValue(elemVal);
+            if (delayReason) {
+              // handle self recursion
+              this._delay(delayReason, [elemVal], () => {
+                this._assignProperty(
+                  () => t.memberExpression(this._getValIdForReference(val), t.numericLiteral(i), true),
+                  () => {
+                    invariant(elemVal !== undefined);
+                    return this.serializeValue(elemVal, reasons.concat(`Declared in array ${name} at index ${key}`));
+                  },
+                  mightHaveBeenDeleted);
+              });
+            } else {
+              elem = this.serializeValue(
+                elemVal,
+                reasons.concat(`Declared in array ${name} at index ${key}`)
+              );
+            }
           }
         }
       }
