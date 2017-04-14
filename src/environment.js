@@ -977,7 +977,7 @@ export class LexicalEnvironment {
       // let's wrap into a proper Error to create stack trace
       throw new Error(err);
     }
-    return this.realm.intrinsics.undefined;
+    invariant(false);
   }
 
   evaluateAbstractCompletion(ast: BabelNode, strictCode: boolean, metadata?: any): Completion | Value | Reference {

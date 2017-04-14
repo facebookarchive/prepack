@@ -11,7 +11,6 @@
 
 import Serializer from "../serializer/index.js";
 import { IsIntrospectionError } from  "../methods/index.js";
-import construct_realm from "../construct_realm.js";
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -75,7 +74,7 @@ function runTest(name: string, code: string): boolean {
         throw new Success();
     };
     try {
-      let serialized = new Serializer(construct_realm(realmOptions), serializerOptions).init(name, code, "", false, onError);
+      let serialized = new Serializer(realmOptions, serializerOptions).init(name, code, "", false, onError);
       if (!serialized) {
         console.log(chalk.red("Error during serialization"));
       } else {
@@ -89,7 +88,7 @@ function runTest(name: string, code: string): boolean {
     return false;
   } else if (code.includes("// no effect")) {
     try {
-      let serialized = new Serializer(construct_realm(realmOptions), serializerOptions).init(name, code);
+      let serialized = new Serializer(realmOptions, serializerOptions).init(name, code);
       if (!serialized) {
         console.log(chalk.red("Error during serialization!"));
         return false;
@@ -125,7 +124,7 @@ function runTest(name: string, code: string): boolean {
       let max = 4;
       let oldCode = code;
       for (; i < max; i++) {
-        let serialized = new Serializer(construct_realm(realmOptions), serializerOptions).init(name, oldCode);
+        let serialized = new Serializer(realmOptions, serializerOptions).init(name, oldCode);
         if (!serialized) {
           console.log(chalk.red("Error during serialization!"));
           break;

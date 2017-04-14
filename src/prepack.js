@@ -10,11 +10,10 @@
 /* @flow */
 import Serializer from "./serializer/index.js";
 import invariant from "./invariant.js";
-import construct_realm from "./construct_realm.js";
 let fs        = require("fs");
 
 function run_internal(name: string, raw: string, map: string = "", compatibility?: "browser" | "jsc" = "browser", mathRandomSeed: void | string, outputFilename?: string, outputMap?: string, speculate: boolean = false, trace: boolean = false) {
-  let serialized = new Serializer(construct_realm({ partial: true, compatibility, mathRandomSeed }), { initializeMoreModules: speculate, internalDebug: true, trace }).init(name, raw, map, outputMap !== undefined);
+  let serialized = new Serializer({ partial: true, compatibility, mathRandomSeed }, { initializeMoreModules: speculate, internalDebug: true, trace }).init(name, raw, map, outputMap !== undefined);
   if (!serialized) {
     process.exit(1);
     invariant(false);
