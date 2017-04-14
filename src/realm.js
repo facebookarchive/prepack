@@ -120,7 +120,6 @@ export class Realm {
       ObjectValue.setupTrackedPropertyAccessors();
     }
 
-    this.annotations = new Map();
     this.tracers = [];
 
     // These get initialized in construct_realm to avoid the dependency
@@ -159,7 +158,6 @@ export class Realm {
   timeoutCounterThreshold: number;
   evaluators: { [key: string]: (ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any) => NormalCompletion | Value | Reference };
 
-  annotations: Map<FunctionValue, string>;
   tracers: Array<Tracer>;
 
   // Checks if there is a let binding at global scope with the given name
@@ -353,15 +351,15 @@ export class Realm {
     }
   }
 
-  throwReadOnlyError(msg: string) {
-    let completion = this.createErrorThrowCompletion(this.intrinsics.__IntrospectionError, msg);
-    invariant(completion instanceof IntrospectionThrowCompletion);
+  createReadOnlyError(msg: string): IntrospectionThrowCompletion {
+    let completion = this.createIntrospectionErrorThrowCompletion(msg);
     completion.reason = "readonly";
-    throw completion;
+    return completion;
   }
 
   outputToConsole(str: string): void {
-    if (this.isReadOnly) this.throwReadOnlyError("Trying to create console output in read-only realm");
+    if (this.isReadOnly)
+      throw this.createReadOnlyError("Trying to create console output in read-only realm");
     if (this.isPartial) {
       invariant(this.generator !== undefined);
       this.generator.emitConsoleLog(str);
@@ -373,7 +371,8 @@ export class Realm {
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
   recordModifiedBinding(binding: Binding, env: EnvironmentRecord): Binding {
-    if (env.isReadOnly) this.throwReadOnlyError("Trying to modify a binding in read-only realm");
+    if (env.isReadOnly)
+      throw this.createReadOnlyError("Trying to modify a binding in read-only realm");
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
       this.modifiedBindings.set(binding, binding.value);
     return binding;
@@ -383,7 +382,7 @@ export class Realm {
   // there is already an entry for binding.
   recordModifiedProperty(binding: PropertyBinding): void {
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
-      this.throwReadOnlyError("Trying to modify a property in read-only realm");
+      throw this.createReadOnlyError("Trying to modify a property in read-only realm");
     }
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
       this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
@@ -473,7 +472,7 @@ export class Realm {
       invariant(binding.descriptor !== undefined);
       let value = binding.descriptor.value;
       ThrowIfMightHaveBeenDeleted(value);
-      if (value === undefined) return AbstractValue.throwIntrospectionError(abstractValue, key);
+      if (value === undefined) throw AbstractValue.createIntrospectionErrorThrowCompletion(abstractValue, key);
       this.rebuildObjectProperty(abstractValue, key, value, path);
     }
   }
@@ -509,13 +508,20 @@ export class Realm {
     //}
   }
 
-  createErrorThrowCompletion(type: NativeFunctionValue, message?: void | string | StringValue): ThrowCompletion {
+  createIntrospectionErrorThrowCompletion(message?: void | string | StringValue): IntrospectionThrowCompletion {
     if (message === undefined) message = "TODO";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
-    if (type === this.intrinsics.__IntrospectionError)
-      return new IntrospectionThrowCompletion(Construct(this, type, [message]));
+    return new IntrospectionThrowCompletion(Construct(this, this.intrinsics.__IntrospectionError, [message]));
+  }
+
+  createErrorThrowCompletion(type: NativeFunctionValue, message?: void | string | StringValue): ThrowCompletion {
+    invariant(type !== this.intrinsics.__IntrospectionError);
+    if (message === undefined) message = "TODO";
+    if (typeof message === "string") message = new StringValue(this, message);
+    invariant(message instanceof StringValue);
+    this.nextContextLocation = this.currentLocation;
     return new ThrowCompletion(Construct(this, type, [message]));
   }
 }

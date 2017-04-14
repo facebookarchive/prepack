@@ -1,6 +1,7 @@
 // does not contain:(0)
 var modules = Object.create(null);
 
+__d = define;
 function require(moduleId) {
   var moduleIdReallyIsNumber = moduleId;
   var module = modules[moduleIdReallyIsNumber];
@@ -24,7 +25,6 @@ function define(factory, moduleId, dependencyMap) {
     modules[moduleId].verboseName = _verboseName;
     verboseNamesToModuleIds[_verboseName] = moduleId;
   }
-  if (global.__annotate) __annotate(factory, "FACTORY_FUNCTION");
 }
 
 var inGuard = false;

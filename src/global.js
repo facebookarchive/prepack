@@ -180,26 +180,9 @@ export default function (realm: Realm): ObjectValue {
     configurable: true
   });
 
-  // Helper function that annotates a function with a string. Useful for marking
-  // certain developer-defined properties of the object (e.g. FACTORY_FUNCTION)
+  // TODO: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
   obj.$DefineOwnProperty("__annotate", {
-    value: new NativeFunctionValue(realm, "global.__annotate", "__annotate", 2, (context, [func, annotation]) => {
-      // TODO: allow annotation of non-function values
-      if (!(func instanceof FunctionValue)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "cannot annotate non-function value")])
-        );
-      }
-
-      if (!(annotation instanceof StringValue)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "annotation must be a string")])
-        );
-      }
-      context.$Realm.annotations.set(func, annotation.value);
-
-      return context.$Realm.intrinsics.undefined;
-    }),
+    value: realm.intrinsics.undefined,
     writable: true,
     enumerable: false,
     configurable: true

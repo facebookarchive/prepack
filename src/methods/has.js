@@ -125,7 +125,7 @@ export function HasCompatibleType(realm: Realm, value: Value, type: typeof Value
   let valueType = value.getType();
   if (valueType === Value) {
     invariant(value instanceof AbstractValue);
-    return AbstractValue.throwIntrospectionError(value);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(value);
   }
   return Value.isTypeCompatibleWith(valueType, type);
 }
@@ -134,7 +134,7 @@ export function HasSomeCompatibleType(realm: Realm, value: Value, ...manyTypes: 
   let valueType = value.getType();
   if (valueType === Value) {
     invariant(value instanceof AbstractValue);
-    return AbstractValue.throwIntrospectionError(value);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(value);
   }
   return manyTypes.some(Value.isTypeCompatibleWith.bind(null, valueType));
 }

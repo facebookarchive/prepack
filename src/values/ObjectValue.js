@@ -260,7 +260,7 @@ export default class ObjectValue extends ConcreteValue {
 
   getOwnPropertyKeysArray(): Array<string> {
     if (this.isPartial()) {
-      AbstractValue.throwIntrospectionError(this);
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
     }
 
     let o = this;
@@ -276,7 +276,7 @@ export default class ObjectValue extends ConcreteValue {
          // We can at best return an abstract keys array.
          // For now just terminate.
          invariant(pv instanceof AbstractValue);
-         AbstractValue.throwIntrospectionError(pv);
+         throw AbstractValue.createIntrospectionErrorThrowCompletion(pv);
       });
     return keyArray;
   }

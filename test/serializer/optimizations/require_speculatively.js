@@ -2,6 +2,7 @@
 // initialize more modules
 
 var modules = Object.create(null);
+__d = define;
 
 require = function(moduleId) {
   var moduleIdReallyIsNumber = moduleId;
@@ -26,7 +27,6 @@ function define(factory, moduleId, dependencyMap) {
     modules[moduleId].verboseName = _verboseName;
     verboseNamesToModuleIds[_verboseName] = moduleId;
   }
-  if (global.__annotate) __annotate(factory, "FACTORY_FUNCTION");
 }
 
 var inGuard = false;

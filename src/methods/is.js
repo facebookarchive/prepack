@@ -141,7 +141,7 @@ export function IsPropertyKey(realm: Realm, arg: string | Value): boolean {
   // 2. If Type(argument) is Symbol, return true.
   if (arg instanceof SymbolValue) return true;
 
-  if (arg instanceof AbstractValue) return AbstractValue.throwIntrospectionError(arg);
+  if (arg instanceof AbstractValue) throw AbstractValue.createIntrospectionErrorThrowCompletion(arg);
 
   // 3. Return false.
   return false;

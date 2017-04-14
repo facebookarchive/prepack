@@ -306,10 +306,10 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     }
     if (c instanceof JoinedAbruptCompletions) {
       if (e !== undefined) realm.apply_effects(e);
-      return AbstractValue.throwIntrospectionError(c.joinCondition);
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(c.joinCondition);
     } else if (c instanceof ComposedAbruptCompletion) {
       if (e !== undefined) realm.apply_effects(e);
-      return c.throwIntrospectionError();
+      throw c.createIntrospectionErrorThrowCompletion();
     } else if (c instanceof PossiblyNormalCompletion) {
       // If the abrupt part of the completion is a return completion, then the
       // effects of its independent control path must be joined with the effects

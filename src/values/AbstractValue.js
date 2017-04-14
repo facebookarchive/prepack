@@ -13,6 +13,7 @@ import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeSourceLocation 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 
+import { IntrospectionThrowCompletion } from "../completions.js";
 import { AbstractObjectValue, BooleanValue, ConcreteValue, EmptyValue, NullValue, NumberValue, ObjectValue, StringValue, SymbolValue, UndefinedValue, Value } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -166,23 +167,23 @@ export default class AbstractValue extends Value {
   }
 
   throwIfNotConcrete(): ConcreteValue {
-    return AbstractValue.throwIntrospectionError(this);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
   }
 
   throwIfNotConcreteNumber(): NumberValue {
-    return AbstractValue.throwIntrospectionError(this);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
   }
 
   throwIfNotConcreteObject(): ObjectValue {
-    return AbstractValue.throwIntrospectionError(this);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
   }
 
   throwIfNotObject(): AbstractObjectValue {
     invariant(!(this instanceof AbstractObjectValue));
-    return AbstractValue.throwIntrospectionError(this);
+    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
   }
 
-  static throwIntrospectionError<T>(val: Value, propertyName: void | PropertyKeyValue): T {
+  static createIntrospectionErrorThrowCompletion(val: Value, propertyName: void | PropertyKeyValue): IntrospectionThrowCompletion {
     let realm = val.$Realm;
 
     let identity;
@@ -210,7 +211,7 @@ export default class AbstractValue extends Value {
 
     let message = `This operation is not yet supported on ${identity} ${location}`;
 
-    throw realm.createErrorThrowCompletion(realm.intrinsics.__IntrospectionError, message);
+    return realm.createIntrospectionErrorThrowCompletion(message);
   }
 
 }
