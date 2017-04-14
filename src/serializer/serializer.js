@@ -15,7 +15,7 @@ import construct_realm from "../construct_realm.js";
 import type { RealmOptions, Descriptor, PropertyBinding } from "../types.js";
 import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
-import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
+import { ArrayValue, BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
@@ -259,8 +259,10 @@ export class Serializer {
     */
 
     let proto = val.$GetPrototypeOf();
-    if (proto.isIntrinsic()) {
-      // TODO: serialize modified prototypes that are intrinsic objects
+    if (proto === this.realm.intrinsics.ArrayPrototype) {
+      if (val instanceof ArrayValue) proto = null;
+    } else if (proto.isIntrinsic()) {
+      // TODO: check if val will be serialized as a constructor call
       proto = null;
     }
 
