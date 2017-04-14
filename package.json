@@ -29,8 +29,9 @@
     "test": "npm run test-serializer && npm run test-sourcemaps && npm run test-test262 && npm run test-internal",
     "repl": "node lib/repl.js",
     "prepack": "node lib/run_util.js",
-    "validate": "npm run build && npm run lint && npm run flow && npm test",
-    "prepublish": "npm run build"
+    "validate": "npm run build && npm run lint && npm run depcheck && npm run flow && npm test",
+    "prepublish": "npm run build",
+    "depcheck": "node lib/scripts/detect_bad_deps.js"
   },
   "dependencies": {
     "babel-core": "^6.8.0",
@@ -67,9 +68,10 @@
     "eslint-plugin-flow-header": "^0.1.1",
     "eslint-plugin-flowtype": "^2.20.0",
     "eslint-plugin-header": "^1.0.0",
-    "flow-bin": "^0.43.0",
+    "flow-bin": "^0.44.0",
     "graceful-fs": "^4.1.11",
     "kcheck": "^2.0.0",
+    "madge": "^1.6.0",
     "webpack": "^2.3.3"
   },
   "engines": {

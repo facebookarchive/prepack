@@ -13,20 +13,17 @@ import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descript
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
-import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, GetValue, NewGlobalEnvironment, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
+import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion } from "./completions.js";
 import invariant from "./invariant.js";
-import initializeGlobal from "./global.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeExpression } from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
-import * as evaluators from "./evaluators/index.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -97,7 +94,7 @@ export function construct_empty_effects(realm: Realm): Effects {
 }
 
 export class Realm {
-  constructor(opts: RealmOptions = {}) {
+  constructor(opts: RealmOptions) {
     this.isReadOnly = false;
     this.isPartial  = !!opts.partial;
     if (opts.mathRandomSeed !== undefined) {
@@ -115,23 +112,21 @@ export class Realm {
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
 
-    let i = this.intrinsics = ({}: any);
-    initializeIntrinsics(i, this);
 
-    this.$GlobalObject = initializeGlobal(this);
-    this.$GlobalEnv    = NewGlobalEnvironment(this, this.$GlobalObject, this.$GlobalObject);
     this.$TemplateMap  = [];
 
     if (this.isPartial) {
       this.preludeGenerator = new PreludeGenerator();
-      this.generator        = new Generator(this);
       ObjectValue.setupTrackedPropertyAccessors();
     }
 
-    this.evaluators = Object.create(null);
-    for (let name in evaluators) this.evaluators[name] = evaluators[name];
-
     this.tracers = [];
+
+    // These get initialized in construct_realm to avoid the dependency
+    this.intrinsics = ({}: any);
+    this.$GlobalObject = (({}: any): ObjectValue);
+    this.evaluators = (Object.create(null): any);
+    this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
   }
 
   start: number;

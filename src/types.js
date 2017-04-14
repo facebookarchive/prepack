@@ -9,9 +9,20 @@
 
 /* @flow */
 
-import type { NumberValue, BooleanValue, NativeFunctionValue, FunctionValue, StringValue, SymbolValue, UndefinedValue, NullValue, EmptyValue, Value } from "./values/index.js";
-import { ObjectValue, AbstractObjectValue } from "./values/index.js";
-import { ToInt8, ToInt16, ToInt32, ToUint8, ToUint16, ToUint32, ToUint8Clamp } from "./methods/to.js";
+import type { NumberValue, BooleanValue, NativeFunctionValue, FunctionValue, StringValue, SymbolValue, UndefinedValue, NullValue, EmptyValue, Value, AbstractObjectValue } from "./values/index.js";
+import { ObjectValue } from "./values/index.js";
+
+export const ElementSize = {
+  Float32: 4,
+  Float64: 8,
+  Int8: 1,
+  Int16: 2,
+  Int32: 4,
+  Uint8: 1,
+  Uint16: 2,
+  Uint32: 4,
+  Uint8Clamped: 1
+};
 
 export type IterationKind = "key+value" | "value" | "key";
 
@@ -29,31 +40,7 @@ export type RealmOptions = {
 
 export type AbstractTime = "early" | "late";
 
-//
-
 export type ElementType = "Float32" | "Float64" | "Int8" | "Int16" | "Int32" | "Uint8" | "Uint16" | "Uint32" | "Uint8Clamped";
-
-export const ElementSize = {
-  Float32: 4,
-  Float64: 8,
-  Int8: 1,
-  Int16: 2,
-  Int32: 4,
-  Uint8: 1,
-  Uint16: 2,
-  Uint32: 4,
-  Uint8Clamped: 1
-};
-
-export const ElementConv = {
-  Int8: ToInt8,
-  Int16: ToInt16,
-  Int32: ToInt32,
-  Uint8: ToUint8,
-  Uint16: ToUint16,
-  Uint32: ToUint32,
-  Uint8Clamped: ToUint8Clamp
-};
 
 //
 

@@ -11,6 +11,7 @@
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
+import construct_realm from "../construct_realm.js";
 import type { RealmOptions, Descriptor, PropertyBinding } from "../types.js";
 import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
@@ -56,7 +57,7 @@ function isSameNode(left, right) {
 
 export class Serializer {
   constructor(realmOptions: RealmOptions = {}, serializerOptions: SerializerOptions = {}) {
-    this.realm = new Realm(realmOptions);
+    this.realm = construct_realm(realmOptions);
     invariant(this.realm.isPartial);
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
     this.modules = new Modules(this.realm, this.logger);
