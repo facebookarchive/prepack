@@ -786,6 +786,9 @@ export class Serializer {
       invariant(typeof source === "string");
       invariant(typeof flags === "string");
       return t.callExpression(t.identifier("RegExp"), [t.stringLiteral(source), t.stringLiteral(flags)]);
+    } else if (val.$NumberData !== undefined) {
+      let num = val.$NumberData.value;
+      return t.newExpression(t.identifier("Number"), [t.numericLiteral(num)]);
     } else {
       return t.objectExpression(props);
     }
