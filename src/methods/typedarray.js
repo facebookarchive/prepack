@@ -302,7 +302,7 @@ export function TypedArrayCreate(realm: Realm, constructor: ObjectValue, argumen
   if (argumentList.length === 1 && argumentList[0].mightBeNumber()) {
     if (argumentList[0].mightNotBeNumber()) {
       invariant(argumentList[0] instanceof AbstractValue);
-      return AbstractValue.throwIntrospectionError(argumentList[0]);
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(argumentList[0]);
     }
     // a. If newTypedArray.[[ArrayLength]] < argumentList[0], throw a TypeError exception.
     invariant(typeof newTypedArray.$ArrayLength === "number");

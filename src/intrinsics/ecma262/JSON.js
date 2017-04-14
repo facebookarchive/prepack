@@ -283,10 +283,8 @@ function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValu
     invariant(binding.descriptor !== undefined);
     let value = binding.descriptor.value;
     ThrowIfMightHaveBeenDeleted(value);
-    if (value === undefined) {
-      AbstractValue.throwIntrospectionError(val, key); // cannot handle accessors
-      invariant(false);
-    }
+    if (value === undefined)
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(val, key); // cannot handle accessors
     CreateDataProperty(realm, template, key, InternalJSONClone(realm, value));
   }
   if (valTemplate.isPartial()) template.makePartial();
