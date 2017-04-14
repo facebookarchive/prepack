@@ -302,16 +302,15 @@ export class Serializer {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       if (ignoreEmbedded) return;
-
-      let uid = this._getValIdForReference(val);
-      this.body.push(t.expressionStatement(t.assignmentExpression(
-        "=",
-        t.memberExpression(uid, key, !t.isIdentifier(key)),
-          this.serializeValue(
+      this._assignProperty(
+        () => t.memberExpression(this._getValIdForReference(val), key, !t.isIdentifier(key)),
+        () => {
+          invariant(descValue instanceof Value);
+          return this.serializeValue(
             descValue,
-            reasons.concat(`Referred to in the object ${name} for the value ${((key: any): BabelNodeIdentifier).name || ((key: any): BabelNodeStringLiteral).value}`)
-          )
-      )));
+            reasons.concat(`Referred to in the object ${name} for the value ${((key: any): BabelNodeIdentifier).name || ((key: any): BabelNodeStringLiteral).value}`));
+        },
+        descValue.mightHaveBeenDeleted());
     } else {
       let descProps = [];
 
@@ -546,6 +545,17 @@ export class Serializer {
     }
   }
 
+  _assignProperty(locationFn: () => BabelNodeLVal, valueFn: () => BabelNodeExpression, mightHaveBeenDeleted: boolean) {
+    let assignment = t.expressionStatement(
+      t.assignmentExpression("=", locationFn(), valueFn()));
+    if (mightHaveBeenDeleted) {
+      let condition = t.binaryExpression("!==", valueFn(), this.serializeValue(this.realm.intrinsics.empty));
+      this.body.push(t.ifStatement(condition, assignment));
+    } else {
+      this.body.push(assignment);
+    }
+  }
+
   _serializeValueArray(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
     let realm = this.realm;
     let elems = [];
@@ -559,29 +569,28 @@ export class Serializer {
     let len = ToLength(realm, Get(realm, val, "length"));
     for (let i = 0; i < len; i++) {
       let key = i + "";
-      remainingProperties.delete(key);
-      let elem;
-      if (HasProperty(realm, val, key)) {
-        let elemVal: void | Value = this.logger.tryQuery(() => Get(realm, val, key), undefined, true);
-        if (elemVal === undefined) {
-          elem = null;
-        } else {
-          let delayReason = this._shouldDelayValue(elemVal);
+      let propertyBinding = remainingProperties.get(key);
+      let elem = null;
+      if (propertyBinding !== undefined) {
+        remainingProperties.delete(key);
+        let descriptor = propertyBinding.descriptor;
+        if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
+        if (this._canEmbedProperty(descriptor)) {
+          let elemVal = descriptor.value;
+          invariant(elemVal instanceof Value);
+          let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
+          let delayReason = mightHaveBeenDeleted || this._shouldDelayValue(elemVal);
           if (delayReason) {
             // handle self recursion
             this._delay(delayReason, [elemVal], () => {
-              invariant(elemVal !== undefined);
-              let id = this._getValIdForReference(val);
-              this.body.push(t.expressionStatement(t.assignmentExpression(
-                "=",
-                t.memberExpression(id, t.numericLiteral(i), true),
-                this.serializeValue(
-                  elemVal,
-                  reasons.concat(`Declared in array ${name} at index ${key}`)
-                )
-              )));
+              this._assignProperty(
+                () => t.memberExpression(this._getValIdForReference(val), t.numericLiteral(i), true),
+                () => {
+                  invariant(elemVal !== undefined);
+                  return this.serializeValue(elemVal, reasons.concat(`Declared in array ${name} at index ${key}`));
+                },
+                mightHaveBeenDeleted);
             });
-            elem = null;
           } else {
             elem = this.serializeValue(
               elemVal,
@@ -589,8 +598,6 @@ export class Serializer {
             );
           }
         }
-      } else {
-        elem = null;
       }
       elems.push(elem);
     }
@@ -739,29 +746,27 @@ export class Serializer {
     let props = [];
 
     for (let [key, propertyBinding] of val.properties) {
-      let prop = propertyBinding.descriptor;
-      if (prop === undefined || prop.value === undefined) continue; // deleted
-      if (this._canEmbedProperty(prop)) {
-        let propValue = prop.value;
+      let descriptor = propertyBinding.descriptor;
+      if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
+      if (this._canEmbedProperty(descriptor)) {
+        let propValue = descriptor.value;
         invariant(propValue instanceof Value);
         // TODO: revert this when unicode support added
         let keyIsAscii = /^[\u0000-\u007f]*$/.test(key);
         let keyNode = t.isValidIdentifier(key) && keyIsAscii ?
             t.identifier(key) : t.stringLiteral(key);
-        let delayReason = this._shouldDelayValue(propValue);
+        let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
+        let delayReason = mightHaveBeenDeleted || this._shouldDelayValue(propValue);
         if (delayReason) {
           // self recursion
           this._delay(delayReason, [propValue], () => {
-            invariant(propValue instanceof Value);
-            let id = this._getValIdForReference(val);
-            this.body.push(t.expressionStatement(t.assignmentExpression(
-              "=",
-              t.memberExpression(id, keyNode, t.isStringLiteral(keyNode)),
-              this.serializeValue(
-                propValue,
-                reasons.concat(`Referenced in object ${name} with key ${key}`)
-              )
-            )));
+            this._assignProperty(
+              () => t.memberExpression(this._getValIdForReference(val), keyNode, t.isStringLiteral(keyNode)),
+              () => {
+                invariant(propValue instanceof Value);
+                return this.serializeValue(propValue, reasons.concat(`Referenced in object ${name} with key ${key}`));
+              },
+              mightHaveBeenDeleted);
           });
         } else {
           props.push(t.objectProperty(keyNode, this.serializeValue(
