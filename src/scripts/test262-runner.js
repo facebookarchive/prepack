@@ -896,7 +896,9 @@ function prepareTest(
 
 function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create a new realm.
-  let realm = new Realm({ timeout: timeout * 1000 });
+  let realm = new Realm({ timeout: timeout * 1000,
+                          strictlyMonotonicDateNow: true
+                        });
   let executionContext = new ExecutionContext();
   executionContext.realm = realm;
   realm.pushContext(executionContext);
