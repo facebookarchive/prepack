@@ -12,7 +12,7 @@
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import type { RealmOptions, Descriptor, PropertyBinding } from "../types.js";
-import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, HasProperty, Get } from "../methods/index.js";
+import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
