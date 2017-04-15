@@ -305,15 +305,25 @@ export class Serializer {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       if (ignoreEmbedded) return;
-      this._assignProperty(
-        () => t.memberExpression(this._getValIdForReference(val), key, !t.isIdentifier(key)),
-        () => {
-          invariant(descValue instanceof Value);
-          return this.serializeValue(
-            descValue,
-            reasons.concat(`Referred to in the object ${name} for the value ${((key: any): BabelNodeIdentifier).name || ((key: any): BabelNodeStringLiteral).value}`));
-        },
-        descValue.mightHaveBeenDeleted());
+      let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
+      let serializeFunc = () => {
+        this._assignProperty(
+          () => t.memberExpression(this._getValIdForReference(val), key, !t.isIdentifier(key)),
+          () => {
+            invariant(descValue instanceof Value);
+            return this.serializeValue(
+              descValue,
+              reasons.concat(`Referred to in the object ${name} for the value ${((key: any): BabelNodeIdentifier).name || ((key: any): BabelNodeStringLiteral).value}`));
+          },
+          mightHaveBeenDeleted);
+      };
+      let delayReason = this._shouldDelayValue(descValue) || mightHaveBeenDeleted;
+      if (delayReason) {
+        // handle self recursion
+        this._delay(delayReason, [descValue], serializeFunc, mightHaveBeenDeleted);
+      } else {
+        serializeFunc();
+      }
     } else {
       let descProps = [];
 
@@ -355,14 +365,17 @@ export class Serializer {
         if (descKey in desc) {
           let descValue = desc[descKey] || this.realm.intrinsics.undefined;
           invariant(descValue instanceof Value);
-          this.body.push(t.expressionStatement(t.assignmentExpression(
-            "=",
-            t.memberExpression(descriptorId, t.identifier(descKey)),
-            this.serializeValue(
-              descValue,
-              reasons.concat(`Referred to in the object ${name} for the key ${((key: any): BabelNodeIdentifier).name || ((key: any): BabelNodeStringLiteral).value} in the descriptor property ${descKey}`)
-            )
-          )));
+          this._eagerOrDelay([descValue], () => {
+            invariant(descriptorId !== undefined);
+            this.body.push(t.expressionStatement(t.assignmentExpression(
+              "=",
+              t.memberExpression(descriptorId, t.identifier(descKey)),
+              this.serializeValue(
+                descValue,
+                reasons.concat(`Referred to in the object ${name} for the key ${((key: any): BabelNodeIdentifier).name || ((key: any): BabelNodeStringLiteral).value} in the descriptor property ${descKey}`)
+              )
+            )));
+          });
         }
       }
 
@@ -582,7 +595,7 @@ export class Serializer {
             let elemVal = descriptor.value;
             invariant(elemVal instanceof Value);
             let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-            let delayReason = mightHaveBeenDeleted || this._shouldDelayValue(elemVal);
+            let delayReason = this._shouldDelayValue(elemVal) || mightHaveBeenDeleted;
             if (delayReason) {
               // handle self recursion
               this._delay(delayReason, [elemVal], () => {
@@ -760,7 +773,7 @@ export class Serializer {
         let keyNode = t.isValidIdentifier(key) && keyIsAscii ?
             t.identifier(key) : t.stringLiteral(key);
         let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
-        let delayReason = mightHaveBeenDeleted || this._shouldDelayValue(propValue);
+        let delayReason = this._shouldDelayValue(propValue) || mightHaveBeenDeleted;
         if (delayReason) {
           // self recursion
           this._delay(delayReason, [propValue], () => {
