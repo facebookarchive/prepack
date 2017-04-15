@@ -426,11 +426,6 @@ function masterRunSingleProcess(
   let numLeft = tests.length;
   for (let t of tests) {
     handleTest(t, harnesses, args.timeout, (err, results) => {
-      numLeft--;
-      if (numLeft === 0) {
-        // all done
-        process.exit(handleFinished(args, groups, numFiltered));
-      }
       if (err) {
         if (args.verbose) {
           console.log(err);
@@ -446,6 +441,11 @@ function masterRunSingleProcess(
         if (progress) {
           console.log(progress);
         }
+      }
+      numLeft--;
+      if (numLeft === 0) {
+        // all done
+        process.exit(handleFinished(args, groups, numFiltered));
       }
     });
   }
