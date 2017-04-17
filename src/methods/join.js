@@ -309,15 +309,15 @@ export function joinDescriptors(realm: Realm,
       throw new Error("TODO: join computed properties");
     let dc = cloneDescriptor(d);
     invariant(dc !== undefined);
-    dc.value = getAbstractValue(d.value, undefined);
+    dc.value = getAbstractValue(d.value, realm.intrinsics.empty);
     return dc;
   }
   if (d1 === undefined) {
     if (d2 === undefined) return undefined;
-    // d2 is a new property created in only one branch, join with undefined
+    // d2 is a new property created in only one branch, join with empty
     return clone_with_abstract_value(d2);
   } else if (d2 === undefined) {
-    // d1 is a new property created in only one branch, join with undefined
+    // d1 is a new property created in only one branch, join with empty
     return clone_with_abstract_value(d1);
   } else {
     let d3 : Descriptor = { };
