@@ -10,6 +10,43 @@
 /* @flow */
 
 import madge from "madge";
+import { exec } from "child_process";
+
+exec("flow check --profile", function(error, stdout, stderr) {
+  error;
+  stdout;
+  /*
+  pattern format:
+  ...
+  cycle detected among the following files:
+      file1
+      file2
+      ...
+      filen
+  ... more flow output after unindented line
+  */
+  let start = stderr.indexOf("cycle detected among the following files");
+  let lines = stderr.substr(start).split("\n").splice(1);
+  let found_ecma = false;
+  let found_realm = false;
+  let cycle_len = 0;
+  for (let line of lines) {
+    if (!line.startsWith("\t")) break;
+    cycle_len += 1;
+    found_ecma = found_ecma || line.includes("/ecma262/");
+    found_realm = found_realm || line.includes("/realm.js");
+  }
+  if (found_ecma && found_realm) {
+    console.log("Invalid Dependencies: ecma262/ is in a circular dependency with realm.js");
+    process.exit(1);
+  }
+  console.log("Biggest cycle: " + cycle_len);
+  let MAX_CYCLE_LEN = 54;
+  if (cycle_len > MAX_CYCLE_LEN) {
+    console.log("Error: You increased cycle length from the previous high of " + MAX_CYCLE_LEN);
+    process.exit(1);
+  }
+});
 
 // NB: This doesn't prevent cycles using "import type" because those are
 // erased in the lib folder but madge doesn't work with flow type imports.
