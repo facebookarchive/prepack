@@ -2,7 +2,9 @@
 <html>
   <head>
     <title>Prepack &middot; Partial evaluator for JavaScript</title>
-    <link rel="stylesheet" href="css/style.css">
+    <script src="js/prism.js"></script>
+    <link rel="stylesheet" href="css/style.css"/>
+    <link rel="stylesheet" href="css/prism.css"/>
   </head>
   <body>
     <header>
@@ -26,129 +28,150 @@
       <h2>What is Prepack?</h2>
       <p>
         Prepack is a partial evaluator for JavaScript. It rewrites a JavaScript bundle, optimizing the initialization code.
+        Run it at build time to optimize your code.
       </p>
-      <h2>How does it work?</h2>
+      <p>
+        <b><a href="repl.html">Try it yourself!</a></b>
+      </p>
+      <h2>What does it do?</h2>
       <p>
         Prepack fully evaluates the initialization code in a JavaScript bundle and persists the resulting initialized heap as straightforward JavaScript code that efficiently rebuilds the heap without creating any temporary objects or values. The code for any functions that are referenced by the initialization code and are reachable from the initialized heap is retained in the residual program. Prepack may speculatively partially evaluate such residual functions, in particular residual module factory functions.
       </p>
+      <h2>Examples</h2>
+      <h3>Hello World</h3>
+      <pre><code class="language-js">(function () {
+  function hello() { return 'hello'; }
+  function world() { return 'world'; }
+  global.s = hello() + ' ' + world();
+})();</code></pre>
+      Prepack &rarr;
+      <pre><code class="language-js">(function () {
+  s = "hello world";
+})();</code></pre>
+      <h3>Fibonacci</h3>
+      <pre><code class="language-js">(function () {
+  function fibonacci(x) {
+    return x <= 1 ? x : fibonacci(x - 1) + fibonacci(x - 2);
+  }
+  global.x = fibonacci(23);
+})();</code></pre>
+      Prepack &rarr;
+      <pre><code class="language-js">(function () {
+  x = 28657;
+})();</code></pre>
+      <h3>Module Initialization</h3>
+      <pre><code class="language-js">(function () {
+  let moduleTable = {};
+  function define(id, f) { moduleTable[id] = f; }
+  function require(id) {
+    let x = moduleTable[id];
+    return x instanceof Function ? (moduleTable[id] = x()) : x;
+  }
+  global.require = require;
+  define("one", function() { return 1; }, "one");
+  define("two", function() { return require("one") + require("one"); });
+  define("three", function() { return require("two") + require("one"); });
+  define("four", function() { return require("three") + require("one"); });
+})();
+three = require("three");</code></pre>
+      Prepack &rarr;
+      <pre><code class="language-js">(function () {
+  function _2() {
+    return 3 + 1;
+  }
+
+  var _1 = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: _2
+  };
+
+  function _0(id) {
+    let x = _1[id];
+    return x instanceof Function ? _1[id] = x() : x;
+  }
+
+  require = _0;
+  three = 3;
+})();</code></pre>
       <p>
-        <a href="repl.html">Try it yourself!</a>
+        Note how most computations have been pre-initialized. However, the function that computes four (_2) remains in the residual program.
       </p>
+      <h3>Environment Interactions and Branching</h3>
+      <pre><code class="language-js">(function(){
+  function fib(x) { return x <= 1 ? x : fib(x - 1) + fib(x - 2); }
+  let x = Date.now();
+  if (x === 0) x = fib(10);
+  global.result = x;
+})();</code></pre>
+      Prepack &rarr;
+      <pre><code class="language-js">(function () {
+  var _0 = Date.now();
+  if (typeof _0 !== "number") {
+    throw new Error("Prepack model invariant violation");
+  }
+  result = _0 === 0 ? 55 : _0;
+})();</code></pre>
+      <h2>How does it work?</h2>
+      <p>
+        A few things have to come together to realize Prepack:
+      </p>
+      <ul>
+        <li>
+          <b>Concrete Execution</b>
+          <p>
+            At the core of Prepack is an almost ECMAScript 5 compatible interpreter &mdash; implemented in JavaScript!
+            The interpreter closely follows the <a href="http://www.ecma-international.org/ecma-262/7.0/">ECMAScript 2016 Language Specification</a>, with a focus on correctness and spec conformance.
+            You can think of the interpreter in Prepack as a clean reference implementation of JavaScript.
+          </p>
+          <p>
+            The interpreter has the ability to track and undo all state changes. This enable speculative optimizations.
+          </p>
+        </li>
+        <li>
+          <b>Symbolic Execution</b>
+          <p>
+            In addition to computing over concrete values, Prepack's interpreter has the ability to operate on <b>abstract values</b> which typically arise from environment interactions. For example, <code class="language-js">Date.now</code> can return an abstract value. You can also manually inject abstract values via auxiliary helper functions such as <code class="language-js">__abstract()</code>. Prepack tracks all operations that are performed over abstract values. When branching over abstract values, Prepack will fork execution and explore all possibilities.
+          </p>
+        </li>
+        <li>
+          <b>Abstract Interpretation</b>
+          <p>
+            Symbolic execution will fork when encouring branches over abstract values. At control-flow merge-points, Prepack will join the diverged executions. Joining variables and heap properties may result in conditional abstract values.
+          </p>
+        </li>
+        <li>
+          <b>Heap Serialization</b>
+          <p>
+            At the end of the initialization phase when the global code returns, Prepack captures the final heap.
+            Prepack walks the heap in order, generating fresh straightforward JavaScript code that creates and links all objects reachable in the initialized heap. Some of the values in the heap might be result of computations over abstract values. For those values, Prepack generates code that performs those computations as the original program would have done.
+          </p>
+        </li>
+      </ul>
       <h2>The Environment matters!</h2>
       <p>
-        At the core of Prepack is an almost ECMAScript 5 compatible interpreter. 
-        Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code>document</code> or <code>window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code>undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
+        Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code class=language-js">document</code> or <code class="language-js">window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code class="language-js">undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
       </p>
       <p>The following helper functions aid in writing models.
-      <pre>
-        // Assume that a certain property has a simple known value.
-        __assumeDataProperty(global, "obscure", undefined);
-        // Assume that a certain property has a simple unknown value.
-        __assumeDataProperty(global, "notSoObscure", __abstract());
-        // Assume that a richly structured value exists
-        __assumeDataProperty(global, "rich", __abstract({
-          x: __abstract("number"),
-          y: __abstract("boolean"),
-          z: __abstract("string"),
-          nested: __abstract({
-            x: __abstract()
-          })
-        }));
-        // Forbid any accesses to an object except at known positions
-        __makePartial(global);
-        // At this point, accessing global.obscure, global.notSoObscure, global.rich.nested.x is okay, 
-        // but accessing global.unknown or global.rich.unknown would cause an introspection error.
-      </pre>
-      <h2>Examples!</h2>
-      <h3>Hello World</h3>
-      <pre>
-      (function () {
-        function hello() { return 'hello'; }
-        function world() { return 'world'; }
-        global.s = hello() + ' ' + world();
-      })();
-      </pre>
-      becomes
-      <pre>
-      (function () {
-        s = "hello world";
-      })();
-      </pre>
-      <h3>Fibonacci</h3>
-      <pre>
-      (function () {
-        function fibonacci(x) {
-          return x <= 1 ? x : fibonacci(x - 1) + fibonacci(x - 2);
-        }
-        global.x = fibonacci(23);
-      })();
-      </pre>
-      becomes
-      <pre>
-      (function () {
-        x = 28657;
-      })();
-      </pre>
-      <h3>Module Initialization</h3>
-      <pre>
-      (function () {
-        let moduleTable = {};
-        function define(id, f) { moduleTable[id] = f; }
-        function require(id) {
-          let x = moduleTable[id];
-          return x instanceof Function ? (moduleTable[id] = x()) : x;
-        }
-        global.require = require;
-        define("one", function() { return 1; }, "one");
-        define("two", function() { return require("one") + require("one"); });
-        define("three", function() { return require("two") + require("one"); });
-        define("four", function() { return require("three") + require("one"); });
-      })();
-      three = require("three");
-      </pre>
-      becomes
-      <pre>
-      (function () {
-        function _2() {
-          return 3 + 1;
-        }
-
-        var _1 = {
-          one: 1,
-          two: 2,
-          three: 3,
-          four: _2
-        };
-
-        function _0(id) {
-          let x = _1[id];
-          return x instanceof Function ? _1[id] = x() : x;
-        }
-
-        require = _0;
-        three = 3;
-      })();
-      </pre>
-      Note how most computations have been pre-initialized. However, the function that computes four (_2) remains in the residual program.
-      <h3>Environment Interactions and Branching</h3>
-      <pre>
-      (function(){
-        function fib(x) { return x <= 1 ? x : fib(x - 1) + fib(x - 2); }
-        let x = Date.now();
-        if (x === 0) x = fib(10);
-        global.result = x;
-      })();
-      </pre>
-      becomes
-      <pre>
-      (function () {
-        var _0 = Date.now();
-        if (typeof _0 !== "number") {
-          throw new Error("Prepack model invariant violation");
-        }
-        result = _0 === 0 ? 55 : _0;
-      })();
-      </pre>
+      <pre><code class="language-js">// Assume that a certain property has a simple known value.
+__assumeDataProperty(global, "obscure", undefined);
+// Assume that a certain property has a simple unknown value.
+__assumeDataProperty(global, "notSoObscure", __abstract());
+// Assume that a richly structured value exists
+__assumeDataProperty(global, "rich", __abstract({
+  x: __abstract("number"),
+  y: __abstract("boolean"),
+  z: __abstract("string"),
+  nested: __abstract({
+    x: __abstract()
+  })
+}));
+// Forbid any accesses to an object except at known positions
+__makePartial(global);
+// At this point, accessing global.obscure, global.notSoObscure, global.rich.nested.x is okay, 
+// but accessing global.unknown or global.rich.unknown would cause an introspection error.
+</code></pre>
     </div>
   </body>
 </html>
