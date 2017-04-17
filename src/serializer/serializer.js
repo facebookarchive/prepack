@@ -782,7 +782,7 @@ export class Serializer {
     }
 
     this.addProperties(name, val, true, reasons);
-    if (val.$RegExpMatcher) {
+    if (val.$RegExpMatcher !== undefined) {
       let source = val.$OriginalSource;
       let flags = val.$OriginalFlags;
       invariant(typeof source === "string");

@@ -118,7 +118,7 @@ export default function (realm: Realm): NativeFunctionValue {
         let tv;
 
         // a. If Type(value) is Object and value has a [[DateValue]] internal slot, then
-        if (value instanceof ObjectValue && "$DateValue" in value) {
+        if (value instanceof ObjectValue && value.$DateValue !== undefined) {
           // i. Let tv be thisTimeValue(value).
           tv = thisTimeValue(realm, value);
         } else { // b. Else,

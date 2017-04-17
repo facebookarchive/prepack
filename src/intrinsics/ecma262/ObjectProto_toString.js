@@ -36,28 +36,28 @@ export default function (realm: Realm): NativeFunctionValue {
   if (isArray) builtinTag = "Array";
 
   // 6. Else, if O is an exotic String object, let builtinTag be "String".
-  else if ("$StringData" in O) builtinTag = "String";
+  else if (O.$StringData) builtinTag = "String";
 
   // 7. Else, if O has an [[ParameterMap]] internal slot, let builtinTag be "Arguments".
-  else if ("$ParameterMap" in O) builtinTag = "Arguments";
+  else if (O.$ParameterMap) builtinTag = "Arguments";
 
   // 8. Else, if O has a [[Call]] internal method, let builtinTag be "Function".
-  else if ("$Call" in O) builtinTag = "Function";
+  else if (O.$Call) builtinTag = "Function";
 
   // 9. Else, if O has an [[ErrorData]] internal slot, let builtinTag be "Error".
-  else if ("$ErrorData" in O) builtinTag = "Error";
+  else if (O.$ErrorData) builtinTag = "Error";
 
   // 10. Else, if O has a [[BooleanData]] internal slot, let builtinTag be "Boolean".
-  else if ("$BooleanData" in O) builtinTag = "Boolean";
+  else if (O.$BooleanData) builtinTag = "Boolean";
 
   // 11. Else, if O has a [[NumberData]] internal slot, let builtinTag be "Number".
-  else if ("$NumberData" in O) builtinTag = "Number";
+  else if (O.$NumberData) builtinTag = "Number";
 
   // 12. Else, if O has a [[DateValue]] internal slot, let builtinTag be "Date".
-  else if ("$DateValue" in O) builtinTag = "Date";
+  else if (O.$DateValue) builtinTag = "Date";
 
   // 13. Else, if O has a [[RegExpMatcher]] internal slot, let builtinTag be "RegExp".
-  else if ("$RegExpMatcher" in O) builtinTag = "RegExp";
+  else if (O.$RegExpMatcher) builtinTag = "RegExp";
 
   // 14. Else, let builtinTag be "Object".
   else builtinTag = "Object";

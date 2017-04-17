@@ -25,7 +25,7 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
   invariant(F instanceof FunctionValue, "expected function value");
 
   // 2. Assert: F has a [[Construct]] internal method.
-  invariant(!!F.$Construct, "expected construct internal method");
+  invariant(F.$Construct !== undefined, "expected construct internal method");
 
   // 3. Assert: F is an extensible object that does not have a prototype own property.
   invariant(F.getExtensible(), "expected extensible object that doesn't have prototype own property");
@@ -76,7 +76,7 @@ export function Construct(realm: Realm, F: ObjectValue, argumentsList?: Array<Va
   invariant(IsConstructor(realm, newTarget), "expected constructor");
 
   // Return ? F.[[Construct]](argumentsList, newTarget).
-  invariant(F.$Construct, "no construct method on realm value");
+  invariant(F.$Construct !== undefined, "no construct method on realm value");
   return F.$Construct(argumentsList, newTarget);
 }
 

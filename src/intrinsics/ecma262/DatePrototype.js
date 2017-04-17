@@ -719,7 +719,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If O does not have a [[DateValue]] internal slot, then
     let tv;
-    if (!("$DateValue" in O)) {
+    if (O.$DateValue === undefined) {
       // a. Let tv be NaN.
       tv = NaN;
     } else { // 3. Else,

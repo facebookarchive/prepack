@@ -45,7 +45,7 @@ export type ElementType = "Float32" | "Float64" | "Int8" | "Int16" | "Int32" | "
 //
 
 declare class _CallableObjectValue extends ObjectValue {
-  $Call: ?(thisArgument: Value, argsList: Array<Value>) => Value;
+  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value);
 }
 export type CallableObjectValue = _CallableObjectValue | FunctionValue | NativeFunctionValue;
 

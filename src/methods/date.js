@@ -297,7 +297,7 @@ export function TimeClip(realm: Realm, time: number | Value): NumberValue {
 // ECMA262 20.3.4
 export function thisTimeValue(realm: Realm, value: Value): Value {
   // 1. If Type(value) is Object and value has a [[DateValue]] internal slot, then
-  if (value instanceof ObjectValue && "$DateValue" in value && value.$DateValue instanceof Value) {
+  if (value instanceof ObjectValue && value.$DateValue !== undefined) {
     // a. Return the value of value's [[DateValue]] internal slot.
     return value.$DateValue;
   }

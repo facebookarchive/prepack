@@ -346,7 +346,7 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
   // 3. Set obj's [[ParameterMap]] internal slot to undefined.
-  obj.$ParameterMap = undefined;
+  obj.$ParameterMap = obj; // The value is never used, but allows us to use undefined for "not in"
 
   // 4. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len,
   //    [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
