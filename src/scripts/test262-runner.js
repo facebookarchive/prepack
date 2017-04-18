@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { ThrowCompletion } from "../completions.js";
+import { AbruptCompletion, ThrowCompletion } from "../completions.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import construct_realm from "../construct_realm.js";
@@ -613,7 +613,7 @@ function handleFinished(
 
   // exit status
   if (args.timeout === 10) numPassedES5 += 4;
-  if (!args.filterString && (numPassedES5 < 22878 || numPassedES6 < 7703)) {
+  if (!args.filterString && (numPassedES5 < 22638 || numPassedES6 < 7446)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -961,6 +961,10 @@ function runTest(
         test.location
       );
       if (completion instanceof ThrowCompletion) throw completion;
+      if (completion instanceof AbruptCompletion)
+        return new TestResult(false, strict, new Error(
+          "Unexpected abrupt completion"
+        ));
     } catch (err) {
       if (!data.negative || data.negative !== err.name) {
         throw err;
