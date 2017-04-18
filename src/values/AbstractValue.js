@@ -14,7 +14,7 @@ import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 
 import { IntrospectionThrowCompletion } from "../completions.js";
-import { AbstractObjectValue, BooleanValue, ConcreteValue, EmptyValue, NullValue, NumberValue, ObjectValue, StringValue, SymbolValue, UndefinedValue, Value } from "./index.js";
+import { AbstractObjectValue, BooleanValue, ConcreteValue, EmptyValue, NullValue, NumberValue, ObjectValue, PrimitiveValue, StringValue, SymbolValue, UndefinedValue, Value } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
@@ -123,38 +123,50 @@ export default class AbstractValue extends Value {
   mightBeNumber(): boolean {
     let valueType = this.getType();
     if (valueType === NumberValue) return true;
+    if (valueType !== Value) return false;
+    if (this.values.isTop()) return true;
     return this.values.includesValueOfType(NumberValue);
   }
 
   mightNotBeNumber(): boolean {
     let valueType = this.getType();
     if (valueType === NumberValue) return false;
+    if (valueType !== Value) return true;
+    if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(NumberValue);
   }
 
   mightNotBeObject(): boolean {
     let valueType = this.getType();
-    if (valueType === ObjectValue) return false;
+    if (Value.isTypeCompatibleWith(valueType, PrimitiveValue)) return true;
+    if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return false;
+    if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(ObjectValue);
   }
 
   mightBeObject(): boolean {
     let valueType = this.getType();
-    if (valueType === ObjectValue) return true;
+    if (Value.isTypeCompatibleWith(valueType, PrimitiveValue)) return false;
+    if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return true;
+    if (this.values.isTop()) return true;
     return this.values.includesValueOfType(ObjectValue);
   }
 
   mightBeUndefined(): boolean {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return true;
+    if (valueType !== Value) return false;
+    if (this.values.isTop()) return true;
     return this.values.includesValueOfType(UndefinedValue);
   }
 
   mightHaveBeenDeleted(): boolean {
+    if (this.values.isTop()) return false;
     return this.values.includesValueOfType(EmptyValue);
   }
 
   promoteEmptyToUndefined(): Value {
+    if (this.values.isTop()) return this;
     if (!this.values.includesValueOfType(EmptyValue)) return this;
     let result = this.clone();
     result.values = result.values.promoteEmptyToUndefined();
