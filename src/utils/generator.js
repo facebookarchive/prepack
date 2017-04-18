@@ -194,10 +194,15 @@ export class Generator {
           let condition =
             t.binaryExpression("!==",
               t.unaryExpression("typeof", nodes[0]), t.stringLiteral(typeofString));
-          if (typeofString === "object")
+          if (typeofString === "object") {
+            condition =
+              t.logicalExpression("&&", condition,
+                t.binaryExpression("!==",
+                  t.unaryExpression("typeof", nodes[0]), t.stringLiteral("function")));
             condition =
               t.logicalExpression("||", condition,
                 t.binaryExpression("===", nodes[0], t.nullLiteral()));
+          }
           return condition;
         },
         (node) => node);
