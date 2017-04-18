@@ -38,7 +38,7 @@ export default class ValuesDomain {
   }
 
   includesValueNotOfType(type: typeof Value): boolean {
-    if (this.isTop()) return true;
+    invariant(!this.isTop());
     for (let cval of this.getElements()) {
       if (!(cval instanceof type)) return true;
     }
@@ -46,7 +46,7 @@ export default class ValuesDomain {
   }
 
   includesValueOfType(type: typeof Value): boolean {
-    if (this.isTop()) return false;
+    invariant(!this.isTop());
     for (let cval of this.getElements()) {
       if (cval instanceof type) return true;
     }
