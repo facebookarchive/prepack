@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Reference } from "../environment.js";
-import { AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, BreakCompletion } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
 import { EmptyValue, Value } from "../values/index.js";
 import {
@@ -37,9 +37,11 @@ function CaseSelectorEvaluation(expression: BabelNodeExpression, strictCode: boo
 function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Reference | Value {
 
   let EvaluateCase = (c: BabelNodeSwitchCase): Reference | Value | AbruptCompletion => {
-    let r = realm.intrinsics.undefined;
+    let r = realm.intrinsics.empty;
     for (let node of c.consequent) {
       let res = env.evaluateCompletion(node, strictCode);
+      if (res instanceof AbruptCompletion)
+        return (UpdateEmpty(realm, res, r): any);
       if (!(res instanceof EmptyValue)) r = res;
     }
     return r;
@@ -72,7 +74,8 @@ function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, st
         let R = EvaluateCase(C);
 
         // ii. If R.[[Value]] is not empty, let V be R.[[Value]].
-        V = InternalGetResultValue(realm, R);
+        let val = InternalGetResultValue(realm, R);
+        if (!(val instanceof EmptyValue)) V = val;
 
         // iii. If R is an abrupt completion, return Completion(UpdateEmpty(R, V)).
         if (R instanceof AbruptCompletion) {
@@ -116,7 +119,8 @@ function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, st
     let R = EvaluateCase(cases[default_case_num]);
 
     // 10. If R.[[Value]] is not empty, let V be R.[[Value]].
-    V = InternalGetResultValue(realm, R);
+    let val = InternalGetResultValue(realm, R);
+    if (!(val instanceof EmptyValue)) V = val;
 
     // 11. If R is an abrupt completion, return Completion(UpdateEmpty(R, V)).
     if (R instanceof AbruptCompletion) {
@@ -129,7 +133,8 @@ function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, st
       R = EvaluateCase(C);
 
       // b. If R.[[Value]] is not empty, let V be R.[[Value]].
-      V = InternalGetResultValue(realm, R);
+      let value = InternalGetResultValue(realm, R);
+      if (!(value instanceof EmptyValue)) V = value;
 
       // c. If R is an abrupt completion, return Completion(UpdateEmpty(R, V)).
       if (R instanceof AbruptCompletion) {
@@ -178,6 +183,12 @@ export default function (ast: BabelNodeSwitchStatement, strictCode: boolean, env
 
     // 9. Return R.
     return R;
+  } catch (e) {
+    if (e instanceof BreakCompletion) {
+      if (!e.target)
+        return (UpdateEmpty(realm, e, realm.intrinsics.undefined): any).value;
+    }
+    throw e;
   } finally {
     // 8. Set the running execution context's LexicalEnvironment to oldEnv.
     realm.getRunningContext().lexicalEnvironment = oldEnv;
