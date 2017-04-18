@@ -122,3 +122,9 @@ nav a.active:after {
   color: #c7254e;
   white-space: pre;
 }
+
+/* FOOTER */
+
+footer {
+  text-align: center;
+}

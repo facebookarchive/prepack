@@ -151,7 +151,7 @@ three = require("three");</code></pre>
       </ul>
       <h2>The Environment matters!</h2>
       <p>
-        Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code class=language-js">document</code> or <code class="language-js">window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code class="language-js">undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
+        Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code class="language-js">document</code> or <code class="language-js">window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code class="language-js">undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
       </p>
       <p>The following helper functions aid in writing models.
       <pre><code class="language-js">// Assume that a certain property has a simple known value.
@@ -172,6 +172,52 @@ __makePartial(global);
 // At this point, accessing global.obscure, global.notSoObscure, global.rich.nested.x is okay, 
 // but accessing global.unknown or global.rich.unknown would cause an introspection error.
 </code></pre>
+      <h2>Roadmap</h2>
+      <h3>Short Term</h3>
+      <ul>
+        <li>Stabilizing existing feature set for Prepacking of React Native bundles</li>
+        <li>Integration with React Native tool chain</Li>
+        <li>Build out optimizations based on assumptions of the module system used by React Native</li>
+      </ul>
+      <h3>Medium Term</h3>
+      <ul>
+        <li>Implement further serialization optimizations, including
+          <ul>
+            <li>elimination of objects whose identity isn't exposed,</li>
+            <li>elimination of unused exported properties,</li>
+            <li>...</li>
+          </ul>
+        </li>
+        <li>Prepack individual functions, basic blocks, statements, expressions</li>
+        <li>Full ES6 Conformance</Li>
+        <li>Generalize support for module systems</li>
+        <li>Assuming ES6 support for certain features, delay / ignore application of <a href="https://en.wikipedia.org/wiki/Polyfill">Polyfills</a></li>
+        <li>Implement further compatibility targets, in particular the web</li>
+        <li>Deeper Integration with a JavaScript VM to improve heap deserialization process, including
+          <ul>
+            <li>expose a lazy object initialization concept</li>
+            <li>efficient encoding of common object creations</li>
+            <li>...</li>
+          </ul>
+        </li>
+        <li>Summarizing loops and recursion</li>
+      </ul>
+      <h3>Long Term &mdash; leveraging Prepack as a platform</h3>
+      <ul>
+        <li>JavaScript Playground &mdash; tweak a JavaScript engine in your browser</li>
+        <li>Bug Finding &mdash; finding unconditional crashes, performance issues, ...</li>
+        <li>Effect Analyzer, e.g. to detect possible side effects of module factory functions or to enforce pureness annotations</li>
+        <li>Type Analysis</li>
+        <li>Information Flow Analysis</li>
+        <li>Call Graph Inference, allowing inlining and code indexing</li>
+        <li>Automated Test Generation, leveraging the symbolic execution features in combination with a constraint solver to compute inputs that exercise different execution paths</li>
+        <li>Smart Fuzzing</li>
+        <li>JavaScript Sandbox &mdash; effectively instrument JavaScript code in a way that is not observable</li>
+      </ul>
     </div>
+
+    <footer>
+      Copyright &copy; 2017 Facebook Inc.
+    </footer>
   </body>
 </html>
