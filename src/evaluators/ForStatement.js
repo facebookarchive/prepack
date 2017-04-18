@@ -12,7 +12,7 @@
 import type { LexicalEnvironment, Reference } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Value, EmptyValue } from "../values/index.js";
-import { AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, BreakCompletion } from "../completions.js";
 import { BoundNames, NewDeclarativeEnvironment, GetValue, ToBooleanPartial, UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
 import invariant from "../invariant.js";
@@ -79,6 +79,11 @@ function ForBodyEvaluation(realm: Realm, test, increment, stmt, perIterationBind
     // c. If LoopContinues(result, labelSet) is false, return Completion(UpdateEmpty(result, V)).
     if (!LoopContinues(realm, result, labelSet)) {
       invariant(result instanceof AbruptCompletion);
+      // ECMA262 13.1.7
+      if (result instanceof BreakCompletion) {
+        if (!result.target)
+          return (UpdateEmpty(realm, result, V): any).value;
+      }
       throw UpdateEmpty(realm, result, V);
     }
 

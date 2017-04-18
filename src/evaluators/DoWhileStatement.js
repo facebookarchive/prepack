@@ -16,7 +16,7 @@ import type { Reference } from "../environment.js";
 import { EmptyValue } from "../values/index.js";
 import { ToBooleanPartial, GetValue, UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
-import { AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, BreakCompletion } from "../completions.js";
 import invariant from "../invariant.js";
 import type { BabelNodeDoWhileStatement } from "babel-types";
 
@@ -34,6 +34,11 @@ export default function (ast: BabelNodeDoWhileStatement, strictCode: boolean, en
     // b. If LoopContinues(stmt, labelSet) is false, return Completion(UpdateEmpty(stmt, V)).
     if (LoopContinues(realm, stmt, labelSet) === false) {
       invariant(stmt instanceof AbruptCompletion);
+      // ECMA262 13.1.7
+      if (stmt instanceof BreakCompletion) {
+        if (!stmt.target)
+          return (UpdateEmpty(realm, stmt, V): any).value;
+      }
       throw UpdateEmpty(realm, stmt, V);
     }
 

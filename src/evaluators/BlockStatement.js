@@ -17,7 +17,7 @@ import { AbruptCompletion, NormalCompletion, PossiblyNormalCompletion, Introspec
 import { Reference } from "../environment.js";
 import { EmptyValue, StringValue, Value } from "../values/index.js";
 import { joinPossiblyNormalCompletions, joinPossiblyNormalCompletionWithAbruptCompletion,
-   NewDeclarativeEnvironment, BlockDeclarationInstantiation } from "../methods/index.js";
+   NewDeclarativeEnvironment, BlockDeclarationInstantiation, UpdateEmpty } from "../methods/index.js";
 import invariant from "../invariant.js";
 
 // ECMA262 13.2.13
@@ -50,7 +50,8 @@ export default function (ast: BabelNodeBlockStatement, strictCode: boolean, env:
         invariant(!(res instanceof Reference));
         if (!(res instanceof EmptyValue)) {
           if (blockValue === undefined || blockValue instanceof Value) {
-            if (res instanceof AbruptCompletion) throw res;
+            if (res instanceof AbruptCompletion)
+              throw UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty);
             invariant(res instanceof NormalCompletion || res instanceof Value);
             blockValue = res;
           } else {
