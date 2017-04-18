@@ -72,7 +72,7 @@ export class Serializer {
 
     this.initializeMoreModules = !!serializerOptions.initializeMoreModules;
     this._resetSerializeStates();
-    this.options = realmOptions;
+    this.options = serializerOptions;
   }
 
   _resetSerializeStates() {
@@ -126,7 +126,7 @@ export class Serializer {
   logger: Logger;
   modules: Modules;
   requireReturns: Map<number | string, BabelNodeExpression>;
-  options: RealmOptions;
+  options: SerializerOptions;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -171,9 +171,9 @@ export class Serializer {
     return val instanceof PrimitiveValue;
   }
 
-  generateUid(dbg_sufx: ?string): string {
+  generateUid(debugSuffix: ?string): string {
     let id = "_" + base62.encode(this.uidCounter++) +
-      (this.options.debugNames && dbg_sufx ? "$" + dbg_sufx : "");
+      (this.options.debugNames && debugSuffix ? "$" + debugSuffix : "");
     return id;
   }
 
@@ -454,8 +454,8 @@ export class Serializer {
       return res;
     }
 
-    let suf = (val && val.__originalName) ? val.__originalName : "";
-    let name = this.generateUid(suf);
+    let suffix = (val && val.__originalName) ? val.__originalName : "";
+    let name = this.generateUid(suffix);
     let id = t.identifier(name);
     this.refs.set(val, id);
     this.serializationStack.push(val);

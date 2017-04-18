@@ -19,7 +19,7 @@ let compatibility;
 let mathRandomSeed;
 let inputMap;
 let ouputMap;
-let binArgs = {
+let flags = {
   speculate: false,
   trace: false,
   debugNames: false,
@@ -57,7 +57,7 @@ while (args.length) {
       case "trace":
       case "debugNames":
       case "singlePass":
-        binArgs[arg] = true;
+        flags[arg] = true;
         break;
       case "help":
         console.log("Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ] [ --singlePass ] [ --debugNames ]");
@@ -72,5 +72,5 @@ if (!inputFilename) {
   console.error("Missing input file.");
   process.exit(1);
 } else {
-  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, binArgs.speculate, binArgs.trace, binArgs.debugNames, binArgs.singlePass);
+  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, flags.speculate, flags.trace, flags.debugNames, flags.singlePass);
 }

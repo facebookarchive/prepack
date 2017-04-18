@@ -36,8 +36,6 @@ export type RealmOptions = {
   compatibility?: Compatibility,
   mathRandomSeed?: string,
   strictlyMonotonicDateNow?: boolean,
-  debugNames?: boolean,
-  singlePass?: boolean,
 };
 
 export type AbstractTime = "early" | "late";
