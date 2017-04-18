@@ -29,7 +29,8 @@ while (args.length) {
   if (!arg.startsWith("--")) {
     inputFilename = arg;
   } else {
-    switch (arg.slice(2)) {
+    arg = arg.slice(2);
+    switch (arg) {
       case "out":
         arg = args[0]; args.shift();
         outputFilename = arg;
@@ -56,6 +57,7 @@ while (args.length) {
       case "trace":
       case "debugNames":
       case "singlePass":
+        console.log(arg);
         binArgs[arg] = true;
         break;
       case "help":
@@ -67,6 +69,7 @@ while (args.length) {
     }
   }
 }
+console.log(`${binArgs.speculate} ${binArgs.trace} ${binArgs.debugNames} ${binArgs.singlePass}`);
 if (!inputFilename) {
   console.error("Missing input file.");
   process.exit(1);
