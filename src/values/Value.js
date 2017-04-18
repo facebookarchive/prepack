@@ -21,6 +21,8 @@ export default class Value {
     this.$Realm = realm;
     this.intrinsicName = intrinsicName;
   }
+  // Name from original source if existant
+  __originalName: ?string;
 
   getType(): typeof Value {
     return this.constructor;

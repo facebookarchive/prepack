@@ -101,6 +101,7 @@ export default function (ast: BabelNodeVariableDeclaration, strictCode: boolean,
 
     // 4. Let value be ? GetValue(rhs).
     let value = GetValue(realm, rhs);
+    if (declar.id && declar.id.name) value.__originalName = ((declar.id.name: any): string);
 
     // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
     if (IsAnonymousFunctionDefinition(realm, Initializer)) {
