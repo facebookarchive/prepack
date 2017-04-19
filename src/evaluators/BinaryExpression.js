@@ -41,8 +41,11 @@ export function getPureBinaryOperationResultType(realm: Realm, op: BabelBinaryOp
     if (ltype === undefined || rtype === undefined) return undefined;
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
-  } else if (op === "<" || op === ">" || op === ">=" || op === "<=" || op === "!==" || op === "===" || op === "!=" || op === "==") {
+  } else if (op === "<" || op === ">" || op === ">=" || op === "<=" || op === "!=" || op === "==") {
     if (IsToPrimitivePure(realm, lval) && IsToPrimitivePure(realm, rval)) return BooleanValue;
+    return undefined;
+  } else if (op === "===" || op === "!==") {
+    return BooleanValue;
     return undefined;
   } else if (op === ">>>" || op === "<<" || op === ">>" || op === "&" || op === "|" || op === "^" ||
              op === "**" || op === "%" || op === "/" || op === "*" || op === "-") {
