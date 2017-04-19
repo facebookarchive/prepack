@@ -18,7 +18,7 @@ import { Completion } from "../completions.js";
 import { ArrayValue, BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
-import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
+import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeNumericLiteral } from "babel-types";
 import { Generator, PreludeGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
 import generate from "babel-generator";
@@ -273,7 +273,7 @@ export class Serializer {
       if (this.canIgnoreProperty(val, key, desc)) continue;
       // If key is a numeric string literal, parse it and set it as a numeric index instead.
       if (t.isStringLiteral(key)) {
-        let index = Number.parseInt(key.value, 10);
+        let index = Number.parseInt(((key: any): BabelNodeStringLiteral).value, 10);
         if (index.toString() === key.value) {
           key = t.numericLiteral(index);
         }
@@ -307,7 +307,7 @@ export class Serializer {
     }
   }
 
-  _emitProperty(name: string, val: Value, key: BabelNodeIdentifier | BabelNodeStringLiteral, desc: Descriptor, ignoreEmbedded: boolean, reasons: Array<string>): void {
+  _emitProperty(name: string, val: Value, key: BabelNodeIdentifier | BabelNodeNumericLiteral | BabelNodeStringLiteral, desc: Descriptor, ignoreEmbedded: boolean, reasons: Array<string>): void {
     if (this._canEmbedProperty(desc, true)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
