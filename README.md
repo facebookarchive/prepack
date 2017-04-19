@@ -2,13 +2,8 @@
 
 Prepack is a partial evaluator for JavaScript. Prepack rewrites a JavaScript bundle, resulting in JavaScript code that executes more efficiently.
 For initialization-heavy code, Prepack works best in an environment where JavaScript parsing is effectively cached.
+
 See the official [prepack.io](http://prepack.io) website for an introduction and an [interactive REPL playground](http://prepack.io/repl.html).
-
-## How it works
-
-Prepack fully evaluates the initialization code in a JavaScript bundle and persists the resulting initialized heap as straightforward JavaScript code that efficiently rebuilds the heap without creating any temporary objects or values.
-The code for any functions that are referenced by the initialization code and are reachable from the initialized heap is retained in the residual program.
-Prepack may speculatively partially evaluate such residual functions, in particular residual module factory functions.
 
 ## Status
 
