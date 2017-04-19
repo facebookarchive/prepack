@@ -271,8 +271,8 @@ export class Serializer {
     // inject properties
     for (let [key, desc] of descriptors) {
       if (this.canIgnoreProperty(val, key, desc)) continue;
-      // If value is an array and key is a numeric string literal, parse it and set it as a numeric index instead.
-      if (IsArray(this.realm, val) && t.isStringLiteral(key)) {
+      // If key is a numeric string literal, parse it and set it as a numeric index instead.
+      if (t.isStringLiteral(key)) {
         let index = Number.parseInt(key.value, 10);
         if (index.toString() === key.value) {
           key = t.numericLiteral(index);
@@ -597,57 +597,54 @@ export class Serializer {
     // If array length is abstract set it manually and then all known properties (including numeric indices)
     let lenProperty = Get(realm, val, "length");
     if (lenProperty instanceof AbstractValue) {
-      let mightHaveBeenDeleted = lenProperty.mightHaveBeenDeleted();
       this._eagerOrDelay([val], () => {
         this._assignProperty(
           () => t.memberExpression(this._getValIdForReference(val), t.identifier("length")),
           () => {
             return this.serializeValue(lenProperty, reasons.concat(`Abstract length of array ${name}`));
           },
-          mightHaveBeenDeleted);
+          false /*mightHaveBeenDeleted*/);
         }
       );
       remainingProperties.delete("length");
-      this.addProperties(name, val, false, reasons, remainingProperties);
-      return t.arrayExpression([]);
-    }
-
-    // An array's length property cannot be redefined, so this won't run user code
-    let len = ToLength(realm, lenProperty);
-    for (let i = 0; i < len; i++) {
-      let key = i + "";
-      let propertyBinding = remainingProperties.get(key);
-      let elem = null;
-      if (propertyBinding !== undefined) {
-        let descriptor = propertyBinding.descriptor;
-        if (descriptor !== undefined && descriptor.value !== undefined) { // deleted
-          remainingProperties.delete(key);
-          if (this._canEmbedProperty(descriptor)) {
-            let elemVal = descriptor.value;
-            invariant(elemVal instanceof Value);
-            let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-            let delayReason = this._shouldDelayValue(elemVal) || mightHaveBeenDeleted;
-            if (delayReason) {
-              // handle self recursion
-              this._delay(delayReason, [elemVal], () => {
-                this._assignProperty(
-                  () => t.memberExpression(this._getValIdForReference(val), t.numericLiteral(i), true),
-                  () => {
-                    invariant(elemVal !== undefined);
-                    return this.serializeValue(elemVal, reasons.concat(`Declared in array ${name} at index ${key}`));
-                  },
-                  mightHaveBeenDeleted);
-              });
-            } else {
-              elem = this.serializeValue(
-                elemVal,
-                reasons.concat(`Declared in array ${name} at index ${key}`)
-              );
+    } else {
+      // An array's length property cannot be redefined, so this won't run user code
+      let len = ToLength(realm, lenProperty);
+      for (let i = 0; i < len; i++) {
+        let key = i + "";
+        let propertyBinding = remainingProperties.get(key);
+        let elem = null;
+        if (propertyBinding !== undefined) {
+          let descriptor = propertyBinding.descriptor;
+          if (descriptor !== undefined && descriptor.value !== undefined) { // deleted
+            remainingProperties.delete(key);
+            if (this._canEmbedProperty(descriptor)) {
+              let elemVal = descriptor.value;
+              invariant(elemVal instanceof Value);
+              let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
+              let delayReason = this._shouldDelayValue(elemVal) || mightHaveBeenDeleted;
+              if (delayReason) {
+                // handle self recursion
+                this._delay(delayReason, [elemVal], () => {
+                  this._assignProperty(
+                    () => t.memberExpression(this._getValIdForReference(val), t.numericLiteral(i), true),
+                    () => {
+                      invariant(elemVal !== undefined);
+                      return this.serializeValue(elemVal, reasons.concat(`Declared in array ${name} at index ${key}`));
+                    },
+                    mightHaveBeenDeleted);
+                });
+              } else {
+                elem = this.serializeValue(
+                  elemVal,
+                  reasons.concat(`Declared in array ${name} at index ${key}`)
+                );
+              }
             }
           }
         }
+        elems.push(elem);
       }
-      elems.push(elem);
     }
 
     this.addProperties(name, val, false, reasons, remainingProperties);
