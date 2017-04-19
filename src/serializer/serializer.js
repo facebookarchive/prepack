@@ -581,8 +581,26 @@ export class Serializer {
       remainingProperties.set(k, v);
     }
 
+    // If array length is abstract set it manually and then all known properties (including numeric indices)
+    let lenProperty = Get(realm, val, "length");
+    if (lenProperty instanceof AbstractValue) {
+      let mightHaveBeenDeleted = lenProperty.mightHaveBeenDeleted();
+      this._eagerOrDelay([val], () => {
+        this._assignProperty(
+          () => t.memberExpression(this._getValIdForReference(val), t.identifier("length")),
+          () => {
+            return this.serializeValue(lenProperty, reasons.concat(`Abstract length of array ${name}`));
+          },
+          mightHaveBeenDeleted);
+        }
+      );
+      remainingProperties.delete("length");
+      this.addProperties(name, val, false, reasons, remainingProperties);
+      return t.arrayExpression([]);
+    }
+
     // An array's length property cannot be redefined, so this won't run user code
-    let len = ToLength(realm, Get(realm, val, "length"));
+    let len = ToLength(realm, lenProperty);
     for (let i = 0; i < len; i++) {
       let key = i + "";
       let propertyBinding = remainingProperties.get(key);
