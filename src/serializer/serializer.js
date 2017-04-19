@@ -271,6 +271,13 @@ export class Serializer {
     // inject properties
     for (let [key, desc] of descriptors) {
       if (this.canIgnoreProperty(val, key, desc)) continue;
+      // If value is an array and key is a numeric string literal, parse it and set it as a numeric index instead.
+      if (IsArray(this.realm, val) && t.isStringLiteral(key)) {
+        let index = Number.parseInt(key.value, 10);
+        if (index.toString() === key.value) {
+          key = t.numericLiteral(index);
+        }
+      }
       invariant(desc !== undefined);
       this._eagerOrDelay(this._getDescriptorValues(desc).concat(val), () => {
         invariant(desc !== undefined);
