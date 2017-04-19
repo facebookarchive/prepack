@@ -70,8 +70,8 @@ export class Serializer {
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
 
-    this.initializeMoreModules = !!serializerOptions.initializeMoreModules;
     this._resetSerializeStates();
+    this.options = serializerOptions;
   }
 
   _resetSerializeStates() {
@@ -120,11 +120,11 @@ export class Serializer {
   generator: Generator;
   descriptors: Map<string, BabelNodeIdentifier>;
   needsEmptyVar: boolean;
-  initializeMoreModules: boolean;
   uidCounter: number;
   logger: Logger;
   modules: Modules;
   requireReturns: Map<number | string, BabelNodeExpression>;
+  options: SerializerOptions;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -169,8 +169,9 @@ export class Serializer {
     return val instanceof PrimitiveValue;
   }
 
-  generateUid(): string {
-    let id = "_" + base62.encode(this.uidCounter++);
+  generateUid(debugSuffix: ?string): string {
+    let id = "_" + base62.encode(this.uidCounter++) +
+      (this.options.debugNames && debugSuffix ? "$" + debugSuffix : "");
     return id;
   }
 
@@ -457,7 +458,8 @@ export class Serializer {
       return res;
     }
 
-    let name = this.generateUid(val);
+    let suffix = (val && val.__originalName) ? val.__originalName : "";
+    let name = this.generateUid(suffix);
     let id = t.identifier(name);
     this.refs.set(val, id);
     this.serializationStack.push(val);
@@ -469,7 +471,9 @@ export class Serializer {
       this.globalReasons[name] = reasons;
     }
 
-    let refCount = this.valToRefCount.get(val);
+    // default to 2 because we don't want the serializer to assume there's
+    // one reference and inline the value
+    let refCount = this.options.singlePass ? 2 : this.valToRefCount.get(val);
     invariant(refCount !== undefined && refCount > 0);
     if (this.collectValToRefCountOnly ||
       refCount !== 1) {
@@ -903,7 +907,7 @@ export class Serializer {
         for (let name in names) {
           let serializedBinding: SerializedBinding = serializedBindings[name];
           if (serializedBinding.modified && !serializedBinding.referentialized) {
-            let serializedBindingId = t.identifier(this.generateUid());
+            let serializedBindingId = t.identifier(this.generateUid("bound"));
             let declar = t.variableDeclaration("var", [
               t.variableDeclarator(serializedBindingId, serializedBinding.serializedValue)]);
             getFunctionBody(instance).push(declar);
@@ -964,7 +968,7 @@ export class Serializer {
           getFunctionBody(instance).push(funcNode);
         }
       } else {
-        let factoryId = t.identifier(this.generateUid());
+        let factoryId = t.identifier(this.generateUid("helper"));
 
         // filter included variables to only include those that are different
         let factoryNames: Array<string> = [];
@@ -1269,7 +1273,7 @@ export class Serializer {
         rootFactoryProps.push(t.objectProperty(keyNode, t.identifier(key)));
       }
 
-      let rootFactoryId = t.identifier(this.generateUid());
+      let rootFactoryId = t.identifier(this.generateUid("helper"));
       let rootFactoryBody = t.blockStatement([
         t.returnStatement(t.objectExpression(rootFactoryProps))
       ]);
@@ -1350,7 +1354,7 @@ export class Serializer {
           }
         }
 
-        let subFactoryId = t.identifier(this.generateUid());
+        let subFactoryId = t.identifier(this.generateUid("helper"));
         let subFactoryBody = t.blockStatement([
           t.returnStatement(t.callExpression(rootFactoryId, subFactoryArgs))
         ]);
@@ -1376,17 +1380,19 @@ export class Serializer {
     this.execute(filename, code, map, onError);
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
-    if (this.initializeMoreModules) {
+    if (this.options.initializeMoreModules) {
       this.modules.initializeMoreModules();
       if (this.logger.hasErrors()) return undefined;
     }
 
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
-    this.collectValToRefCountOnly = true;
-    this.valToRefCount = new Map();
-    this.serialize(filename, code, sourceMaps);
-    if (this.logger.hasErrors()) return undefined;
+    if (!this.options.singlePass) {
+      this.collectValToRefCountOnly = true;
+      this.valToRefCount = new Map();
+      this.serialize(filename, code, sourceMaps);
+      if (this.logger.hasErrors()) return undefined;
+    }
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     this._resetSerializeStates();
     this.collectValToRefCountOnly = false;
