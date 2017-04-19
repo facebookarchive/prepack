@@ -64,7 +64,7 @@ class Success {}
 
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
-  let compatibility = code.includes("// jsc") ? "jsc" : undefined;
+  let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let realmOptions = { partial: true, compatibility };
   let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");

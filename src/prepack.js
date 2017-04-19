@@ -16,7 +16,7 @@ function run_internal(
     name: string,
     raw: string,
     map: string = "",
-    compatibility?: "browser" | "jsc" = "browser",
+    compatibility?: "browser" | "jsc-600-1-4-17" = "browser",
     mathRandomSeed: void | string,
     outputFilename?: string,
     outputMap?: string,
@@ -41,9 +41,6 @@ function run_internal(
   if (code.length >= 1000 || outputFilename) {
     let filename = outputFilename || (name + "-processed.js");
     console.log(`Prepacked source code written to ${filename}.`);
-    if (compatibility === "jsc") {
-      code = "var global = this;\n" + code;
-    }
     fs.writeFileSync(filename, code);
   }
 
@@ -60,7 +57,7 @@ function run_internal(
 
 export function run(
     inFn: string,
-    compat?: "browser" | "jsc" = "browser",
+    compat?: "browser" | "jsc-600-1-4-17" = "browser",
     mathRandSeed: void | string,
     outFn?: string,
     inputMap?: string,

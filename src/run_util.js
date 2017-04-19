@@ -41,7 +41,7 @@ while (args.length) {
         break;
       case "compatibility":
         arg = args[0]; args.shift();
-        if (arg !== "jsc") {
+        if (arg !== "jsc-600-1-4-17") {
           console.error(`Unsupported compatibility: ${arg}`);
           process.exit(1);
         } else {
