@@ -84,8 +84,9 @@ export class ExecutionContext {
     // TODO: suspend
   }
 
-  resume(): void {
+  resume(): Value {
     // TODO: resume
+    return this.realm.intrinsics.undefined;
   }
 }
 

@@ -115,11 +115,13 @@ export function GeneratorResume(realm: Realm, generator: Value, value: Value): V
   realm.pushContext(genContext);
 
   // 9. Resume the suspended evaluation of genContext using NormalCompletion(value) as the result of the operation that suspended it. Let result be the value returned by the resumed computation.
+  let result = genContext.resume();
 
   // 10. Assert: When we return here, genContext has already been removed from the execution context stack and methodContext is the currently running execution context.
+  invariant(realm.getRunningContext() === methodContext);
 
   // 11. Return Completion(result).
-  return realm.intrinsics.undefined;
+  return result;
 }
 
 // ECMA26225.3.3.4

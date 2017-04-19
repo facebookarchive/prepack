@@ -407,6 +407,12 @@ export class Serializer {
         reasons.concat(`access in ${functionName} to ${n}`));
       serializedBinding = { serializedValue, value };
       serializedBindings[n] = serializedBinding;
+      if (value.mightBeObject()) {
+        // Increment ref count one more time to ensure that this object will be assigned a unique id.
+        // This ensures that only once instance is created across all possible residual function invocations.
+        this._incrementValToRefCount(value);
+
+      }
     }
     return serializedBinding;
   }
@@ -742,25 +748,24 @@ export class Serializer {
         }
       }
       let delayReason = this._shouldDelayValues(referencedValues);
+      let serialize = () => {
+        let serializedBinding = serializeBindingFunc();
+        invariant(serializedBinding);
+        serializedBindings[innerName] = serializedBinding;
+        invariant(functionInfo);
+        if (functionInfo.modified[innerName]) serializedBinding.modified = true;
+      };
       if (delayReason) {
         delayed++;
         this._delay(delayReason, referencedValues, () => {
-          let serializedBinding = serializeBindingFunc();
-          invariant(serializedBinding);
-          serializedBindings[innerName] = serializedBinding;
-          invariant(functionInfo);
-          if (functionInfo.modified[innerName]) serializedBinding.modified = true;
+          serialize();
           if (--delayed === 0) {
             instance.bodyReference = this._getBodyReference();
             this.functionInstances.push(instance);
           }
         });
       } else {
-        let serializedBinding = serializeBindingFunc();
-        invariant(serializedBinding);
-        serializedBindings[innerName] = serializedBinding;
-        invariant(functionInfo);
-        if (functionInfo.modified[innerName]) serializedBinding.modified = true;
+        serialize();
       }
     }
 

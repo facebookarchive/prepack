@@ -288,7 +288,7 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     GeneratorStart(realm, G, F.$ECMAScriptCode);
 
     // 4. Return Completion{[[Type]]: return, [[Value]]: G, [[Target]]: empty}.
-    throw new ReturnCompletion(G);
+    return new ReturnCompletion(G);
   } else {
     // 1. Perform ? FunctionDeclarationInstantiation(F, argumentsList).
     FunctionDeclarationInstantiation(realm, F, argumentsList);

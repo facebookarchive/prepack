@@ -13,6 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Reference } from "../environment.js";
 import { AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
+import { UpdateEmpty } from "../methods/index.js";
 import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
 
@@ -39,9 +40,14 @@ export default function (ast: BabelNodeTryStatement, strictCode: boolean, env: L
     if (completion && completion instanceof AbruptCompletion) throw completion;
   }
 
+  if (ast.finalizer) {
+    completions.shift();
+  }
+
   // otherwise use the last returned value
   for (let completion of completions) {
-    if (completion && completion instanceof Value) return completion;
+    if (completion && completion instanceof Value)
+      return (UpdateEmpty(realm, completion, realm.intrinsics.undefined): any);
   }
 
   throw new Error("shouldn't meet this condition");

@@ -507,6 +507,7 @@ export function UpdateEmpty(realm: Realm, completionRecord: Value | Completion, 
   }
 
   // 2. If completionRecord.[[Value]] is not empty, return Completion(completionRecord).
+  if (completionRecord instanceof EmptyValue) return value;
   if (completionRecord instanceof Value ||
     (completionRecord.value && !(completionRecord.value instanceof EmptyValue))) return completionRecord;
 
