@@ -316,7 +316,7 @@ export default function (realm: Realm): ObjectValue {
     "JSON",
     "__IntrospectionError"
   ];
-  if (realm.compatibility !== "jsc")
+  if (realm.compatibility !== "jsc-600-1-4-17")
     typeNames = typeNames.concat(
       "Symbol",
       "Promise",
@@ -336,7 +336,7 @@ export default function (realm: Realm): ObjectValue {
       });
     }
   }
-  if (realm.compatibility === "jsc") {
+  if (realm.compatibility === "jsc-600-1-4-17") {
     for (let name of [
       "window",
       "process",

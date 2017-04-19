@@ -49,7 +49,7 @@ Object.getOwnPropertyNames(global).forEach(function(name){ if (name !== "Object"
     sandbox.navigator = window.navigator;
     sandbox.location = window.location;
   }
-  if (compatibility === "jsc") {
+  if (compatibility === "jsc-600-1-4-17") {
     beforeCode += "delete global.clearInterval; delete global.clearImmediate; delete global.clearTimeout; delete global.setImmediate; delete Object.assign;";
   }
 
@@ -125,7 +125,7 @@ function line(type, code, compatibility: Compatibility, moreOut = {}, compareSta
   return stats;
 }
 
-function dump(name: string, raw: string, min: string = raw, compatibility?: "browser" | "jsc" = "browser", outputFilename?: string) {
+function dump(name: string, raw: string, min: string = raw, compatibility?: "browser" | "jsc-600-1-4-17" = "browser", outputFilename?: string) {
   console.log(chalk.inverse(name));
   let beforeStats = line("Before", min, compatibility);
 
@@ -167,7 +167,7 @@ while (args.length) {
     outputFilename = arg;
   } else if (arg === "--compatibility") {
     arg = args[0]; args.shift();
-    if (arg !== "jsc") {
+    if (arg !== "jsc-600-1-4-17") {
       console.error(`Unsupported compatibility: ${arg}`);
       process.exit(1);
     } else {

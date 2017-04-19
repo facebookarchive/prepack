@@ -706,7 +706,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.18
-  if (realm.compatibility !== "jsc")
+  if (realm.compatibility !== "jsc-600-1-4-17")
   obj.defineNativeMethod("startsWith", 1, (context, [searchString, position]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
@@ -790,7 +790,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
     // 2. Let S be ToString(O)
     let S = ToString(realm, O.throwIfNotConcrete());
 
-    if (realm.compatibility === "jsc") {
+    if (realm.compatibility === "jsc-600-1-4-17") {
       locales = undefined;
     } else {
       // TODO filter locales for only serialisable values

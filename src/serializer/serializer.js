@@ -293,7 +293,7 @@ export class Serializer {
         invariant(proto);
         let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
         let uid = this._getValIdForReference(val);
-        if (this.realm.compatibility !== "jsc")
+        if (this.realm.compatibility !== "jsc-600-1-4-17")
           this.body.push(t.expressionStatement(t.callExpression(
             this.preludeGenerator.memoizeReference("Object.setPrototypeOf"),
             [uid, serializedProto]
