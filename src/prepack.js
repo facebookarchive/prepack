@@ -24,7 +24,11 @@ function run_internal(
     trace: boolean = false,
     debugNames: boolean = false,
     singlePass: boolean = false) {
-  let serialized = new Serializer({ partial: true, compatibility, mathRandomSeed }, { initializeMoreModules: speculate, internalDebug: true, trace, debugNames, singlePass }).init(name, raw, map, outputMap !== undefined);
+  let serialized =
+    new Serializer(
+      { partial: true, compatibility, mathRandomSeed },
+      { initializeMoreModules: speculate, internalDebug: true, trace, debugNames, singlePass })
+        .init(name, raw, map, outputMap !== undefined);
   if (!serialized) {
     process.exit(1);
     invariant(false);

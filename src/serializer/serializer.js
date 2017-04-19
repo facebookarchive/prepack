@@ -70,7 +70,6 @@ export class Serializer {
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
 
-    this.initializeMoreModules = !!serializerOptions.initializeMoreModules;
     this._resetSerializeStates();
     this.options = serializerOptions;
   }
@@ -121,7 +120,6 @@ export class Serializer {
   generator: Generator;
   descriptors: Map<string, BabelNodeIdentifier>;
   needsEmptyVar: boolean;
-  initializeMoreModules: boolean;
   uidCounter: number;
   logger: Logger;
   modules: Modules;
@@ -467,6 +465,8 @@ export class Serializer {
       this.globalReasons[name] = reasons;
     }
 
+    // default to 2 because we don't want the serializer to assume there's
+    // one reference and inline the value
     let refCount = this.options.singlePass ? 2 : this.valToRefCount.get(val);
     invariant(refCount !== undefined && refCount > 0);
     if (this.collectValToRefCountOnly ||
@@ -1375,7 +1375,7 @@ export class Serializer {
     this.execute(filename, code, map, onError);
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
-    if (this.initializeMoreModules) {
+    if (this.options.initializeMoreModules) {
       this.modules.initializeMoreModules();
       if (this.logger.hasErrors()) return undefined;
     }

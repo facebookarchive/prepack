@@ -22,7 +22,7 @@ export default class Value {
     this.intrinsicName = intrinsicName;
   }
   // Name from original source if existant
-  __originalName: ?string;
+  __originalName: void | string;
 
   getType(): typeof Value {
     return this.constructor;
