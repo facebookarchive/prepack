@@ -13,7 +13,7 @@ import { AbruptCompletion, Completion, NormalCompletion } from "../completions.j
 import type { Realm } from "../realm.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
+import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { GetValue, joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.js";
 import type { BabelNode, BabelNodeIfStatement } from "babel-types";
@@ -43,11 +43,11 @@ export function evaluate (
     // 5. Return Completion(UpdateEmpty(stmtCompletion, undefined)
     if (stmtCompletion instanceof Reference)
       return stmtCompletion;
-    stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined)
+    stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
     if (stmtCompletion instanceof AbruptCompletion) {
-      throw stmtCompletion; 
+      throw stmtCompletion;
     }
-    return stmtCompletion; 
+    return stmtCompletion;
   }
   invariant(exprValue instanceof AbstractValue);
 
