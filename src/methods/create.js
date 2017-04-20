@@ -40,8 +40,7 @@ import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import traverse from "../traverse.js";
-import * as t from "babel-types";
-import type { BabelNodeLVal, BabelNodeFunctionDeclaration } from "babel-types";
+import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "babel-types";
 
 // ECMA262 9.4.3.3
 export function StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue): ObjectValue {
@@ -443,7 +442,10 @@ export function CreateMappedArgumentsObject(realm: Realm, func: FunctionValue, f
   obj.$ParameterMap = map;
 
   // 14. Let parameterNames be the BoundNames of formals.
-  let parameterNames = Object.keys(t.getBindingIdentifiers(formals));
+  let parameterNames = [];
+  for (let param of formals) {
+    parameterNames.push(((param: any): BabelNodeIdentifier).name);
+  }
 
   // 15. Let numberOfParameters be the number of elements in parameterNames.
   let numberOfParameters = parameterNames.length;
@@ -505,10 +507,10 @@ export function CreateMappedArgumentsObject(realm: Realm, func: FunctionValue, f
           configurable: true
         });
       }
-
-      // iii. Let index be index - 1.
-      index--;
     }
+
+    // c. Let index be index - 1.
+    index--;
   }
 
   // 22. Perform ! DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor {[[Value]]:
