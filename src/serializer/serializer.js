@@ -18,7 +18,7 @@ import { Completion } from "../completions.js";
 import { ArrayValue, BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
-import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
+import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeNumericLiteral } from "babel-types";
 import { Generator, PreludeGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
 import generate from "babel-generator";
@@ -272,6 +272,13 @@ export class Serializer {
     // inject properties
     for (let [key, desc] of descriptors) {
       if (this.canIgnoreProperty(val, key, desc)) continue;
+      // If key is a numeric string literal, parse it and set it as a numeric index instead.
+      if (t.isStringLiteral(key)) {
+        let index = Number.parseInt(((key: any): BabelNodeStringLiteral).value, 10);
+        if (index.toString() === key.value) {
+          key = t.numericLiteral(index);
+        }
+      }
       invariant(desc !== undefined);
       this._eagerOrDelay(this._getDescriptorValues(desc).concat(val), () => {
         invariant(desc !== undefined);
@@ -301,7 +308,7 @@ export class Serializer {
     }
   }
 
-  _emitProperty(name: string, val: Value, key: BabelNodeIdentifier | BabelNodeStringLiteral, desc: Descriptor, ignoreEmbedded: boolean, reasons: Array<string>): void {
+  _emitProperty(name: string, val: Value, key: BabelNodeIdentifier | BabelNodeNumericLiteral | BabelNodeStringLiteral, desc: Descriptor, ignoreEmbedded: boolean, reasons: Array<string>): void {
     if (this._canEmbedProperty(desc, true)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -591,42 +598,57 @@ export class Serializer {
       remainingProperties.set(k, v);
     }
 
-    // An array's length property cannot be redefined, so this won't run user code
-    let len = ToLength(realm, Get(realm, val, "length"));
-    for (let i = 0; i < len; i++) {
-      let key = i + "";
-      let propertyBinding = remainingProperties.get(key);
-      let elem = null;
-      if (propertyBinding !== undefined) {
-        let descriptor = propertyBinding.descriptor;
-        if (descriptor !== undefined && descriptor.value !== undefined) { // deleted
-          remainingProperties.delete(key);
-          if (this._canEmbedProperty(descriptor)) {
-            let elemVal = descriptor.value;
-            invariant(elemVal instanceof Value);
-            let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-            let delayReason = this._shouldDelayValue(elemVal) || mightHaveBeenDeleted;
-            if (delayReason) {
-              // handle self recursion
-              this._delay(delayReason, [elemVal], () => {
-                this._assignProperty(
-                  () => t.memberExpression(this._getValIdForReference(val), t.numericLiteral(i), true),
-                  () => {
-                    invariant(elemVal !== undefined);
-                    return this.serializeValue(elemVal, reasons.concat(`Declared in array ${name} at index ${key}`));
-                  },
-                  mightHaveBeenDeleted);
-              });
-            } else {
-              elem = this.serializeValue(
-                elemVal,
-                reasons.concat(`Declared in array ${name} at index ${key}`)
-              );
+    // If array length is abstract set it manually and then all known properties (including numeric indices)
+    let lenProperty = Get(realm, val, "length");
+    if (lenProperty instanceof AbstractValue) {
+      this._eagerOrDelay([val], () => {
+        this._assignProperty(
+          () => t.memberExpression(this._getValIdForReference(val), t.identifier("length")),
+          () => {
+            return this.serializeValue(lenProperty, reasons.concat(`Abstract length of array ${name}`));
+          },
+          false /*mightHaveBeenDeleted*/);
+        }
+      );
+      remainingProperties.delete("length");
+    } else {
+      // An array's length property cannot be redefined, so this won't run user code
+      let len = ToLength(realm, lenProperty);
+      for (let i = 0; i < len; i++) {
+        let key = i + "";
+        let propertyBinding = remainingProperties.get(key);
+        let elem = null;
+        if (propertyBinding !== undefined) {
+          let descriptor = propertyBinding.descriptor;
+          if (descriptor !== undefined && descriptor.value !== undefined) { // deleted
+            remainingProperties.delete(key);
+            if (this._canEmbedProperty(descriptor)) {
+              let elemVal = descriptor.value;
+              invariant(elemVal instanceof Value);
+              let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
+              let delayReason = this._shouldDelayValue(elemVal) || mightHaveBeenDeleted;
+              if (delayReason) {
+                // handle self recursion
+                this._delay(delayReason, [elemVal], () => {
+                  this._assignProperty(
+                    () => t.memberExpression(this._getValIdForReference(val), t.numericLiteral(i), true),
+                    () => {
+                      invariant(elemVal !== undefined);
+                      return this.serializeValue(elemVal, reasons.concat(`Declared in array ${name} at index ${key}`));
+                    },
+                    mightHaveBeenDeleted);
+                });
+              } else {
+                elem = this.serializeValue(
+                  elemVal,
+                  reasons.concat(`Declared in array ${name} at index ${key}`)
+                );
+              }
             }
           }
         }
+        elems.push(elem);
       }
-      elems.push(elem);
     }
 
     this.addProperties(name, val, false, reasons, remainingProperties);
