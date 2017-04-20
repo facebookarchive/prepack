@@ -612,7 +612,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22819 || numPassedES6 < 7567)) {
+  if (!args.filterString && (numPassedES5 < 22819 || numPassedES6 < 7390)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
