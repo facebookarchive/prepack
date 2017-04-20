@@ -12,16 +12,17 @@
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
-import { ThrowCompletion, ReturnCompletion, AbruptCompletion } from "../completions.js";
+import { ThrowCompletion, ReturnCompletion, AbruptCompletion, NormalCompletion, PossiblyNormalCompletion, IntrospectionThrowCompletion } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
-import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
+import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
 import { Value, BoundFunctionValue, EmptyValue, FunctionValue, ObjectValue, StringValue, SymbolValue, NumberValue } from "../values/index.js";
 import { DefinePropertyOrThrow, NewDeclarativeEnvironment, ResolveBinding } from "./index.js";
 import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
-import { BoundNames, ContainsExpression, GetActiveScriptOrModule } from "../methods/index.js";
+import { joinPossiblyNormalCompletionWithAbruptCompletion, joinPossiblyNormalCompletions,
+  BoundNames, ContainsExpression, GetActiveScriptOrModule, UpdateEmpty } from "../methods/index.js";
 import { PutValue } from "./properties.js";
 import traverse from "../traverse.js";
 import invariant from "../invariant.js";
@@ -31,6 +32,7 @@ import * as t from "babel-types";
 import type {
   BabelNode,
   BabelNodeLVal,
+  BabelNodeStatement,
   BabelNodeBlockStatement,
   BabelNodeProgram,
   BabelNodeDoWhileStatement,
@@ -945,8 +947,15 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
 
     // 21. If result.[[Type]] is normal, then
     if (result instanceof Value) {
+      // Evaluate expressions that passed for directives.
+      if (script.directives) {
+        for (let directive of script.directives) {
+          result = new StringValue(realm, directive.value.value);
+        }
+      }
+
       // a. Let result be the result of evaluating body.
-      result = varEnv.evaluate(body, strictEval);
+      result = EvaluateStatements(script.body, result, strictEval, lexEnv, realm);
     }
 
     // 22. If result.[[Type]] is normal and result.[[Value]] is empty, then
@@ -971,6 +980,57 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
     invariant(result instanceof AbruptCompletion);
     throw result;
   }
+}
+
+export function EvaluateStatements(
+    body: Array<BabelNodeStatement>, blockValue: void | NormalCompletion | Value,
+    strictCode: boolean, blockEnv: LexicalEnvironment, realm: Realm): NormalCompletion | Value | Reference {
+  for (let node of body) {
+    if (node.type !== "FunctionDeclaration") {
+      let res = blockEnv.evaluateAbstractCompletion(node, strictCode);
+      invariant(!(res instanceof Reference));
+      if (!(res instanceof EmptyValue)) {
+        if (blockValue === undefined || blockValue instanceof Value) {
+          if (res instanceof AbruptCompletion)
+            throw UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty);
+          invariant(res instanceof NormalCompletion || res instanceof Value);
+          blockValue = res;
+        } else {
+          invariant(blockValue instanceof PossiblyNormalCompletion);
+          if (res instanceof AbruptCompletion) {
+            let e = realm.get_captured_effects();
+            invariant(e !== undefined);
+            realm.stop_effect_capture();
+            let [_c, _g, b, p, _o] = e;
+            _c; _g; _o;
+            realm.restoreBindings(b);
+            realm.restoreProperties(p);
+            if (res instanceof IntrospectionThrowCompletion) {
+              realm.apply_effects(e);
+              throw res;
+            }
+            invariant(blockValue instanceof PossiblyNormalCompletion);
+            e[0] = res;
+            let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, blockValue, res, e);
+            realm.apply_effects(joined_effects);
+            throw joined_effects[0];
+          } else {
+            if (res instanceof Value)
+              blockValue.value = res;
+            else {
+              invariant(blockValue instanceof PossiblyNormalCompletion);
+              invariant(res instanceof PossiblyNormalCompletion);
+              blockValue = joinPossiblyNormalCompletions(realm, blockValue, res);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 7. Return blockValue.
+  return blockValue || realm.intrinsics.empty;
+
 }
 
 // ECMA262 9.2.5
@@ -1164,6 +1224,11 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
 
   // 13. Let lexDeclarations be the LexicallyScopedDeclarations of body.
   let lexDeclarations = [];
+  for (let s of body.body) {
+    if (s.type === "VariableDeclaration" && s.kind !== "var") {
+      lexDeclarations.push(s);
+    }
+  }
 
   // 14. For each element d in lexDeclarations do
   for (let d of lexDeclarations) {
