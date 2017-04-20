@@ -389,15 +389,6 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
     configurable: false
   });
 
-  // 9. Perform ! DefinePropertyOrThrow(obj, "caller", PropertyDescriptor {[[Get]]:
-  //    %ThrowTypeError%, [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
-  DefinePropertyOrThrow(realm, obj, "caller", {
-    get: realm.intrinsics.ThrowTypeError,
-    set: realm.intrinsics.ThrowTypeError,
-    enumerable: false,
-    configurable: false
-  });
-
   // 10. Return obj.
   return obj;
 }

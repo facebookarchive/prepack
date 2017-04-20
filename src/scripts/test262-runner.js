@@ -612,7 +612,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22799 || numPassedES6 < 7391)) {
+  if (!args.filterString && (numPassedES5 < 22819 || numPassedES6 < 7390)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -1137,6 +1137,9 @@ function testFilterByMetadata(
   // disable SharedArrayBuffer tests
   if (test.location.includes("sharedarraybuffer") || test.location.includes("SharedArrayBuffer")) return false;
 
+  // disable outdated arguments.caller test
+  if (test.location.includes("StrictFunction_restricted-properties.js")) return false;
+
   return true;
 }
 
@@ -1269,9 +1272,7 @@ function getBanners(
       return null;
     } else if (bannerText.includes("attribute of 'arguments'")) {
       return null;
-    } else if (bannerText.includes("poisoned")) {
-      return null;
-    } else if (bannerText.includes("esid: sec-arguments-exotic-objects"))
+    } else if (bannerText.includes("poisoned"))
       return null;
     data = yaml.safeLoad(banners[0].slice(3, -3));
   }

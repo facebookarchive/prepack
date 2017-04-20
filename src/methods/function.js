@@ -566,9 +566,7 @@ export function AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm) 
     enumerable: false,
     configurable: true
   };
-  // 3. Perform ! DefinePropertyOrThrow(F, "caller", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
-  DefinePropertyOrThrow(realm, F, "caller", desc);
-  // 4. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
+  // 3. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
   return DefinePropertyOrThrow(realm, F, "arguments", desc);
 }
 
@@ -1054,17 +1052,11 @@ export function FunctionCreate(realm: Realm, kind: "normal" | "arrow" | "method"
 
   // ECMAScript 2016, section 17:
   //   "Every other data property described in clauses 18 through 26 and in Annex B.2 has the attributes { [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true } unless otherwise specified."
-  // Because we call `AddRestrictedFunctionProperties` on `FunctionPrototype`, accessing properties "caller" and "arguments" will raise a `TypeError` by default.
+  // Because we call `AddRestrictedFunctionProperties` on `FunctionPrototype`, accessing property "arguments" will raise a `TypeError` by default.
   // However, in non-strict mode this behavior is not desired, so we will add them as own properties of each `FunctionValue`, in accordance with ECMA 17.
-  // Note: "caller" and "arguments" ***MUST NOT*** be set if the function is in strict mode or is an arrow, method, constructor, or generator function.
+  // Note: "arguments" ***MUST NOT*** be set if the function is in strict mode or is an arrow, method, constructor, or generator function.
   //   See 16.2 "Forbidden Extensions"
   if (!Strict && kind === "normal") {
-    DefinePropertyOrThrow(realm, F, "caller", {
-      value: realm.intrinsics.undefined,
-      enumerable: false,
-      writable: true,
-      configurable: true
-    });
     DefinePropertyOrThrow(realm, F, "arguments", {
       value: realm.intrinsics.undefined,
       enumerable: false,
