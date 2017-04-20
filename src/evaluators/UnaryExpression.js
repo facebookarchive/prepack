@@ -166,7 +166,7 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
     // 4. If IsUnresolvableReference(ref) is true, then
     if (IsUnresolvableReference(realm, ref)) {
       // a. Assert: IsStrictReference(ref) is false.
-      invariant(!IsStrictReference(realm, ref), "expected strict reference");
+      invariant(!IsStrictReference(realm, ref), "did not expect a strict reference");
 
       // b. Return true.
       return realm.intrinsics.true;
