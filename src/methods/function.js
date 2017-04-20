@@ -949,7 +949,7 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
     if (result instanceof Value) {
       // Evaluate expressions that passed for directives.
       if (script.directives) {
-        for (let directive of (script.directives)) {
+        for (let directive of script.directives) {
           result = new StringValue(realm, directive.value.value);
         }
       }
