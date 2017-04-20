@@ -27,15 +27,17 @@
     <div class="content content-container">
       <h2>What is Prepack?</h2>
       <p>
-        Prepack is a partial evaluator for JavaScript. It rewrites a JavaScript bundle, optimizing the initialization code.
-        Run it at build time to optimize your code.
+        Prepack is a tool for making JavaScript code run faster. Run it at build time to optimize your code. Prepack rewrites a JavaScript bundle by partially evaluating it, effectively optimizing the initialization phase of the JavaScript code.
       </p>
       <p>
         <b><a href="repl.html">Try it yourself!</a></b>
       </p>
+      <p>
+        Prepack is still in an early development stage. You can try it out, give feedback, and help fix bugs. But don't plug it into your production build pipeline just yet.
+      </p>
       <h2>What does it do?</h2>
       <p>
-        Prepack fully evaluates the initialization code in a JavaScript bundle and persists the resulting initialized heap as straightforward JavaScript code that efficiently rebuilds the heap without creating any temporary objects or values. The code for any functions that are referenced by the initialization code and are reachable from the initialized heap is retained in the residual program. Prepack may speculatively partially evaluate such residual functions, in particular residual module factory functions.
+        Prepack fully evaluates the global code in a JavaScript bundle and persists the resulting initialized heap as straightforward JavaScript code that efficiently rebuilds the heap without creating any temporary objects or values. The code for any function closures that are reachable from the initialized heap is retained in the residual program. Prepack may speculatively partially evaluate such residual functions, in particular residual module factory functions.
       </p>
       <h2>Examples</h2>
       <h3>Hello World</h3>
@@ -47,6 +49,19 @@
       Prepack &rarr;
       <pre><code class="language-js">(function () {
   s = "hello world";
+})();</code></pre>
+      <h3>Elimination of abstraction tax</h3>
+      <pre><code class="language-js">var self = this; 
+['A', 'B', 42].forEach(function(x) {
+  var name = '_' + x.toString()[0].toLowerCase();
+  var y = parseInt(x);
+  self[name] = y ? y : x; 
+});</code></pre>
+      Prepack &rarr;
+      <pre><code class="language-js">(function () {
+  _a = "A";  
+  _b = "B";  
+  _4 = 42;
 })();</code></pre>
       <h3>Fibonacci</h3>
       <pre><code class="language-js">(function () {
@@ -119,6 +134,12 @@ three = require("three");</code></pre>
       </p>
       <ul>
         <li>
+          <b>Abstract Syntax Tree (AST)</b>
+          <p>
+            Prepack operates at the AST level, using <a href="https://babeljs.io/">Babel</a> to parse and generate JavaScript source code.
+          </p>
+        </li>
+        <li>
           <b>Concrete Execution</b>
           <p>
             At the core of Prepack is an almost ECMAScript 5 compatible interpreter &mdash; implemented in JavaScript!
@@ -126,19 +147,19 @@ three = require("three");</code></pre>
             You can think of the interpreter in Prepack as a clean reference implementation of JavaScript.
           </p>
           <p>
-            The interpreter has the ability to track and undo all state changes. This enable speculative optimizations.
+            The interpreter has the ability to track and undo all effects, including all object mutations. This enable speculative optimizations.
           </p>
         </li>
         <li>
           <b>Symbolic Execution</b>
           <p>
-            In addition to computing over concrete values, Prepack's interpreter has the ability to operate on <b>abstract values</b> which typically arise from environment interactions. For example, <code class="language-js">Date.now</code> can return an abstract value. You can also manually inject abstract values via auxiliary helper functions such as <code class="language-js">__abstract()</code>. Prepack tracks all operations that are performed over abstract values. When branching over abstract values, Prepack will fork execution and explore all possibilities.
+            In addition to computing over concrete values, Prepack's interpreter has the ability to operate on <b>abstract values</b> which typically arise from environment interactions. For example, <code class="language-js">Date.now</code> can return an abstract value. You can also manually inject abstract values via auxiliary helper functions such as <code class="language-js">__abstract()</code>. Prepack tracks all operations that are performed over abstract values. When branching over abstract values, Prepack will fork execution and explore all possibilities. Thus, Prepack implements a <a href="https://en.wikipedia.org/wiki/Symbolic_execution">Symbolic Execution</a> engine for JavaScript.
           </p>
         </li>
         <li>
           <b>Abstract Interpretation</b>
           <p>
-            Symbolic execution will fork when encouring branches over abstract values. At control-flow merge-points, Prepack will join the diverged executions. Joining variables and heap properties may result in conditional abstract values.
+            Symbolic execution will fork it encounters branches over abstract values. At control-flow merge-points, Prepack will join the diverged executions, implementing a form of <a href="https://en.wikipedia.org/wiki/Abstract_interpretation">Abstract Interpretation</a>. Joining variables and heap properties may result in conditional abstract values. Prepack tracks information about value and type domains of abstract values. 
           </p>
         </li>
         <li>
@@ -192,11 +213,12 @@ __makePartial(global);
         <li>Full ES6 Conformance</Li>
         <li>Generalize support for module systems</li>
         <li>Assuming ES6 support for certain features, delay / ignore application of <a href="https://en.wikipedia.org/wiki/Polyfill">Polyfills</a></li>
-        <li>Implement further compatibility targets, in particular the web</li>
-        <li>Deeper Integration with a JavaScript VM to improve heap deserialization process, including
+        <li>Implement further compatibility targets, in particular the web and node.js</li>
+        <li>Deeper Integration with a JavaScript VM to improve the heap deserialization process, including
           <ul>
-            <li>expose a lazy object initialization concept</li>
-            <li>efficient encoding of common object creations</li>
+            <li>expose a lazy object initialization concept &mdash; lazily initialize an object the moment it is touched for the first time, in a way that is not observable by JavaScript code</li>
+            <li>efficient encoding of common object creations via specialized bytecodes</li>
+            <li>splitting the code into two phases: 1) a non-environment dependent phase; the VM could safely capture &amp; restore the resulting heap; followed by 2) an environment dependent phase which patches up the concrete heap by performing any residual computations over values obtained from the environment</li>
             <li>...</li>
           </ul>
         </li>
@@ -204,7 +226,7 @@ __makePartial(global);
       </ul>
       <h3>Long Term &mdash; leveraging Prepack as a platform</h3>
       <ul>
-        <li>JavaScript Playground &mdash; tweak a JavaScript engine in your browser</li>
+        <li>JavaScript Playground &mdash; experiment with JavaScript features by tweaking a JavaScript engine written in JavaScript, all hosted just in a browser; think of it as a "Babel VM", realizing new JavaScript features that cannot just be compiled away</li>
         <li>Bug Finding &mdash; finding unconditional crashes, performance issues, ...</li>
         <li>Effect Analyzer, e.g. to detect possible side effects of module factory functions or to enforce pureness annotations</li>
         <li>Type Analysis</li>
@@ -214,6 +236,10 @@ __makePartial(global);
         <li>Smart Fuzzing</li>
         <li>JavaScript Sandbox &mdash; effectively instrument JavaScript code in a way that is not observable</li>
       </ul>
+      <h2>Related Technologies</h2>
+      <p>
+        The <a href="https://developers.google.com/closure/compiler/">Closure Compiler</a> also optimizes JavaScript code. Prepack goes further by truly running the global code that initialization phase, unrolling loops and recursion. Prepack focuses on runtime performance, while the Closure Compiler emphasizes JavaScript code size.
+      </p>
     </div>
 
     <footer>
