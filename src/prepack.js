@@ -23,11 +23,12 @@ function run_internal(
     speculate: boolean = false,
     trace: boolean = false,
     debugNames: boolean = false,
-    singlePass: boolean = false) {
+    singlePass: boolean = false,
+    logStatistics: boolean = false) {
   let serialized =
     new Serializer(
       { partial: true, compatibility, mathRandomSeed },
-      { initializeMoreModules: speculate, internalDebug: true, trace, debugNames, singlePass })
+      { initializeMoreModules: speculate, internalDebug: true, trace, debugNames, singlePass, logStatistics })
         .init(name, raw, map, outputMap !== undefined);
   if (!serialized) {
     process.exit(1);
@@ -65,7 +66,8 @@ export function run(
     speculateOpt?: boolean,
     trace?: boolean,
     debugNames?: boolean,
-    singlePass?: boolean) {
+    singlePass?: boolean,
+    logStatistics?: boolean) {
   let input = fs.readFileSync(inFn, "utf8");
   let map = "";
   let mapFile = inputMap ? inputMap : inFn + ".map";
@@ -74,5 +76,5 @@ export function run(
   } catch (_e) {
     console.log(`No sourcemap found at ${mapFile}.`);
   }
-  run_internal(inFn, input, map, compat, mathRandSeed, outFn, outMap, speculateOpt, trace, debugNames, singlePass);
+  run_internal(inFn, input, map, compat, mathRandSeed, outFn, outMap, speculateOpt, trace, debugNames, singlePass, logStatistics);
 }

@@ -27,7 +27,7 @@ import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import * as base62 from "base62";
 import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
-import { BodyReference, AreSameSerializedBindings } from "./types.js";
+import { BodyReference, AreSameSerializedBindings, SerializerStatistics } from "./types.js";
 import { ClosureRefVisitor, ClosureRefReplacer } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -94,6 +94,7 @@ export class Serializer {
     this.needsEmptyVar = false;
     this.uidCounter = 0;
     this.requireReturns = new Map();
+    this.statistics = new SerializerStatistics();
   }
 
   globalReasons: {
@@ -125,6 +126,7 @@ export class Serializer {
   modules: Modules;
   requireReturns: Map<number | string, BabelNodeExpression>;
   options: SerializerOptions;
+  statistics: SerializerStatistics;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -306,6 +308,9 @@ export class Serializer {
         }
       });
     }
+
+    this.statistics.objects++;
+    this.statistics.objectProperties += val.properties.size;
   }
 
   _emitProperty(name: string, val: Value, key: BabelNodeIdentifier | BabelNodeNumericLiteral | BabelNodeStringLiteral, desc: Descriptor, ignoreEmbedded: boolean, reasons: Array<string>): void {
@@ -490,11 +495,13 @@ export class Serializer {
          ]);
 
          this.body.push(declar);
+         this.statistics.valueIds++;
        }
      } else {
        if (init) {
          this.refs.delete(val);
          result = init;
+         this.statistics.valueIdsElided++;
        }
      }
 
@@ -826,18 +833,20 @@ export class Serializer {
     }
 
     this.addProperties(name, val, true, reasons);
+    let result;
     if (val.$RegExpMatcher !== undefined) {
       let source = val.$OriginalSource;
       let flags = val.$OriginalFlags;
       invariant(typeof source === "string");
       invariant(typeof flags === "string");
-      return t.callExpression(t.identifier("RegExp"), [t.stringLiteral(source), t.stringLiteral(flags)]);
+      result = t.callExpression(t.identifier("RegExp"), [t.stringLiteral(source), t.stringLiteral(flags)]);
     } else if (val.$NumberData !== undefined) {
       let num = val.$NumberData.value;
-      return t.newExpression(t.identifier("Number"), [t.numericLiteral(num)]);
+      result = t.newExpression(t.identifier("Number"), [t.numericLiteral(num)]);
     } else {
-      return t.objectExpression(props);
+      result = t.objectExpression(props);
     }
+    return result;
   }
 
   _serializeValueSymbol(val: SymbolValue): BabelNodeExpression {
@@ -935,11 +944,13 @@ export class Serializer {
             getFunctionBody(instance).push(declar);
             serializedBinding.serializedValue = serializedBindingId;
             serializedBinding.referentialized = true;
+            this.statistics.referentialized++;
           }
         }
       }
     }
 
+    this.statistics.functions = functionEntries.length;
     for (let [funcBody, { usesArguments, usesThis, instances, names, modified }] of functionEntries) {
       let params = instances[0].functionValue.$FormalParameters;
 
@@ -964,6 +975,7 @@ export class Serializer {
       }
 
       if (shouldInline || instances.length === 1 || usesArguments || anySerializedBindingModified) {
+        this.statistics.functionClones += instances.length - 1;
         for (let instance of instances) {
           let { functionValue, serializedBindings } = instance;
           let id = this._getValIdForReference(functionValue);
@@ -1420,6 +1432,7 @@ export class Serializer {
     this.collectValToRefCountOnly = false;
     let serialized = this.serialize(filename, code, sourceMaps);
     invariant(!this.logger.hasErrors());
+    if (this.options.logStatistics) this.statistics.log();
     return serialized.generated;
   }
 }
