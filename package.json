@@ -20,7 +20,7 @@
     "build-bundle": "webpack",
     "watch": "babel src --out-dir lib --watch --source-maps",
     "lint": "eslint src",
-    "flow": "flow",
+    "flow": "flow check",
     "test-serializer": "node lib/scripts/test-runner.js",
     "test-serializer-with-coverage": "cd lib && ../node_modules/.bin/istanbul cover scripts/test-runner.js && ../node_modules/.bin/remap-istanbul -i coverage/coverage.json -o coverage-sourcemapped -t html && echo You can find coverage reports here: && echo   lib/coverage/lcov-report/index.html && echo   lib/coverage-sourcemapped/index.html",
     "test-sourcemaps": "node lib/scripts/generate-sourcemaps-test.js && bash < src/scripts/test-sourcemaps.sh",
