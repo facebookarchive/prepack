@@ -59,4 +59,30 @@ export type SerializerOptions = {
   trace?: boolean;
   debugNames?: boolean;
   singlePass?: boolean;
+  logStatistics?: boolean;
+}
+
+export class SerializerStatistics {
+  constructor() {
+    this.objects = 0;
+    this.objectProperties = 0;
+    this.functions = 0;
+    this.functionClones = 0;
+    this.referentialized = 0;
+    this.valueIds = 0;
+    this.valueIdsElided = 0;
+  }
+  objects: number;
+  objectProperties: number;
+  functions: number;
+  functionClones: number;
+  referentialized: number;
+  valueIds: number;
+  valueIdsElided: number;
+  log() {
+    console.log(`=== serialization statistics`);
+    console.log(`${this.objects} objects with ${this.objectProperties} properties`);
+    console.log(`${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${this.referentialized} captured mutable variables`);
+    console.log(`${this.valueIds} value ids generated and ${this.valueIdsElided} elided`);
+  }
 }

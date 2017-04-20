@@ -23,7 +23,9 @@ let flags = {
   speculate: false,
   trace: false,
   debugNames: false,
-  singlePass: false };
+  singlePass: false,
+  logStatistics: false,
+};
 while (args.length) {
   let arg = args[0]; args.shift();
   if (!arg.startsWith("--")) {
@@ -53,18 +55,16 @@ while (args.length) {
       case "srcmapOut":
         ouputMap = args[0]; args.shift();
         break;
-      case "speculate":
-      case "trace":
-      case "debugNames":
-      case "singlePass":
-        flags[arg] = true;
-        break;
       case "help":
         console.log("Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ] [ --singlePass ] [ --debugNames ]");
         break;
       default:
-        console.error(`Unknown option: ${arg}`);
-        process.exit(1);
+        if (arg in flags) {
+          flags[arg] = true;
+        } else {
+          console.error(`Unknown option: ${arg}`);
+          process.exit(1);
+        }
     }
   }
 }
@@ -72,5 +72,5 @@ if (!inputFilename) {
   console.error("Missing input file.");
   process.exit(1);
 } else {
-  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, flags.speculate, flags.trace, flags.debugNames, flags.singlePass);
+  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, flags.speculate, flags.trace, flags.debugNames, flags.singlePass, flags.logStatistics);
 }
