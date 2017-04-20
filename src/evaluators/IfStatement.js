@@ -27,8 +27,8 @@ export function evaluate (
   // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
   let exprValue = GetValue(realm, exprRef);
 
-  let stmtCompletion = EmptyValue;
   if (exprValue instanceof ConcreteValue) {
+    let stmtCompletion;
     if (ToBoolean(realm, exprValue)) {
       // 3.a. Let stmtCompletion be the result of evaluating the first Statement
       stmtCompletion = env.evaluateCompletion(ast.consequent, strictCode);
@@ -38,15 +38,16 @@ export function evaluate (
         stmtCompletion = env.evaluateCompletion(ast.alternate, strictCode);
       else
         // 3 (of the if only statement). Return NormalCompletion(undefined)
-        return realm.intrinsics.undefined;
+        stmtCompletion = realm.intrinsics.undefined;
     }
     // 5. Return Completion(UpdateEmpty(stmtCompletion, undefined)
     if (stmtCompletion instanceof Reference)
       return stmtCompletion;
+    stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined)
     if (stmtCompletion instanceof AbruptCompletion) {
-      throw UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
+      throw stmtCompletion; 
     }
-    return UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
+    return stmtCompletion; 
   }
   invariant(exprValue instanceof AbstractValue);
 
