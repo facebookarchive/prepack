@@ -19,13 +19,12 @@ import { ArrayValue, BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue,
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeNumericLiteral } from "babel-types";
-import { Generator, PreludeGenerator } from "../utils/generator.js";
+import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
 import generate from "babel-generator";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import * as base62 from "base62";
 import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
 import { BodyReference, AreSameSerializedBindings, SerializerStatistics } from "./types.js";
 import { ClosureRefVisitor, ClosureRefReplacer } from "./visitors.js";
@@ -70,8 +69,8 @@ export class Serializer {
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
 
-    this._resetSerializeStates();
     this.options = serializerOptions;
+    this._resetSerializeStates();
   }
 
   _resetSerializeStates() {
@@ -92,7 +91,10 @@ export class Serializer {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
-    this.uidCounter = 0;
+    this.valueNameGenerator = new NameGenerator("_", this.options.debugNames);
+    this.referentializedNameGenerator = new NameGenerator("$", this.options.debugNames);
+    this.descriptorNameGenerator = new NameGenerator("$$", this.options.debugNames);
+    this.factoryNameGenerator = new NameGenerator("$_", this.options.debugNames);
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
   }
@@ -121,7 +123,10 @@ export class Serializer {
   generator: Generator;
   descriptors: Map<string, BabelNodeIdentifier>;
   needsEmptyVar: boolean;
-  uidCounter: number;
+  valueNameGenerator: NameGenerator;
+  referentializedNameGenerator: NameGenerator;
+  descriptorNameGenerator: NameGenerator;
+  factoryNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   requireReturns: Map<number | string, BabelNodeExpression>;
@@ -169,12 +174,6 @@ export class Serializer {
     }
 
     return val instanceof PrimitiveValue;
-  }
-
-  generateUid(debugSuffix: ?string): string {
-    let id = "_" + base62.encode(this.uidCounter++) +
-      (this.options.debugNames && debugSuffix ? "$" + debugSuffix : "");
-    return id;
   }
 
   isNumberWithValue(value: ?Value, n: number): boolean {
@@ -367,7 +366,7 @@ export class Serializer {
       descriptorsKey = descriptorsKey.join(",");
       let descriptorId = this.descriptors.get(descriptorsKey);
       if (descriptorId === undefined) {
-        descriptorId = t.identifier(this.generateUid());
+        descriptorId = t.identifier(this.descriptorNameGenerator.generate(descriptorsKey));
         let declar = t.variableDeclaration("var", [
           t.variableDeclarator(descriptorId, t.objectExpression(descProps))]);
         this.body.push(declar);
@@ -470,8 +469,7 @@ export class Serializer {
       return res;
     }
 
-    let suffix = (val && val.__originalName) ? val.__originalName : "";
-    let name = this.generateUid(suffix);
+    let name = this.valueNameGenerator.generate(val.__originalName || "");
     let id = t.identifier(name);
     this.refs.set(val, id);
     this.serializationStack.push(val);
@@ -938,7 +936,7 @@ export class Serializer {
         for (let name in names) {
           let serializedBinding: SerializedBinding = serializedBindings[name];
           if (serializedBinding.modified && !serializedBinding.referentialized) {
-            let serializedBindingId = t.identifier(this.generateUid("bound"));
+            let serializedBindingId = t.identifier(this.referentializedNameGenerator.generate(name));
             let declar = t.variableDeclaration("var", [
               t.variableDeclarator(serializedBindingId, serializedBinding.serializedValue)]);
             getFunctionBody(instance).push(declar);
@@ -1002,7 +1000,8 @@ export class Serializer {
           getFunctionBody(instance).push(funcNode);
         }
       } else {
-        let factoryId = t.identifier(this.generateUid("helper"));
+        let suffix = instances[0].functionValue.__originalName || "";
+        let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
 
         // filter included variables to only include those that are different
         let factoryNames: Array<string> = [];
@@ -1307,7 +1306,7 @@ export class Serializer {
         rootFactoryProps.push(t.objectProperty(keyNode, t.identifier(key)));
       }
 
-      let rootFactoryId = t.identifier(this.generateUid("helper"));
+      let rootFactoryId = t.identifier(this.factoryNameGenerator.generate("root"));
       let rootFactoryBody = t.blockStatement([
         t.returnStatement(t.objectExpression(rootFactoryProps))
       ]);
@@ -1388,7 +1387,7 @@ export class Serializer {
           }
         }
 
-        let subFactoryId = t.identifier(this.generateUid("helper"));
+        let subFactoryId = t.identifier(this.factoryNameGenerator.generate("sub"));
         let subFactoryBody = t.blockStatement([
           t.returnStatement(t.callExpression(rootFactoryId, subFactoryArgs))
         ]);
