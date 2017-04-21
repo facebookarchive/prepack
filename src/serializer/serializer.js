@@ -837,7 +837,7 @@ export class Serializer {
       let flags = val.$OriginalFlags;
       invariant(typeof source === "string");
       invariant(typeof flags === "string");
-      result = t.callExpression(t.identifier("RegExp"), [t.stringLiteral(source), t.stringLiteral(flags)]);
+      result = t.callExpression(this.preludeGenerator.memoizeReference("RegExp"), [t.stringLiteral(source), t.stringLiteral(flags)]);
     } else if (val.$NumberData !== undefined) {
       let num = val.$NumberData.value;
       result = t.newExpression(t.identifier("Number"), [t.numericLiteral(num)]);
@@ -850,11 +850,11 @@ export class Serializer {
   _serializeValueSymbol(val: SymbolValue): BabelNodeExpression {
     let args = [];
     if (val.$Description) args.push(t.stringLiteral(val.$Description));
-    return t.callExpression(t.identifier("Symbol"), args);
+    return t.callExpression(this.preludeGenerator.memoizeReference("Symbol"), args);
   }
 
   _serializeValueProxy(name: string, val: ProxyValue, reasons: Array<string>): BabelNodeExpression {
-    return t.newExpression(t.identifier("Proxy"), [
+    return t.newExpression(this.preludeGenerator.memoizeReference("Proxy"), [
       this.serializeValue(val.$ProxyTarget, reasons.concat(`Proxy target of ${name}`)),
       this.serializeValue(val.$ProxyHandler, reasons.concat(`Proxy handler of ${name}`))
     ]);
