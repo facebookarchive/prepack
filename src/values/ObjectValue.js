@@ -14,7 +14,7 @@ import type { IterationKind, PromiseCapability, PromiseReaction, DataBlock, Prop
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value, AbstractValue, ConcreteValue, BooleanValue, StringValue, SymbolValue, NumberValue, UndefinedValue, NullValue, NativeFunctionValue } from "./index.js";
 import type { NativeFunctionCallback } from "./index.js";
-import { joinValuesAsConditional, OrdinarySetPrototypeOf, OrdinaryDefineOwnProperty, OrdinaryDelete,
+import { joinValuesAsConditional, IsDataDescriptor, OrdinarySetPrototypeOf, OrdinaryDefineOwnProperty, OrdinaryDelete,
    OrdinaryOwnPropertyKeys, OrdinaryGetOwnProperty, OrdinaryGet, OrdinaryHasProperty, OrdinarySet,
    OrdinaryIsExtensible, OrdinaryPreventExtensions, ThrowIfMightHaveBeenDeleted } from "../methods/index.js";
 import * as t from "babel-types";
@@ -190,7 +190,19 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isSimple(): boolean {
-    return this._isSimple.value;
+    if (this._isSimple.value) return true;
+    if (this.isPartial())
+      return false;
+    for (let propertyBinding of this.properties.values()) {
+      let desc = propertyBinding.descriptor;
+      if (desc === undefined) continue; // deleted
+      if (!IsDataDescriptor(this.$Realm, desc))
+        return false;
+      if (!desc.writable) return false;
+    }
+    if (this.$Prototype instanceof NullValue) return true;
+    if (this.$Prototype === this.$Realm.intrinsics.ObjectPrototype) return true;
+    return this.$Prototype.isSimple();
   }
 
   getExtensible(): boolean {
@@ -386,7 +398,7 @@ export default class ObjectValue extends ConcreteValue {
     // If all else fails, use this expression
     let result = this.$Realm.createAbstract(TypesDomain.topVal, ValuesDomain.topVal,
         [this, P],
-        ([o, x]) => t.memberExpression(o, x, true));
+        ([o, x]) => t.memberExpression(o, x, true), "sentinel member expression");
     // Get a specialization of the join of all values written to the object
     // with abstract property names.
     let prop = this.unknownProperty;
@@ -399,7 +411,8 @@ export default class ObjectValue extends ConcreteValue {
     // concrete property names.
     for (let [key, propertyBinding] of this.properties) {
       let desc = propertyBinding.descriptor;
-      if (desc === undefined || desc.value === undefined) continue; // deleted
+      if (desc === undefined) continue; // deleted
+      invariant(desc.value !== undefined); // otherwise this is not simple
       let val = desc.value;
       let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
         [P],
@@ -458,11 +471,14 @@ export default class ObjectValue extends ConcreteValue {
     this.$Realm.recordModifiedProperty(prop);
     let desc = prop.descriptor;
     if (desc === undefined) {
-      // join V with undefined, using a property name test as the condition
-      let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
-        [P, new StringValue(this.$Realm, "")],
-        ([x, y]) => t.binaryExpression("===", x, y), "template for property name condition");
-      let newVal = joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
+      let newVal = V;
+      if (!(V instanceof UndefinedValue)) {
+        // join V with undefined, using a property name test as the condition
+        let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+          [P, new StringValue(this.$Realm, "")],
+          ([x, y]) => t.binaryExpression("===", x, y), "template for property name condition");
+        newVal = joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
+      }
       prop.descriptor = {
         writable: true,
         enumerable: true,
@@ -473,10 +489,13 @@ export default class ObjectValue extends ConcreteValue {
       // join V with current value of this.unknownProperty. I.e. weak update.
       let oldVal = desc.value;
       invariant(oldVal !== undefined);
-      let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
-        [P, new StringValue(this.$Realm, "")],
-        ([x, y]) => t.binaryExpression("===", x, y), "template for property name condition");
-      let newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+      let newVal = oldVal;
+      if (!(V instanceof UndefinedValue)) {
+        let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+          [P, new StringValue(this.$Realm, "")],
+          ([x, y]) => t.binaryExpression("===", x, y), "template for property name condition");
+        newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+      }
       desc.value = newVal;
     }
 
@@ -484,8 +503,10 @@ export default class ObjectValue extends ConcreteValue {
     // to perform weak updates of all of the known properties.
     for (let [key, propertyBinding] of this.properties) {
       let oldVal = this.$Realm.intrinsics.empty;
-      if (propertyBinding.descriptor && propertyBinding.descriptor.value)
+      if (propertyBinding.descriptor && propertyBinding.descriptor.value) {
         oldVal = propertyBinding.descriptor.value;
+        invariant(oldVal !== undefined); // otherwise this is not simple
+      }
       let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
         [P],
         ([x]) => t.binaryExpression("===", x, t.stringLiteral(key)));
