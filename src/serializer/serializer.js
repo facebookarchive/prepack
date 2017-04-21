@@ -840,7 +840,7 @@ export class Serializer {
       result = t.callExpression(this.preludeGenerator.memoizeReference("RegExp"), [t.stringLiteral(source), t.stringLiteral(flags)]);
     } else if (val.$NumberData !== undefined) {
       let num = val.$NumberData.value;
-      result = t.newExpression(t.identifier("Number"), [t.numericLiteral(num)]);
+      result = t.newExpression(this.preludeGenerator.memoizeReference("Number"), [t.numericLiteral(num)]);
     } else {
       result = t.objectExpression(props);
     }
