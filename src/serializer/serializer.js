@@ -60,7 +60,7 @@ export class Serializer {
     this.realm = construct_realm(realmOptions);
     invariant(this.realm.isPartial);
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
-    this.modules = new Modules(this.realm, this.logger);
+    this.modules = new Modules(this.realm, this.logger, !!serializerOptions.logModules, !!serializerOptions.delayUnsupportedRequires);
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));
 
     let realmGenerator = this.realm.generator;

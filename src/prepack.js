@@ -24,11 +24,13 @@ function run_internal(
     trace: boolean = false,
     debugNames: boolean = false,
     singlePass: boolean = false,
-    logStatistics: boolean = false) {
+    logStatistics: boolean = false,
+    logModules: boolean = false,
+    delayUnsupportedRequires: boolean = false) {
   let serialized =
     new Serializer(
       { partial: true, compatibility, mathRandomSeed },
-      { initializeMoreModules: speculate, internalDebug: true, trace, debugNames, singlePass, logStatistics })
+      { initializeMoreModules: speculate, internalDebug: true, trace, debugNames, singlePass, logStatistics, logModules, delayUnsupportedRequires })
         .init(name, raw, map, outputMap !== undefined);
   if (!serialized) {
     process.exit(1);
@@ -67,7 +69,9 @@ export function run(
     trace?: boolean,
     debugNames?: boolean,
     singlePass?: boolean,
-    logStatistics?: boolean) {
+    logStatistics?: boolean,
+    logModules?: boolean,
+    delayUnsupportedRequires?: boolean) {
   let input = fs.readFileSync(inFn, "utf8");
   let map = "";
   let mapFile = inputMap ? inputMap : inFn + ".map";
@@ -76,5 +80,5 @@ export function run(
   } catch (_e) {
     console.log(`No sourcemap found at ${mapFile}.`);
   }
-  run_internal(inFn, input, map, compat, mathRandSeed, outFn, outMap, speculateOpt, trace, debugNames, singlePass, logStatistics);
+  run_internal(inFn, input, map, compat, mathRandSeed, outFn, outMap, speculateOpt, trace, debugNames, singlePass, logStatistics, logModules, delayUnsupportedRequires);
 }

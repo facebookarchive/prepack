@@ -67,7 +67,8 @@ function runTest(name: string, code: string): boolean {
   let compatibility = code.includes("// jsc") ? "jsc" : undefined;
   let realmOptions = { partial: true, compatibility };
   let initializeMoreModules = code.includes("// initialize more modules");
-  let serializerOptions = { initializeMoreModules, internalDebug: true };
+  let delayUnsupportedRequires = code.includes("// delay unsupported requires");
+  let serializerOptions = { initializeMoreModules, delayUnsupportedRequires, internalDebug: true };
   if (code.includes("// throws introspection error")) {
     let onError = (realm, e) => {
       if (IsIntrospectionError(realm, e))
@@ -140,7 +141,7 @@ function runTest(name: string, code: string): boolean {
           console.log(chalk.red("Output mismatch!"));
           break;
         }
-        if (oldCode === newCode) {
+        if (oldCode === newCode || delayUnsupportedRequires) {
           // The generated code reached a fixed point!
           return true;
         }

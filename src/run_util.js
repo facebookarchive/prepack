@@ -25,6 +25,8 @@ let flags = {
   debugNames: false,
   singlePass: false,
   logStatistics: false,
+  logModules: false,
+  delayUnsupportedRequires: false,
 };
 while (args.length) {
   let arg = args[0]; args.shift();
@@ -72,5 +74,5 @@ if (!inputFilename) {
   console.error("Missing input file.");
   process.exit(1);
 } else {
-  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, flags.speculate, flags.trace, flags.debugNames, flags.singlePass, flags.logStatistics);
+  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, flags.speculate, flags.trace, flags.debugNames, flags.singlePass, flags.logStatistics, flags.logModules, flags.delayUnsupportedRequires);
 }
