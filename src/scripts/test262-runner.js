@@ -612,7 +612,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22819 || numPassedES6 < 7390)) {
+  if (!args.filterString && (numPassedES5 < 22841 || numPassedES6 < 7398)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -965,6 +965,8 @@ function runTest(
           "Unexpected abrupt completion"
         ));
     } catch (err) {
+      if (err.message === "Timed out")
+        return new TestResult(true, strict);
       if (!data.negative || data.negative !== err.name) {
         throw err;
       }
