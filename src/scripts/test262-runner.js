@@ -535,6 +535,7 @@ function handleFinished(
   let numFailedES5 = 0;
   let numFailedES6 = 0;
   let numSkipped = earlierNumSkipped;
+  let numTimeouts = 0;
   let failed_groups = [];
   for (let group in groups) {
     // count some totals
@@ -566,7 +567,9 @@ function handleFinished(
               testResult.strict
             ) + EOL;
           }
-          if (t.test.isES6) {
+          if (testResult.err && testResult.err.message === "Timed out") {
+            numTimeouts++;
+          } else if (t.test.isES6) {
             group_es6_failed++;
           } else {
             group_es5_failed++;
@@ -599,7 +602,8 @@ function handleFinished(
     `(${toPercentage(numPassedES5, numPassedES5 + numFailedES5)}%)` + EOL +
     `ES6 passes: ${numPassedES6} / ${numPassedES6 + numFailedES6} ` +
     `(${toPercentage(numPassedES6, numPassedES6 + numFailedES6)}%)` + EOL +
-    `Skipped: ${numSkipped}` + EOL;
+    `Skipped: ${numSkipped}` + EOL +
+    `Timeouts: ${numTimeouts}` + EOL;
   console.log(status);
   if (failed_groups.length !== 0) {
     console.log("Groups with failures:");
@@ -612,7 +616,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22841 || numPassedES6 < 7400)) {
+  if (!args.filterString && (numPassedES5 < 22825 || numPassedES6 < 7398 || numTimeouts > 16)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -966,7 +970,7 @@ function runTest(
         ));
     } catch (err) {
       if (err.message === "Timed out")
-        return new TestResult(true, strict);
+        return new TestResult(false, strict, err);
       if (!data.negative || data.negative !== err.name) {
         throw err;
       }

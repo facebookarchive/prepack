@@ -60,6 +60,8 @@ export type SerializerOptions = {
   debugNames?: boolean;
   singlePass?: boolean;
   logStatistics?: boolean;
+  logModules?: boolean;
+  delayUnsupportedRequires?: boolean;
 }
 
 export class SerializerStatistics {

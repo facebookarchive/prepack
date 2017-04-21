@@ -163,7 +163,7 @@ export class Generator {
 
   derive(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression, kind?: string): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
-    let id = t.identifier(this.preludeGenerator.generateUid());
+    let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
     this.body.push({
       declaresDerivedId: id,
@@ -221,18 +221,39 @@ export class Generator {
   }
 }
 
+export class NameGenerator {
+  constructor(prefix: string, debugNames: boolean = false) {
+    this.prefix = prefix;
+    this.uidCounter = 0;
+    this.debugNames = debugNames;
+  }
+  prefix: string;
+  uidCounter: number;
+  debugNames: boolean;
+  generate(debugSuffix: ?string): string {
+    let id = this.prefix + base62.encode(this.uidCounter++);
+    if (this.debugNames) {
+      if (debugSuffix)
+        id += "_" + debugSuffix.replace(/[.,:]/g, "_");
+      else
+        id += "_";
+    }
+    return id;
+  }
+}
+
 export class PreludeGenerator {
-  constructor() {
+  constructor(debugNames: boolean = false) {
     this.prelude = [];
     this.derivedIds = new Map();
     this.memoizedRefs = new Map();
-    this.uidCounter = 0;
+    this.nameGenerator = new NameGenerator("_$", debugNames);
   }
 
   prelude: Array<BabelNodeStatement>;
   derivedIds: Map<string, Array<Value>>;
   memoizedRefs: Map<string, BabelNodeIdentifier | BabelNodeMemberExpression>;
-  uidCounter: number;
+  nameGenerator: NameGenerator;
 
   convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression {
     return str
@@ -241,16 +262,11 @@ export class PreludeGenerator {
       .reduce((obj, prop) => t.memberExpression(obj, prop));
   }
 
-  generateUid(): string {
-    let id = "_$" + base62.encode(this.uidCounter++);
-    return id;
-  }
-
   memoizeReference(key: string): BabelNodeIdentifier | BabelNodeMemberExpression {
     let ref = this.memoizedRefs.get(key);
     if (ref) return ref;
 
-    ref = t.identifier(this.generateUid());
+    ref = t.identifier(this.nameGenerator.generate(key));
     this.prelude.push(t.variableDeclaration("var", [
       t.variableDeclarator(ref, this.convertStringToMember(key))
     ]));
