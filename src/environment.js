@@ -1062,13 +1062,16 @@ export class LexicalEnvironment {
 //
 export class Reference {
   base: void | Value | EnvironmentRecord;
-  referencedName: string | SymbolValue;
+  referencedName: AbstractValue | string | SymbolValue;
   strict: boolean;
   thisValue: void | Value;
 
-  constructor(base: void | Value | EnvironmentRecord, refName: string | SymbolValue, strict: boolean, thisValue?: void | Value) {
+  constructor(base: void | Value | EnvironmentRecord,
+      refName: AbstractValue | string | SymbolValue,
+      strict: boolean, thisValue?: void | Value) {
     this.base = base;
     this.referencedName = refName;
+    invariant(!(refName instanceof AbstractValue) || !refName.mightNotBeString());
     this.strict = strict;
     this.thisValue = thisValue;
     invariant(thisValue === undefined || !(base instanceof EnvironmentRecord));

@@ -650,6 +650,12 @@ export function ToPropertyKey(realm: Realm, arg: ConcreteValue): SymbolValue | s
   return ToString(realm, key);
 }
 
+export function ToPropertyKeyPartial(realm: Realm, arg: Value): AbstractValue | SymbolValue | string /* but not StringValue */ {
+  if (arg instanceof ConcreteValue) return ToPropertyKey(realm, arg);
+  if (arg.mightNotBeString()) arg.throwIfNotConcrete();
+  return arg;
+}
+
 // ECMA262 7.1.16
 export function CanonicalNumericIndexString(realm: Realm, argument: StringValue): number | void {
   // 1. Assert: Type(argument) is String.

@@ -285,6 +285,11 @@ export default class AbstractObjectValue extends AbstractValue {
     }
   }
 
+  $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
+    if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
+    throw this.$Realm.createIntrospectionErrorThrowCompletion("TODO: $SetPartial");
+  }
+
   // ECMA262 9.1.10
   $Delete(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;

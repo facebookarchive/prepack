@@ -152,6 +152,14 @@ export default class AbstractValue extends Value {
     return this.values.includesValueOfType(ObjectValue);
   }
 
+  mightNotBeString(): boolean {
+    let valueType = this.getType();
+    if (valueType === StringValue) return false;
+    if (valueType !== Value) return true;
+    if (this.values.isTop()) return true;
+    return this.values.includesValueNotOfType(StringValue);
+  }
+
   mightBeUndefined(): boolean {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return true;
