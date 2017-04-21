@@ -198,7 +198,7 @@ export default function (realm: Realm): NativeFunctionValue {
     let y = ToNumber(realm, year);
 
     // 2. Let m be ? ToNumber(month).
-    let m = ToNumber(realm, month);
+    let m = argCount >= 2 ? ToNumber(realm, month) : 0;
 
     // 3. If date is supplied, let dt be ? ToNumber(date); else let dt be 1.
     let dt = argCount >= 3 ? ToNumber(realm, date) : 1;
