@@ -85,10 +85,7 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
   realm.restoreProperties(properties);
 
   // Add generated code for property modifications
-  let realmGenerator = realm.generator;
-  invariant(realmGenerator);
-  let realmGeneratorBody = realmGenerator.body;
-  generator.body.forEach((v, k, a) => realmGeneratorBody.push(v));
+  realm.appendGenerator(generator);
 
   // Ignore the joined completion
   completion;

@@ -572,8 +572,20 @@ export function AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm) 
 
 // ECMA262 9.2.1
 export function $Call(realm: Realm, F: FunctionValue, thisArgument: Value, argsList: Array<Value>): Value {
+  return InternalCall(realm, F, thisArgument, argsList, 0);
+}
+
+function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsList: Array<Value>, tracerIndex: number): Value {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function value");
+
+  // Tracing: Give all registered tracers a chance to detour, wrapping around each other if needed.
+  while (tracerIndex < realm.tracers.length) {
+    let tracer = realm.tracers[tracerIndex];
+    let nextIndex = ++tracerIndex;
+    let detourResult = tracer.detourCall(F, thisArgument, argsList, undefined, () => InternalCall(realm, F, thisArgument, argsList, nextIndex));
+    if (detourResult instanceof Value) return detourResult;
+  }
 
   // 2. If F's [[FunctionKind]] internal slot is "classConstructor", throw a TypeError exception.
   if (F.$FunctionKind === "classConstructor") throw new ThrowCompletion(new StringValue(realm, "TypeError"));
@@ -622,6 +634,10 @@ export function $Call(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
 
 // ECMA262 9.2.2
 export function $Construct(realm: Realm, F: FunctionValue, argumentsList: Array<Value>, newTarget: ObjectValue): ObjectValue {
+  return InternalConstruct(realm, F, argumentsList, newTarget, undefined, 0);
+}
+
+function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<Value>, newTarget: ObjectValue, thisArgument: void | ObjectValue, tracerIndex: number): ObjectValue {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function");
 
@@ -634,12 +650,19 @@ export function $Construct(realm: Realm, F: FunctionValue, argumentsList: Array<
   // 4. Let kind be F's [[ConstructorKind]] internal slot.
   let kind = F.$ConstructorKind;
 
-  let thisArgument;
-
   // 5. If kind is "base", then
-  if (kind === "base") {
+  if (thisArgument === undefined && kind === "base") {
     // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%ObjectPrototype%").
     thisArgument = OrdinaryCreateFromConstructor(realm, newTarget, "ObjectPrototype");
+  }
+
+  // Tracing: Give all registered tracers a chance to detour, wrapping around each other if needed.
+  while (tracerIndex < realm.tracers.length) {
+    let tracer = realm.tracers[tracerIndex];
+    let nextIndex = ++tracerIndex;
+    let detourResult = tracer.detourCall(F, thisArgument, argumentsList, newTarget, () => InternalConstruct(realm, F, argumentsList, newTarget, thisArgument, nextIndex));
+    if (detourResult instanceof ObjectValue) return detourResult;
+    invariant(detourResult === undefined);
   }
 
   // 6. Let calleeContext be PrepareForOrdinaryCall(F, newTarget).

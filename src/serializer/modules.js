@@ -13,33 +13,94 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { Realm, ExecutionContext, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, ToStringPartial, Get } from "../methods/index.js";
-import { Completion, AbruptCompletion, IntrospectionThrowCompletion } from "../completions.js";
+import { Completion, AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
 import { Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 
 class ModuleTracer extends Tracer {
-  constructor(modules: Modules) {
+  constructor(modules: Modules, logModules: boolean) {
     super();
     this.modules = modules;
     this.partialEvaluation = 0;
+    this.requireStack = [];
+    this.logModules = logModules;
   }
 
   modules: Modules;
   partialEvaluation: number;
+  requireStack: Array<number | string | void>;
+  logModules: boolean;
+
+  log(message: string) {
+    if (this.logModules) console.log(`[modules] ${this.requireStack.map(_ => "  ").join("")}${message}`);
+  }
 
   beginPartialEvaluation() {
+    this.log(">partial evaluation");
     this.partialEvaluation++;
+    this.requireStack.push(undefined);
   }
 
   endPartialEvaluation(effects: void | Effects) {
+    let popped = this.requireStack.pop();
+    invariant(popped === undefined);
     this.partialEvaluation--;
+    this.log("<partial evaluation");
   }
 
-  beforeCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {
-    if (F === this.modules.getDefine()) {
+  detourCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, performCall: () => Value): void | Value {
+    let realm = this.modules.realm;
+    if (F === this.modules.getRequire() && this.modules.delayUnsupportedRequires && argumentsList.length === 1) {
+      let moduleId = argumentsList[0];
+      let moduleIdValue;
+      if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
+        moduleIdValue = moduleId.value;
+        if (!this.modules.moduleIds.has(moduleIdValue)) {
+          this.modules.logger.logError("Module referenced by require call has not been defined.");
+        }
+      } else {
+        this.modules.logger.logError("First argument to require function is not a number or string value.");
+        return undefined;
+      }
+      this.log(`>require(${moduleIdValue})`);
+      let result;
+      try {
+        this.requireStack.push(moduleIdValue);
+        let effects = realm.partially_evaluate(() => {
+          try {
+            return performCall();
+          } catch (e) {
+            if (e instanceof Completion) return e;
+            throw e;
+          }
+        });
+        [result] = effects;
+        invariant(result instanceof Value || result instanceof Completion);
+        if (result instanceof IntrospectionThrowCompletion) {
+          let [message, stack] = this.modules.getMessageAndStack(effects);
+          console.log(`delaying require(${moduleIdValue}): ${message} ${stack}`);
+          result = realm.deriveAbstract(
+            TypesDomain.topVal,
+            ValuesDomain.topVal, [],
+             ([]) => t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)]));
+        } else {
+          realm.apply_effects(effects, `initialization of module ${moduleIdValue}`);
+        }
+      } finally {
+        let popped = this.requireStack.pop();
+        invariant(popped === moduleIdValue);
+        let message = "";
+        invariant(!(result instanceof IntrospectionThrowCompletion));
+        if (result instanceof ThrowCompletion) message = " threw an error";
+        this.log(`<require(${moduleIdValue})${message}`);
+      }
+      if (result instanceof Completion) throw result;
+      return result;
+    } else if (F === this.modules.getDefine()) {
       if (this.partialEvaluation !== 0) this.modules.logger.logError("Defining a module in nested partial evaluation is not supported.");
       let factoryFunction = argumentsList[0];
       if (factoryFunction instanceof FunctionValue) this.modules.factoryFunctions.add(factoryFunction);
@@ -48,12 +109,13 @@ class ModuleTracer extends Tracer {
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) this.modules.moduleIds.add(moduleId.value);
       else this.modules.logger.logError("Second argument to define function is not a number or string value.");
     }
+    return undefined;
   }
 }
 
 
 export class Modules {
-  constructor(realm: Realm, logger: Logger) {
+  constructor(realm: Realm, logger: Logger, logModules: boolean, delayUnsupportedRequires: boolean) {
     this.realm = realm;
     this.logger = logger;
     this._require = realm.intrinsics.undefined;
@@ -61,7 +123,8 @@ export class Modules {
     this.factoryFunctions = new Set();
     this.moduleIds = new Set();
     this.initializedModules = new Map();
-    realm.tracers.push(new ModuleTracer(this));
+    realm.tracers.push(new ModuleTracer(this, logModules));
+    this.delayUnsupportedRequires = delayUnsupportedRequires;
   }
 
   realm: Realm;
@@ -72,6 +135,7 @@ export class Modules {
   moduleIds: Set<number | string>;
   initializedModules: Map<number | string, Value>;
   active: boolean;
+  delayUnsupportedRequires: boolean;
 
   _getGlobalProperty(name: string) {
     if (this.active) return this.realm.intrinsics.undefined;
@@ -148,6 +212,31 @@ export class Modules {
     };
   }
 
+  getMessageAndStack([result, generator, bindings, properties, createdObjects]: Effects): [string, string] {
+    let realm = this.realm;
+    if (!(result instanceof Completion) || !(result.value instanceof ObjectValue))
+      return ["(no message)", "(no stack)"];
+
+    // Temporarily apply state changes in order to retrieve message
+    realm.restoreBindings(bindings);
+    realm.restoreProperties(properties);
+
+    let value = result.value;
+    let message: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
+    let stack: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "stack")), "", false);
+
+    // Undo state changes
+    realm.restoreBindings(bindings);
+    realm.restoreProperties(properties);
+
+    if (result instanceof IntrospectionThrowCompletion && result.reason !== undefined)
+      message = `[${result.reason}] ${message}`;
+
+    let i = stack.indexOf("\n");
+    if (i >= 0) stack = stack.slice(i);
+    return [message, stack];
+  }
+
   initializeMoreModules() {
     // partially evaluate all factory methods by calling require
     let realm = this.realm;
@@ -157,6 +246,8 @@ export class Modules {
     context.lexicalEnvironment = env;
     context.variableEnvironment = env;
     context.realm = realm;
+    let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
+    this.delayUnsupportedRequires = false;
     realm.pushContext(context);
     try {
       let count = 0;
@@ -166,63 +257,25 @@ export class Modules {
 
         let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-        let [compl, gen, bindings, properties, createdObjects] =
-          realm.partially_evaluate_node(node, true, env, false);
+        let effects = realm.partially_evaluate_node(node, true, env, false);
+        let result = effects[0];
+        if (result instanceof IntrospectionThrowCompletion) {
+          let [message, stack] = this.getMessageAndStack(effects);
+          let stacks = introspectionErrors[message] = introspectionErrors[message] || [];
+          stacks.push(stack);
+          continue;
+        }
 
-        if (compl instanceof Completion) {
-          realm.restoreBindings(bindings);
-          realm.restoreProperties(properties);
-          if (compl instanceof IntrospectionThrowCompletion) {
-            let value = compl.value;
-            invariant(value instanceof ObjectValue);
-            let message: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
-            if (compl.reason !== undefined) message = `[${compl.reason}] ${message}`;
-            let stack: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "stack")), "", false);
-            let i = stack.indexOf("\n");
-            if (i >= 0) stack = stack.slice(i);
-            realm.restoreBindings(bindings);
-            realm.restoreProperties(properties);
-            let stacks = introspectionErrors[message] = introspectionErrors[message] || [];
-            stacks.push(stack);
-            continue;
-          }
-
+        realm.apply_effects(effects, `Speculative initialization of module ${moduleId}`);
+        if (result instanceof Completion) {
           console.log(`=== UNEXPECTED ERROR during speculative initialization of module ${moduleId} ===`);
-          this.logger.logCompletion(compl);
-          realm.restoreBindings(bindings);
-          realm.restoreProperties(properties);
+          this.logger.logCompletion(result);
           break;
         }
 
-        invariant(compl instanceof Value);
-
-        // Apply the joined effects to the global state
-        realm.restoreBindings(bindings);
-        realm.restoreProperties(properties);
-
-        // Add generated code for property modifications
-        let realmGenerator = this.realm.generator;
-        invariant(realmGenerator);
-        let first = true;
-        for (let bodyEntry of gen.body) {
-          let id = bodyEntry.declaresDerivedId;
-          let originalBuildNode = bodyEntry.buildNode;
-          let buildNode = originalBuildNode;
-          if (first) {
-            first = false;
-            buildNode = (nodes, f) => {
-              let n = originalBuildNode(nodes, f);
-              n.leadingComments = [({ type: "BlockComment", value: `Speculative initialization of module ${moduleId}` }: any)];
-              return n;
-            };
-          }
-          realmGenerator.body.push({ declaresDerivedId: id, args: bodyEntry.args, buildNode: buildNode });
-        }
-
-        // Ignore created objects
-        createdObjects;
+        invariant(result instanceof Value);
         count++;
-        this.initializedModules.set(moduleId, compl);
+        this.initializedModules.set(moduleId, result);
       }
       if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
       let a = [];
@@ -234,6 +287,7 @@ export class Modules {
       }
     } finally {
       realm.popContext(context);
+      this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
     }
   }
 
@@ -248,11 +302,13 @@ export class Modules {
     context.realm = realm;
     realm.pushContext(context);
     let oldReadOnly = realm.setReadOnly(true);
+    let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
+    this.delayUnsupportedRequires = false;
     try {
       for (let moduleId of this.moduleIds) {
         let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-        let [compl, gen, bindings, properties, createdObjects] =
+        let [compl, generator, bindings, properties, createdObjects] =
           realm.partially_evaluate_node(node, true, env, false);
         // for lint unused
         invariant(bindings);
@@ -260,7 +316,7 @@ export class Modules {
         if (compl instanceof AbruptCompletion) continue;
         invariant(compl instanceof Value);
 
-        if (gen.body.length !== 0 ||
+        if (generator.body.length !== 0 ||
           (compl instanceof ObjectValue && createdObjects.has(compl))) continue;
         // Check for escaping property assignments, if none escape, we're safe
         // to replace the require with its exports object
@@ -275,6 +331,7 @@ export class Modules {
     } finally {
       realm.popContext(context);
       realm.setReadOnly(oldReadOnly);
+      this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
     }
   }
 }

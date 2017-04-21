@@ -35,6 +35,7 @@ export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, 
 export class Tracer {
   beginPartialEvaluation() {}
   endPartialEvaluation(effects: void | Effects) {}
+  detourCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, performCall: () => Value): void | Value {}
   beforeCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {}
   afterCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {}
 }
@@ -302,17 +303,14 @@ export class Realm {
   }
 
   // Apply the given effects to the global state
-  apply_effects(effects: Effects) {
+  apply_effects(effects: Effects, leadingComment: string = "") {
     let [completion, generator, bindings, properties, createdObjects] = effects;
 
     // ignore completion
     completion;
 
     // Add generated code for property modifications
-    let realmGenerator = this.generator;
-    invariant(realmGenerator);
-    let realmGeneratorBody = realmGenerator.body;
-    generator.body.forEach((v, k, a) => realmGeneratorBody.push(v));
+    this.appendGenerator(generator, leadingComment);
 
     // Restore bindings
     this.restoreBindings(bindings);
@@ -524,5 +522,23 @@ export class Realm {
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
     return new ThrowCompletion(Construct(this, type, [message]));
+  }
+
+  appendGenerator(generator: Generator, leadingComment: string = ""): void {
+    let realmGenerator = this.generator;
+    invariant(realmGenerator);
+    let realmGeneratorBody = realmGenerator.body;
+    let generatorBody = generator.body;
+    let i = 0;
+    if (generatorBody.length > 0 && leadingComment.length > 0) {
+      let firstEntry = generatorBody[i++];
+      let buildNode = (nodes, f) => {
+        let n = firstEntry.buildNode(nodes, f);
+        n.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
+        return n;
+      };
+      realmGeneratorBody.push({ declaresDerivedId: firstEntry.declaresDerivedId, args: firstEntry.args, buildNode: buildNode });
+    }
+    for (; i < generatorBody.length; i++) realmGeneratorBody.push(generatorBody[i]);
   }
 }

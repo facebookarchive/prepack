@@ -39,7 +39,7 @@ export class LoggingTracer extends Tracer {
   nesting: Array<string>;
 
   log(message: string) {
-    console.log(`${this.nesting.map(_ => "  ").join("")}${message}`);
+    console.log(`[calls] ${this.nesting.map(_ => "  ").join("")}${message}`);
   }
 
   beginPartialEvaluation() {
