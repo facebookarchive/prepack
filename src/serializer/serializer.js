@@ -1298,12 +1298,13 @@ export class Serializer {
 
       //
       let rootFactoryParams: Array<BabelNodeLVal> = [];
-      for (let key of keys) rootFactoryParams.push(t.identifier(key));
-
       let rootFactoryProps = [];
-      for (let key of keys) {
+      for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
+        let key = keys[keyIndex];
+        let id = t.identifier(`__${keyIndex}`);
+        rootFactoryParams.push(id);
         let keyNode = t.isValidIdentifier(key) ? t.identifier(key) : t.stringLiteral(key);
-        rootFactoryProps.push(t.objectProperty(keyNode, t.identifier(key)));
+        rootFactoryProps.push(t.objectProperty(keyNode, id));
       }
 
       let rootFactoryId = t.identifier(this.factoryNameGenerator.generate("root"));
@@ -1381,7 +1382,7 @@ export class Serializer {
           if (removeArgs.indexOf(i + "") >= 0) {
             subFactoryArgs.push(arg);
           } else {
-            let id = t.identifier("__" + i);
+            let id = t.identifier(`__${i}`);
             subFactoryArgs.push(id);
             subFactoryParams.push(id);
           }
