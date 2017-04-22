@@ -920,23 +920,19 @@ export class Serializer {
   }
 
   _serializeGlobalBinding(key: string): void | SerializedBinding {
-    if (t.isValidIdentifier(key)) {
-      let value = this.realm.getGlobalLetBinding(key);
-      // Check for let binding vs global property
-      if (value) {
-        let id = this.serializeValue(value, ["global let binding"], true, "let");
-        // increment ref count one more time as the value has been
-        // referentialized (stored in a variable) by serializeValue
-        this._incrementValToRefCount(value);
-        return {
-          serializedValue: id,
-          modified: true, referentialized: true
-        };
-      } else {
-        return { serializedValue: t.identifier(key), modified: true, referentialized: true };
-      }
+    let value = this.realm.getGlobalLetBinding(key);
+    // Check for let binding vs global property
+    if (value) {
+      let id = this.serializeValue(value, ["global let binding"], true, "let");
+      // increment ref count one more time as the value has been
+      // referentialized (stored in a variable) by serializeValue
+      this._incrementValToRefCount(value);
+      return {
+        serializedValue: id,
+        modified: true, referentialized: true
+      };
     } else {
-      return { serializedValue: t.stringLiteral(key), modified: true, referentialized: true };
+      return { serializedValue: this.preludeGenerator.globalReference(key), modified: true, referentialized: true };
     }
   }
 
@@ -1221,6 +1217,10 @@ export class Serializer {
     this.factorifyObjects(body);
 
     let ast_body = [];
+    if (this.preludeGenerator.declaredGlobals.size > 0)
+      ast_body.push(t.variableDeclaration("var",
+        Array.from(this.preludeGenerator.declaredGlobals).map(key =>
+          t.variableDeclarator(t.identifier(key)))));
     if (body.length) {
       if (realm.compatibility === 'node') {
         ast_body.push(
@@ -1239,17 +1239,14 @@ export class Serializer {
         );
       }
 
-      ast_body.push(
-        t.expressionStatement(
-          t.callExpression(
-            t.memberExpression(
-              t.functionExpression(null, [], t.blockStatement(body, globalDirectives)),
-              t.identifier("call")
-            ),
+      let functionExpression = t.functionExpression(null, [], t.blockStatement(body, globalDirectives));
+      let callExpression = this.preludeGenerator.usesThis
+        ? t.callExpression(
+            t.memberExpression(functionExpression, t.identifier("call")),
             [t.thisExpression()]
           )
-        )
-      );
+        : t.callExpression(functionExpression, []);
+      ast_body.push(t.expressionStatement(callExpression));
     }
 
     let ast = {
