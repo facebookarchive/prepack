@@ -1142,6 +1142,17 @@ export class Serializer {
     invariant(this.delayedKeyedSerializations.size === 0);
   }
 
+  _hasOnlyExpressionStatements(body: Array<any>) {
+
+    for (let item of body) {
+      if (item.type !== "ExpressionStatement") {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
     let realm = this.realm;
 
@@ -1217,17 +1228,21 @@ export class Serializer {
         );
       }
 
-      ast_body.push(
-        t.expressionStatement(
-          t.callExpression(
-            t.memberExpression(
-              t.functionExpression(null, [], t.blockStatement(body, globalDirectives)),
-              t.identifier("call")
-            ),
-            [t.thisExpression()]
+      if (this._hasOnlyExpressionStatements(body)){
+        ast_body = body;
+      } else {
+        ast_body.push(
+          t.expressionStatement(
+            t.callExpression(
+              t.memberExpression(
+                t.functionExpression(null, [], t.blockStatement(body, globalDirectives)),
+                t.identifier("call")
+              ),
+              [t.thisExpression()]
+            )
           )
-        )
-      );
+        );
+      }
     }
 
     let ast = {
