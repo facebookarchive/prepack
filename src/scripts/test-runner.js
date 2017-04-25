@@ -45,6 +45,11 @@ report(inspect());`, { cachedDataProduced: false });
 
   let result = "";
   let logOutput = "";
+
+  function write(prefix: string, values) {
+    logOutput += "\n" + prefix + values.join("");
+  }
+
   script.runInNewContext({
     setTimeout: setTimeout,
     setInterval: setInterval,
@@ -53,7 +58,13 @@ report(inspect());`, { cachedDataProduced: false });
     },
     console: {
       log(...s) {
-        logOutput += "\n" + s.join("");
+        write("", s);
+      },
+      warn(...s) {
+        write("WARN:", s);
+      },
+      error(...s) {
+        write("ERROR:", s);
       }
     }
   });
