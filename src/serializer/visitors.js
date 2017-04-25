@@ -141,3 +141,16 @@ export let ClosureRefVisitor = {
     }
   }
 };
+
+export let IdentifierCollector = {
+  ReferencedIdentifier(path: BabelTraversePath, state: Set<string>) {
+    state.add(path.node.name);
+  },
+
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: Set<string>) {
+    for (let name in path.getBindingIdentifiers()) {
+      console.log(name);
+      state.add(name);
+    }
+  }
+}

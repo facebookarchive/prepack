@@ -27,7 +27,7 @@ import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
 import { BodyReference, AreSameSerializedBindings, SerializerStatistics } from "./types.js";
-import { ClosureRefVisitor, ClosureRefReplacer } from "./visitors.js";
+import { ClosureRefVisitor, ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
@@ -91,10 +91,10 @@ export class Serializer {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
-    this.valueNameGenerator = new NameGenerator("_", this.options.debugNames);
-    this.referentializedNameGenerator = new NameGenerator("$", this.options.debugNames);
-    this.descriptorNameGenerator = new NameGenerator("$$", this.options.debugNames);
-    this.factoryNameGenerator = new NameGenerator("$_", this.options.debugNames);
+    this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_", this.options.debugNames);
+    this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$", this.options.debugNames);
+    this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$", this.options.debugNames);
+    this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_", this.options.debugNames);
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
   }
@@ -140,7 +140,8 @@ export class Serializer {
   execute(filename: string, code: string, map: string,
       onError: void | ((Realm, Value) => void)) {
     let realm = this.realm;
-    let res = realm.$GlobalEnv.execute(code, filename, map);
+    let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast =>
+      traverse(ast, IdentifierCollector, null, this.preludeGenerator.forbiddenNames));
 
     if (res instanceof Completion) {
       let context = new ExecutionContext();
