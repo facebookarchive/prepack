@@ -284,7 +284,7 @@ export class PreludeGenerator {
   globalReference(key: string, globalScope: boolean = false) {
     if (globalScope && t.isValidIdentifier(key)) return t.identifier(key);
     let keyNode = t.isValidIdentifier(key) ? t.identifier(key) : t.stringLiteral(key);
-    return t.memberExpression(this.memoizeReference("::global"), keyNode);
+    return t.memberExpression(this.memoizeReference("::global"), keyNode, !t.isIdentifier(keyNode));
   }
 
   memoizeReference(key: string): BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression {
