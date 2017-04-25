@@ -152,4 +152,4 @@ export let IdentifierCollector = {
       state.add(name);
     }
   }
-}
+};
