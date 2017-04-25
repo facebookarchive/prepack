@@ -795,7 +795,29 @@ export class Serializer {
     return !!prop.writable && !!prop.configurable === configurable && !!prop.enumerable && !prop.set && !prop.get;
   }
 
+  _isPrototype(obj: ObjectValue): void | FunctionValue {
+    let binding = obj.properties.get("constructor");
+    if (binding === undefined) return undefined;
+    let desc = binding.descriptor;
+    if (desc === undefined) return undefined;
+    let func = desc.value;
+    if (!(func instanceof FunctionValue)) return undefined;
+    binding = func.properties.get("prototype");
+    if (binding === undefined) return undefined;
+    desc = binding.descriptor;
+    if (desc === undefined) return undefined;
+    if (desc.value !== obj) return undefined;
+    return func;
+  }
+
   _serializeValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
+    let func = this._isPrototype(val);
+    if (func !== undefined) {
+      let serializedFunction = this.serializeValue(func, reasons.concat(`Constructor of object ${name}`));
+      this.addProperties(name, val, false, reasons, val.properties);
+      return t.memberExpression(serializedFunction, t.identifier("prototype"));
+    }
+
     let props = [];
 
     for (let [key, propertyBinding] of val.properties) {
