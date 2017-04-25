@@ -367,10 +367,10 @@ export class Realm {
       console[method](getString(this, args));
     }
 
-    function getString(realm: Realm, args: Array<string | ConcreteValue>) {
+    function getString(realm: Realm, values: Array<string | ConcreteValue>) {
       let res = "";
-      while (args.length) {
-        let next = args.shift();
+      while (values.length) {
+        let next = values.shift();
         let nextString = ToString(realm, next);
         res += nextString;
       }

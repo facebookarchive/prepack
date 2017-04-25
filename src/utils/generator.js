@@ -132,8 +132,8 @@ export class Generator {
   emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
     this.body.push({
       args: args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v),
-      buildNode: args => t.expressionStatement(
-        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), args))
+      buildNode: values => t.expressionStatement(
+        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), values))
     });
   }
 
