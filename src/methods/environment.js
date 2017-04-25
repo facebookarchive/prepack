@@ -103,7 +103,7 @@ export function GetValue(realm: Realm, V: Reference | Value): Value {
     invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
     // b. Return ? base.[[Get]](GetReferencedName(V), GetThisValue(V)).
-    return base.$Get(GetReferencedName(realm, V), GetThisValue(realm, V));
+    return base.$GetPartial(GetReferencedNamePartial(realm, V), GetThisValue(realm, V));
   }
 
   // 6. Else base must be an Environment Record,

@@ -372,25 +372,56 @@ export default class ObjectValue extends ConcreteValue {
     return OrdinaryGet(this.$Realm, this, P, Receiver);
   }
 
-  specializeJoin(absVal: AbstractValue, strVal: StringValue): AbstractValue {
+  $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
+    if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
+    // We assume that simple objects have no getter/setter properties.
+    if (this !== Receiver || !this.isSimple() || P.mightNotBeString())
+      throw this.$Realm.createIntrospectionErrorThrowCompletion("TODO");
+    // If all else fails, use this expression
+    let result = this.$Realm.createAbstract(TypesDomain.topVal, ValuesDomain.topVal,
+        [this, P],
+        ([o, x]) => t.memberExpression(o, x, true));
+    // Get a specialization of the join of all values written to the object
+    // with abstract property names.
+    let prop = this.unknownProperty;
+    if (prop !== undefined) {
+      let desc = prop.descriptor; invariant(desc !== undefined);
+      let val = desc.value; invariant(val instanceof AbstractValue);
+      result = this.specializeJoin(val, P);
+    }
+    // Join in all of the other values that were written to the object with
+    // concrete property names.
+    for (let [key, propertyBinding] of this.properties) {
+      let desc = propertyBinding.descriptor;
+      if (desc === undefined || desc.value === undefined) continue; // deleted
+      let val = desc.value;
+      let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+        [P],
+        ([x]) => t.binaryExpression("===", x, t.stringLiteral(key)));
+      result = joinValuesAsConditional(this.$Realm, cond, val, result);
+    }
+    return result;
+  }
+
+  specializeJoin(absVal: AbstractValue, propName: Value): AbstractValue {
     invariant(absVal.args.length === 3);
     let generic_cond = absVal.args[0];
     invariant(generic_cond instanceof AbstractValue);
-    let cond = this.specializeCond(generic_cond, strVal);
+    let cond = this.specializeCond(generic_cond, propName);
     let arg1 = absVal.args[1];
     if (arg1 instanceof AbstractValue && arg1.args.length === 3)
-      arg1 = this.specializeJoin(arg1, strVal);
+      arg1 = this.specializeJoin(arg1, propName);
     let arg2 = absVal.args[2];
     if (arg2 instanceof AbstractValue && arg2.args.length === 3)
-      arg2 = this.specializeJoin(arg2, strVal);
+      arg2 = this.specializeJoin(arg2, propName);
     return this.$Realm.createAbstract(absVal.types, absVal.values,
       [cond, arg1, arg2], absVal._buildNode);
   }
 
-  specializeCond(absVal: AbstractValue, strVal: StringValue): AbstractValue {
+  specializeCond(absVal: AbstractValue, propName: Value): AbstractValue {
     if (absVal.kind === "template for property name condition")
       return this.$Realm.createAbstract(absVal.types, absVal.values,
-        [absVal.args[0], strVal], absVal._buildNode);
+        [absVal.args[0], propName], absVal._buildNode);
     return absVal;
   }
 
