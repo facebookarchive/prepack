@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNode } from "babel-types";
+import type { BabelNode, BabelNodeFile } from "babel-types";
 import type { NormalCompletion } from "./completions.js";
 import type { Realm } from "./realm.js";
 import type { SourceType } from "./types.js";
@@ -994,7 +994,7 @@ export class LexicalEnvironment {
   }
 
   execute(code: string, filename: string, map: string = "",
-      sourceType: SourceType = "script"): AbruptCompletion | Value {
+      sourceType: SourceType = "script", onParse: void | ((BabelNodeFile) => void) = undefined): AbruptCompletion | Value {
     let context = new ExecutionContext();
     context.lexicalEnvironment = this;
     context.variableEnvironment = this;
@@ -1010,6 +1010,7 @@ export class LexicalEnvironment {
         if (e instanceof ThrowCompletion) return e;
         throw e;
       }
+      if (onParse) onParse(ast);
       res = this.evaluateCompletion(ast, false);
       if (map.length > 0) this.fixup_source_locations(ast, map);
     } finally {

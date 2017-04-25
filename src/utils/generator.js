@@ -218,22 +218,27 @@ export class Generator {
 }
 
 export class NameGenerator {
-  constructor(prefix: string, debugNames: boolean = false) {
+  constructor(forbiddenNames: Set<string>, prefix: string, debugNames: boolean = false) {
     this.prefix = prefix;
     this.uidCounter = 0;
     this.debugNames = debugNames;
+    this.forbiddenNames = forbiddenNames;
   }
   prefix: string;
   uidCounter: number;
   debugNames: boolean;
+  forbiddenNames: Set<string>;
   generate(debugSuffix: ?string): string {
-    let id = this.prefix + base62.encode(this.uidCounter++);
-    if (this.debugNames) {
-      if (debugSuffix)
-        id += "_" + debugSuffix.replace(/[.,:]/g, "_");
-      else
-        id += "_";
-    }
+    let id;
+    do {
+      id = this.prefix + base62.encode(this.uidCounter++);
+      if (this.debugNames) {
+        if (debugSuffix)
+          id += "_" + debugSuffix.replace(/[.,:]/g, "_");
+        else
+          id += "_";
+      }
+    } while (this.forbiddenNames.has(id));
     return id;
   }
 }
@@ -243,7 +248,8 @@ export class PreludeGenerator {
     this.prelude = [];
     this.derivedIds = new Map();
     this.memoizedRefs = new Map();
-    this.nameGenerator = new NameGenerator("_$", debugNames);
+    this.forbiddenNames = new Set();
+    this.nameGenerator = this.createNameGenerator("_$", debugNames);
     this.usesThis = false;
     this.declaredGlobals = new Set();
   }
@@ -254,6 +260,11 @@ export class PreludeGenerator {
   nameGenerator: NameGenerator;
   usesThis: boolean;
   declaredGlobals: Set<string>;
+  forbiddenNames: Set<string>;
+
+  createNameGenerator(prefix: string, debugNames: boolean = false): NameGenerator {
+    return new NameGenerator(this.forbiddenNames, prefix, debugNames);
+  }
 
   convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression {
     return str
