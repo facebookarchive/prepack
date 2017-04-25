@@ -91,10 +91,10 @@ export class Serializer {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
-    this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_", this.options.debugNames);
-    this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$", this.options.debugNames);
-    this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$", this.options.debugNames);
-    this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_", this.options.debugNames);
+    this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
+    this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$");
+    this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
+    this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
   }
@@ -141,7 +141,7 @@ export class Serializer {
       onError: void | ((Realm, Value) => void)) {
     let realm = this.realm;
     let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast =>
-      traverse(ast, IdentifierCollector, null, this.preludeGenerator.forbiddenNames));
+      traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames));
 
     if (res instanceof Completion) {
       let context = new ExecutionContext();

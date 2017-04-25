@@ -218,20 +218,23 @@ export class Generator {
 }
 
 export class NameGenerator {
-  constructor(forbiddenNames: Set<string>, prefix: string, debugNames: boolean = false) {
+  constructor(forbiddenNames: Set<string>, debugNames: boolean, uniqueSuffix: string, prefix: string) {
     this.prefix = prefix;
     this.uidCounter = 0;
     this.debugNames = debugNames;
     this.forbiddenNames = forbiddenNames;
+    this.uniqueSuffix = uniqueSuffix;
   }
   prefix: string;
   uidCounter: number;
   debugNames: boolean;
   forbiddenNames: Set<string>;
+  uniqueSuffix: string;
   generate(debugSuffix: ?string): string {
     let id;
     do {
       id = this.prefix + base62.encode(this.uidCounter++);
+      if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
       if (this.debugNames) {
         if (debugSuffix)
           id += "_" + debugSuffix.replace(/[.,:]/g, "_");
@@ -244,12 +247,11 @@ export class NameGenerator {
 }
 
 export class PreludeGenerator {
-  constructor(debugNames: boolean = false) {
+  constructor(debugNames: ?boolean, uniqueSuffix: ?string) {
     this.prelude = [];
     this.derivedIds = new Map();
     this.memoizedRefs = new Map();
-    this.forbiddenNames = new Set();
-    this.nameGenerator = this.createNameGenerator("_$", debugNames);
+    this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
     this.usesThis = false;
     this.declaredGlobals = new Set();
   }
@@ -260,10 +262,9 @@ export class PreludeGenerator {
   nameGenerator: NameGenerator;
   usesThis: boolean;
   declaredGlobals: Set<string>;
-  forbiddenNames: Set<string>;
 
-  createNameGenerator(prefix: string, debugNames: boolean = false): NameGenerator {
-    return new NameGenerator(this.forbiddenNames, prefix, debugNames);
+  createNameGenerator(prefix: string): NameGenerator {
+    return new NameGenerator(this.nameGenerator.forbiddenNames, this.nameGenerator.debugNames, this.nameGenerator.uniqueSuffix, prefix);
   }
 
   convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression {

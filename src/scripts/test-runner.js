@@ -65,7 +65,7 @@ class Success {}
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
-  let realmOptions = { partial: true, compatibility };
+  let realmOptions = { partial: true, compatibility, uniqueSuffix: "" };
   let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let serializerOptions = { initializeMoreModules, delayUnsupportedRequires, internalDebug: true };
@@ -117,6 +117,8 @@ function runTest(name: string, code: string): boolean {
       to_find = code.substring(start_pos + marker.length, code.indexOf("\n", start_pos));
       find_pos = start_pos + marker.length + to_find.length;
     }
+    let unique = 27277;
+    let oldUniqueSuffix = "";
     try {
       expected = exec(`(function () {${code} // keep newline here as code may end with comment
 }).call(this);`);
@@ -125,6 +127,8 @@ function runTest(name: string, code: string): boolean {
       let max = 4;
       let oldCode = code;
       for (; i < max; i++) {
+        let newUniqueSuffix = `_unique${unique++}`;
+        realmOptions.uniqueSuffix = newUniqueSuffix;
         let serialized = new Serializer(realmOptions, serializerOptions).init(name, oldCode);
         if (!serialized) {
           console.log(chalk.red("Error during serialization!"));
@@ -141,11 +145,12 @@ function runTest(name: string, code: string): boolean {
           console.log(chalk.red("Output mismatch!"));
           break;
         }
-        if (oldCode === newCode || delayUnsupportedRequires) {
+        if (oldCode.replace(new RegExp(oldUniqueSuffix, "g"), "") === newCode.replace(new RegExp(newUniqueSuffix, "g"), "") || delayUnsupportedRequires) {
           // The generated code reached a fixed point!
           return true;
         }
         oldCode = newCode;
+        oldUniqueSuffix = newUniqueSuffix;
       }
       if (i === max) {
         console.log(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));

@@ -118,7 +118,7 @@ export class Realm {
     this.$TemplateMap  = [];
 
     if (this.isPartial) {
-      this.preludeGenerator = new PreludeGenerator();
+      this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
       ObjectValue.setupTrackedPropertyAccessors();
     }
 

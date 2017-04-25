@@ -32,6 +32,8 @@ export type Compatibility = "browser" | "jsc-600-1-4-17" | "node";
 
 export type RealmOptions = {
   partial?: boolean,
+  debugNames?: boolean,
+  uniqueSuffix?: string,
   timeout?: number,
   compatibility?: Compatibility,
   mathRandomSeed?: string,
