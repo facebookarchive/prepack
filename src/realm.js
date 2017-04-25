@@ -364,19 +364,7 @@ export class Realm {
       invariant(this.generator !== undefined);
       this.generator.emitConsoleLog(method, args);
     } else {
-      switch (method) {
-        case "log":
-          console.log(getString(this, args));
-          break;
-        case "warn":
-          console.warn(getString(this, args));
-          break;
-        case "error":
-          console.error(getString(this, args));
-          break;
-        default:
-          throw new Error(`Unexpected method: '${method}'`);
-      }
+      console[method](getString(this, args));
     }
 
     function getString(realm: Realm, args: Array<string | ConcreteValue>) {
