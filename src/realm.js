@@ -356,14 +356,26 @@ export class Realm {
     return completion;
   }
 
-  outputToConsole(str: string): void {
+  outputToConsole(method: "log" | "warn" | "error", str: string): void {
     if (this.isReadOnly)
       throw this.createReadOnlyError("Trying to create console output in read-only realm");
     if (this.isPartial) {
       invariant(this.generator !== undefined);
-      this.generator.emitConsoleLog(str);
+      this.generator.emitConsoleLog(method, str);
     } else {
-      console.log(str);
+      switch (method) {
+        case "log":
+          console.log(str);
+          break;
+        case "warn":
+          console.warn(str);
+          break;
+        case "error":
+          console.error(str);
+          break;
+        default:
+          throw new Error(`Unexpected method: '${method}'`);
+      }
     }
   }
 

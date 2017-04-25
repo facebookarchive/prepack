@@ -129,12 +129,12 @@ export class Generator {
     });
   }
 
-  emitConsoleLog(str: string) {
+  emitConsoleLog(method: "log" | "warn" | "error", str: string) {
     let strn = new StringValue(this.realm, str);
     this.body.push({
       args: [strn],
       buildNode: ([strVal]) => t.expressionStatement(
-        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier("log")), [strVal]))
+        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), [strVal]))
     });
   }
 

@@ -26,17 +26,17 @@ export default function (realm: Realm): ObjectValue {
     return res;
   }
   obj.defineNativeMethod("log", 0, (context, args) => {
-    realm.outputToConsole(getString(args));
+    realm.outputToConsole("log", getString(args));
     return realm.intrinsics.undefined;
   });
 
   obj.defineNativeMethod("error", 0, (context, args) => {
-    realm.outputToConsole("ERROR: " + getString(args));
+    realm.outputToConsole("error", getString(args));
     return realm.intrinsics.undefined;
   });
 
   obj.defineNativeMethod("warn", 0, (context, args) => {
-    realm.outputToConsole("warn: " + getString(args));
+    realm.outputToConsole("warn", getString(args));
     return realm.intrinsics.undefined;
   });
 
