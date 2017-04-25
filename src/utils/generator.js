@@ -133,7 +133,7 @@ export class Generator {
     this.body.push({
       args: args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v),
       buildNode: values => t.expressionStatement(
-        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), values))
+        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), [...values]))
     });
   }
 
