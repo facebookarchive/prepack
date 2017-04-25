@@ -11,7 +11,7 @@
 
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
-import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue } from "./values/index.js";
+import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
@@ -24,6 +24,7 @@ import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeExpression } from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
+import { ToString } from "./methods/to.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -356,26 +357,36 @@ export class Realm {
     return completion;
   }
 
-  outputToConsole(method: "log" | "warn" | "error", str: string): void {
+  outputToConsole(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>): void {
     if (this.isReadOnly)
       throw this.createReadOnlyError("Trying to create console output in read-only realm");
     if (this.isPartial) {
       invariant(this.generator !== undefined);
-      this.generator.emitConsoleLog(method, str);
+      this.generator.emitConsoleLog(method, args);
     } else {
       switch (method) {
         case "log":
-          console.log(str);
+          console.log(getString(this, args));
           break;
         case "warn":
-          console.warn(str);
+          console.warn(getString(this, args));
           break;
         case "error":
-          console.error(str);
+          console.error(getString(this, args));
           break;
         default:
           throw new Error(`Unexpected method: '${method}'`);
       }
+    }
+
+    function getString(realm: Realm, args: Array<string | ConcreteValue>) {
+      let res = "";
+      while (args.length) {
+        let next = args.shift();
+        let nextString = ToString(realm, next);
+        res += nextString;
+      }
+      return res;
     }
   }
 

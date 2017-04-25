@@ -11,32 +11,22 @@
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue } from "../../values/index.js";
-import { ToString } from "../../methods/to.js";
 
 export default function (realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "console");
 
-  function getString(args) {
-    let res = "";
-    while (args.length) {
-      let next = args.shift();
-      let nextString = ToString(realm, next);
-      res += nextString;
-    }
-    return res;
-  }
   obj.defineNativeMethod("log", 0, (context, args) => {
-    realm.outputToConsole("log", getString(args));
+    realm.outputToConsole("log", args);
     return realm.intrinsics.undefined;
   });
 
   obj.defineNativeMethod("error", 0, (context, args) => {
-    realm.outputToConsole("error", getString(args));
+    realm.outputToConsole("error", args);
     return realm.intrinsics.undefined;
   });
 
   obj.defineNativeMethod("warn", 0, (context, args) => {
-    realm.outputToConsole("warn", getString(args));
+    realm.outputToConsole("warn", args);
     return realm.intrinsics.undefined;
   });
 
