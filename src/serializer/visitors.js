@@ -149,7 +149,6 @@ export let IdentifierCollector = {
 
   "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: Set<string>) {
     for (let name in path.getBindingIdentifiers()) {
-      console.log(name);
       state.add(name);
     }
   }
