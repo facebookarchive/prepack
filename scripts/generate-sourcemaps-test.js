@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import Serializer from "../serializer/index.js";
-import invariant from "../invariant.js";
+import Serializer from "../lib/serializer/index.js";
+import invariant from "../lib/invariant.js";
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -37,7 +37,7 @@ function search(dir, relative) {
   return tests;
 }
 
-let tests = search(`${__dirname}/../../test/source-maps`, "test/source-maps");
+let tests = search(`${__dirname}/../test/source-maps`, "test/source-maps");
 
 function generateTest(name: string, test_path: string, code: string): boolean {
   console.log(chalk.inverse(name));

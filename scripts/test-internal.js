@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import Serializer from "../serializer/index.js";
+import Serializer from "../lib/serializer/index.js";
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -36,7 +36,7 @@ function search(dir, relative) {
   return tests;
 }
 
-let tests = search(`${__dirname}/../../test/internal`, "test/internal");
+let tests = search(`${__dirname}/../test/internal`, "test/internal");
 
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));

@@ -11,7 +11,7 @@
 
 import * as t from "babel-types";
 import generate from "babel-generator";
-import traverse from "../traverse.js";
+import traverse from "../lib/traverse.js";
 import { parse } from "babylon";
 let fs = require("fs");
 import type { BabelNodeSourceLocation, BabelNodeBlockStatement } from "babel-types";

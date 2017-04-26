@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import Serializer from "../serializer/index.js";
-import { IsIntrospectionError } from  "../methods/index.js";
+let Serializer = require("../lib/serializer/index.js").default;
+let IsIntrospectionError = require("../lib/methods/index.js").IsIntrospectionError;
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -37,16 +37,16 @@ function search(dir, relative) {
   return tests;
 }
 
-let tests = search(`${__dirname}/../../test/serializer`, "test/serializer");
+let tests = search(`${__dirname}/../test/serializer`, "test/serializer");
 
-function exec(code: string): string {
+function exec(code) {
   let script = new vm.Script(`var global = this; var self = this; ${code}; // keep newline here as code may end with comment
 report(inspect());`, { cachedDataProduced: false });
 
   let result = "";
   let logOutput = "";
 
-  function write(prefix: string, values) {
+  function write(prefix, values) {
     logOutput += "\n" + prefix + values.join("");
   }
 
@@ -73,7 +73,7 @@ report(inspect());`, { cachedDataProduced: false });
 
 class Success {}
 
-function runTest(name: string, code: string): boolean {
+function runTest(name, code) {
   console.log(chalk.inverse(name));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let realmOptions = { partial: true, compatibility, uniqueSuffix: "" };
