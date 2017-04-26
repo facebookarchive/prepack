@@ -1142,15 +1142,28 @@ export class Serializer {
     invariant(this.delayedKeyedSerializations.size === 0);
   }
 
-  _hasOnlyExpressionStatements(body: Array<any>) {
+  _shouldBeWrapped(body: Array<any>) {
 
-    for (let item of body) {
-      if (item.type !== "ExpressionStatement") {
-        return false;
+    let exist = false;
+
+    for (let i = 0; i < body.length && !exist; i++){
+      let item = body[i];
+      if (item.type === "ExpressionStatement") {
+        continue;
+      } else if (item.type === "VariableDeclaration" || item.type === "FunctionDeclaration") {
+        exist = true;
+      } else if (item.type === "BlockingStatement") {
+        let blockStatement = item.body;
+        for (let j = 0; j < blockStatement.length; j++){
+          let blockItem = blockStatement.body[j];
+          if (blockItem.type === "VariableDeclaration" || blockItem.type === "FunctionDeclaration"){
+            exist = true;
+            break;
+          }
+        }
       }
     }
-
-    return true;
+    return exist;
   }
 
   serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
@@ -1228,9 +1241,7 @@ export class Serializer {
         );
       }
 
-      if (this._hasOnlyExpressionStatements(body)){
-        ast_body = body;
-      } else {
+      if (this._shouldBeWrapped(body)){
         ast_body.push(
           t.expressionStatement(
             t.callExpression(
@@ -1242,6 +1253,8 @@ export class Serializer {
             )
           )
         );
+      } else {
+        ast_body = body;
       }
     }
 
