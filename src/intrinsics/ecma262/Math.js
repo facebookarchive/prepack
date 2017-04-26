@@ -146,10 +146,10 @@ export default function (realm: Realm): ObjectValue {
   ];
 
   // ECMA262 20.2.2.11
-  if (realm.compatibility !== 'jsc') functions.push(["clz32", 1]);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) functions.push(["clz32", 1]);
 
   // ECMA262 20.2.2.29 (_x_)
-  if (realm.compatibility !== 'jsc') functions.push(["sign", 1]);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) functions.push(["sign", 1]);
 
   for (let [name, length] of functions) {
     obj.defineNativeMethod(name, length, (context, args, originalLength) => {

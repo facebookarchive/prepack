@@ -306,8 +306,8 @@ export class Serializer {
       this._eagerOrDelay([proto, obj], () => {
         invariant(proto);
         let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
-        let uid = this._getValIdForReference(obj);
-        if (this.realm.compatibility !== "jsc-600-1-4-17")
+        let uid = this._getValIdForReference(val);
+        if (!this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION))
           this.body.push(t.expressionStatement(t.callExpression(
             this.preludeGenerator.memoizeReference("Object.setPrototypeOf"),
             [uid, serializedProto]
@@ -1228,8 +1228,6 @@ export class Serializer {
   }
 
   serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
-    let realm = this.realm;
-
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 
@@ -1289,7 +1287,7 @@ export class Serializer {
         Array.from(this.preludeGenerator.declaredGlobals).map(key =>
           t.variableDeclarator(t.identifier(key)))));
     if (body.length) {
-      if (realm.compatibility === 'node') {
+      if (this.realm.isCompatibleWith('node')) {
         ast_body.push(
           t.expressionStatement(
             t.callExpression(

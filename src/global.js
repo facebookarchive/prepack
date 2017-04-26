@@ -33,14 +33,14 @@ export default function (realm: Realm): ObjectValue {
     configurable: true
   });
 
-  if (realm.compatibility === "browser") obj.$DefineOwnProperty("self", {
+  if (realm.isCompatibleWith("browser")) obj.$DefineOwnProperty("self", {
     value: obj,
     writable: true,
     enumerable: true,
     configurable: true
   });
 
-  if (realm.compatibility === "browser") obj.$DefineOwnProperty("window", {
+  if (realm.isCompatibleWith("browser")) obj.$DefineOwnProperty("window", {
     value: obj,
     writable: true,
     enumerable: true,
@@ -316,7 +316,7 @@ export default function (realm: Realm): ObjectValue {
     "JSON",
     "__IntrospectionError"
   ];
-  if (realm.compatibility !== "jsc-600-1-4-17")
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
     typeNames = typeNames.concat(
       "Symbol",
       "Promise",
@@ -336,7 +336,7 @@ export default function (realm: Realm): ObjectValue {
       });
     }
   }
-  if (realm.compatibility === "jsc-600-1-4-17") {
+  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     for (let name of [
       "window",
       "process",
