@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
-import { GetValue, ToPropertyKey, RequireObjectCoercible } from "../methods/index.js";
+import { GetValue, ToPropertyKeyPartial, RequireObjectCoercible } from "../methods/index.js";
 import type { BabelNodeMemberExpression } from "babel-types";
 
 // ECMA262 12.3.2.1
@@ -31,7 +31,7 @@ export default function (ast: BabelNodeMemberExpression, strictCode: boolean, en
     let propertyNameReference = env.evaluate(ast.property, strictCode);
 
     // 4. Let propertyNameValue be ? GetValue(propertyNameReference).
-    propertyNameValue = GetValue(realm, propertyNameReference).throwIfNotConcrete();
+    propertyNameValue = GetValue(realm, propertyNameReference);
   } else {
     // 3. Let propertyNameString be StringValue of IdentifierName.
     propertyNameValue = new StringValue(realm, ast.property.name);
@@ -41,7 +41,7 @@ export default function (ast: BabelNodeMemberExpression, strictCode: boolean, en
   let bv = RequireObjectCoercible(realm, baseValue);
 
   // 6. Let propertyKey be ? ToPropertyKey(propertyNameValue).
-  let propertyKey = ToPropertyKey(realm, propertyNameValue);
+  let propertyKey = ToPropertyKeyPartial(realm, propertyNameValue);
 
   // 7. If the code matched by the syntactic production that is being evaluated is strict mode code, let strict be true, else let strict be false.
   let strict = strictCode;

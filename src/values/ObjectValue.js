@@ -11,10 +11,13 @@
 
 import type { Realm, ExecutionContext } from "../realm.js";
 import type { IterationKind, PromiseCapability, PromiseReaction, DataBlock, PropertyKeyValue, PropertyBinding, Descriptor } from "../types.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value, AbstractValue, ConcreteValue, BooleanValue, StringValue, SymbolValue, NumberValue, UndefinedValue, NullValue, NativeFunctionValue } from "./index.js";
 import type { NativeFunctionCallback } from "./index.js";
-import { OrdinarySetPrototypeOf, OrdinaryDefineOwnProperty, OrdinaryDelete, OrdinaryOwnPropertyKeys, OrdinaryGetOwnProperty, OrdinaryGet, OrdinaryHasProperty, OrdinarySet, OrdinaryIsExtensible, OrdinaryPreventExtensions, ThrowIfMightHaveBeenDeleted } from "../methods/index.js";
-
+import { joinValuesAsConditional, OrdinarySetPrototypeOf, OrdinaryDefineOwnProperty, OrdinaryDelete,
+   OrdinaryOwnPropertyKeys, OrdinaryGetOwnProperty, OrdinaryGet, OrdinaryHasProperty, OrdinarySet,
+   OrdinaryIsExtensible, OrdinaryPreventExtensions, ThrowIfMightHaveBeenDeleted } from "../methods/index.js";
+import * as t from "babel-types";
 import invariant from "../invariant.js";
 
 export default class ObjectValue extends ConcreteValue {
@@ -154,6 +157,7 @@ export default class ObjectValue extends ConcreteValue {
 
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
+  unknownProperty: void | PropertyBinding;
 
   mightNotBeObject(): boolean {
     return false;
@@ -259,7 +263,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   getOwnPropertyKeysArray(): Array<string> {
-    if (this.isPartial()) {
+    if (this.isPartial() || this.unknownProperty !== undefined) {
       throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
     }
 
@@ -340,13 +344,54 @@ export default class ObjectValue extends ConcreteValue {
 
   // ECMA262 9.1.7
   $HasProperty(P: PropertyKeyValue): boolean {
+    if (this.unknownProperty !== undefined && this.$GetOwnProperty(P) === undefined) {
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
+    }
+
     return OrdinaryHasProperty(this.$Realm, this, P);
   }
 
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
+    let prop = this.unknownProperty;
+    if (prop !== undefined && this.$GetOwnProperty(P) === undefined) {
+      let desc = prop.descriptor; invariant(desc !== undefined);
+      let val = desc.value; invariant(val instanceof AbstractValue);
+      let propName;
+      if (P instanceof StringValue) {
+        propName = P;
+      } else if (typeof P === "string") {
+        propName = new StringValue(this.$Realm, P);
+      } else {
+        throw this.$Realm.createIntrospectionErrorThrowCompletion("abstract computed property name");
+      }
+      return this.specializeJoin(val, propName);
+    }
+
     // 1. Return ? OrdinaryGet(O, P, Receiver).
     return OrdinaryGet(this.$Realm, this, P, Receiver);
+  }
+
+  specializeJoin(absVal: AbstractValue, strVal: StringValue): AbstractValue {
+    invariant(absVal.args.length === 3);
+    let generic_cond = absVal.args[0];
+    invariant(generic_cond instanceof AbstractValue);
+    let cond = this.specializeCond(generic_cond, strVal);
+    let arg1 = absVal.args[1];
+    if (arg1 instanceof AbstractValue && arg1.args.length === 3)
+      arg1 = this.specializeJoin(arg1, strVal);
+    let arg2 = absVal.args[2];
+    if (arg2 instanceof AbstractValue && arg2.args.length === 3)
+      arg2 = this.specializeJoin(arg2, strVal);
+    return this.$Realm.createAbstract(absVal.types, absVal.values,
+      [cond, arg1, arg2], absVal._buildNode);
+  }
+
+  specializeCond(absVal: AbstractValue, strVal: StringValue): AbstractValue {
+    if (absVal.kind === "template for property name condition")
+      return this.$Realm.createAbstract(absVal.types, absVal.values,
+        [absVal.args[0], strVal], absVal._buildNode);
+    return absVal;
   }
 
   // ECMA262 9.1.9
@@ -355,8 +400,72 @@ export default class ObjectValue extends ConcreteValue {
     return OrdinarySet(this.$Realm, this, P, V, Receiver);
   }
 
+  $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
+    if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
+    // We assume that simple objects have no getter/setter properties and
+    // that all properties are writable.
+    if (this !== Receiver || !this.isSimple() || P.mightNotBeString())
+      throw this.$Realm.createIntrospectionErrorThrowCompletion("TODO");
+
+    let prop;
+    if (this.unknownProperty === undefined) {
+      prop = {
+        descriptor: undefined,
+        object: this,
+        key: "",
+      };
+      this.unknownProperty = prop;
+    } else {
+      prop = this.unknownProperty;
+    }
+    this.$Realm.recordModifiedProperty(prop);
+    let desc = prop.descriptor;
+    if (desc === undefined) {
+      // join V with undefined, using a property name test as the condition
+      let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+        [P, new StringValue(this.$Realm, "")],
+        ([x, y]) => t.binaryExpression("===", x, y), "template for property name condition");
+      let newVal = joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
+      prop.descriptor = {
+        writable: true,
+        enumerable: true,
+        configurable: true,
+        value: newVal,
+      };
+    } else {
+      // join V with current value of this.unknownProperty. I.e. weak update.
+      let oldVal = desc.value;
+      invariant(oldVal !== undefined);
+      let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+        [P, new StringValue(this.$Realm, "")],
+        ([x, y]) => t.binaryExpression("===", x, y), "template for property name condition");
+      let newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+      desc.value = newVal;
+    }
+
+    // Since we don't know the name of the property we are writing to, we also need
+    // to perform weak updates of all of the known properties.
+    for (let [key, propertyBinding] of this.properties) {
+      let oldVal = this.$Realm.intrinsics.empty;
+      if (propertyBinding.descriptor && propertyBinding.descriptor.value)
+        oldVal = propertyBinding.descriptor.value;
+      let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+        [P],
+        ([x]) => t.binaryExpression("===", x, t.stringLiteral(key)));
+      let newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+      OrdinarySet(this.$Realm, this, key, newVal, Receiver);
+    }
+
+    return true;
+  }
+
   // ECMA262 9.1.10
   $Delete(P: PropertyKeyValue): boolean {
+    if (this.unknownProperty !== undefined) {
+      // TODO: generate a delete from the object
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
+    }
+
     // 1. Return ? OrdinaryDelete(O, P).
     return OrdinaryDelete(this.$Realm, this, P);
   }
