@@ -74,7 +74,9 @@ export class Logger {
         let message = object.properties.get("message");
         console.error((message && message.descriptor && message.descriptor.value instanceof StringValue) ? message.descriptor.value.value : "(no message available)");
         console.error(err.stack);
-        console.error(object.$ContextStack);
+        if (object.$ErrorData) {
+          console.error(object.$ErrorData.contextStack);
+        }
       }
     } else {
       try {

@@ -68,9 +68,15 @@ export default class ObjectValue extends ConcreteValue {
   $BooleanData: void | BooleanValue;
 
   // error
-  $ErrorData: void | ObjectValue; // undefined when the property is "missing"
-  $ContextStack: void | Array<ExecutionContext>;
-
+  $ErrorData: void | { // undefined when the property is "missing"
+    contextStack: Array<ExecutionContext>,
+    locationData: void | {
+      filename: string,
+      sourceCode: string,
+      loc: { line: number, column: number },
+      stackDecorated: boolean
+    }
+  };
 
   // function
   $Call: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value);

@@ -58,7 +58,7 @@ export function describeLocation(realm: Realm, callerFn: ?FunctionValue, env: ?L
 function buildStack(realm: Realm, context: ObjectValue) {
   invariant(context.$ErrorData);
 
-  let stack = context.$ContextStack;
+  let stack = context.$ErrorData.contextStack;
   if (!stack) return realm.intrinsics.undefined;
 
   let lines = [];
@@ -90,10 +90,12 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
 
     // 2. Let O be ? OrdinaryCreateFromConstructor(newTarget, "%ErrorPrototype%", « [[ErrorData]] »).
     let O = OrdinaryCreateFromConstructor(realm, newTarget, `${name}Prototype`, { $ErrorData: undefined });
-    O.$ErrorData = O; // The value is never used, but allows us to use undefined as a way to say "not in"
+    O.$ErrorData = {
+      contextStack: realm.contextStack.slice(1),
+      locationData: undefined
+    };
 
     // Build a text description of the stack.
-    O.$ContextStack = realm.contextStack.slice(1);
     let stackDesc = {
       value: buildStack(realm, O),
       enumerable: false,

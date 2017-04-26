@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import invariant from "../invariant.js";
 import type { SourceType } from "../types.js";
 import type { Realm } from "../realm.js";
 import { ThrowCompletion } from "../completions.js";
@@ -18,9 +19,9 @@ import traverse from "babel-traverse";
 import { parse } from "babylon";
 import type { BabelNodeFile } from "babel-types";
 
-export default function (realm: Realm, code: string, filename: string, sourceType: SourceType = "script"): BabelNodeFile {
+export default function (realm: Realm, code: string, filename: string, sourceType: SourceType = "script", startLine: number = 1): BabelNodeFile {
   try {
-    let ast = parse(code, { filename, sourceType });
+    let ast = parse(code, { filename, sourceType, startLine });
     traverse.cheap(ast, (node) => {
       node.loc.source = filename;
     });
@@ -35,15 +36,23 @@ export default function (realm: Realm, code: string, filename: string, sourceTyp
         'Invalid left-hand side in assignment expression',
       ];
 
+      let error;
       if (referenceErrors.some((msg) => e.message.indexOf(msg) >= 0)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.ReferenceError, [new StringValue(realm, e.message)])
-        );
+        error = Construct(realm, realm.intrinsics.ReferenceError, [new StringValue(realm, e.message)]);
       } else {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, e.message)])
-        );
+        error = Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, e.message)]);
       }
+      // These constructors are currently guaranteed to produce an object with
+      // built-in error data. Append location information about the syntax error
+      // and the source code to it so that we can use it to print nicer errors.
+      invariant(error.$ErrorData);
+      error.$ErrorData.locationData = {
+        filename: filename,
+        sourceCode: code,
+        loc: e.loc,
+        stackDecorated: false
+      };
+      throw new ThrowCompletion(error);
     } else {
       throw e;
     }
