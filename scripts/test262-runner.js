@@ -9,14 +9,14 @@
 
 /* @flow */
 
-import { AbruptCompletion, ThrowCompletion } from "../completions.js";
-import { ObjectValue, StringValue } from "../values/index.js";
-import { Realm, ExecutionContext } from "../realm.js";
-import construct_realm from "../construct_realm.js";
-import { DetachArrayBuffer } from "../methods/arraybuffer.js";
-import { ToStringPartial } from "../methods/to.js";
-import { Get } from "../methods/get.js";
-import invariant from "../invariant.js";
+import { AbruptCompletion, ThrowCompletion } from "../lib/completions.js";
+import { ObjectValue, StringValue } from "../lib/values/index.js";
+import { Realm, ExecutionContext } from "../lib/realm.js";
+import construct_realm from "../lib/construct_realm.js";
+import { DetachArrayBuffer } from "../lib/methods/arraybuffer.js";
+import { ToStringPartial } from "../lib/methods/to.js";
+import { Get } from "../lib/methods/get.js";
+import invariant from "../lib/invariant.js";
 
 import yaml from "js-yaml";
 import chalk from "chalk";
@@ -395,7 +395,7 @@ function workerArgsParse(): WorkerProgramArgs {
 }
 
 function masterRun(args: MasterProgramArgs) {
-  let tests = getFilesSync(`${__dirname}/../../test/test262/test`);
+  let tests = getFilesSync(`${__dirname}/../test/test262/test`);
   // remove tests that don't need to be ran
   const originalTestLength = tests.length;
   tests = tests.filter((test) => {
@@ -693,7 +693,7 @@ function create_test_message(
 }
 
 function getHarnesses(): HarnessMap {
-  let harnessesList = getFilesSync(`${__dirname}/../../test/test262/harness`);
+  let harnessesList = getFilesSync(`${__dirname}/../test/test262/harness`);
   // convert to a mapping from harness name to file contents
   let harnesses: HarnessMap = {};
   for (let harness of harnessesList) {
