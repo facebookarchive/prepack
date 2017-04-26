@@ -1169,7 +1169,20 @@ export class Serializer {
       } else if (item.type === "VariableDeclaration" || item.type === "FunctionDeclaration") {
         return true;
       } else if (item.type === "BlockStatement") {
-        return this._shouldBeWrapped(item.body);
+        if (this._shouldBeWrapped(item.body)) {
+          return true;
+        }
+      } else if (item.type === "IfStatement"){
+        if (item.alternate){
+          if (this._shouldBeWrapped(item.alternate.body)){
+            return true;
+          }
+        }
+        if (item.consequent){
+          if (this._shouldBeWrapped(item.consequent.body)){
+            return true;
+          }
+        }
       }
     }
     return false;
