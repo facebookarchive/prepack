@@ -1264,32 +1264,18 @@ export class Serializer {
         );
       }
 
-<<<<<<< HEAD
       if (this._shouldBeWrapped(body)){
-        ast_body.push(
-          t.expressionStatement(
-            t.callExpression(
-              t.memberExpression(
-                t.functionExpression(null, [], t.blockStatement(body, globalDirectives)),
-                t.identifier("call")
-              ),
+        let functionExpression = t.functionExpression(null, [], t.blockStatement(body, globalDirectives));
+        let callExpression = this.preludeGenerator.usesThis
+          ? t.callExpression(
+              t.memberExpression(functionExpression, t.identifier("call")),
               [t.thisExpression()]
             )
-          )
-        );
+          : t.callExpression(functionExpression, []);
+        ast_body.push(t.expressionStatement(callExpression));
       } else {
         ast_body = body;
       }
-=======
-      let functionExpression = t.functionExpression(null, [], t.blockStatement(body, globalDirectives));
-      let callExpression = this.preludeGenerator.usesThis
-        ? t.callExpression(
-            t.memberExpression(functionExpression, t.identifier("call")),
-            [t.thisExpression()]
-          )
-        : t.callExpression(functionExpression, []);
-      ast_body.push(t.expressionStatement(callExpression));
->>>>>>> master
     }
 
     let ast = {
