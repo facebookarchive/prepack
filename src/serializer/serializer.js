@@ -1168,7 +1168,7 @@ export class Serializer {
         continue;
       } else if (item.type === "VariableDeclaration" || item.type === "FunctionDeclaration") {
         return true;
-      } else if (item.type === "BlockingStatement") {
+      } else if (item.type === "BlockStatement") {
         return this._shouldBeWrapped(item.body);
       }
     }
