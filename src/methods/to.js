@@ -559,7 +559,7 @@ export function OrdinaryToPrimitive(realm: Realm, input: ObjectValue, hint: "str
     // b. If IsCallable(method) is true, then
     if (IsCallable(realm, method)) {
       // i. Let result be ? Call(method, O).
-      let result = Call(realm, method, input);
+      let result = Call(realm, method, input).throwIfNotConcrete();
 
       // ii. If Type(result) is not Object, return result.
       if (!(result instanceof ObjectValue)) {
