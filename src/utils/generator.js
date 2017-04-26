@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { AbstractValue, Value, FunctionValue, UndefinedValue, NullValue, StringValue, BooleanValue, NumberValue, SymbolValue, ObjectValue } from "../values/index.js";
+import { AbstractValue, Value, FunctionValue, UndefinedValue, NullValue, StringValue, BooleanValue, NumberValue, SymbolValue, ObjectValue, ConcreteValue } from "../values/index.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -125,12 +125,11 @@ export class Generator {
     });
   }
 
-  emitConsoleLog(str: string) {
-    let strn = new StringValue(this.realm, str);
+  emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
     this.body.push({
-      args: [strn],
-      buildNode: ([strVal]) => t.expressionStatement(
-        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier("log")), [strVal]))
+      args: args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v),
+      buildNode: values => t.expressionStatement(
+        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), [...values]))
     });
   }
 
