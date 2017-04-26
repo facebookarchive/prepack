@@ -4,4 +4,4 @@ let x = {
         return Math.random() ? "a" : "b";
     }
 }
-console.error(x);
+new Date(x);

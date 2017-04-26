@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { EmptyValue, NumberValue, ObjectValue, UndefinedValue, Value } from "./index.js";
+import { EmptyValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "./index.js";
 import invariant from "../invariant.js";
 
 export default class ConcreteValue extends Value {
@@ -33,6 +33,10 @@ export default class ConcreteValue extends Value {
 
   mightBeObject(): boolean {
     return this instanceof ObjectValue;
+  }
+
+  mightNotBeString(): boolean {
+    return !(this instanceof StringValue);
   }
 
   mightBeUndefined(): boolean {

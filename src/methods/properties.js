@@ -28,6 +28,7 @@ import {
   GetGlobalObject,
   GetBase,
   GetReferencedName,
+  GetReferencedNamePartial,
   GetThisValue,
   HasPrimitiveBase,
   Construct,
@@ -770,7 +771,7 @@ export function PutValue(realm: Realm, V: Value | Reference, W: Value) {
     invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
     // b. Let succeeded be ? base.[[Set]](GetReferencedName(V), W, GetThisValue(V)).
-    let succeeded = base.$Set(GetReferencedName(realm, V), W, GetThisValue(realm, V));
+    let succeeded = base.$SetPartial(GetReferencedNamePartial(realm, V), W, GetThisValue(realm, V));
 
     // c. If succeeded is false and IsStrictReference(V) is true, throw a TypeError exception.
     if (succeeded === false && IsStrictReference(realm, V)) {

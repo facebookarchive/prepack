@@ -14,6 +14,7 @@ import { ThrowCompletion } from "../completions.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import {
+  AbstractValue,
   UndefinedValue,
   NullValue,
   NumberValue,
@@ -62,6 +63,12 @@ export function HasPrimitiveBase(realm: Realm, V: Reference): boolean {
 // ECMA262 6.2.3
 // GetReferencedName(V). Returns the referenced name component of the reference V.
 export function GetReferencedName(realm: Realm, V: Reference): string | SymbolValue {
+  if (V.referencedName instanceof AbstractValue)
+    throw realm.createIntrospectionErrorThrowCompletion("abstract reference");
+  return V.referencedName;
+}
+
+export function GetReferencedNamePartial(realm: Realm, V: Reference): AbstractValue | string | SymbolValue {
   return V.referencedName;
 }
 

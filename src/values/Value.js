@@ -71,6 +71,10 @@ export default class Value {
     throw new Error("abstract method; please override");
   }
 
+  mightNotBeString(): boolean {
+    throw new Error("abstract method; please override");
+  }
+
   mightBeUndefined(): boolean {
     throw new Error("abstract method; please override");
   }
