@@ -294,7 +294,7 @@ export class Serializer {
         invariant(proto);
         let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
         let uid = this._getValIdForReference(val);
-        if (this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION))
+        if (!this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION))
           this.body.push(t.expressionStatement(t.callExpression(
             this.preludeGenerator.memoizeReference("Object.setPrototypeOf"),
             [uid, serializedProto]
@@ -1164,8 +1164,6 @@ export class Serializer {
   }
 
   serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
-    let realm = this.realm;
-
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 

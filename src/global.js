@@ -336,7 +336,7 @@ export default function (realm: Realm): ObjectValue {
       });
     }
   }
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     for (let name of [
       "window",
       "process",

@@ -363,7 +363,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.20
-  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) func.defineNativeMethod("setPrototypeOf", 2, (context, [O, proto]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) func.defineNativeMethod("setPrototypeOf", 2, (context, [O, proto]) => {
     // 1. Let O be ? RequireObjectCoercible(O).
     O = RequireObjectCoercible(realm, O);
 
