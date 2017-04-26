@@ -285,7 +285,9 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     });
 
     // 3. Perform GeneratorStart(G, FunctionBody).
-    GeneratorStart(realm, G, F.$ECMAScriptCode);
+    let code = F.$ECMAScriptCode;
+    invariant(code !== undefined);
+    GeneratorStart(realm, G, code);
 
     // 4. Return Completion{[[Type]]: return, [[Value]]: G, [[Target]]: empty}.
     return new ReturnCompletion(G);
@@ -295,7 +297,9 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
 
     // 2. Return the result of EvaluateBody of the parsed code that is the value of F's
     //    [[ECMAScriptCode]] internal slot passing F as the argument.
-    let c = realm.getRunningContext().lexicalEnvironment.evaluateAbstractCompletion(F.$ECMAScriptCode, F.$Strict);
+    let code = F.$ECMAScriptCode;
+    invariant(code !== undefined);
+    let c = realm.getRunningContext().lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
     let e = realm.get_captured_effects();
     if (e !== undefined) {
       realm.stop_effect_capture();

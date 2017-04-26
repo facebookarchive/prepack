@@ -11,6 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import { Value, FunctionValue, ObjectValue } from "./index.js";
+import invariant from "../invariant.js";
 
 export default class BoundFunctionValue extends FunctionValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -20,4 +21,12 @@ export default class BoundFunctionValue extends FunctionValue {
   $BoundTargetFunction: ObjectValue;
   $BoundThis: Value;
   $BoundArguments: Array<Value>;
+
+  hasDefaultLength(): boolean {
+    let f = this.$BoundTargetFunction;
+    if (!(f instanceof FunctionValue) || !f.hasDefaultLength()) return false;
+    let fl = f.getLength();
+    invariant(fl !== undefined);
+    return this.getLength() === Math.max(fl - this.$BoundArguments.length, 0);
+  }
 }
