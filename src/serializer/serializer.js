@@ -1162,27 +1162,17 @@ export class Serializer {
   }
 
   _shouldBeWrapped(body: Array<any>) {
-
-    let exist = false;
-
-    for (let i = 0; i < body.length && !exist; i++){
+    for (let i = 0; i < body.length; i++){
       let item = body[i];
       if (item.type === "ExpressionStatement") {
         continue;
       } else if (item.type === "VariableDeclaration" || item.type === "FunctionDeclaration") {
-        exist = true;
+        return true;
       } else if (item.type === "BlockingStatement") {
-        let blockStatement = item.body;
-        for (let j = 0; j < blockStatement.length; j++){
-          let blockItem = blockStatement.body[j];
-          if (blockItem.type === "VariableDeclaration" || blockItem.type === "FunctionDeclaration"){
-            exist = true;
-            break;
-          }
-        }
+        return this._shouldBeWrapped(item.body);
       }
     }
-    return exist;
+    return false;
   }
 
   serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
