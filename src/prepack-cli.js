@@ -9,7 +9,8 @@
 
 /* @flow */
 
-import { run } from "./prepack.js";
+import { prepackFileSync } from "./prepack-node.js";
+import fs from "fs";
 
 let args = Array.from(process.argv);
 args.splice(0, 2);
@@ -17,8 +18,8 @@ let inputFilename;
 let outputFilename;
 let compatibility;
 let mathRandomSeed;
-let inputMap;
-let ouputMap;
+let inputSourceMap;
+let outputSourceMap;
 let flags = {
   speculate: false,
   trace: false,
@@ -52,10 +53,10 @@ while (args.length) {
         mathRandomSeed = args[0]; args.shift();
         break;
       case "srcmapIn":
-        inputMap = args[0]; args.shift();
+        inputSourceMap = args[0]; args.shift();
         break;
       case "srcmapOut":
-        ouputMap = args[0]; args.shift();
+        outputSourceMap = args[0]; args.shift();
         break;
       case "help":
         console.log("Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ] [ --singlePass ] [ --debugNames ]");
@@ -74,5 +75,29 @@ if (!inputFilename) {
   console.error("Missing input file.");
   process.exit(1);
 } else {
-  run(inputFilename, compatibility, mathRandomSeed, outputFilename, inputMap, ouputMap, flags.speculate, flags.trace, flags.debugNames, flags.singlePass, flags.logStatistics, flags.logModules, flags.delayUnsupportedRequires);
+  let serialized = prepackFileSync(inputFilename, {
+    compatibility,
+    mathRandomSeed,
+    inputSourceMapFilename: inputSourceMap,
+    sourceMaps: !!outputSourceMap,
+    ...flags
+  });
+
+  let code = serialized.code;
+
+  if (code.length >= 1000 || outputFilename) {
+    let filename = outputFilename || (inputFilename + "-processed.js");
+    console.log(`Prepacked source code written to ${filename}.`);
+    fs.writeFileSync(filename, code);
+  }
+
+  if (code.length <= 1000 && !outputFilename) {
+    console.log("+++++++++++++++++ Prepacked source code");
+    console.log(code);
+    console.log("=================");
+  }
+
+  if (outputSourceMap) {
+    fs.writeFileSync(outputSourceMap, serialized.map || "");
+  }
 }

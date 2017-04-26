@@ -11,11 +11,11 @@ const path = require('path');
 const webpack = require('webpack');
 
 const WebpackConfig = {
-    entry: "./lib/serializer/index.js",
+    entry: "./",
     output: {
         path: path.join(__dirname),
         filename: "prepack.min.js",
-        library: 'prepack',
+        library: 'Prepack',
     },
 
     plugins: [
