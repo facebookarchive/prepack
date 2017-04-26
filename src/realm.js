@@ -11,7 +11,7 @@
 
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
-import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue } from "./values/index.js";
+import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
@@ -24,6 +24,7 @@ import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeExpression } from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
+import { ToString } from "./methods/to.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -118,7 +119,7 @@ export class Realm {
     this.$TemplateMap  = [];
 
     if (this.isPartial) {
-      this.preludeGenerator = new PreludeGenerator();
+      this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
       ObjectValue.setupTrackedPropertyAccessors();
     }
 
@@ -356,14 +357,24 @@ export class Realm {
     return completion;
   }
 
-  outputToConsole(str: string): void {
+  outputToConsole(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>): void {
     if (this.isReadOnly)
       throw this.createReadOnlyError("Trying to create console output in read-only realm");
     if (this.isPartial) {
       invariant(this.generator !== undefined);
-      this.generator.emitConsoleLog(str);
+      this.generator.emitConsoleLog(method, args);
     } else {
-      console.log(str);
+      console[method](getString(this, args));
+    }
+
+    function getString(realm: Realm, values: Array<string | ConcreteValue>) {
+      let res = "";
+      while (values.length) {
+        let next = values.shift();
+        let nextString = ToString(realm, next);
+        res += nextString;
+      }
+      return res;
     }
   }
 

@@ -29,8 +29,8 @@ function run_internal(
     delayUnsupportedRequires: boolean = false) {
   let serialized =
     new Serializer(
-      { partial: true, compatibility, mathRandomSeed },
-      { initializeMoreModules: speculate, internalDebug: true, trace, debugNames, singlePass, logStatistics, logModules, delayUnsupportedRequires })
+      { partial: true, compatibility, mathRandomSeed, debugNames },
+      { initializeMoreModules: speculate, internalDebug: true, trace, singlePass, logStatistics, logModules, delayUnsupportedRequires })
         .init(name, raw, map, outputMap !== undefined);
   if (!serialized) {
     process.exit(1);

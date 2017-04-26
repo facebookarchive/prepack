@@ -27,7 +27,7 @@ import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
 import { BodyReference, AreSameSerializedBindings, SerializerStatistics } from "./types.js";
-import { ClosureRefVisitor, ClosureRefReplacer } from "./visitors.js";
+import { ClosureRefVisitor, ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
@@ -91,10 +91,10 @@ export class Serializer {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
-    this.valueNameGenerator = new NameGenerator("_", this.options.debugNames);
-    this.referentializedNameGenerator = new NameGenerator("$", this.options.debugNames);
-    this.descriptorNameGenerator = new NameGenerator("$$", this.options.debugNames);
-    this.factoryNameGenerator = new NameGenerator("$_", this.options.debugNames);
+    this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
+    this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$");
+    this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
+    this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
   }
@@ -140,7 +140,8 @@ export class Serializer {
   execute(filename: string, code: string, map: string,
       onError: void | ((Realm, Value) => void)) {
     let realm = this.realm;
-    let res = realm.$GlobalEnv.execute(code, filename, map);
+    let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast =>
+      traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames));
 
     if (res instanceof Completion) {
       let context = new ExecutionContext();
@@ -795,7 +796,29 @@ export class Serializer {
     return !!prop.writable && !!prop.configurable === configurable && !!prop.enumerable && !prop.set && !prop.get;
   }
 
+  _isPrototype(obj: ObjectValue): void | FunctionValue {
+    let binding = obj.properties.get("constructor");
+    if (binding === undefined) return undefined;
+    let desc = binding.descriptor;
+    if (desc === undefined) return undefined;
+    let func = desc.value;
+    if (!(func instanceof FunctionValue)) return undefined;
+    binding = func.properties.get("prototype");
+    if (binding === undefined) return undefined;
+    desc = binding.descriptor;
+    if (desc === undefined) return undefined;
+    if (desc.value !== obj) return undefined;
+    return func;
+  }
+
   _serializeValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
+    let func = this._isPrototype(val);
+    if (func !== undefined) {
+      let serializedFunction = this.serializeValue(func, reasons.concat(`Constructor of object ${name}`));
+      this.addProperties(name, val, false, reasons, val.properties);
+      return t.memberExpression(serializedFunction, t.identifier("prototype"));
+    }
+
     let props = [];
 
     for (let [key, propertyBinding] of val.properties) {
@@ -898,23 +921,19 @@ export class Serializer {
   }
 
   _serializeGlobalBinding(key: string): void | SerializedBinding {
-    if (t.isValidIdentifier(key)) {
-      let value = this.realm.getGlobalLetBinding(key);
-      // Check for let binding vs global property
-      if (value) {
-        let id = this.serializeValue(value, ["global let binding"], true, "let");
-        // increment ref count one more time as the value has been
-        // referentialized (stored in a variable) by serializeValue
-        this._incrementValToRefCount(value);
-        return {
-          serializedValue: id,
-          modified: true, referentialized: true
-        };
-      } else {
-        return { serializedValue: t.identifier(key), modified: true, referentialized: true };
-      }
+    let value = this.realm.getGlobalLetBinding(key);
+    // Check for let binding vs global property
+    if (value) {
+      let id = this.serializeValue(value, ["global let binding"], true, "let");
+      // increment ref count one more time as the value has been
+      // referentialized (stored in a variable) by serializeValue
+      this._incrementValToRefCount(value);
+      return {
+        serializedValue: id,
+        modified: true, referentialized: true
+      };
     } else {
-      return { serializedValue: t.stringLiteral(key), modified: true, referentialized: true };
+      return { serializedValue: this.preludeGenerator.globalReference(key), modified: true, referentialized: true };
     }
   }
 
@@ -1223,6 +1242,10 @@ export class Serializer {
     this.factorifyObjects(body);
 
     let ast_body = [];
+    if (this.preludeGenerator.declaredGlobals.size > 0)
+      ast_body.push(t.variableDeclaration("var",
+        Array.from(this.preludeGenerator.declaredGlobals).map(key =>
+          t.variableDeclarator(t.identifier(key)))));
     if (body.length) {
       if (realm.compatibility === 'node') {
         ast_body.push(
@@ -1241,6 +1264,7 @@ export class Serializer {
         );
       }
 
+<<<<<<< HEAD
       if (this._shouldBeWrapped(body)){
         ast_body.push(
           t.expressionStatement(
@@ -1256,6 +1280,16 @@ export class Serializer {
       } else {
         ast_body = body;
       }
+=======
+      let functionExpression = t.functionExpression(null, [], t.blockStatement(body, globalDirectives));
+      let callExpression = this.preludeGenerator.usesThis
+        ? t.callExpression(
+            t.memberExpression(functionExpression, t.identifier("call")),
+            [t.thisExpression()]
+          )
+        : t.callExpression(functionExpression, []);
+      ast_body.push(t.expressionStatement(callExpression));
+>>>>>>> master
     }
 
     let ast = {
@@ -1326,12 +1360,13 @@ export class Serializer {
 
       //
       let rootFactoryParams: Array<BabelNodeLVal> = [];
-      for (let key of keys) rootFactoryParams.push(t.identifier(key));
-
       let rootFactoryProps = [];
-      for (let key of keys) {
+      for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
+        let key = keys[keyIndex];
+        let id = t.identifier(`__${keyIndex}`);
+        rootFactoryParams.push(id);
         let keyNode = t.isValidIdentifier(key) ? t.identifier(key) : t.stringLiteral(key);
-        rootFactoryProps.push(t.objectProperty(keyNode, t.identifier(key)));
+        rootFactoryProps.push(t.objectProperty(keyNode, id));
       }
 
       let rootFactoryId = t.identifier(this.factoryNameGenerator.generate("root"));
@@ -1409,7 +1444,7 @@ export class Serializer {
           if (removeArgs.indexOf(i + "") >= 0) {
             subFactoryArgs.push(arg);
           } else {
-            let id = t.identifier("__" + i);
+            let id = t.identifier(`__${i}`);
             subFactoryArgs.push(id);
             subFactoryParams.push(id);
           }

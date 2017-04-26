@@ -175,17 +175,17 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.SymbolPrototype = new ObjectValue(realm, i.ObjectPrototype, "Symbol.prototype");
 
   // initialize common symbols
-  i.SymbolIsConcatSpreadable = new SymbolValue(realm, "Symbol.isConcatSpreadable");
-  i.SymbolSpecies = new SymbolValue(realm, "Symbol.species");
-  i.SymbolReplace = new SymbolValue(realm, "Symbol.replace");
-  i.SymbolIterator = new SymbolValue(realm, "Symbol.iterator");
-  i.SymbolHasInstance = new SymbolValue(realm, "Symbol.hasInstance");
-  i.SymbolToPrimitive = new SymbolValue(realm, "Symbol.toPrimitive");
-  i.SymbolToStringTag = new SymbolValue(realm, "Symbol.toStringTag");
-  i.SymbolMatch = new SymbolValue(realm, "Symbol.match");
-  i.SymbolSplit = new SymbolValue(realm, "Symbol.split");
-  i.SymbolSearch = new SymbolValue(realm, "Symbol.search");
-  i.SymbolUnscopables = new SymbolValue(realm, "Symbol.unscopables");
+  i.SymbolIsConcatSpreadable = new SymbolValue(realm, "Symbol.isConcatSpreadable", "Symbol.isConcatSpreadable");
+  i.SymbolSpecies = new SymbolValue(realm, "Symbol.species", "Symbol.species");
+  i.SymbolReplace = new SymbolValue(realm, "Symbol.replace", "Symbol.replace");
+  i.SymbolIterator = new SymbolValue(realm, "Symbol.iterator", "Symbol.iterator");
+  i.SymbolHasInstance = new SymbolValue(realm, "Symbol.hasInstance", "Symbol.hasInstance");
+  i.SymbolToPrimitive = new SymbolValue(realm, "Symbol.toPrimitive", "Symbol.toPrimitive");
+  i.SymbolToStringTag = new SymbolValue(realm, "Symbol.toStringTag", "Symbol.toStringTag");
+  i.SymbolMatch = new SymbolValue(realm, "Symbol.match", "Symbol.match");
+  i.SymbolSplit = new SymbolValue(realm, "Symbol.split", "Symbol.split");
+  i.SymbolSearch = new SymbolValue(realm, "Symbol.search", "Symbol.search");
+  i.SymbolUnscopables = new SymbolValue(realm, "Symbol.unscopables", "Symbol.unscopables");
 
   //
   i.ArrayProto_values = initializeArrayProto_values(realm);

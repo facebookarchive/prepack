@@ -10,14 +10,14 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { AbstractValue, Value, FunctionValue, UndefinedValue, NullValue, StringValue, BooleanValue, NumberValue, SymbolValue, ObjectValue } from "../values/index.js";
+import { AbstractValue, Value, FunctionValue, UndefinedValue, NullValue, StringValue, BooleanValue, NumberValue, SymbolValue, ObjectValue, ConcreteValue } from "../values/index.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as base62 from "base62";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeStatement, BabelNodeMemberExpression } from "babel-types";
+import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeStatement, BabelNodeMemberExpression, BabelNodeThisExpression } from "babel-types";
 
 export type SerializationContext = {
   reasons: Array<string>;
@@ -54,12 +54,8 @@ export class Generator {
   }
 
   emitGlobalDeclaration(key: string, value: Value) {
-    this.body.push({
-      args: [value],
-      buildNode: ([valueNode]) => t.variableDeclaration("var", [
-        t.variableDeclarator(t.identifier(key), valueNode)
-      ])
-    });
+    this.preludeGenerator.declaredGlobals.add(key);
+    this.emitGlobalAssignment(key, value);
   }
 
   emitGlobalAssignment(key: string, value: Value) {
@@ -67,7 +63,7 @@ export class Generator {
       args: [value],
       buildNode: ([valueNode]) => t.expressionStatement(t.assignmentExpression(
         "=",
-        t.identifier(key),
+        this.preludeGenerator.globalReference(key, true),
         valueNode))
     });
   }
@@ -77,7 +73,7 @@ export class Generator {
       args: [],
       buildNode: ([]) => t.expressionStatement(t.unaryExpression(
         "delete",
-        t.identifier(key)))
+        this.preludeGenerator.globalReference(key, true)))
     });
   }
 
@@ -129,12 +125,11 @@ export class Generator {
     });
   }
 
-  emitConsoleLog(str: string) {
-    let strn = new StringValue(this.realm, str);
+  emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
     this.body.push({
-      args: [strn],
-      buildNode: ([strVal]) => t.expressionStatement(
-        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier("log")), [strVal]))
+      args: args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v),
+      buildNode: values => t.expressionStatement(
+        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), [...values]))
     });
   }
 
@@ -222,47 +217,76 @@ export class Generator {
 }
 
 export class NameGenerator {
-  constructor(prefix: string, debugNames: boolean = false) {
+  constructor(forbiddenNames: Set<string>, debugNames: boolean, uniqueSuffix: string, prefix: string) {
     this.prefix = prefix;
     this.uidCounter = 0;
     this.debugNames = debugNames;
+    this.forbiddenNames = forbiddenNames;
+    this.uniqueSuffix = uniqueSuffix;
   }
   prefix: string;
   uidCounter: number;
   debugNames: boolean;
+  forbiddenNames: Set<string>;
+  uniqueSuffix: string;
   generate(debugSuffix: ?string): string {
-    let id = this.prefix + base62.encode(this.uidCounter++);
-    if (this.debugNames) {
-      if (debugSuffix)
-        id += "_" + debugSuffix.replace(/[.,:]/g, "_");
-      else
-        id += "_";
-    }
+    let id;
+    do {
+      id = this.prefix + base62.encode(this.uidCounter++);
+      if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
+      if (this.debugNames) {
+        if (debugSuffix)
+          id += "_" + debugSuffix.replace(/[.,:]/g, "_");
+        else
+          id += "_";
+      }
+    } while (this.forbiddenNames.has(id));
     return id;
   }
 }
 
 export class PreludeGenerator {
-  constructor(debugNames: boolean = false) {
+  constructor(debugNames: ?boolean, uniqueSuffix: ?string) {
     this.prelude = [];
     this.derivedIds = new Map();
     this.memoizedRefs = new Map();
-    this.nameGenerator = new NameGenerator("_$", debugNames);
+    this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
+    this.usesThis = false;
+    this.declaredGlobals = new Set();
   }
 
   prelude: Array<BabelNodeStatement>;
   derivedIds: Map<string, Array<Value>>;
-  memoizedRefs: Map<string, BabelNodeIdentifier | BabelNodeMemberExpression>;
+  memoizedRefs: Map<string, BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression>;
   nameGenerator: NameGenerator;
+  usesThis: boolean;
+  declaredGlobals: Set<string>;
 
-  convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression {
+  createNameGenerator(prefix: string): NameGenerator {
+    return new NameGenerator(this.nameGenerator.forbiddenNames, this.nameGenerator.debugNames, this.nameGenerator.uniqueSuffix, prefix);
+  }
+
+  convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression {
     return str
       .split(".")
-      .map((name) => t.identifier(name))
+      .map((name) => {
+        if (name === "::global") {
+          this.usesThis = true;
+          return t.thisExpression();
+        } else {
+          return t.identifier(name);
+        }
+      })
       .reduce((obj, prop) => t.memberExpression(obj, prop));
   }
 
-  memoizeReference(key: string): BabelNodeIdentifier | BabelNodeMemberExpression {
+  globalReference(key: string, globalScope: boolean = false) {
+    if (globalScope && t.isValidIdentifier(key)) return t.identifier(key);
+    let keyNode = t.isValidIdentifier(key) ? t.identifier(key) : t.stringLiteral(key);
+    return t.memberExpression(this.memoizeReference("::global"), keyNode, !t.isIdentifier(keyNode));
+  }
+
+  memoizeReference(key: string): BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression {
     let ref = this.memoizedRefs.get(key);
     if (ref) return ref;
 

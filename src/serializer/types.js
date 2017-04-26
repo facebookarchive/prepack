@@ -57,7 +57,6 @@ export type SerializerOptions = {
   initializeMoreModules?: boolean;
   internalDebug?: boolean;
   trace?: boolean;
-  debugNames?: boolean;
   singlePass?: boolean;
   logStatistics?: boolean;
   logModules?: boolean;
