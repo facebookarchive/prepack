@@ -120,13 +120,13 @@ function runTest(name, code) {
   } else {
     let expected, actual;
     let codeIterations = [];
-    let marker = "// does not contain:";
-    let to_find = "";
-    let find_pos = -1;
-    if (code.includes(marker)) {
-      let start_pos = code.indexOf(marker);
-      to_find = code.substring(start_pos + marker.length, code.indexOf("\n", start_pos));
-      find_pos = start_pos + marker.length + to_find.length;
+    let markersToFind = [];
+    for (let [positive, marker] of [[true, "// does contain:"], [false, "// does not contain:"]]) {
+      if (code.includes(marker)) {
+        let i = code.indexOf(marker);
+        let value = code.substring(i + marker.length, code.indexOf("\n", i));
+        markersToFind.push({ positive, value, start: i + marker.length });
+      }
     }
     let unique = 27277;
     let oldUniqueSuffix = "";
@@ -147,10 +147,15 @@ function runTest(name, code) {
         }
         let newCode = serialized.code;
         codeIterations.push(newCode);
-        if (find_pos !== -1 && newCode.indexOf(to_find, find_pos) !== -1) {
-          console.log(chalk.red("Output contains forbidden string: " + to_find));
-          break;
+        let markersIssue = false;
+        for (let { positive, value, start } of markersToFind) {
+          let found = newCode.indexOf(value, start) !== -1;
+          if (found !== positive) {
+            console.log(chalk.red(`Output ${positive ? "does not contain" : "contains"} forbidden string: ${value}`));
+            markersIssue = true;
+          }
         }
+        if (markersIssue) break;
         actual = exec(newCode);
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
