@@ -42,7 +42,7 @@ export default function (realm: Realm): NativeFunctionValue {
   func.defineNativeConstant("EPSILON", new NumberValue(realm, 2.220446049250313e-16));
 
   // ECMA262 20.1.2.2
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   func.defineNativeMethod("isFinite", 1, (context, [number]) => {
     // 1. If Type(number) is not Number, return false.
     if (!number.mightBeNumber()) return realm.intrinsics.false;
@@ -56,7 +56,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 20.1.2.3
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   func.defineNativeMethod("isInteger", 1, (context, [number]) => {
     // 1. If Type(number) is not Number, return false.
     if (!number.mightBeNumber()) return realm.intrinsics.false;
@@ -76,7 +76,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 20.1.2.4
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   func.defineNativeMethod("isNaN", 1, (context, [number]) => {
     // 1. If Type(number) is not Number, return false.
     if (!number.mightBeNumber()) return realm.intrinsics.false;
@@ -90,7 +90,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 20.1.2.5
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   func.defineNativeMethod("isSafeInteger", 1, (context, [number]) => {
     // 1. If Type(number) is not Number, return false.
     if (!number.mightBeNumber()) return realm.intrinsics.false;

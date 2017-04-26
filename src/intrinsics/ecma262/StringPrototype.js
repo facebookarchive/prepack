@@ -74,7 +74,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.3
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("codePointAt", 1, (context, [pos]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
@@ -130,7 +130,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.6
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("endsWith", 1, (context, [searchString, endPosition]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
@@ -183,7 +183,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.7
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("includes", 1, (context, [searchString, position]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
@@ -335,7 +335,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.12
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("normalize", 0, (context, [form]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
@@ -361,7 +361,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.13
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("padEnd", 1, (context, [maxLength, fillString]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
@@ -398,7 +398,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.14
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("padStart", 1, (context, [maxLength, fillString]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
@@ -435,7 +435,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.13
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("repeat", 1, (context, [count]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);

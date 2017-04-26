@@ -135,7 +135,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.3
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("copyWithin", 2, (context, [target, start, end]) => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
@@ -504,7 +504,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.11
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   obj.defineNativeMethod("includes", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());

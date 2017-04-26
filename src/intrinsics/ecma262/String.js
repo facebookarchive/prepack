@@ -82,7 +82,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 21.1.2.2 ( ..._codePoints_ )
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   func.defineNativeMethod("fromCodePoint", 1, (context, codePoints, argCount) => {
     // 1. Let codePoints be a List containing the arguments passed to this function.
     codePoints;
@@ -131,7 +131,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 21.1.2.4
-  if (realm.compatibility !== 'jsc')
+  if (realm.compatibility !== 'jsc-600-1-4-17')
   func.defineNativeMethod("raw", 1, (context, [template, ...substitutions], argCount) => {
     // 1. Let substitutions be a List consisting of all of the arguments passed to this function, starting with the second argument. If fewer than two arguments were passed, the List is empty.
     substitutions = argCount < 2 ? [] : substitutions;
