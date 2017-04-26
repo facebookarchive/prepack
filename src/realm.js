@@ -163,6 +163,13 @@ export class Realm {
 
   tracers: Array<Tracer>;
 
+  MOBILE_JSC_VERSION = "jsc-600-1-4-17";
+
+  // to force flow to type the annotations
+  isCompatibleWith(compatibility: Compatibility): boolean {
+    return compatibility === this.compatibility;
+  }
+
   // Checks if there is a let binding at global scope with the given name
   // returning it if so
   getGlobalLetBinding(key: string): void | Value {

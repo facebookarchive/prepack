@@ -195,7 +195,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.ObjectProto_toString = initializeObjectProto_toString(realm);
 
   //
-  if (realm.compatibility !== 'jsc-600-1-4-17')
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
   i.TypedArrayProto_values = initializeTypedArrayProto_values(realm);
 
   //
@@ -221,14 +221,14 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
 
   // collection prototypes
   i.MapPrototype = new ObjectValue(realm, i.ObjectPrototype, "Map.prototype");
-  if (realm.compatibility !== 'jsc-600-1-4-17') {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     i.WeakSetPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakSet.prototype");
     i.WeakMapPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakMap.prototype");
   }
   i.SetPrototype = new ObjectValue(realm, i.ObjectPrototype, "Set.prototype");
 
   // typed array prototypes
-  if (realm.compatibility !== 'jsc-600-1-4-17')
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
   i.TypedArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "TypedArray.prototype");
   i.Float32ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float32Array.prototype");
   i.Float64ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float64Array.prototype");
@@ -266,7 +266,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initializeSyntaxErrorPrototype(realm, i.SyntaxErrorPrototype);
   initialize__IntrospectionErrorPrototype(realm, i.__IntrospectionErrorPrototype);
   initializeDataViewPrototype(realm, i.DataViewPrototype);
-  if (realm.compatibility !== 'jsc-600-1-4-17') {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     initializeTypedArrayPrototype(realm, i.TypedArrayPrototype);
     initializeWeakSetPrototype(realm, i.WeakSetPrototype);
     initializeWeakMapPrototype(realm, i.WeakMapPrototype);
@@ -308,7 +308,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.Symbol = initializeSymbol(realm);
   i.JSON = initializeJSON(realm);
   i.Proxy = initializeProxy(realm);
-  if (realm.compatibility !== 'jsc-600-1-4-17')
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
   i.Reflect = initializeReflect(realm);
   i.Promise = initializePromise(realm);
   i.DataView = initializeDataView(realm);
@@ -316,14 +316,14 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   // collections
   i.Set = initializeSet(realm);
   i.Map = initializeMap(realm);
-  if (realm.compatibility !== 'jsc-600-1-4-17') {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     i.WeakMap = initializeWeakMap(realm);
     i.WeakSet = initializeWeakSet(realm);
   }
   i.ArrayBuffer = initializeArrayBuffer(realm);
 
   // typed arrays
-  if (realm.compatibility !== 'jsc-600-1-4-17')
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
   i.TypedArray = initializeTypedArray(realm);
   i.Float32Array = initializeFloat32Array(realm);
   i.Float64Array = initializeFloat64Array(realm);
@@ -378,7 +378,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     "Uint32Array",
     "ArrayBuffer"
   ];
-  if (realm.compatibility !== 'jsc-600-1-4-17') {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     builtins = builtins.concat(["WeakMap", "WeakSet", "TypedArray"]);
   }
 

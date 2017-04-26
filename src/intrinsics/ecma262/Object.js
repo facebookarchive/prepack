@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Realm } from "../../realm.js";
+import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { AbstractValue, ObjectValue, NullValue, UndefinedValue, StringValue, BooleanValue, SymbolValue } from "../../values/index.js";
 import {
@@ -363,7 +363,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.20
-  if (realm.compatibility !== "jsc-600-1-4-17") func.defineNativeMethod("setPrototypeOf", 2, (context, [O, proto]) => {
+  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) func.defineNativeMethod("setPrototypeOf", 2, (context, [O, proto]) => {
     // 1. Let O be ? RequireObjectCoercible(O).
     O = RequireObjectCoercible(realm, O);
 
