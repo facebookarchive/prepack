@@ -306,7 +306,7 @@ export class Serializer {
       this._eagerOrDelay([proto, obj], () => {
         invariant(proto);
         let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
-        let uid = this._getValIdForReference(val);
+        let uid = this._getValIdForReference(obj);
         if (!this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION))
           this.body.push(t.expressionStatement(t.callExpression(
             this.preludeGenerator.memoizeReference("Object.setPrototypeOf"),
