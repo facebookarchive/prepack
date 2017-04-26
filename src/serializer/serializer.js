@@ -15,7 +15,7 @@ import construct_realm from "../construct_realm.js";
 import type { RealmOptions, Descriptor, PropertyBinding } from "../types.js";
 import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
-import { ArrayValue, BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, NumberValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
+import { ArrayValue, BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeNumericLiteral } from "babel-types";
@@ -176,10 +176,6 @@ export class Serializer {
     return val instanceof PrimitiveValue;
   }
 
-  isNumberWithValue(value: ?Value, n: number): boolean {
-    return !!value && value instanceof NumberValue && value.value === n;
-  }
-
   canIgnoreProperty(val: Value, key: BabelNode, desc: Descriptor) {
     if (IsArray(this.realm, val)) {
       if (t.isIdentifier(key, { name: "length" }) && desc.writable && !desc.enumerable && !desc.configurable) {
@@ -187,9 +183,13 @@ export class Serializer {
         return true;
       }
     } else if (val instanceof FunctionValue) {
-      if (t.isIdentifier(key, { name: "length" }) && !desc.writable && !desc.enumerable && desc.configurable && this.isNumberWithValue(desc.value, val.getArity())) {
+      if (t.isIdentifier(key, { name: "length" })) {
+        if (desc.value === undefined) {
+          this.logger.logError("Functions with length accessor properties are not supported.");
+          // Rationale: .bind() would call the accessor, which might throw, mutate state, or do whatever...
+        }
         // length property will be inferred already by the amount of parameters
-        return true;
+        return !desc.writable && !desc.enumerable && desc.configurable && val.hasDefaultLength();
       }
 
       if (t.isIdentifier(key, { name: "name" })) {
@@ -662,6 +662,7 @@ export class Serializer {
 
   _serializeValueFunction(name: string, val: FunctionValue, reasons: Array<string>): void | BabelNodeExpression {
     if (val instanceof BoundFunctionValue) {
+      this.addProperties(name, val, false, reasons);
       return t.callExpression(
         t.memberExpression(
           this.serializeValue(val.$BoundTargetFunction, reasons.concat(`Bound by ${name}`)),
@@ -679,10 +680,12 @@ export class Serializer {
     }
 
     invariant(val.constructor === FunctionValue);
-    invariant(val.$FormalParameters != null);
-    invariant(val.$ECMAScriptCode != null);
+    let formalParameters = val.$FormalParameters;
+    invariant(formalParameters != null);
+    let code = val.$ECMAScriptCode;
+    invariant(code != null);
 
-    let functionInfo = this.functions.get(val.$ECMAScriptCode);
+    let functionInfo = this.functions.get(code);
 
     if (!functionInfo) {
       functionInfo = {
@@ -692,7 +695,7 @@ export class Serializer {
         usesArguments: false,
         usesThis: false,
       };
-      this.functions.set(val.$ECMAScriptCode, functionInfo);
+      this.functions.set(code, functionInfo);
 
       let state = {
         tryQuery: this.logger.tryQuery.bind(this.logger),
@@ -708,8 +711,8 @@ export class Serializer {
           t.expressionStatement(
             t.functionExpression(
               null,
-              val.$FormalParameters,
-              val.$ECMAScriptCode
+              formalParameters,
+              code
             )
           )
         ])),
@@ -719,11 +722,9 @@ export class Serializer {
       );
 
       if (val.isResidual && Object.keys(functionInfo.names).length) {
-        this.logger.logError(`residual function ${describeLocation(this.realm, val, undefined, val.$ECMAScriptCode.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
+        this.logger.logError(`residual function ${describeLocation(this.realm, val, undefined, code.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
       }
     }
-
-
 
     let serializedBindings = Object.create(null);
     let instance: FunctionInstance = {
@@ -951,6 +952,7 @@ export class Serializer {
     this.statistics.functions = functionEntries.length;
     for (let [funcBody, { usesArguments, usesThis, instances, names, modified }] of functionEntries) {
       let params = instances[0].functionValue.$FormalParameters;
+      invariant(params !== undefined);
 
       let shouldInline = !funcBody;
       if (!shouldInline && funcBody.start && funcBody.end) {

@@ -129,12 +129,14 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
 
   // 4. Let code be the value of the [[ECMAScriptCode]] internal slot of func.
   let code = func.$ECMAScriptCode;
+  invariant(code !== undefined);
 
   // 5. Let strict be the value of the [[Strict]] internal slot of func.
   let strict = func.$Strict;
 
   // 6. Let formals be the value of the [[FormalParameters]] internal slot of func.
   let formals = func.$FormalParameters;
+  invariant(formals !== undefined);
 
   // 7. Let parameterNames be the BoundNames of formals.
   let parameterNames = Object.create(null);
@@ -165,6 +167,7 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
 
   // 10. Let hasParameterExpressions be ContainsExpression of formals.
   let hasParameterExpressions = false;
+  invariant(formals !== undefined);
   for (let param of formals) {
     if (ContainsExpression(realm, param)) {
       hasParameterExpressions = true;
@@ -267,6 +270,7 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
     } else { // b. Else,
       // i. NOTE mapped argument object is only provided for non-strict functions that don't have a rest parameter, any parameter default value initializers, or any destructured parameters.
       // ii. Let ao be CreateMappedArgumentsObject(func, formals, argumentsList, envRec).
+      invariant(formals !== undefined);
       ao = CreateMappedArgumentsObject(realm, func, formals, argumentsList, envRec);
     }
 
@@ -292,8 +296,9 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
   // 24. If hasDuplicates is true, then
   if (hasDuplicates === true) {
     // a. Perform ? IteratorBindingInitialization for formals with iteratorRecord and undefined as arguments.
-    for (let i = 0; i < func.$FormalParameters.length; ++i) {
-      let param = func.$FormalParameters[i];
+    invariant(formals !== undefined);
+    for (let i = 0; i < formals.length; ++i) {
+      let param = formals[i];
 
       switch (param.type) {
       case "Identifier":
@@ -308,8 +313,9 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
     }
   } else { // 25. Else,
     // a. Perform ? IteratorBindingInitialization for formals with iteratorRecord and env as arguments.
-    for (let i = 0; i < func.$FormalParameters.length; ++i) {
-      let param = func.$FormalParameters[i];
+    invariant(formals !== undefined);
+    for (let i = 0; i < formals.length; ++i) {
+      let param = formals[i];
 
       switch (param.type) {
       case "Identifier":

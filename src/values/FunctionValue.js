@@ -11,9 +11,10 @@
 
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
-import { ObjectValue } from "./index.js";
+import { ObjectValue, NumberValue } from "./index.js";
 import * as t from "babel-types";
 import type { BabelNodeLVal, BabelNodeBlockStatement, BabelNodeSourceLocation } from "babel-types";
+import invariant from "../invariant.js";
 
 export default class FunctionValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -25,8 +26,8 @@ export default class FunctionValue extends ObjectValue {
   $HomeObject: void | ObjectValue;
   $Environment: LexicalEnvironment;
   $Strict: boolean;
-  $FormalParameters: Array<BabelNodeLVal>;
-  $ECMAScriptCode: BabelNodeBlockStatement;
+  $FormalParameters: void | Array<BabelNodeLVal>;
+  $ECMAScriptCode: void | BabelNodeBlockStatement;
   $FunctionKind: string;
   $ScriptOrModule: any;
   loc: ?BabelNodeSourceLocation;
@@ -36,14 +37,27 @@ export default class FunctionValue extends ObjectValue {
   // identifiers defined outside of the local scope.
   isResidual: void | true;
 
-  getArity(): number {
+  getLength(): void | number {
+    let binding = this.properties.get("length");
+    invariant(binding);
+    let desc = binding.descriptor;
+    invariant(desc);
+    let value = desc.value;
+    if (!(value instanceof NumberValue)) return undefined;
+    return value.value;
+  }
+
+  hasDefaultLength(): boolean {
     let params = this.$FormalParameters;
+    if (params === undefined) return false;
+    let expected = params.length;
     for (let i = 0; i < params.length; i++) {
       let param = params[i];
       if (t.isAssignmentPattern(param) || t.isRestElement(param)) {
-        return i;
+        expected = i;
+        break;
       }
     }
-    return params.length;
+    return expected === this.getLength();
   }
 }
