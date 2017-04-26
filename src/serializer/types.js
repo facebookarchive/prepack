@@ -12,13 +12,14 @@
 import { FunctionValue, Value } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { Completion } from "../completions.js";
+import invariant from "../invariant.js";
 
 export type TryQuery<T> = (f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean) => T;
 
 export type FunctionInstance = {
   serializedBindings: SerializedBindings;
   functionValue: FunctionValue;
-  bodyReference?: BodyReference;
+  insertionPoint?: BodyReference;
 };
 
 export type Names = { [key: string]: true };
@@ -46,8 +47,12 @@ export function AreSameSerializedBindings(x: SerializedBinding, y: SerializedBin
 
 export class BodyReference {
   constructor(body: Array<BabelNodeStatement>, index: number) {
+    invariant(index >= 0);
     this.body = body;
     this.index = index;
+  }
+  isNotEarlierThan(other: BodyReference): boolean {
+    return this.body === other.body && this.index >= other.index;
   }
   body: Array<BabelNodeStatement>;
   index: number;
