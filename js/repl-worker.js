@@ -13,14 +13,11 @@ onmessage = function(e) {
     console.error = redirectOutput;
     console.warn = redirectOutput;
 
-    var result = new prepack.default(
-      {
-        partial: true,
-        timeout: 1000, // 1s
-        compatibility: 'browser'
-      },
-      false
-    ).init('repl', e.data, false, false);
+    var result = Prepack.prepack(e.data, {
+      compatibility: 'browser',
+      filename: 'repl',
+      timeout: 1000,
+    });
     if (result) {
       postMessage({type: 'success', data: result.code});
     } else {
@@ -29,7 +26,11 @@ onmessage = function(e) {
     }
   } catch (err) {
     // Something went horribly wrong.
-    postMessage({type: 'error', data: buffer + err.message});
+    var message = err.message;
+    if (err instanceof Prepack.InitializationError) {
+      message = '';
+    }
+    postMessage({type: 'error', data: buffer + message});
   } finally {
     console.error = originalError;
     console.warn = originalWarn;
