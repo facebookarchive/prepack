@@ -1227,6 +1227,33 @@ export class Serializer {
     invariant(this.delayedKeyedSerializations.size === 0);
   }
 
+  _shouldBeWrapped(body: Array<any>) {
+    for (let i = 0; i < body.length; i++){
+      let item = body[i];
+      if (item.type === "ExpressionStatement") {
+        continue;
+      } else if (item.type === "VariableDeclaration" || item.type === "FunctionDeclaration") {
+        return true;
+      } else if (item.type === "BlockStatement") {
+        if (this._shouldBeWrapped(item.body)) {
+          return true;
+        }
+      } else if (item.type === "IfStatement"){
+        if (item.alternate){
+          if (this._shouldBeWrapped(item.alternate.body)){
+            return true;
+          }
+        }
+        if (item.consequent){
+          if (this._shouldBeWrapped(item.consequent.body)){
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
@@ -1304,14 +1331,18 @@ export class Serializer {
         );
       }
 
-      let functionExpression = t.functionExpression(null, [], t.blockStatement(body, globalDirectives));
-      let callExpression = this.preludeGenerator.usesThis
-        ? t.callExpression(
-            t.memberExpression(functionExpression, t.identifier("call")),
-            [t.thisExpression()]
-          )
-        : t.callExpression(functionExpression, []);
-      ast_body.push(t.expressionStatement(callExpression));
+      if (this._shouldBeWrapped(body)){
+        let functionExpression = t.functionExpression(null, [], t.blockStatement(body, globalDirectives));
+        let callExpression = this.preludeGenerator.usesThis
+          ? t.callExpression(
+              t.memberExpression(functionExpression, t.identifier("call")),
+              [t.thisExpression()]
+            )
+          : t.callExpression(functionExpression, []);
+        ast_body.push(t.expressionStatement(callExpression));
+      } else {
+        ast_body = body;
+      }
     }
 
     let ast = {
