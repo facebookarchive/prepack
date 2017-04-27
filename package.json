@@ -20,7 +20,8 @@
     "prepack": "bin/prepack.js",
     "prepack-repl": "bin/prepack-repl.js"
   },
-  "main": "lib/prepack.js",
+  "main": "lib/prepack-node.js",
+  "browser": "lib/prepack-standalone.js",
   "scripts": {
     "build": "babel src --out-dir lib --source-maps && npm run build-bundle",
     "build-bundle": "webpack",
