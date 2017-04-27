@@ -26,18 +26,27 @@ export type Options = {
   logModules?: boolean,
   delayUnsupportedRequires?: boolean,
   internalDebug?: boolean,
+  uniqueSuffix?: string,
+  timeout?: number,
+  strictlyMonotonicDateNow?: boolean,
 };
 
 export function getRealmOptions({
   compatibility = "browser",
   mathRandomSeed,
   debugNames = false,
+  uniqueSuffix,
+  timeout,
+  strictlyMonotonicDateNow
 }: Options): RealmOptions {
   return {
     partial: true,
     compatibility,
     mathRandomSeed,
-    debugNames
+    debugNames,
+    uniqueSuffix,
+    timeout,
+    strictlyMonotonicDateNow,
   };
 }
 
@@ -52,11 +61,11 @@ export function getSerializerOptions({
 }: Options): SerializerOptions {
   return {
     initializeMoreModules: speculate,
-    internalDebug,
     trace,
     singlePass,
     logStatistics,
     logModules,
-    delayUnsupportedRequires
+    delayUnsupportedRequires,
+    internalDebug,
   };
 }
