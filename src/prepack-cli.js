@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { prepackFileSync } from "./prepack-node.js";
+import { prepackFileSync, InitializationError } from "./prepack-node.js";
 import fs from "fs";
 
 let args = Array.from(process.argv);
@@ -28,6 +28,7 @@ let flags = {
   logStatistics: false,
   logModules: false,
   delayUnsupportedRequires: false,
+  internalDebug: false,
 };
 while (args.length) {
   let arg = args[0]; args.shift();
@@ -71,33 +72,44 @@ while (args.length) {
     }
   }
 }
+
 if (!inputFilename) {
   console.error("Missing input file.");
   process.exit(1);
 } else {
-  let serialized = prepackFileSync(inputFilename, {
-    compatibility,
-    mathRandomSeed,
-    inputSourceMapFilename: inputSourceMap,
-    sourceMaps: !!outputSourceMap,
-    ...flags
-  });
+  try {
+    let serialized = prepackFileSync(inputFilename, {
+      compatibility,
+      mathRandomSeed,
+      inputSourceMapFilename: inputSourceMap,
+      sourceMaps: !!outputSourceMap,
+      ...flags
+    });
 
-  let code = serialized.code;
+    let code = serialized.code;
 
-  if (code.length >= 1000 || outputFilename) {
-    let filename = outputFilename || (inputFilename + "-processed.js");
-    console.log(`Prepacked source code written to ${filename}.`);
-    fs.writeFileSync(filename, code);
-  }
+    if (code.length >= 1000 || outputFilename) {
+      let filename = outputFilename || (inputFilename + "-processed.js");
+      console.log(`Prepacked source code written to ${filename}.`);
+      fs.writeFileSync(filename, code);
+    }
 
-  if (code.length <= 1000 && !outputFilename) {
-    console.log("+++++++++++++++++ Prepacked source code");
-    console.log(code);
-    console.log("=================");
-  }
+    if (code.length <= 1000 && !outputFilename) {
+      console.log("+++++++++++++++++ Prepacked source code");
+      console.log(code);
+      console.log("=================");
+    }
 
-  if (outputSourceMap) {
-    fs.writeFileSync(outputSourceMap, serialized.map || "");
+    if (outputSourceMap) {
+      fs.writeFileSync(outputSourceMap, serialized.map || "");
+    }
+  } catch (x) {
+    if (x instanceof InitializationError) {
+      // Ignore InitializationError since they have already logged
+      // their errors to the console, but exit with an error code.
+      process.exit(1);
+    }
+    // For any other type of error, rethrow.
+    throw x;
   }
 }

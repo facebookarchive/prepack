@@ -9,12 +9,22 @@
 
 /* @flow */
 import Serializer from "./serializer/index.js";
-import invariant from "./invariant.js";
 import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./options";
 
 import type { Options } from "./options";
 import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
+
+// This should just be a class but Babel classes doesn't work with
+// built-in super classes.
+export function InitializationError() {
+  let self = new Error("An error occurred while prepacking. See the error logs.");
+  Object.setPrototypeOf(self, InitializationError.prototype);
+  return self;
+}
+Object.setPrototypeOf(InitializationError, Error);
+Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
+
 
 export function prepack(code: string, options: Options = {}) {
   let filename = options.filename || 'unknown';
@@ -22,7 +32,9 @@ export function prepack(code: string, options: Options = {}) {
     getRealmOptions(options),
     getSerializerOptions(options),
   ).init(filename, code, "", false);
-  invariant(serialized);
+  if (!serialized) {
+    throw new InitializationError();
+  }
   return serialized;
 }
 
@@ -40,6 +52,8 @@ export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: stri
     getRealmOptions(options),
     getSerializerOptions(options),
   ).init("", code, "", options.sourceMaps);
-  invariant(serialized);
+  if (!serialized) {
+    throw new InitializationError();
+  }
   return serialized;
 }

@@ -24,7 +24,8 @@ export type Options = {
   singlePass?: boolean,
   logStatistics?: boolean,
   logModules?: boolean,
-  delayUnsupportedRequires?: boolean
+  delayUnsupportedRequires?: boolean,
+  internalDebug?: boolean,
 };
 
 export function getRealmOptions({
@@ -46,11 +47,12 @@ export function getSerializerOptions({
   singlePass = false,
   logStatistics = false,
   logModules = false,
-  delayUnsupportedRequires = false
+  delayUnsupportedRequires = false,
+  internalDebug = false
 }: Options): SerializerOptions {
   return {
     initializeMoreModules: speculate,
-    internalDebug: true,
+    internalDebug,
     trace,
     singlePass,
     logStatistics,

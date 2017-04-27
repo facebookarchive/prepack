@@ -9,9 +9,9 @@
 
 /* @flow */
 import Serializer from "./serializer/index.js";
-import invariant from "./invariant.js";
 import fs from "fs";
 import { getRealmOptions, getSerializerOptions } from "./options";
+import { InitializationError } from "./prepack-standalone";
 
 import type { Options } from "./options";
 
@@ -35,7 +35,9 @@ export function prepackFile(filename: string, options: Options = {}, callback: F
           getRealmOptions(options),
           getSerializerOptions(options),
         ).init(filename, code, sourceMap, options.sourceMaps);
-        invariant(serialized);
+        if (!serialized) {
+          throw new InitializationError();
+        }
       } catch (err) {
         callback(err);
         return;
@@ -58,6 +60,8 @@ export function prepackFileSync(filename: string, options: Options = {}) {
     getRealmOptions(options),
     getSerializerOptions(options),
   ).init(filename, code, sourceMap, options.sourceMaps);
-  invariant(serialized);
+  if (!serialized) {
+    throw new InitializationError();
+  }
   return serialized;
 }
