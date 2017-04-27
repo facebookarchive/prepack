@@ -65,6 +65,20 @@ export default class AbstractObjectValue extends AbstractValue {
     return result;
   }
 
+  isSimple(): boolean {
+    let result;
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      if (result === undefined)
+        result = element.isSimple();
+      else if (result !== element.isSimple())
+        throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
+    }
+    if (result === undefined)
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
+    return result;
+  }
+
   makeNotPartial(): void {
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -252,6 +266,35 @@ export default class AbstractObjectValue extends AbstractValue {
     }
   }
 
+  $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
+    if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
+    invariant(this === Receiver, "TODO");
+
+    let elements = this.values.getElements();
+    if (elements.size === 1) {
+      for (let cv of elements) {
+        return cv.$GetPartial(P, cv);
+      }
+      invariant(false);
+    } else {
+      let result;
+      for (let cv of elements) {
+        let cvVal = cv.$GetPartial(P, cv);
+        if (result === undefined)
+          result = cvVal;
+        else {
+          let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue),
+            ValuesDomain.topVal,
+            [this, cv],
+            ([x, y]) => t.binaryExpression("===", x, y));
+          result = joinValuesAsConditional(this.$Realm, cond, cvVal, result);
+        }
+      }
+      invariant(result !== undefined);
+      return result;
+    }
+  }
+
   // ECMA262 9.1.9
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (P instanceof StringValue) P = P.value;
@@ -287,7 +330,27 @@ export default class AbstractObjectValue extends AbstractValue {
 
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
-    throw this.$Realm.createIntrospectionErrorThrowCompletion("TODO: $SetPartial");
+    invariant(this === Receiver, "TODO");
+
+    let elements = this.values.getElements();
+    if (elements.size === 1) {
+      for (let cv of elements) {
+        invariant(cv instanceof ObjectValue);
+        return cv.$SetPartial(P, V, cv);
+      }
+      invariant(false);
+    } else {
+      for (let cv of elements) {
+        invariant(cv instanceof ObjectValue);
+        let oldVal = this.$GetPartial(P, Receiver);
+        let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+          [this, cv],
+          ([x, y]) => t.binaryExpression("===", x, y));
+        let v = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+        cv.$SetPartial(P, v, cv);
+      }
+      return true;
+    }
   }
 
   // ECMA262 9.1.10
