@@ -10,6 +10,8 @@
 /* @flow */
 
 let Serializer = require("../lib/serializer/index.js").default;
+let construct_realm = require("../lib/construct_realm.js").default;
+let initializeGlobals = require("../lib/globals.js").default;
 let IsIntrospectionError = require("../lib/methods/index.js").IsIntrospectionError;
 
 let chalk = require("chalk");
@@ -86,7 +88,10 @@ function runTest(name, code) {
         throw new Success();
     };
     try {
-      let serialized = new Serializer(realmOptions, serializerOptions).init(name, code, "", false, onError);
+      let realm = construct_realm(realmOptions);
+      initializeGlobals(realm);
+      let serializer = new Serializer(realm, serializerOptions);
+      let serialized = serializer.init(name, code, "", false, onError);
       if (!serialized) {
         console.log(chalk.red("Error during serialization"));
       } else {
@@ -100,7 +105,10 @@ function runTest(name, code) {
     return false;
   } else if (code.includes("// no effect")) {
     try {
-      let serialized = new Serializer(realmOptions, serializerOptions).init(name, code);
+      let realm = construct_realm(realmOptions);
+      initializeGlobals(realm);
+      let serializer = new Serializer(realm, serializerOptions);
+      let serialized = serializer.init(name, code);
       if (!serialized) {
         console.log(chalk.red("Error during serialization!"));
         return false;
@@ -140,7 +148,10 @@ function runTest(name, code) {
       for (; i < max; i++) {
         let newUniqueSuffix = `_unique${unique++}`;
         realmOptions.uniqueSuffix = newUniqueSuffix;
-        let serialized = new Serializer(realmOptions, serializerOptions).init(name, oldCode);
+        let realm = construct_realm(realmOptions);
+        initializeGlobals(realm);
+        let serializer = new Serializer(realm, serializerOptions);
+        let serialized = serializer.init(name, oldCode);
         if (!serialized) {
           console.log(chalk.red("Error during serialization!"));
           break;

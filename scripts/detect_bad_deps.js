@@ -60,8 +60,8 @@ madge('./lib/').then((res) => {
   }
 
   for (let dep in deps) {
-    // Nothing in intrinsics/ecma262 depends on anything but intrinsics/index except Error.
-    if (dep.startsWith("intrinsics/ecma262") && dep !== "intrinsics/ecma262/Error") {
+    // Nothing in intrinsics/ecma262 depends on anything but intrinsics/index except Error and global.
+    if (dep.startsWith("intrinsics/ecma262") && dep !== "intrinsics/ecma262/Error" && dep !== "intrinsics/ecma262/global") {
       let ext_deps =
         res.depends(dep).filter(
           (depend) => depend !== "intrinsics/index" && !depend.startsWith("intrinsics/ecma262"));

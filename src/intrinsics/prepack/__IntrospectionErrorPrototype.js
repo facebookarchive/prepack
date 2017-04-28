@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import type { Realm } from "../realm.js";
-import { ObjectValue, StringValue } from "../values/index.js";
+import type { Realm } from "../../realm.js";
+import { ObjectValue, StringValue } from "../../values/index.js";
 
 export default function (realm: Realm, obj: ObjectValue): void {
   obj.defineNativeProperty("name", new StringValue(realm, "__IntrospectionError"));

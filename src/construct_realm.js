@@ -11,22 +11,21 @@
 
 import { Realm } from "./realm.js";
 import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
-import initializeGlobal from "./global.js";
+import initializeGlobal from "./intrinsics/ecma262/global.js";
 import type { RealmOptions } from "./types.js";
 import * as evaluators from "./evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
-import { Generator } from "./utils/generator.js";
-
+import { ObjectValue } from "./values/index.js";
 
 export default function(opts: RealmOptions = {}): Realm {
   let r = new Realm(opts);
   let i = r.intrinsics;
   initializeIntrinsics(i, r);
-  r.$GlobalObject = initializeGlobal(r);
+  // TODO: Find a way to let different environments initialize their own global
+  // object for special magic host objects such as the window object in the DOM.
+  r.$GlobalObject = new ObjectValue(r, i.ObjectPrototype, "this");
+  initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
   r.$GlobalEnv =  NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
-  if (opts.partial) {
-    r.generator = new Generator(r);
-  }
   return r;
 }

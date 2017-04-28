@@ -9,6 +9,8 @@
 
 /* @flow */
 import Serializer from "./serializer/index.js";
+import construct_realm from "./construct_realm.js";
+import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./options";
 
@@ -28,10 +30,10 @@ Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
 
 export function prepack(code: string, options: Options = {}) {
   let filename = options.filename || 'unknown';
-  let serialized = new Serializer(
-    getRealmOptions(options),
-    getSerializerOptions(options),
-  ).init(filename, code, "", false);
+  let realm = construct_realm(getRealmOptions(options));
+  initializeGlobals(realm);
+  let serializer = new Serializer(realm, getSerializerOptions(options));
+  let serialized = serializer.init(filename, code, "", false);
   if (!serialized) {
     throw new InitializationError();
   }
@@ -48,10 +50,10 @@ export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: stri
   // TODO: Expose an option to wire an already parsed ast all the way through
   // to the execution environment. For now, we just reparse.
 
-  let serialized = new Serializer(
-    getRealmOptions(options),
-    getSerializerOptions(options),
-  ).init("", code, "", options.sourceMaps);
+  let realm = construct_realm(getRealmOptions(options));
+  initializeGlobals(realm);
+  let serializer = new Serializer(realm, getSerializerOptions(options));
+  let serialized = serializer.init("", code, "", options.sourceMaps);
   if (!serialized) {
     throw new InitializationError();
   }

@@ -13,6 +13,7 @@ import { AbruptCompletion, ThrowCompletion } from "../lib/completions.js";
 import { ObjectValue, StringValue } from "../lib/values/index.js";
 import { Realm, ExecutionContext } from "../lib/realm.js";
 import construct_realm from "../lib/construct_realm.js";
+import initializeGlobals from "../lib/globals.js";
 import { DetachArrayBuffer } from "../lib/methods/arraybuffer.js";
 import { ToStringPartial } from "../lib/methods/to.js";
 import { Get } from "../lib/methods/get.js";
@@ -901,6 +902,7 @@ function prepareTest(
 function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create a new realm.
   let realm = construct_realm({ timeout: timeout * 1000 });
+  initializeGlobals(realm);
   let executionContext = new ExecutionContext();
   executionContext.realm = realm;
   realm.pushContext(executionContext);

@@ -15,6 +15,8 @@ import { ToStringPartial, InstanceofOperator } from "./methods/index.js";
 import { AbruptCompletion, ThrowCompletion } from "./completions.js";
 import { Value, ObjectValue } from "./values/index.js";
 import construct_realm from "./construct_realm.js";
+import initializeGlobals from "./globals.js";
+
 // $FlowFixMe: Why does Flow not know about this Node module?
 let repl = require("repl");
 
@@ -46,6 +48,7 @@ function serialize(realm: Realm, res: Value | AbruptCompletion): any {
 }
 
 let realm = construct_realm();
+initializeGlobals(realm);
 
 repl.start({
   prompt: "> ",

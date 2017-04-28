@@ -11,6 +11,8 @@
 
 import type { Compatibility } from "./types.js";
 import Serializer from "./serializer/index.js";
+import construct_realm from "./construct_realm.js";
+import initializeGlobals from "./globals.js";
 import invariant from "./invariant.js";
 
 let chalk     = require("chalk");
@@ -130,7 +132,10 @@ function dump(name: string, raw: string, min: string = raw, compatibility?: "bro
   let beforeStats = line("Before", min, compatibility);
 
   let start = Date.now();
-  let serialized = new Serializer({ partial: true, compatibility }).init(name, raw);
+  let realm = construct_realm({ partial: true, compatibility });
+  initializeGlobals(realm);
+  let serializer = new Serializer(realm);
+  let serialized = serializer.init(name, raw);
   if (!serialized) {
     process.exit(1);
     invariant(false);

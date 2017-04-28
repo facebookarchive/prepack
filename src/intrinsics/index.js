@@ -120,7 +120,6 @@ import initializeArrayBufferPrototype from "./ecma262/ArrayBufferPrototype.js";
 import initializeJSON from "./ecma262/JSON.js";
 import initializeReflect from "./ecma262/Reflect.js";
 import initializeMath from "./ecma262/Math.js";
-import initializeConsole from "./ecma262/console.js";
 
 import initializeProxy from "./ecma262/Proxy.js";
 
@@ -145,9 +144,8 @@ import initializeObjectProto_toString from "./ecma262/ObjectProto_toString.js";
 import initializeTypedArrayProto_values from "./ecma262/TypedArrayProto_values.js";
 import initializeThrowTypeError from "./ecma262/ThrowTypeError.js";
 
-import initializeDocument from "./dom/document.js";
-import initialize__IntrospectionError from "./__IntrospectionError.js";
-import initialize__IntrospectionErrorPrototype from "./__IntrospectionErrorPrototype.js";
+import initialize__IntrospectionError from "./prepack/__IntrospectionError.js";
+import initialize__IntrospectionErrorPrototype from "./prepack/__IntrospectionErrorPrototype.js";
 
 
 export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
@@ -291,9 +289,6 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initializeStringIteratorPrototype(realm, i.StringIteratorPrototype);
   initializeMapIteratorPrototype(realm, i.MapIteratorPrototype);
   initializeSetIteratorPrototype(realm, i.SetIteratorPrototype);
-
-  // browser
-  i.document = initializeDocument(realm);
 
   //
   i.Object = initializeObject(realm);
@@ -450,7 +445,6 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.encodeURIComponent = initializeEncodeURIComponent(realm);
   i.ThrowTypeError = initializeThrowTypeError(realm);
   i.eval = initializeEval(realm);
-  i.console = initializeConsole(realm);
 
   // 8.2.2, step 12
   AddRestrictedFunctionProperties(i.FunctionPrototype, realm);

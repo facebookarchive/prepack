@@ -10,6 +10,8 @@
 /* @flow */
 
 import Serializer from "../lib/serializer/index.js";
+import construct_realm from "../lib/construct_realm.js";
+import initializeGlobals from "../lib/globals.js";
 import invariant from "../lib/invariant.js";
 
 let chalk = require("chalk");
@@ -43,7 +45,10 @@ function generateTest(name: string, test_path: string, code: string): boolean {
   console.log(chalk.inverse(name));
   let newCode1, newMap1, newCode2, newMap2;
   try {
-    let s = new Serializer({ partial: true }, { internalDebug: true }).init(test_path, code, "", true);
+    let realm = construct_realm({ partial: true });
+    initializeGlobals(realm);
+    let serializer = new Serializer(realm, { internalDebug: true });
+    let s = serializer.init(test_path, code, "", true);
     if (!s) {
       process.exit(1);
       invariant(false);
@@ -52,7 +57,10 @@ function generateTest(name: string, test_path: string, code: string): boolean {
     fs.writeFileSync(name + ".new1.js", newCode1);
     newMap1 = s.map;
     fs.writeFileSync(name + ".new1.js.map", JSON.stringify(newMap1));
-    s = new Serializer({ partial: true, compatibility: "node" }, { internalDebug: true }).init(
+    realm = construct_realm({ partial: true, compatibility: "node" });
+    initializeGlobals(realm);
+    serializer = new Serializer(realm, { internalDebug: true });
+    s = serializer.init(
       test_path, newCode1, JSON.stringify(newMap1), true);
     if (!s) {
       process.exit(1);
