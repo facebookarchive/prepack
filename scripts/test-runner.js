@@ -207,6 +207,7 @@ function run() {
     // filter hidden files
     if (path.basename(test.name)[0] === ".") continue;
     if (test.name.endsWith("~")) continue;
+    if (test.file.includes("// skip")) continue;
 
     total++;
     if (runTest(test.name, test.file))

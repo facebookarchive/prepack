@@ -222,3 +222,8 @@ export type ResolvingFunctions = {
   resolve: Value;
   reject: Value;
 }
+
+export type ObjectKind = "Object" | "Array" | "Function" | "Symbol" | "String"
+  | "Number" | "Boolean" | "Date" | "RegExp" | "Set" | "Map" | "DataView"
+  | "ArrayBuffer" | "WeakMap" | "WeakSet";
+// TODO #26: Promises. All kinds of iterators. Generators.
