@@ -11,8 +11,7 @@
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
-import construct_realm from "../construct_realm.js";
-import type { RealmOptions, Descriptor, PropertyBinding } from "../types.js";
+import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
 import { ArrayValue, BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
@@ -55,9 +54,12 @@ function isSameNode(left, right) {
 }
 
 export class Serializer {
-  constructor(realmOptions: RealmOptions = {}, serializerOptions: SerializerOptions = {}) {
-    this.realm = construct_realm(realmOptions);
-    invariant(this.realm.isPartial);
+  constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
+    invariant(realm.isPartial);
+    // Start tracking mutations
+    realm.generator = new Generator(realm);
+
+    this.realm = realm;
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
     this.modules = new Modules(this.realm, this.logger, !!serializerOptions.logModules, !!serializerOptions.delayUnsupportedRequires);
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));

@@ -9,6 +9,8 @@
 
 /* @flow */
 import Serializer from "./serializer/index.js";
+import construct_realm from "./construct_realm.js";
+import initializeGlobals from "./globals.js";
 import fs from "fs";
 import { getRealmOptions, getSerializerOptions } from "./options";
 import { InitializationError } from "./prepack-standalone";
@@ -31,10 +33,13 @@ export function prepackFile(filename: string, options: Options = {}, callback: F
       }
       let serialized;
       try {
-        serialized = new Serializer(
-          getRealmOptions(options),
+        let realm = construct_realm(getRealmOptions(options));
+        initializeGlobals(realm);
+        let serializer = new Serializer(
+          realm,
           getSerializerOptions(options),
-        ).init(filename, code, sourceMap, options.sourceMaps);
+        );
+        serialized = serializer.init(filename, code, sourceMap, options.sourceMaps);
         if (!serialized) {
           throw new InitializationError();
         }
@@ -56,10 +61,13 @@ export function prepackFileSync(filename: string, options: Options = {}) {
   } catch (_e) {
     console.log(`No sourcemap found at ${sourceMapFilename}.`);
   }
-  let serialized = new Serializer(
-    getRealmOptions(options),
+  let realm = construct_realm(getRealmOptions(options));
+  initializeGlobals(realm);
+  let serializer = new Serializer(
+    realm,
     getSerializerOptions(options),
-  ).init(filename, code, sourceMap, options.sourceMaps);
+  );
+  let serialized = serializer.init(filename, code, sourceMap, options.sourceMaps);
   if (!serialized) {
     throw new InitializationError();
   }

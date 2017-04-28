@@ -9,63 +9,24 @@
 
 /* @flow */
 
-import type { Realm } from "./realm.js";
-import { Value, StringValue, BooleanValue, ObjectValue, FunctionValue, NativeFunctionValue, AbstractValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
-import { ToStringPartial } from "./methods/index.js";
-import { ThrowCompletion } from "./completions.js";
-import { Construct, ObjectCreate } from "./methods/index.js";
-import { TypesDomain, ValuesDomain } from "./domains/index.js";
-import buildExpressionTemplate from "./utils/builder.js";
+import type { Realm } from "../../realm.js";
+import { Value, StringValue, BooleanValue, ObjectValue, FunctionValue, NativeFunctionValue, AbstractValue, AbstractObjectValue, UndefinedValue } from "../../values/index.js";
+import { ToStringPartial } from "../../methods/index.js";
+import { ThrowCompletion } from "../../completions.js";
+import { Construct, ObjectCreate } from "../../methods/index.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeIdentifier } from "babel-types";
-import invariant from "./invariant.js";
-import { describeLocation } from "./intrinsics/ecma262/Error.js";
+import invariant from "../../invariant.js";
+import { describeLocation } from "../ecma262/Error.js";
 
 let buildThrowErrorAbstractValue = buildExpressionTemplate("(function(){throw new Error('abstract value defined at ' + LOCATION);})()");
 
-export default function (realm: Realm): ObjectValue {
-  let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "this");
+export default function (realm: Realm): void {
+  let global = realm.$GlobalObject;
 
-  obj.$DefineOwnProperty("global", {
-    value: obj,
-    writable: true,
-    enumerable: false,
-    configurable: true
-  });
-
-  if (realm.isCompatibleWith("browser")) obj.$DefineOwnProperty("self", {
-    value: obj,
-    writable: true,
-    enumerable: true,
-    configurable: true
-  });
-
-  if (realm.isCompatibleWith("browser")) obj.$DefineOwnProperty("window", {
-    value: obj,
-    writable: true,
-    enumerable: true,
-    configurable: true
-  });
-
-  obj.$DefineOwnProperty("setTimeout", {
-    value: new NativeFunctionValue(realm, "global.setTimeout", "", 2, (context, args) => {
-      throw new Error("TODO: implement global.setTimeout");
-    }),
-    writable: true,
-    enumerable: true,
-    configurable: true
-  });
-
-  obj.$DefineOwnProperty("setInterval", {
-    value: new NativeFunctionValue(realm, "global.setInterval", "", 2, (context, args) => {
-      throw new Error("TODO: implement global.setInterval");
-    }),
-    writable: true,
-    enumerable: true,
-    configurable: true
-  });
-
-  obj.$DefineOwnProperty("dump", {
+  global.$DefineOwnProperty("dump", {
     value: new NativeFunctionValue(realm, "global.dump", "dump", 0, (context, args) => {
       console.log("dump", args.map((arg) => arg.serialize()));
       return context;
@@ -102,7 +63,7 @@ export default function (realm: Realm): ObjectValue {
   // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
-  obj.$DefineOwnProperty("__abstract", {
+  global.$DefineOwnProperty("__abstract", {
     value: new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
       if (!realm.isPartial) {
         throw new ThrowCompletion(
@@ -148,7 +109,7 @@ export default function (realm: Realm): ObjectValue {
   // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
   // The function must not have side effects, and it must not access any state (besides the supplied arguments).
   // TODO: In some distant future, Prepack should be able to figure out automatically what computations need to remain part of the residual program.
-  obj.$DefineOwnProperty("__residual", {
+  global.$DefineOwnProperty("__residual", {
     value: new NativeFunctionValue(realm, "global.__residual", "__residual", 2, (context, [typeNameOrTemplate, f, ...args]) => {
       if (!realm.isPartial) {
         throw new ThrowCompletion(
@@ -181,7 +142,7 @@ export default function (realm: Realm): ObjectValue {
   });
 
   // TODO: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
-  obj.$DefineOwnProperty("__annotate", {
+  global.$DefineOwnProperty("__annotate", {
     value: realm.intrinsics.undefined,
     writable: true,
     enumerable: false,
@@ -190,7 +151,7 @@ export default function (realm: Realm): ObjectValue {
 
   // Internal helper function for tests.
   // __isAbstract(value) checks if a given value is abstract.
-  obj.$DefineOwnProperty("__isAbstract", {
+  global.$DefineOwnProperty("__isAbstract", {
     value: new NativeFunctionValue(realm, "global.__isAbstract", "__isAbstract", 1, (context, [value]) => {
       return new BooleanValue(realm, value instanceof AbstractValue);
     }),
@@ -200,7 +161,7 @@ export default function (realm: Realm): ObjectValue {
   });
 
   // __makePartial(object) marks an (abstract) object as partial.
-  obj.$DefineOwnProperty("__makePartial", {
+  global.$DefineOwnProperty("__makePartial", {
     value: new NativeFunctionValue(realm, "global.__makePartial", "__isPartial", 1, (context, [object]) => {
       // casting to any to avoid Flow bug
       if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
@@ -217,7 +178,7 @@ export default function (realm: Realm): ObjectValue {
   });
 
   // __makeSimple(object) marks an (abstract) object as one that has no getters or setters.
-  obj.$DefineOwnProperty("__makeSimple", {
+  global.$DefineOwnProperty("__makeSimple", {
     value: new NativeFunctionValue(realm, "global.__makeSimple", "__makeSimple", 1, (context, [object]) => {
       // casting to any to avoid Flow bug
       if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
@@ -234,7 +195,7 @@ export default function (realm: Realm): ObjectValue {
   });
 
   // Helper function that emits a check whether a given object property has a particular value.
-  obj.$DefineOwnProperty("__assumeDataProperty", {
+  global.$DefineOwnProperty("__assumeDataProperty", {
     value: new NativeFunctionValue(realm, "global.__assumeDataProperty", "__assumeDataProperty", 3, (context, [object, propertyName, value]) => {
       if (!realm.isPartial) {
         throw new ThrowCompletion(
@@ -269,134 +230,10 @@ export default function (realm: Realm): ObjectValue {
     configurable: true
   });
 
-  for (let name of [
-    "undefined",
-    "NaN",
-    "Infinity"
-  ]) {
-    obj.$DefineOwnProperty(name, {
-      value: realm.intrinsics[name],
-      writable: false,
-      enumerable: false,
-      configurable: false
-    });
-  }
-  let typeNames = [
-    "String",
-    "Object",
-    "Function",
-    "Array",
-    "Number",
-    "RegExp",
-    "Date",
-    "Math",
-    "Error",
-    "Function",
-    "TypeError",
-    "RangeError",
-    "ReferenceError",
-    "SyntaxError",
-    "URIError",
-    "EvalError",
-    "Boolean",
-    "DataView",
-    "Float32Array",
-    "Float64Array",
-    "Int8Array",
-    "Int16Array",
-    "Int32Array",
-    "Map",
-    "WeakMap",
-    "Set",
-    "Uint8Array",
-    "Uint8ClampedArray",
-    "Uint16Array",
-    "Uint32Array",
-    "ArrayBuffer",
-    "JSON",
-    "__IntrospectionError"
-  ];
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-    typeNames = typeNames.concat(
-      "Symbol",
-      "Promise",
-      "WeakSet",
-      "WeakMap",
-      "Proxy",
-      "Reflect",
-    );
-  for (let name of typeNames) {
-    // need to check if the property exists (it may not due to --compatibility)
-    if (realm.intrinsics[name]) {
-      obj.$DefineOwnProperty(name, {
-        value: realm.intrinsics[name],
-        writable: true,
-        enumerable: false,
-        configurable: true
-      });
-    }
-  }
-  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
-    for (let name of [
-      "window",
-      "process",
-      "setImmediate",
-      "clearTimeout",
-      "clearInterval",
-      "clearImmediate",
-      "alert",
-      "navigator",
-      "module",
-      "requestAnimationFrame",
-      "cancelAnimationFrame",
-      "requestIdleCallback",
-      "cancelIdleCallback",
-      "Symbol",
-      "Promise",
-      "WeakSet",
-      "WeakMap",
-      "Proxy",
-      "WebSocket",
-      "Request",
-      "Response",
-      "Headers",
-      "FormData",
-      "Worker",
-      "Node",
-      "Blob",
-      "URLSearchParams",
-      "FileReader",
-      "XMLHttpRequest"
-    ]) {
-      obj.$DefineOwnProperty(name, {
-        value: realm.intrinsics.undefined,
-        writable: true,
-        enumerable: false,
-        configurable: true
-      });
-    }
-  }
-
-  for (let name of [
-    "parseFloat",
-    "parseInt",
-    "console",
-    "isNaN",
-    "eval",
-    "isFinite",
-    "encodeURI",
-    "decodeURI",
-    "encodeURIComponent",
-    "decodeURIComponent",
-    "document"
-  ]) {
-    obj.$DefineOwnProperty(name, {
-      value: realm.intrinsics[name],
-      writable: true,
-      enumerable: false,
-      configurable: true
-    });
-  }
-
-  return obj;
+  global.$DefineOwnProperty("__IntrospectionError", {
+    value: realm.intrinsics.__IntrospectionError,
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
 }

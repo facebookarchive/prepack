@@ -10,6 +10,8 @@
 /* @flow */
 
 import Serializer from "../lib/serializer/index.js";
+import construct_realm from "../lib/construct_realm.js";
+import initializeGlobals from "../lib/globals.js";
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -41,7 +43,10 @@ let tests = search(`${__dirname}/../test/internal`, "test/internal");
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
-    let serialized = new Serializer({ partial: true, compatibility: "jsc-600-1-4-17", mathRandomSeed: "0" }, { internalDebug: true, initializeMoreModules: true }).init(name, code, "", false);
+    let realm = construct_realm({ partial: true, compatibility: "jsc-600-1-4-17", mathRandomSeed: "0" });
+    initializeGlobals(realm);
+    let serializer = new Serializer(realm, { internalDebug: true, initializeMoreModules: true });
+    let serialized = serializer.init(name, code, "", false);
     if (!serialized) {
       console.log(chalk.red("Error during serialization"));
       return false;
