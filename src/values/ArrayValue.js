@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { PropertyKeyValue, Descriptor } from "../types.js";
+import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
 import { ObjectValue, StringValue, NumberValue } from "./index.js";
 import { ArraySetLength } from "../methods/properties.js";
 import { OrdinaryGetOwnProperty, OrdinaryDefineOwnProperty, ThrowIfMightHaveBeenDeleted } from "../methods/properties.js";
@@ -21,6 +21,10 @@ import invariant from "../invariant.js";
 export default class ArrayValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, realm.intrinsics.ArrayPrototype, intrinsicName);
+  }
+
+  getKind(): ObjectKind {
+    return "Array";
   }
 
   // ECMA262 9.4.2.1

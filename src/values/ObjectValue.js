@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm, ExecutionContext } from "../realm.js";
-import type { IterationKind, PromiseCapability, PromiseReaction, DataBlock, PropertyKeyValue, PropertyBinding, Descriptor } from "../types.js";
+import type { IterationKind, PromiseCapability, PromiseReaction, DataBlock, PropertyKeyValue, PropertyBinding, Descriptor, ObjectKind } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value, AbstractValue, ConcreteValue, BooleanValue, StringValue, SymbolValue, NumberValue, UndefinedValue, NullValue, NativeFunctionValue } from "./index.js";
 import type { NativeFunctionCallback } from "./index.js";
@@ -25,7 +25,7 @@ export default class ObjectValue extends ConcreteValue {
     super(realm, intrinsicName);
     realm.recordNewObject(this);
     if (realm.isPartial) this.setupBindings();
-    this.$Prototype = proto || (realm.intrinsics && realm.intrinsics.null);
+    this.$Prototype = proto || realm.intrinsics.null;
     this.$Extensible = realm.intrinsics.true;
     this._isPartial = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
@@ -199,6 +199,24 @@ export default class ObjectValue extends ConcreteValue {
 
   setExtensible(v: boolean) {
     this.$Extensible = v ? this.$Realm.intrinsics.true : this.$Realm.intrinsics.false;
+  }
+
+  getKind(): ObjectKind {
+    // we can deduce the natural prototype by checking whether the following internal slots are present
+    if (this.$SymbolData !== undefined) return "Symbol";
+    if (this.$StringData !== undefined) return "String";
+    if (this.$NumberData !== undefined) return "Number";
+    if (this.$BooleanData !== undefined) return "Boolean";
+    if (this.$DateValue !== undefined) return "Date";
+    if (this.$RegExpMatcher !== undefined) return "RegExp";
+    if (this.$SetData !== undefined) return "Set";
+    if (this.$MapData !== undefined) return "Map";
+    if (this.$DataView !== undefined) return "DataView";
+    if (this.$ArrayBufferData !== undefined) return "ArrayBuffer";
+    if (this.$WeakMapData !== undefined) return "WeakMap";
+    if (this.$WeakSetData !== undefined) return "WeakSet";
+    // TODO #26: Promises. All kinds of iterators. Generators.
+    return "Object";
   }
 
   defineNativeMethod(name: SymbolValue | string, length: number, callback: NativeFunctionCallback, desc?: Descriptor = {}) {
