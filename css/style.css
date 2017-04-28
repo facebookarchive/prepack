@@ -4,9 +4,12 @@
   font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
 }*/
 
+*, ::before, ::after {
+  -webkit-font-smoothing: antialiased;
+}
+
 html {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-family: proxima-nova, "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: #333333;
   line-height: 1.375; /* 16/22 */
   font-size: 16px;
@@ -132,14 +135,12 @@ header, .repl-container {
 }
 
 .hero h2.minitext {
-  font-size: 20px;
-  font-weight: 200;
+  font-size: 28px;
   line-height: inherit;
   margin: 1em 0;
 }
 
 .disclaimer {
-  font-size: 14px;
   width: 50%;
   margin: auto;
 }
@@ -154,7 +155,7 @@ header, .repl-container {
   color: #f5da55;
   display: inline-block;
   font-size: 20px;
-  font-weight: 200;
+  font-weight: 400;
   margin: 0 20px;
   padding: 8px 24px;
   text-decoration: none;
