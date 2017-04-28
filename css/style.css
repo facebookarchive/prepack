@@ -25,11 +25,10 @@ header, .repl-container {
 
 .repl-container {
   position: absolute;
-  top: 50px;
+  top: 60px;
   bottom: 0;
   background-color: #f7f7f7;
 }
-
 
 .nav-main {
   *zoom: 1;
@@ -104,7 +103,7 @@ header, .repl-container {
 
 /* CONTENT */
 .content-container {
-  width: 1010px;
+  max-width: 1010px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 20px;
@@ -112,7 +111,7 @@ header, .repl-container {
 }
 
 .content {
-  margin-top: 50px;
+  margin-top: 60px;
   /*padding: 20px 0;*/
 }
 
@@ -184,6 +183,17 @@ header, .repl-container {
 .example-code {
   flex: 1;
   margin: 5px;
+  max-width: 50%;
+}
+
+@media (max-width: 800px) {
+  .example {
+    flex-direction: column;
+  }
+
+  .example-code {
+    max-width: inherit;
+  }
 }
 
 .example-code::before {
