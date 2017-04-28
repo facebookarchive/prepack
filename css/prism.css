@@ -50,13 +50,13 @@ code[class*="language-"]::selection, code[class*="language-"] ::selection {
 /* Code blocks */
 pre[class*="language-"] {
 	padding: 1em;
-	margin: .5em 0;
+	margin: 0;
 	overflow: auto;
 }
 
 :not(pre) > code[class*="language-"],
 pre[class*="language-"] {
-	background: #f5f2f0;
+	background: #fdfaeb;
 }
 
 /* Inline code */
@@ -136,4 +136,3 @@ pre[class*="language-"] {
 .token.entity {
 	cursor: help;
 }
-

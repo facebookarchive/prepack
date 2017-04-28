@@ -1,7 +1,19 @@
-html, body {
+/*html, body {
   margin: 0;
   height: 100%;
   font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
+}*/
+
+html {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: proxima-nova, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #333333;
+  line-height: 1.375; /* 16/22 */
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
 }
 
 /* HEADER */
@@ -11,16 +23,6 @@ header, .repl-container {
   right: 0;
 }
 
-header {
-  position: fixed;
-  top: 0;
-  padding: 0 20px;
-  height: 50px;
-  background-color: #222;
-  color: #fafafa;
-  line-height: 50px;
-}
-
 .repl-container {
   position: absolute;
   top: 50px;
@@ -28,68 +30,188 @@ header {
   background-color: #f7f7f7;
 }
 
-header p {
-  float: left;
-  margin: 0;
-  margin-left: 20px;
+
+.nav-main {
+  *zoom: 1;
+  background: #f5da55;
+  position: fixed;
+  top: 0;
+  height: 60px;
+  width: 100%;
+  z-index: 100;
+  border-bottom: solid 1px #ddd;
 }
 
-h1 {
-  margin: 0;
-  padding-right: 10px;
-  font-size: 20px;
-  float: left;
+.nav-main:before, .nav-main:after {
+  content: " ";
+  display: table;
 }
 
-nav ul.right {
-  float: right;
+.nav-main:after {
+  clear: both;
 }
 
-nav ul, nav li {
-  float: left;
-  padding: 0;
-  margin: 0;
-}
-
-nav ul li {
-  list-style: none;
-}
-
-nav a {
-  display: block;
-  padding: 0 15px;
-  color: inherit;
+.nav-main a {
+  color: #323330;
   text-decoration: none;
 }
 
-nav a:hover {
-  color: #fff;
+.nav-main .nav-site {
+  float: right;
+  margin: 0;
 }
 
-nav a.active {
-  position: relative;
-  background-color: #333;
+.nav-main .nav-site li {
+  margin: 0;
 }
 
-nav a.active:after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  border-bottom: 3px solid #a3cedf;
+.nav-main .nav-site a {
+  padding: 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 60px;
+  display: inline-block;
+  height: 60px;
+  color: #323330;
+}
+
+.nav-main .nav-site a:hover {
+  color: #323330;
+}
+
+.nav-main .nav-site a.active {
+  color: #323330;
+  border-bottom: 1px solid #323330;
+}
+
+.nav-main .nav-home {
+  color: #323330;
+  font-size: 24px;
+  line-height: 60px;
+}
+
+.nav-home a {
+  color: #323330;
+}
+
+.nav-main ul {
+  display: inline;
+}
+
+.nav-main li {
+  display: inline;
 }
 
 /* CONTENT */
-
 .content-container {
-  width: 1140px;
-  margin: 0 auto;
+  width: 1010px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 .content {
   margin-top: 50px;
-  padding: 20px 0;
+  /*padding: 20px 0;*/
+}
+
+.hero {
+  background: #323330;
+  color: #FFF;
+  padding: 50px 0;
+  font-weight: 200;
+  text-align: center;
+  border-bottom: solid 1px #e0e0e3;
+}
+
+.hero .text {
+  margin: 0;
+  font-size: 64px;
+  line-height: 96px;
+  color: #f5da55;
+}
+
+.hero h2.minitext {
+  font-size: 20px;
+  font-weight: 200;
+  line-height: inherit;
+  margin: 1em 0;
+}
+
+.disclaimer {
+  font-size: 14px;
+  width: 50%;
+  margin: auto;
+}
+
+.buttons-unit {
+  margin: 2em 0 1em;
+}
+
+.button {
+  border-radius: 4px;
+  border: solid 1px #f5da55;
+  color: #f5da55;
+  display: inline-block;
+  font-size: 20px;
+  font-weight: 200;
+  margin: 0 20px;
+  padding: 8px 24px;
+  text-decoration: none;
+}
+
+.button:hover, .button:active, .button:focus {
+  text-decoration: none;
+  box-shadow: none;
+  color: #fafafa;
+  background-color: #f5da55;
+}
+
+.section {
+  background: #fff;
+  padding: 25px 25px;
+  text-align: center;
+  border-bottom: solid 1px #e0e0e3;
+}
+
+.example {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}
+
+.example-code {
+  flex: 1;
+  margin: 5px;
+}
+
+.example-code::before {
+  background: #FBF4D0;
+  color: #B0A673;
+  display: block;
+  font-size: 11px;
+  font-weight: bold;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 10px;
+  text-align: left;
+}
+
+.example-input {
+
+}
+
+.example-input::before {
+  content: 'Input';
+}
+
+.example-output {
+
+}
+
+.example-output::before {
+  content: 'Output';
 }
 
 /* REPL */
@@ -123,8 +245,14 @@ nav a.active:after {
   white-space: pre;
 }
 
+.align-left {
+  text-align: left;
+}
+
 /* FOOTER */
 
 footer {
+  background: #f5da55;
+  padding: 1em;
   text-align: center;
 }
