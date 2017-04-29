@@ -393,7 +393,7 @@ export default class ObjectValue extends ConcreteValue {
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     let prop = this.unknownProperty;
-    if (prop !== undefined && this.$GetOwnProperty(P) === undefined) {
+    if (prop !== undefined && prop.descriptor !== undefined && this.$GetOwnProperty(P) === undefined) {
       let desc = prop.descriptor; invariant(desc !== undefined);
       let val = desc.value; invariant(val instanceof AbstractValue);
       let propName;
@@ -437,7 +437,7 @@ export default class ObjectValue extends ConcreteValue {
       let val = desc.value;
       let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
         [P],
-        ([x]) => t.binaryExpression("===", x, t.stringLiteral(key)));
+        ([x]) => t.binaryExpression("===", x, t.stringLiteral(key)), "check for known property");
       result = joinValuesAsConditional(this.$Realm, cond, val, result);
     }
     return result;
