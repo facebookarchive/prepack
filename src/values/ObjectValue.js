@@ -12,7 +12,7 @@
 import type { Realm, ExecutionContext } from "../realm.js";
 import type { IterationKind, PromiseCapability, PromiseReaction, DataBlock, PropertyKeyValue, PropertyBinding, Descriptor, ObjectKind } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { Value, AbstractValue, ConcreteValue, BooleanValue, StringValue, SymbolValue, NumberValue, UndefinedValue, NullValue, NativeFunctionValue } from "./index.js";
+import { Value, AbstractValue, ConcreteValue, BooleanValue, StringValue, SymbolValue, NumberValue, UndefinedValue, NullValue, FunctionValue, NativeFunctionValue } from "./index.js";
 import type { NativeFunctionCallback } from "./index.js";
 import { joinValuesAsConditional, OrdinarySetPrototypeOf, OrdinaryDefineOwnProperty, OrdinaryDelete,
    OrdinaryOwnPropertyKeys, OrdinaryGetOwnProperty, OrdinaryGet, OrdinaryHasProperty, OrdinarySet,
@@ -153,6 +153,8 @@ export default class ObjectValue extends ConcreteValue {
   $TypedArrayName: void | string;
   $ViewedArrayBuffer: void | ObjectValue;
   $ArrayLength: void | number;
+
+  prototypeOf: void | FunctionValue;
 
   // partial objects
   _isPartial: BooleanValue;
