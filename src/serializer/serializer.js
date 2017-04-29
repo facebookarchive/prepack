@@ -100,6 +100,7 @@ export class Serializer {
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
     this.firstFunctionUsages = new Map();
+    this.functionPrototypes = new Map();
   }
 
   globalReasons: {
@@ -136,6 +137,7 @@ export class Serializer {
   options: SerializerOptions;
   statistics: SerializerStatistics;
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
+  functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -181,12 +183,6 @@ export class Serializer {
     return val instanceof PrimitiveValue;
   }
 
-  _getPropertyValue(obj: ObjectValue, name: string): void | Value {
-    let binding = obj.properties.get(name);
-    if (binding === undefined || binding.descriptor === undefined) return undefined;
-    return binding.descriptor.value;
-  }
-
   _canIgnoreProperty(val: ObjectValue, key: BabelNode, desc: Descriptor) {
     if (IsArray(this.realm, val)) {
       if (t.isIdentifier(key, { name: "length" }) && desc.writable && !desc.enumerable && !desc.configurable) {
@@ -217,22 +213,15 @@ export class Serializer {
 
       // ignore the `prototype` property when it's the right one
       if (t.isIdentifier(key, { name: "prototype" })) {
-        // ensure that it's a plain object
-        let dvalue = desc.value;
         if (!desc.configurable && !desc.enumerable && desc.writable &&
-            dvalue instanceof ObjectValue &&
-            dvalue.getKind() === "Object" &&
-            dvalue.$Prototype === this.realm.intrinsics.ObjectPrototype) {
-          // ensure that it has the right constructor
-          if (this._getPropertyValue(dvalue, "constructor") === val) {
-            return true;
-          }
+            desc.value instanceof ObjectValue && desc.value.prototypeOf === val) {
+          return true;
         }
       }
     }
 
     if (t.isIdentifier(key, { name: "constructor" })) {
-      let constructor = this._isPrototype(val);
+      let constructor = val.prototypeOf;
       if (desc.configurable && !desc.enumerable && desc.writable && desc.value === constructor) return true;
     }
 
@@ -549,11 +538,13 @@ export class Serializer {
     if (this.collectValToRefCountOnly ||
       refCount !== 1) {
        if (init) {
-         let declar = t.variableDeclaration((bindingType ? bindingType : "var"), [
-           t.variableDeclarator(id, init)
-         ]);
+         if (init !== id) {
+           let declar = t.variableDeclaration((bindingType ? bindingType : "var"), [
+             t.variableDeclarator(id, init)
+           ]);
 
-         this.body.push(declar);
+           this.body.push(declar);
+         }
          this.statistics.valueIds++;
        }
      } else {
@@ -848,19 +839,19 @@ export class Serializer {
     return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;
   }
 
-  _isPrototype(obj: ObjectValue): void | FunctionValue {
-    let func = this._getPropertyValue(obj, "constructor");
-    if (!(func instanceof FunctionValue) ||
-        this._getPropertyValue(func, "prototype") !== obj) return undefined;
-    return func;
-  }
-
   _serializeValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
-    let func = this._isPrototype(val);
-    if (func !== undefined) {
-      let serializedFunction = this.serializeValue(func, reasons.concat(`Constructor of object ${name}`));
-      this.addProperties(name, val, reasons);
-      return t.memberExpression(serializedFunction, t.identifier("prototype"));
+    let constructor = val.prototypeOf;
+    if (constructor !== undefined) {
+      let prototypeId = this.refs.get(val);
+      invariant(prototypeId !== undefined);
+      this._eagerOrDelay([constructor], () => {
+        invariant(constructor !== undefined);
+        invariant(prototypeId !== undefined);
+        this.serializeValue(constructor, reasons.concat(`Constructor of object ${name}`));
+        this.addProperties(name, val, reasons);
+        this.functionPrototypes.set(constructor, prototypeId);
+      });
+      return prototypeId;
     }
 
     let kind = val.getKind();
@@ -1056,6 +1047,20 @@ export class Serializer {
         }
       }
 
+      let define = (instance, funcNode) => {
+        let body = getFunctionBody(instance);
+        body.push(funcNode);
+        let { functionValue } = instance;
+        let prototypeId = this.functionPrototypes.get(functionValue);
+        if (prototypeId !== undefined) {
+          let id = this._getValIdForReference(functionValue);
+          body.push(t.variableDeclaration("var", [
+            t.variableDeclarator(prototypeId,
+              t.memberExpression(id, t.identifier("prototype")))
+          ]));
+        }
+      };
+
       if (shouldInline || instances.length === 1 || usesArguments || anySerializedBindingModified) {
         this.statistics.functionClones += instances.length - 1;
         for (let instance of instances) {
@@ -1081,7 +1086,7 @@ export class Serializer {
             this.unstrictFunctionBodies.push(funcNode);
           }
 
-          getFunctionBody(instance).push(funcNode);
+          define(instance, funcNode);
         }
       } else {
         let suffix = instances[0].functionValue.__originalName || "";
@@ -1167,7 +1172,8 @@ export class Serializer {
               ))
             ]);
           }
-          getFunctionBody(instance).push(node);
+
+          define(instance, node);
         }
       }
     }
