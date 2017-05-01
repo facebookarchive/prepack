@@ -214,15 +214,14 @@ export class Serializer {
       // ignore the `prototype` property when it's the right one
       if (t.isIdentifier(key, { name: "prototype" })) {
         if (!desc.configurable && !desc.enumerable && desc.writable &&
-            desc.value instanceof ObjectValue && desc.value.prototypeOf === val) {
+            desc.value instanceof ObjectValue && desc.value.originalConstructor === val) {
           return true;
         }
       }
     }
 
     if (t.isIdentifier(key, { name: "constructor" })) {
-      let constructor = val.prototypeOf;
-      if (desc.configurable && !desc.enumerable && desc.writable && desc.value === constructor) return true;
+      if (desc.configurable && !desc.enumerable && desc.writable && desc.value === val.originalConstructor) return true;
     }
 
     return false;
@@ -711,7 +710,42 @@ export class Serializer {
     return t.arrayExpression(elems);
   }
 
+  _getPropertyValue(val: ObjectValue, name: string): void | Value {
+    let prototypeBinding = val.properties.get(name);
+    if (prototypeBinding === undefined) return undefined;
+    let prototypeDesc = prototypeBinding.descriptor;
+    if (prototypeDesc === undefined) return undefined;
+    return prototypeDesc.value;
+  }
+
+  _isDefaultPrototype(prototype: ObjectValue): boolean {
+    if (prototype.symbols.size !== 0 ||
+      prototype.$Prototype !== this.realm.intrinsics.ObjectPrototype ||
+      !prototype.getExtensible()) return false;
+    let foundConstructor = false;
+    for (let name of prototype.properties.keys())
+      if (name === "constructor" &&
+        this._getPropertyValue(prototype, name) === prototype.originalConstructor)
+        foundConstructor = true;
+      else
+        return false;
+    return foundConstructor;
+  }
+
   _serializeValueFunction(name: string, val: FunctionValue, reasons: Array<string>): void | BabelNodeExpression {
+    // If the original prototype object was mutated,
+    // request its serialization here as this might be observable by
+    // residual code.
+    let prototype = this._getPropertyValue(val, "prototype");
+    if (prototype instanceof ObjectValue &&
+      prototype.originalConstructor === val &&
+      !this._isDefaultPrototype(prototype)) {
+      this._eagerOrDelay([val], () => {
+        invariant(prototype);
+        this.serializeValue(prototype, reasons.concat(`Prototype of ${name}`));
+      });
+    }
+
     if (val instanceof BoundFunctionValue) {
       this.addProperties(name, val, reasons);
       return t.callExpression(
@@ -840,7 +874,10 @@ export class Serializer {
   }
 
   _serializeValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
-    let constructor = val.prototypeOf;
+    // If this object is a prototype object that was implicitly created by the runtime
+    // for a constructor, then we can obtain a reference to this object
+    // in a special way that's handled alongside function serialization.
+    let constructor = val.originalConstructor;
     if (constructor !== undefined) {
       let prototypeId = this.refs.get(val);
       invariant(prototypeId !== undefined);

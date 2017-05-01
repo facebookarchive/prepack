@@ -39,7 +39,7 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
   if (!prototype) {
     // a. Let prototype be ObjectCreate(%ObjectPrototype%).
     prototype = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-    prototype.prototypeOf = F;
+    prototype.originalConstructor = F;
 
     // b. Perform ! DefinePropertyOrThrow(prototype, "constructor", PropertyDescriptor{[[Value]]: F, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: true }).
     DefinePropertyOrThrow(realm, prototype, "constructor", {

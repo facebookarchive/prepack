@@ -801,7 +801,7 @@ export function CreateDynamicFunction(realm: Realm, constructor: ObjectValue, ne
   if (kind === "generator") {
     // a. Let prototype be ObjectCreate(%GeneratorPrototype%).
     let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
-    prototype.prototypeOf = F;
+    prototype.originalConstructor = F;
 
     // b. Perform DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
     DefinePropertyOrThrow(realm, F, "prototype", {
