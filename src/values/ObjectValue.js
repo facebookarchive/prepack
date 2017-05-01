@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm, ExecutionContext } from "../realm.js";
-import type { IterationKind, PromiseCapability, PromiseReaction, DataBlock, PropertyKeyValue, PropertyBinding, Descriptor, ObjectKind } from "../types.js";
+import type { IterationKind, PromiseCapability, PromiseReaction, DataBlock, PropertyKeyValue, PropertyBinding, Descriptor, ObjectKind, TypedArrayKind } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value, AbstractValue, ConcreteValue, BooleanValue, StringValue, SymbolValue, NumberValue, UndefinedValue, NullValue, FunctionValue, NativeFunctionValue } from "./index.js";
 import type { NativeFunctionCallback } from "./index.js";
@@ -150,7 +150,7 @@ export default class ObjectValue extends ConcreteValue {
   $GeneratorContext: void | ExecutionContext;
 
   // typed array
-  $TypedArrayName: void | string;
+  $TypedArrayName: void | TypedArrayKind;
   $ViewedArrayBuffer: void | ObjectValue;
   $ArrayLength: void | number;
 
@@ -230,6 +230,7 @@ export default class ObjectValue extends ConcreteValue {
     if (this.$ArrayBufferData !== undefined) return "ArrayBuffer";
     if (this.$WeakMapData !== undefined) return "WeakMap";
     if (this.$WeakSetData !== undefined) return "WeakSet";
+    if (this.$TypedArrayName !== undefined) return this.$TypedArrayName;
     // TODO #26: Promises. All kinds of iterators. Generators.
     return "Object";
   }

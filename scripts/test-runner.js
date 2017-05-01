@@ -103,6 +103,17 @@ function runTest(name, code) {
       console.log(err);
     }
     return false;
+  } else if (code.includes("// cannot serialize")) {
+    let realm = construct_realm(realmOptions);
+    initializeGlobals(realm);
+    let serializer = new Serializer(realm, serializerOptions);
+    let serialized = serializer.init(name, code, "", false);
+    if (!serialized) {
+      return true;
+    } else {
+      console.log(chalk.red("Test should have caused error during serialization!"));
+      return false;
+    }
   } else if (code.includes("// no effect")) {
     try {
       let realm = construct_realm(realmOptions);
