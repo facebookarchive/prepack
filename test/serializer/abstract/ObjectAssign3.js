@@ -1,3 +1,5 @@
+// skip
+
 let ob = global.__abstract ? __abstract({}, "({p: 1})") : {p: 1};
 if (global.__makeSimple) __makeSimple(ob);
 

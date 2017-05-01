@@ -94,14 +94,28 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
           invariant(desc !== undefined);
           let sourceValue = desc.value;
           if (sourceValue instanceof AbstractValue) {
+            // Check that there was a single assignment to the property
             let cond = sourceValue.args[0];
             if (cond instanceof AbstractValue && cond.kind === "template for property name condition") {
               if (sourceValue.args[2] instanceof UndefinedValue) {
+                // check that the value that was assigned itself came from
+                // an expression of the form sourceObject[absStr].
                 let mem = sourceValue.args[1];
-                if (mem instanceof AbstractValue && mem.kind === "sentinel member expression") {
-                  if (mem.args[0] instanceof ObjectValue && mem.args[1] === absStr) {
+                while (mem instanceof AbstractValue) {
+                  if (mem.kind === "sentinel member expression" && mem.args[0] instanceof ObjectValue && mem.args[1] === absStr) {
                     sourceObject = mem.args[0];
+                    break;
                   }
+                  // check if mem is a test for absStr being equal to a known property
+                  // if so skip over it until we get to the expression of the form sourceObject[absStr].
+                  let condition = mem.args[0];
+                  if (condition instanceof AbstractValue && condition.kind === "check for known property") {
+                    if (condition.args[0] === absStr) {
+                      mem = mem.args[2];
+                      continue;
+                    }
+                  }
+                  break;
                 }
               }
             }

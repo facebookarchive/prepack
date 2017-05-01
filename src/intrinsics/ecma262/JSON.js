@@ -501,6 +501,7 @@ export default function (realm: Realm): ObjectValue {
       let template;
       if (clonedValue instanceof AbstractObjectValue) {
         template = InternalGetTemplate(realm, clonedValue);
+        template._isSimple = realm.intrinsics.true;
       }
       let buildNode = ([node]) => buildJSONParse({
         STRING: node
