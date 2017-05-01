@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import type { ElementType } from "../../types.js";
+import type { ElementType, TypedArrayKind } from "../../types.js";
 import { ElementSize } from "../../types.js";
 import { NumberValue, NativeFunctionValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
 import { ThrowCompletion } from "../../completions.js";
@@ -209,6 +209,22 @@ export default function (realm: Realm): NativeFunctionValue {
   return func;
 }
 
+// ECMA262 22.2 Table 50
+function getConstructorName(type: ElementType): TypedArrayKind {
+  switch (type) {
+    case "Float32": return "Float32Array";
+    case "Float64": return "Float64Array";
+    case "Int8": return "Int8Array";
+    case "Int16": return "Int16Array";
+    case "Int32": return "Int32Array";
+    case "Uint8": return "Uint8Array";
+    case "Uint16": return "Uint16Array";
+    case "Uint32": return "Uint32Array";
+    case "Uint8Clamped": return "Uint8ClampedArray";
+    default: invariant(false);
+  }
+}
+
 export function build(realm: Realm, type: ElementType): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, `${type}Array`, `${type}Array`, 3, (context, args, argCount, NewTarget) => {
     if (argCount === 0) {
@@ -222,7 +238,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       }
 
       // 2. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
-      let constructorName = `${type}Array`;
+      let constructorName = getConstructorName(type);
 
       // 3. Return ? AllocateTypedArray(constructorName, NewTarget, "%TypedArrayPrototype%", 0).
       return AllocateTypedArray(realm, constructorName, NewTarget, `${type}ArrayPrototype`, 0);
@@ -244,7 +260,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       let elementLength = ToIndexPartial(realm, length);
 
       // 4. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
-      let constructorName = `${type}Array`;
+      let constructorName = getConstructorName(type);
 
       // 5. Return ? AllocateTypedArray(constructorName, NewTarget, "%TypedArrayPrototype%", elementLength).
       return AllocateTypedArray(realm, constructorName, NewTarget, `${type}ArrayPrototype`, elementLength);
@@ -263,7 +279,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       }
 
       // 3. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
-      let constructorName = `${type}Array`;
+      let constructorName = getConstructorName(type);
 
       // 4. Let O be ? AllocateTypedArray(constructorName, NewTarget, "%TypedArrayPrototype%").
       let O = AllocateTypedArray(realm, constructorName, NewTarget, `${type}ArrayPrototype`);
@@ -384,7 +400,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       }
 
       // 3. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
-      let constructorName = `${type}Array`;
+      let constructorName = getConstructorName(type);
 
       // 4. Let O be ? AllocateTypedArray(constructorName, NewTarget, "%TypedArrayPrototype%").
       let O = AllocateTypedArray(realm, constructorName, NewTarget, `${type}ArrayPrototype`);
@@ -474,7 +490,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       }
 
       // 3. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
-      let constructorName = `${type}Array`;
+      let constructorName = getConstructorName(type);
 
       // 4. Let O be ? AllocateTypedArray(constructorName, NewTarget, "%TypedArrayPrototype%").
       let O = AllocateTypedArray(realm, constructorName, NewTarget, `${type}ArrayPrototype`);

@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
+import type { TypedArrayKind } from "../types.js";
 import { ThrowCompletion } from "../completions.js";
 import { AbstractValue, IntegerIndexedExotic, ObjectValue, Value, StringValue, NumberValue, UndefinedValue } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "../methods/get.js";
@@ -210,7 +211,7 @@ export function ValidateTypedArray(realm: Realm, O: Value) {
 }
 
 // ECMA262 22.2.4.2.1
-export function AllocateTypedArray(realm: Realm, constructorName: string, newTarget: ObjectValue, defaultProto: string, length?: number): ObjectValue {
+export function AllocateTypedArray(realm: Realm, constructorName: TypedArrayKind, newTarget: ObjectValue, defaultProto: string, length?: number): ObjectValue {
   // 1. Let proto be ? GetPrototypeFromConstructor(newTarget, defaultProto).
   let proto = GetPrototypeFromConstructor(realm, newTarget, defaultProto);
 
