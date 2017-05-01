@@ -598,6 +598,13 @@ export class Serializer {
   }
 
   _shouldDelayValue(val: Value): boolean | BabelNodeIdentifier {
+    // Serialization of a statement related to a value MUST be delayed if
+    // the creation of the value's identity requires the availability of either:
+    // 1. a time-dependent value that is declared by some generator entry
+    //    that has not yet been processed
+    //    (tracked by the `declaredDerivedIds` set), or
+    // 2. a value that is also currently being serialized
+    //    (tracked by the `serializationStack`).
     let delayReason;
     if (val instanceof BoundFunctionValue) {
       delayReason = this._shouldDelayValue(val.$BoundTargetFunction);
@@ -622,6 +629,13 @@ export class Serializer {
       if (delayReason) return delayReason;
       delayReason = this._shouldDelayValue(val.$ProxyHandler);
       if (delayReason) return delayReason;
+    } else if (val instanceof ObjectValue) {
+      let kind = val.getKind();
+      if (kind === "Date") {
+        invariant(val.$DateValue !== undefined);
+        delayReason = this._shouldDelayValue(val.$DateValue);
+        if (delayReason) return delayReason;
+      }
     }
 
     return this.serializationStack.indexOf(val) >= 0;
@@ -915,6 +929,12 @@ export class Serializer {
         invariant(booleanData !== undefined);
         this.addProperties(name, val, reasons);
         return t.newExpression(this.preludeGenerator.memoizeReference("Boolean"), [t.booleanLiteral(booleanData.value)]);
+      case "Date":
+        let dateValue = val.$DateValue;
+        invariant(dateValue !== undefined);
+        let serializedDateValue = this.serializeValue(dateValue, reasons.concat(`[[DateValue]] of object ${name}`));
+        this.addProperties(name, val, reasons);
+        return t.newExpression(this.preludeGenerator.memoizeReference("Date"), [serializedDateValue]);
       default:
         if (kind !== "Object")
           this.logger.logError(`Serialization of an object of kind ${kind} is not supported.`);
