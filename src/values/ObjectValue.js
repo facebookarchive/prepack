@@ -154,7 +154,8 @@ export default class ObjectValue extends ConcreteValue {
   $ViewedArrayBuffer: void | ObjectValue;
   $ArrayLength: void | number;
 
-  prototypeOf: void | FunctionValue;
+  // backpointer to the constructor if this object was created its prototype object
+  originalConstructor: void | FunctionValue;
 
   // partial objects
   _isPartial: BooleanValue;
