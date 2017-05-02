@@ -265,13 +265,15 @@ export class Serializer {
 
     // inject properties with computed names
     if (obj.unknownProperty !== undefined) {
-      let desc = obj.unknownProperty.descriptor; invariant(desc !== undefined);
-      let val = desc.value;
-      invariant(val instanceof AbstractValue);
-      this._eagerOrDelay(this._getNestedAbstractValues(val, [obj]), () => {
+      let desc = obj.unknownProperty.descriptor;
+      if (desc !== undefined) {
+        let val = desc.value;
         invariant(val instanceof AbstractValue);
-        this._emitPropertiesWithComputedNames(obj, val, reasons);
-      });
+        this._eagerOrDelay(this._getNestedAbstractValues(val, [obj]), () => {
+          invariant(val instanceof AbstractValue);
+          this._emitPropertiesWithComputedNames(obj, val, reasons);
+        });
+      }
     }
 
     // prototype

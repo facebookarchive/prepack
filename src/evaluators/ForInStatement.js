@@ -74,18 +74,16 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
       new TypesDomain(StringValue), ValuesDomain.topVal, [], t.stringLiteral("never used"));
     let boundName;
     for (let n of BoundNames(realm, lh)) {
-      if (boundName !== undefined) {
-        ob.throwIfNotConcreteObject();
-        return realm.intrinsics.undefined;
-      }
+      invariant(boundName === undefined);
       boundName = t.identifier(n);
       envRec.CreateMutableBinding(n, false);
       envRec.InitializeBinding(n, absStr);
     }
     let [compl, gen, bindings, properties, createdObj] =
       realm.partially_evaluate_node(body, strictCode, blockEnv);
-    if (compl instanceof Value && gen.body.length === 0 && bindings.size === 0 &&
-        properties.size === 1 && createdObj.size === 0) {
+    if (compl instanceof Value  && gen.body.length === 0 && bindings.size === 0 &&
+        properties.size === 1) {
+      invariant(createdObj.size === 0); // or there will be more than one property
       let targetObject;
       let sourceObject;
       properties.forEach((desc, key, map) => {
@@ -93,31 +91,30 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
           targetObject = key.object;
           invariant(desc !== undefined);
           let sourceValue = desc.value;
-          if (sourceValue instanceof AbstractValue) {
-            // Check that there was a single assignment to the property
-            let cond = sourceValue.args[0];
-            if (cond instanceof AbstractValue && cond.kind === "template for property name condition") {
-              if (sourceValue.args[2] instanceof UndefinedValue) {
-                // check that the value that was assigned itself came from
-                // an expression of the form sourceObject[absStr].
-                let mem = sourceValue.args[1];
-                while (mem instanceof AbstractValue) {
-                  if (mem.kind === "sentinel member expression" && mem.args[0] instanceof ObjectValue && mem.args[1] === absStr) {
-                    sourceObject = mem.args[0];
-                    break;
-                  }
-                  // check if mem is a test for absStr being equal to a known property
-                  // if so skip over it until we get to the expression of the form sourceObject[absStr].
-                  let condition = mem.args[0];
-                  if (condition instanceof AbstractValue && condition.kind === "check for known property") {
-                    if (condition.args[0] === absStr) {
-                      mem = mem.args[2];
-                      continue;
-                    }
-                  }
-                  break;
+          // because sourceValue was written to key.object.unknownProperty it must be that
+          invariant(sourceValue instanceof AbstractValue);
+          let cond = sourceValue.args[0];
+          // and because the write always creates a value of this shape
+          invariant(cond instanceof AbstractValue && cond.kind === "template for property name condition");
+          if (sourceValue.args[2] instanceof UndefinedValue) {
+            // check that the value that was assigned itself came from
+            // an expression of the form sourceObject[absStr].
+            let mem = sourceValue.args[1];
+            while (mem instanceof AbstractValue) {
+              if (mem.kind === "sentinel member expression" && mem.args[0] instanceof ObjectValue && mem.args[1] === absStr) {
+                sourceObject = mem.args[0];
+                break;
+              }
+              // check if mem is a test for absStr being equal to a known property
+              // if so skip over it until we get to the expression of the form sourceObject[absStr].
+              let condition = mem.args[0];
+              if (condition instanceof AbstractValue && condition.kind === "check for known property") {
+                if (condition.args[0] === absStr) {
+                  mem = mem.args[2];
+                  continue;
                 }
               }
+              break;
             }
           }
         }
@@ -129,7 +126,7 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
         let generator = realm.generator; invariant(generator !== undefined);
         generator.body.push({
           // duplicate args to ensure refcount > 1
-          args: [o, targetObject, sourceObject, ob, targetObject, sourceObject],
+          args: [o, targetObject, sourceObject, targetObject, sourceObject],
           buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {
             invariant(boundName !== undefined);
             return t.forInStatement(lh, obj,
