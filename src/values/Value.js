@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import type { BabelNodeSourceLocation } from "babel-types";
 import type { Realm } from "../realm.js";
 import { EmptyValue, UndefinedValue, NullValue, BooleanValue, StringValue, SymbolValue, NumberValue, ObjectValue, ConcreteValue, AbstractObjectValue, FunctionValue } from "./index.js";
 
@@ -20,6 +21,7 @@ export default class Value {
 
     this.$Realm = realm;
     this.intrinsicName = intrinsicName;
+    this.expressionLocation = realm.currentLocation;
   }
   // Name from original source if existant
   __originalName: void | string;
@@ -48,7 +50,8 @@ export default class Value {
   }
 
   intrinsicName: ?string;
-
+  // The source location of the expression that first produced this value.
+  expressionLocation: ?BabelNodeSourceLocation;
   $Realm: Realm;
 
   isIntrinsic(): boolean {

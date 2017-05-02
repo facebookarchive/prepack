@@ -192,7 +192,7 @@ export class Serializer {
     } else if (val instanceof FunctionValue) {
       if (t.isIdentifier(key, { name: "length" })) {
         if (desc.value === undefined) {
-          this.logger.logError("Functions with length accessor properties are not supported.");
+          this.logger.logError(val, "Functions with length accessor properties are not supported.");
           // Rationale: .bind() would call the accessor, which might throw, mutate state, or do whatever...
         }
         // length property will be inferred already by the amount of parameters
@@ -823,7 +823,7 @@ export class Serializer {
       );
 
       if (val.isResidual && Object.keys(functionInfo.names).length) {
-        this.logger.logError(`residual function ${describeLocation(this.realm, val, undefined, code.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
+        this.logger.logError(val, `residual function ${describeLocation(this.realm, val, undefined, code.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
       }
     }
 
@@ -939,9 +939,9 @@ export class Serializer {
         return t.newExpression(this.preludeGenerator.memoizeReference("Date"), [serializedDateValue]);
       default:
         if (kind !== "Object")
-          this.logger.logError(`Serialization of an object of kind ${kind} is not supported.`);
+          this.logger.logError(val, `Serialization of an object of kind ${kind} is not supported.`);
         if (this.$ParameterMap !== undefined)
-          this.logger.logError(`Serialization of an arguments object is not supported.`);
+          this.logger.logError(val, `Serialization of an arguments object is not supported.`);
 
         let remainingProperties = new Map(val.properties);
         let props = [];

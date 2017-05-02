@@ -60,10 +60,10 @@ class ModuleTracer extends Tracer {
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
         moduleIdValue = moduleId.value;
         if (!this.modules.moduleIds.has(moduleIdValue)) {
-          this.modules.logger.logError("Module referenced by require call has not been defined.");
+          this.modules.logger.logError(moduleId, "Module referenced by require call has not been defined.");
         }
       } else {
-        this.modules.logger.logError("First argument to require function is not a number or string value.");
+        this.modules.logger.logError(moduleId, "First argument to require function is not a number or string value.");
         return undefined;
       }
       this.log(`>require(${moduleIdValue})`);
@@ -101,13 +101,13 @@ class ModuleTracer extends Tracer {
       if (result instanceof Completion) throw result;
       return result;
     } else if (F === this.modules.getDefine()) {
-      if (this.partialEvaluation !== 0) this.modules.logger.logError("Defining a module in nested partial evaluation is not supported.");
+      if (this.partialEvaluation !== 0) this.modules.logger.logError(F, "Defining a module in nested partial evaluation is not supported.");
       let factoryFunction = argumentsList[0];
       if (factoryFunction instanceof FunctionValue) this.modules.factoryFunctions.add(factoryFunction);
-      else this.modules.logger.logError("First argument to define function is not a function value.");
+      else this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
       let moduleId = argumentsList[1];
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) this.modules.moduleIds.add(moduleId.value);
-      else this.modules.logger.logError("Second argument to define function is not a number or string value.");
+      else this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
     }
     return undefined;
   }
