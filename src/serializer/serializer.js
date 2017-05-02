@@ -726,6 +726,27 @@ export class Serializer {
     return t.arrayExpression(elems);
   }
 
+  _serializeValueTypedArray(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
+    let elems = [];
+
+    let len = val.$ArrayLength;
+    invariant(len !== undefined);
+    for (let i = 0; i < len; i++) {
+      let key = i + "";
+      let elemVal = val.$Get(key, val);
+      let elem = this.serializeValue(
+        elemVal,
+        reasons.concat(`Declared in typed array ${name} at index ${key}`)
+      );
+      elems.push(elem);
+    }
+
+    this.addProperties(name, val, reasons, val.properties);
+    let arrayValue = t.arrayExpression(elems);
+    return t.newExpression(
+      this.preludeGenerator.memoizeReference(val.getKind()), [arrayValue]);
+  }
+
   _getPropertyValue(val: ObjectValue, name: string): void | Value {
     let prototypeBinding = val.properties.get(name);
     if (prototypeBinding === undefined) return undefined;
@@ -937,6 +958,16 @@ export class Serializer {
         let serializedDateValue = this.serializeValue(dateValue, reasons.concat(`[[DateValue]] of object ${name}`));
         this.addProperties(name, val, reasons);
         return t.newExpression(this.preludeGenerator.memoizeReference("Date"), [serializedDateValue]);
+      case "Float32Array":
+      case "Float64Array":
+      case "Int8Array":
+      case "Int16Array":
+      case "Int32Array":
+      case "Uint8Array":
+      case "Uint16Array":
+      case "Uint32Array":
+      case "Uint8ClampedArray":
+        return this._serializeValueTypedArray(name, val, reasons);
       default:
         if (kind !== "Object")
           this.logger.logError(`Serialization of an object of kind ${kind} is not supported.`);
