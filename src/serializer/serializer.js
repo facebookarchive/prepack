@@ -277,13 +277,14 @@ export class Serializer {
     }
 
     // prototype
-    this.addPrototype(name, obj, reasons);
+    this.addObjectPrototype(name, obj, reasons);
+    if (obj instanceof FunctionValue) this.addConstructorPrototype(name, obj, reasons);
 
     this.statistics.objects++;
     this.statistics.objectProperties += obj.properties.size;
   }
 
-  addPrototype(name: string, obj: ObjectValue, reasons: Array<string>) {
+  addObjectPrototype(name: string, obj: ObjectValue, reasons: Array<string>) {
     let proto = obj.$Prototype;
 
     let kind = obj.getKind();
@@ -306,6 +307,21 @@ export class Serializer {
         )));
       }
     });
+  }
+
+  addConstructorPrototype(name: string, func: FunctionValue, reasons: Array<string>) {
+    // If the original prototype object was mutated,
+    // request its serialization here as this might be observable by
+    // residual code.
+    let prototype = this._getPropertyValue(func, "prototype");
+    if (prototype instanceof ObjectValue &&
+      prototype.originalConstructor === func &&
+      !this._isDefaultPrototype(prototype)) {
+      this._eagerOrDelay([func], () => {
+        invariant(prototype);
+        this.serializeValue(prototype, reasons.concat(`Prototype of ${name}`));
+      });
+    }
   }
 
   _getNestedAbstractValues(absVal: AbstractValue, values: Array<Value>): Array<Value> {
@@ -770,19 +786,6 @@ export class Serializer {
   }
 
   _serializeValueFunction(name: string, val: FunctionValue, reasons: Array<string>): void | BabelNodeExpression {
-    // If the original prototype object was mutated,
-    // request its serialization here as this might be observable by
-    // residual code.
-    let prototype = this._getPropertyValue(val, "prototype");
-    if (prototype instanceof ObjectValue &&
-      prototype.originalConstructor === val &&
-      !this._isDefaultPrototype(prototype)) {
-      this._eagerOrDelay([val], () => {
-        invariant(prototype);
-        this.serializeValue(prototype, reasons.concat(`Prototype of ${name}`));
-      });
-    }
-
     if (val instanceof BoundFunctionValue) {
       this.addProperties(name, val, reasons);
       return t.callExpression(
@@ -1113,6 +1116,7 @@ export class Serializer {
     }
 
     this.statistics.functions = functionEntries.length;
+    let hoistedBody = [];
     for (let [funcBody, { usesArguments, usesThis, instances, names, modified }] of functionEntries) {
       let params = instances[0].functionValue.$FormalParameters;
       invariant(params !== undefined);
@@ -1138,7 +1142,9 @@ export class Serializer {
       }
 
       let define = (instance, funcNode) => {
-        let body = getFunctionBody(instance);
+        let body = funcNode.type === "FunctionDeclaration"
+          ? hoistedBody
+          : getFunctionBody(instance);
         body.push(funcNode);
         let { functionValue } = instance;
         let prototypeId = this.functionPrototypes.get(functionValue);
@@ -1238,7 +1244,9 @@ export class Serializer {
           let node;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
           invariant(insertionPoint !== undefined);
-          if (usesThis || firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) {
+          if (usesThis ||
+              firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint) ||
+              this.functionPrototypes.get(functionValue) !== undefined) {
             let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
             for (let flatArg of flatArgs) callArgs.push(flatArg);
             for (let param of params) {
@@ -1270,15 +1278,18 @@ export class Serializer {
 
     for (let instance of this.functionInstances.reverse()) {
       let functionBody = functionBodies.get(instance);
-      invariant(functionBody !== undefined);
-      let insertionPoint = instance.insertionPoint;
-      invariant(insertionPoint instanceof BodyReference);
-      Array.prototype.splice.apply(insertionPoint.body, ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>)));
+      if (functionBody !== undefined) {
+        let insertionPoint = instance.insertionPoint;
+        invariant(insertionPoint instanceof BodyReference);
+        Array.prototype.splice.apply(insertionPoint.body, ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>)));
+      }
     }
 
     if (requireStatistics.replaced > 0 && !this.collectValToRefCountOnly) {
       console.log(`=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds.size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`);
     }
+
+    return hoistedBody;
   }
 
   _getContext(reasons: Array<string>): SerializationContext {
@@ -1366,7 +1377,7 @@ export class Serializer {
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
       this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
 
-    this._spliceFunctions();
+    let hoistedBody = this._spliceFunctions();
 
     // add strict modes
     let strictDirective = t.directive(t.directiveLiteral("use strict"));
@@ -1401,7 +1412,7 @@ export class Serializer {
         ),
       ]))];
     }
-    body = body.concat(this.prelude, this.body);
+    body = body.concat(this.prelude, hoistedBody, this.body);
     this.factorifyObjects(body);
 
     let ast_body = [];
