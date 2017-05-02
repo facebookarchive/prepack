@@ -367,9 +367,9 @@ export class Serializer {
   }
 
   _serializeKey(key: string, canBeIdentifier: boolean = true) {
-    // If key is a numeric string literal, parse it and set it as a numeric index instead.
-    let index = Number.parseInt(((key: any): BabelNodeStringLiteral).value, 10);
-    if (index.toString() === key.value) {
+    // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
+    let index = Number.parseInt(key, 10);
+    if (index >= 0 && index.toString() === key) {
       return t.numericLiteral(index);
     }
 
