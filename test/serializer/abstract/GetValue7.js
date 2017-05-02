@@ -1,5 +1,3 @@
-// skip
-
 var n = global.__abstract ? __abstract("string", '("x")') : "x";
 var m = global.__abstract ? __abstract("string", '("z")') : "z";
 
