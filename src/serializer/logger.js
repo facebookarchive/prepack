@@ -12,7 +12,7 @@
 import { Realm, ExecutionContext } from "../realm.js";
 import { ToStringPartial, Get, InstanceofOperator } from "../methods/index.js";
 import { Completion, ThrowCompletion } from "../completions.js";
-import { ObjectValue, StringValue } from "../values/index.js";
+import { ObjectValue, StringValue, Value } from "../values/index.js";
 import invariant from "../invariant.js";
 
 export class Logger {
@@ -90,7 +90,14 @@ export class Logger {
     this._hasErrors = true;
   }
 
-  logError(message: string) {
+  logError(value: Value, message: string) {
+    let loc = value.expressionLocation;
+    if (loc) {
+      let locString = `${loc.start.line}:${loc.start.column + 1}`;
+      if (loc.source) locString = `${loc.source}:${locString}`;
+      message = `${message}\nat: ${locString}`;
+    }
+
     console.error(message);
     this._hasErrors = true;
   }
