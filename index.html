@@ -122,7 +122,7 @@
     return x instanceof Function ? (moduleTable[id] = x()) : x;
   }
   global.require = require;
-  define("one", function() { return 1; }, "one");
+  define("one", function() { return 1; });
   define("two", function() { return require("one") + require("one"); });
   define("three", function() { return require("two") + require("one"); });
   define("four", function() { return require("three") + require("one"); });
@@ -154,7 +154,7 @@ three = require("three");</code></pre>
           </div>
 
           <p>
-            Note how most computations have been pre-initialized. However, the function that computes four (_2) remains in the residual program.
+            Note how most computations have been pre-initialized. However, the function that computes four (_2) remains in the residual program since it was not called at initialization time.
           </p>
 
           <h3>Environment Interactions and Branching</h3>
