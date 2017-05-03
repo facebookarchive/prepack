@@ -217,13 +217,9 @@ export function StrictEqualityComparison(realm: Realm, x: ConcreteValue, y: Conc
     if (isNaN(y.value)) return false;
 
     // c. If x is the same Number value as y, return true.
+    // d. If x is +0 and y is -0, return true. (handled by c)
+    // e. If x is -0 and y is +0, return true. (handled by c)
     if (x.value === y.value) return true;
-
-    // d. If x is +0 and y is -0, return true.
-    if (Object.is(x, +0) && Object.is(y, -0)) return true;
-
-    // e. If x is -0 and y is +0, return true.
-    if (Object.is(x, -0) && Object.is(y, +0)) return true;
 
     // f. Return false.
     return false;
