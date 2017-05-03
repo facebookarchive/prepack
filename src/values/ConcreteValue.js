@@ -44,7 +44,7 @@ export default class ConcreteValue extends Value {
   }
 
   mightHaveBeenDeleted(): boolean {
-    return false;
+    return this instanceof EmptyValue;
   }
 
   promoteEmptyToUndefined(): Value {

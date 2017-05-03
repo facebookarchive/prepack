@@ -14,7 +14,7 @@ import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 
 import { IntrospectionThrowCompletion } from "../completions.js";
-import { AbstractObjectValue, BooleanValue, ConcreteValue, EmptyValue, NullValue, NumberValue, ObjectValue, PrimitiveValue, StringValue, SymbolValue, UndefinedValue, Value } from "./index.js";
+import { AbstractObjectValue, BooleanValue, ConcreteValue, NullValue, NumberValue, ObjectValue, PrimitiveValue, StringValue, SymbolValue, UndefinedValue, Value } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
@@ -37,6 +37,7 @@ export default class AbstractValue extends Value {
     invariant(types.getType() !== NullValue && types.getType() !== UndefinedValue);
     this.types = types;
     this.values = values;
+    this.mightBeEmpty = false;
     this._buildNode = buildNode;
     this.args = args;
     this.kind = kind;
@@ -45,6 +46,7 @@ export default class AbstractValue extends Value {
   clone(): AbstractValue {
     let result = new AbstractValue(
       this.$Realm, this.types, this.values, this.args, this._buildNode);
+    if (this.mightBeEmpty) result.mightBeEmpty = true;
     if (this.args) result.args = this.args;
     if (this.kind) result.kind = this.kind;
     return result;
@@ -63,6 +65,7 @@ export default class AbstractValue extends Value {
   kind: ?string;
   types: TypesDomain;
   values: ValuesDomain;
+  mightBeEmpty: boolean;
   args: Array<Value>;
   _buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression;
 
@@ -169,14 +172,14 @@ export default class AbstractValue extends Value {
   }
 
   mightHaveBeenDeleted(): boolean {
-    if (this.values.isTop()) return false;
-    return this.values.includesValueOfType(EmptyValue);
+    return this.mightBeEmpty;
   }
 
   promoteEmptyToUndefined(): Value {
     if (this.values.isTop()) return this;
-    if (!this.values.includesValueOfType(EmptyValue)) return this;
+    if (!this.mightBeEmpty) return this;
     let result = this.clone();
+    result.mightBeEmpty = false;
     result.values = result.values.promoteEmptyToUndefined();
     let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
       [this, this.$Realm.intrinsics.empty],

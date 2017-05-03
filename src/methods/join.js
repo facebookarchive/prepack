@@ -256,9 +256,12 @@ export function joinValuesAsConditional(
     realm: Realm, condition: AbstractValue, v1: void | Value, v2: void | Value): AbstractValue {
   let types = TypesDomain.joinValues(v1, v2);
   let values = ValuesDomain.joinValues(realm, v1, v2);
-  return realm.createAbstract(types, values,
+  let result = realm.createAbstract(types, values,
     [condition, v1 || realm.intrinsics.undefined, v2 || realm.intrinsics.undefined],
     (args) => t.conditionalExpression(args[0], args[1], args[2]));
+  if (v1) result.mightBeEmpty = v1.mightHaveBeenDeleted();
+  if (v2 && !result.mightBeEmpty) result.mightBeEmpty = v2.mightHaveBeenDeleted();
+  return result;
 }
 
 export function joinPropertyBindings(realm: Realm, joinCondition: AbstractValue,
