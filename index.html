@@ -5,6 +5,14 @@
     <script src="js/prism.js"></script>
     <link rel="stylesheet" href="css/style.css"/>
     <link rel="stylesheet" href="css/prism.css"/>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-44373548-29', 'auto');
+      ga('send', 'pageview');
+    </script>
   </head>
   <body>
 
@@ -255,7 +263,7 @@ __makePartial(global);
 // At this point, accessing global.obscure, global.notSoObscure, global.rich.nested.x is okay,
 // but accessing global.unknown or global.rich.unknown would cause an introspection error.
 
-// The following tells Prepack to embed and call some code in the residual program. 
+// The following tells Prepack to embed and call some code in the residual program.
 // The code must not have any side effects on the reachable JavaScript heap.
 __residual("object", function(delay) {
   return global.pushSelfDestructButton(delay);
