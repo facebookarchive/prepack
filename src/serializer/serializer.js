@@ -1036,6 +1036,8 @@ export class Serializer {
   }
 
   _serializeAbstractValue(name: string, val: AbstractValue, reasons: Array<string>): BabelNodeExpression {
+    if (val.kind === "sentinel member expression")
+      this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
     let serializedArgs = val.args.map((abstractArg, i) => this.serializeValue(abstractArg, reasons.concat(`Argument ${i} of ${name}`)));
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {

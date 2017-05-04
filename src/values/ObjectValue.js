@@ -418,9 +418,14 @@ export default class ObjectValue extends ConcreteValue {
     if (this !== Receiver || !this.isSimple() || P.mightNotBeString())
       throw this.$Realm.createIntrospectionErrorThrowCompletion("TODO");
     // If all else fails, use this expression
-    let result = this.$Realm.createAbstract(TypesDomain.topVal, ValuesDomain.topVal,
+    let result;
+    if (this.isPartial()) {
+      result = this.$Realm.createAbstract(TypesDomain.topVal, ValuesDomain.topVal,
         [this, P],
         ([o, x]) => t.memberExpression(o, x, true), "sentinel member expression");
+    } else {
+      result = this.$Realm.intrinsics.undefined;
+    }
     // Get a specialization of the join of all values written to the object
     // with abstract property names.
     let prop = this.unknownProperty;

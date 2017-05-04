@@ -91,30 +91,31 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
           targetObject = key.object;
           invariant(desc !== undefined);
           let sourceValue = desc.value;
-          // because sourceValue was written to key.object.unknownProperty it must be that
-          invariant(sourceValue instanceof AbstractValue);
-          let cond = sourceValue.args[0];
-          // and because the write always creates a value of this shape
-          invariant(cond instanceof AbstractValue && cond.kind === "template for property name condition");
-          if (sourceValue.args[2] instanceof UndefinedValue) {
-            // check that the value that was assigned itself came from
-            // an expression of the form sourceObject[absStr].
-            let mem = sourceValue.args[1];
-            while (mem instanceof AbstractValue) {
-              if (mem.kind === "sentinel member expression" && mem.args[0] instanceof ObjectValue && mem.args[1] === absStr) {
-                sourceObject = mem.args[0];
+          if (sourceValue instanceof AbstractValue) {
+            // because sourceValue was written to key.object.unknownProperty it must be that
+            let cond = sourceValue.args[0];
+            // and because the write always creates a value of this shape
+            invariant(cond instanceof AbstractValue && cond.kind === "template for property name condition");
+            if (sourceValue.args[2] instanceof UndefinedValue) {
+              // check that the value that was assigned itself came from
+              // an expression of the form sourceObject[absStr].
+              let mem = sourceValue.args[1];
+              while (mem instanceof AbstractValue) {
+                if (mem.kind === "sentinel member expression" && mem.args[0] instanceof ObjectValue && mem.args[1] === absStr) {
+                  sourceObject = mem.args[0];
+                  break;
+                }
+                // check if mem is a test for absStr being equal to a known property
+                // if so skip over it until we get to the expression of the form sourceObject[absStr].
+                let condition = mem.args[0];
+                if (condition instanceof AbstractValue && condition.kind === "check for known property") {
+                  if (condition.args[0] === absStr) {
+                    mem = mem.args[2];
+                    continue;
+                  }
+                }
                 break;
               }
-              // check if mem is a test for absStr being equal to a known property
-              // if so skip over it until we get to the expression of the form sourceObject[absStr].
-              let condition = mem.args[0];
-              if (condition instanceof AbstractValue && condition.kind === "check for known property") {
-                if (condition.args[0] === absStr) {
-                  mem = mem.args[2];
-                  continue;
-                }
-              }
-              break;
             }
           }
         }
