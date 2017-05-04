@@ -24,6 +24,8 @@ var debounce;
 var errorOutput = document.querySelector('.output .error');
 var replOutput = document.querySelector('.output .repl');
 
+var isEmpty = /^\s*$/;
+
 function terminateWorker() {
   if (worker) {
     worker.terminate();
@@ -47,7 +49,13 @@ function compile() {
 
       var result = e.data;
       if (result.type === 'success') {
-        output.setValue(result.data, -1);
+        var code = result.data;
+        if (isEmpty.test(code) && !isEmpty.test(input.getValue())) {
+          code =
+            '// Your code was all dead code and thus eliminated.\n' +
+            '// Try storing a property on the global object.';
+        }
+        output.setValue(code, -1);
       } else if (result.type === 'error') {
         errorOutput.style.display = 'block';
         replOutput.style.display = 'none';
