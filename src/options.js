@@ -16,7 +16,7 @@ export type Options = {|
   filename?: string,
   inputSourceMapFilename?: string,
   sourceMaps?: boolean,
-  compatibility?: "browser" | "jsc-600-1-4-17",
+  compatibility?: "browser" | "node-source-maps" | "jsc-600-1-4-17",
   mathRandomSeed?: string,
   speculate?: boolean,
   trace?: boolean,

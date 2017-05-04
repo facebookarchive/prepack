@@ -1427,7 +1427,7 @@ export class Serializer {
         Array.from(this.preludeGenerator.declaredGlobals).map(key =>
           t.variableDeclarator(t.identifier(key)))));
     if (body.length) {
-      if (this.realm.isCompatibleWith('node')) {
+      if (this.realm.isCompatibleWith('node-source-maps')) {
         ast_body.push(
           t.expressionStatement(
             t.callExpression(
