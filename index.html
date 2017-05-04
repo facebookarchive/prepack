@@ -24,7 +24,8 @@
         <ul class="nav-site">
           <li>
             <a href="./" class="active">About</a>
-            <a href="repl.html" class="">Try it out</a>
+            <a href="getting-started.html">Getting Started</a>
+            <a href="repl.html">Try It Out</a>
           </li>
           <li>
             <a href="https://github.com/facebook/prepack" class="">GitHub</a>
@@ -44,6 +45,7 @@
             *Prepack is still in an early development stage and not ready for production use just yet. Please try it out, give feedback, and help fix bugs.
           </div>
           <div class="buttons-unit">
+            <a class="button" href="getting-started.html">Getting Started</a>
             <a class="button" href="repl.html">Try It Out</a>
           </div>
         </div>
@@ -216,7 +218,7 @@ three = require("three");</code></pre>
                 <li>
                   <b>Symbolic Execution</b>
                   <p>
-                    In addition to computing over concrete values, Prepack's interpreter has the ability to operate on <b>abstract values</b> which typically arise from environment interactions. For example, <code class="language-js">Date.now</code> can return an abstract value. You can also manually inject abstract values via auxiliary helper functions such as <code class="language-js">__abstract()</code>. Prepack tracks all operations that are performed over abstract values. When branching over abstract values, Prepack 
+                    In addition to computing over concrete values, Prepack's interpreter has the ability to operate on <b>abstract values</b> which typically arise from environment interactions. For example, <code class="language-js">Date.now</code> can return an abstract value. You can also manually inject abstract values via auxiliary helper functions such as <code class="language-js">__abstract()</code>. Prepack tracks all operations that are performed over abstract values. When branching over abstract values, Prepack
                     execution and explore all possibilities. Thus, Prepack implements a <a href="https://en.wikipedia.org/wiki/Symbolic_execution">Symbolic Execution</a> engine for JavaScript.
                   </p>
                 </li>
