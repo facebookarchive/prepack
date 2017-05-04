@@ -101,7 +101,7 @@ if (!inputFilename) {
     }
 
     if (outputSourceMap) {
-      fs.writeFileSync(outputSourceMap, serialized.map || "");
+      fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : '');
     }
   } catch (x) {
     if (x instanceof InitializationError) {
