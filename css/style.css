@@ -185,6 +185,7 @@ header, .repl-container {
   flex: 1;
   margin: 5px;
   max-width: 50%;
+  overflow: auto;
   background-color: #fdfaeb;
 }
 
