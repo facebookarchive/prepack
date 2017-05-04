@@ -34,7 +34,7 @@ export function prepack(code: string, options: Options = defaultOptions) {
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
   let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init(filename, code, "", false);
+  let serialized = serializer.init(filename, code, "", options.sourceMaps);
   if (!serialized) {
     throw new InitializationError();
   }

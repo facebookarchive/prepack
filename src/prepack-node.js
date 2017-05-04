@@ -40,7 +40,12 @@ export function prepackFile(filename: string, options: Options = defaultOptions,
           realm,
           getSerializerOptions(options),
         );
-        serialized = serializer.init(filename, code, sourceMap, options.sourceMaps);
+        serialized = serializer.init(
+          options.filename || filename,
+          code,
+          sourceMap,
+          options.sourceMaps
+        );
         if (!serialized) {
           throw new InitializationError();
         }
@@ -68,7 +73,12 @@ export function prepackFileSync(filename: string, options: Options = defaultOpti
     realm,
     getSerializerOptions(options),
   );
-  let serialized = serializer.init(filename, code, sourceMap, options.sourceMaps);
+  let serialized = serializer.init(
+    options.filename || filename,
+    code,
+    sourceMap,
+    options.sourceMaps
+  );
   if (!serialized) {
     throw new InitializationError();
   }
