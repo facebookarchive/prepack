@@ -12,7 +12,7 @@
 import type { RealmOptions } from "./types";
 import type { SerializerOptions } from "./serializer/types";
 
-export type Options = {
+export type Options = {|
   filename?: string,
   inputSourceMapFilename?: string,
   sourceMaps?: boolean,
@@ -29,7 +29,9 @@ export type Options = {
   uniqueSuffix?: string,
   timeout?: number,
   strictlyMonotonicDateNow?: boolean,
-};
+|};
+
+export const defaultOptions = {};
 
 export function getRealmOptions({
   compatibility = "browser",

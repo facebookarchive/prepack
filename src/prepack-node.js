@@ -16,10 +16,11 @@ import { getRealmOptions, getSerializerOptions } from "./options";
 import { InitializationError } from "./prepack-standalone";
 
 import type { Options } from "./options";
+import { defaultOptions } from "./options";
 
 export * from "./prepack-standalone";
 
-export function prepackFile(filename: string, options: Options = {}, callback: Function) {
+export function prepackFile(filename: string, options: Options = defaultOptions, callback: Function) {
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
@@ -52,7 +53,7 @@ export function prepackFile(filename: string, options: Options = {}, callback: F
   });
 }
 
-export function prepackFileSync(filename: string, options: Options = {}) {
+export function prepackFileSync(filename: string, options: Options = defaultOptions) {
   let code = fs.readFileSync(filename, "utf8");
   let sourceMap = "";
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
