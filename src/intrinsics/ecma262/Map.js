@@ -76,7 +76,7 @@ export default function (realm: Realm): NativeFunctionValue {
       let nextItem = IteratorValue(realm, next);
 
       // d. If Type(nextItem) is not Object, then
-      if (!(nextItem instanceof ObjectValue) || !(nextItem instanceof AbstractObjectValue)) {
+      if (!(nextItem instanceof ObjectValue) && !(nextItem instanceof AbstractObjectValue)) {
         // i. Let error be Completion{[[Type]]: throw, [[Value]]: a newly created TypeError object, [[Target]]: empty}.
         let error = realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
 
