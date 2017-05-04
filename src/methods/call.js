@@ -396,6 +396,17 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
   if (IsCallable(realm, F) === false) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
   }
+  if (F instanceof AbstractValue && F.getType() === FunctionValue) {
+    let fullArgs = [F].concat(argsList);
+    return realm.deriveAbstract(
+      TypesDomain.topVal,
+      ValuesDomain.topVal,
+      fullArgs,
+      (nodes) => {
+        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+        return t.callExpression(nodes[0], fun_args);
+      });
+  }
   invariant(F instanceof ObjectValue);
 
   // 3. Return ? F.[[Call]](V, argumentsList).
