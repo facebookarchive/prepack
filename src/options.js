@@ -15,6 +15,7 @@ import type { SerializerOptions } from "./serializer/types";
 export type Options = {
   filename?: string,
   inputSourceMapFilename?: string,
+  inputSourceMap?: string,
   sourceMaps?: boolean,
   compatibility?: "browser" | "jsc-600-1-4-17",
   mathRandomSeed?: string,
