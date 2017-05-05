@@ -6,6 +6,7 @@
 
 *, ::before, ::after {
   -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
 }
 
 html {
@@ -182,10 +183,16 @@ header, .repl-container {
 }
 
 .example-code {
+  height: 100%;
+}
+
+.example-input, .example-output {
   flex: 1;
-  margin: 5px;
-  max-width: 50%;
+  margin: 0 5px;
   background-color: #fdfaeb;
+  width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 800px) {
@@ -198,7 +205,7 @@ header, .repl-container {
   }
 }
 
-.example-code::before {
+.example-input::before, .example-output::before, .code-block::before {
   background: #FBF4D0;
   color: #B0A673;
   display: block;
@@ -229,18 +236,6 @@ header, .repl-container {
 .code-block {
   margin: 5px;
   background-color: #fdfaeb;
-}
-
-.code-block::before {
-  background: #FBF4D0;
-  color: #B0A673;
-  display: block;
-  font-size: 11px;
-  font-weight: bold;
-  height: 34px;
-  line-height: 34px;
-  padding: 0 10px;
-  text-align: left;
 }
 
 .code-block.language-js::before {

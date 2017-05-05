@@ -68,24 +68,29 @@
 
           <h3>Hello World</h3>
           <div class="example">
-            <div class="example-code example-input">
-              <pre><code class="language-js">(function () {
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
   function hello() { return 'hello'; }
   function world() { return 'world'; }
   global.s = hello() + ' ' + world();
 })();</code></pre>
+              </div>
             </div>
-            <div class="example-code example-output">
-              <pre><code class="language-js">(function () {
+            <div class="example-output">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
   s = "hello world";
 })();</code></pre>
+              </div>
             </div>
           </div>
 
           <h3>Elimination of abstraction tax</h3>
           <div class="example">
-            <div class="example-code example-input">
-              <pre><code class="language-js">(function () {
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
   var self = this;
   ['A', 'B', 42].forEach(function(x) {
     var name = '_' + x.toString()[0].toLowerCase();
@@ -93,38 +98,46 @@
     self[name] = y ? y : x;
   });
 })();</code></pre>
+              </div>
             </div>
-            <div class="example-code example-output">
-              <pre><code class="language-js">(function () {
+            <div class="example-output">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
   _a = "A";
   _b = "B";
   _4 = 42;
 })();</code></pre>
+              </div>
             </div>
           </div>
 
 
           <h3>Fibonacci</h3>
           <div class="example">
-            <div class="example-code example-input">
-              <pre><code class="language-js">(function () {
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
   function fibonacci(x) {
     return x <= 1 ? x : fibonacci(x - 1) + fibonacci(x - 2);
   }
   global.x = fibonacci(23);
 })();</code></pre>
+              </div>
             </div>
-            <div class="example-code example-output">
-              <pre><code class="language-js">(function () {
+            <div class="example-output">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
   x = 28657;
 })();</code></pre>
+              </div>
             </div>
           </div>
 
           <h3>Module Initialization</h3>
           <div class="example">
-            <div class="example-code example-input">
-              <pre><code class="language-js">(function () {
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
   let moduleTable = {};
   function define(id, f) { moduleTable[id] = f; }
   function require(id) {
@@ -138,9 +151,11 @@
   define("four", function() { return require("three") + require("one"); });
 })();
 three = require("three");</code></pre>
+              </div>
             </div>
-            <div class="example-code example-output">
-              <pre><code class="language-js">(function () {
+            <div class="example-output">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
   function _2() {
     return 3 + 1;
   }
@@ -160,6 +175,7 @@ three = require("three");</code></pre>
   require = _0;
   three = 3;
 })();</code></pre>
+              </div>
             </div>
           </div>
 
@@ -169,15 +185,18 @@ three = require("three");</code></pre>
 
           <h3>Environment Interactions and Branching</h3>
           <div class="example">
-            <div class="example-code example-input">
-              <pre><code class="language-js">(function(){
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function(){
   function fib(x) { return x <= 1 ? x : fib(x - 1) + fib(x - 2); }
   let x = Date.now();
   if (x === 0) x = fib(10);
   global.result = x;
 })();</code></pre>
+              </div>
             </div>
-            <div class="example-code example-output">
+            <div class="example-output">
+              <div class="example-code">
               <pre><code class="language-js">(function () {
   var _0 = Date.now();
   if (typeof _0 !== "number") {
