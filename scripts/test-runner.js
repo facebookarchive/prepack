@@ -9,6 +9,9 @@
 
 /* @flow */
 
+let prepack = require("../lib/prepack-node.js").prepack;
+let InitializationError = require("../lib/prepack-node.js").InitializationError;
+
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
@@ -78,18 +81,26 @@ class Success {}
 function runTest(name, code) {
   console.log(chalk.inverse(name));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
-  let realmOptions = { partial: true, compatibility, uniqueSuffix: "" };
-  let initializeMoreModules = code.includes("// initialize more modules");
+  let speculate = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
-  let serializerOptions = { initializeMoreModules, delayUnsupportedRequires, internalDebug: true };
+  let options = {
+    filename: name,
+    compatibility,
+    speculate,
+    delayUnsupportedRequires,
+    internalDebug: true,
+    uniqueSuffix: ""
+  };
   if (code.includes("// throws introspection error")) {
     let onError = (realm, e) => {
       if (IsIntrospectionError(realm, e))
         throw new Success();
     };
     try {
+      let realmOptions = { partial: true, compatibility, uniqueSuffix: "" };
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
+      let serializerOptions = { initializeMoreModules: speculate, delayUnsupportedRequires, internalDebug: true };
       let serializer = new Serializer(realm, serializerOptions);
       let serialized = serializer.init(name, code, "", false, onError);
       if (!serialized) {
@@ -104,22 +115,18 @@ function runTest(name, code) {
     }
     return false;
   } else if (code.includes("// cannot serialize")) {
-    let realm = construct_realm(realmOptions);
-    initializeGlobals(realm);
-    let serializer = new Serializer(realm, serializerOptions);
-    let serialized = serializer.init(name, code, "", false);
-    if (!serialized) {
-      return true;
-    } else {
-      console.log(chalk.red("Test should have caused error during serialization!"));
-      return false;
+    try {
+      prepack(code, options);
+    } catch (err) {
+      if (err instanceof InitializationError) {
+        return true;
+      }
     }
+    console.log(chalk.red("Test should have caused error during serialization!"));
+    return false;
   } else if (code.includes("// no effect")) {
     try {
-      let realm = construct_realm(realmOptions);
-      initializeGlobals(realm);
-      let serializer = new Serializer(realm, serializerOptions);
-      let serialized = serializer.init(name, code);
+      let serialized = prepack(code, options);
       if (!serialized) {
         console.log(chalk.red("Error during serialization!"));
         return false;
@@ -158,11 +165,8 @@ function runTest(name, code) {
       let oldCode = code;
       for (; i < max; i++) {
         let newUniqueSuffix = `_unique${unique++}`;
-        realmOptions.uniqueSuffix = newUniqueSuffix;
-        let realm = construct_realm(realmOptions);
-        initializeGlobals(realm);
-        let serializer = new Serializer(realm, serializerOptions);
-        let serialized = serializer.init(name, oldCode);
+        options.uniqueSuffix = newUniqueSuffix;
+        let serialized = prepack(oldCode, options);
         if (!serialized) {
           console.log(chalk.red("Error during serialization!"));
           break;

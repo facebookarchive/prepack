@@ -78,11 +78,12 @@ export class Generator {
   }
 
   emitPropertyAssignment(object: Value, key: string, value: Value) {
+    let isValidId = t.isValidIdentifier(key);
     this.body.push({
       args: [object, value],
       buildNode: ([objectNode, valueNode]) => t.expressionStatement(t.assignmentExpression(
         "=",
-        t.memberExpression(objectNode, t.identifier(key)),
+        t.memberExpression(objectNode, isValidId ? t.identifier(key) : t.stringLiteral(key), !isValidId),
         valueNode))
     });
   }

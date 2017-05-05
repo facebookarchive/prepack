@@ -15,8 +15,15 @@
 
 import { BabelNode } from "babel-types";
 
+type SourceMap = {
+  sources: Array<string>,
+  names: Array<string>,
+  mappings: string,
+  sourcesContent: Array<string>
+};
+
 declare module 'babel-generator' {
-  declare module.exports: (ast: BabelNode, opts: Object, code: string) => { code: string, map?: string };
+  declare module.exports: (ast: BabelNode, opts: Object, code: string) => { code: string, map?: SourceMap };
 }
 
 /**

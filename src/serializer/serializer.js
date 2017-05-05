@@ -31,6 +31,13 @@ import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 
+type SourceMap = {
+  sources: Array<string>,
+  names: Array<string>,
+  mappings: string,
+  sourcesContent: Array<string>
+};
+
 function isSameNode(left, right) {
   let type = left.type;
 
@@ -1036,6 +1043,8 @@ export class Serializer {
   }
 
   _serializeAbstractValue(name: string, val: AbstractValue, reasons: Array<string>): BabelNodeExpression {
+    if (val.kind === "sentinel member expression")
+      this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
     let serializedArgs = val.args.map((abstractArg, i) => this.serializeValue(abstractArg, reasons.concat(`Argument ${i} of ${name}`)));
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
@@ -1365,7 +1374,7 @@ export class Serializer {
     return false;
   }
 
-  serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
+  serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: SourceMap } } {
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 
@@ -1425,7 +1434,7 @@ export class Serializer {
         Array.from(this.preludeGenerator.declaredGlobals).map(key =>
           t.variableDeclarator(t.identifier(key)))));
     if (body.length) {
-      if (this.realm.isCompatibleWith('node')) {
+      if (this.realm.isCompatibleWith('node-source-maps')) {
         ast_body.push(
           t.expressionStatement(
             t.callExpression(
