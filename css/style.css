@@ -302,8 +302,17 @@ header, .repl-container {
 
 /* FOOTER */
 
-footer {
+.foot {
   background: #f5da55;
-  padding: 1em;
+  display: table;
+  height: 100%;
+  width: 100%;
+}
+
+.foot .cell {
+  display: table-cell;
   text-align: center;
+  vertical-align: middle;
+  width: 50%;
+  padding: 1rem;
 }
