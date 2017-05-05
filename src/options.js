@@ -9,14 +9,14 @@
 
 /* @flow */
 
-import type { RealmOptions } from "./types";
+import type { RealmOptions, Compatibility } from "./types";
 import type { SerializerOptions } from "./serializer/types";
 
 export type Options = {|
   filename?: string,
   inputSourceMapFilename?: string,
   sourceMaps?: boolean,
-  compatibility?: "browser" | "node-source-maps" | "jsc-600-1-4-17",
+  compatibility?: Compatibility,
   mathRandomSeed?: string,
   speculate?: boolean,
   trace?: boolean,

@@ -10,12 +10,13 @@
 /* @flow */
 
 import { prepackFileSync, InitializationError } from "./prepack-node.js";
+import { CompatibilityValues, type Compatibility } from './types.js';
 import fs from "fs";
 
 let HELP_STR = `
   input    The name of the file to run Prepack over (for web please provide the single js bundle file)
   --out    The name of the output file
-  --compatibility    The target environment for Prepack ["browser", "jsc-600-1-4-17", "node-source-maps"]
+  --compatibility    The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(', ')}]
   --mathRandomSeed    If you want Prepack to evaluate Math.random() calls, please provide a seed.
   --srcmapIn    The input sourcemap filename. If present, Prepack will output a sourcemap that maps from the original file (pre-input sourcemap) to Prepack's output
   --srcmapOut    The output sourcemap filename.
@@ -28,7 +29,7 @@ let args = Array.from(process.argv);
 args.splice(0, 2);
 let inputFilename;
 let outputFilename;
-let compatibility;
+let compatibility: Compatibility;
 let mathRandomSeed;
 let inputSourceMap;
 let outputSourceMap;
@@ -42,6 +43,7 @@ let flags = {
   delayUnsupportedRequires: false,
   internalDebug: false,
 };
+
 while (args.length) {
   let arg = args[0]; args.shift();
   if (!arg.startsWith("--")) {
@@ -55,12 +57,11 @@ while (args.length) {
         break;
       case "compatibility":
         arg = args[0]; args.shift();
-        if (arg !== "jsc-600-1-4-17") {
+        if (!CompatibilityValues.includes(arg)) {
           console.error(`Unsupported compatibility: ${arg}`);
           process.exit(1);
-        } else {
-          compatibility = arg;
         }
+        compatibility = (arg: any);
         break;
       case "mathRandomSeed":
         mathRandomSeed = args[0]; args.shift();
