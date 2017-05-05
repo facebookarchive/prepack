@@ -750,6 +750,100 @@ export class Serializer {
     return t.arrayExpression(elems);
   }
 
+  _serializeValueMap(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
+    let kind = val.getKind();
+    let elems = [];
+
+    let entries;
+    if (kind === "Map") {
+      entries = val.$MapData;
+    } else {
+      invariant(kind === "WeakMap");
+      entries = val.$WeakMapData;
+    }
+    invariant(entries !== undefined);
+    let len = entries.length;
+
+    for (let i = 0; i < len; i++) {
+      let entry = entries[i];
+      let key = entry.$Key;
+      let value = entry.$Value;
+      if (key === undefined || value === undefined) continue;
+      let mightHaveBeenDeleted = key.mightHaveBeenDeleted();
+      let delayReason = this._shouldDelayValue(key) ||
+        this._shouldDelayValue(value) || mightHaveBeenDeleted;
+        if (delayReason) {
+          // handle self recursion
+          this._delay(delayReason, [key, value, val], () => {
+            invariant(key !== undefined);
+            invariant(value !== undefined);
+            this.body.push(t.expressionStatement(
+              t.callExpression(
+                t.memberExpression(this._getValIdForReference(val), t.identifier("set")),
+                [this.serializeValue(key, reasons.concat(`Set entry on ${name}`)),
+                 this.serializeValue(value, reasons.concat(`Set entry on ${name}`))]
+              )
+            ));
+          });
+        } else {
+          let serializedKey = this.serializeValue(key, reasons);
+          let serializedValue = this.serializeValue(value, reasons.concat(`Set entry on ${name}`));
+          let elem = t.arrayExpression([serializedKey, serializedValue]);
+          elems.push(elem);
+        }
+    }
+
+    this.addProperties(name, val, reasons, val.properties);
+    let arrayValue = t.arrayExpression(elems);
+    return t.newExpression(
+      this.preludeGenerator.memoizeReference(kind), [arrayValue]);
+  }
+
+  _serializeValueSet(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
+    let kind = val.getKind();
+    let elems = [];
+
+    let entries = val.$SetData;
+    if (kind === "Set") {
+      entries = val.$SetData;
+    } else {
+      invariant(kind === "WeakSet");
+      entries = val.$WeakSetData;
+    }
+    invariant(entries !== undefined);
+    let len = entries.length;
+
+    for (let i = 0; i < len; i++) {
+      let entry = entries[i];
+      if (entry === undefined) continue;
+      let mightHaveBeenDeleted = entry.mightHaveBeenDeleted();
+      let delayReason = this._shouldDelayValue(entry) || mightHaveBeenDeleted;
+      if (delayReason) {
+        // handle self recursion
+        this._delay(delayReason, [entry, val], () => {
+          invariant(entry !== undefined);
+          this.body.push(t.expressionStatement(
+            t.callExpression(
+              t.memberExpression(this._getValIdForReference(val), t.identifier("add")),
+              [this.serializeValue(entry, reasons.concat(`Added to ${name}`))]
+            )
+          ));
+        });
+      } else {
+        let elem = this.serializeValue(
+          entry,
+          reasons.concat(`Added to ${name}`)
+        );
+        elems.push(elem);
+      }
+    }
+
+    this.addProperties(name, val, reasons, val.properties);
+    let arrayValue = t.arrayExpression(elems);
+    return t.newExpression(
+      this.preludeGenerator.memoizeReference(kind), [arrayValue]);
+  }
+
   _serializeValueTypedArray(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
     let elems = [];
 
@@ -982,6 +1076,12 @@ export class Serializer {
       case "Uint32Array":
       case "Uint8ClampedArray":
         return this._serializeValueTypedArray(name, val, reasons);
+      case "Map":
+      case "WeakMap":
+        return this._serializeValueMap(name, val, reasons);
+      case "Set":
+      case "WeakSet":
+        return this._serializeValueSet(name, val, reasons);
       default:
         if (kind !== "Object")
           this.logger.logError(val, `Serialization of an object of kind ${kind} is not supported.`);
