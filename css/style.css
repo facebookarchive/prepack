@@ -296,9 +296,19 @@ header, .repl-container {
 }
 
 /* FOOTER */
+.footer-background {
+  background-color: #323330;
+}
 
-footer {
-  background: #f5da55;
+.footer {
+  color: white;
   padding: 1em;
-  text-align: center;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.oss-logo {
+  height: 45px;
 }
