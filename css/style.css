@@ -296,18 +296,19 @@ header, .repl-container {
 }
 
 /* FOOTER */
-
-.foot {
-  background: #f5da55;
-  display: table;
-  height: 100%;
-  width: 100%;
+.footer-background {
+  background-color: #323330;
 }
 
-.foot .cell {
-  display: table-cell;
-  text-align: center;
-  vertical-align: middle;
-  width: 50%;
-  padding: 1rem;
+.footer {
+  color: white;
+  padding: 1em;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.oss-logo {
+  height: 45px;
 }
