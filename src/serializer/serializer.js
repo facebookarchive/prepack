@@ -386,22 +386,6 @@ export class Serializer {
     }
   }
 
-  _serializeKey(key: string, canBeIdentifier: boolean = true) {
-    // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
-    let index = Number.parseInt(key, 10);
-    if (index >= 0 && index.toString() === key) {
-      return t.numericLiteral(index);
-    }
-
-    if (canBeIdentifier) {
-      // TODO: revert this when Unicode identifiers are supported by all targetted JavaScript engines
-      let keyIsAscii = /^[\u0000-\u007f]*$/.test(key);
-      if (t.isValidIdentifier(key) && keyIsAscii) return t.identifier(key);
-    }
-
-    return t.stringLiteral(key);
-  }
-
   _emitProperty(name: string, val: ObjectValue, key: string, desc: Descriptor, reasons: Array<string>): void {
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
@@ -410,7 +394,7 @@ export class Serializer {
       let serializeFunc = () => {
         this._assignProperty(
           () => {
-            let serializedKey = this._serializeKey(key);
+            let serializedKey = this.generator.getAsPropertyNameExpression(key);
             return t.memberExpression(this._getValIdForReference(val), serializedKey, !t.isIdentifier(serializedKey));
           },
           () => {
@@ -481,7 +465,7 @@ export class Serializer {
         }
       }
 
-      let serializedKey = this._serializeKey(key, /*canBeIdentifier*/false);
+      let serializedKey = this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/false);
       invariant(!this._shouldDelayValues([val]), "precondition of _emitProperty");
       let uid = this._getValIdForReference(val);
       this.body.push(t.expressionStatement(t.callExpression(
@@ -1119,7 +1103,7 @@ export class Serializer {
               this._delay(delayReason, [propValue, val], () => {
                 this._assignProperty(
                   () => {
-                    let serializedKey = this._serializeKey(key);
+                    let serializedKey = this.generator.getAsPropertyNameExpression(key);
                     return t.memberExpression(this._getValIdForReference(val), serializedKey, !t.isIdentifier(serializedKey));
                   },
                   () => {
@@ -1129,7 +1113,7 @@ export class Serializer {
                   mightHaveBeenDeleted);
               });
             } else {
-              let serializedKey = this._serializeKey(key);
+              let serializedKey = this.generator.getAsPropertyNameExpression(key);
               props.push(t.objectProperty(serializedKey, this.serializeValue(
                 propValue,
                 reasons.concat(`Referenced in object ${name} with key ${key}`)

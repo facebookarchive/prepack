@@ -231,12 +231,14 @@ export default class AbstractObjectValue extends AbstractValue {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
         if (cv.isSimple() && typeof P === "string") {
-          let pname = P;
+          let generator = this.$Realm.generator;
+          invariant(generator !== undefined);
+          let pname = generator.getAsPropertyNameExpression(P);
           let d = cv.$GetOwnProperty(P);
           if (d === undefined) {
             return this.$Realm.deriveAbstract(TypesDomain.topVal,
                ValuesDomain.topVal, [cv],
-               ([node]) => t.memberExpression(node, t.identifier(pname)));
+               ([node]) => t.memberExpression(node, pname, !t.isIdentifier(pname)));
           }
         }
         return cv.$Get(P, Receiver);

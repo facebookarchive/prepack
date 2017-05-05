@@ -49,6 +49,22 @@ export class Generator {
   body: Array<BodyEntry>;
   preludeGenerator: PreludeGenerator;
 
+  getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
+    // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
+    let index = Number.parseInt(key, 10);
+    if (index >= 0 && index.toString() === key) {
+      return t.numericLiteral(index);
+    }
+
+    if (canBeIdentifier) {
+      // TODO: revert this when Unicode identifiers are supported by all targetted JavaScript engines
+      let keyIsAscii = /^[\u0000-\u007f]*$/.test(key);
+      if (t.isValidIdentifier(key) && keyIsAscii) return t.identifier(key);
+    }
+
+    return t.stringLiteral(key);
+  }
+
   empty() {
     return !this.body.length;
   }
@@ -78,12 +94,12 @@ export class Generator {
   }
 
   emitPropertyAssignment(object: Value, key: string, value: Value) {
-    let isValidId = t.isValidIdentifier(key);
+    let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object, value],
       buildNode: ([objectNode, valueNode]) => t.expressionStatement(t.assignmentExpression(
         "=",
-        t.memberExpression(objectNode, isValidId ? t.identifier(key) : t.stringLiteral(key), !isValidId),
+        t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
         valueNode))
     });
   }
@@ -118,11 +134,12 @@ export class Generator {
   }
 
   emitPropertyDelete(object: Value, key: string) {
+    let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object],
       buildNode: ([objectNode]) => t.expressionStatement(t.unaryExpression(
         "delete",
-        t.memberExpression(objectNode, t.identifier(key))))
+        t.memberExpression(objectNode, propName, !t.isIdentifier(propName))))
     });
   }
 
