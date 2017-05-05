@@ -31,6 +31,13 @@ import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 
+type SourceMap = {
+  sources: Array<string>,
+  names: Array<string>,
+  mappings: string,
+  sourcesContent: Array<string>
+};
+
 function isSameNode(left, right) {
   let type = left.type;
 
@@ -1367,7 +1374,7 @@ export class Serializer {
     return false;
   }
 
-  serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: string } } {
+  serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: SourceMap } } {
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 
