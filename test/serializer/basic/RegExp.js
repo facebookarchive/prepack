@@ -1,3 +1,8 @@
 regexp = /Facebook/i;
+regexp2 = /books/;
 
-inspect = function() { return "Facebook is cool".match(regexp).index; }
+regexp2.lastIndex = 8;
+i = "but books are books".match(regexp2);
+j = regexp2.lastIndex;
+
+inspect = function() { return "" + i + j + "Facebook is cool".match(regexp).index; }
