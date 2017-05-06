@@ -27,12 +27,14 @@ class ModuleTracer extends Tracer {
     this.modules = modules;
     this.partialEvaluation = 0;
     this.requireStack = [];
+    this.requireSequence = [];
     this.logModules = logModules;
   }
 
   modules: Modules;
   partialEvaluation: number;
   requireStack: Array<number | string | void>;
+  requireSequence: Array<number | string>;
   logModules: boolean;
 
   log(message: string) {
@@ -70,6 +72,8 @@ class ModuleTracer extends Tracer {
       let result;
       try {
         this.requireStack.push(moduleIdValue);
+        let requireSequenceStart = this.requireSequence.length;
+        this.requireSequence.push(moduleIdValue);
         let effects = realm.partially_evaluate(() => {
           try {
             return performCall();
@@ -83,6 +87,27 @@ class ModuleTracer extends Tracer {
         if (result instanceof IntrospectionThrowCompletion) {
           let [message, stack] = this.modules.getMessageAndStack(effects);
           console.log(`delaying require(${moduleIdValue}): ${message} ${stack}`);
+          // So we are about to emit a delayed require(...) call.
+          // However, before we do that, let's try to require all modules that we
+          // know this delayed require call will require.
+          // This way, we ensure that those modules will be fully initialized
+          // before the require call executes.
+          // TODO: More needs to be done to make the delayUnsupportedRequires
+          // feature completely safe. Open issues are:
+          // 1) Side-effects on the heap of delayed factory functions are not discovered or rejected.
+          // 2) While we do process an appropriate list of transitively required modules here,
+          //    more modules would have been required if the Introspection exception had not been thrown.
+          //    To be correct, those modules would have to be prepacked here as well.
+          let nestedModulesIds = new Set();
+          for (let i = requireSequenceStart; i < this.requireSequence.length; i++) {
+            let nestedModuleId = this.requireSequence[i];
+            if (nestedModulesIds.has(nestedModuleId)) continue;
+            nestedModulesIds.add(nestedModuleId);
+            this.modules.tryInitializeModule(
+              nestedModuleId,
+              `initialization of module ${nestedModuleId} as it's required by module ${moduleIdValue}`);
+          }
+
           result = realm.deriveAbstract(
             TypesDomain.topVal,
             ValuesDomain.topVal, [],
@@ -237,8 +262,7 @@ export class Modules {
     return [message, stack];
   }
 
-  initializeMoreModules() {
-    // partially evaluate all factory methods by calling require
+  tryInitializeModule(moduleId: number | string, message: string): void | Effects {
     let realm = this.realm;
     // setup execution environment
     let context = new ExecutionContext();
@@ -250,44 +274,58 @@ export class Modules {
     this.delayUnsupportedRequires = false;
     realm.pushContext(context);
     try {
-      let count = 0;
-      let introspectionErrors = Object.create(null);
-      for (let moduleId of this.moduleIds) {
-        if (this.initializedModules.has(moduleId)) continue;
+      let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-        let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
+      let effects = realm.partially_evaluate_node(node, true, env, false);
+      let result = effects[0];
+      if (result instanceof IntrospectionThrowCompletion) return effects;
 
-        let effects = realm.partially_evaluate_node(node, true, env, false);
-        let result = effects[0];
-        if (result instanceof IntrospectionThrowCompletion) {
-          let [message, stack] = this.getMessageAndStack(effects);
-          let stacks = introspectionErrors[message] = introspectionErrors[message] || [];
-          stacks.push(stack);
-          continue;
-        }
-
-        realm.apply_effects(effects, `Speculative initialization of module ${moduleId}`);
-        if (result instanceof Completion) {
-          console.log(`=== UNEXPECTED ERROR during speculative initialization of module ${moduleId} ===`);
-          this.logger.logCompletion(result);
-          break;
-        }
-
-        invariant(result instanceof Value);
-        count++;
-        this.initializedModules.set(moduleId, result);
+      realm.apply_effects(effects, message);
+      if (result instanceof Completion) {
+        console.log(`=== UNEXPECTED ERROR during ${message} ===`);
+        this.logger.logCompletion(result);
+        return undefined;
       }
-      if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
-      let a = [];
-      for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
-      a.sort((x, y) => y[0].length - x[0].length);
-      if (a.length) {
-        console.log(`=== speculative module initialization failures ordered by frequency`);
-        for (let [stacks, n] of a) console.log(`${stacks.length}x ${n} ${stacks.join("\nas well as")}]`);
-      }
+
+      return effects;
     } finally {
       realm.popContext(context);
       this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
+    }
+  }
+
+  initializeMoreModules() {
+    // partially evaluate all factory methods by calling require
+    let count = 0;
+    let introspectionErrors = Object.create(null);
+    for (let moduleId of this.moduleIds) {
+      if (this.initializedModules.has(moduleId)) continue;
+
+      let effects = this.tryInitializeModule(
+        moduleId,
+        `Speculative initialization of module ${moduleId}`);
+
+      if (effects === undefined) break;
+      let result = effects[0];
+      if (result instanceof IntrospectionThrowCompletion) {
+        invariant(result instanceof IntrospectionThrowCompletion);
+        let [message, stack] = this.getMessageAndStack(effects);
+        let stacks = introspectionErrors[message] = introspectionErrors[message] || [];
+        stacks.push(stack);
+        continue;
+      }
+
+      invariant(result instanceof Value);
+      count++;
+      this.initializedModules.set(moduleId, result);
+    }
+    if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
+    let a = [];
+    for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
+    a.sort((x, y) => y[0].length - x[0].length);
+    if (a.length) {
+      console.log(`=== speculative module initialization failures ordered by frequency`);
+      for (let [stacks, n] of a) console.log(`${stacks.length}x ${n} ${stacks.join("\nas well as")}]`);
     }
   }
 
