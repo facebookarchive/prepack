@@ -29,6 +29,11 @@ export type IterationKind = "key+value" | "value" | "key";
 export type SourceType = "module" | "script";
 
 export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps";
+export const CompatibilityValues = [
+  "browser",
+   "jsc-600-1-4-17",
+  "node-source-maps",
+];
 
 export type RealmOptions = {
   partial?: boolean,
