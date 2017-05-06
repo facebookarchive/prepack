@@ -284,6 +284,21 @@ export class Serializer {
     this.addObjectPrototype(name, obj, reasons);
     if (obj instanceof FunctionValue) this.addConstructorPrototype(name, obj, reasons);
 
+    // extentions
+    if (!obj.$IsExtensible()) {
+      this._eagerOrDelay([obj], () => {
+        let uid = this._getValIdForReference(obj);
+        this.body.push(
+          t.expressionStatement(
+            t.callExpression(
+              this.preludeGenerator.memoizeReference("Object.preventExtensions"),
+              [uid]
+            )
+          )
+        );
+      });
+    }
+
     this.statistics.objects++;
     this.statistics.objectProperties += obj.properties.size;
   }
