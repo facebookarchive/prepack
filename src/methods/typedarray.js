@@ -11,8 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { TypedArrayKind } from "../types.js";
-import { ThrowCompletion } from "../completions.js";
-import { AbstractValue, IntegerIndexedExotic, ObjectValue, Value, StringValue, NumberValue, UndefinedValue } from "../values/index.js";
+import { AbstractValue, IntegerIndexedExotic, ObjectValue, Value, NumberValue, UndefinedValue } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "../methods/get.js";
 import { AllocateArrayBuffer } from "../methods/arraybuffer.js";
 import { IsDetachedBuffer, IsInteger } from "../methods/is.js";
@@ -84,9 +83,7 @@ export function IntegerIndexedElementGet(realm: Realm, O: ObjectValue, index: nu
 
   // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, buffer) === true) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(buffer) is true")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
   }
 
   // 5. If IsInteger(index) is false, return undefined.
@@ -136,9 +133,7 @@ export function IntegerIndexedElementSet(realm: Realm, O: ObjectValue, index: nu
 
   // 5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, buffer) === true) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(buffer) is true")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
   }
 
   // 6. If IsInteger(index) is false, return false.
@@ -181,16 +176,12 @@ export function ValidateTypedArray(realm: Realm, O: Value) {
 
   // 1. If Type(O) is not Object, throw a TypeError exception.
   if (!(O instanceof ObjectValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
   }
 
   // 2. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
   if (!O.$TypedArrayName) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
   }
 
   // 3. Assert: O has a [[ViewedArrayBuffer]] internal slot.
@@ -201,9 +192,7 @@ export function ValidateTypedArray(realm: Realm, O: Value) {
 
   // 5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, buffer) === true) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(buffer) is true")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
   }
 
   // 6. Return buffer.
@@ -308,9 +297,7 @@ export function TypedArrayCreate(realm: Realm, constructor: ObjectValue, argumen
     // a. If newTypedArray.[[ArrayLength]] < argumentList[0], throw a TypeError exception.
     invariant(typeof newTypedArray.$ArrayLength === "number");
     if (newTypedArray.$ArrayLength < ((argumentList[0].throwIfNotConcrete(): any): NumberValue).value) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "newTypedArray.[[ArrayLength]] < argumentList[0]")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "newTypedArray.[[ArrayLength]] < argumentList[0]");
     }
   }
 

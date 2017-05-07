@@ -10,10 +10,9 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { ThrowCompletion, AbruptCompletion } from "../completions.js";
-import { Value, ObjectValue, StringValue, UndefinedValue } from "../values/index.js";
+import { AbruptCompletion } from "../completions.js";
+import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
 import { CreateIterResultObject } from "../methods/create.js";
-import { Construct } from "../methods/construct.js";
 import { ThrowIfInternalSlotNotWritable } from "../methods/properties.js";
 import invariant from "../invariant.js";
 import type { BabelNodeBlockStatement } from "babel-types";
@@ -58,16 +57,12 @@ export function GeneratorStart(realm: Realm, generator: ObjectValue, generatorBo
 export function GeneratorValidate(realm: Realm, generator: Value) {
   // 1. If Type(generator) is not Object, throw a TypeError exception.
   if (!(generator instanceof ObjectValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "Type(generator) is not Object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "Type(generator) is not Object");
   }
 
   // 2. If generator does not have a [[GeneratorState]] internal slot, throw a TypeError exception.
   if (!('$GeneratorState' in generator)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "Type(generator) is not Object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "Type(generator) is not Object");
   }
 
   // 3. Assert: generator also has a [[GeneratorContext]] internal slot.
@@ -78,9 +73,7 @@ export function GeneratorValidate(realm: Realm, generator: Value) {
 
   // 5. If state is "executing", throw a TypeError exception.
   if (state === "executing") {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "Type(generator) is not Object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "Type(generator) is not Object");
   }
 
   // 6. Return state.

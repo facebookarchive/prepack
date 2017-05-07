@@ -29,7 +29,6 @@ import {
 } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "./get.js";
 import { DefinePropertyOrThrow, OrdinaryDefineOwnProperty } from "./properties.js";
-import { ThrowCompletion } from "../completions.js";
 import { IsConstructor, IsPropertyKey, IsArray } from "./is.js";
 import { Type, SameValue, RequireObjectCoercible } from "./abstract.js";
 import { ToStringPartial, ToLength } from "./to.js";
@@ -213,9 +212,7 @@ export function ArraySpeciesCreate(realm: Realm, originalArray: ObjectValue, len
   // 7. If IsConstructor(C) is false, throw a TypeError exception.
   if (!IsConstructor(realm, C)) {
     C.throwIfNotConcrete();
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a constructor")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a constructor");
   }
   invariant(C instanceof ObjectValue);
 
@@ -277,9 +274,7 @@ export function ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): 
 
   // 3. If length>232-1, throw a RangeError exception.
   if (length > Math.pow(2, 32) - 1) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "length>2^32-1")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "length>2^32-1");
   }
 
   // 4. If the proto argument was not passed, let proto be the intrinsic object %ArrayPrototype%.
@@ -559,9 +554,7 @@ export function CreateDataPropertyOrThrow(realm: Realm, O: Value, P: PropertyKey
 
   // 4. If success is false, throw a TypeError exception.
   if (success === false) {
-    throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
   }
 
   // 5. Return success.
@@ -610,9 +603,7 @@ export function CreateListFromArrayLike(realm: Realm, obj: Value, elementTypes?:
 
   // 2. If Type(obj) is not Object, throw a TypeError exception.
   if (!(obj instanceof ObjectValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Not an object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Not an object");
   }
 
   // 3. Let len be ? ToLength(? Get(obj, "length")).
@@ -634,9 +625,7 @@ export function CreateListFromArrayLike(realm: Realm, obj: Value, elementTypes?:
 
     // c. If Type(next) is not an element of elementTypes, throw a TypeError exception.
     if (elementTypes.indexOf(Type(realm, next)) < 0) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "invalid element type")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "invalid element type");
     }
 
     // d. Append next as the last element of list.
@@ -723,15 +712,11 @@ export function CreateDynamicFunction(realm: Realm, constructor: ObjectValue, ne
   try {
     ast = parse(realm, "function" + (kind === "generator" ? "*" : "") + " _(" + P + "){" + bodyText + "}", "eval");
   } catch (e) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "parse failed")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "parse failed");
   }
   let { program: { body: [functionDeclaration] } } = ast;
   if (!functionDeclaration) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "parse failed")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "parse failed");
   }
   invariant(functionDeclaration.type === "FunctionDeclaration");
   let { params, body } = ((functionDeclaration: any): BabelNodeFunctionDeclaration);
@@ -771,9 +756,7 @@ export function CreateDynamicFunction(realm: Realm, constructor: ObjectValue, ne
       });
     }
     if (containsYield) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "parse failed")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "parse failed");
     }
   }
 

@@ -10,8 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { ThrowCompletion } from "../completions.js";
-import { FunctionValue, ObjectValue, UndefinedValue, NullValue, StringValue, Value, AbstractObjectValue } from "../values/index.js";
+import { FunctionValue, ObjectValue, UndefinedValue, NullValue, Value, AbstractObjectValue } from "../values/index.js";
 import { IsConstructor } from "./is.js";
 import { ObjectCreate } from "./create.js";
 import { DefinePropertyOrThrow } from "./properties.js";
@@ -95,9 +94,7 @@ export function SpeciesConstructor(realm: Realm, O: ObjectValue, defaultConstruc
   // 4. If Type(C) is not Object, throw a TypeError exception.
   if (!(C instanceof ObjectValue || C instanceof AbstractObjectValue)) {
     C.throwIfNotConcrete();
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(C) is not an object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(C) is not an object");
   }
 
   // 5. Let S be ? Get(C, @@species).
@@ -113,7 +110,5 @@ export function SpeciesConstructor(realm: Realm, O: ObjectValue, defaultConstruc
   }
 
   // 8. Throw a TypeError exception.
-  throw new ThrowCompletion(
-    Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Throw a TypeError exception")])
-  );
+  throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Throw a TypeError exception");
 }

@@ -16,7 +16,6 @@ import { DefinePropertyOrThrow } from "../../methods/properties.js";
 import { BooleanValue, NullValue, UndefinedValue, NumberValue, StringValue, FunctionValue, NativeFunctionValue, ObjectValue } from "../../values/index.js";
 import { Call } from "../../methods/call.js";
 import { ToInteger } from "../../methods/to.js";
-import { Construct } from "../../methods/construct.js";
 import { CreateListFromArrayLike } from "../../methods/create.js";
 import { Get } from "../../methods/get.js";
 import { IsCallable } from "../../methods/is.js";
@@ -41,9 +40,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("call", 1, (func, [thisArg, ...argList]) => {
     // 1. If IsCallable(func) is false, throw a TypeError exception.
     if (IsCallable(realm, func) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not callable")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
     }
 
     // 2. Let argList be a new empty List.
@@ -61,9 +58,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("apply", 2, (func, [thisArg, argArray]) => {
     // 1. If IsCallable(func) is false, throw a TypeError exception.
     if (IsCallable(realm, func) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not callable")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+        "not callable");
     }
 
     // 2. If argArray is null or undefined, then
@@ -162,6 +158,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     } else if (context instanceof FunctionValue) {
       return new StringValue(realm, "function () { TODO: provide function source code }");
     } else {
+      // Can I use realm.createErrorThrowCompletion here? what `type` error is this?
       throw new ThrowCompletion(new StringValue(realm, "Function.prototype.toString is not generic"));
     }
   });

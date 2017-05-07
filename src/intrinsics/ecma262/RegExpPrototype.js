@@ -11,7 +11,6 @@
 
 import type { Realm } from "../../realm.js";
 import invariant from "../../invariant.js";
-import { ThrowCompletion } from "../../completions.js";
 import { BooleanValue, StringValue, ObjectValue, NullValue, NumberValue, UndefinedValue, Value } from "../../values/index.js";
 import { ArrayCreate, CreateDataProperty } from "../../methods/create.js";
 import { SameValue } from "../../methods/abstract.js";
@@ -29,9 +28,7 @@ function InternalHasFlag(realm: Realm, context: Value, flag: string): Value {
 
   // 2. If Type(R) is not Object, throw a TypeError exception.
   if (!(R instanceof ObjectValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
   }
 
   // 3. If R does not have an [[OriginalFlags]] internal slot, throw a TypeError exception.
@@ -40,9 +37,7 @@ function InternalHasFlag(realm: Realm, context: Value, flag: string): Value {
     if (SameValue(realm, R, realm.intrinsics.RegExpPrototype)) {
       return realm.intrinsics.undefined;
     } else { // b. Otherwise, throw a TypeError exception.
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "R does not have an [[OriginalFlags]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "R does not have an [[OriginalFlags]] internal slot");
     }
   }
 
@@ -66,16 +61,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(R) is not Object, throw a TypeError exception.
     if (!(R instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
     }
 
     // 3. If R does not have a [[RegExpMatcher]] internal slot, throw a TypeError exception.
     if (R.$RegExpMatcher === undefined) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "R does not have a [[RegExpMatcher]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "R does not have a [[RegExpMatcher]] internal slot");
     }
 
     // 4. Let S be ? ToString(string).
@@ -92,9 +83,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(R) is not Object, throw a TypeError exception.
     if (!(R instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
     }
 
     // 3. Let result be the empty String.
@@ -151,9 +140,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(rx) is not Object, throw a TypeError exception.
     if (!(rx instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
     }
 
     // 3. Let S be ? ToString(string).
@@ -235,9 +222,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(rx) is not Object, throw a TypeError exception.
     if (!(rx instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
     }
 
     // 3. Let S be ? ToString(string).
@@ -412,9 +397,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(rx) is not Object, throw a TypeError exception.
     if (!(rx instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
     }
 
     // 3. Let S be ? ToString(string).
@@ -446,9 +429,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(R) is not Object, throw a TypeError exception.
     if (!(R instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
     }
 
     // 3. If R does not have an [[OriginalSource]] internal slot, throw a TypeError exception.
@@ -457,9 +438,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       if (SameValue(realm, R, realm.intrinsics.RegExpPrototype)) {
         return new StringValue(realm, "(?:)");
       } else { // b. Otherwise, throw a TypeError exception.
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "R does not have an [[OriginalSource]] internal slot")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+          "R does not have an [[OriginalSource]] internal slot");
       }
     }
 
@@ -485,9 +465,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(rx) is not Object, throw a TypeError exception.
     if (!(rx instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(rx) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(rx) is not an object");
     }
 
     // 3. Let S be ? ToString(string).
@@ -646,9 +624,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(R) is not Object, throw a TypeError exception.
     if (!(R instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
     }
 
     // 3. Let string be ? ToString(S).
@@ -668,9 +644,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(R) is not Object, throw a TypeError exception.
     if (!(R instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(R) is not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(R) is not an object");
     }
 
     // 3. Let pattern be ? ToString(? Get(R, "source")).

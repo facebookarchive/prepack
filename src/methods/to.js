@@ -14,11 +14,9 @@ import type { Realm } from "../realm.js";
 import { GetMethod, Get } from "./get.js";
 import { StringCreate } from "./create.js";
 import { HasProperty } from "./has.js";
-import { Construct } from "./construct.js";
 import { Call } from "./call.js";
 import { IsCallable } from "./is.js";
 import { SameValue, SameValueZero } from "./abstract.js";
-import { ThrowCompletion } from "../completions.js";
 import { Value, ConcreteValue, PrimitiveValue, UndefinedValue, BooleanValue, ObjectValue, SymbolValue, StringValue, NumberValue, NullValue, AbstractValue, AbstractObjectValue } from "../values/index.js";
 import invariant from "../invariant.js";
 
@@ -420,9 +418,7 @@ export function ToIndex(realm: Realm, value: number | ConcreteValue): number {
 
     // b. If integerIndex < 0, throw a RangeError exception.
     if (integerIndex < 0) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "integerIndex < 0")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "integerIndex < 0");
     }
 
     // c. Let index be ! ToLength(integerIndex).
@@ -430,9 +426,7 @@ export function ToIndex(realm: Realm, value: number | ConcreteValue): number {
 
     // d. If SameValueZero(integerIndex, index) is false, throw a RangeError exception.
     if (SameValueZero(realm, new NumberValue(realm, integerIndex), new NumberValue(realm, index)) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "integerIndex < 0")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "integerIndex < 0");
     }
   }
   // 3. Return index.
@@ -467,9 +461,7 @@ export function ToNumber(realm: Realm, val: numberOrValue): number {
   } else if (val instanceof StringValue) {
     return Number(val.value);
   } else {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "unknown value type, can't coerce to a number")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown value type, can't coerce to a number");
   }
 }
 
@@ -570,9 +562,7 @@ export function OrdinaryToPrimitive(realm: Realm, input: ObjectValue, hint: "str
   }
 
   // 6. Throw a TypeError exception.
-  throw new ThrowCompletion(
-    Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "can't turn to primitive")])
-  );
+  throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "can't turn to primitive");
 }
 
 // ECMA262 7.1.12
@@ -595,9 +585,7 @@ export function ToString(realm: Realm, val: string | ConcreteValue): string {
     let primValue = ToPrimitive(realm, val, "string");
     return ToString(realm, primValue);
   } else {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "unknown value type, can't coerce to string")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown value type, can't coerce to string");
   }
 }
 
@@ -623,9 +611,7 @@ export function ToBoolean(realm: Realm, val: ConcreteValue): boolean {
     return true;
   } else {
     invariant(!(val instanceof AbstractValue));
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "unknown value type, can't coerce to a boolean")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown value type, can't coerce to a boolean");
   }
 }
 

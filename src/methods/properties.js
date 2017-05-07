@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import { ArrayValue, UndefinedValue, NumberValue, SymbolValue, NullValue, BooleanValue, ObjectValue, StringValue, Value, ConcreteValue, AbstractValue, AbstractObjectValue } from "../values/index.js";
-import { ThrowCompletion } from "../completions.js";
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { CreateIterResultObject } from "../methods/create.js";
 import invariant from "../invariant.js";
@@ -31,7 +30,6 @@ import {
   GetReferencedNamePartial,
   GetThisValue,
   HasPrimitiveBase,
-  Construct,
   Call,
   ToObject,
   ToObjectPartial,
@@ -375,9 +373,7 @@ export function DeletePropertyOrThrow(realm: Realm, O: ObjectValue, P: PropertyK
 
   // 4. If success is false, throw a TypeError exception.
   if (!success) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "couldn't delete property")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "couldn't delete property");
   }
 
   // 5. Return success.
@@ -735,9 +731,7 @@ export function PutValue(realm: Realm, V: Value | Reference, W: Value) {
 
   // 3. If Type(V) is not Reference, throw a ReferenceError exception.
   if (!(V instanceof Reference)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.ReferenceError, [new StringValue(realm, "can't put a value to a non-reference")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, "can't put a value to a non-reference");
   }
 
   // 4. Let base be GetBase(V).
@@ -813,9 +807,7 @@ export function ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor): b
 
   // 5. If newLen ≠ numberLen, throw a RangeError exception.
   if (newLen !== numberLen) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "should be a uint")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "should be a uint");
   }
 
   // 6. Set newLenDesc.[[Value]] to newLen.

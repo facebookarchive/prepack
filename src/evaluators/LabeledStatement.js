@@ -12,10 +12,8 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { StringValue } from "../values/index.js";
 import type { Reference } from "../environment.js";
-import { BreakCompletion, ThrowCompletion } from "../completions.js";
-import { Construct } from "../methods/construct.js";
+import { BreakCompletion } from "../completions.js";
 import type { BabelNodeLabeledStatement, BabelNode } from "babel-types";
 
 // ECMA262 13.13.14
@@ -54,10 +52,8 @@ function LabelledEvaluation(labelSet: Array<string>, ast: BabelNode, strictCode:
       // fall through to throw
     case 'FunctionDeclaration':
     case 'ClassDeclaration':
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.SyntaxError,
-           [new StringValue(realm, ast.type + " may not have a label")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
+        ast.type + " may not have a label");
 
     default:
       return env.evaluate(ast, strictCode, labelSet);

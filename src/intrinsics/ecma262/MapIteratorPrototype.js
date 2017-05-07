@@ -12,8 +12,6 @@
 import type { Realm } from "../../realm.js";
 import { StringValue, NumberValue, ObjectValue, UndefinedValue } from "../../values/index.js";
 import { CreateIterResultObject, CreateArrayFromList } from "../../methods/create.js";
-import { Construct } from "../../methods/construct.js";
-import { ThrowCompletion } from "../../completions.js";
 import invariant from "../../invariant.js";
 
 export default function (realm: Realm, obj: ObjectValue): void {
@@ -24,16 +22,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an object");
     }
 
     // 3. If O does not have all of the internal slots of a Set Iterator Instance (23.2.5.3), throw a TypeError exception.
     if (O.$Map === undefined || O.$MapNextIndex === undefined || O.$MapIterationKind === undefined) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "MapIteratorPrototype.next isn't generic")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "MapIteratorPrototype.next isn't generic");
     }
 
     // 4. Let m be O.[[Map]].

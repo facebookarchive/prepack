@@ -17,7 +17,6 @@ import { Call } from "./call.js";
 import { IsCallable } from "./is.js";
 import { Completion, ReturnCompletion, ThrowCompletion } from "../completions.js";
 import { GetMethod, Get } from "./get.js";
-import { Construct } from "./construct.js";
 import { HasCompatibleType, HasSomeCompatibleType } from "./has.js";
 import { ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -57,9 +56,7 @@ export function SplitMatch(realm: Realm, S: string, q: number, R: string): false
 // ECMA262 7.2.1
 export function RequireObjectCoercible<T: Value>(realm: Realm, arg: T): T {
   if (HasSomeCompatibleType(realm, arg, NullValue, UndefinedValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "null or undefined")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "null or undefined");
   } else {
     return arg;
   }
@@ -386,9 +383,7 @@ export function Add(realm: Realm, a: number, b: number, subtract?: boolean = fal
 export function InstanceofOperator(realm: Realm, O: Value, C: Value): boolean {
   // 1. If Type(C) is not Object, throw a TypeError exception.
   if (!C.mightBeObject()) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Expecting a function in instanceof check")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Expecting a function in instanceof check");
   }
 
   // 2. Let instOfHandler be ? GetMethod(C, @@hasInstance).
@@ -402,9 +397,7 @@ export function InstanceofOperator(realm: Realm, O: Value, C: Value): boolean {
 
   // 4. If IsCallable(C) is false, throw a TypeError exception.
   if (IsCallable(realm, C) === false) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Expecting a function in instanceof check")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Expecting a function in instanceof check");
   }
 
   // 5. Return ? OrdinaryHasInstance(C, O).
@@ -435,9 +428,7 @@ export function OrdinaryHasInstance(realm: Realm, C: Value, O: Value): boolean {
 
   // 5. If Type(P) is not Object, throw a TypeError exception.
   if (!(P instanceof ObjectValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(P) is not Object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(P) is not Object");
   }
 
   // 6. Repeat

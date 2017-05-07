@@ -17,7 +17,7 @@ import type { SourceType } from "./types.js";
 import { AbruptCompletion, Completion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
-import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, StringValue, ObjectValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
+import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, ObjectValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverse from "./traverse.js";
@@ -25,7 +25,6 @@ import {
   ToBooleanPartial,
   HasProperty,
   Get,
-  Construct,
   GetValue,
   DefinePropertyOrThrow,
   Set,
@@ -166,9 +165,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     if (!binding) {
       // a. If S is true, throw a ReferenceError exception.
       if (S) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.ReferenceError, [new StringValue(realm, `${N} not found`)])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} not found`);
       }
 
       // b. Perform envRec.CreateMutableBinding(N, true).
@@ -186,9 +183,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
     // 4. If the binding for N in envRec has not yet been initialized, throw a ReferenceError exception.
     if (!binding.initialized) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.ReferenceError, [new StringValue(realm, `${N} has not yet been initialized`)])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) { // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
        realm.recordModifiedBinding(binding, envRec).value = V;
     } else { // 6. Else,
@@ -196,9 +191,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
       // b. If S is true, throw a TypeError exception.
       if (S) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "attempt to change immutable binding")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "attempt to change immutable binding");
       }
     }
 

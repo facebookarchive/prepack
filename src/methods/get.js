@@ -13,13 +13,11 @@ import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value, AbstractValue, BooleanValue, BoundFunctionValue, NumberValue, ProxyValue, UndefinedValue, StringValue, ObjectValue, NullValue, AbstractObjectValue } from "../values/index.js";
-import { ThrowCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { ArrayCreate } from "./create.js";
 import { SetIntegrityLevel } from "./integrity.js";
 import { ToString } from "./to.js";
 import {
-  Construct,
   ToObjectPartial,
   IsPropertyKey,
   IsCallable,
@@ -61,9 +59,7 @@ export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
   if (obj instanceof ProxyValue) {
     // a. If the value of the [[ProxyHandler]] internal slot of obj is null, throw a TypeError exception.
     if (obj.$ProxyHandler instanceof NullValue) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "proxy handler is null")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "proxy handler is null");
     }
     invariant(obj.$ProxyTarget instanceof ObjectValue);
 
@@ -247,9 +243,7 @@ export function GetMethod(realm: Realm, V: Value, P: PropertyKeyValue): Undefine
 
   // 4. If IsCallable(func) is false, throw a TypeError exception.
   if (!IsCallable(realm, func)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not callable")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
   }
 
   // 5. Return func.
@@ -333,9 +327,7 @@ export function GetNewTarget(realm: Realm): UndefinedValue | ObjectValue {
   if (!('$NewTarget' in envRec)) {
     // In the spec we should not get here because earlier static checks are supposed to prevent it.
     // However, we do not have an appropriate place to do this check earlier.
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "new.target not allowed here")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "new.target not allowed here");
   }
 
   // 3. Return envRec.[[NewTarget]].

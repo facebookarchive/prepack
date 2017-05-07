@@ -13,9 +13,8 @@ import type { Realm } from "../../realm.js";
 import type { ElementType, TypedArrayKind } from "../../types.js";
 import { ElementSize } from "../../types.js";
 import { NumberValue, NativeFunctionValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
-import { ThrowCompletion } from "../../completions.js";
 import { ArrayElementSize, ArrayElementType, AllocateTypedArray, AllocateTypedArrayBuffer, TypedArrayCreate } from "../../methods/typedarray.js";
-import { Construct, SpeciesConstructor } from "../../methods/construct.js";
+import { SpeciesConstructor } from "../../methods/construct.js";
 import { ToIndexPartial, ToLength, ToString, ToObjectPartial } from "../../methods/to.js";
 import { Get, GetMethod } from "../../methods/get.js";
 import { Set } from "../../methods/properties.js";
@@ -28,9 +27,7 @@ import invariant from "../../invariant.js";
 export default function (realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, 'TypedArray', 'TypedArray', 0, (context) => {
     // 1. Throw a TypeError exception.
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "TypedArray")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "TypedArray");
   });
 
   // ECMA262 22.2.2.1
@@ -40,9 +37,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
     // 2. If IsConstructor(C) is false, throw a TypeError exception.
     if (IsConstructor(realm, C) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsConstructor(C) is false")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsConstructor(C) is false");
     }
     invariant(C instanceof ObjectValue);
 
@@ -51,9 +46,7 @@ export default function (realm: Realm): NativeFunctionValue {
     if (mapfn !== undefined && !mapfn.mightBeUndefined()) {
       // a. If IsCallable(mapfn) is false, throw a TypeError exception.
       if (IsCallable(realm, mapfn) === false) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsConstructor(C) is false")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsConstructor(C) is false");
       }
 
       // b. Let mapping be true.
@@ -169,9 +162,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
     // 4. If IsConstructor(C) is false, throw a TypeError exception.
     if (IsConstructor(realm, C) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsConstructor(C) is false")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsConstructor(C) is false");
     }
     invariant(C instanceof ObjectValue);
 
@@ -232,9 +223,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 1. If NewTarget is undefined, throw a TypeError exception.
       if (!NewTarget) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "NewTarget is undefined")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "NewTarget is undefined");
       }
 
       // 2. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
@@ -251,9 +240,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 2. If NewTarget is undefined, throw a TypeError exception.
       if (!NewTarget) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "NewTarget is undefined")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "NewTarget is undefined");
       }
 
       // 3. Let elementLength be ? ToIndex(length).
@@ -273,9 +260,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 2. If NewTarget is undefined, throw a TypeError exception.
       if (!NewTarget) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "NewTarget is undefined")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "NewTarget is undefined");
       }
 
       // 3. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
@@ -292,9 +277,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 7. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, srcData) === true) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(srcData) is true")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(srcData) is true");
       }
 
       // 8. Let constructorName be the String value of O.[[TypedArrayName]].
@@ -338,9 +321,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
         // c. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
         if (IsDetachedBuffer(realm, srcData) === true) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(srcData) is true")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(srcData) is true");
         }
 
         // d. Let srcByteIndex be srcByteOffset.
@@ -394,9 +375,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 2. If NewTarget is undefined, throw a TypeError exception.
       if (!NewTarget) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "NewTarget is undefined")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "NewTarget is undefined");
       }
 
       // 3. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
@@ -484,9 +463,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 2. If NewTarget is undefined, throw a TypeError exception.
       if (!NewTarget) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "NewTarget is undefined")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "NewTarget is undefined");
       }
 
       // 3. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
@@ -506,16 +483,12 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 8. If offset modulo elementSize ≠ 0, throw a RangeError exception.
       if (offset % elementSize !== 0) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "offset modulo elementSize ≠ 0")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "offset modulo elementSize ≠ 0");
       }
 
       // 9. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, buffer) === true) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(buffer) is true")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
       }
 
       // 10. Let bufferByteLength be buffer.[[ArrayBufferByteLength]].
@@ -526,18 +499,14 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       if (!length || length instanceof UndefinedValue) {
         // a. If bufferByteLength modulo elementSize ≠ 0, throw a RangeError exception.
         if (bufferByteLength % elementSize !== 0) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "bufferByteLength modulo elementSize ≠ 0")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "bufferByteLength modulo elementSize ≠ 0");
         }
         // b. Let newByteLength be bufferByteLength - offset.
         newByteLength = bufferByteLength - offset;
 
         // c. If newByteLength < 0, throw a RangeError exception.
         if (newByteLength < 0) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "newByteLength < 0")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "newByteLength < 0");
         }
       } else { // 12. Else,
         // a. Let newLength be ? ToIndex(length).
@@ -548,9 +517,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
         // c. If offset+newByteLength > bufferByteLength, throw a RangeError exception.
         if (offset + newByteLength > bufferByteLength) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "offset+newByteLength > bufferByteLength")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "offset+newByteLength > bufferByteLength");
         }
       }
 

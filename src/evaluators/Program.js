@@ -12,12 +12,10 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Reference } from "../environment.js";
-import { Value, EmptyValue, StringValue } from "../values/index.js";
+import { Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { FindVarScopedDeclarations } from "../methods/function.js";
 import { BoundNames } from "../methods/index.js";
-import { ThrowCompletion } from "../completions.js";
-import { Construct } from "../methods/construct.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverse from "../traverse.js";
@@ -54,18 +52,14 @@ function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env
   for (let name of lexNames) {
     // a. If envRec.HasVarDeclaration(name) is true, throw a SyntaxError exception.
     if (envRec.HasVarDeclaration(name)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.SyntaxError,
-           [new StringValue(realm, name + " already declared with var")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
+        name + " already declared with var");
     }
 
     // b. If envRec.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
     if (envRec.HasLexicalDeclaration(name)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.SyntaxError,
-           [new StringValue(realm, name + " already declared with let or const")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
+        name + " already declared with let or const");
     }
 
     // c. Let hasRestrictedGlobal be ? envRec.HasRestrictedGlobalProperty(name).
@@ -73,10 +67,8 @@ function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env
 
     // d. If hasRestrictedGlobal is true, throw a SyntaxError exception.
     if (hasRestrictedGlobal) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.SyntaxError,
-           [new StringValue(realm, name + " global object is restricted")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
+        name + " global object is restricted");
     }
   }
 
@@ -84,10 +76,8 @@ function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env
   for (let name of varNames) {
     // a. If envRec.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
     if (envRec.HasLexicalDeclaration(name)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.SyntaxError,
-           [new StringValue(realm, name + " already declared with let or const")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
+        name + " already declared with let or const");
     }
   }
 
@@ -119,10 +109,8 @@ function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env
 
         // 2. If fnDefinable is false, throw a TypeError exception.
         if (!fnDefinable) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.TypeError,
-               [new StringValue(realm, fn + ": global function declarations are not allowed")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+            fn + ": global function declarations are not allowed");
         }
 
         // 3. Append fn to declaredFunctionNames.
@@ -150,10 +138,8 @@ function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env
 
           // 2. If vnDefinable is false, throw a TypeError exception.
           if (!vnDefinable) {
-            throw new ThrowCompletion(
-              Construct(realm, realm.intrinsics.TypeError,
-                 [new StringValue(realm, vn + ": global variable declarations are not allowed")])
-            );
+            throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+              vn + ": global variable declarations are not allowed");
           }
 
           // 3. If vn is not an element of declaredVarNames, then

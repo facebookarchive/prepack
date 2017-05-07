@@ -13,12 +13,11 @@ import type { PropertyKeyValue } from "../types.js";
 import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
-import { FunctionValue, StringValue, ObjectValue, NullValue, UndefinedValue, NativeFunctionValue, AbstractObjectValue, AbstractValue } from "../values/index.js";
+import { FunctionValue, ObjectValue, NullValue, UndefinedValue, NativeFunctionValue, AbstractObjectValue, AbstractValue } from "../values/index.js";
 import {
   GetBase,
   GetValue,
   ToObjectPartial,
-  Construct,
   IsCallable,
   IsPropertyReference,
   IsPropertyKey,
@@ -32,7 +31,7 @@ import {
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
-import { ThrowCompletion, ReturnCompletion, AbruptCompletion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
+import { ReturnCompletion, AbruptCompletion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -352,16 +351,12 @@ export function EvaluateDirectCall(realm: Realm, strictCode: boolean, env: Lexic
 
   // 2. If Type(func) is not Object, throw a TypeError exception.
   if (!(func instanceof ObjectValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an object");
   }
 
   // 3. If IsCallable(func) is false, throw a TypeError exception.
   if (!IsCallable(realm, func)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not callable")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
   }
 
   // 4. If tailPosition is true, perform PrepareForTailCall().
@@ -402,9 +397,7 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
 
   // 2. If IsCallable(F) is false, throw a TypeError exception.
   if (IsCallable(realm, F) === false) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not callable")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
   }
   invariant(F instanceof ObjectValue);
 

@@ -11,10 +11,9 @@
 
 import type { Realm } from "../realm.js";
 import type { DataBlock, ElementType } from "../types.js";
-import { ThrowCompletion } from "../completions.js";
-import { Value, ObjectValue, NumberValue, EmptyValue, NullValue, StringValue, UndefinedValue } from "../values/index.js";
+import { Value, ObjectValue, NumberValue, EmptyValue, NullValue, UndefinedValue } from "../values/index.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
-import { Construct, SpeciesConstructor } from "../methods/construct.js";
+import { SpeciesConstructor } from "../methods/construct.js";
 import { IsConstructor } from "../methods/index.js";
 import { ToIndexPartial, ToBooleanPartial, ToNumber, ElementConv } from "./to.js";
 import { IsDetachedBuffer } from "../methods/is.js";
@@ -33,9 +32,7 @@ export function CreateByteDataBlock(realm: Realm, size: number): DataBlock {
     db = new Uint8Array(size);
   } catch (e) {
     if (e instanceof RangeError) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "Invalid typed array length")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "Invalid typed array length");
     } else {
       throw e;
     }
@@ -131,16 +128,12 @@ export function GetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
 
   // 1. If Type(view) is not Object, throw a TypeError exception.
   if (!(view instanceof ObjectValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(view) is not Object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(view) is not Object");
   }
 
   // 2. If view does not have a [[DataView]] internal slot, throw a TypeError exception.
   if (!('$DataView' in view)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "view does not have a [[DataView]] internal slot")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "view does not have a [[DataView]] internal slot");
   }
 
   // 3. Assert: view has a [[ViewedArrayBuffer]] internal slot.
@@ -157,9 +150,7 @@ export function GetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
 
   // 7. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, buffer) === true) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(buffer) is true")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
   }
 
   // 8. Let viewOffset be view.[[ByteOffset]].
@@ -173,9 +164,7 @@ export function GetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
 
   // 11. If getIndex + elementSize > viewSize, throw a RangeError exception.
   if (getIndex + elementSize > viewSize) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "getIndex + elementSize > viewSize")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "getIndex + elementSize > viewSize");
   }
 
   // 12. Let bufferIndex be getIndex + viewOffset.
@@ -258,16 +247,12 @@ export function SetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
 
   // 1. If Type(view) is not Object, throw a TypeError exception.
   if (!(view instanceof ObjectValue)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(view) is not Object")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(view) is not Object");
   }
 
   // 2. If view does not have a [[DataView]] internal slot, throw a TypeError exception.
   if (!('$DataView' in view)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "view does not have a [[DataView]] internal slot")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "view does not have a [[DataView]] internal slot");
   }
 
   // 3. Assert: view has a [[ViewedArrayBuffer]] internal slot.
@@ -287,9 +272,7 @@ export function SetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
 
   // 8. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, buffer) === true) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(buffer) is true")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
   }
 
   // 9. Let viewOffset be view.[[ByteOffset]].
@@ -303,9 +286,7 @@ export function SetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
 
   // 12. If getIndex + elementSize > viewSize, throw a RangeError exception.
   if (getIndex + elementSize > viewSize) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "getIndex + elementSize > viewSize")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "getIndex + elementSize > viewSize");
   }
 
   // 13. Let bufferIndex be getIndex + viewOffset.
@@ -327,9 +308,7 @@ export function CloneArrayBuffer(realm: Realm, srcBuffer: ObjectValue, srcByteOf
 
     // b. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
     if (IsDetachedBuffer(realm, srcBuffer) === true) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(srcBuffer) is true")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(srcBuffer) is true");
     }
   }
 
@@ -353,9 +332,7 @@ export function CloneArrayBuffer(realm: Realm, srcBuffer: ObjectValue, srcByteOf
 
   // 9. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, srcBuffer) === true) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(srcBuffer) is true")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(srcBuffer) is true");
   }
 
   // 10. Let targetBlock be targetBuffer.[[ArrayBufferData]].

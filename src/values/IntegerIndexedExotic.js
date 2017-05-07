@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ThrowCompletion } from "../completions.js";
 import { ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "../values/index.js";
 import { OrdinaryGetOwnProperty, OrdinaryDefineOwnProperty, OrdinarySet } from "../methods/properties.js";
 import { CanonicalNumericIndexString, ToString } from "../methods/to.js";
@@ -19,7 +18,6 @@ import { IsInteger, IsArrayIndex, IsAccessorDescriptor, IsDetachedBuffer, IsProp
 import { OrdinaryGet } from "../methods/get.js";
 import { OrdinaryHasProperty } from "../methods/has.js";
 import { IntegerIndexedElementSet, IntegerIndexedElementGet } from "../methods/typedarray.js";
-import { Construct } from "../methods/construct.js";
 import invariant from "../invariant";
 
 export default class IntegerIndexedExotic extends ObjectValue {
@@ -85,9 +83,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
 
         // ii. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
         if (IsDetachedBuffer(this.$Realm, buffer) === true) {
-          throw new ThrowCompletion(
-            Construct(this.$Realm, this.$Realm.intrinsics.TypeError, [new StringValue(this.$Realm, "IsDetachedBuffer(buffer) is true")])
-          );
+          throw this.$Realm.createErrorThrowCompletion(this.$Realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
         }
 
         // iii. If IsInteger(numericIndex) is false, return false.
