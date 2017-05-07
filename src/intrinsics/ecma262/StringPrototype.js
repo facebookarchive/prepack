@@ -10,11 +10,9 @@
 /* @flow */
 
 import { Realm } from "../../realm.js";
-import { ThrowCompletion } from "../../completions.js";
 import { AbstractValue, UndefinedValue, NumberValue, ObjectValue, StringValue, NullValue } from "../../values/index.js";
 import { IsCallable, IsRegExp } from "../../methods/is.js";
 import { GetMethod, GetSubstitution } from "../../methods/get.js";
-import { Construct } from "../../methods/construct.js";
 import { Call, Invoke } from "../../methods/call.js";
 import { CreateStringIterator, CreateDataProperty, ArrayCreate, CreateHTML } from "../../methods/create.js";
 import { RegExpCreate } from "../../methods/regexp.js";
@@ -143,9 +141,8 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
     // 4. If isRegExp is true, throw a TypeError exception.
     if (isRegExp) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "String.prototype")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+        "String.prototype");
     }
 
     // 5. Let searchStr be ? ToString(searchString).
@@ -196,9 +193,8 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
     // 4. If isRegExp is true, throw a TypeError exception.
     if (isRegExp) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "String.prototype")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+        "String.prototype");
     }
 
     // 5. Let searchStr be ? ToString(searchString).
@@ -719,9 +715,8 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
     // 4. If isRegExp is true, throw a TypeError exception.
     if (isRegExp) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "String.prototype")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+        "String.prototype");
     }
 
     // 5. Let searchStr be ? ToString(searchString).

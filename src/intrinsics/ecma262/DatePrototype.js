@@ -11,7 +11,6 @@
 
 import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue, NumberValue } from "../../values/index.js";
-import { ThrowCompletion } from "../../completions.js";
 import {
   ToNumber,
   ToObject,
@@ -37,7 +36,6 @@ import {
   MonthFromTime,
   msPerMinute,
   UTC,
-  Construct,
   OrdinaryToPrimitive,
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
@@ -754,9 +752,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     let tryFirst;
@@ -769,9 +765,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // a. Let tryFirst be "number".
       tryFirst = "number";
     } else { // 5. Else, throw a TypeError exception.
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 6. Return ? OrdinaryToPrimitive(O, tryFirst).

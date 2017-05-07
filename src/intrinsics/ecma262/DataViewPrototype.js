@@ -10,9 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ThrowCompletion } from "../../completions.js";
 import { ObjectValue, StringValue, NumberValue } from "../../values/index.js";
-import { Construct } from "../../methods/construct.js";
 import { IsDetachedBuffer } from "../../methods/is.js";
 import { GetViewValue, SetViewValue } from "../../methods/arraybuffer.js";
 import invariant from "../../invariant.js";
@@ -25,16 +23,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have a [[DataView]] internal slot, throw a TypeError exception.
     if (!('$DataView' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have a [[DataView]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[DataView]] internal slot");
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
@@ -54,16 +48,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have a [[DataView]] internal slot, throw a TypeError exception.
     if (!('$DataView' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have a [[DataView]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[DataView]] internal slot");
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
@@ -74,9 +64,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 6. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (IsDetachedBuffer(realm, buffer) === true) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(buffer) is true")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
     }
 
     // 7. Let size be O.[[ByteLength]].
@@ -94,16 +82,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have a [[DataView]] internal slot, throw a TypeError exception.
     if (!('$DataView' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have a [[DataView]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[DataView]] internal slot");
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
@@ -114,9 +98,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 6. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (IsDetachedBuffer(realm, buffer) === true) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(buffer) is true")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
     }
 
     // 7. Let offset be O.[[ByteOffset]].

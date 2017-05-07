@@ -1154,10 +1154,8 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
           // a. If thisEnvRec.HasBinding(name) is true, then
           if (thisEnvRec.HasBinding(name)) {
             // i. Throw a SyntaxError exception.
-            throw new ThrowCompletion(
-              Construct(realm, realm.intrinsics.SyntaxError,
-                 [new StringValue(realm, name + " global object is restricted")])
-            );
+            throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
+              name + " global object is restricted");
             // ii. NOTE: Annex B.3.5 defines alternate semantics for the above step.
           }
           // b. NOTE: A direct eval will not hoist var declaration over a like-named lexical declaration.
@@ -1192,10 +1190,8 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
           let fnDefinable = varEnvRec.CanDeclareGlobalFunction(fn);
           // b. If fnDefinable is false, throw a TypeError exception.
           if (!fnDefinable) {
-            throw new ThrowCompletion(
-              Construct(realm, realm.intrinsics.TypeError,
-                 [new StringValue(realm, fn + " is not definable")])
-            );
+            throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+              fn + " is not definable");
           }
         }
         // 2. Append fn to declaredFunctionNames.
@@ -1225,10 +1221,8 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
             let vnDefinable = varEnvRec.CanDeclareGlobalVar(vn);
             // ii. If vnDefinable is false, throw a TypeError exception.
             if (!vnDefinable) {
-              throw new ThrowCompletion(
-                Construct(realm, realm.intrinsics.TypeError,
-                   [new StringValue(realm, vn + " is not definable")])
-              );
+              throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+                vn + " is not definable");
             }
           }
           // b. If vn is not an element of declaredVarNames, then

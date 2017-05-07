@@ -12,8 +12,7 @@
 import type { Realm } from "../../realm.js";
 import { Value, StringValue, BooleanValue, ObjectValue, FunctionValue, NativeFunctionValue, AbstractValue, AbstractObjectValue, UndefinedValue } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
-import { ThrowCompletion } from "../../completions.js";
-import { Construct, ObjectCreate } from "../../methods/index.js";
+import { ObjectCreate } from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
@@ -43,17 +42,13 @@ export default function (realm: Realm): void {
       let typeNameString = ToStringPartial(realm, typeNameOrTemplate);
       let type = Value.getTypeFromName(typeNameString);
       if (type === undefined) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "unknown typeNameOrTemplate")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
       }
       return { type, template: Value.isTypeCompatibleWith(type, ObjectValue) ? ObjectCreate(realm, realm.intrinsics.ObjectPrototype) : undefined };
     } else if (typeNameOrTemplate instanceof ObjectValue) {
       return { type: ObjectValue, template: typeNameOrTemplate };
     } else {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "typeNameOrTemplate has unsupoorted type")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "typeNameOrTemplate has unsupported type");
     }
   }
 
@@ -66,9 +61,7 @@ export default function (realm: Realm): void {
   global.$DefineOwnProperty("__abstract", {
     value: new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
       if (!realm.isPartial) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "realm is not partial")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
       }
 
       let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
@@ -112,17 +105,13 @@ export default function (realm: Realm): void {
   global.$DefineOwnProperty("__residual", {
     value: new NativeFunctionValue(realm, "global.__residual", "__residual", 2, (context, [typeNameOrTemplate, f, ...args]) => {
       if (!realm.isPartial) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "realm is not partial")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
       }
 
       let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
 
       if (f.constructor !== FunctionValue) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "cannot determine residual function")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cannot determine residual function");
       }
       invariant(f instanceof FunctionValue);
       f.isResidual = true;
@@ -168,9 +157,7 @@ export default function (realm: Realm): void {
         (object: any).makePartial();
         return context.$Realm.intrinsics.undefined;
       }
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an (abstract) object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
     }),
     writable: true,
     enumerable: false,
@@ -185,9 +172,7 @@ export default function (realm: Realm): void {
         (object: any).makeSimple();
         return context.$Realm.intrinsics.undefined;
       }
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an (abstract) object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
     }),
     writable: true,
     enumerable: false,
@@ -198,9 +183,7 @@ export default function (realm: Realm): void {
   global.$DefineOwnProperty("__assumeDataProperty", {
     value: new NativeFunctionValue(realm, "global.__assumeDataProperty", "__assumeDataProperty", 3, (context, [object, propertyName, value]) => {
       if (!realm.isPartial) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "realm is not partial")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
       }
 
       let key = ToStringPartial(realm, propertyName);
@@ -221,9 +204,7 @@ export default function (realm: Realm): void {
         return context.$Realm.intrinsics.undefined;
       }
 
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an (abstract) object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
     }),
     writable: true,
     enumerable: false,

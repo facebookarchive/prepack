@@ -11,10 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import type { ElementType } from "../../types.js";
-import { ThrowCompletion } from "../../completions.js";
 import { ElementSize } from "../../types.js";
 import { ObjectValue, StringValue, NumberValue, UndefinedValue, NullValue } from "../../values/index.js";
-import { Construct } from "../../methods/construct.js";
 import { ToInteger, ToString, ToStringPartial, ToBooleanPartial, ToObject, ToObjectPartial, ToLength, ToNumber } from "../../methods/to.js";
 import { Call, Invoke } from "../../methods/call.js";
 import { Get } from "../../methods/get.js";
@@ -36,16 +34,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, return undefined.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
     if (!('$TypedArrayName' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have a [[TypedArrayName]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
@@ -65,16 +59,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
     if (!('$TypedArrayName' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have a [[TypedArrayName]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
     }
 
     // 4. Assert: O has [[ViewedArrayBuffer]] and [[ArrayLength]] internal slots.
@@ -101,16 +91,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
     if (!('$TypedArrayName' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have a [[TypedArrayName]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
     }
 
     // 4. Assert: O has [[ViewedArrayBuffer]] and [[ArrayLength]] internal slots.
@@ -239,9 +225,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -331,9 +315,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (IsCallable(realm, callbackfn) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsCallable(callbackfn) is false")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsCallable(callbackfn) is false");
     }
 
     // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -404,9 +386,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(predicate) is false, throw a TypeError exception.
     if (!IsCallable(realm, predicate)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -450,9 +430,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(predicate) is false, throw a TypeError exception.
     if (IsCallable(realm, predicate) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -496,9 +474,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -768,16 +744,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
     if (!('$TypedArrayName' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have a [[TypedArrayName]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
     }
 
     // 4. Assert: O has [[ViewedArrayBuffer]] and [[ArrayLength]] internal slots.
@@ -810,9 +782,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (IsCallable(realm, callbackfn) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsCallable(callbackfn) is false")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsCallable(callbackfn) is false");
     }
 
     // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -859,16 +829,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 5. If len is 0 and initialValue is not present, throw a TypeError exception.
     if (len === 0 && !initialValue) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Array.prototype")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Array.prototype");
     }
 
     // 6. Let k be 0.
@@ -903,9 +869,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // c. If kPresent is false, throw a TypeError exception.
       if (!kPresent) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "kPresent is false")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "kPresent is false");
       }
 
       invariant(accumulator);
@@ -949,16 +913,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 5. If len is 0 and initialValue is not present, throw a TypeError exception.
     if (len === 0 && !initialValue) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Array.prototype")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Array.prototype");
     }
 
     // 6. Let k be len-1.
@@ -993,9 +953,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // c. If kPresent is false, throw a TypeError exception.
       if (!kPresent || !accumulator) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Array.prototype")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Array.prototype");
       }
     }
 
@@ -1123,16 +1081,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 3. If Type(target) is not Object, throw a TypeError exception.
       if (!(target instanceof ObjectValue)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(target) is not Object")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(target) is not Object");
       }
 
       // 4. If target does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
       if (typeof target.$TypedArrayName !== "string") {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "target does not have a [[TypedArrayName]] internal slot")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "target does not have a [[TypedArrayName]] internal slot");
       }
 
       // 5. Assert: target has a [[ViewedArrayBuffer]] internal slot.
@@ -1143,9 +1097,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 7. If targetOffset < 0, throw a RangeError exception.
       if (targetOffset < 0) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "targetOffset < 0")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "targetOffset < 0");
       }
 
       // 8. Let targetBuffer be target.[[ViewedArrayBuffer]].
@@ -1153,9 +1105,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 9. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, targetBuffer) === true) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(targetBuffer) is true")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(targetBuffer) is true");
       }
 
       // 10. Let targetLength be target.[[ArrayLength]].
@@ -1181,9 +1131,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 17. If srcLength + targetOffset > targetLength, throw a RangeError exception.
       if (srcLength + targetOffset > targetLength) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "srcLength + targetOffset > targetLength")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "srcLength + targetOffset > targetLength");
       }
 
       // 18. Let targetByteIndex be targetOffset × targetElementSize + targetByteOffset.
@@ -1205,9 +1153,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // c. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
         if (IsDetachedBuffer(realm, targetBuffer) === true) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(targetBuffer) is true")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(targetBuffer) is true");
         }
 
         // d. Perform SetValueInBuffer(targetBuffer, targetByteIndex, targetType, kNumber).
@@ -1233,16 +1179,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 3. If Type(target) is not Object, throw a TypeError exception.
       if (!(target instanceof ObjectValue)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(target) is not Object")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(target) is not Object");
       }
 
       // 4. If target does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
       if (typeof target.$TypedArrayName !== "string") {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "target does not have a [[TypedArrayName]] internal slot")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "target does not have a [[TypedArrayName]] internal slot");
       }
 
       // 5. Assert: target has a [[ViewedArrayBuffer]] internal slot.
@@ -1253,9 +1195,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 7. If targetOffset < 0, throw a RangeError exception.
       if (targetOffset < 0) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "targetOffset < 0")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "targetOffset < 0");
       }
 
       // 8. Let targetBuffer be target.[[ViewedArrayBuffer]].
@@ -1263,9 +1203,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 9. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, targetBuffer) === true) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(targetBuffer) is true")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(targetBuffer) is true");
       }
 
       // 10. Let targetLength be target.[[ArrayLength]].
@@ -1276,9 +1214,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 12. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, srcBuffer) === true) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(srcBuffer) is true")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(srcBuffer) is true");
       }
 
       // 13. Let targetName be the String value of target.[[TypedArrayName]].
@@ -1312,9 +1248,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 22. If srcLength + targetOffset > targetLength, throw a RangeError exception.
       if (srcLength + targetOffset > targetLength) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "srcLength + targetOffset > targetLength")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "srcLength + targetOffset > targetLength");
       }
 
       let srcByteIndex;
@@ -1447,9 +1381,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // b. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, srcBuffer) === true) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(srcBuffer) is true")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(srcBuffer) is true");
       }
 
       // c. Let targetBuffer be A.[[ViewedArrayBuffer]].
@@ -1505,9 +1437,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "callback passed to Array.prototype.some isn't callable")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "callback passed to Array.prototype.some isn't callable");
     }
 
     // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -1569,9 +1499,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // b. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
         if (IsDetachedBuffer(realm, buffer) === true)
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "array buffer has been detached")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "array buffer has been detached");
 
         // c. If v is NaN, return +0.
         if (v instanceof NumberValue && isNaN(v.value)) return realm.intrinsics.zero;
@@ -1649,16 +1577,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
     if (!('$TypedArrayName' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have a [[TypedArrayName]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.

@@ -10,7 +10,6 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ThrowCompletion } from "../../completions.js";
 import { NumberValue, StringValue, ObjectValue, UndefinedValue, NullValue, Value } from "../../values/index.js";
 import invariant from "../../invariant.js";
 import { ObjectCreate, CreateDataProperty } from "../../methods/create.js";
@@ -29,7 +28,6 @@ import {
   CreateDataPropertyOrThrow,
   CreateArrayIterator,
   ArraySpeciesCreate,
-  Construct,
   ToString,
   ToStringPartial,
   ToInteger,
@@ -83,9 +81,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // ii. If n + len > 2^53-1, throw a TypeError exception.
         if (n + len > Math.pow(2, 53) - 1) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "too damn high")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "too damn high");
         }
 
         // iv. Repeat, while k < len
@@ -114,9 +110,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
       } else { // d. Else E is added as a single item rather than spread,
         // i. If n≥2^53-1, throw a TypeError exception.
         if (n > Math.pow(2, 53) - 1) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "too damn high")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "too damn high");
         }
 
         // ii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(n), E).
@@ -235,9 +229,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -320,9 +312,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -381,9 +371,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(predicate) is false, throw a TypeError exception.
     if (!IsCallable(realm, predicate)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -424,9 +412,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(predicate) is false, throw a TypeError exception.
     if (IsCallable(realm, predicate) === false) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -467,9 +453,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -727,9 +711,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -821,9 +803,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 5. If len + argCount > 2^53-1, throw a TypeError exception.
     if (len + argCount > Math.pow(2, 53) - 1) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Array.prototype")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Array.prototype");
     }
 
     // 6. Repeat, while items is not empty
@@ -855,16 +835,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 4. If len is 0 and initialValue is not present, throw a TypeError exception.
     if (len === 0 && !initialValue) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Array.prototype")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Array.prototype");
     }
 
     // 5. Let k be 0.
@@ -899,9 +875,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // c. If kPresent is false, throw a TypeError exception.
       if (!kPresent) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "kPresent is false")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "kPresent is false");
       }
 
       invariant(accumulator);
@@ -942,16 +916,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not a function")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
     }
 
     // 4. If len is 0 and initialValue is not present, throw a TypeError exception.
     if (len === 0 && !initialValue) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Array.prototype")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Array.prototype");
     }
 
     // 5. Let k be len-1.
@@ -986,9 +956,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // c. If kPresent is false, throw a TypeError exception.
       if (!kPresent || !accumulator) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Array.prototype")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Array.prototype");
       }
     }
 
@@ -1230,9 +1198,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "callback passed to Array.prototype.some isn't callable")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+        "callback passed to Array.prototype.some isn't callable");
     }
 
     // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -1433,9 +1400,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
         let ok = O.$Set(j.toString(), arr[j], O);
         // If any [[Set]] call returns false a TypeError exception is thrown.
         if (!ok)
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "[[Set]] returned false")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "[[Set]] returned false");
 
       } else {
         // If obj is not sparse then DeletePropertyOrThrow must not be called.
@@ -1492,9 +1457,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 8. If len+insertCount-actualDeleteCount > 2^53-1, throw a TypeError exception.
     if (len + insertCount - actualDeleteCount > Math.pow(2, 53) - 1) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "the item count is too damn high")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "the item count is too damn high");
     }
 
     // 9. Let A be ? ArraySpeciesCreate(O, actualDeleteCount).
@@ -1708,9 +1671,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (argCount > 0) {
       // a. If len+argCount > 2^53-1, throw a TypeError exception.
       if (len + argCount > Math.pow(2, 53) - 1) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "too damn high")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "too damn high");
       }
 
       // b. Let k be len.

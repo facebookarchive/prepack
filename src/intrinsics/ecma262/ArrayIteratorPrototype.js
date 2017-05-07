@@ -14,8 +14,6 @@ import { CreateIterResultObject, CreateArrayFromList } from "../../methods/creat
 import { NumberValue, ObjectValue, UndefinedValue, StringValue } from "../../values/index.js";
 import { ToLength } from "../../methods/to.js";
 import { Get } from "../../methods/get.js";
-import { Construct } from "../../methods/construct.js";
-import { ThrowCompletion } from "../../completions.js";
 import invariant from "../../invariant.js";
 
 export default function (realm: Realm, obj: ObjectValue): void {
@@ -26,16 +24,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "not an object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an object");
     }
 
     // 3. If O does not have all of the internal slots of an Array Iterator Instance (22.1.5.3), throw a TypeError exception.
     if (O.$IteratedObject === undefined || O.$ArrayIteratorNextIndex === undefined || O.$ArrayIterationKind === undefined) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "ArrayIteratorPrototype.next isn't generic")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "ArrayIteratorPrototype.next isn't generic");
     }
 
     // 4. Let a be the value of the [[IteratedObject]] internal slot of O.

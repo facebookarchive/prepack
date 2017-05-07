@@ -12,13 +12,11 @@
 import { Realm } from "../realm.js";
 import { Value, SymbolValue, NullValue, ObjectValue, UndefinedValue, StringValue } from "./index.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
-import { ThrowCompletion } from "../completions.js";
 import invariant from "../invariant.js";
 import {
   ToBooleanPartial,
   ToPropertyDescriptor
 } from "../methods/to.js";
-import { Construct } from "../methods/construct.js";
 import { SameValue, SameValuePartial, SamePropertyKey } from "../methods/abstract.js";
 import { GetMethod } from "../methods/get.js";
 import {
@@ -768,9 +766,7 @@ export default class ProxyValue extends ObjectValue {
       // a. If key is not an element of uncheckedResultKeys, throw a TypeError exception.
       let index = FindPropertyKey(realm, uncheckedResultKeys, key);
       if (index < 0) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "key is not an element of uncheckedResultKeys")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "key is not an element of uncheckedResultKeys");
       }
 
       // b. Remove key from uncheckedResultKeys.
@@ -785,9 +781,7 @@ export default class ProxyValue extends ObjectValue {
       // a. If key is not an element of uncheckedResultKeys, throw a TypeError exception.
       let index = FindPropertyKey(realm, uncheckedResultKeys, key);
       if (index < 0) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "key is not an element of uncheckedResultKeys")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "key is not an element of uncheckedResultKeys");
       }
 
       // b. Remove key from uncheckedResultKeys.
