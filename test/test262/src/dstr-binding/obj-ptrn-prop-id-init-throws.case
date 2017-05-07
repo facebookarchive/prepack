@@ -1,0 +1,27 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: error
+desc: Error thrown when evaluating the initializer
+info: |
+    13.3.3.7 Runtime Semantics: KeyedBindingInitialization
+
+    BindingElement : BindingPattern Initializeropt
+
+    [...]
+    3. If Initializer is present and v is undefined, then
+       a. Let defaultValue be the result of evaluating Initializer.
+       b. Let v be GetValue(defaultValue).
+       c. ReturnIfAbrupt(v).
+---*/
+
+//- setup
+function thrower() {
+  throw new Test262Error();
+}
+//- elems
+{ x: y = thrower() }
+//- vals
+{}
+//- error
+Test262Error

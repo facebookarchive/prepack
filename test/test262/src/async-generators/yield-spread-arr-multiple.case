@@ -1,0 +1,33 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: Use yield value in a array spread position
+template: default
+info: |
+  Array Initializer
+
+  SpreadElement[Yield, Await]:
+    ...AssignmentExpression[+In, ?Yield, ?Await]
+includes:
+  - compareArray.js
+flags: [async]
+---*/
+
+//- setup
+var arr = ['a', 'b', 'c'];
+var item;
+//- body
+  yield [...yield yield];
+//- assertions
+iter.next(false);
+item = iter.next(['a', 'b', 'c']);
+
+item.then(({ done, value }) => {
+  item = iter.next(value);
+
+  item.then(({ done, value }) => {
+    assert(compareArray(value, arr));
+    assert.sameValue(done, false);
+  }).then($DONE, $DONE);
+}).catch($DONE);

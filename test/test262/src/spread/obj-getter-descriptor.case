@@ -1,0 +1,41 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Spread operation with getter results in data property descriptor
+template: default
+esid: pending
+includes: [propertyHelper.js]
+info: |
+    Pending Runtime Semantics: PropertyDefinitionEvaluation
+
+    PropertyDefinition:...AssignmentExpression
+
+    1. Let exprValue be the result of evaluating AssignmentExpression.
+    2. Let fromValue be GetValue(exprValue).
+    3. ReturnIfAbrupt(fromValue).
+    4. Let excludedNames be a new empty List.
+    5. Return CopyDataProperties(object, fromValue, excludedNames).
+features: [object-spread]
+---*/
+
+//- setup
+let o = {
+    get a() {
+        return 42;
+    }
+};
+
+//- args
+{...o, c: 4, d: 5}
+//- params
+obj
+//- body
+
+assert.sameValue(Object.getOwnPropertyDescriptor(obj, "a").value, 42);
+assert.sameValue(obj.c, 4);
+assert.sameValue(obj.d, 5);
+assert.sameValue(Object.keys(obj).length, 3);
+
+verifyEnumerable(obj, "a");
+verifyWritable(obj, "a");
+verifyConfigurable(obj, "a");

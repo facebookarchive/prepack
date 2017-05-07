@@ -1,0 +1,23 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    The Initializer should only be evaluated if v is undefined.
+template: default
+es6id: 12.14.5.4
+---*/
+
+//- setup
+var flag1 = false;
+var flag2 = false;
+var x, y;
+//- elems
+{ x: x = flag1 = true, y: y = flag2 = true }
+//- vals
+{ y: 1 }
+//- body
+assert.sameValue(x, true, 'value of `x`');
+assert.sameValue(flag1, true, 'value of `flag1`');
+assert.sameValue(y, 1, 'value of `y`');
+assert.sameValue(flag2, false, 'value of `flag2`');

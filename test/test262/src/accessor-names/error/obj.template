@@ -1,0 +1,28 @@
+// Copyright (C) 2017 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/expressions/object/accessor-name-
+name: Object initializer
+esid: sec-object-initializer-runtime-semantics-evaluation
+es6id: 12.2.6.8
+info: |
+  ObjectLiteral :
+    { PropertyDefinitionList }
+    { PropertyDefinitionList , }
+
+  1. Let obj be ObjectCreate(%ObjectPrototype%).
+  2. Let status be the result of performing PropertyDefinitionEvaluation of
+     PropertyDefinitionList with arguments obj and true.
+---*/
+
+assert.throws(/*{ error }*/, function() {
+  ({
+    get [/*{ name }*/]() {}
+  });
+}, '`get` accessor');
+
+assert.throws(/*{ error }*/, function() {
+  ({
+    set [/*{ name }*/](_) {}
+  });
+}, '`set` accessor');

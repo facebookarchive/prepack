@@ -1,0 +1,27 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: default
+desc: Object binding pattern with "nested" array binding pattern not using initializer
+info: |
+    13.3.3.7 Runtime Semantics: KeyedBindingInitialization
+
+    [...]
+    3. If Initializer is present and v is undefined, then
+       [...]
+    4. Return the result of performing BindingInitialization for BindingPattern
+       passing v and environment as arguments.
+---*/
+
+//- elems
+{ w: [x, y, z] = [4, 5, 6] }
+//- vals
+{ w: [7, undefined, ] }
+//- body
+assert.sameValue(x, 7);
+assert.sameValue(y, undefined);
+assert.sameValue(z, undefined);
+
+assert.throws(ReferenceError, function() {
+  w;
+});

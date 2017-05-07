@@ -1,0 +1,32 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Object Spread properties overrides previous definitions
+template: default
+esid: pending
+info: |
+    Pending Runtime Semantics: PropertyDefinitionEvaluation
+
+    PropertyDefinition:...AssignmentExpression
+
+    1. Let exprValue be the result of evaluating AssignmentExpression.
+    2. Let fromValue be GetValue(exprValue).
+    3. ReturnIfAbrupt(fromValue).
+    4. Let excludedNames be a new empty List.
+    5. Return CopyDataProperties(object, fromValue, excludedNames).
+features: [object-spread]
+---*/
+
+//- setup
+let o = {a: 2, b: 3};
+
+//- args
+{a: 1, b: 7, ...o}
+//- params
+obj
+//- body
+assert.sameValue(obj.a, 2);
+assert.sameValue(obj.b, 3);
+assert.sameValue(Object.keys(obj).length, 2);
+assert.sameValue(o.a, 2);
+assert.sameValue(o.b, 3);

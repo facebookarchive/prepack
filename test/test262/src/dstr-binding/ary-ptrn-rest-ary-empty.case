@@ -1,0 +1,38 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: default
+desc: Rest element containing an "empty" array pattern
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    BindingRestElement : ... BindingPattern
+
+    1. Let A be ArrayCreate(0).
+    [...]
+    3. Repeat
+       [...]
+       b. If iteratorRecord.[[done]] is true, then
+          i. Return the result of performing BindingInitialization of
+             BindingPattern with A and environment as the arguments.
+       [...]
+
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    ArrayBindingPattern : [ ]
+
+    1. Return NormalCompletion(empty).
+features: [generators]
+---*/
+
+//- setup
+var iterations = 0;
+var iter = function*() {
+  iterations += 1;
+}();
+//- elems
+[...[]]
+//- vals
+iter
+//- body
+assert.sameValue(iterations, 1);

@@ -1,0 +1,32 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Nested array destructuring with a null value
+template: error
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    BindingElement : BindingPattern Initializeropt
+
+    1. If iteratorRecord.[[done]] is false, then
+       [...]
+       e. Else
+          i. Let v be IteratorValue(next).
+          [...]
+    4. Return the result of performing BindingInitialization of BindingPattern
+       with v and environment as the arguments.
+
+    13.3.3.5 Runtime Semantics: BindingInitialization
+
+    BindingPattern : ArrayBindingPattern
+
+    1. Let iterator be GetIterator(value).
+    2. ReturnIfAbrupt(iterator).
+---*/
+
+//- elems
+[[x]]
+//- vals
+[null]
+//- error
+TypeError

@@ -1,0 +1,23 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Does not re-initialize binding created by similar forms
+template: eval-func
+info: |
+    B.3.3.3 Changes to EvalDeclarationInstantiation
+
+    [...]
+    a. If declaredFunctionOrVarNames does not contain F, then
+    [...]
+---*/
+
+//- setup
+var init;
+//- before
+init = f;
+
+{
+  function f() {}
+}
+//- teardown
+assert.sameValue(init, undefined);

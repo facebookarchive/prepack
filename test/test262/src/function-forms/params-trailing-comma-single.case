@@ -1,0 +1,22 @@
+// Copyright (C) 2016 Jeff Morrison. All rights reserved.
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: A trailing comma should not increase the respective length, using a single parameter
+template: default
+info: |
+    Trailing comma in the parameters list
+
+    14.1 Function Definitions
+
+    FormalParameters[Yield, Await] : FormalParameterList[?Yield, ?Await] ,
+---*/
+
+//- params
+a,
+//- args
+42, 39
+//- body
+assert.sameValue(a, 42);
+//- teardown
+assert.sameValue(ref.length, 1, 'length is properly set');

@@ -1,0 +1,26 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Abrupt completion returned by GetIterator
+template: error
+info: |
+    13.3.3.5 Runtime Semantics: BindingInitialization
+
+    BindingPattern : ArrayBindingPattern
+
+    1. Let iterator be GetIterator(value).
+    2. ReturnIfAbrupt(iterator).
+features: [Symbol.iterator]
+---*/
+
+//- setup
+var iter = {};
+iter[Symbol.iterator] = function() {
+  throw new Test262Error();
+};
+//- elems
+[x]
+//- vals
+iter
+//- error
+Test262Error

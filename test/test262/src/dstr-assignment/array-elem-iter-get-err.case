@@ -1,0 +1,27 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Abrupt completion returned from GetIterator
+info: |
+    ArrayAssignmentPattern : [ AssignmentElementList ]
+
+    1. Let iterator be GetIterator(value).
+    2. ReturnIfAbrupt(iterator).
+features: [Symbol.iterator]
+template: error
+es6id: 12.14.5.2
+esid: sec-runtime-semantics-destructuringassignmentevaluation
+---*/
+
+//- setup
+var iterable = {};
+iterable[Symbol.iterator] = function() {
+  throw new Test262Error();
+};
+var _;
+//- error
+Test262Error
+//- elems
+[ _ ]
+//- vals
+iterable

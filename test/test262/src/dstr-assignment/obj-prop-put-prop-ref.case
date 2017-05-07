@@ -1,0 +1,19 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    The DestructuringAssignmentTarget of an AssignmentElement may be a
+    PropertyReference.
+template: default
+es6id: 12.14.5.4
+---*/
+
+//- setup
+var x = {};
+//- elems
+{ xy: x.y }
+//- vals
+{ xy: 4 }
+//- body
+assert.sameValue(x.y, 4);

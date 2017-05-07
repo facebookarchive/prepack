@@ -1,0 +1,28 @@
+// Copyright (C) 2017 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/statements/class/accessor-name-static-
+name: Class declaration, static method
+esid: sec-runtime-semantics-classdefinitionevaluation
+es6id: 14.5.14
+info: |
+  [...]
+  21. For each ClassElement m in order from methods
+      a. If IsStatic of m is false, then
+         [...]
+      b. Else,
+         a. Let status be the result of performing PropertyDefinitionEvaluation
+            for m with arguments F and false.
+---*/
+
+var stringSet;
+
+class C {
+  static get /*{ declareWith }*/() { return 'get string'; }
+  static set /*{ declareWith }*/(param) { stringSet = param; }
+}
+
+assert.sameValue(C[/*{ referenceWith }*/], 'get string');
+
+C[/*{ referenceWith }*/] = 'set string';
+assert.sameValue(stringSet, 'set string');

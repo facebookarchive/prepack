@@ -1,0 +1,28 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: error
+desc: Binding property list evaluation is interrupted by an abrupt completion
+info: |
+    13.3.3.5 Runtime Semantics: BindingInitialization
+
+    BindingPropertyList : BindingPropertyList , BindingProperty
+
+    1. Let status be the result of performing BindingInitialization for
+       BindingPropertyList using value and environment as arguments.
+    2. ReturnIfAbrupt(status).
+---*/
+
+//- setup
+var initCount = 0;
+function thrower() {
+  throw new Test262Error();
+}
+//- elems
+{ a, b = thrower(), c = ++initCount }
+//- vals
+{}
+//- error
+Test262Error
+//- teardown
+assert.sameValue(initCount, 0);

@@ -1,0 +1,28 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Referencing a parameter that occurs earlier in the ParameterList
+template: default
+info: |
+  14.1.19 Runtime Semantics: IteratorBindingInitialization
+
+  FormalsList : FormalsList , FormalParameter
+
+  1. Let status be the result of performing IteratorBindingInitialization for
+     FormalsList using iteratorRecord and environment as the arguments.
+  2. ReturnIfAbrupt(status).
+  3. Return the result of performing IteratorBindingInitialization for
+     FormalParameter using iteratorRecord and environment as the arguments.
+features: [default-parameters]
+---*/
+
+//- setup
+var x = 0;
+//- params
+x, y = x, z = y
+//- args
+3
+//- body
+assert.sameValue(x, 3, 'first argument value');
+assert.sameValue(y, 3, 'second argument value');
+assert.sameValue(z, 3, 'third argument value');

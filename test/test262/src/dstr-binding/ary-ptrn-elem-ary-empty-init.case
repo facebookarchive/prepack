@@ -1,0 +1,30 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: BindingElement with array binding pattern and initializer is used
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    BindingElement : BindingPatternInitializer opt
+
+    [...]
+    2. If iteratorRecord.[[done]] is true, let v be undefined.
+    3. If Initializer is present and v is undefined, then
+       a. Let defaultValue be the result of evaluating Initializer.
+       b. Let v be ? GetValue(defaultValue).
+    4. Return the result of performing BindingInitialization of BindingPattern
+       with v and environment as the arguments.
+---*/
+
+//- setup
+var initCount = 0;
+var iterCount = 0;
+var iter = function*() { iterCount += 1; }();
+//- elems
+[[] = function() { initCount += 1; return iter; }()]
+//- vals
+[]
+//- body
+assert.sameValue(initCount, 1);
+assert.sameValue(iterCount, 0);

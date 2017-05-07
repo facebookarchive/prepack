@@ -1,0 +1,32 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: default
+desc: Rest element following elision elements
+info: >
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    ArrayBindingPattern : [ Elisionopt BindingRestElement ]
+
+    1. If Elision is present, then
+       a. Let status be the result of performing
+          IteratorDestructuringAssignmentEvaluation of Elision with
+          iteratorRecord as the argument.
+       b. ReturnIfAbrupt(status).
+    2. Return the result of performing IteratorBindingInitialization for
+       BindingRestElement with iteratorRecord and environment as arguments.
+---*/
+
+//- setup
+var values = [1, 2, 3, 4, 5];
+//- elems
+[ , , ...x]
+//- vals
+values
+//- body
+assert(Array.isArray(x));
+assert.sameValue(x.length, 3);
+assert.sameValue(x[0], 3);
+assert.sameValue(x[1], 4);
+assert.sameValue(x[2], 5);
+assert.notSameValue(x, values);

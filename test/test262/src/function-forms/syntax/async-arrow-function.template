@@ -1,0 +1,32 @@
+// Copyright (C) 2017 Leo Balter. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/async-arrow-function/
+name: async arrow function expression
+esid: sec-async-arrow-function-definitions
+info: |
+  14.7 Async Arrow Function Definitions
+
+  AsyncArrowFunction :
+    ...
+    CoverCallExpressionAndAsyncArrowHead => AsyncConciseBody
+
+  AsyncConciseBody :
+    { AsyncFunctionBody }
+
+  ...
+
+  Supplemental Syntax
+
+  When processing an instance of the production AsyncArrowFunction :
+  CoverCallExpressionAndAsyncArrowHead => AsyncConciseBody the interpretation of
+  CoverCallExpressionAndAsyncArrowHead is refined using the following grammar:
+
+  AsyncArrowHead :
+    async ArrowFormalParameters
+---*/
+
+(async (/*{ params }*/) => {
+  /*{ body }*/
+});

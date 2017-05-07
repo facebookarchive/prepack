@@ -1,0 +1,26 @@
+// Copyright (C) 2017 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/statements/class/accessor-name-inst-
+name: Class declaration, instance method
+esid: sec-runtime-semantics-classdefinitionevaluation
+es6id: 14.5.14
+info: |
+  [...]
+  21. For each ClassElement m in order from methods
+      a. If IsStatic of m is false, then
+         i. Let status be the result of performing PropertyDefinitionEvaluation
+            for m with arguments proto and false.
+---*/
+
+assert.throws(/*{ error }*/, function() {
+  class C {
+    get [/*{ name }*/]() {}
+  }
+}, '`get` accessor');
+
+assert.throws(/*{ error }*/, function() {
+  class C {
+    set [/*{ name }*/](_) {}
+  }
+}, '`set` accessor');

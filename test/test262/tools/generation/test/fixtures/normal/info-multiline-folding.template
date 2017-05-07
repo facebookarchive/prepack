@@ -1,0 +1,30 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+name: First template name
+path: normal/info-multiline-folding-
+es6id: 1.2.3
+info: |
+    This is an "info" field with an
+
+    empty line
+    Trailing white space in the template: 
+    should be preserved:	
+     
+      
+       
+        
+    	
+    		
+    	 	  
+---*/
+
+// Trailing white space in the test body: 
+// should be preserved:	
+ 
+  
+   
+    
+	
+		
+	 	  

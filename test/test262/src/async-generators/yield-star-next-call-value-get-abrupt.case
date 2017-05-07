@@ -1,0 +1,58 @@
+// Copyright 2017 Tooru Fujisawa. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+template: default
+desc: Abrupt completion while getting value
+info: |
+    YieldExpression: yield * AssignmentExpression
+    ...
+    6. Repeat
+      a. If received.[[Type]] is normal, then
+        ii. Let innerResult be ? Invoke(iterator, "next",
+            « received.[[Value]] »).
+        iii. If generatorKind is async, then set innerResult to
+             ? Await(innerResult).
+        ...
+        vi. If done is true, then
+           1. Return ? IteratorValue(innerResult).
+    ...
+features: [Symbol.asyncIterator]
+flags: [async]
+---*/
+
+//- setup
+var reason = {};
+var obj = {
+  get [Symbol.iterator]() {
+    throw new Test262Error('it should not get Symbol.iterator');
+  },
+  [Symbol.asyncIterator]() {
+    return {
+      next() {
+        return {
+          done: true,
+          get value() {
+            throw reason;
+          }
+        };
+      }
+    };
+  }
+};
+
+//- body
+  yield* obj;
+  throw new Test262Error('abrupt completion closes iter');
+
+//- assertions
+iter.next().then(() => {
+  throw new Test262Error('Promise incorrectly fulfilled.');
+}, v => {
+  assert.sameValue(v, reason, "reject reason");
+
+  iter.next().then(({ done, value }) => {
+    assert.sameValue(done, true, 'the iterator is completed');
+    assert.sameValue(value, undefined, 'value is undefined');
+  }).then($DONE, $DONE);
+}).catch($DONE);

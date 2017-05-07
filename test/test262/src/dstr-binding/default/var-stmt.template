@@ -1,0 +1,22 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/statements/variable/dstr-
+name: >
+    `var` statement
+esid: sec-variable-statement-runtime-semantics-evaluation
+es6id: 13.3.2.4
+features: [destructuring-binding]
+info: |
+    VariableDeclaration : BindingPattern Initializer
+
+    1. Let rhs be the result of evaluating Initializer.
+    2. Let rval be GetValue(rhs).
+    3. ReturnIfAbrupt(rval).
+    4. Return the result of performing BindingInitialization for
+       BindingPattern passing rval and undefined as arguments.
+---*/
+
+var /*{ elems }*/ = /*{ vals }*/;
+
+/*{ body }*/

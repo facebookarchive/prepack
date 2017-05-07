@@ -1,0 +1,23 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: default
+desc: Binding as specified via property name, identifier, and initializer
+info: |
+    13.3.3.7 Runtime Semantics: KeyedBindingInitialization
+
+    SingleNameBinding : BindingIdentifier Initializeropt
+
+    [...]
+    8. Return InitializeReferencedBinding(lhs, v).
+---*/
+
+//- elems
+{ x: y = 33 }
+//- vals
+{ }
+//- body
+assert.sameValue(y, 33);
+assert.throws(ReferenceError, function() {
+  x;
+});

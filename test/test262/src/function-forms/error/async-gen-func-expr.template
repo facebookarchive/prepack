@@ -1,0 +1,29 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/async-generator/
+name: async generator function expression
+esid: sec-asyncgenerator-definitions-evaluation
+info: |
+    AsyncGeneratorExpression : async [no LineTerminator here] function * ( FormalParameters ) {
+        AsyncGeneratorBody }
+
+        [...]
+        3. Let closure be ! AsyncGeneratorFunctionCreate(Normal, FormalParameters,
+           AsyncGeneratorBody, scope, strict).
+        [...]
+features: [async-iteration]
+---*/
+
+var callCount = 0;
+var f;
+f = async function*(/*{ params }*/) {
+  /*{ body }*/
+  callCount = callCount + 1;
+};
+
+assert.throws(/*{ error }*/, function() {
+  f(/*{ args }*/);
+});
+assert.sameValue(callCount, 0, 'generator function body not evaluated');

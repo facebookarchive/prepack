@@ -1,0 +1,30 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Variable-scoped binding is updated following evaluation
+template: eval-global
+info: |
+    B.3.3.3 Changes to EvalDeclarationInstantiation
+
+    [...]
+    b. When the FunctionDeclaration f is evaluated, perform the following steps
+       in place of the FunctionDeclaration Evaluation algorithm provided in
+       14.1.21:
+       i. Let genv be the running execution context's VariableEnvironment.
+       ii. Let genvRec be genv's EnvironmentRecord.
+       iii. Let benv be the running execution context's LexicalEnvironment.
+       iv. Let benvRec be benv's EnvironmentRecord.
+       v. Let fobj be ! benvRec.GetBindingValue(F, false).
+       vi. Perform ? genvRec.SetMutableBinding(F, fobj, false).
+       vii. Return NormalCompletion(empty). 
+---*/
+
+//- body
+return 'inner declaration';
+//- after
+assert.sameValue(typeof f, 'function');
+assert.sameValue(f(), 'inner declaration');
+
+function f() {
+  return 'outer declaration';
+}

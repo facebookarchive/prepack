@@ -1,0 +1,28 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: BindingElement with array binding pattern and initializer is not used
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    BindingElement : BindingPatternInitializer opt
+
+    1. If iteratorRecord.[[done]] is false, then
+       a. Let next be IteratorStep(iteratorRecord.[[iterator]]).
+       [...]
+       e. Else,
+          i. Let v be IteratorValue(next).
+          [...]
+    4. Return the result of performing BindingInitialization of BindingPattern
+       with v and environment as the arguments.
+---*/
+
+//- setup
+var initCount = 0;
+//- elems
+[[] = function() { initCount += 1; }()]
+//- vals
+[[23]]
+//- body
+assert.sameValue(initCount, 0);

@@ -1,0 +1,32 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Destructuring initializer is not evaluated when value is not `undefined`
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    SingleNameBinding : BindingIdentifier Initializeropt
+
+    [...]
+    6. If Initializer is present and v is undefined, then
+       [...]
+    7. If environment is undefined, return PutValue(lhs, v).
+    8. Return InitializeReferencedBinding(lhs, v).
+---*/
+
+//- setup
+var initCount = 0;
+function counter() {
+  initCount += 1;
+}
+//- elems
+[w = counter(), x = counter(), y = counter(), z = counter()]
+//- vals
+[null, 0, false, '']
+//- body
+assert.sameValue(w, null);
+assert.sameValue(x, 0);
+assert.sameValue(y, false);
+assert.sameValue(z, '');
+assert.sameValue(initCount, 0);

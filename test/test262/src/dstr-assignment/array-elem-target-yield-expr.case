@@ -1,0 +1,37 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    When a `yield` token appears within the DestructuringAssignmentTarget of an
+    AssignmentElement within a generator function body, it behaves as a
+    YieldExpression.
+template: default
+es6id: 12.14.5.4
+features: [generators]
+---*/
+
+//- setup
+var value = [33];
+var x = {};
+var iterationResult, iter;
+
+iter = (function*() {
+//- elems
+[ x[yield] ]
+//- vals
+[33]
+//- teardown
+}());
+
+iterationResult = iter.next();
+
+assert.sameValue(iterationResult.value, undefined);
+assert.sameValue(iterationResult.done, false);
+assert.sameValue(x.prop, undefined);
+
+iterationResult = iter.next('prop');
+
+assert.sameValue(iterationResult.value, undefined);
+assert.sameValue(iterationResult.done, true);
+assert.sameValue(x.prop, 33);

@@ -1,0 +1,35 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: >
+    Spread operator applied to the only argument when GetIterator fails
+    (@@iterator function return value)
+template: error
+features: [Symbol.iterator]
+info: |
+    12.3.6.1 Runtime Semantics: ArgumentListEvaluation
+
+    ArgumentList : ... AssignmentExpression
+
+    1. Let list be an empty List.
+    2. Let spreadRef be the result of evaluating AssignmentExpression.
+    3. Let spreadObj be GetValue(spreadRef).
+    4. Let iterator be GetIterator(spreadObj).
+    5. ReturnIfAbrupt(iterator).
+
+    7.4.1 GetIterator ( obj, method )
+
+    [...]
+    2. Let iterator be ? Call(method, obj).
+    3. If Type(iterator) is not Object, throw a TypeError exception.
+---*/
+
+//- setup
+var iter = {};
+iter[Symbol.iterator] = function() {
+  return null;
+};
+//- error
+TypeError
+//- args
+...iter

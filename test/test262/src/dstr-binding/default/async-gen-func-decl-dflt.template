@@ -1,0 +1,27 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/statements/async-generator/dstr-dflt-
+name: async generator function declaration (default parameter)
+esid: sec-asyncgenerator-definitions-instantiatefunctionobject
+features: [async-iteration]
+info: |
+    AsyncGeneratorDeclaration : async [no LineTerminator here] function * BindingIdentifier
+        ( FormalParameters ) { AsyncGeneratorBody }
+
+        [...]
+        3. Let F be ! AsyncGeneratorFunctionCreate(Normal, FormalParameters, AsyncGeneratorBody,
+            scope, strict).
+        [...]
+flags: [async]
+---*/
+
+var callCount = 0;
+async function* f(/*{ elems }*/ = /*{ vals }*/) {
+  /*{ body }*/
+  callCount = callCount + 1;
+};
+f().next().then(() => {
+    assert.sameValue(callCount, 1, 'invoked exactly once');
+}).then($DONE, $DONE);

@@ -1,0 +1,29 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Error thrown when accessing the corresponding property of the value object
+template: error
+info: |
+    13.3.3.7 Runtime Semantics: KeyedBindingInitialization
+
+    BindingElement : BindingPattern Initializeropt
+
+    1. Let v be GetV(value, propertyName).
+    2. ReturnIfAbrupt(v).
+---*/
+
+//- setup
+var initEvalCount = 0;
+var poisonedProperty = Object.defineProperty({}, 'poisoned', {
+  get: function() {
+    throw new Test262Error();
+  }
+});
+//- elems
+{ poisoned: x = ++initEvalCount }
+//- vals
+poisonedProperty
+//- error
+Test262Error
+//- teardown
+assert.sameValue(initEvalCount, 0);

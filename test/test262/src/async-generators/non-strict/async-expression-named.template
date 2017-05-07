@@ -1,0 +1,28 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/async-generator/named-
+name: Async generator named expression - valid for non-strict only cases
+esid: prod-AsyncGeneratorExpression
+info: |
+  Async Generator Function Definitions
+
+  AsyncGeneratorExpression :
+    async [no LineTerminator here] function * BindingIdentifier ( FormalParameters ) {
+      AsyncGeneratorBody }
+features: [async-iteration]
+---*/
+
+var callCount = 0;
+
+var gen = async function *g() {
+  callCount += 1;
+  /*{ body }*/
+};
+
+var iter = gen();
+
+/*{ assertions }*/
+
+assert.sameValue(callCount, 1);

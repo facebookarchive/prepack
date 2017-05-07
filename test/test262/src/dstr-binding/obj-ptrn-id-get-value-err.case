@@ -1,0 +1,27 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: error
+desc: Error thrown when accessing the corresponding property of the value object
+info: |
+    13.3.3.7 Runtime Semantics: KeyedBindingInitialization
+
+    SingleNameBinding : BindingIdentifier Initializeropt
+
+    [...]
+    4. Let v be GetV(value, propertyName).
+    5. ReturnIfAbrupt(v).
+---*/
+
+//- setup
+var poisonedProperty = Object.defineProperty({}, 'poisoned', {
+  get: function() {
+    throw new Test262Error();
+  }
+});
+//- elems
+{ poisoned }
+//- vals
+poisonedProperty
+//- error
+Test262Error

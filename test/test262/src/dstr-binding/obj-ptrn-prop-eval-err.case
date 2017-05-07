@@ -1,0 +1,24 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Evaluation of property name returns an abrupt completion
+template: error
+info: |
+    13.3.3.5 Runtime Semantics: BindingInitialization
+
+    BindingProperty : PropertyName : BindingElement
+
+    1. Let P be the result of evaluating PropertyName
+    2. ReturnIfAbrupt(P).
+---*/
+
+//- setup
+function thrower() {
+  throw new Test262Error();
+}
+//- elems
+{ [thrower()]: x }
+//- vals
+{}
+//- error
+Test262Error

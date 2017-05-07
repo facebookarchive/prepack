@@ -1,0 +1,11 @@
+// Copyright (C) 2017 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: indentation
+desc: Multiple lines of code
+---*/
+
+//- value
+'These literals are each contained on a single line...';
+"...which means they may be indented...";
+`...without effecting the semantics of the generated source code.`;

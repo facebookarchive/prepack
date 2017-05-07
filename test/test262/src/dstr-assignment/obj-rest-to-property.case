@@ -1,0 +1,27 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    When DestructuringAssignmentTarget is an object property, its value should be binded
+    as rest object.
+template: default
+esid: pending
+includes: [propertyHelper.js]
+features: [object-rest]
+---*/
+
+//- setup
+var src = {};
+//- elems
+{...src.y}
+//- vals
+{ x: 1, y: 2}
+//- body
+assert.sameValue(src.y.x, 1);
+assert.sameValue(src.y.y, 2);
+
+verifyEnumerable(src, "y");
+verifyWritable(src, "y");
+verifyConfigurable(src, "y");
+

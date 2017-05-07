@@ -1,0 +1,19 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: error
+desc: Value specifed for object binding pattern must be object coercible (undefined)
+info: |
+    Runtime Semantics: BindingInitialization
+
+    ObjectBindingPattern : { }
+
+    1. Return NormalCompletion(empty).
+---*/
+
+//- elems
+{}
+//- vals
+undefined
+//- error
+TypeError

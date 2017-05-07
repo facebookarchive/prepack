@@ -1,0 +1,21 @@
+// Copyright (C) 2016 Jeff Morrison. All rights reserved.
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: A trailing comma should not increase the arguments.length, using multiple args
+template: default
+esid: prod-Arguments
+info: |
+    Trailing comma in the arguments list
+
+    12.3 Left-Hand-Side Expressions
+
+    Arguments[Yield, Await] : ( ArgumentList[?Yield, ?Await] , )
+---*/
+
+//- args
+42, 'TC39',
+//- body
+assert.sameValue(arguments.length, 2);
+assert.sameValue(arguments[0], 42);
+assert.sameValue(arguments[1], 'TC39');

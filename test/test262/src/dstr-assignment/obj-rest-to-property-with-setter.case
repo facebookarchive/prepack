@@ -1,0 +1,31 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    When DestructuringAssignmentTarget is an object property setter, its value should be
+    binded as rest object.
+template: default
+esid: pending
+features: [object-rest]
+---*/
+
+//- setup
+var settedValue;
+var executedGetter = false;
+var src = {
+    get y() { executedGetter = true; },
+    set y(v) {
+        settedValue = v;
+    }
+}
+src.y = undefined;
+//- elems
+{...src.y}
+//- vals
+{ x: 1, y: 2}
+//- body
+assert.sameValue(settedValue.x, 1);
+assert.sameValue(settedValue.y, 2);
+assert(!executedGetter, "The property should not be accessed");
+

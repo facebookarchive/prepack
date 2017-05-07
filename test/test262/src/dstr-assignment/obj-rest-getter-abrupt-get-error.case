@@ -1,0 +1,23 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    Rest deconstruction doesn't happen if getter return is abrupt
+template: error
+esid: pending
+features: [object-rest]
+---*/
+
+//- setup
+var x;
+var count = 0;
+//- elems
+{...x}
+//- vals
+{ get v() { count++; throw new Test262Error(); } }
+//- error
+Test262Error
+//- teardown
+assert.sameValue(count, 1);
+

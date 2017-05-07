@@ -1,0 +1,20 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Existing variable binding is not modified
+template: func
+info: |
+    B.3.3.1 Changes to FunctionDeclarationInstantiation
+
+    [...]
+    2. If instantiatedVarNames does not contain F, then
+    [...]
+---*/
+
+//- setup
+var init;
+//- before
+var f = 123;
+init = f;
+//- teardown
+assert.sameValue(init, 123);

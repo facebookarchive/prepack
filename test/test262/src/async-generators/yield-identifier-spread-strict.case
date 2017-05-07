@@ -1,0 +1,28 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+  It's an early error if the AssignmentExpression is a function body with yield
+  as an identifier in strict mode.
+template: default
+info: |
+  Spread Properties
+
+  PropertyDefinition[Yield]:
+    (...)
+    ...AssignmentExpression[In, ?Yield]
+features: [object-spread]
+flags: [onlyStrict]
+negative:
+  phase: early
+  type: SyntaxError
+---*/
+
+//- body
+  return {
+     ...(function() {
+        var yield;
+        throw new Test262Error();
+     }()),
+  }

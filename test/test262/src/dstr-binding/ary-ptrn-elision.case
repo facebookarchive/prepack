@@ -1,0 +1,42 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Elision advances iterator
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    ArrayBindingPattern : [ Elision ]
+
+    1. Return the result of performing
+       IteratorDestructuringAssignmentEvaluation of Elision with iteratorRecord
+       as the argument.
+
+    12.14.5.3 Runtime Semantics: IteratorDestructuringAssignmentEvaluation
+
+    Elision : ,
+
+    1. If iteratorRecord.[[done]] is false, then
+       a. Let next be IteratorStep(iteratorRecord.[[iterator]]).
+       b. If next is an abrupt completion, set iteratorRecord.[[done]] to true.
+       c. ReturnIfAbrupt(next).
+       d. If next is false, set iteratorRecord.[[done]] to true.
+    2. Return NormalCompletion(empty).
+features: [generator]
+---*/
+
+//- setup
+var first = 0;
+var second = 0;
+function* g() {
+  first += 1;
+  yield;
+  second += 1;
+};
+//- elems
+[,]
+//- vals
+g()
+//- body
+assert.sameValue(first, 1);
+assert.sameValue(second, 0);

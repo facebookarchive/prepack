@@ -1,0 +1,36 @@
+// Copyright 2017 Tooru Fujisawa. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+template: default
+desc: Abrupt completion while getting yield* operand
+info: |
+    YieldExpression: yield * AssignmentExpression
+
+    1. Let exprRef be the result of evaluating AssignmentExpression.
+    2. Let value be ? GetValue(exprRef).
+    ...
+flags: [async]
+---*/
+
+//- setup
+var obj = {};
+var abrupt = function() {
+  throw obj;
+};
+
+//- body
+  yield* abrupt();
+  throw new Test262Error('abrupt completion closes iter');
+
+//- assertions
+iter.next().then(() => {
+  throw new Test262Error('Promise incorrectly fulfilled.');
+}, v => {
+  assert.sameValue(v, obj, "reject reason");
+
+  iter.next().then(({ done, value }) => {
+    assert.sameValue(done, true, 'the iterator is completed');
+    assert.sameValue(value, undefined, 'value is undefined');
+  }).then($DONE, $DONE);
+}).catch($DONE);

@@ -1,0 +1,28 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+name: First template name
+path: normal/path1-
+es6id: 1.2.3
+info: template info
+flags: [c, d]
+---*/
+
+before-/*{ first }*/-between-/*{ third }*/-after
+
+before*/*{ second }*/*between*/*{ first }*/*after
+
+before/* " *//*{ third }*/after
+
+The following should not be expanded:
+
+/* */*{ first }*/
+/*
+*/*{ first }*/
+//*{ first }*/
+// /*{ first }*/
+/*{ fourth }*/
+"/*{ fourth }*/"
+'/*{ fourth }*/'
+`
+/*{ fourth }*/`

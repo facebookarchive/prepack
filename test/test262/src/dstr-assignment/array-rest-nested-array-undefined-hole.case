@@ -1,0 +1,20 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    When DestructuringAssignmentTarget is an array literal and the iterable is
+    an array with a "hole", an array with a single `undefined` element should
+    be used as the value of the nested DestructuringAssignment.
+template: default
+es6id: 12.14.5.3
+---*/
+
+//- setup
+var x = null;
+//- elems
+[...[x]]
+//- vals
+[ , ]
+//- body
+assert.sameValue(x, undefined);

@@ -1,0 +1,15 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: annexB/language/eval-code/direct/func-block-decl-
+name: Block statement in eval code containing a function declaration
+esid: sec-web-compat-evaldeclarationinstantiation
+es6id: B.3.3.3
+flags: [noStrict]
+---*/
+
+(function(/*{ params }*/) {
+  eval(
+    '/*{ before }*/{ function f() { /*{ body }*/ } }/*{ after }*/'
+  );
+}(/*{ args }*/));

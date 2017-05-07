@@ -1,0 +1,36 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: Use yield value in a object spread position
+template: default
+info: |
+  Spread Properties
+
+  PropertyDefinition[Yield]:
+    (...)
+    ...AssignmentExpression[In, ?Yield]
+features: [object-spread]
+includes:
+  - compareArray.js
+flags: [async]
+---*/
+
+//- body
+  yield {
+    ...yield,
+    y: 1,
+    ...yield yield,
+  };
+//- assertions
+iter.next();
+iter.next({ x: 42 });
+iter.next({ x: 'lol' });
+var item = iter.next({ y: 39 });
+
+item.then(({ done, value }) => {
+  assert.sameValue(value.x, 42);
+  assert.sameValue(value.y, 39);
+  assert.sameValue(Object.keys(value).length, 2);
+  assert.sameValue(done, false);
+}).then($DONE, $DONE);

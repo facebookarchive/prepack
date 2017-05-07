@@ -1,0 +1,35 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/statements/class/async-gen-method-static-
+name: Static async generator method as a ClassDeclaration element
+esid: prod-AsyncGeneratorMethod
+info: |
+  ClassElement :
+    static MethodDefinition
+
+  MethodDefinition :
+    AsyncGeneratorMethod
+
+  Async Generator Function Definitions
+
+  AsyncGeneratorMethod :
+    async [no LineTerminator here] * PropertyName ( UniqueFormalParameters ) { AsyncGeneratorBody }
+features: [async-iteration]
+---*/
+
+var callCount = 0;
+
+class C { static async *gen() {
+    callCount += 1;
+    /*{ body }*/
+}}
+
+var gen = C.gen;
+
+var iter = gen();
+
+/*{ assertions }*/
+
+assert.sameValue(callCount, 1);

@@ -1,0 +1,27 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/expressions/object/method-definition/gen-
+name: Generator method
+esid: prod-GeneratorMethod
+info: |
+  14.4 Generator Function Definitions
+
+  GeneratorMethod[Yield, Await]:
+    * PropertyName[?Yield, ?Await] ( UniqueFormalParameters[+Yield, ~Await] ) { GeneratorBody }
+---*/
+
+var callCount = 0;
+
+var gen = {
+  *method() {
+    callCount += 1;
+    /*{ body }*/
+  }
+}.method;
+
+var iter = gen();
+
+/*{ assertions }*/
+
+assert.sameValue(callCount, 1);

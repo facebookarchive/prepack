@@ -1,0 +1,21 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: default
+desc: Reset element (identifier) does not support initializer
+negative:
+  phase: early
+  type: SyntaxError
+info: >
+    13.3.3 Destructuring Binding Patterns
+
+    ArrayBindingPattern[Yield] :
+        [ Elisionopt BindingRestElement[?Yield]opt ]
+        [ BindingElementList[?Yield] ]
+        [ BindingElementList[?Yield] , Elisionopt BindingRestElement[?Yield]opt ]
+---*/
+
+//- elems
+[...x = []]
+//- vals
+[]

@@ -1,0 +1,32 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Error forwarding when IteratorStep returns an abrupt completion
+template: error
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    SingleNameBinding : BindingIdentifier Initializeropt
+
+    [...]
+    4. If iteratorRecord.[[done]] is false, then
+       a. Let next be IteratorStep(iteratorRecord.[[iterator]]).
+       b. If next is an abrupt completion, set iteratorRecord.[[done]] to true.
+       c. ReturnIfAbrupt(next).
+---*/
+
+//- setup
+var g = {};
+g[Symbol.iterator] = function() {
+  return {
+    next: function() {
+      throw new Test262Error();
+    }
+  };
+};
+//- elems
+[x]
+//- vals
+g
+//- error
+Test262Error

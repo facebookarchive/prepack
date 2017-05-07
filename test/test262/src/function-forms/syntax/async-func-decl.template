@@ -1,0 +1,17 @@
+// Copyright (C) 2017 Leo Balter. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/statements/async-function/
+name: async function declaration
+esid: sec-async-function-definitions
+info: |
+  14.6 Async Function Definitions
+
+  AsyncFunctionDeclaration :
+    async function BindingIdentifier ( FormalParameters ) { AsyncFunctionBody }
+---*/
+
+async function f(/*{ params }*/) {
+  /*{ body }*/
+}

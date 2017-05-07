@@ -1,0 +1,9 @@
+language: python
+install: pip install --requirement tools/generation/requirements.txt
+script:
+  - ./tools/scripts/ci_build.sh
+  - ./tools/generation/test/run.py
+  - ./tools/lint/test/run.py
+  - ./tools/scripts/ci_lint.sh
+after_success:
+  - ./tools/scripts/deploy.sh

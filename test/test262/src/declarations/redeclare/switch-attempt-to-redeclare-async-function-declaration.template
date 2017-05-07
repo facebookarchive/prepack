@@ -1,0 +1,19 @@
+// Copyright (C) 2017 André Bargull. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/statements/switch/syntax/redeclaration/async-function-declaration-attempt-to-
+name: AsyncFunctionDeclaration in SwitchStatement
+esid: sec-switch-statement-static-semantics-early-errors
+info: |
+  SwitchStatement : switch ( Expression ) CaseBlock
+
+  It is a Syntax Error if the LexicallyDeclaredNames of CaseBlock contains any
+  duplicate entries.
+negative:
+  phase: early
+  type: SyntaxError
+flags: [async-functions]
+---*/
+
+switch (0) { case 1: async function f() {} default: /*{ body }*/ }

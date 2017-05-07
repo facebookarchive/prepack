@@ -1,0 +1,23 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/statements/const/dstr-
+name: >
+    `const` statement
+esid: sec-let-and-const-declarations-runtime-semantics-evaluation
+es6id: 13.3.1.4
+features: [destructuring-binding]
+info: |
+    LexicalBinding : BindingPattern Initializer
+
+    1. Let rhs be the result of evaluating Initializer.
+    2. Let value be GetValue(rhs).
+    3. ReturnIfAbrupt(value).
+    4. Let env be the running execution context's LexicalEnvironment.
+    5. Return the result of performing BindingInitialization for BindingPattern
+       using value and env as the arguments.
+---*/
+
+const /*{ elems }*/ = /*{ vals }*/;
+
+/*{ body }*/

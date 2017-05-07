@@ -1,0 +1,19 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+  It's an early error if the generator body has another function body with
+  yield as an identifier in strict mode.
+template: default
+flags: [onlyStrict]
+negative:
+  phase: early
+  type: SyntaxError
+---*/
+
+//- body
+  (function() {
+    var yield;
+    throw new Test262Error();
+  }())

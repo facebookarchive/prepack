@@ -1,0 +1,24 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/expressions/call/spread-err-
+name: CallExpression
+esid: sec-function-calls-runtime-semantics-evaluation
+es6id: 12.3.4.1
+info: |
+    CallExpression : MemberExpression Arguments
+
+    [...]
+    9. Return EvaluateDirectCall(func, thisValue, Arguments, tailCall).
+
+    12.3.4.3 Runtime Semantics: EvaluateDirectCall
+
+    1. Let argList be ArgumentListEvaluation(arguments).
+    [...]
+    6. Let result be Call(func, thisValue, argList).
+    [...]
+---*/
+
+assert.throws(/*{ error }*/, function() {
+  (function(/*{ params }*/) {}(/*{ args }*/));
+});

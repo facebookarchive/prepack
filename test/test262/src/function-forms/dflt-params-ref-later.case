@@ -1,0 +1,24 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Referencing a parameter that occurs later in the ParameterList
+template: error
+info: |
+  14.1.19 Runtime Semantics: IteratorBindingInitialization
+
+  FormalsList : FormalsList , FormalParameter
+
+  1. Let status be the result of performing IteratorBindingInitialization for
+     FormalsList using iteratorRecord and environment as the arguments.
+  2. ReturnIfAbrupt(status).
+  3. Return the result of performing IteratorBindingInitialization for
+     FormalParameter using iteratorRecord and environment as the arguments.
+features: [default-parameters]
+---*/
+
+//- setup
+var x = 0;
+//- params
+x = y, y
+//- error
+ReferenceError

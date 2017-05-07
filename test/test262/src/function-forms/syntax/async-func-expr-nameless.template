@@ -1,0 +1,17 @@
+// Copyright (C) 2017 Leo Balter. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/async-function/nameless-
+name: async function nameless expression
+esid: sec-async-function-definitions
+info: |
+  14.6 Async Function Definitions
+
+  AsyncFunctionExpression :
+    async function ( FormalParameters ) { AsyncFunctionBody }
+---*/
+
+(async function(/*{ params }*/) {
+  /*{ body }*/
+});

@@ -1,0 +1,32 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Variable binding is initialized to `undefined` in outer scope
+template: eval-func
+info: |
+    B.3.3.3 Changes to EvalDeclarationInstantiation
+
+    [...]
+    a. If declaredFunctionOrVarNames does not contain F, then
+       i. If varEnvRec is a global Environment Record, then
+          [...]
+       ii. Else,
+           i. Let bindingExists be varEnvRec.HasBinding(F).
+           ii. If bindingExists is false, then
+               i. Perform ! varEnvRec.CreateMutableBinding(F, true).
+               ii. Perform ! varEnvRec.InitializeBinding(F, undefined).
+    [...]
+---*/
+
+//- setup
+var init, changed;
+//- before
+init = f;
+f = 123;
+changed = f;
+//- teardown
+assert.sameValue(init, undefined, 'binding is initialized to `undefined`');
+assert.sameValue(changed, 123, 'binding is mutable');
+assert.throws(ReferenceError, function() {
+  f;
+}, 'global binding is not created');

@@ -1,0 +1,20 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    The object rest deconstruction assignment target should obey `const` semantics.
+template: error
+esid: pending
+features: [object-rest]
+---*/
+
+//- setup
+const rest = null;
+//- error
+TypeError
+//- elems
+{...rest}
+//- vals
+{}
+

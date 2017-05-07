@@ -1,0 +1,36 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: Assignment of function `name` attribute (ClassExpression)
+template: default
+es6id: 12.14.5.4
+info: >
+    AssignmentElement[Yield] : DestructuringAssignmentTarget Initializeropt
+
+    [...]
+    7. If Initializer is present and v is undefined and
+       IsAnonymousFunctionDefinition(Initializer) and IsIdentifierRef of
+       DestructuringAssignmentTarget are both true, then
+       a. Let hasNameProperty be HasOwnProperty(rhsValue, "name").
+       b. ReturnIfAbrupt(hasNameProperty).
+       c. If hasNameProperty is false, perform SetFunctionName(rhsValue,
+          GetReferencedName(lref)).
+includes: [propertyHelper.js]
+features: [class]
+---*/
+
+//- setup
+var xCls, cls, xCls2;
+//- elems
+{ x: xCls = class x {}, x: cls = class {}, x: xCls2 = class { static name() {} } }
+//- vals
+{}
+//- body
+assert.notSameValue(xCls.name, 'xCls');
+assert.notSameValue(xCls2.name, 'xCls2');
+
+assert.sameValue(cls.name, 'cls');
+verifyNotEnumerable(cls, 'name');
+verifyNotWritable(cls, 'name');
+verifyConfigurable(cls, 'name');

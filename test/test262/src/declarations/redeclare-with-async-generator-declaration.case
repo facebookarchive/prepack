@@ -1,0 +1,12 @@
+// Copyright (C) André Bargull. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+  redeclaration with AsyncGeneratorDeclaration
+template: redeclare
+flags: [async-iteration]
+---*/
+
+//- body
+  async function* f() {}

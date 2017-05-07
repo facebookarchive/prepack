@@ -1,0 +1,28 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Spread operator applied to the only argument when reference is unresolvable
+template: error
+info: |
+    12.3.6.1 Runtime Semantics: ArgumentListEvaluation
+
+    ArgumentList : ... AssignmentExpression
+
+    1. Let list be an empty List.
+    2. Let spreadRef be the result of evaluating AssignmentExpression.
+    3. Let spreadObj be GetValue(spreadRef).
+    4. Let iterator be GetIterator(spreadObj).
+    5. ReturnIfAbrupt(iterator).
+
+    6.2.3.1 GetValue (V)
+
+    1. ReturnIfAbrupt(V).
+    2. If Type(V) is not Reference, return V.
+    3. Let base be GetBase(V).
+    4. If IsUnresolvableReference(V), throw a ReferenceError exception.
+---*/
+
+//- error
+ReferenceError
+//- args
+...unresolvableReference

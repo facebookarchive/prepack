@@ -1,0 +1,20 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Does not re-initialize binding created by similar forms
+template: global
+info: |
+    B.3.3.2 Changes to GlobalDeclarationInstantiation
+
+    [...]
+    b. If declaredFunctionOrVarNames does not contain F, then
+       i. Perform ? envRec.CreateGlobalFunctionBinding(F, undefined, false).
+       ii. Append F to declaredFunctionOrVarNames.
+---*/
+
+//- setup
+assert.sameValue(f, undefined);
+
+{
+  function f() {}
+}

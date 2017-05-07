@@ -1,0 +1,31 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: >
+    Extension observed when there is a formal parameter with the same name
+template: eval-func
+info: |
+    B.3.3.3 Changes to EvalDeclarationInstantiation
+
+    [...]
+    ii. If replacing the FunctionDeclaration f with a VariableStatement that
+        has F as a BindingIdentifier would not produce any Early Errors for
+        body, then
+    [...]
+---*/
+
+//- setup
+var init, after;
+//- params
+f
+//- args
+123
+//- before
+init = f;
+//- after
+after = f;
+//- teardown
+assert.sameValue(init, 123, 'binding is not initialized to `undefined`');
+assert.sameValue(
+  typeof after, 'function', 'value is updated following evaluation'
+);

@@ -1,0 +1,28 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// Copyright (C) 2017 Mozilla Corporation. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: >
+    Extension not observed when there is a default parameter with the same name
+template: func
+info: |
+    B.3.3.1 Changes to FunctionDeclarationInstantiation
+
+    [...]
+    ii. If replacing the FunctionDeclaration f with a VariableStatement that
+        has F as a BindingIdentifier would not produce any Early Errors for
+        func and F is not an element of BoundNames of argumentsList, then
+    [...]
+---*/
+
+//- setup
+var init, after;
+//- params
+f = 123
+//- before
+init = f;
+//- after
+after = f;
+//- teardown
+assert.sameValue(init, 123, 'binding is not initialized to `undefined`');
+assert.sameValue(after, 123, 'value is not updated following evaluation');

@@ -1,0 +1,22 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: >
+    Extension not observed when creation of variable binding would produce an
+    early error
+template: eval-global
+info: |
+    B.3.3.3 Changes to EvalDeclarationInstantiation
+
+    [...]
+    ii. If replacing the FunctionDeclaration f with a VariableStatement that
+        has F as a BindingIdentifier would not produce any Early Errors for
+        body, then
+    [...]
+---*/
+
+//- before
+let f = 123;
+assert.sameValue(f, 123, 'binding is not initialized to `undefined`');
+//- after
+assert.sameValue(f, 123, 'value is not updated following evaluation');

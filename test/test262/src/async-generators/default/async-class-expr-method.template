@@ -1,0 +1,35 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/class/async-gen-method-
+name: Async generator method as a ClassExpression element
+esid: prod-AsyncGeneratorMethod
+info: |
+  ClassElement :
+    MethodDefinition
+
+  MethodDefinition :
+    AsyncGeneratorMethod
+
+  Async Generator Function Definitions
+
+  AsyncGeneratorMethod :
+    async [no LineTerminator here] * PropertyName ( UniqueFormalParameters ) { AsyncGeneratorBody }
+features: [async-iteration]
+---*/
+
+var callCount = 0;
+
+var C = class { async *gen() {
+    callCount += 1;
+    /*{ body }*/
+}}
+
+var gen = C.prototype.gen;
+
+var iter = gen();
+
+/*{ assertions }*/
+
+assert.sameValue(callCount, 1);

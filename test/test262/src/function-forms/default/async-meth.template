@@ -1,0 +1,29 @@
+// Copyright (C) 2017 Leo Balter. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/object/method-definition/async-meth-
+name: async method
+esid: sec-async-function-definitions
+info: |
+  14.6 Async Function Definitions
+
+  AsyncMethod :
+   async PropertyName ( UniqueFormalParameters ) { AsyncFunctionBody }
+flags: [async]
+---*/
+
+var callCount = 0;
+var __obj = {
+  async method(/*{ params }*/) {
+    /*{ body }*/
+    callCount = callCount + 1;
+  }
+};
+
+// Stores a reference `ref` for case evaluation
+var ref = __obj.method;
+
+ref(/*{ args }*/).then(() => {
+    assert.sameValue(callCount, 1, 'async method invoked exactly once');
+}).then($DONE, $DONE);

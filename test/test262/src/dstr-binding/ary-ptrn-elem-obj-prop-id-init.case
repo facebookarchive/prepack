@@ -1,0 +1,37 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: BindingElement with object binding pattern and initializer is used
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    BindingElement : BindingPatternInitializer opt
+
+    [...]
+    2. If iteratorRecord.[[done]] is true, let v be undefined.
+    3. If Initializer is present and v is undefined, then
+       a. Let defaultValue be the result of evaluating Initializer.
+       b. Let v be ? GetValue(defaultValue).
+    4. Return the result of performing BindingInitialization of BindingPattern
+       with v and environment as the arguments.
+---*/
+
+//- elems
+[{ u: v, w: x, y: z } = { u: 444, w: 555, y: 666 }]
+//- vals
+[]
+//- body
+assert.sameValue(v, 444);
+assert.sameValue(x, 555);
+assert.sameValue(z, 666);
+
+assert.throws(ReferenceError, function() {
+  u;
+});
+assert.throws(ReferenceError, function() {
+  w;
+});
+assert.throws(ReferenceError, function() {
+  y;
+});

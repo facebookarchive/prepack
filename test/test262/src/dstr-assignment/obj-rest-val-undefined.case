@@ -1,0 +1,21 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    TypeError is thrown when rhs is ```undefined``` because of 7.1.13 ToObject ( argument )
+    used by CopyDataProperties
+template: error
+esid: pending
+features: [object-rest]
+---*/
+
+//- error
+TypeError
+//- setup
+var rest;
+//- elems
+{...rest}
+//- vals
+undefined
+

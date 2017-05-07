@@ -1,0 +1,56 @@
+// Copyright 2017 Tooru Fujisawa. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+template: default
+desc: Throws a TypeError on a non-callable [Symbol.iterator] (number)
+info: |
+    YieldExpression: yield * AssignmentExpression
+
+    1. Let exprRef be the result of evaluating AssignmentExpression.
+    2. Let value be ? GetValue(exprRef).
+    3. Let generatorKind be ! GetGeneratorKind().
+    4. Let iterator be ? GetIterator(value, generatorKind).
+    ...
+
+    GetIterator ( obj [ , hint ] )
+
+    ...
+    3. If hint is async,
+      a. Set method to ? GetMethod(obj, @@asyncIterator).
+      b. If method is undefined,
+        i. Let syncMethod be ? GetMethod(obj, @@iterator).
+    ...
+
+    GetMethod ( V, P )
+
+    ...
+    2. Let func be ? GetV(V, P).
+    ...
+    4. If IsCallable(func) is false, throw a TypeError exception.
+    ...
+
+flags: [async]
+---*/
+
+//- setup
+var obj = {
+  [Symbol.iterator]: 0
+};
+
+//- body
+  yield* obj;
+  throw new Test262Error('abrupt completion closes iter');
+
+//- assertions
+
+iter.next().then(() => {
+  throw new Test262Error('Promise incorrectly fulfilled.');
+}, v => {
+  assert.sameValue(v.constructor, TypeError, "TypeError");
+
+  iter.next().then(({ done, value }) => {
+    assert.sameValue(done, true, 'the iterator is completed');
+    assert.sameValue(value, undefined, 'value is undefined');
+  }).then($DONE, $DONE);
+}).catch($DONE);

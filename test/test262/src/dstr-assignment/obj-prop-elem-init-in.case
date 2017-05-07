@@ -1,0 +1,18 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    The Initializer in an AssignmentElement may be an `in` expression.
+template: default
+es6id: 12.14.5
+---*/
+
+//- setup
+var prop;
+//- elems
+{ x: prop = 'x' in {} }
+//- vals
+{}
+//- body
+assert.sameValue(prop, false);

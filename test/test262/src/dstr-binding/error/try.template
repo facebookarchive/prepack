@@ -1,0 +1,22 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/statements/try/dstr-
+name: try statement
+esid: sec-runtime-semantics-catchclauseevaluation
+es6id: 13.15.7
+features: [destructuring-binding]
+info: |
+    Catch : catch ( CatchParameter ) Block
+
+    [...]
+    5. Let status be the result of performing BindingInitialization for
+       CatchParameter passing thrownValue and catchEnv as arguments.
+    [...]
+---*/
+
+assert.throws(/*{ error }*/, function() {
+  try {
+    throw /*{ vals }*/;
+  } catch (/*{ elems }*/) {}
+});

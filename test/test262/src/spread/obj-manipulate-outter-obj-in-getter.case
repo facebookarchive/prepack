@@ -1,0 +1,36 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Getter manipulates outter object before it's spread operation
+template: default
+esid: pending
+info: |
+    Pending Runtime Semantics: PropertyDefinitionEvaluation
+
+    PropertyDefinition:...AssignmentExpression
+
+    1. Let exprValue be the result of evaluating AssignmentExpression.
+    2. Let fromValue be GetValue(exprValue).
+    3. ReturnIfAbrupt(fromValue).
+    4. Let excludedNames be a new empty List.
+    5. Return CopyDataProperties(object, fromValue, excludedNames).
+features: [object-spread]
+---*/
+
+//- setup
+var o = { a: 0, b: 1 };
+var cthulhu = { get x() {
+  delete o.a;
+  o.b = 42;
+  o.c = "ni";
+}};
+//- args
+{...cthulhu, ...o}
+//- params
+obj
+//- body
+assert.sameValue(obj.hasOwnProperty("a"), false);
+assert.sameValue(obj.b, 42);
+assert.sameValue(obj.c, "ni");
+assert(obj.hasOwnProperty("x"));
+assert.sameValue(Object.keys(obj).length, 3);

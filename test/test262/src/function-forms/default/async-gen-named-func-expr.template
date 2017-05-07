@@ -1,0 +1,30 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/async-generator/named-
+name: async generator named function expression
+esid: sec-asyncgenerator-definitions-evaluation
+info: |
+    AsyncGeneratorExpression : async [no LineTerminator here] function * BindingIdentifier
+        ( FormalParameters ) { AsyncGeneratorBody }
+    
+        [...]
+        7. Let closure be ! AsyncGeneratorFunctionCreate(Normal, FormalParameters,
+           AsyncGeneratorBody, funcEnv, strict).
+        [...]
+flags: [async]
+features: [async-iteration]
+---*/
+
+var callCount = 0;
+// Stores a reference `ref` for case evaluation
+var ref;
+ref = async function* g(/*{ params }*/) {
+  /*{ body }*/
+  callCount = callCount + 1;
+};
+
+ref(/*{ args }*/).next().then(() => {
+    assert.sameValue(callCount, 1, 'generator function invoked exactly once');
+}).then($DONE, $DONE);

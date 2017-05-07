@@ -1,0 +1,21 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Existing variable binding is not modified
+template: eval-global
+info: |
+    B.3.3.3 Changes to EvalDeclarationInstantiation
+
+    [...]
+    a. If declaredFunctionOrVarNames does not contain F, then
+    [...]
+---*/
+
+//- before
+assert.sameValue(f(), 'outer declaration');
+//- body
+return 'inner declaration';
+//- after
+function f() {
+  return 'outer declaration';
+}

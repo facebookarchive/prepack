@@ -1,0 +1,13 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+name: Second template name
+path: normal/nested/path2-
+esid: sec-a-generic-id
+includes: [bar.js]
+info: template info
+---*/
+
+before-/*{ third }*//*{ second }*/-after
+
+/* Improperly-terminated comments should not break the tokenizer *

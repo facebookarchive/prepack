@@ -1,0 +1,29 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/arguments-object/cls-decl-meth-
+name: class declaration method
+esid: sec-arguments-exotic-objects
+info: |
+    9.4.4 Arguments Exotic Objects
+
+    Most ECMAScript functions make an arguments object available to their code. Depending upon the
+    characteristics of the function definition, its arguments object is either an ordinary object
+    or an arguments exotic object.
+---*/
+
+var callCount = 0;
+class C {
+  method() {
+    /*{ body }*/
+    callCount = callCount + 1;
+  }
+}
+
+C.prototype.method(/*{ args }*/);
+
+// Stores a reference `ref` for case evaluation
+var ref = C.prototype.method;
+
+assert.sameValue(callCount, 1, 'method invoked exactly once');

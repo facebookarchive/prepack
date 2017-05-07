@@ -1,0 +1,29 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/expressions/new/spread-
+name: >
+    `new` operator
+esid: sec-new-operator-runtime-semantics-evaluation
+es6id: 12.3.3.1
+info: |
+    MemberExpression : new MemberExpression Arguments
+
+    1. Return EvaluateNew(MemberExpression, Arguments).
+
+    12.3.3.1.1 Runtime Semantics: EvaluateNew
+
+    6. If arguments is empty, let argList be an empty List.
+    7. Else,
+       a. Let argList be ArgumentListEvaluation of arguments.
+       [...]
+---*/
+
+var callCount = 0;
+
+new function(/*{ params }*/) {
+  /*{ body }*/
+  callCount += 1;
+}(/*{ args }*/);
+
+assert.sameValue(callCount, 1);

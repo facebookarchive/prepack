@@ -1,0 +1,29 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: SingleNameBinding when value iteration completes
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    SingleNameBinding : BindingIdentifier Initializeropt
+
+    [...]
+    4. If iteratorRecord.[[done]] is false, then
+       a. Let next be IteratorStep(iteratorRecord.[[iterator]]).
+       b. If next is an abrupt completion, set iteratorRecord.[[done]] to true.
+       c. ReturnIfAbrupt(next).
+       d. If next is false, set iteratorRecord.[[done]] to true.
+       e. Else,
+          [...]
+    5. If iteratorRecord.[[done]] is true, let v be undefined.
+    [...]
+    8. Return InitializeReferencedBinding(lhs, v).
+---*/
+
+//- elems
+[x]
+//- vals
+[]
+//- body
+assert.sameValue(x, undefined);

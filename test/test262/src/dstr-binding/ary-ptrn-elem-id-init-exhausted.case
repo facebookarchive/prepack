@@ -1,0 +1,26 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Destructuring initializer with an exhausted iterator
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    SingleNameBinding : BindingIdentifier Initializeropt
+
+    [...]
+    5. If iteratorRecord.[[done]] is true, let v be undefined.
+    6. If Initializer is present and v is undefined, then
+       a. Let defaultValue be the result of evaluating Initializer.
+       b. Let v be GetValue(defaultValue).
+       [...]
+    7. If environment is undefined, return PutValue(lhs, v).
+    8. Return InitializeReferencedBinding(lhs, v).
+---*/
+
+//- elems
+[x = 23]
+//- vals
+[]
+//- body
+assert.sameValue(x, 23);

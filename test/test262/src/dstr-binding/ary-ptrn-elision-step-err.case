@@ -1,0 +1,40 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Elision advances iterator and forwards abrupt completions
+template: error
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    ArrayBindingPattern : [ Elision ]
+
+    1. Return the result of performing
+       IteratorDestructuringAssignmentEvaluation of Elision with iteratorRecord
+       as the argument.
+
+    12.14.5.3 Runtime Semantics: IteratorDestructuringAssignmentEvaluation
+
+    Elision : ,
+
+    1. If iteratorRecord.[[done]] is false, then
+       a. Let next be IteratorStep(iteratorRecord.[[iterator]]).
+       b. If next is an abrupt completion, set iteratorRecord.[[done]] to true.
+       c. ReturnIfAbrupt(next).
+features: [generator]
+---*/
+
+//- setup
+var following = 0;
+var iter =function* () {
+  throw new Test262Error();
+  following += 1;
+}();
+//- elems
+[,]
+//- vals
+iter
+//- error
+Test262Error
+//- teardown
+iter.next();
+assert.sameValue(following, 0, 'Iterator was properly closed.');

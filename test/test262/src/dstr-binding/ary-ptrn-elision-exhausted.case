@@ -1,0 +1,31 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Elision accepts exhausted iterator
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    ArrayBindingPattern : [ Elision ]
+
+    1. Return the result of performing
+       IteratorDestructuringAssignmentEvaluation of Elision with iteratorRecord
+       as the argument.
+
+    12.14.5.3 Runtime Semantics: IteratorDestructuringAssignmentEvaluation
+
+    Elision : ,
+
+    1. If iteratorRecord.[[done]] is false, then
+       [...]
+    2. Return NormalCompletion(empty).
+features: [generator]
+---*/
+
+//- setup
+var iter = function*() {}();
+iter.next();
+//- elems
+[,]
+//- vals
+iter

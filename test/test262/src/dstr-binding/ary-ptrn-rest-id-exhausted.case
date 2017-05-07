@@ -1,0 +1,30 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: default
+desc: RestElement applied to an exhausted iterator
+info: >
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    BindingRestElement : ... BindingIdentifier
+
+    1. Let lhs be ResolveBinding(StringValue of BindingIdentifier,
+       environment).
+    2. ReturnIfAbrupt(lhs).
+    3. Let A be ArrayCreate(0).
+    4. Let n=0.
+    5. Repeat,
+       [...]
+       b. If iteratorRecord.[[done]] is true, then
+          i. If environment is undefined, return PutValue(lhs, A).
+          ii. Return InitializeReferencedBinding(lhs, A).
+features: [Symbol.iterator]
+---*/
+
+//- elems
+[, , ...x]
+//- vals
+[1, 2]
+//- body
+assert(Array.isArray(x));
+assert.sameValue(x.length, 0);

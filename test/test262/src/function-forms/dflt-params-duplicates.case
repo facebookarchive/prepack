@@ -1,0 +1,28 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: >
+  It is a Syntax Error if BoundNames of FormalParameters contains any duplicate
+  elements.
+template: syntax
+negative:
+  phase: early
+  type: SyntaxError
+info: |
+  14.1.2 Static Semantics: Early Errors
+
+  StrictFormalParameters : FormalParameters
+
+  - It is a Syntax Error if BoundNames of FormalParameters contains any
+    duplicate elements.
+
+  FormalParameters : FormalParameterList
+
+  - It is a Syntax Error if IsSimpleParameterList of FormalParameterList is
+    false and BoundNames of FormalParameterList contains any duplicate
+    elements.
+features: [default-parameters]
+---*/
+
+//- params
+x = 0, x

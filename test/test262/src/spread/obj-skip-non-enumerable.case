@@ -1,0 +1,21 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Object Spread doesn't copy non-enumerable properties
+template: default
+esid: pending
+features: [object-spread]
+---*/
+
+//- setup
+
+let o = {};
+Object.defineProperty(o, "b", {value: 3, enumerable: false});
+
+//- args
+{...o}
+//- params
+obj
+//- body
+assert.sameValue(obj.hasOwnProperty("b"), false)
+assert.sameValue(Object.keys(obj).length, 0);

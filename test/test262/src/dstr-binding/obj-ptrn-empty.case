@@ -1,0 +1,26 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: default
+desc: No property access occurs for an "empty" object binding pattern
+info: |
+    Runtime Semantics: BindingInitialization
+
+    ObjectBindingPattern : { }
+
+    1. Return NormalCompletion(empty).
+---*/
+
+//- setup
+var accessCount = 0;
+var obj = Object.defineProperty({}, 'attr', {
+  get: function() {
+    accessCount += 1;
+  }
+});
+//- elems
+{}
+//- vals
+obj
+//- body
+assert.sameValue(accessCount, 0);

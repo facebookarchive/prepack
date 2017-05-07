@@ -1,0 +1,27 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Object Spread operator following other arguments with undefined
+template: default
+esid: pending
+info: |
+    Pending Runtime Semantics: PropertyDefinitionEvaluation
+
+    PropertyDefinition:...AssignmentExpression
+
+    1. Let exprValue be the result of evaluating AssignmentExpression.
+    2. Let fromValue be GetValue(exprValue).
+    3. ReturnIfAbrupt(fromValue).
+    4. Let excludedNames be a new empty List.
+    5. Return CopyDataProperties(object, fromValue, excludedNames).
+features: [object-spread]
+---*/
+
+//- args
+{a: 1, b: 2, ...undefined}
+//- params
+obj
+//- body
+assert.sameValue(obj.a, 1);
+assert.sameValue(obj.b, 2);
+assert.sameValue(Object.keys(obj).length, 2);

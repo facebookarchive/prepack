@@ -1,0 +1,21 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Existing variable binding is not modified
+template: global
+info: |
+    B.3.3.2 Changes to GlobalDeclarationInstantiation
+
+    [...]
+    1. Let fnDefinable be ? envRec.CanDeclareGlobalFunction(F).
+    2. If fnDefinable is true, then
+---*/
+
+//- setup
+assert.sameValue(f(), 'outer declaration');
+//- body
+return 'inner declaration';
+//- teardown
+function f() {
+  return 'outer declaration';
+}

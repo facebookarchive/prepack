@@ -1,0 +1,43 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Destructuring initializer is not evaluated when value is not `undefined`
+template: default
+info: |
+    13.3.3.7 Runtime Semantics: KeyedBindingInitialization
+
+    BindingElement : BindingPattern Initializeropt
+
+    [...]
+    3. If Initializer is present and v is undefined, then
+    [...]
+---*/
+
+//- setup
+var initCount = 0;
+function counter() {
+  initCount += 1;
+}
+//- elems
+{ s: t = counter(), u: v = counter(), w: x = counter(), y: z = counter() }
+//- vals
+{ s: null, u: 0, w: false, y: '' }
+//- body
+assert.sameValue(t, null);
+assert.sameValue(v, 0);
+assert.sameValue(x, false);
+assert.sameValue(z, '');
+assert.sameValue(initCount, 0);
+
+assert.throws(ReferenceError, function() {
+  s;
+});
+assert.throws(ReferenceError, function() {
+  u;
+});
+assert.throws(ReferenceError, function() {
+  w;
+});
+assert.throws(ReferenceError, function() {
+  y;
+});

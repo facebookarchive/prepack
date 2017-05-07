@@ -1,0 +1,7 @@
+// Copyright (C) 2016 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+name: The "negative" field should be emitted in the output files
+path: negative/negative-
+es6id: 1.2.3
+---*/

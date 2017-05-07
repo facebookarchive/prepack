@@ -1,0 +1,27 @@
+// Copyright (C) 2017 Leo Balter. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/async-function/named-
+name: async function named expression
+esid: sec-async-function-definitions
+info: |
+  14.6 Async Function Definitions
+
+  AsyncFunctionExpression :
+    async function BindingIdentifier ( FormalParameters ) { AsyncFunctionBody }
+flags: [async]
+---*/
+
+var callCount = 0;
+
+// Stores a reference `ref` for case evaluation
+var ref;
+ref = async function ref(/*{ params }*/) {
+  /*{ body }*/
+  callCount = callCount + 1;
+};
+
+ref(/*{ args }*/).then(() => {
+    assert.sameValue(callCount, 1, 'function invoked exactly once');
+}).then($DONE, $DONE);

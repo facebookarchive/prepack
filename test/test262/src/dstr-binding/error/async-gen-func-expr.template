@@ -1,0 +1,26 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/async-generator/dstr-
+name: async generator function expression
+esid: sec-asyncgenerator-definitions-evaluation
+features: [async-iteration]
+info: |
+    AsyncGeneratorExpression : async [no LineTerminator here] function * ( FormalParameters ) {
+        AsyncGeneratorBody }
+    
+        [...]
+        3. Let closure be ! AsyncGeneratorFunctionCreate(Normal, FormalParameters,
+           AsyncGeneratorBody, scope, strict).
+        [...]
+---*/
+
+var f;
+f = async function*(/*{ elems }*/) {
+  /*{ body }*/
+};
+
+assert.throws(/*{ error }*/, function() {
+  f(/*{ vals }*/);
+});

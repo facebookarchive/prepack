@@ -1,0 +1,26 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: SingleNameBinding assigns `name` to arrow functions
+template: default
+info: |
+    13.3.3.7 Runtime Semantics: KeyedBindingInitialization
+
+    SingleNameBinding : BindingIdentifier Initializeropt
+
+    [...]
+    6. If Initializer is present and v is undefined, then
+       [...]
+       d. If IsAnonymousFunctionDefinition(Initializer) is true, then
+          i. Let hasNameProperty be HasOwnProperty(v, "name").
+          ii. ReturnIfAbrupt(hasNameProperty).
+          iii. If hasNameProperty is false, perform SetFunctionName(v,
+               bindingId).
+---*/
+
+//- elems
+{ arrow = () => {} }
+//- vals
+{}
+//- body
+assert.sameValue(arrow.name, 'arrow');

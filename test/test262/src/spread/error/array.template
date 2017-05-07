@@ -1,0 +1,26 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+path: language/expressions/array/spread-err-
+name: Array initializer
+esid: sec-runtime-semantics-arrayaccumulation
+es6id: 12.2.5.2
+info: |
+  SpreadElement : ...AssignmentExpression
+
+  1. Let spreadRef be the result of evaluating AssignmentExpression.
+  2. Let spreadObj be ? GetValue(spreadRef).
+  3. Let iterator be ? GetIterator(spreadObj).
+  4. Repeat
+     a. Let next be ? IteratorStep(iterator).
+     b. If next is false, return nextIndex.
+     c. Let nextValue be ? IteratorValue(next).
+     d. Let status be CreateDataProperty(array, ToString(ToUint32(nextIndex)),
+        nextValue).
+     e. Assert: status is true.
+     f. Let nextIndex be nextIndex + 1.
+---*/
+
+assert.throws(/*{ error }*/, function() {
+  [/*{ args }*/];
+});

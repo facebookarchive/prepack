@@ -1,0 +1,20 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: default
+desc: Trailing comma is allowed following BindingPropertyList
+info: |
+    13.3.3 Destructuring Binding Patterns
+
+    ObjectBindingPattern[Yield] :
+        { }
+        { BindingPropertyList[?Yield] }
+        { BindingPropertyList[?Yield] , }
+---*/
+
+//- elems
+{ x, }
+//- vals
+{ x: 23 }
+//- body
+assert.sameValue(x, 23);

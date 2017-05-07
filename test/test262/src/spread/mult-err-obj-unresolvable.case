@@ -1,0 +1,23 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Object Spread operator results in error when using an unresolvable reference
+template: error
+esid: pending
+info: |
+    Pending Runtime Semantics: PropertyDefinitionEvaluation
+
+    PropertyDefinition:...AssignmentExpression
+
+    1. Let exprValue be the result of evaluating AssignmentExpression.
+    2. Let fromValue be GetValue(exprValue).
+    3. ReturnIfAbrupt(fromValue).
+    4. Let excludedNames be a new empty List.
+    5. Return CopyDataProperties(object, fromValue, excludedNames).
+features: [object-spread]
+---*/
+
+//- error
+ReferenceError
+//- args
+{a: 0, ...unresolvableReference}

@@ -1,0 +1,29 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: normal
+desc: foobar
+info: case info
+flags: [a, b]
+includes: [foo.js]
+---*/
+
+Because this test appears before any "region" delimiters, it should not appear
+in the generated files.
+
+// - first
+this is not a valid region delimiter
+
+/* *//- first
+this is also not a valid region delimiter
+
+//- first
+First value
+//- second
+Second value
+//- third
+Third value
+//- fourth
+Quote characters: " ' `
+//- teardown
+'This is "teardown" code.';

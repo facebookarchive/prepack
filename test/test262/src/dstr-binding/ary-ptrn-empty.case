@@ -1,0 +1,25 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: No iteration occurs for an "empty" array binding pattern
+template: default
+info: |
+    13.3.3.6 Runtime Semantics: IteratorBindingInitialization
+
+    ArrayBindingPattern : [ ]
+
+    1. Return NormalCompletion(empty).
+features: [generators]
+---*/
+
+//- setup
+var iterations = 0;
+var iter = function*() {
+  iterations += 1;
+}();
+//- elems
+[]
+//- vals
+iter
+//- body
+assert.sameValue(iterations, 0);

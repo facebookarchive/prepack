@@ -1,0 +1,25 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/statements/async-generator/dstr-
+name: async generator function declaration
+esid: sec-asyncgenerator-definitions-instantiatefunctionobject
+features: [async-iteration]
+info: |
+    AsyncGeneratorDeclaration : async [no LineTerminator here] function * BindingIdentifier
+        ( FormalParameters ) { AsyncGeneratorBody }
+
+        [...]
+        3. Let F be ! AsyncGeneratorFunctionCreate(Normal, FormalParameters, AsyncGeneratorBody,
+            scope, strict).
+        [...]
+---*/
+
+async function* f(/*{ elems }*/) {
+  /*{ body }*/
+};
+
+assert.throws(/*{ error }*/, function() {
+  f(/*{ vals }*/);
+});

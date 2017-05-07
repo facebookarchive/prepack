@@ -1,0 +1,23 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    RestBindingInitialization creates a new object even if lhs is a Number
+template: default
+esid: pending
+features: [object-rest]
+---*/
+
+//- setup
+var rest;
+
+//- elems
+{...rest}
+//- vals
+51
+//- body
+assert.notSameValue(rest, undefined);
+assert.notSameValue(rest, null);
+assert(rest instanceof Object);
+

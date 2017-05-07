@@ -1,0 +1,33 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Spread operation follows [[OwnPropertyKeys]] order
+template: default
+esid: pending
+includes: [compareArray.js]
+info: |
+    Pending Runtime Semantics: PropertyDefinitionEvaluation
+
+    PropertyDefinition:...AssignmentExpression
+
+    1. Let exprValue be the result of evaluating AssignmentExpression.
+    2. Let fromValue be GetValue(exprValue).
+    3. ReturnIfAbrupt(fromValue).
+    4. Let excludedNames be a new empty List.
+    5. Return CopyDataProperties(object, fromValue, excludedNames).
+features: [object-spread]
+---*/
+
+//- setup
+var calls = [];
+var o = { get z() { calls.push('z') }, get a() { calls.push('a') } };
+Object.defineProperty(o, 1, { get: () => { calls.push(1) }, enumerable: true });
+Object.defineProperty(o, Symbol('foo'), { get: () => { calls.push("Symbol(foo)") }, enumerable: true });
+
+//- args
+{...o}
+//- params
+obj
+//- body
+assert(compareArray(calls, [1, 'z', 'a', "Symbol(foo)"]));
+assert.sameValue(Object.keys(obj).length, 3);

@@ -1,0 +1,33 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    Proper setting in the values for rest name equal to a property name.
+template: default
+esid: pending
+features: [object-rest]
+---*/
+
+//- setup
+var o = {
+    x: 42,
+    y: 39,
+    z: 'cheeseburger'
+};
+
+var x, y, z;
+//- elems
+{ x, ...z }
+//- vals
+o
+//- body
+assert.sameValue(x, 42);
+assert.sameValue(y, undefined);
+assert.sameValue(z.y, 39);
+assert.sameValue(z.z, 'cheeseburger');
+
+var keys = Object.keys(z);
+assert.sameValue(keys.length, 2);
+assert.sameValue(keys[0], 'y');
+assert.sameValue(keys[1], 'z');

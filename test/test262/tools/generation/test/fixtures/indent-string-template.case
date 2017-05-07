@@ -1,0 +1,12 @@
+// Copyright (C) 2017 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: indentation
+desc: String template spanning multiple lines
+---*/
+
+//- value
+`this string template is declared across multiple lines
+
+which disqualifies it as a candidate for indentation
+it also happens to contain ' and ".`;

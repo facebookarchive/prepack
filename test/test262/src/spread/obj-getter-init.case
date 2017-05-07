@@ -1,0 +1,23 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Getter in object literal is not evaluated
+template: default
+esid: pending
+features: [object-spread]
+---*/
+
+//- setup
+
+let o = {a: 2, b: 3};
+let executedGetter = false;
+
+//- args
+{...o, get c() { executedGetter = true; }}
+//- params
+obj
+//- body
+assert.sameValue(obj.a, 2);
+assert.sameValue(obj.b, 3);
+assert.sameValue(executedGetter, false)
+assert.sameValue(Object.keys(obj).length, 3);

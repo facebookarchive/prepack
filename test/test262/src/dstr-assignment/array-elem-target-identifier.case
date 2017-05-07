@@ -1,0 +1,22 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    Identifiers that appear as the DestructuringAssignmentTarget in an
+    AssignmentElement should take on the iterated value corresponding to their
+    position in the ArrayAssignmentPattern.
+template: default
+es6id: 12.14.5.3
+---*/
+
+//- setup
+var x, y, z;
+//- elems
+[x, y, z]
+//- vals
+[1, 2, 3]
+//- body
+assert.sameValue(x, 1);
+assert.sameValue(y, 2);
+assert.sameValue(z, 3);

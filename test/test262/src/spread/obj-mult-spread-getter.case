@@ -1,0 +1,36 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Multiple Object Spread usage calls getter multiple times
+template: default
+esid: pending
+info: |
+    Pending Runtime Semantics: PropertyDefinitionEvaluation
+
+    PropertyDefinition:...AssignmentExpression
+
+    1. Let exprValue be the result of evaluating AssignmentExpression.
+    2. Let fromValue be GetValue(exprValue).
+    3. ReturnIfAbrupt(fromValue).
+    4. Let excludedNames be a new empty List.
+    5. Return CopyDataProperties(object, fromValue, excludedNames).
+features: [object-spread]
+---*/
+
+//- setup
+let getterCallCount = 0;
+let o = {
+    get a() {
+        return ++getterCallCount;
+    }
+};
+
+//- args
+{...o, c: 4, d: 5, a: 42, ...o}
+//- params
+obj
+//- body
+assert.sameValue(obj.a, 2);
+assert.sameValue(obj.c, 4);
+assert.sameValue(obj.d, 5);
+assert.sameValue(Object.keys(obj).length, 3);

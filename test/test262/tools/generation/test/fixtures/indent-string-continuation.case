@@ -1,0 +1,11 @@
+// Copyright (C) 2017 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+template: indentation
+desc: Multiline string via a line continuation character
+---*/
+
+//- value
+'this string is declared across multiple lines\
+\
+which disqualifies it as a candidate for indentation';

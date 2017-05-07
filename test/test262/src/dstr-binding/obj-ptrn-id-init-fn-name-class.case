@@ -1,0 +1,28 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: SingleNameBinding assigns `name` to "anonymous" classes
+template: default
+info: |
+    13.3.3.7 Runtime Semantics: KeyedBindingInitialization
+
+    SingleNameBinding : BindingIdentifier Initializeropt
+
+    [...]
+    6. If Initializer is present and v is undefined, then
+       [...]
+       d. If IsAnonymousFunctionDefinition(Initializer) is true, then
+          i. Let hasNameProperty be HasOwnProperty(v, "name").
+          ii. ReturnIfAbrupt(hasNameProperty).
+          iii. If hasNameProperty is false, perform SetFunctionName(v,
+               bindingId).
+---*/
+
+//- elems
+{ cls = class {}, xCls = class X {}, xCls2 = class { static name() {} } }
+//- vals
+{}
+//- body
+assert.sameValue(cls.name, 'cls');
+assert.notSameValue(xCls.name, 'xCls');
+assert.notSameValue(xCls2.name, 'xCls2');

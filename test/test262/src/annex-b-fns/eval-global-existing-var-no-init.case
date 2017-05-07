@@ -1,0 +1,16 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Existing variable binding is not modified
+template: eval-global
+info: |
+    B.3.3.3 Changes to EvalDeclarationInstantiation
+
+    [...]
+    a. If declaredFunctionOrVarNames does not contain F, then
+    [...]
+---*/
+
+//- before
+var f = 123;
+assert.sameValue(f, 123);

@@ -1,0 +1,32 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    Rest object doesn't contain non-enumerable properties
+template: default
+esid: pending
+includes: [propertyHelper.js]
+features: [object-rest]
+---*/
+
+//- setup
+var o = {a: 3, b: 4};
+Object.defineProperty(o, "x", { value: 4, enumerable: false });
+//- elems
+{...rest}
+//- vals
+o
+//- body
+assert.sameValue(rest.a, 3);
+assert.sameValue(rest.b, 4);
+assert.sameValue(rest.x, undefined);
+
+verifyEnumerable(rest, "a");
+verifyWritable(rest, "a");
+verifyConfigurable(rest, "a");
+
+verifyEnumerable(rest, "b");
+verifyWritable(rest, "b");
+verifyConfigurable(rest, "b");
+

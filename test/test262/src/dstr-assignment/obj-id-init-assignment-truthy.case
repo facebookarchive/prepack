@@ -1,0 +1,20 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+  If the Initializer is present and v is undefined, the Initializer should be
+  evaluated and the result assigned to the target reference (truthy property
+  value defined).
+template: default
+es6id: 12.14.5.4
+---*/
+
+//- setup
+var x;
+//- elems
+{ x = 1 }
+//- vals
+{ x: 2 }
+//- body
+assert.sameValue(x, 2);

@@ -1,0 +1,19 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    The AssignmentElements in an AssignmentElementList are evaluated in left-
+    to-right order.
+template: default
+es6id: 12.14.5.4
+---*/
+
+//- setup
+var x;
+//- elems
+{ z: x, a: x }
+//- vals
+{ a: 2, z: 1 }
+//- body
+assert.sameValue(x, 2);

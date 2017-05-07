@@ -1,0 +1,15 @@
+// Copyright (C) 2017 André Bargull. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/statements/switch/syntax/redeclaration/var-declaration-attempt-to-
+name: VariableDeclaration in SwitchStatement
+esid: sec-switch-statement-static-semantics-early-errors
+info: |
+  SwitchStatement : switch ( Expression ) CaseBlock
+
+  It is a Syntax Error if any element of the LexicallyDeclaredNames of
+  CaseBlock also occurs in the VarDeclaredNames of CaseBlock.
+---*/
+
+switch (0) { case 1: var f; default: /*{ body }*/ }

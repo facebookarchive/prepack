@@ -1,0 +1,31 @@
+// Copyright (C) 2017 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: Use yield value in a array spread position
+template: default
+info: |
+  Array Initializer
+
+  SpreadElement[Yield, Await]:
+    ...AssignmentExpression[+In, ?Yield, ?Await]
+flags: [async]
+---*/
+
+//- setup
+var arr = ['a', 'b', 'c'];
+//- body
+  yield [...yield];
+//- assertions
+iter.next(false);
+var item = iter.next(arr);
+
+item.then(({ done, value }) => {
+  assert.notSameValue(value, arr, 'value is a new array');
+  assert(Array.isArray(value), 'value is an Array exotic object');
+  assert.sameValue(value.length, 3)
+  assert.sameValue(value[0], 'a');
+  assert.sameValue(value[1], 'b');
+  assert.sameValue(value[2], 'c');
+  assert.sameValue(done, false);
+}).then($DONE, $DONE);

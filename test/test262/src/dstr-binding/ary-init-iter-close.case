@@ -1,0 +1,37 @@
+// Copyright (C) 2016 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Iterator is closed when not exhausted by pattern evaluation
+template: default
+info: |
+    13.3.3.5 Runtime Semantics: BindingInitialization
+
+    BindingPattern : ArrayBindingPattern
+
+    [...]
+    4. If iteratorRecord.[[done]] is false, return ? IteratorClose(iterator,
+       result).
+    [...]
+features: [Symbol.iterator]
+---*/
+
+//- setup
+var doneCallCount = 0;
+var iter = {};
+iter[Symbol.iterator] = function() {
+  return {
+    next: function() {
+      return { value: null, done: false };
+    },
+    return: function() {
+      doneCallCount += 1;
+      return {};
+    }
+  };
+};
+//- elems
+[x]
+//- vals
+iter
+//- body
+assert.sameValue(doneCallCount, 1);

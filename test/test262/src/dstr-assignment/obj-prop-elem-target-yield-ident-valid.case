@@ -1,0 +1,22 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    When a `yield` token appears within the DestructuringAssignmentTarget of an
+    AssignmentElement and outside of a generator function body, it should
+    behave as an IdentifierReference.
+template: default
+es6id: 12.14.5.4
+flags: [noStrict]
+---*/
+
+//- setup
+var yield = 'prop';
+var x = {};
+//- elems
+{ x: x[yield] }
+//- vals
+{ x: 23 }
+//- body
+assert.sameValue(x.prop, 23);

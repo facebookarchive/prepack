@@ -1,0 +1,20 @@
+// Copyright (C) 2017 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Abrupt completion when resolving reference value
+template: error
+info: |
+  12.2.6.7 Runtime Semantics: Evaluation
+
+  [...]
+
+  ComputedPropertyName : [ AssignmentExpression ]
+
+  1. Let exprValue be the result of evaluating AssignmentExpression.
+  2. Let propName be ? GetValue(exprValue).
+---*/
+
+//- error
+ReferenceError
+//- name
+test262unresolvable

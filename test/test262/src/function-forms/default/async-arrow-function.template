@@ -1,0 +1,41 @@
+// Copyright (C) 2017 Leo Balter. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+path: language/expressions/async-arrow-function/
+name: async arrow function expression
+esid: sec-async-arrow-function-definitions
+info: |
+  14.7 Async Arrow Function Definitions
+
+  AsyncArrowFunction :
+    ...
+    CoverCallExpressionAndAsyncArrowHead => AsyncConciseBody
+
+  AsyncConciseBody :
+    { AsyncFunctionBody }
+
+  ...
+
+  Supplemental Syntax
+
+  When processing an instance of the production AsyncArrowFunction :
+  CoverCallExpressionAndAsyncArrowHead => AsyncConciseBody the interpretation of
+  CoverCallExpressionAndAsyncArrowHead is refined using the following grammar:
+
+  AsyncArrowHead :
+    async ArrowFormalParameters
+flags: [async]
+---*/
+
+var callCount = 0;
+
+// Stores a reference `ref` for case evaluation
+var ref = async (/*{ params }*/) => {
+  /*{ body }*/
+  callCount = callCount + 1;
+};
+
+ref(/*{ args }*/).then(() => {
+  assert.sameValue(callCount, 1, 'async arrow function invoked exactly once')
+}).then($DONE, $DONE);

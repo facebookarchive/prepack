@@ -1,0 +1,21 @@
+// Copyright (C) 2017 Mike Pennisi. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Computed values as accessor property names (numeric literal in octal notation)
+template: default
+info: |
+  12.2.6.7 Runtime Semantics: Evaluation
+
+  [...]
+
+  ComputedPropertyName : [ AssignmentExpression ]
+
+  1. Let exprValue be the result of evaluating AssignmentExpression.
+  2. Let propName be ? GetValue(exprValue).
+  3. Return ? ToPropertyKey(propName).
+---*/
+
+//- declareWith
+0o10
+//- referenceWith
+'8'

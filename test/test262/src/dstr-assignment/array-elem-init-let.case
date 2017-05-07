@@ -1,0 +1,21 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+    Value retrieval of Initializer obeys `let` semantics.
+template: error
+es6id: 12.14.5.3
+features: [let]
+---*/
+
+//- error
+ReferenceError
+//- setup
+var x;
+//- elems
+[ x = y ]
+//- vals
+[]
+//- teardown
+let y;

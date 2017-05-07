@@ -1,0 +1,31 @@
+// Copyright (C) 2017 Caio Lima. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+/*---
+desc: Object Spread overriding immutable properties
+template: default
+esid: pending
+includes: [propertyHelper.js]
+features: [object-spread]
+---*/
+
+//- setup
+
+let o = {b: 2};
+Object.defineProperty(o, "a", {value: 1, enumerable: true, writable: false, configurable: true});
+
+//- args
+{...o, a: 3}
+//- params
+obj
+//- body
+assert.sameValue(obj.a, 3)
+assert.sameValue(obj.b, 2);
+
+verifyEnumerable(obj, "a");
+verifyWritable(obj, "a");
+verifyConfigurable(obj, "a");
+
+verifyEnumerable(obj, "b");
+verifyWritable(obj, "b");
+verifyConfigurable(obj, "b");
+

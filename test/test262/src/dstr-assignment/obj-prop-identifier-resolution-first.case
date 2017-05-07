@@ -1,0 +1,19 @@
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+desc: >
+  Evaluation of DestructuringAssignmentTarget (first of many).
+template: default
+es6id: 12.14.5.4
+---*/
+
+//- setup
+var x = null;
+var y;
+//- elems
+{ a: x, y }
+//- vals
+{ a: 3 }
+//- body
+assert.sameValue(x, 3);
