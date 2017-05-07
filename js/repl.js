@@ -90,18 +90,6 @@ output.setHighlightActiveLine(false);
 output.setHighlightGutterLine(false);
 
 var input = createEditor(document.querySelector('.input .repl'));
-// input.setValue([
-//   '(function() {',
-//   '  function fib(x) {',
-//   '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
-//   '  }',
-//   '',
-//   '  let x = Date.now();',
-//   '  if (x * 2 > 42) x = fib(10);',
-//   '  global.result = x;',
-//   '})();'
-// ].join('\n'), -1);
-// compile();
 input.on('change', compile);
 
 
@@ -184,7 +172,7 @@ deleteButton.addEventListener('click',()=>{
     compile();
   }
   
-})
+});
 
 saveButton.addEventListener('click',()=>{
   var name = selectInput.value;
@@ -197,4 +185,4 @@ saveButton.addEventListener('click',()=>{
   setTimeout(()=>{
     demoSelector.change(name);
   })
-})
+});
