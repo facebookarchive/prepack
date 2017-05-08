@@ -14,7 +14,7 @@ import { Realm, ExecutionContext } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
-import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, NumberValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
+import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
@@ -224,19 +224,6 @@ export class Serializer {
             desc.value instanceof ObjectValue && desc.value.originalConstructor === val) {
           return true;
         }
-      }
-    } else {
-      let kind = val.getKind();
-      switch (kind) {
-        case "RegExp":
-          if (key === "lastIndex" && desc.writable && !desc.enumerable && !desc.configurable) {
-            // length property has the correct descriptor values
-            let v = desc.value;
-            return v instanceof NumberValue && v.value === 0;
-          }
-          break;
-        default:
-          break;
       }
     }
 
@@ -1009,9 +996,8 @@ export class Serializer {
   }
 
   _canEmbedProperty(obj: ObjectValue, key: string, prop: Descriptor): boolean {
-    if ((obj instanceof FunctionValue && key === "prototype") ||
-        (obj.getKind() === "RegExp" && key === "lastIndex"))
-    return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
+    if (obj instanceof FunctionValue && key === "prototype")
+      return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
     else
       return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;
   }
@@ -1042,7 +1028,7 @@ export class Serializer {
         invariant(typeof source === "string");
         invariant(typeof flags === "string");
         this.addProperties(name, val, reasons);
-        return t.regExpLiteral(source, flags);
+        return t.callExpression(this.preludeGenerator.memoizeReference("RegExp"), [t.stringLiteral(source), t.stringLiteral(flags)]);
       case "Number":
         let numberData = val.$NumberData;
         invariant(numberData !== undefined);
