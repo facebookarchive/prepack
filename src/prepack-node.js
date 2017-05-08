@@ -29,7 +29,7 @@ export function prepackFile(filename: string, options: Options = defaultOptions,
     }
     fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
       if (mapErr) {
-        console.log(`No sourcemap found at ${sourceMapFilename}.`);
+        console.error(`No sourcemap found at ${sourceMapFilename}.`);
         sourceMap = "";
       }
       let serialized;
@@ -65,7 +65,7 @@ export function prepackFileSync(filename: string, options: Options = defaultOpti
   try {
     sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
   } catch (_e) {
-    console.log(`No sourcemap found at ${sourceMapFilename}.`);
+    console.error(`No sourcemap found at ${sourceMapFilename}.`);
   }
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
