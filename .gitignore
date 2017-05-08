@@ -6,5 +6,5 @@ npm-debug.log
 .DS_Store
 build/
 .vscode
-test/internal
+test/
 
