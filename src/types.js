@@ -28,11 +28,16 @@ export type IterationKind = "key+value" | "value" | "key";
 
 export type SourceType = "module" | "script";
 
-export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps";
+export type Compatibility =
+  | "browser"
+  | "jsc-600-1-4-17"
+  | "node-source-maps"
+  | "node-cli";
 export const CompatibilityValues = [
   "browser",
    "jsc-600-1-4-17",
   "node-source-maps",
+  "node-cli"
 ];
 
 export type RealmOptions = {
@@ -168,6 +173,7 @@ export type Intrinsics = {
   eval: NativeFunctionValue,
   console: ObjectValue,
   document: ObjectValue,
+  process: ObjectValue,
 
   DataView: NativeFunctionValue,
   DataViewPrototype: ObjectValue,
