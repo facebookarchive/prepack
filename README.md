@@ -5,6 +5,36 @@ For initialization-heavy code, Prepack works best in an environment where JavaSc
 
 See the official [prepack.io](http://prepack.io) website for an introduction and an [interactive REPL playground](http://prepack.io/repl.html).
 
+## How to use Prepack
+
+Install the CLI via npm,
+
+```bash
+$ npm install -g prepack
+```
+Or if you prefer yarn,
+
+```bash
+$ yarn global add prepack
+```
+You may need to `prepend`(pun intended!) the command with `sudo` in some cases.
+
+### Let the party begin
+
+To compile a file and print the output to the console:
+
+```bash
+$ prepack script.js
+```
+
+If you want to compile a file and output to another file:
+
+```bash
+$ prepack script.js --out script-processed.js
+```
+
+Detailed instructions and the API can be found at [Prepack CLI: Getting Started](https://prepack.io/getting-started.html)
+
 ## Status
 
 - [test262 status on master branch](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/test262-status.txt?branch=master)
