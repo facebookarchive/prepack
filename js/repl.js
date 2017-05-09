@@ -101,7 +101,7 @@ var input = createEditor(document.querySelector('.input .repl'));
 input.setValue([
   '(function() {',
   '  function fib(x) {',
-  '    return x <= 1 ? x : fibx - 1) + fib(x - 2);',
+  '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
   '  }',
   '',
   '  let x = Date.now();',
