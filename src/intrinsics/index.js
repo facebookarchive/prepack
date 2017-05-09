@@ -239,11 +239,11 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.Uint32ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Uint32Array.prototype");
 
   // iterator prototypes
-  i.IteratorPrototype = new ObjectValue(realm, i.ObjectPrototype, "IteratorPrototype");
-  i.MapIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "MapIteratorPrototype");
-  i.SetIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "SetIteratorPrototype");
-  i.ArrayIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "ArrayIteratorPrototype");
-  i.StringIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "StringIteratorPrototype");
+  i.IteratorPrototype = new ObjectValue(realm, i.ObjectPrototype, "([][Symbol.iterator]().__proto__.__proto__)");
+  i.MapIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "(new Map()[Symbol.iterator]().__proto__)");
+  i.SetIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "(new Set()[Symbol.iterator]().__proto__)");
+  i.ArrayIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "([][Symbol.iterator]().__proto__)");
+  i.StringIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "(\"\"[Symbol.iterator]().__proto__)");
 
   //
   initializeObjectPrototype(realm, i.ObjectPrototype);
