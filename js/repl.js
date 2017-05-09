@@ -59,6 +59,11 @@ function compile() {
         output.setValue(code, -1);
       } else if (result.type === 'error') {
         let errorText = result.data;
+        if(!errorText.startsWith('Unexpected')){
+        errorOutput.style.display = 'block';
+        replOutput.style.display = 'none';
+        errorOutput.textContent = errorText;        
+        } else {
         let errorLineLink = document.createElement('a');
         let lineText = getLineText(errorText);
         let lineNumber = lineText.slice(0,1);
@@ -76,6 +81,7 @@ function compile() {
         errorOutput.appendChild(beforeLineNumber);
         errorOutput.appendChild(errorLineLink);
         errorOutput.appendChild(afterLineNumber);
+        }
       }
 
       terminateWorker();
@@ -101,7 +107,7 @@ var input = createEditor(document.querySelector('.input .repl'));
 input.setValue([
   '(function() {',
   '  function fib(x) {',
-  '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
+  '    return x <= 1 ? x : fi(x - 1) + fib(x - 2);',
   '  }',
   '',
   '  let x = Date.now();',
