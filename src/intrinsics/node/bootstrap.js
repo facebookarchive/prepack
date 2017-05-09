@@ -13,7 +13,7 @@ import type { Realm } from "../../realm.js";
 
 import { FunctionValue } from "../../values/index.js";
 
-declare var process : any;
+declare var process: any;
 
 export default function (realm: Realm): FunctionValue {
   // Extract the bootstrap source code from the hosting Node version.

@@ -24,7 +24,7 @@ import initializeProcess from "./intrinsics/node/process.js";
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
 
-declare var process : any;
+declare var process: any;
 
 export function prepackNodeCLI(filename: string, options: Options = defaultOptions, callback: Function) {
   let serialized;
