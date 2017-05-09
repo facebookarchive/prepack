@@ -1464,9 +1464,6 @@ export class Serializer {
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
-    // TODO #22: serialize symbols
-    // for (let symbol of globalObj.symbols.keys());
-
     // TODO #20: add timers
 
     // TODO #21: add event listeners
