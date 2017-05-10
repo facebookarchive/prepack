@@ -15,7 +15,7 @@ import { BreakCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
-import { BoundNames, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
+import { BoundNames, NewDeclarativeEnvironment, UpdateEmpty, CreateDataProperty } from "../methods/index.js";
 import { AbstractValue, AbstractObjectValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
 import type { BabelNodeForInStatement, BabelNodeStatement, BabelNodeVariableDeclaration } from "babel-types";
 import invariant from "../invariant.js";
@@ -81,7 +81,7 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
     }
     let [compl, gen, bindings, properties, createdObj] =
       realm.partially_evaluate_node(body, strictCode, blockEnv);
-    if (compl instanceof Value  && gen.body.length === 0 && bindings.size === 0 &&
+    if (compl instanceof Value && gen.body.length === 0 && bindings.size === 0 &&
         properties.size === 1) {
       invariant(createdObj.size === 0); // or there will be more than one property
       let targetObject;
@@ -136,6 +136,30 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
               t.memberExpression(src, boundName, true)))]));
           },
         });
+
+        // At this point, we have emitted code to copy over all properties.
+        // However, the internal Prepack state of targetObject doesn't represent the copied properties yet.
+        // So, we copy all all known properties, and then mark the target object as simple or partial as appropriate.
+        // TODO: While correct, this generates inefficient code, which first inlines all known properties, and then copies them over again.
+
+        let template;
+        if (sourceObject instanceof AbstractObjectValue) template = sourceObject.getTemplate();
+
+        // TODO: The following case kicks in for ForInStatement11.js, but I don't understand why.
+        if (sourceObject instanceof ObjectValue) template = sourceObject;
+
+        if (template !== undefined) {
+          for (let [key, binding] of template.properties) {
+            if (binding === undefined || binding.descriptor === undefined) continue; // deleted
+            invariant(binding.descriptor !== undefined);
+            invariant(binding.descriptor.value !== undefined);
+            targetObject.$Set(key, binding.descriptor.value, targetObject);
+          }
+        }
+
+        // TODO: All other properties of the target object now have unknown values and those properties must be invalidated.
+        if (!targetObject.isSimple()) targetObject.makePartial();
+
         return realm.intrinsics.undefined;
       }
     }
