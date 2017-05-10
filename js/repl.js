@@ -58,29 +58,29 @@ function compile() {
         }
         output.setValue(code, -1);
       } else if (result.type === 'error') {
-        let errorText = result.data;
-        if(!errorText.startsWith('Unexpected')){
-        errorOutput.style.display = 'block';
-        replOutput.style.display = 'none';
-        errorOutput.textContent = errorText;        
+          let errorText = result.data;
+          if (!errorText.startsWith('Unexpected')) {
+            errorOutput.style.display = 'block';
+            replOutput.style.display = 'none';
+            errorOutput.textContent = errorText;        
         } else {
-        let errorLineLink = document.createElement('a');
-        let lineText = getLineText(errorText);
-        let lineNumber = lineText.slice(0,1);
-        errorOutput.style.display = 'block';
-        replOutput.style.display = 'none';
-        errorLineLink.href = '';
-        errorLineLink.onclick = function() {
+          let errorLineLink = document.createElement('a');
+          let lineText = getLineText(errorText);
+          let lineNumber = lineText.slice(0,1);
+          errorOutput.style.display = 'block';
+          replOutput.style.display = 'none';
+          errorLineLink.href = '';
+          errorLineLink.onclick = function() {
           input.gotoLine(lineNumber);
           return false;
-        }
-        errorLineLink.text = lineText;
-        errorLineLink.style.color = 'red';
-        let beforeLineNumber = document.createTextNode(errorText.slice(0, errorText.indexOf(lineText)));
-        let afterLineNumber = document.createTextNode(errorText.slice(errorText.indexOf(')')));
-        errorOutput.appendChild(beforeLineNumber);
-        errorOutput.appendChild(errorLineLink);
-        errorOutput.appendChild(afterLineNumber);
+          }
+          errorLineLink.text = lineText;
+          errorLineLink.style.color = 'red';
+          let beforeLineNumber = document.createTextNode(errorText.slice(0, errorText.indexOf(lineText)));
+          let afterLineNumber = document.createTextNode(errorText.slice(errorText.indexOf(')')));
+          errorOutput.appendChild(beforeLineNumber);
+          errorOutput.appendChild(errorLineLink);
+          errorOutput.appendChild(afterLineNumber);
         }
       }
 
@@ -107,7 +107,7 @@ var input = createEditor(document.querySelector('.input .repl'));
 input.setValue([
   '(function() {',
   '  function fib(x) {',
-  '    return x <= 1 ? x : fi(x - 1) + fib(x - 2);',
+  '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
   '  }',
   '',
   '  let x = Date.now();',
