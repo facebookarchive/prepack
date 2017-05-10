@@ -36,7 +36,8 @@ function terminateWorker() {
 function compile() {
   clearTimeout(debounce);
   terminateWorker();
-
+  
+  errorOutput.innerHTML = '';
   errorOutput.style.display = 'none';
   replOutput.style.display = 'block';
 
@@ -57,15 +58,44 @@ function compile() {
         }
         output.setValue(code, -1);
       } else if (result.type === 'error') {
-        errorOutput.style.display = 'block';
-        replOutput.style.display = 'none';
-        errorOutput.textContent = result.data;
+          let errorText = result.data;
+          if (!errorText.startsWith('Unexpected')) {
+            errorOutput.style.display = 'block';
+            replOutput.style.display = 'none';
+            errorOutput.textContent = errorText;        
+        } else {
+          let errorLineLink = document.createElement('a');
+          let lineText = getLineText(errorText);
+          let lineNumber = lineText.slice(0,1);
+          errorOutput.style.display = 'block';
+          replOutput.style.display = 'none';
+          errorLineLink.href = '';
+          errorLineLink.onclick = function() {
+          input.gotoLine(lineNumber);
+          return false;
+          }
+          errorLineLink.text = lineText;
+          errorLineLink.style.color = 'red';
+          let beforeLineNumber = document.createTextNode(errorText.slice(0, errorText.indexOf(lineText)));
+          let afterLineNumber = document.createTextNode(errorText.slice(errorText.indexOf(')')));
+          errorOutput.appendChild(beforeLineNumber);
+          errorOutput.appendChild(errorLineLink);
+          errorOutput.appendChild(afterLineNumber);
+        }
       }
 
       terminateWorker();
     };
     worker.postMessage(input.getValue());
   }, 500);
+}
+
+let getLineText = function(errorText){
+  // Of the form (7:5);
+  let lineRegEx = /[:\d)]/g;
+  let closingBraceIndex = errorText.indexOf(')');
+  return errorText.slice(lineRegEx.exec(errorText).index, closingBraceIndex);
+
 }
 
 var output = createEditor(replOutput);
