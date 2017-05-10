@@ -143,12 +143,18 @@ export class Generator {
     });
   }
 
-  emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
+  emitCall(createCallee: () => BabelNodeExpression, args: Array<Value>) {
     this.body.push({
-      args: args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v),
+      args,
       buildNode: values => t.expressionStatement(
-        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), [...values]))
+        t.callExpression(createCallee(), [...values]))
     });
+  }
+
+  emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
+    this.emitCall(
+      () => t.memberExpression(t.identifier("console"), t.identifier(method)),
+      args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v));
   }
 
   // Pushes "if (violationConditionFn()) { throw new Error("invariant violation"); }"
@@ -172,6 +178,11 @@ export class Generator {
           ]);
         return t.ifStatement(condition, throwblock);
       } });
+  }
+
+  emitCallAndCaptureResult(types: TypesDomain, values: ValuesDomain, createCallee: () => BabelNodeExpression, args: Array<Value>, kind?: string): AbstractValue {
+    return this.derive(types, values, args,
+      nodes => t.callExpression(createCallee(), nodes));
   }
 
   derive(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression, kind?: string): AbstractValue {
