@@ -57,6 +57,30 @@
             Check out the section <i>The Environment matters!</i> on the landing page.
           </p>
 
+          <h2>What is an <code>__IntrospectionError</code>?</h2>
+
+          <p class="align-left">
+            Prepack actually runs the global code. 
+            When functions such as <code>Date.now</code> or <code>Math.random</code> are invoked,
+            their behavior is <i>non-deterministic</i>. Prepack doesn't know which exact value they will return 
+            when the resulting prepacked code will run again later in the real run-time environment.
+            (You can also directly inject such non-deterministic values using Prepack's <code>__abstract</code> built-in, or
+            other modeling built-ins described in the section <i>The Environment matters!</i> on the landing page.)
+          </o>
+          <p class="align-left">
+            When the global code branches over such values,
+            it is not clear at prepack-time which branch will be taken later in the real run-time environment.
+            Therefore, Prepack tries to explore all possible behaviors, and summarize them. 
+            However, Prepack is still limited in its abilities, and sometimes it just won't ever make sense to explore all possible behaviors.
+            In those cases, Prepack throws a <code>__IntrospectionError</code>.
+            This is not a user error, but a Prepack limitation. 
+            It is sometimes possible to work around these limitations by changing your code. The easiest way to work around the limitation is to move the problematic code out of the global code path into a callback that's only invoked later, or by making the problematic part of the initialization phase lazy.
+          </p>
+          <p class="align-left">
+            If you get such an error while using <code>Math.random</code>, 
+            consider setting the <code>mathRandomSeed</code> option to make all random numbers queries along the global code path deterministic.
+          </p>
+
           <h2>When will Prepack understand all DOM objects?</h2>
 
           <p class="align-left">
