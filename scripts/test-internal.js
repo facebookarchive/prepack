@@ -18,18 +18,19 @@ let fs    = require("fs");
 function search(dir, relative) {
   let tests = [];
 
-  if (fs.existsSync(dir))
-  for (let name of fs.readdirSync(dir)) {
-    let loc = path.join(dir, name);
-    let stat = fs.statSync(loc);
+  if (fs.existsSync(dir)) {
+    for (let name of fs.readdirSync(dir)) {
+      let loc = path.join(dir, name);
+      let stat = fs.statSync(loc);
 
-    if (stat.isFile()) {
-      tests.push({
-        file: fs.readFileSync(loc, "utf8"),
-        name: path.join(relative, name)
-      });
-    } else if (stat.isDirectory()) {
-      tests = tests.concat(search(loc, path.join(relative, name)));
+      if (stat.isFile()) {
+        tests.push({
+          file: fs.readFileSync(loc, "utf8"),
+          name: path.join(relative, name)
+        });
+      } else if (stat.isDirectory()) {
+        tests = tests.concat(search(loc, path.join(relative, name)));
+      }
     }
   }
 
