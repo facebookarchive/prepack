@@ -58,6 +58,8 @@ report(inspect());`, { cachedDataProduced: false });
   script.runInNewContext({
     setTimeout: setTimeout,
     setInterval: setInterval,
+    clearTimeout: clearTimeout,
+    clearInterval: clearInterval,
     report: function(s) {
       result = s;
     },

@@ -65,6 +65,20 @@ export default function (realm: Realm): void {
     configurable: true
   });
 
+  global.$DefineOwnProperty("clearTimeout", {
+    value: new NativeFunctionValue(realm, "::global.clearTimeout", "", 2, (context, args) => {
+      if (!realm.isPartial) throw new Error("TODO: implement global.clearTimeout");
+      invariant(realm.generator !== undefined);
+      let generator = realm.generator;
+      generator.emitCall(
+        () => generator.preludeGenerator.memoizeReference("::global.clearTimeout"), args);
+      return realm.intrinsics.undefined;
+    }),
+    writable: true,
+    enumerable: true,
+    configurable: true
+  });
+
   global.$DefineOwnProperty("setInterval", {
     value: new NativeFunctionValue(realm, "::global.setInterval", "", 2, (context, args) => {
       if (!realm.isPartial) throw new Error("TODO: implement global.setInterval");
@@ -76,6 +90,20 @@ export default function (realm: Realm): void {
       return generator.emitCallAndCaptureResult(
         TypesDomain.topVal, ValuesDomain.topVal,
         () => generator.preludeGenerator.memoizeReference("::global.setInterval"), args);
+    }),
+    writable: true,
+    enumerable: true,
+    configurable: true
+  });
+
+  global.$DefineOwnProperty("clearInterval", {
+    value: new NativeFunctionValue(realm, "::global.clearInterval", "", 2, (context, args) => {
+      if (!realm.isPartial) throw new Error("TODO: implement global.clearInterval");
+      invariant(realm.generator !== undefined);
+      let generator = realm.generator;
+      generator.emitCall(
+        () => generator.preludeGenerator.memoizeReference("::global.clearInterval"), args);
+      return realm.intrinsics.undefined;
     }),
     writable: true,
     enumerable: true,
