@@ -15,7 +15,7 @@ import { BreakCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
-import { BoundNames, NewDeclarativeEnvironment, UpdateEmpty, CreateDataProperty } from "../methods/index.js";
+import { BoundNames, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
 import { AbstractValue, AbstractObjectValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
 import type { BabelNodeForInStatement, BabelNodeStatement, BabelNodeVariableDeclaration } from "babel-types";
 import invariant from "../invariant.js";
@@ -149,6 +149,7 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
         if (sourceObject instanceof ObjectValue) template = sourceObject;
 
         if (template !== undefined) {
+          invariant(template.properties);
           for (let [key, binding] of template.properties) {
             if (binding === undefined || binding.descriptor === undefined) continue; // deleted
             invariant(binding.descriptor !== undefined);
