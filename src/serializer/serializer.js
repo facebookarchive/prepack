@@ -880,6 +880,9 @@ export class Serializer {
       // access the Uint8Array.buffer property to extract the created buffer
       return t.memberExpression(consExpr, t.identifier("buffer"));
     }
+      // access the Uint8Array.buffer property to extract the created buffer
+      return t.memberExpression(consExpr, t.identifier("buffer"));
+    }
   }
 
   _getPropertyValue(val: ObjectValue, name: string): void | Value {
