@@ -16,10 +16,11 @@ import { getRealmOptions, getSerializerOptions } from "./options";
 import { InitializationError } from "./prepack-standalone";
 
 import type { Options } from "./options";
+import { defaultOptions } from "./options";
 
 export * from "./prepack-standalone";
 
-export function prepackFile(filename: string, options: Options = {}, callback: Function) {
+export function prepackFile(filename: string, options: Options = defaultOptions, callback: Function) {
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
@@ -28,7 +29,7 @@ export function prepackFile(filename: string, options: Options = {}, callback: F
     }
     fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
       if (mapErr) {
-        console.log(`No sourcemap found at ${sourceMapFilename}.`);
+        console.warn(`No sourcemap found at ${sourceMapFilename}.`);
         sourceMap = "";
       }
       let serialized;
@@ -39,7 +40,12 @@ export function prepackFile(filename: string, options: Options = {}, callback: F
           realm,
           getSerializerOptions(options),
         );
-        serialized = serializer.init(filename, code, sourceMap, options.sourceMaps);
+        serialized = serializer.init(
+          options.filename || filename,
+          code,
+          sourceMap,
+          options.sourceMaps
+        );
         if (!serialized) {
           throw new InitializationError();
         }
@@ -52,14 +58,14 @@ export function prepackFile(filename: string, options: Options = {}, callback: F
   });
 }
 
-export function prepackFileSync(filename: string, options: Options = {}) {
+export function prepackFileSync(filename: string, options: Options = defaultOptions) {
   let code = fs.readFileSync(filename, "utf8");
   let sourceMap = "";
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
   try {
     sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
   } catch (_e) {
-    console.log(`No sourcemap found at ${sourceMapFilename}.`);
+    console.warn(`No sourcemap found at ${sourceMapFilename}.`);
   }
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
@@ -67,7 +73,12 @@ export function prepackFileSync(filename: string, options: Options = {}) {
     realm,
     getSerializerOptions(options),
   );
-  let serialized = serializer.init(filename, code, sourceMap, options.sourceMaps);
+  let serialized = serializer.init(
+    options.filename || filename,
+    code,
+    sourceMap,
+    options.sourceMaps
+  );
   if (!serialized) {
     throw new InitializationError();
   }

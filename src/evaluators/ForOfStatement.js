@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
 import { BreakCompletion, AbruptCompletion, ContinueCompletion } from "../completions.js";
-import { EmptyValue, ObjectValue, Value, NullValue, UndefinedValue } from "../values/index.js";
+import { AbstractObjectValue, EmptyValue, ObjectValue, Value, NullValue, UndefinedValue } from "../values/index.js";
 import invariant from "../invariant.js";
 import {
   InitializeReferencedBinding,
@@ -25,7 +25,7 @@ import {
   NewDeclarativeEnvironment,
   ResolveBinding,
   IteratorClose,
-  ToObject,
+  ToObjectPartial,
   EnumerateObjectProperties,
   UpdateEmpty,
   BoundNames,
@@ -142,10 +142,19 @@ export function ForInOfHeadEvaluation(realm: Realm, env: LexicalEnvironment, TDZ
     }
 
     // b. Let obj be ToObject(exprValue).
-    let obj = ToObject(realm, exprValue.throwIfNotConcrete());
+    let obj = ToObjectPartial(realm, exprValue);
 
     // c. Return ? EnumerateObjectProperties(obj).
-    return EnumerateObjectProperties(realm, obj);
+    if (obj instanceof AbstractObjectValue) {
+      if (obj.isSimple()) {
+        return obj;
+      } else {
+        obj.throwIfNotConcrete();
+      }
+      invariant(false);
+    } else {
+      return EnumerateObjectProperties(realm, obj);
+    }
   } else { // 8. Else,
     // 1. Assert: iterationKind is iterate.
     invariant(iterationKind === "iterate", "expected iterationKind to be iterate");
@@ -310,12 +319,14 @@ export default function (ast: BabelNodeForOfStatement, strictCode: boolean, env:
     if (left.kind === "var") { // for (var ForBinding o fAssignmentExpression) Statement
       // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(« », AssignmentExpression, iterate).
       let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "iterate", strictCode);
+      keyResult = keyResult.throwIfNotConcreteObject();
 
       // 2. Return ? ForIn/OfBodyEvaluation(ForBinding, Statement, keyResult, varBinding, labelSet).
       return ForInOfBodyEvaluation(realm, env, left.declarations[0].id, body, keyResult, "varBinding", labelSet, strictCode);
     } else { // for (ForDeclaration of AssignmentExpression) Statement
       // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(BoundNames of ForDeclaration, AssignmentExpression, iterate).
       let keyResult = ForInOfHeadEvaluation(realm, env, BoundNames(realm, left), right, "iterate", strictCode);
+      keyResult = keyResult.throwIfNotConcreteObject();
 
       // 2. Return ? ForIn/OfBodyEvaluation(ForDeclaration, Statement, keyResult, lexicalBinding, labelSet).
       return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "lexicalBinding", labelSet, strictCode);
@@ -323,6 +334,7 @@ export default function (ast: BabelNodeForOfStatement, strictCode: boolean, env:
   } else { // for (LeftHandSideExpression of AssignmentExpression) Statement
     // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(« », AssignmentExpression, iterate).
     let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "iterate", strictCode);
+    keyResult = keyResult.throwIfNotConcreteObject();
 
     // 2. Return ? ForIn/OfBodyEvaluation(LeftHandSideExpression, Statement, keyResult, assignment, labelSet).
     return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "assignment", labelSet, strictCode);

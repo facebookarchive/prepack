@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import type { ObjectKind } from "../types.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { ObjectValue, NumberValue } from "./index.js";
@@ -36,6 +37,10 @@ export default class FunctionValue extends ObjectValue {
   // If true, the serializer will check that the function does not access any
   // identifiers defined outside of the local scope.
   isResidual: void | true;
+
+  getKind(): ObjectKind {
+    return "Function";
+  }
 
   getLength(): void | number {
     let binding = this.properties.get("length");

@@ -11,9 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
-import { ThrowCompletion } from "../completions.js";
 import { NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
-import { Construct } from "./construct.js";
 import { ArrayCreate, OrdinaryCreateFromConstructor, CreateDataProperty } from "./create.js";
 import { DefinePropertyOrThrow, Set } from "./properties.js";
 import { ToString, ToStringPartial, ToLength } from "./to.js";
@@ -77,15 +75,11 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
   // 5. If F contains any code unit other than "g", "i", "m", "u", or "y" or if it contains the same code unit more than once, throw a SyntaxError exception.
   for (let i = 0; i < F.length; ++i) {
     if ("gimuy".indexOf(F.charAt(i)) < 0) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "invalid RegExp flag")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "invalid RegExp flag");
     }
     for (let j = i + 1; j < F.length; ++j) {
       if (F.charAt(i) === F.charAt(j)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "duplicate RegExp flag")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "duplicate RegExp flag");
       }
     }
   }
@@ -139,9 +133,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
     };
   } catch (e) {
     if (e instanceof SyntaxError) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, "invalid RegExp")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "invalid RegExp");
     } else
       throw e;
   }
@@ -171,9 +163,7 @@ export function RegExpExec(realm: Realm, R: ObjectValue, S: string): ObjectValue
 
     // b. If Type(result) is neither Object or Null, throw a TypeError exception.
     if (!HasSomeCompatibleType(realm, result, ObjectValue, NullValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(result) is neither Object or Null")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(result) is neither Object or Null");
     }
 
     // c. Return result.
@@ -182,9 +172,7 @@ export function RegExpExec(realm: Realm, R: ObjectValue, S: string): ObjectValue
 
   // 5. If R does not have a [[RegExpMatcher]] internal slot, throw a TypeError exception.
   if (R.$RegExpMatcher === undefined) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "R does not have a [[RegExpMatcher]] internal slot")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "R does not have a [[RegExpMatcher]] internal slot");
   }
 
   // 6. Return ? RegExpBuiltinExec(R, S).

@@ -23,7 +23,7 @@ export default function(opts: RealmOptions = {}): Realm {
   initializeIntrinsics(i, r);
   // TODO: Find a way to let different environments initialize their own global
   // object for special magic host objects such as the window object in the DOM.
-  r.$GlobalObject = new ObjectValue(r, i.ObjectPrototype, "this");
+  r.$GlobalObject = new ObjectValue(r, i.ObjectPrototype, "::global");
   initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
   r.$GlobalEnv =  NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);

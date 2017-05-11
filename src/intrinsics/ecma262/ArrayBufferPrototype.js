@@ -10,7 +10,6 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ThrowCompletion } from "../../completions.js";
 import { ObjectValue, StringValue, NumberValue, UndefinedValue } from "../../values/index.js";
 import { Construct, SpeciesConstructor, IsDetachedBuffer, ToInteger, SameValue, CopyDataBlockBytes } from "../../methods/index.js";
 import invariant from "../../invariant.js";
@@ -23,23 +22,17 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
     if (!('$ArrayBufferData' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have an [[ArrayBufferData]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[ArrayBufferData]] internal slot");
     }
 
     // 4. If IsDetachedBuffer(O) is true, throw a TypeError exception.
     if (IsDetachedBuffer(realm, O) === true) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(O) is true")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(O) is true");
     }
 
     // 5. Let length be O.[[ArrayBufferByteLength]].
@@ -57,23 +50,17 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!(O instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(O) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
     // 3. If O does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
     if (!('$ArrayBufferData' in O)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "O does not have an [[ArrayBufferData]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[ArrayBufferData]] internal slot");
     }
 
     // 4. If IsDetachedBuffer(O) is true, throw a TypeError exception.
     if (IsDetachedBuffer(realm, O) === true) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(O) is true")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(O) is true");
     }
 
     // 5. Let len be O.[[ArrayBufferByteLength]].
@@ -103,39 +90,29 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 13. If New does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
     if (!('$ArrayBufferData' in New)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "new does not have an [[ArrayBufferData]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "new does not have an [[ArrayBufferData]] internal slot");
     }
 
     // 14. If IsDetachedBuffer(New) is true, throw a TypeError exception.
     if (IsDetachedBuffer(realm, New) === true) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(new) is true")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(new) is true");
     }
 
     // 15. If SameValue(New, O) is true, throw a TypeError exception.
     if (SameValue(realm, New, O) === true) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "SameValue(new, O) is true")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "SameValue(new, O) is true");
     }
 
     // 16. If new.[[ArrayBufferByteLength]] < newLen, throw a TypeError exception.
     if (typeof New.$ArrayBufferByteLength !== "number" || New.$ArrayBufferByteLength < newLen) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "new.[[ArrayBufferByteLength]] < newLen")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "new.[[ArrayBufferByteLength]] < newLen");
     }
 
     // 17. NOTE: Side-effects of the above steps may have detached O.
 
     // 18. If IsDetachedBuffer(O) is true, throw a TypeError exception.
     if (IsDetachedBuffer(realm, O) === true) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsDetachedBuffer(O) is true")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(O) is true");
     }
 
     // 19. Let fromBuf be O.[[ArrayBufferData]].

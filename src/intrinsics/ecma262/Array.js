@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ThrowCompletion, AbruptCompletion } from "../../completions.js";
+import { AbruptCompletion } from "../../completions.js";
 import {
     AbstractValue,
     BooleanValue,
@@ -91,9 +91,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
         // b If intLen ≠ len, throw a RangeError exception.
         if (intLen !== len.value) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "intLen ≠ len")])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "intLen ≠ len");
         }
       }
 
@@ -224,9 +222,7 @@ export default function (realm: Realm): NativeFunctionValue {
       // a. If IsCallable(mapfn) is false, throw a TypeError exception.
       if (IsCallable(realm, mapfn) === false) {
         mapfn.throwIfNotConcrete();
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsCallable(mapfn) is false")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsCallable(mapfn) is false");
       }
 
       // b. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -263,9 +259,7 @@ export default function (realm: Realm): NativeFunctionValue {
         // i. If k ≥ 2^53-1, then
         if (k >= Math.pow(2, 53) - 1) {
           // 1. Let error be Completion{[[Type]]: throw, [[Value]]: a newly created TypeError object, [[Target]]: empty}.
-          let error = new ThrowCompletion(
-            Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "k >= 2^53 - 1")])
-          );
+          let error = realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "k >= 2^53 - 1");
 
           // 2. Return ? IteratorClose(iterator, error).
           throw IteratorClose(realm, iterator, error);

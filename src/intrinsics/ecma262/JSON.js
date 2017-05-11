@@ -11,8 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NullValue, BooleanValue, StringValue, PrimitiveValue, ArrayValue, ObjectValue, NumberValue, AbstractValue, UndefinedValue, Value, AbstractObjectValue } from "../../values/index.js";
-import { Call, ToLength, EnumerableOwnProperties, ToInteger, ToNumber, IsArray, Get, CreateDataProperty, ObjectCreate, Construct, ToString, ToStringPartial, IsCallable, HasSomeCompatibleType, ThrowIfMightHaveBeenDeleted } from "../../methods/index.js";
-import { ThrowCompletion } from "../../completions.js";
+import { Call, ToLength, EnumerableOwnProperties, ToInteger, ToNumber, IsArray, Get, CreateDataProperty, ObjectCreate, ToString, ToStringPartial, IsCallable, HasSomeCompatibleType, ThrowIfMightHaveBeenDeleted } from "../../methods/index.js";
 import { InternalizeJSONProperty } from "../../methods/json.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
@@ -33,9 +32,7 @@ type Context = {
 function SerializeJSONArray(realm: Realm, value: ObjectValue, context: Context): string {
   // 1. If stack contains value, throw a TypeError exception because the structure is cyclical.
   if (context.stack.indexOf(value) >= 0) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "cyclical error")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cyclical error");
   }
 
   // 2. Append value to stack.
@@ -111,9 +108,7 @@ function QuoteJSONString(realm: Realm, value: StringValue): string {
 function SerializeJSONObject(realm: Realm, value: ObjectValue, context: Context): string {
   // 1. If stack contains value, throw a TypeError exception because the structure is cyclical.
   if (context.stack.indexOf(value) >= 0) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "cyclical error")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cyclical error");
   }
 
   // 2. Append value to stack.
@@ -501,6 +496,7 @@ export default function (realm: Realm): ObjectValue {
       let template;
       if (clonedValue instanceof AbstractObjectValue) {
         template = InternalGetTemplate(realm, clonedValue);
+        template._isSimple = realm.intrinsics.true;
       }
       let buildNode = ([node]) => buildJSONParse({
         STRING: node
@@ -524,9 +520,7 @@ export default function (realm: Realm): ObjectValue {
         unfiltered = nativeToInterp(realm, JSON.parse(JText));
       } catch (err) {
         if (err instanceof SyntaxError) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, err.message)])
-          );
+          throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, err.message);
         } else {
           throw err;
         }

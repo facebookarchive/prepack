@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { ResolvingFunctions, PromiseCapability, PromiseReaction } from "../types.js";
-import { AbruptCompletion, ThrowCompletion } from "../completions.js";
+import { AbruptCompletion } from "../completions.js";
 import { Value, ObjectValue, StringValue, NativeFunctionValue, FunctionValue } from "../values/index.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
@@ -32,9 +32,7 @@ export function EnqueueJob(realm: Realm, queueName: string, job: Function, args:
 export function NewPromiseCapability(realm: Realm, C: Value): PromiseCapability {
   // 1. If IsConstructor(C) is false, throw a TypeError exception.
   if (IsConstructor(realm, C) === false) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsConstructor(C) is false")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsConstructor(C) is false");
   }
   invariant(C instanceof ObjectValue);
 
@@ -57,17 +55,13 @@ export function NewPromiseCapability(realm: Realm, C: Value): PromiseCapability 
 
     // 3. If promiseCapability.[[Resolve]] is not undefined, throw a TypeError exception.
     if (!promiseCapability.resolve.mightBeUndefined()) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "promiseCapability.[[Resolve]] is not undefined")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "promiseCapability.[[Resolve]] is not undefined");
     }
     promiseCapability.resolve.throwIfNotConcrete();
 
     // 4. If promiseCapability.[[Reject]] is not undefined, throw a TypeError exception.
     if (!promiseCapability.reject.mightBeUndefined()) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "promiseCapability.[[Reject]] is not undefined")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "promiseCapability.[[Reject]] is not undefined");
     }
     promiseCapability.reject.throwIfNotConcrete();
 
@@ -89,16 +83,12 @@ export function NewPromiseCapability(realm: Realm, C: Value): PromiseCapability 
 
   // 7. If IsCallable(promiseCapability.[[Resolve]]) is false, throw a TypeError exception.
   if (IsCallable(realm, promiseCapability.resolve) === false) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsCallable(promiseCapability.[[Resolve]]) is false")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsCallable(promiseCapability.[[Resolve]]) is false");
   }
 
   // 8. If IsCallable(promiseCapability.[[Reject]]) is false, throw a TypeError exception.
   if (IsCallable(realm, promiseCapability.reject) === false) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsCallable(promiseCapability.[[Reject]]) is false")])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsCallable(promiseCapability.[[Reject]]) is false");
   }
 
   // 9. Set promiseCapability.[[Promise]] to promise.

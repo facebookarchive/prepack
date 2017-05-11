@@ -10,11 +10,10 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue, NullValue, StringValue, UndefinedValue } from "../../values/index.js";
-import { ThrowCompletion, AbruptCompletion } from "../../completions.js";
+import { NativeFunctionValue, NullValue, UndefinedValue } from "../../values/index.js";
+import { AbruptCompletion } from "../../completions.js";
 import {
   OrdinaryCreateFromConstructor,
-  Construct,
   Get,
   IsCallable,
   IteratorClose,
@@ -55,9 +54,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
       // b. If IsCallable(adder) is false, throw a TypeError exception.
       if (!IsCallable(realm, adder)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "IsCallable(adder) is false")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsCallable(adder) is false");
       }
 
       // c. Let iter be ? GetIterator(iterable).

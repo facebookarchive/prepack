@@ -10,9 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ThrowCompletion } from "../../completions.js";
 import { NativeFunctionValue, NumberValue, StringValue, SymbolValue } from "../../values/index.js";
-import { Construct } from "../../methods/construct.js";
 import { ToString, ToStringPartial, ToUint16, ToNumber, ToInteger, ToObjectPartial, ToLength } from "../../methods/to.js";
 import { Get } from "../../methods/get.js";
 import {
@@ -106,16 +104,14 @@ export default function (realm: Realm): NativeFunctionValue {
 
       // c. If SameValue(nextCP, ToInteger(nextCP)) is false, throw a RangeError exception.
       if (nextCP !== ToInteger(realm, nextCP)) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "SameValue(nextCP, ToInteger(nextCP)) is false")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError,
+          "SameValue(nextCP, ToInteger(nextCP)) is false");
       }
 
       // d. If nextCP < 0 or nextCP > 0x10FFFF, throw a RangeError exception.
       if (nextCP < 0 || nextCP > 0x10FFFF) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "SameValue(nextCP, ToInteger(nextCP)) is false")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError,
+          "SameValue(nextCP, ToInteger(nextCP)) is false");
       }
 
       // e. Append the elements of the UTF16Encoding of nextCP to the end of elements.

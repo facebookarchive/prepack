@@ -12,8 +12,6 @@
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { ToString } from "../../methods/index.js";
-import { ThrowCompletion } from "../../completions.js";
-import { Construct } from "../../methods/construct.js";
 import { StringValue } from "../../values/index.js";
 
 export default function (realm: Realm): NativeFunctionValue {
@@ -22,8 +20,7 @@ export default function (realm: Realm): NativeFunctionValue {
   return new NativeFunctionValue(realm, name, name, 1,
     (context, [encodedURIComponent], argCount, NewTarget) => {
       if (NewTarget)
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-          `${name} is not a constructor`);
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, `${name} is not a constructor`);
 
       encodedURIComponent = encodedURIComponent.throwIfNotConcrete();
 
@@ -35,12 +32,7 @@ export default function (realm: Realm): NativeFunctionValue {
       try {
         return new StringValue(realm, decodeURIComponent(componentString));
       } catch (e) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.URIError, [new StringValue(
-            realm,
-            e.message
-          )])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.URIError, e.message);
       }
     }
   );

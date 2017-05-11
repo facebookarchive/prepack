@@ -28,7 +28,12 @@ export type IterationKind = "key+value" | "value" | "key";
 
 export type SourceType = "module" | "script";
 
-export type Compatibility = "browser" | "jsc-600-1-4-17" | "node";
+export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps";
+export const CompatibilityValues = [
+  "browser",
+   "jsc-600-1-4-17",
+  "node-source-maps",
+];
 
 export type RealmOptions = {
   partial?: boolean,
@@ -222,3 +227,13 @@ export type ResolvingFunctions = {
   resolve: Value;
   reject: Value;
 }
+
+export type TypedArrayKind = "Float32Array" | "Float64Array"
+  | "Int8Array" | "Int16Array" | "Int32Array"
+  | "Uint8Array" | "Uint16Array" | "Uint32Array" | "Uint8ClampedArray";
+
+export type ObjectKind = "Object" | "Array" | "Function" | "Symbol" | "String"
+  | "Number" | "Boolean" | "Date" | "RegExp" | "Set" | "Map" | "DataView"
+  | "ArrayBuffer" | "WeakMap" | "WeakSet"
+  | TypedArrayKind;
+// TODO #26: Promises. All kinds of iterators. Generators.

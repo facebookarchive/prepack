@@ -11,8 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
-import { ThrowCompletion } from "../../completions.js";
-import { Construct, ToInteger, ToString, thisNumberValue } from "../../methods/index.js";
+import { ToInteger, ToString, thisNumberValue } from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
@@ -58,9 +57,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 8. If f < 0 or f > 20, throw a RangeError exception. However, an implementation is permitted to extend the behaviour of toExponential for values of f less than 0 or greater than 20. In this case toExponential would not necessarily throw RangeError for such values.
     if (f < 0 || f > 20) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "f < 0 || f > 20")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "f < 0 || f > 20");
     }
 
     let positiveResultString = x.toExponential(fractionDigits instanceof UndefinedValue ? undefined : f);
@@ -74,8 +71,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If f < 0 or f > 20, throw a RangeError exception.
     if (f < 0 || f > 20) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.RangeError, [new StringValue(realm, "f < 0 || f > 20")]));
+      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "f < 0 || f > 20");
     }
 
     // 3. Let x be this Number value.
@@ -136,9 +132,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     // values.
     if (p < 1 || p > 21) {
       // for simplicity, throw the error
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.RangeError,
-          [new StringValue(realm, "p should be in between 1 and 21 inclusive")]));
+      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "p should be in between 1 and 21 inclusive");
     }
     return new StringValue(realm, s + x.toPrecision(p));
   });

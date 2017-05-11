@@ -49,6 +49,22 @@ export class Generator {
   body: Array<BodyEntry>;
   preludeGenerator: PreludeGenerator;
 
+  getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
+    // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
+    let index = Number.parseInt(key, 10);
+    if (index >= 0 && index.toString() === key) {
+      return t.numericLiteral(index);
+    }
+
+    if (canBeIdentifier) {
+      // TODO: revert this when Unicode identifiers are supported by all targetted JavaScript engines
+      let keyIsAscii = /^[\u0000-\u007f]*$/.test(key);
+      if (t.isValidIdentifier(key) && keyIsAscii) return t.identifier(key);
+    }
+
+    return t.stringLiteral(key);
+  }
+
   empty() {
     return !this.body.length;
   }
@@ -78,11 +94,12 @@ export class Generator {
   }
 
   emitPropertyAssignment(object: Value, key: string, value: Value) {
+    let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object, value],
       buildNode: ([objectNode, valueNode]) => t.expressionStatement(t.assignmentExpression(
         "=",
-        t.memberExpression(objectNode, t.identifier(key)),
+        t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
         valueNode))
     });
   }
@@ -117,20 +134,27 @@ export class Generator {
   }
 
   emitPropertyDelete(object: Value, key: string) {
+    let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object],
       buildNode: ([objectNode]) => t.expressionStatement(t.unaryExpression(
         "delete",
-        t.memberExpression(objectNode, t.identifier(key))))
+        t.memberExpression(objectNode, propName, !t.isIdentifier(propName))))
+    });
+  }
+
+  emitCall(createCallee: () => BabelNodeExpression, args: Array<Value>) {
+    this.body.push({
+      args,
+      buildNode: values => t.expressionStatement(
+        t.callExpression(createCallee(), [...values]))
     });
   }
 
   emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
-    this.body.push({
-      args: args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v),
-      buildNode: values => t.expressionStatement(
-        t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(method)), [...values]))
-    });
+    this.emitCall(
+      () => t.memberExpression(t.identifier("console"), t.identifier(method)),
+      args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v));
   }
 
   // Pushes "if (violationConditionFn()) { throw new Error("invariant violation"); }"
@@ -154,6 +178,11 @@ export class Generator {
           ]);
         return t.ifStatement(condition, throwblock);
       } });
+  }
+
+  emitCallAndCaptureResult(types: TypesDomain, values: ValuesDomain, createCallee: () => BabelNodeExpression, args: Array<Value>, kind?: string): AbstractValue {
+    return this.derive(types, values, args,
+      nodes => t.callExpression(createCallee(), nodes));
   }
 
   derive(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression, kind?: string): AbstractValue {

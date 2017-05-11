@@ -10,9 +10,8 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ThrowCompletion } from "../../completions.js";
 import { StringValue, ObjectValue } from "../../values/index.js";
-import { Construct, SameValuePartial, ThrowIfInternalSlotNotWritable } from "../../methods/index.js";
+import { SameValuePartial, ThrowIfInternalSlotNotWritable } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
 export default function (realm: Realm, obj: ObjectValue): void {
@@ -23,24 +22,18 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(S) is not Object, throw a TypeError exception.
     if (!(S instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(S) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(S) is not Object");
     }
 
     // 3. If S does not have a [[WeakSetData]] internal slot, throw a TypeError exception.
     if (!S.$WeakSetData) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "S does not have a [[WeakSetData]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "S does not have a [[WeakSetData]] internal slot");
     }
 
     // 4. If Type(value) is not Object, throw a TypeError exception.
     value = value.throwIfNotConcrete();
     if (!(value instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(value) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(value) is not Object");
     }
 
     // 5. Let entries be the List that is S.[[WeakSetData]].
@@ -71,16 +64,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(S) is not Object, throw a TypeError exception.
     if (!(S instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(S) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(S) is not Object");
     }
 
     // 3. If S does not have a [[WeakSetData]] internal slot, throw a TypeError exception.
     if (!S.$WeakSetData) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "S does not have a [[WeakSetData]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "S does not have a [[WeakSetData]] internal slot");
     }
 
     // 4. If Type(value) is not Object, throw a TypeError exception.
@@ -118,16 +107,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 2. If Type(S) is not Object, throw a TypeError exception.
     if (!(S instanceof ObjectValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(S) is not Object")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(S) is not Object");
     }
 
     // 3. If S does not have a [[WeakSetData]] internal slot, throw a TypeError exception.
     if (!S.$WeakSetData) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "S does not have a [[WeakSetData]] internal slot")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "S does not have a [[WeakSetData]] internal slot");
     }
 
     // 4. Let entries be the List that is S.[[WeakSetData]].

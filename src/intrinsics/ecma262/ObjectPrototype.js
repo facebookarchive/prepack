@@ -10,14 +10,12 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue, ObjectValue, BooleanValue, StringValue,  NullValue } from "../../values/index.js";
-import { ThrowCompletion } from "../../completions.js";
+import { NativeFunctionValue, ObjectValue, BooleanValue, NullValue } from "../../values/index.js";
 import { ToPropertyKey, ToObject, ToObjectPartial } from "../../methods/to.js";
 import { SameValuePartial, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { Invoke } from "../../methods/call.js";
 import { ThrowIfMightHaveBeenDeleted } from "../../methods/index.js";
-import { Construct } from "../../methods/construct.js";
 import invariant from "../../invariant.js";
 
 export default function (realm: Realm, obj: ObjectValue): void {
@@ -123,9 +121,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 5. If status is false, throw a TypeError exception.
       if (!status) {
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "couldn't set proto")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "couldn't set proto");
       }
 
       // 6. Return undefined.

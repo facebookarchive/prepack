@@ -10,7 +10,6 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { ThrowCompletion } from "../completions.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import {
@@ -36,7 +35,6 @@ import {
   LexicalEnvironment
 } from "../environment.js";
 import {
-  Construct,
   GetV,
   GetThisValue,
   ToObjectPartial,
@@ -85,9 +83,7 @@ export function GetValue(realm: Realm, V: Reference | Value): Value {
 
   // 4. If IsUnresolvableReference(V) is true, throw a ReferenceError exception.
   if (IsUnresolvableReference(realm, V)) {
-    throw new ThrowCompletion(
-      Construct(realm, realm.intrinsics.ReferenceError, [new StringValue(realm, `${V.referencedName.toString()} is not defined`)])
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${V.referencedName.toString()} is not defined`);
   }
 
   // 5. If IsPropertyReference(V) is true, then
@@ -275,10 +271,8 @@ export function BlockDeclarationInstantiation(realm: Realm, strictCode: boolean,
     for (let dn of BoundNames(realm, d)) {
       if (envRec.HasBinding(dn)) {
         //ECMA262 13.2.1
-        throw new ThrowCompletion(
-          Construct(realm, realm.intrinsics.SyntaxError,
-             [new StringValue(realm, dn + " already declared")])
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
+          dn + " already declared");
       }
       // i. If IsConstantDeclaration of d is true, then
       if (d.type === "VariableDeclaration" && d.kind === "const") {

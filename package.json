@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.0",
+  "version": "0.2.2-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -81,12 +81,11 @@
     "webpack": "^2.3.3"
   },
   "engines": {
-    "node": ">=6.1.0 <7.0.0"
+    "node": ">=6.1.0 <8.0.0"
   },
   "keywords": [
     "prepack"
   ],
   "license": "BSD-3-Clause",
-  "author": "Facebook",
-  "private": true
+  "author": "Facebook"
 }

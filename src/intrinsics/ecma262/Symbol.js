@@ -11,8 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, StringValue, SymbolValue, UndefinedValue } from "../../values/index.js";
-import { ThrowCompletion } from "../../completions.js";
-import { Construct, ToStringPartial } from "../../methods/index.js";
+import { ToStringPartial } from "../../methods/index.js";
 import { SameValue } from "../../methods/abstract.js";
 
 let GlobalSymbolRegistry: Array<{$Key: string, $Symbol: SymbolValue}> = [];
@@ -66,9 +65,8 @@ export default function (realm: Realm): NativeFunctionValue {
   func.defineNativeMethod("keyFor", 1, (context, [sym]) => {
     // 1. If Type(sym) is not Symbol, throw a TypeError exception.
     if (!(sym instanceof SymbolValue)) {
-      throw new ThrowCompletion(
-        Construct(realm, realm.intrinsics.TypeError, [new StringValue(realm, "Type(sym) is not Symbol")])
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
+        "Type(sym) is not Symbol");
     }
 
     // 2. For each element e of the GlobalSymbolRegistry List (see 19.4.2.1),

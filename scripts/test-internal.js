@@ -9,9 +9,7 @@
 
 /* @flow */
 
-import Serializer from "../lib/serializer/index.js";
-import construct_realm from "../lib/construct_realm.js";
-import initializeGlobals from "../lib/globals.js";
+import { prepack } from "../lib/prepack-node.js";
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -20,18 +18,19 @@ let fs    = require("fs");
 function search(dir, relative) {
   let tests = [];
 
-  if (fs.existsSync(dir))
-  for (let name of fs.readdirSync(dir)) {
-    let loc = path.join(dir, name);
-    let stat = fs.statSync(loc);
+  if (fs.existsSync(dir)) {
+    for (let name of fs.readdirSync(dir)) {
+      let loc = path.join(dir, name);
+      let stat = fs.statSync(loc);
 
-    if (stat.isFile()) {
-      tests.push({
-        file: fs.readFileSync(loc, "utf8"),
-        name: path.join(relative, name)
-      });
-    } else if (stat.isDirectory()) {
-      tests = tests.concat(search(loc, path.join(relative, name)));
+      if (stat.isFile()) {
+        tests.push({
+          file: fs.readFileSync(loc, "utf8"),
+          name: path.join(relative, name)
+        });
+      } else if (stat.isDirectory()) {
+        tests = tests.concat(search(loc, path.join(relative, name)));
+      }
     }
   }
 
@@ -43,10 +42,13 @@ let tests = search(`${__dirname}/../test/internal`, "test/internal");
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
-    let realm = construct_realm({ partial: true, compatibility: "jsc-600-1-4-17", mathRandomSeed: "0" });
-    initializeGlobals(realm);
-    let serializer = new Serializer(realm, { internalDebug: true, initializeMoreModules: true });
-    let serialized = serializer.init(name, code, "", false);
+    let serialized = prepack(code, {
+      filename: name,
+      internalDebug: true,
+      compatibility: "jsc-600-1-4-17",
+      mathRandomSeed: "0",
+      speculate: true
+    });
     if (!serialized) {
       console.log(chalk.red("Error during serialization"));
       return false;

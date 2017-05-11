@@ -52,6 +52,7 @@ export default function (ast: BabelNodeFunctionExpression, strictCode: boolean, 
 
       // 8. Let prototype be ObjectCreate(%GeneratorPrototype%).
       let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
+      prototype.originalConstructor = closure;
 
       // 9. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
       DefinePropertyOrThrow(realm, closure, "prototype", {
@@ -118,6 +119,7 @@ export default function (ast: BabelNodeFunctionExpression, strictCode: boolean, 
 
       // 4. Let prototype be ObjectCreate(%GeneratorPrototype%).
       let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
+      prototype.originalConstructor = closure;
 
       // 5. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
       DefinePropertyOrThrow(realm, closure, "prototype", {
