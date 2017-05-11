@@ -66,7 +66,7 @@ function compile() {
         } else {
           let errorLineLink = document.createElement('a');
           let lineText = getLineText(errorText);
-          let lineNumber = lineText.slice(0,1);
+          let lineNumber = lineText.slice(0, lineText.indexOf(":"));          
           errorOutput.style.display = 'block';
           replOutput.style.display = 'none';
           errorLineLink.href = '';
