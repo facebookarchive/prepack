@@ -4,4 +4,6 @@ y = new Int8Array(x);
 y[0] = 1;
 z = new Int16Array(x);
 z[0] = 2;
-inspect = function() { return x.byteLength + y[0] + z[0]; }
+a = new DataView(x);
+a.setInt8(2, 3);
+inspect = function() { return x.byteLength + y[0] + z[0] + y[2]; }

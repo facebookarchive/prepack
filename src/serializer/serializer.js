@@ -828,12 +828,12 @@ export class Serializer {
       this.preludeGenerator.memoizeReference(kind), [arrayValue]);
   }
 
-  _serializeValueTypedArray(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
-    let elems = [];
-
-    let len = val.$ArrayLength;
+  _serializeValueTypedArrayOrDataView(
+    name: string,
+    val: ObjectValue,
+    reasons: Array<string>
+  ): BabelNodeExpression {
     let buf = val.$ViewedArrayBuffer;
-    invariant(len !== undefined);
     invariant(buf !== undefined);
     let outlinedArrayBuffer = this.serializeValue(
       buf,
@@ -1092,7 +1092,8 @@ export class Serializer {
       case "Uint16Array":
       case "Uint32Array":
       case "Uint8ClampedArray":
-        return this._serializeValueTypedArray(name, val, reasons);
+      case "DataView":
+        return this._serializeValueTypedArrayOrDataView(name, val, reasons);
       case "ArrayBuffer":
         return this._serializeValueArrayBuffer(name, val, reasons);
       case "Map":
