@@ -828,25 +828,58 @@ export class Serializer {
       this.preludeGenerator.memoizeReference(kind), [arrayValue]);
   }
 
-  _serializeValueTypedArray(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
+  _serializeValueTypedArrayOrDataView(
+    name: string,
+    val: ObjectValue,
+    reasons: Array<string>
+  ): BabelNodeExpression {
+    let buf = val.$ViewedArrayBuffer;
+    invariant(buf !== undefined);
+    let outlinedArrayBuffer = this.serializeValue(
+      buf,
+      reasons,
+      true
+    );
+    this.addProperties(name, val, reasons, val.properties);
+    return t.newExpression(
+      this.preludeGenerator.memoizeReference(val.getKind()),
+      [outlinedArrayBuffer]
+    );
+  }
+
+  _serializeValueArrayBuffer(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
     let elems = [];
 
-    let len = val.$ArrayLength;
+    let len = val.$ArrayBufferByteLength;
+    let db = val.$ArrayBufferData;
     invariant(len !== undefined);
+    invariant(db);
+    let allzero = true;
     for (let i = 0; i < len; i++) {
-      let key = i + "";
-      let elemVal = val.$Get(key, val);
-      let elem = this.serializeValue(
-        elemVal,
-        reasons.concat(`Declared in typed array ${name} at index ${key}`)
-      );
+      if (db[i] !== 0) {
+        allzero = false;
+      }
+      let elem = t.numericLiteral(db[i]);
       elems.push(elem);
     }
 
     this.addProperties(name, val, reasons, val.properties);
-    let arrayValue = t.arrayExpression(elems);
-    return t.newExpression(
-      this.preludeGenerator.memoizeReference(val.getKind()), [arrayValue]);
+    if (allzero) {
+      // if they're all zero, just emit the array buffer constructor
+      return t.newExpression(
+        this.preludeGenerator.memoizeReference(val.getKind()),
+        [t.numericLiteral(len)],
+      );
+    } else {
+      // initialize from a byte array otherwise
+      let arrayValue = t.arrayExpression(elems);
+      let consExpr = t.newExpression(
+        this.preludeGenerator.memoizeReference("Uint8Array"),
+        [arrayValue]
+      );
+      // access the Uint8Array.buffer property to extract the created buffer
+      return t.memberExpression(consExpr, t.identifier("buffer"));
+    }
   }
 
   _getPropertyValue(val: ObjectValue, name: string): void | Value {
@@ -1059,7 +1092,10 @@ export class Serializer {
       case "Uint16Array":
       case "Uint32Array":
       case "Uint8ClampedArray":
-        return this._serializeValueTypedArray(name, val, reasons);
+      case "DataView":
+        return this._serializeValueTypedArrayOrDataView(name, val, reasons);
+      case "ArrayBuffer":
+        return this._serializeValueArrayBuffer(name, val, reasons);
       case "Map":
       case "WeakMap":
         return this._serializeValueMap(name, val, reasons);
