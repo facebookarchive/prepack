@@ -28,9 +28,9 @@ header, .repl-container {
 }
 
 .repl-toolbar {
-	background: #f6f6f6;
-	height: 28px;
-	padding-left: 41px;
+  background: #f6f6f6;
+  height: 28px;
+  padding-left: 41px;
 }
 
 #examples {
