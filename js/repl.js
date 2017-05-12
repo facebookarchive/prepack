@@ -36,7 +36,7 @@ function terminateWorker() {
 function compile() {
   clearTimeout(debounce);
   terminateWorker();
-  
+
   errorOutput.innerHTML = '';
   errorOutput.style.display = 'none';
   replOutput.style.display = 'block';
@@ -62,11 +62,11 @@ function compile() {
           if (!errorText.startsWith('Unexpected')) {
             errorOutput.style.display = 'block';
             replOutput.style.display = 'none';
-            errorOutput.textContent = errorText;        
+            errorOutput.textContent = errorText;
         } else {
           let errorLineLink = document.createElement('a');
           let lineText = getLineText(errorText);
-          let lineNumber = lineText.slice(0, lineText.indexOf(":"));          
+          let lineNumber = lineText.slice(0, lineText.indexOf(":"));
           errorOutput.style.display = 'block';
           replOutput.style.display = 'none';
           errorLineLink.href = '';
@@ -103,17 +103,94 @@ output.setReadOnly(true);
 output.setHighlightActiveLine(false);
 output.setHighlightGutterLine(false);
 
+var examples = {
+  one: [
+    '(function() {',
+    '  function fib(x) {',
+    '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
+    '  }',
+    '',
+    ' let x = Date.now();',
+    ' if (x * 2 > 42) x = fib(10);',
+    ' global.result = x;',
+    '})();',
+  ],
+  two: [
+    '(function () {',
+    '  var self = this;',
+    '  [\'A\', \'B\', 42].forEach(function(x) {',
+    '    var name = \'_\' + x.toString()[0].toLowerCase();',
+    '    var y = parseInt(x);',
+    '    self[name] = y ? y : x;',
+    '  });',
+    '})();',
+  ],
+  three: [
+    '(function () {',
+    '  let moduleTable = {};',
+    '',
+    '  function define(id, f) { moduleTable[id] = f; }',
+    '',
+    '  function require(id) {',
+    '    let x = moduleTable[id];',
+    '    return x instanceof Function ? (moduleTable[id] = x()) : x;',
+    '  }',
+    '',
+    '  global.require = require;',
+    '  define("one", function() { return 1; });',
+    '  define("two", function() { return require("one") + require("one"); });',
+    '  define("three", function() { return require("two") + require("one"); });',
+    '  define("four", function() { return require("three") + require("one"); });',
+    '})();',
+    'three = require("three");',
+  ],
+  four: [
+    '(function() {',
+    '  function createReactElementFactory(component, constants) {',
+    '    var constantProps = Object.assign(',
+    '      {},',
+    '      component.defaultProps,',
+    '      constants',
+    '    );',
+    '',
+    '    var propsJSON = JSON.stringify(constantProps).replace(/"__arg0"/g, \'arg0\');',
+    '',
+    '    return eval(',
+    '      \'(function(arg0) { \' +',
+    '      \'return { type: component, props: \' + propsJSON + \' };\' +',
+    '      \'})\'',
+    '    );',
+    '  }',
+    '',
+    '  function MyComponent({ greeting, name, url }) {',
+    '    return React.createElement(\'a\', {href: url }, `{greeting}, {name}!`);',
+    '  }',
+    '',
+    '  MyComponent.defaultProps = {',
+    '    greeting: \'Hi\',',
+    '    name: \'Unknown\',',
+    '    url: \'http://prepack.io\',',
+    '  };',
+    '',
+    '  let MyComponentTemplate = createReactElementFactory(MyComponent, {',
+    '    name: \'Sebastian\',',
+    '    url: \'__arg0\'',
+    '  });',
+    '',
+    '  onload = function() {',
+    '    ReactDOM.render(MyComponentTemplate(location.href), document.body)',
+    '  }',
+    '})();',
+  ]
+};
+
+var selector = document.querySelector('#examples')
 var input = createEditor(document.querySelector('.input .repl'));
-input.setValue([
-  '(function() {',
-  '  function fib(x) {',
-  '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
-  '  }',
-  '',
-  '  let x = Date.now();',
-  '  if (x * 2 > 42) x = fib(10);',
-  '  global.result = x;',
-  '})();'
-].join('\n'), -1);
+
+selector.addEventListener('change', function(e) {
+  input.setValue(examples[e.target.value].join('\n'), -1);
+});
+
+input.setValue(examples.one.join('\n'), -1);
 compile();
 input.on('change', compile);
