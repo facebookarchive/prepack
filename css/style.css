@@ -27,9 +27,19 @@ header, .repl-container {
   right: 0;
 }
 
+.repl-toolbar {
+	background: #f6f6f6;
+	height: 28px;
+	padding-left: 41px;
+}
+
+#examples {
+	width: 250px;
+}
+
 .repl-container {
   position: absolute;
-  top: 60px;
+  top: 88px;
   bottom: 0;
   background-color: #f7f7f7;
 }
