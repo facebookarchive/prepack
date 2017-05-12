@@ -103,9 +103,8 @@ output.setReadOnly(true);
 output.setHighlightActiveLine(false);
 output.setHighlightGutterLine(false);
 
-// examples
 var examples = {
-    exampleOne: [
+    one: [
         '(function() {',
         ' function fib(x) {',
         ' return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
@@ -116,7 +115,7 @@ var examples = {
         ' global.result = x;',
         '})();',
     ],
-    exampleTwo: [
+    two: [
             '(function () {',
             '   var self = this;',
             '   [\'A\', \'B\', 42].forEach(function(x) {',
@@ -126,7 +125,7 @@ var examples = {
             '   });',
             '})();',
         ],
-    exampleThree: [
+    three: [
             '(function () {',
             '   let moduleTable = {};',
             '   function define(id, f) { moduleTable[id] = f; }',
@@ -142,7 +141,7 @@ var examples = {
             '})();',
             'three = require("three");',
     ],
-    exampleFour: [
+    four: [
         '(function() {',
         '   function createReactElementFactory(component, constants) {',
         '       var constantProps = Object.assign(',
@@ -185,6 +184,6 @@ selector.addEventListener('change', function(e) {
     input.setValue(examples[e.target.value].join('\n'), -1);
 });
 
-input.setValue(examples.exampleOne.join('\n'), -1);
+input.setValue(examples.one.join('\n'), -1);
 compile();
 input.on('change', compile);
