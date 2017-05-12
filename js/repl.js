@@ -66,7 +66,7 @@ function compile() {
         } else {
           let errorLineLink = document.createElement('a');
           let lineText = getLineText(errorText);
-          let lineNumber = lineText.slice(0, lineText.indexOf(":"));          
+          let lineNumber = lineText.slice(0, lineText.indexOf(":"));
           errorOutput.style.display = 'block';
           replOutput.style.display = 'none';
           errorLineLink.href = '';
@@ -116,32 +116,32 @@ var examples = {
         ' global.result = x;',
         '})();',
     ],
-exampleTwo: [
-        '(function () {',
-        '   var self = this;',
-        '   [\'A\', \'B\', 42].forEach(function(x) {',
-        '       var name = \'_\' + x.toString()[0].toLowerCase();',
-        '       var y = parseInt(x);',
-        '       self[name] = y ? y : x;',
-        '   });',
-        '})();',
+    exampleTwo: [
+            '(function () {',
+            '   var self = this;',
+            '   [\'A\', \'B\', 42].forEach(function(x) {',
+            '       var name = \'_\' + x.toString()[0].toLowerCase();',
+            '       var y = parseInt(x);',
+            '       self[name] = y ? y : x;',
+            '   });',
+            '})();',
+        ],
+    exampleThree: [
+            '(function () {',
+            '   let moduleTable = {};',
+            '   function define(id, f) { moduleTable[id] = f; }',
+            '   function require(id) {',
+            '       let x = moduleTable[id];',
+            '       return x instanceof Function ? (moduleTable[id] = x()) : x;',
+            '   }',
+            '   global.require = require;',
+            '   define("one", function() { return 1; });',
+            '   define("two", function() { return require("one") + require("one"); });',
+            '   define("three", function() { return require("two") + require("one"); });',
+            '   define("four", function() { return require("three") + require("one"); });',
+            '})();',
+            'three = require("three");',
     ],
-exampleThree: [
-        '(function () {',
-        '   let moduleTable = {};',
-        '   function define(id, f) { moduleTable[id] = f; }',
-        '   function require(id) {',
-        '       let x = moduleTable[id];',
-        '       return x instanceof Function ? (moduleTable[id] = x()) : x;',
-        '   }',
-        '   global.require = require;',
-        '   define("one", function() { return 1; });',
-        '   define("two", function() { return require("one") + require("one"); });',
-        '   define("three", function() { return require("two") + require("one"); });',
-        '   define("four", function() { return require("three") + require("one"); });',
-        '})();',
-        'three = require("three");',
-],
     exampleFour: [
         '(function() {',
         '   function createReactElementFactory(component, constants) {',
@@ -185,6 +185,6 @@ selector.addEventListener('change', function(e) {
     input.setValue(examples[e.target.value].join('\n'), -1);
 });
 
-input.setValue(examples.exampleOne);
+input.setValue(examples.exampleOne.join('\n'), -1);
 compile();
 input.on('change', compile);
