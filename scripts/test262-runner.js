@@ -569,7 +569,7 @@ function handleFinished(
             ) + EOL;
           }
           if (testResult.err && testResult.err.message === "Timed out") {
-            numTimeouts++;
+	     numTimeouts++;
           } else if (t.test.isES6) {
             group_es6_failed++;
           } else {
@@ -786,7 +786,7 @@ function handleTest(
       invariant(testFileContents, "testFileContents should not be null if banners are not None");
       // filter out by flags, features, and includes
       let keepThisTest = filterFeatures(banners) && filterFlags(banners) &&
-        filterIncludes(banners) && filterDescription(banners);
+        filterIncludes(banners) && filterDescription(banners) && filterCircleCI(banners);
       let testResults = [];
       if (keepThisTest) {
         // now run the test
@@ -1205,6 +1205,16 @@ function filterDescription(data: BannerData): boolean {
     !data.description.includes("iterable");
 }
 
+function filterCircleCI(
+  test: TestFileInfo
+): boolean {
+  let skipTests = ['7.8.5_A1.4_T2', '7.8.5_A2.4_T2', '7.8.5_A2.1_T2', '7.8.5_A1.1_T2', 
+                    '15.1.2.2_A8', '15.1.2.3_A6', '7.4_A6']
+
+  if (skipTests.indexOf(test.es5id) > -1) return false;
+
+  return true;
+}
 /**
  * Run a given ${test} whose file contents are ${testFileContents} and return
  * a list of results, one for each strictness level (strict or not).
