@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { prepackFileSync, InitializationError } from "./prepack-node.js";
+import { prepackStdin, prepackFileSync, InitializationError } from "./prepack-node.js";
 import { CompatibilityValues, type Compatibility } from './types.js';
 import fs from "fs";
 
@@ -87,35 +87,26 @@ while (args.length) {
 }
 
 if (!inputFilename) {
-  console.error("Missing input file.");
-  process.exit(1);
+  prepackStdin({
+    compatibility,
+    mathRandomSeed,
+    inputSourceMapFilename: inputSourceMap,
+    sourceMaps: !!outputSourceMap,
+    ...flags
+  }, function (serialized) {
+    processSerializedCode(serialized);
+  });
 } else {
   try {
-    let serialized = prepackFileSync(inputFilename, {
+    prepackFileSync(inputFilename, {
       compatibility,
       mathRandomSeed,
       inputSourceMapFilename: inputSourceMap,
       sourceMaps: !!outputSourceMap,
       ...flags
+    }, function (serialized) {
+      processSerializedCode(serialized);
     });
-
-    let code = serialized.code;
-
-    if (code.length >= 1000 || outputFilename) {
-      let filename = outputFilename || (inputFilename + "-processed.js");
-      console.log(`Prepacked source code written to ${filename}.`);
-      fs.writeFileSync(filename, code);
-    }
-
-    if (code.length <= 1000 && !outputFilename) {
-      console.log("+++++++++++++++++ Prepacked source code");
-      console.log(code);
-      console.log("=================");
-    }
-
-    if (outputSourceMap) {
-      fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : '');
-    }
   } catch (x) {
     if (x instanceof InitializationError) {
       // Ignore InitializationError since they have already logged
@@ -126,3 +117,16 @@ if (!inputFilename) {
     throw x;
   }
 }
+
+function processSerializedCode(serialized) {
+  if (outputFilename) {
+    console.log(`Prepacked source code written to ${outputFilename}.`);
+    fs.writeFileSync(outputFilename, serialized.code);
+  } else {
+    console.log(serialized.code);
+  }
+  if (outputSourceMap) {
+    fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : '');
+  }
+}
+

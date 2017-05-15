@@ -20,6 +20,43 @@ import { defaultOptions } from "./options";
 
 export * from "./prepack-standalone";
 
+export function prepackStdin(options: Options = defaultOptions, callback: Function) {
+  let sourceMapFilename = options.inputSourceMapFilename || '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.resume();
+  process.stdin.on('data', function (code) {
+    fs.readFile(sourceMapFilename, "utf8", function (mapErr, sourceMap) {
+      if (mapErr) {
+        console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+        sourceMap = "";
+      }
+      let filename = 'no-filename-specified';
+      let serialized;
+      try {
+        let realm = construct_realm(getRealmOptions(options));
+        initializeGlobals(realm);
+        let serializer = new Serializer(
+          realm,
+          getSerializerOptions(options),
+        );
+        serialized = serializer.init(
+          options.filename || filename,
+          code,
+          sourceMap,
+          options.sourceMaps
+        );
+        if (!serialized) {
+          throw new InitializationError();
+        }
+      } catch (err) {
+        callback(err);
+        return;
+      }
+      callback(serialized);
+    });
+  });
+}
+
 export function prepackFile(filename: string, options: Options = defaultOptions, callback: Function) {
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
   fs.readFile(filename, "utf8", function(fileErr, code) {
