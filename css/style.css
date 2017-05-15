@@ -27,9 +27,76 @@ header, .repl-container {
   right: 0;
 }
 
+.record-container{
+  height: 60px;
+  margin-top:60px;
+  padding-top: 8px;
+  /*line-height: 40px;*/
+  background: #1c1c1c;
+  color:white;
+}
+
+.record-container .select-record{
+  visibility: hidden;
+}
+.record-container .select-target{
+  margin-left:20px;
+  height: 44px;
+}
+.record-container .record-button{
+  display: inline-block;
+  padding: 5px 20px;
+  vertical-align: top;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.record-container .record-button.save{
+  background-color:#13aa13;
+}
+.record-container .record-button.save:hover{
+  background-color:#18d818;
+}
+.record-container .record-button.delete{
+  background-color:#ea2d2d;
+}
+.record-container .record-button.delete:hover{
+  background-color:#ef5b5b;
+}
+
+
+.record-container .record-input{
+  float: right;
+  display: inline-block;
+  margin-right: 20px;
+  padding: 8px 0px;
+  /*height: 100%;*/
+}
+
+.record-container .record-input input{
+  height: 30px;
+  outline: none;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  width: 200px;
+  padding-left: 15px;
+  margin-right: 20px;
+}
+
+.record-container .record-input input:focus{
+  outline: none;
+  border: 2px solid #63a2f1;
+}
+
+.record-container .record-input:after{
+  content:'';
+  display: block;
+  clear: both;
+}
+
 .repl-container {
   position: absolute;
-  top: 60px;
+  top: 120px;
   bottom: 0;
   background-color: #f7f7f7;
 }
