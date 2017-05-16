@@ -1209,7 +1209,7 @@ function filterCircleCI(data: BannerData): boolean {
   let skipTests = ['7.8.5_A1.4_T2', '7.8.5_A2.4_T2', '7.8.5_A2.1_T2', '7.8.5_A1.1_T2',
                     '15.1.2.2_A8', '15.1.2.3_A6', '7.4_A6'];
 
-  if (skipTests.indexOf(data.es5id) > -1) return false;
+  if (process.env.CIRCLECI && skipTests.indexOf(data.es5id) > -1) return false;
 
   return true;
 }
