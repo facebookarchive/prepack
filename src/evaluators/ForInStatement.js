@@ -15,8 +15,8 @@ import { BreakCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
-import { BoundNames, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
-import { AbstractValue, AbstractObjectValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
+import { BoundNames, EnumerableOwnProperties, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
+import { AbstractValue, AbstractObjectValue, ArrayValue, ObjectValue, StringValue, SymbolValue, UndefinedValue, Value } from "../values/index.js";
 import type { BabelNodeForInStatement, BabelNodeStatement, BabelNodeVariableDeclaration } from "babel-types";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -120,11 +120,31 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
           }
         }
       });
-      if (targetObject !== undefined && sourceObject !== undefined) {
+      if (targetObject instanceof ObjectValue && sourceObject !== undefined) {
         let oe = ob.values.getElements();
         if (oe.size !== 1) ob.throwIfNotConcreteObject();
         let o; for (let co of oe) o = co; invariant(o !== undefined);
         let generator = realm.generator; invariant(generator !== undefined);
+        // make target object simple and partial, so that it returns a fully
+        // abstract value for every property it is queried for.
+        targetObject.makeSimple(); targetObject.makePartial();
+        if (sourceObject === o && sourceObject.isSimple()) {
+          // Known enumerable properties of sourceObject can become known
+          // properties of targetObject.
+          let sourceIsPartial = sourceObject.isPartial();
+          sourceObject.makeNotPartial();
+          // EnumerableOwnProperties is sufficient because sourceObject is simple
+          let keyValPairs = EnumerableOwnProperties(realm, sourceObject, "key+value");
+          if (sourceIsPartial) sourceObject.makePartial();
+          for (let keyVal of keyValPairs) {
+            invariant(keyVal instanceof ArrayValue);
+            let key = keyVal.$Get("0", keyVal);
+            let val = keyVal.$Get("1", keyVal);
+            invariant(key instanceof StringValue || key instanceof SymbolValue);
+            targetObject.$Set(key, val, targetObject);
+          }
+        }
+        // add loop to generator
         generator.body.push({
           // duplicate args to ensure refcount > 1
           args: [o, targetObject, sourceObject, targetObject, sourceObject],
@@ -136,30 +156,6 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
               t.memberExpression(src, boundName, true)))]));
           },
         });
-
-        // At this point, we have emitted code to copy over all properties.
-        // However, the internal Prepack state of targetObject doesn't represent the copied properties yet.
-        // So, we copy all all known properties, and then mark the target object as simple or partial as appropriate.
-        // TODO: While correct, this generates inefficient code, which first inlines all known properties, and then copies them over again.
-
-        let template;
-        if (sourceObject instanceof AbstractObjectValue) template = sourceObject.getTemplate();
-
-        // TODO: The following case kicks in for ForInStatement11.js, but I don't understand why.
-        if (sourceObject instanceof ObjectValue) template = sourceObject;
-
-        if (template !== undefined) {
-          invariant(template.properties);
-          for (let [key, binding] of template.properties) {
-            if (binding === undefined || binding.descriptor === undefined) continue; // deleted
-            invariant(binding.descriptor !== undefined);
-            invariant(binding.descriptor.value !== undefined);
-            targetObject.$Set(key, binding.descriptor.value, targetObject);
-          }
-        }
-
-        // TODO: All other properties of the target object now have unknown values and those properties must be invalidated.
-        if (!targetObject.isSimple()) targetObject.makePartial();
 
         return realm.intrinsics.undefined;
       }
