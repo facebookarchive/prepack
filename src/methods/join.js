@@ -73,6 +73,44 @@ export function joinPossiblyNormalCompletionWithAbruptCompletion(
   }
 }
 
+export function joinPossiblyNormalCompletionWithValue(
+    realm: Realm, joinCondition: AbstractValue, pnc: PossiblyNormalCompletion, v: Value) {
+  if (pnc.consequent instanceof AbruptCompletion) {
+    if (pnc.alternate instanceof Value) {
+      pnc.alternate = joinValuesAsConditional(realm, joinCondition, pnc.alternate, v);
+    } else {
+      invariant(pnc.alternate instanceof PossiblyNormalCompletion);
+      joinPossiblyNormalCompletionWithValue(realm, joinCondition, pnc.alternate, v);
+    }
+  } else {
+    if (pnc.consequent instanceof Value) {
+      pnc.consequent = joinValuesAsConditional(realm, joinCondition, pnc.consequent, v);
+    } else {
+      invariant(pnc.consequent instanceof PossiblyNormalCompletion);
+      joinPossiblyNormalCompletionWithValue(realm, joinCondition, pnc.consequent, v);
+    }
+  }
+}
+
+export function joinValueWithPossiblyNormalCompletion(
+    realm: Realm, joinCondition: AbstractValue, pnc: PossiblyNormalCompletion, v: Value) {
+  if (pnc.consequent instanceof AbruptCompletion) {
+    if (pnc.alternate instanceof Value) {
+      pnc.alternate = joinValuesAsConditional(realm, joinCondition, v, pnc.alternate);
+    } else {
+      invariant(pnc.alternate instanceof PossiblyNormalCompletion);
+      joinValueWithPossiblyNormalCompletion(realm, joinCondition, pnc.alternate, v);
+    }
+  } else {
+    if (pnc.consequent instanceof Value) {
+      pnc.consequent = joinValuesAsConditional(realm, joinCondition, v, pnc.consequent);
+    } else {
+      invariant(pnc.consequent instanceof PossiblyNormalCompletion);
+      joinValueWithPossiblyNormalCompletion(realm, joinCondition, pnc.consequent, v);
+    }
+  }
+}
+
 export function joinEffectsAndRemoveNestedReturnCompletions(
     realm: Realm, c: Completion | Value, e: Effects, nested_effects?: Effects): Effects {
   if (c instanceof Value)
@@ -141,8 +179,9 @@ function joinResults(realm: Realm, joinCondition: AbstractValue,
   function getAbstractValue(v1: void | Value, v2: void | Value): AbstractValue {
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }
-  if (result1 instanceof Reference || result2 instanceof Reference)
+  if (result1 instanceof Reference || result2 instanceof Reference) {
     throw AbstractValue.createIntrospectionErrorThrowCompletion(joinCondition);
+  }
   if (result1 instanceof BreakCompletion && result2 instanceof BreakCompletion &&
       result1.target === result2.target) {
     return new BreakCompletion(realm.intrinsics.empty, result1.target);
@@ -162,9 +201,26 @@ function joinResults(realm: Realm, joinCondition: AbstractValue,
   if (result1 instanceof AbruptCompletion && result2 instanceof AbruptCompletion) {
     return new JoinedAbruptCompletions(realm, joinCondition, result1, e1, result2, e2);
   }
-  if (result1 instanceof Value && result2 instanceof Value)
+  if (result1 instanceof Value && result2 instanceof Value) {
     return joinValues(realm, result1, result2, getAbstractValue);
-  return new PossiblyNormalCompletion(joinCondition, result1, e1, result2, e2);
+  }
+  if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
+    return joinPossiblyNormalCompletions(realm, result1, result2);
+  }
+  if (result1 instanceof AbruptCompletion || result2 instanceof AbruptCompletion) {
+    return new PossiblyNormalCompletion(joinCondition, result1, e1, result2, e2);
+  }
+  if (result1 instanceof PossiblyNormalCompletion) {
+    invariant(result2 instanceof Value);
+    joinPossiblyNormalCompletionWithValue(realm, joinCondition, result1, result2);
+    return result1;
+  }
+  if (result2 instanceof PossiblyNormalCompletion) {
+    invariant(result1 instanceof Value);
+    joinValueWithPossiblyNormalCompletion(realm, joinCondition, result2, result1);
+    return result2;
+  }
+  invariant(false);
 }
 
 function joinGenerators(realm: Realm, joinCondition: AbstractValue,

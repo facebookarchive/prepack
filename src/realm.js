@@ -17,7 +17,7 @@ import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./enviro
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
-import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion } from "./completions.js";
+import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
@@ -224,14 +224,17 @@ export class Realm {
   }
 
   // Evaluate the given ast in a sandbox and return the evaluation results
-  // in the form a completion, a code generator, a map of changed variable
+  // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
   partially_evaluate_node(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
-    return this.partially_evaluate(() => env.evaluateCompletion(ast, strictCode));
+    return this.partially_evaluate(() => env.evaluateAbstractCompletion(ast, strictCode));
   }
 
   partially_evaluate(f: () => Completion | Value | Reference): Effects {
     // Save old state and set up empty state for ast
+    let context = this.getRunningContext();
+    let savedContextEffects = context.savedEffects;
+    context.savedEffects = undefined;
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
@@ -257,17 +260,65 @@ export class Realm {
 
       // Return the captured state changes and evaluation result
       result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
+      if (c instanceof PossiblyNormalCompletion) {
+        let savedEffects = context.savedEffects;
+        invariant(savedEffects !== undefined);
+        // add prior effects that are not already present
+        this.add_prior_effects(savedEffects, result);
+        this.update_abrupt_completions(savedEffects, c);
+      }
       return result;
     } finally {
       // Roll back the state changes
       this.restoreBindings(this.modifiedBindings);
       this.restoreProperties(this.modifiedProperties);
+      context.savedEffects = savedContextEffects;
       this.generator = saved_generator;
       this.modifiedBindings = savedBindings;
       this.modifiedProperties = savedProperties;
       this.createdObjects = saved_createdObjects;
 
       for (let t2 of this.tracers) t2.endPartialEvaluation(result);
+    }
+  }
+
+  add_prior_effects(priorEffects: Effects, subsequentEffects: Effects) {
+    let [pc, pg, pb, pp, po] = priorEffects;
+    let [sc, sg, sb, sp, so] = subsequentEffects;
+
+    pc; sc;
+
+    let saved_generator = this.generator;
+    this.generator = pg.clone();
+    this.appendGenerator(sg);
+    subsequentEffects[1] = pg;
+    this.generator = saved_generator;
+
+    pb.forEach((val, key, m) => {
+      if (!sb.has(key)) sb.set(key, val);
+    });
+
+    pp.forEach((desc, propertyBinding, m) => {
+      if (!sp.has(propertyBinding)) sp.set(propertyBinding, desc);
+    });
+
+    po.forEach((ob, a) => {
+      so.add(ob);
+    });
+  }
+
+  update_abrupt_completions(priorEffects: Effects, c: PossiblyNormalCompletion) {
+    if (c.consequent instanceof AbruptCompletion) {
+      this.add_prior_effects(priorEffects, c.consequentEffects);
+      let alternate = c.alternate;
+      if (alternate instanceof PossiblyNormalCompletion)
+        this.update_abrupt_completions(priorEffects, alternate);
+    } else {
+      invariant(c.alternate instanceof AbruptCompletion);
+      this.add_prior_effects(priorEffects, c.alternateEffects);
+      let consequent = c.consequent;
+      if (consequent instanceof PossiblyNormalCompletion)
+        this.update_abrupt_completions(priorEffects, consequent);
     }
   }
 

@@ -49,6 +49,12 @@ export class Generator {
   body: Array<BodyEntry>;
   preludeGenerator: PreludeGenerator;
 
+  clone(): Generator {
+    let result = new Generator(this.realm);
+    result.body = this.body.slice(0);
+    return result;
+  }
+
   getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
     // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
     let index = Number.parseInt(key, 10);
