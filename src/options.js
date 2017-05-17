@@ -29,6 +29,7 @@ export type Options = {|
   uniqueSuffix?: string,
   timeout?: number,
   strictlyMonotonicDateNow?: boolean,
+  profile?: boolean
 |};
 
 export const defaultOptions = {};
