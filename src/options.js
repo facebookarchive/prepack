@@ -59,7 +59,8 @@ export function getSerializerOptions({
   logStatistics = false,
   logModules = false,
   delayUnsupportedRequires = false,
-  internalDebug = false
+  internalDebug = false,
+  profile = false
 }: Options): SerializerOptions {
   return {
     initializeMoreModules: speculate,
@@ -69,5 +70,6 @@ export function getSerializerOptions({
     logModules,
     delayUnsupportedRequires,
     internalDebug,
+    profile
   };
 }

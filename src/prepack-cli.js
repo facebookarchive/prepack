@@ -24,6 +24,7 @@ let HELP_STR = `
   --singlePass    Perform only one serialization pass. Disables some optimizations on Prepack's output. This will speed up Prepacking but result in code with less inlining.
   --speculate    Enable speculative initialization of modules (for the module system Prepack has builtin knowledge about). Prepack will try to execute all factory functions it is able to.
   --trace    Traces the order of module initialization.
+  --profile    Enables profile console logging of Interpret phase, first and second Serialize phase.
 `;
 let args = Array.from(process.argv);
 args.splice(0, 2);
@@ -42,6 +43,7 @@ let flags = {
   logModules: false,
   delayUnsupportedRequires: false,
   internalDebug: false,
+  profile: false,
 };
 
 while (args.length) {
