@@ -45,7 +45,7 @@ Detailed instructions and the API can be found at [Prepack CLI: Getting Started]
 
 0. Clone repository and make it your current directory.
 1. `git submodule init`
-2. `git submodule update --recursive --remote`
+2. `git submodule update --init`
 3. Get npm and node, then do
    `npm install`
 
