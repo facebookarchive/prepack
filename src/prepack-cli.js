@@ -98,15 +98,14 @@ if (!inputFilename) {
   });
 } else {
   try {
-    prepackFileSync(inputFilename, {
+    let serialized = prepackFileSync(inputFilename, {
       compatibility,
       mathRandomSeed,
       inputSourceMapFilename: inputSourceMap,
       sourceMaps: !!outputSourceMap,
       ...flags
-    }, function (serialized) {
-      processSerializedCode(serialized);
     });
+    processSerializedCode(serialized);
   } catch (x) {
     if (x instanceof InitializationError) {
       // Ignore InitializationError since they have already logged
