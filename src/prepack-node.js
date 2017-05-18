@@ -14,11 +14,13 @@ import initializeGlobals from "./globals.js";
 import fs from "fs";
 import { getRealmOptions, getSerializerOptions } from "./options";
 import { InitializationError } from "./prepack-standalone";
+import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment";
 
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
 
 export * from "./prepack-standalone";
+export * from "./prepack-node-environment";
 
 export function prepackStdin(options: Options = defaultOptions, callback: Function) {
   let sourceMapFilename = options.inputSourceMapFilename || '';
@@ -58,6 +60,10 @@ export function prepackStdin(options: Options = defaultOptions, callback: Functi
 }
 
 export function prepackFile(filename: string, options: Options = defaultOptions, callback: Function) {
+  if (options.compatibility === 'node-cli') {
+    prepackNodeCLI(filename, options, callback);
+    return;
+  }
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
@@ -96,6 +102,9 @@ export function prepackFile(filename: string, options: Options = defaultOptions,
 }
 
 export function prepackFileSync(filename: string, options: Options = defaultOptions) {
+  if (options.compatibility === 'node-cli') {
+    return prepackNodeCLISync(filename, options);
+  }
   let code = fs.readFileSync(filename, "utf8");
   let sourceMap = "";
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
