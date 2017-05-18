@@ -83,7 +83,7 @@ You can run individual test suites as follows.
 2. Have a JavaScript file handy that you want to prepack, for example:  
    `echo "function hello() { return 'hello'; } function world() { return 'world'; } s = hello() + ' ' + world();" >/tmp/sample.js`
 
-3. `npm run prepack /tmp/sample.js`  
+3. `cat /tmp/sample.js | npm run prepack`  
    Try `--help` for more options.
 
 ## How to validate changes
