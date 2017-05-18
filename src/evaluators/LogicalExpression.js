@@ -10,18 +10,17 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { IntrospectionThrowCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { ObjectValue, AbstractValue, ConcreteValue, Value } from "../values/index.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import type { Reference } from "../environment.js";
+import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
+import { Reference } from "../environment.js";
 import { GetValue, joinEffects, ToBoolean } from "../methods/index.js";
 import type { BabelNodeLogicalExpression } from "babel-types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
 
-export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function (ast: BabelNodeLogicalExpression, strictCode: boolean,
+    env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
   let lref = env.evaluate(ast.left, strictCode);
   let lval = GetValue(realm, lref);
 
@@ -41,7 +40,7 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
   }
   invariant(lval instanceof AbstractValue);
 
-  if (Value.isTypeCompatibleWith(lval.getType(), ObjectValue)) {
+  if (!lval.mightNotBeObject()) {
     if (ast.operator === "&&")
       return env.evaluate(ast.right, strictCode);
     else {
@@ -49,56 +48,43 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean, e
     }
   }
 
-  // Create empty effects for the case where ast.left is defined
+  // Create empty effects for the case where ast.right is not evaluated
   let [compl1, gen1, bindings1, properties1, createdObj1] =
     construct_empty_effects(realm);
+  compl1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
   let [compl2, gen2, bindings2, properties2, createdObj2] =
     realm.partially_evaluate_node(ast.right, strictCode, env);
 
-  if (compl2 instanceof IntrospectionThrowCompletion) {
-    realm.restoreBindings(bindings2);
-    realm.restoreProperties(properties2);
-    throw compl2;
-  }
-  // todo: don't just give up on abrupt completions, but try to join states
-  // eg. foo || throwSomething()
-  if (!(compl2 instanceof Value))
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(lval);
-
   // Join the effects, creating an abstract view of what happened, regardless
-  // of the actual value of ast.left.
-  let [completion, generator, bindings, properties, createdObjects] =
-    ast.operator === "&&" ?
-      joinEffects(realm, lval,
-        [compl2, gen2, bindings2, properties2, createdObj2],
-        [compl1, gen1, bindings1, properties1, createdObj1])
-    :
-      joinEffects(realm, lval,
-        [compl1, gen1, bindings1, properties1, createdObj1],
-        [compl2, gen2, bindings2, properties2, createdObj2]);
+  // of the actual value of lval.
+  // Note that converting a value to boolean never has a side effect, so we can
+  // use lval as is for the join condition.
+  let joinedEffects;
+  if (ast.operator === "&&") {
+    joinedEffects = joinEffects(realm, lval,
+      [compl2, gen2, bindings2, properties2, createdObj2],
+      [lval, gen1, bindings1, properties1, createdObj1]);
+  } else {
+    joinedEffects = joinEffects(realm, lval,
+      [lval, gen1, bindings1, properties1, createdObj1],
+      [compl2, gen2, bindings2, properties2, createdObj2]);
+  }
+  let completion = joinedEffects[0];
+  if (completion instanceof NormalCompletion) {
+    // in this case the evaluation of ast.right may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    realm.capture_effects();
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.apply_effects(joinedEffects);
 
-
-  // Apply the joined effects to the global state
-  realm.restoreBindings(bindings);
-  realm.restoreProperties(properties);
-
-  // Add generated code for property modifications
-  realm.appendGenerator(generator);
-
-  // Ignore the joined completion
-  completion;
-
-  // Ignore created objects
-  createdObjects;
-
-  // And return an actual logicalExpression
-  let types = TypesDomain.joinValues(lval, compl2);
-  let values = ValuesDomain.joinValues(realm, lval, compl2);
-  let result = realm.createAbstract(types, values,
-    [lval, compl2],
-    (args) => t.logicalExpression(ast.operator, args[0], args[1]));
-   result.values = ValuesDomain.joinValues(realm, lval, compl2);
-   return result;
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof NormalCompletion || completion instanceof Value || completion instanceof Reference);
+  return completion;
 }
