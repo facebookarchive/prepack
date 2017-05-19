@@ -45,6 +45,8 @@ export default function (realm: Realm): void {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
       }
       return { type, template: Value.isTypeCompatibleWith(type, ObjectValue) ? ObjectCreate(realm, realm.intrinsics.ObjectPrototype) : undefined };
+    } else if (typeNameOrTemplate instanceof FunctionValue) {
+      return { type: FunctionValue, template: typeNameOrTemplate };
     } else if (typeNameOrTemplate instanceof ObjectValue) {
       return { type: ObjectValue, template: typeNameOrTemplate };
     } else {
