@@ -15,7 +15,6 @@ import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./options";
 
 import type { Options } from "./options";
-import { defaultOptions } from "./options";
 import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 
 // This should just be a class but Babel classes doesn't work with
@@ -29,7 +28,7 @@ Object.setPrototypeOf(InitializationError, Error);
 Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
 
 
-export function prepack(code: string, options: Options = defaultOptions) {
+export function prepack(code: string, options: Options) {
   let filename = options.filename || 'unknown';
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
@@ -41,7 +40,7 @@ export function prepack(code: string, options: Options = defaultOptions) {
   return serialized;
 }
 
-export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: string, options: Options = defaultOptions) {
+export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: string, options: Options) {
   if (ast && ast.type === "Program") {
     ast = t.file(ast, [], []);
   } else if (!ast || ast.type !== "File") {

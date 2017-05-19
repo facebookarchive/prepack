@@ -91,6 +91,7 @@ function runTest(name, code) {
     speculate,
     delayUnsupportedRequires,
     internalDebug: true,
+    serialize: true,
     uniqueSuffix: ""
   };
   if (code.includes("// throws introspection error")) {
@@ -99,7 +100,7 @@ function runTest(name, code) {
         throw new Success();
     };
     try {
-      let realmOptions = { partial: true, compatibility, uniqueSuffix: "" };
+      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "" };
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
       let serializerOptions = { initializeMoreModules: speculate, delayUnsupportedRequires, internalDebug: true };

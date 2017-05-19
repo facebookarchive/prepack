@@ -62,7 +62,7 @@ export default function (realm: Realm): void {
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
     value: new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
-      if (!realm.isPartial) {
+      if (!realm.isPartialEvaluator) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
       }
 
@@ -106,7 +106,7 @@ export default function (realm: Realm): void {
   // TODO: In some distant future, Prepack should be able to figure out automatically what computations need to remain part of the residual program.
   global.$DefineOwnProperty("__residual", {
     value: new NativeFunctionValue(realm, "global.__residual", "__residual", 2, (context, [typeNameOrTemplate, f, ...args]) => {
-      if (!realm.isPartial) {
+      if (!realm.isPartialEvaluator) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
       }
 
@@ -184,7 +184,7 @@ export default function (realm: Realm): void {
   // Helper function that emits a check whether a given object property has a particular value.
   global.$DefineOwnProperty("__assumeDataProperty", {
     value: new NativeFunctionValue(realm, "global.__assumeDataProperty", "__assumeDataProperty", 3, (context, [object, propertyName, value]) => {
-      if (!realm.isPartial) {
+      if (!realm.isPartialEvaluator) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
       }
 

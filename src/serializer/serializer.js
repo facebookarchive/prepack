@@ -31,7 +31,7 @@ import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 
-type SourceMap = {
+export type SourceMap = {
   sources: Array<string>,
   names: Array<string>,
   mappings: string,
@@ -62,7 +62,7 @@ function isSameNode(left, right) {
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
-    invariant(realm.isPartial);
+    invariant(realm.isPartialEvaluator);
     // Start tracking mutations
     realm.generator = new Generator(realm);
 

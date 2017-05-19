@@ -25,7 +25,7 @@ export default function (realm: Realm): NativeFunctionValue {
   let lastNow;
   let offsetGenerator;
   function getCurrentTime() {
-    if (realm.isPartial) {
+    if (realm.isPartialEvaluator) {
       let dummyArg = new StringValue(realm, "__Date.now()");
       return realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [dummyArg], buildDateNow);
     } else {

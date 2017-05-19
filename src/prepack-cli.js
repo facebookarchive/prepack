@@ -24,6 +24,8 @@ let HELP_STR = `
   --singlePass    Perform only one serialization pass. Disables some optimizations on Prepack's output. This will speed up Prepacking but result in code with less inlining.
   --speculate    Enable speculative initialization of modules (for the module system Prepack has builtin knowledge about). Prepack will try to execute all factory functions it is able to.
   --trace    Traces the order of module initialization.
+  --serialize    Serializes the partially evaluated global environment as a program that recreates it. (default = true)
+  --residual    Produces the residual program that results after constant folding.
 `;
 let args = Array.from(process.argv);
 args.splice(0, 2);
@@ -42,6 +44,8 @@ let flags = {
   logModules: false,
   delayUnsupportedRequires: false,
   internalDebug: false,
+  serialize: false,
+  residual: false,
 };
 
 while (args.length) {
@@ -85,6 +89,8 @@ while (args.length) {
     }
   }
 }
+if (!flags.serialize && !flags.residual)
+  flags.serialize = true;
 
 if (!inputFilename) {
   prepackStdin({
@@ -128,4 +134,3 @@ function processSerializedCode(serialized) {
     fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : '');
   }
 }
-

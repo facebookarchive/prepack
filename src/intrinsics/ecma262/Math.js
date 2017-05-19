@@ -189,7 +189,7 @@ export default function (realm: Realm): ObjectValue {
   obj.defineNativeMethod("random", 0, (context) => {
     if (realm.mathRandomGenerator !== undefined) {
       return new NumberValue(realm, realm.mathRandomGenerator());
-    } else if (realm.isPartial) {
+    } else if (realm.isPartialEvaluator) {
       return realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [], buildMathRandom);
     } else {
       return new NumberValue(realm, Math.random());
