@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm, ExecutionContext } from "../realm.js";
-import type { Descriptor, PropertyBinding } from "../types.js";
+import type { Descriptor, PropertyBinding, SourceMap } from "../types.js";
 import { ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue } from "../values/index.js";
@@ -29,13 +29,6 @@ import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
-
-export type SourceMap = {
-  sources: Array<string>,
-  names: Array<string>,
-  mappings: string,
-  sourcesContent: Array<string>
-};
 
 function isSameNode(left, right) {
   let type = left.type;
