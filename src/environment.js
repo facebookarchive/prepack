@@ -14,7 +14,7 @@ import type { NormalCompletion } from "./completions.js";
 import type { Realm } from "./realm.js";
 import type { SourceType } from "./types.js";
 
-import { AbruptCompletion, Completion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
+import { AbruptCompletion, Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
 import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, ObjectValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
@@ -958,8 +958,6 @@ export class LexicalEnvironment {
     try {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof ComposedAbruptCompletion)
-        return err.createIntrospectionErrorThrowCompletion();
       if (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion)
         return AbstractValue.createIntrospectionErrorThrowCompletion(err.joinCondition);
       if (err instanceof AbruptCompletion)

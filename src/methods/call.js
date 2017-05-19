@@ -31,7 +31,7 @@ import {
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
-import { ReturnCompletion, AbruptCompletion, ComposedAbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
+import { ReturnCompletion, AbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -310,9 +310,6 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     if (c instanceof JoinedAbruptCompletions) {
       if (e !== undefined) realm.apply_effects(e);
       throw AbstractValue.createIntrospectionErrorThrowCompletion(c.joinCondition);
-    } else if (c instanceof ComposedAbruptCompletion) {
-      if (e !== undefined) realm.apply_effects(e);
-      throw c.createIntrospectionErrorThrowCompletion();
     } else if (c instanceof PossiblyNormalCompletion) {
       // If the abrupt part of the completion is a return completion, then the
       // effects of its independent control path must be joined with the effects
