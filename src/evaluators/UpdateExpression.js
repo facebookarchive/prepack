@@ -13,9 +13,11 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
-import { Add, GetValue, ToNumber, PutValue } from "../methods/index.js";
-import { NumberValue } from "../values/index.js";
+import { Add, GetValue, ToNumber, PutValue, IsToNumberPure } from "../methods/index.js";
+import { AbstractValue, NumberValue } from "../values/index.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
+import * as t from "babel-types";
 
 export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
   // ECMA262 12.4 Update Expressions
@@ -24,7 +26,24 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
   let expr = env.evaluate(ast.argument, strictCode);
 
   // Let oldValue be ? ToNumber(? GetValue(expr)).
-  let oldExpr = GetValue(realm, expr).throwIfNotConcrete();
+  let oldExpr = GetValue(realm, expr);
+  if ((oldExpr instanceof AbstractValue) && IsToNumberPure(realm, oldExpr) &&
+      (ast.operator === '++' || ast.operator === '--')) {
+    let op = ast.operator === '++' ? '+' : '-';
+    let newAbstractValue = realm.createAbstract(
+      new TypesDomain(NumberValue),
+      ValuesDomain.topVal,
+      [oldExpr],
+      ([node]) => t.binaryExpression(op, node, t.numericLiteral(1))
+    );
+    PutValue(realm, expr, newAbstractValue);
+    if (ast.prefix) {
+      return newAbstractValue;
+    } else {
+      return oldExpr;
+    }
+  }
+  oldExpr.throwIfNotConcrete();
   let oldValue = ToNumber(realm, oldExpr);
 
   if (ast.prefix) {
