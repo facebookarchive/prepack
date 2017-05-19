@@ -9,11 +9,12 @@
 
 /* @flow */
 
+import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
-import type { Value } from "../values/index.js";
-import { ConcreteValue, AbstractValue, FunctionValue } from "../values/index.js";
+import { Value } from "../values/index.js";
+import { BooleanValue, ConcreteValue, AbstractValue, FunctionValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { PerformEval } from "../methods/function.js";
 import {
@@ -23,6 +24,7 @@ import {
   GetBase,
   IsInTailPosition,
   IsPropertyReference,
+  joinEffects,
   GetReferencedName,
   EvaluateDirectCall,
   ArgumentListEvaluation
@@ -32,7 +34,7 @@ import invariant from "../invariant.js";
 import * as t from "babel-types";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 
-export default function (ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function (ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
   // ECMA262 12.3.4.1
   realm.setNextExecutionContextLocation(ast.loc);
 
@@ -42,7 +44,48 @@ export default function (ast: BabelNodeCallExpression, strictCode: boolean, env:
   // 2. Let func be ? GetValue(ref).
   let func = GetValue(realm, ref);
 
+  return EvaluateCall(ref, func, ast, strictCode, env, realm);
+}
+
+function callBothFunctionsAndJoinTheirEffects(args: Array<Value>, ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
+  let [cond, func1, func2] = args;
+  invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
+  invariant(func1.getType() === FunctionValue);
+  invariant(func2.getType() === FunctionValue);
+
+  let [compl1, gen1, bindings1, properties1, createdObj1] =
+    realm.partially_evaluate(() => EvaluateCall(func1, func1, ast, strictCode, env, realm), strictCode, env);
+
+  let [compl2, gen2, bindings2, properties2, createdObj2] =
+    realm.partially_evaluate(() => EvaluateCall(func2, func2, ast, strictCode, env, realm), strictCode, env);
+
+  let joinedEffects =
+    joinEffects(realm, cond,
+      [compl1, gen1, bindings1, properties1, createdObj1],
+      [compl2, gen2, bindings2, properties2, createdObj2]);
+  let completion = joinedEffects[0];
+  if (completion instanceof NormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    realm.capture_effects();
+  }
+
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.apply_effects(joinedEffects);
+
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof NormalCompletion || completion instanceof Value || completion instanceof Reference);
+  return completion;
+}
+
+function EvaluateCall(ref: Value | Reference, func: Value, ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
   if (func instanceof AbstractValue && func.getType() === FunctionValue) {
+    if (func.kind === "conditional")
+      return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
     let args =
       [func].concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
     return realm.deriveAbstract(

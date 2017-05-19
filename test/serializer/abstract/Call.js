@@ -1,5 +1,4 @@
 // throws introspection error
 
-function f() {}
-var g = __abstract(f);
+var g = __abstract({});
 g();

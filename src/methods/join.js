@@ -314,7 +314,7 @@ export function joinValuesAsConditional(
   let values = ValuesDomain.joinValues(realm, v1, v2);
   let result = realm.createAbstract(types, values,
     [condition, v1 || realm.intrinsics.undefined, v2 || realm.intrinsics.undefined],
-    (args) => t.conditionalExpression(args[0], args[1], args[2]));
+    (args) => t.conditionalExpression(args[0], args[1], args[2]), "conditional");
   if (v1) result.mightBeEmpty = v1.mightHaveBeenDeleted();
   if (v2 && !result.mightBeEmpty) result.mightBeEmpty = v2.mightHaveBeenDeleted();
   return result;
