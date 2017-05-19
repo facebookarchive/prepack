@@ -22,7 +22,7 @@ import traverse from "../traverse.js";
 import type { BabelNodeProgram } from "babel-types";
 
 // ECMA262 15.1.11
-function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env: LexicalEnvironment, strictCode: boolean) {
+export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env: LexicalEnvironment, strictCode: boolean) {
   // 1. Let envRec be env's EnvironmentRecord.
   let envRec = env.environmentRecord;
 

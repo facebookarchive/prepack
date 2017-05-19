@@ -129,6 +129,7 @@ export class Realm {
     this.intrinsics = ({}: any);
     this.$GlobalObject = (({}: any): ObjectValue);
     this.evaluators = (Object.create(null): any);
+    this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
   }
 
@@ -160,6 +161,10 @@ export class Realm {
   timeoutCounter: number;
   timeoutCounterThreshold: number;
   evaluators: { [key: string]: (ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any) => NormalCompletion | Value | Reference };
+  partialEvaluators: {
+    [key: string]: (
+      ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any
+    ) => [Completion | Reference | Value, BabelNode] };
 
   tracers: Array<Tracer>;
 
