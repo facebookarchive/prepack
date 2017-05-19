@@ -53,7 +53,7 @@ export default function (realm: Realm): void {
       let callback = args[0].throwIfNotConcrete();
       if (!(callback instanceof FunctionValue))
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "callback arguments must be function");
-      if (!realm.isPartial) throw new Error("TODO: implement global.setTimeout");
+      if (!realm.isPartialEvaluator) throw new Error("TODO: implement global.setTimeout");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
       return generator.emitCallAndCaptureResult(
@@ -67,7 +67,7 @@ export default function (realm: Realm): void {
 
   global.$DefineOwnProperty("clearTimeout", {
     value: new NativeFunctionValue(realm, "::global.clearTimeout", "", 2, (context, args) => {
-      if (!realm.isPartial) throw new Error("TODO: implement global.clearTimeout");
+      if (!realm.isPartialEvaluator) throw new Error("TODO: implement global.clearTimeout");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
       generator.emitCall(
@@ -81,7 +81,7 @@ export default function (realm: Realm): void {
 
   global.$DefineOwnProperty("setInterval", {
     value: new NativeFunctionValue(realm, "::global.setInterval", "", 2, (context, args) => {
-      if (!realm.isPartial) throw new Error("TODO: implement global.setInterval");
+      if (!realm.isPartialEvaluator) throw new Error("TODO: implement global.setInterval");
       let callback = args[0].throwIfNotConcrete();
       if (!(callback instanceof FunctionValue))
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "callback arguments must be function");
@@ -98,7 +98,7 @@ export default function (realm: Realm): void {
 
   global.$DefineOwnProperty("clearInterval", {
     value: new NativeFunctionValue(realm, "::global.clearInterval", "", 2, (context, args) => {
-      if (!realm.isPartial) throw new Error("TODO: implement global.clearInterval");
+      if (!realm.isPartialEvaluator) throw new Error("TODO: implement global.clearInterval");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
       generator.emitCall(

@@ -86,7 +86,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3.4
   obj.defineNativeMethod("toLocaleString", 0, (context) => {
     let x = thisNumberValue(realm, context);
-    if (realm.isPartial) {
+    if (realm.isPartialEvaluator) {
       // The locale is environment-dependent
       return realm.deriveAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [x], ([n]) => buildToLocaleString({
         VALUE: n
