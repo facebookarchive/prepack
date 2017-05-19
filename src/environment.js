@@ -10,14 +10,14 @@
 /* @flow */
 
 import type { BabelNode, BabelNodeFile } from "babel-types";
-import type { NormalCompletion } from "./completions.js";
 import type { Realm } from "./realm.js";
-import type { SourceType } from "./types.js";
+import type { SourceMap, SourceType } from "./types.js";
 
-import { AbruptCompletion, Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
+import { AbruptCompletion, Completion, JoinedAbruptCompletions, NormalCompletion, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
 import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, ObjectValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
+import generate from "babel-generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverse from "./traverse.js";
@@ -954,6 +954,39 @@ export class LexicalEnvironment {
   parent: null | LexicalEnvironment;
   realm: Realm;
 
+  partiallyEvaluateCompletionDeref(
+    ast: BabelNode, strictCode: boolean, metadata?: any
+  ): [Completion | Value, BabelNode] {
+    let [result, partial_ast] = this.partiallyEvaluateCompletion(ast, strictCode, metadata);
+    if (result instanceof Reference) {
+      result = GetValue(this.realm, result);
+    }
+    return [result, partial_ast];
+  }
+
+  partiallyEvaluateCompletion(
+    ast: BabelNode, strictCode: boolean, metadata?: any
+  ): [Completion | Reference | Value, BabelNode] {
+    try {
+      return this.partiallyEvaluate(ast, strictCode, metadata);
+    } catch (err) {
+      if (err instanceof AbruptCompletion)
+        return [err, ast];
+      if (err instanceof Error)
+        // rethrowing Error should preserve stack trace
+        throw err;
+      // let's wrap into a proper Error to create stack trace
+      throw new Error(err);
+    }
+  }
+
+  evaluateCompletionDeref(ast: BabelNode, strictCode: boolean, metadata?: any): AbruptCompletion | Value {
+    let result = this.evaluateCompletion(ast, strictCode, metadata);
+    if (result instanceof Reference)
+      result = GetValue(this.realm, result);
+    return result;
+  }
+
   evaluateCompletion(ast: BabelNode, strictCode: boolean, metadata?: any): AbruptCompletion | Value | Reference {
     try {
       return this.evaluate(ast, strictCode, metadata);
@@ -1012,6 +1045,36 @@ export class LexicalEnvironment {
     return GetValue(this.realm, res);
   }
 
+  executePartialEvaluator(
+      filename: string, code: string, sourceMaps: string = "",
+      sourceType: SourceType = "script"): AbruptCompletion | { code: string, map?: SourceMap } {
+    let context = new ExecutionContext();
+    context.lexicalEnvironment = this;
+    context.variableEnvironment = this;
+    context.realm = this.realm;
+
+    this.realm.pushContext(context);
+
+    try {
+      let ast;
+      try {
+        ast = parse(this.realm, code, filename, sourceType);
+      } catch (e) {
+        if (e instanceof ThrowCompletion) return e;
+        throw e;
+      }
+      let [res, partial_ast] = this.partiallyEvaluateCompletionDeref(ast, false);
+      if (res instanceof AbruptCompletion) return res;
+      if (sourceMaps.length > 0) this.fixup_source_locations(partial_ast, sourceMaps);
+      return generate(
+        partial_ast,
+        { sourceMaps: sourceMaps, sourceFileName: filename },
+        code);
+    } finally {
+      this.realm.popContext(context);
+    }
+  }
+
   fixup_source_locations(ast: BabelNode, map: string) {
     const smc = new sourceMap.SourceMapConsumer(map);
     traverse(ast, function (node) {
@@ -1048,6 +1111,19 @@ export class LexicalEnvironment {
     let err = new TypeError(`Unsupported node type ${ast.type}`);
     throw err;
   }
+
+  partiallyEvaluate(
+    ast: BabelNode, strictCode: boolean, metadata?: any
+  ): [Completion | Reference | Value, BabelNode] {
+    let partialEvaluator = this.realm.partialEvaluators[(ast.type: string)];
+    if (partialEvaluator) {
+      return partialEvaluator(ast, strictCode, this, this.realm, metadata);
+    }
+
+    let err = new TypeError(`Unsupported node type ${ast.type}`);
+    throw err;
+  }
+
 }
 
 //
