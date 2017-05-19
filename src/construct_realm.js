@@ -14,6 +14,7 @@ import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import initializeGlobal from "./intrinsics/ecma262/global.js";
 import type { RealmOptions } from "./types.js";
 import * as evaluators from "./evaluators/index.js";
+import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
 
@@ -26,6 +27,7 @@ export default function(opts: RealmOptions = {}): Realm {
   r.$GlobalObject = new ObjectValue(r, i.ObjectPrototype, "::global");
   initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
+  for (let name in partialEvaluators) r.partialEvaluators[name] = partialEvaluators[name];
   r.$GlobalEnv =  NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
   return r;
 }
