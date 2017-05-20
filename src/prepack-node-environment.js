@@ -22,10 +22,11 @@ import initializeBootstrap from "./intrinsics/node/bootstrap.js";
 import initializeProcess from "./intrinsics/node/process.js";
 
 import type { Options } from "./options";
+import { defaultOptions } from "./options";
 
 declare var process: any;
 
-export function prepackNodeCLI(filename: string, options: Options, callback: Function) {
+export function prepackNodeCLI(filename: string, options: Options = defaultOptions, callback: Function) {
   let serialized;
   try {
     serialized = prepackNodeCLISync(filename, options);
@@ -36,7 +37,7 @@ export function prepackNodeCLI(filename: string, options: Options, callback: Fun
   callback(null, serialized);
 }
 
-export function prepackNodeCLISync(filename: string, options: Options) {
+export function prepackNodeCLISync(filename: string, options: Options = defaultOptions) {
   if (process.version !== "v7.9.0") {
     console.warn(
       `Prepack's node-cli mode currently only works on Node v7.9.0.\n` +
