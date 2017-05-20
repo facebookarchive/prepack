@@ -45,26 +45,6 @@ export class ContinueCompletion extends AbruptCompletion {}
 export class BreakCompletion extends AbruptCompletion {}
 export class ReturnCompletion extends AbruptCompletion {}
 
-export class ComposedAbruptCompletion extends AbruptCompletion {
-  constructor(
-      priorCompletion: NormalCompletion,
-      subsequentCompletion: AbruptCompletion) {
-    super(subsequentCompletion.value, subsequentCompletion.target);
-    this.priorCompletion = priorCompletion;
-    this.subsequentCompletion = subsequentCompletion;
-  }
-
-  priorCompletion: NormalCompletion;
-  subsequentCompletion: AbruptCompletion;
-
-  createIntrospectionErrorThrowCompletion(): IntrospectionThrowCompletion {
-    if (this.priorCompletion instanceof PossiblyNormalCompletion)
-      return AbstractValue.createIntrospectionErrorThrowCompletion(this.priorCompletion.joinCondition);
-    invariant(this.subsequentCompletion instanceof PossiblyNormalCompletion);
-    return AbstractValue.createIntrospectionErrorThrowCompletion(this.subsequentCompletion.joinCondition);
-  }
-}
-
 export class JoinedAbruptCompletions extends AbruptCompletion {
   constructor(
       realm: Realm,
