@@ -24,7 +24,7 @@ export default class ObjectValue extends ConcreteValue {
   constructor(realm: Realm, proto?: ObjectValue | NullValue, intrinsicName?: string) {
     super(realm, intrinsicName);
     realm.recordNewObject(this);
-    if (realm.isPartialEvaluator) this.setupBindings();
+    if (realm.useAbstractInterpretation) this.setupBindings();
     this.$Prototype = proto || realm.intrinsics.null;
     this.$Extensible = realm.intrinsics.true;
     this._isPartial = realm.intrinsics.false;

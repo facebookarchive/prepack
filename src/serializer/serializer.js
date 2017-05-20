@@ -62,7 +62,7 @@ function isSameNode(left, right) {
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
-    invariant(realm.isPartialEvaluator);
+    invariant(realm.useAbstractInterpretation);
     // Start tracking mutations
     realm.generator = new Generator(realm);
 
