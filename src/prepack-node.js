@@ -17,6 +17,7 @@ import { InitializationError } from "./prepack-standalone";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment";
 
 import type { Options } from "./options";
+import { defaultOptions } from "./options";
 import type { SourceMap } from "./serializer/serializer.js";
 import invariant from "./invariant.js";
 
@@ -24,10 +25,10 @@ export * from "./prepack-standalone";
 export * from "./prepack-node-environment";
 
 export function prepackString(filename: string, code: string, sourceMap: string,
-     options: Options): { code: string, map?: SourceMap } {
+     options: Options = defaultOptions): { code: string, map?: SourceMap } {
    let realm = construct_realm(getRealmOptions(options));
    initializeGlobals(realm);
-   if (options.serialize) {
+   if (options.serialize || !options.residual) {
      let serializer = new Serializer(
        realm,
        getSerializerOptions(options),
@@ -49,7 +50,7 @@ export function prepackString(filename: string, code: string, sourceMap: string,
    }
 }
 
-export function prepackStdin(options: Options, callback: Function) {
+export function prepackStdin(options: Options = defaultOptions, callback: Function) {
   let sourceMapFilename = options.inputSourceMapFilename || '';
   process.stdin.setEncoding('utf8');
   process.stdin.resume();
@@ -72,7 +73,7 @@ export function prepackStdin(options: Options, callback: Function) {
   });
 }
 
-export function prepackFile(filename: string, options: Options, callback: Function) {
+export function prepackFile(filename: string, options: Options = defaultOptions, callback: Function) {
   if (options.compatibility === 'node-cli') {
     prepackNodeCLI(filename, options, callback);
     return;
@@ -100,7 +101,7 @@ export function prepackFile(filename: string, options: Options, callback: Functi
   });
 }
 
-export function prepackFileSync(filename: string, options: Options) {
+export function prepackFileSync(filename: string, options: Options = defaultOptions) {
   if (options.compatibility === 'node-cli') {
     return prepackNodeCLISync(filename, options);
   }

@@ -89,8 +89,6 @@ while (args.length) {
     }
   }
 }
-if (!flags.serialize && !flags.residual)
-  flags.serialize = true;
 
 if (!inputFilename) {
   prepackStdin({
