@@ -32,6 +32,7 @@
     "test-serializer-with-coverage": "./node_modules/.bin/istanbul cover ./scripts/test-runner.js && ./node_modules/.bin/remap-istanbul -i coverage/coverage.json -o coverage-sourcemapped -t html && echo You can find coverage reports here: && echo   coverage/lcov-report/index.html && echo   coverage-sourcemapped/index.html",
     "test-sourcemaps": "babel-node scripts/generate-sourcemaps-test.js && bash < scripts/test-sourcemaps.sh",
     "test-test262": "babel-node scripts/test262-runner.js",
+    "test-test262-nightly": "NIGHTLY_BUILD=true babel-node -- scripts/test262-runner.js",
     "test-internal": "babel-node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=8192 scripts/test-internal.js",
     "test-node-cli-mode": "bash < scripts/test-node-cli-mode.sh",
     "test": "npm run test-serializer && npm run test-sourcemaps && npm run test-test262 && npm run test-internal",
