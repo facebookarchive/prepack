@@ -617,7 +617,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22821 || numPassedES6 < 7398 || numTimeouts > 20)) {
+  if (!args.filterString && (numPassedES5 < 22821 || numPassedES6 < 7398 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -786,7 +786,7 @@ function handleTest(
       invariant(testFileContents, "testFileContents should not be null if banners are not None");
       // filter out by flags, features, and includes
       let keepThisTest = filterFeatures(banners) && filterFlags(banners) &&
-        filterIncludes(banners) && filterDescription(banners);
+        filterIncludes(banners) && filterDescription(banners) && filterCircleCI(banners);
       let testResults = [];
       if (keepThisTest) {
         // now run the test
@@ -1205,6 +1205,14 @@ function filterDescription(data: BannerData): boolean {
     !data.description.includes("iterable");
 }
 
+function filterCircleCI(data: BannerData): boolean {
+  let skipTests = ['7.8.5_A1.4_T2', '7.8.5_A2.4_T2', '7.8.5_A2.1_T2', '7.8.5_A1.1_T2',
+                    '15.1.2.2_A8', '15.1.2.3_A6', '7.4_A5', '7.4_A6', 'S15.10.2.12_A3_T'];
+
+  if (!process.env.NIGHTLY_BUILD && skipTests.indexOf(data.es5id) > -1) return false;
+
+  return true;
+}
 /**
  * Run a given ${test} whose file contents are ${testFileContents} and return
  * a list of results, one for each strictness level (strict or not).
