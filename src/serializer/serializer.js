@@ -100,6 +100,7 @@ export class Serializer {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
+    this.needsAuxiliaryConstructor = false;
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
@@ -134,6 +135,7 @@ export class Serializer {
   generator: Generator;
   descriptors: Map<string, BabelNodeIdentifier>;
   needsEmptyVar: boolean;
+  needsAuxiliaryConstructor: boolean;
   valueNameGenerator: NameGenerator;
   referentializedNameGenerator: NameGenerator;
   descriptorNameGenerator: NameGenerator;
@@ -289,9 +291,11 @@ export class Serializer {
   }
 
   addObjectPrototype(name: string, obj: ObjectValue, reasons: Array<string>) {
-    let proto = obj.$Prototype;
-
     let kind = obj.getKind();
+    // for plain objects, we handle custom prototypes via an auxiliary constructor
+    if (kind === "Object") return;
+
+    let proto = obj.$Prototype;
     if (proto === this.realm.intrinsics[kind + "Prototype"]) return;
 
     this._eagerOrDelay([proto, obj], () => {
@@ -654,10 +658,18 @@ export class Serializer {
       if (delayReason) return delayReason;
     } else if (val instanceof ObjectValue) {
       let kind = val.getKind();
-      if (kind === "Date") {
-        invariant(val.$DateValue !== undefined);
-        delayReason = this._shouldDelayValue(val.$DateValue);
-        if (delayReason) return delayReason;
+      switch (kind) {
+        case "Object":
+          delayReason = this._shouldDelayValue(val.$Prototype);
+          if (delayReason) return delayReason;
+          break;
+        case "Date":
+          invariant(val.$DateValue !== undefined);
+          delayReason = this._shouldDelayValue(val.$DateValue);
+          if (delayReason) return delayReason;
+          break;
+        default:
+          break;
       }
     }
 
@@ -1123,12 +1135,15 @@ export class Serializer {
         if (this.$ParameterMap !== undefined)
           this.logger.logError(val, `Serialization of an arguments object is not supported.`);
 
+        let proto = val.$Prototype;
+        let createViaAuxiliaryConstructor = proto !== this.realm.intrinsics.ObjectPrototype;
+
         let remainingProperties = new Map(val.properties);
         let props = [];
         for (let [key, propertyBinding] of val.properties) {
           let descriptor = propertyBinding.descriptor;
           if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
-          if (this._canEmbedProperty(val, key, descriptor)) {
+          if (!createViaAuxiliaryConstructor && this._canEmbedProperty(val, key, descriptor)) {
             remainingProperties.delete(key);
             let propValue = descriptor.value;
             invariant(propValue instanceof Value);
@@ -1159,8 +1174,21 @@ export class Serializer {
           }
         }
 
-        this.addProperties(name, val, reasons, remainingProperties);
-        return t.objectExpression(props);
+        this.addProperties(name, val, reasons, remainingProperties, createViaAuxiliaryConstructor);
+
+        if (createViaAuxiliaryConstructor) {
+          this.needsAuxiliaryConstructor = true;
+          let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
+          return t.sequenceExpression([
+            t.assignmentExpression(
+              "=",
+              t.memberExpression(t.identifier("__constructor"), t.identifier("prototype")),
+              serializedProto),
+            t.newExpression(t.identifier("__constructor"), [])
+          ]);
+        } else {
+          return t.objectExpression(props);
+        }
     }
   }
 
@@ -1550,12 +1578,16 @@ export class Serializer {
     // build ast
     let body = [];
     if (this.needsEmptyVar) {
-      body = [(t.variableDeclaration("var", [
+      body.push(t.variableDeclaration("var", [
         t.variableDeclarator(
           t.identifier("__empty"),
           t.objectExpression([])
         ),
-      ]))];
+      ]));
+    }
+    if (this.needsAuxiliaryConstructor) {
+      body.push(t.functionDeclaration(
+        t.identifier("__constructor"), [], t.blockStatement([])));
     }
     body = body.concat(this.prelude, hoistedBody, this.body);
     this.factorifyObjects(body);
