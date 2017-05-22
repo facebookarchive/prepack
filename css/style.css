@@ -145,10 +145,7 @@ header, .repl-container {
   color: #323330;
 }
 
-.nav-main .nav-site a:hover {
-  color: #323330;
-}
-
+.nav-main .nav-site a:hover,
 .nav-main .nav-site a.active {
   color: #323330;
   border-bottom: 1px solid #323330;
