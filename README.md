@@ -17,7 +17,7 @@ Or if you prefer yarn,
 ```bash
 $ yarn global add prepack
 ```
-You may need to `prepend`(pun intended!) the command with `sudo` in some cases.
+You may need to `prepend` (pun intended!) the command with `sudo` in some cases.
 
 ### Let the party begin
 
@@ -63,7 +63,7 @@ Detailed instructions and the API can be found at [Prepack CLI: Getting Started]
 1. Make sure the code is built, either by running `npm run build` or `npm run watch`
 2. `npm test`
 
-You can run individual test suites as follows.
+You can run individual test suites as follows:
 - `npm run test-serializer`  
   This tests the interpreter and serializer. All tests should pass.
 - `npm run test-test262`  
