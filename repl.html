@@ -16,24 +16,32 @@
   </head>
   <body>
 
-    <div class="nav-main">
+    <nav class="nav">
       <div class="content-container">
-        <a class="nav-home" href="/">
-          Prepack
-        </a>
-        <ul class="nav-site">
-          <li>
-            <a href="./">About</a>
-            <a href="getting-started.html">Getting Started</a>
-            <a href="frequently-asked-questions.html">FAQs</a>
-            <a href="repl.html" class="active">Try It Out</a>
-          </li>
-          <li>
-            <a href="https://github.com/facebook/prepack" class="">GitHub</a>
-          </li>
-        </ul>
+
+        <div class="nav-left">
+          <a class="nav-item is-brand" href="./">
+            Prepack
+          </a>
+        </div>
+
+        <span id="nav-toggle" class="nav-toggle">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+
+        <div id="nav-menu" class="nav-right nav-menu">
+          <a href="./" class="nav-item">About</a>
+          <a href="getting-started.html" class="nav-item">Getting Started</a>
+          <a href="frequently-asked-questions.html" class="nav-item">FAQs</a>
+          <a href="repl.html" class="nav-item is-active">Try It Out</a>
+          <a href="https://github.com/facebook/prepack" class="nav-item">GitHub</a>
+        </div>
+
       </div>
-    </div>
+    </nav>
+
     <div class="record-container">
       <select class="select-record">
         <option>1</option>
@@ -63,5 +71,6 @@
     <script src="js/tether.min.js"></script>
     <script src="js/select.min.js"></script>
     <script src="js/repl.js"></script>
+    <script src="js/toggle_menu.js"></script>
   </body>
 </html>

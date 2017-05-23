@@ -16,24 +16,31 @@
   </head>
   <body>
 
-    <div class="nav-main">
+    <nav class="nav">
       <div class="content-container">
-        <a class="nav-home" href="./">
-          Prepack
-        </a>
-        <ul class="nav-site">
-          <li>
-            <a href="./">About</a>
-            <a href="getting-started.html" class="active">Getting Started</a>
-            <a href="frequently-asked-questions.html">FAQs</a>
-            <a href="repl.html">Try It Out</a>
-          </li>
-          <li>
-            <a href="https://github.com/facebook/prepack" class="">GitHub</a>
-          </li>
-        </ul>
+
+        <div class="nav-left">
+          <a class="nav-item is-brand" href="./">
+            Prepack
+          </a>
+        </div>
+
+        <span id="nav-toggle" class="nav-toggle">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+
+        <div id="nav-menu" class="nav-right nav-menu">
+          <a href="./" class="nav-item">About</a>
+          <a href="getting-started.html" class="nav-item is-active">Getting Started</a>
+          <a href="frequently-asked-questions.html" class="nav-item">FAQs</a>
+          <a href="repl.html" class="nav-item">Try It Out</a>
+          <a href="https://github.com/facebook/prepack" class="nav-item">GitHub</a>
+        </div>
+
       </div>
-    </div>
+    </nav>
 
     <div class="content">
       <div class="section">
@@ -250,5 +257,7 @@ import * as Prepack from 'prepack';</code></pre>
         </div>
       </div>
     </div>
+
+    <script src="js/toggle_menu.js"></script>
   </body>
 </html>
