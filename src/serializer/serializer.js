@@ -292,10 +292,9 @@ export class Serializer {
 
   addObjectPrototype(name: string, obj: ObjectValue, reasons: Array<string>) {
     let kind = obj.getKind();
-    // for plain objects, we handle custom prototypes via an auxiliary constructor
-    if (kind === "Object") return;
-
     let proto = obj.$Prototype;
+    // for plain objects with proper prototypes, we handle custom prototypes via an auxiliary constructor
+    if (kind === "Object" && proto instanceof ObjectValue) return;
     if (proto === this.realm.intrinsics[kind + "Prototype"]) return;
 
     this._eagerOrDelay([proto, obj], () => {
@@ -660,8 +659,11 @@ export class Serializer {
       let kind = val.getKind();
       switch (kind) {
         case "Object":
-          delayReason = this._shouldDelayValue(val.$Prototype);
-          if (delayReason) return delayReason;
+          let proto = val.$Prototype;
+          if (proto instanceof ObjectValue) {
+            delayReason = this._shouldDelayValue(val.$Prototype);
+            if (delayReason) return delayReason;
+          }
           break;
         case "Date":
           invariant(val.$DateValue !== undefined);
@@ -1136,7 +1138,9 @@ export class Serializer {
           this.logger.logError(val, `Serialization of an arguments object is not supported.`);
 
         let proto = val.$Prototype;
-        let createViaAuxiliaryConstructor = proto !== this.realm.intrinsics.ObjectPrototype;
+        let createViaAuxiliaryConstructor =
+          proto !== this.realm.intrinsics.ObjectPrototype &&
+          proto instanceof ObjectValue;
 
         let remainingProperties = new Map(val.properties);
         let props = [];
