@@ -37,7 +37,7 @@ export type BodyEntry = {
 
 export class Generator {
   constructor(realm: Realm) {
-    invariant(realm.isPartial);
+    invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;

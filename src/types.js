@@ -41,7 +41,8 @@ export const CompatibilityValues = [
 ];
 
 export type RealmOptions = {
-  partial?: boolean,
+  residual?: boolean,
+  serialize?: boolean,
   debugNames?: boolean,
   uniqueSuffix?: string,
   timeout?: number,

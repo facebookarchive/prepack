@@ -132,7 +132,7 @@ function dump(name: string, raw: string, min: string = raw, compatibility?: "bro
   let beforeStats = line("Before", min, compatibility);
 
   let start = Date.now();
-  let realm = construct_realm({ partial: true, compatibility });
+  let realm = construct_realm({ serialize: true, compatibility });
   initializeGlobals(realm);
   let serializer = new Serializer(realm);
   let serialized = serializer.init(name, raw);
