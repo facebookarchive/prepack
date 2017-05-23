@@ -100,7 +100,7 @@ export class Serializer {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
-    this.needsAuxiliaryConstructor = false;
+    this.needsAuxiliaryConstructor = [];
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
@@ -249,7 +249,7 @@ export class Serializer {
     return false;
   }
 
-  addProperties(name: string, obj: ObjectValue, reasons: Array<string>, alternateProperties: ?Map<string, PropertyBinding>) {
+  addProperties(name: string, obj: ObjectValue, reasons: Array<string>, alternateProperties: ?Map<string, PropertyBinding>, objectPrototypeAlreadyEstablished: boolean = false) {
     /*
     for (let symbol of obj.symbols.keys()) {
       // TODO #22: serialize symbols
@@ -283,18 +283,33 @@ export class Serializer {
     }
 
     // prototype
-    this.addObjectPrototype(name, obj, reasons);
+    this.addObjectPrototype(name, obj, reasons, objectPrototypeAlreadyEstablished);
     if (obj instanceof FunctionValue) this.addConstructorPrototype(name, obj, reasons);
 
     this.statistics.objects++;
     this.statistics.objectProperties += obj.properties.size;
   }
 
-  addObjectPrototype(name: string, obj: ObjectValue, reasons: Array<string>) {
+  addObjectPrototype(name: string, obj: ObjectValue, reasons: Array<string>, objectPrototypeAlreadyEstablished: boolean) {
     let kind = obj.getKind();
     let proto = obj.$Prototype;
-    // for plain objects with proper prototypes, we handle custom prototypes via an auxiliary constructor
-    if (kind === "Object" && proto instanceof ObjectValue) return;
+    if (objectPrototypeAlreadyEstablished) {
+      // Emitting an assertion. This can be removed in the future, or put under a DEBUG flag.
+      this._eagerOrDelay([proto, obj], () => {
+        invariant(proto);
+        let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
+        let uid = this._getValIdForReference(obj);
+        let condition = t.binaryExpression("!==", t.memberExpression(uid, t.identifier("__proto__")), serializedProto);
+        let throwblock = t.blockStatement([
+          t.throwStatement(
+            t.newExpression(
+              t.identifier("Error"),
+              [t.stringLiteral("unexpected prototype")]))
+          ]);
+        this.body.push(t.ifStatement(condition, throwblock));
+      });
+      return;
+    }
     if (proto === this.realm.intrinsics[kind + "Prototype"]) return;
 
     this._eagerOrDelay([proto, obj], () => {
@@ -1063,6 +1078,12 @@ export class Serializer {
       return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;
   }
 
+  _findLastObjectPrototype(obj: ObjectValue): ObjectValue {
+    while (true) {
+      if (obj.$Prototype instanceof ObjectValue) obj = obj.$Prototype;
+      else return obj;
+    }
+  }
   _serializeValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
@@ -1140,6 +1161,7 @@ export class Serializer {
         let proto = val.$Prototype;
         let createViaAuxiliaryConstructor =
           proto !== this.realm.intrinsics.ObjectPrototype &&
+          this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
           proto instanceof ObjectValue;
 
         let remainingProperties = new Map(val.properties);
