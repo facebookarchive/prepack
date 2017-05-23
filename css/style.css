@@ -29,7 +29,7 @@ header, .repl-container {
 
 .record-container{
   height: 60px;
-  margin-top:60px;
+  /*margin-top:60px;*/
   padding-top: 8px;
   /*line-height: 40px;*/
   background: #1c1c1c;
