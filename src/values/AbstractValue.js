@@ -31,7 +31,7 @@ export default class AbstractValue extends Value {
       buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
       kind?: string,
       intrinsicName?: string) {
-    invariant(realm.isPartial);
+    invariant(realm.useAbstractInterpretation);
     super(realm, intrinsicName);
     invariant(types.getType() !== ObjectValue || this instanceof AbstractObjectValue);
     invariant(types.getType() !== NullValue && types.getType() !== UndefinedValue);

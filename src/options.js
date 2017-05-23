@@ -28,6 +28,8 @@ export type Options = {|
   internalDebug?: boolean,
   uniqueSuffix?: string,
   timeout?: number,
+  residual?: boolean,
+  serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
 |};
 
@@ -39,15 +41,18 @@ export function getRealmOptions({
   debugNames = false,
   uniqueSuffix,
   timeout,
+  residual,
+  serialize,
   strictlyMonotonicDateNow
 }: Options): RealmOptions {
   return {
-    partial: true,
     compatibility,
     mathRandomSeed,
     debugNames,
     uniqueSuffix,
     timeout,
+    residual,
+    serialize,
     strictlyMonotonicDateNow,
   };
 }

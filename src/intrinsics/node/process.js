@@ -272,7 +272,7 @@ function reverseConfigJSON(config) {
 }
 
 export default function (realm: Realm, processArgv: Array<string>): ObjectValue {
-  if (!realm.isPartial) {
+  if (!realm.useAbstractInterpretation) {
     throw new Error('Realm is not partial');
   }
   // TODO: This causes a dependency on the native `process` which doesn't

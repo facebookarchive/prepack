@@ -47,7 +47,8 @@ function runTest(name: string, code: string): boolean {
       internalDebug: true,
       compatibility: "jsc-600-1-4-17",
       mathRandomSeed: "0",
-      speculate: true
+      serialize: true,
+      speculate: true,
     });
     if (!serialized) {
       console.log(chalk.red("Error during serialization"));
