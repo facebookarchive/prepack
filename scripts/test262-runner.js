@@ -1208,7 +1208,7 @@ function filterDescription(data: BannerData): boolean {
 function filterCircleCI(data: BannerData): boolean {
   let skipTests = ['7.8.5_A1.4_T2', '7.8.5_A2.4_T2', '7.8.5_A2.1_T2', '7.8.5_A1.1_T2',
                     '15.1.2.2_A8', '15.1.2.3_A6', '7.4_A5', '7.4_A6',
-                    '15.10.2.12_A3_T', '15.10.2.12_A4_T1', '15.10.2.12_A5_T1'];
+                    '15.10.2.12_A3_T1', '15.10.2.12_A4_T1', '15.10.2.12_A5_T1'];
 
   if (!process.env.NIGHTLY_BUILD && skipTests.indexOf(data.es5id) > -1) return false;
 
