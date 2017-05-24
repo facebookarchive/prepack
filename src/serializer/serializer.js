@@ -100,7 +100,7 @@ export class Serializer {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
-    this.needsAuxiliaryConstructor = [];
+    this.needsAuxiliaryConstructor = false;
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
@@ -1079,11 +1079,10 @@ export class Serializer {
   }
 
   _findLastObjectPrototype(obj: ObjectValue): ObjectValue {
-    while (true) {
-      if (obj.$Prototype instanceof ObjectValue) obj = obj.$Prototype;
-      else return obj;
-    }
+    while (obj.$Prototype instanceof ObjectValue) obj = obj.$Prototype;
+    return obj;
   }
+
   _serializeValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
