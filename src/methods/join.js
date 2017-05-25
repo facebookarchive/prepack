@@ -236,7 +236,8 @@ function joinGenerators(realm: Realm, joinCondition: AbstractValue,
         if (block1) return t.ifStatement(cond, block1, block2);
         invariant(block2);
         return t.ifStatement(t.unaryExpression("!", cond), block2);
-      }
+      },
+      dependencies: [generator1, generator2]
     });
   }
   return result;

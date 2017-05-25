@@ -33,6 +33,7 @@ export type BodyEntry = {
   declaresDerivedId?: BabelNodeIdentifier;
   args: Array<Value>;
   buildNode: GeneratorBuildNodeFunction;
+  dependencies?: Array<Generator>;
 }
 
 export class Generator {
@@ -247,6 +248,16 @@ export class Generator {
       body.push(bodyEntry.buildNode(nodes, context));
       let id = bodyEntry.declaresDerivedId;
       if (id !== undefined) context.announceDeclaredDerivedId(id);
+    }
+  }
+
+  visit(visitValue: Value => void) {
+    for (let bodyEntry of this.body) {
+      for (let boundArg of bodyEntry.args)
+        visitValue(boundArg);
+      if (bodyEntry.dependencies)
+        for (let dependency of bodyEntry.dependencies)
+          dependency.visit(visitValue);
     }
   }
 }
