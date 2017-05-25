@@ -487,11 +487,12 @@ export class Serializer {
       let binding = r.bindings[n];
       invariant(!binding.deletable);
       let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
-      let serializedValue = this.serializeValue(
+      // Set up binding identity before starting to serialize value. This is needed in case of recursive dependencies.
+      serializedBinding = ({ value }: SerializedBinding);
+      serializedBindings[n] = serializedBinding;
+      serializedBinding.serializedValue = this.serializeValue(
         value,
         reasons.concat(`access in ${functionName} to ${n}`));
-      serializedBinding = { serializedValue, value };
-      serializedBindings[n] = serializedBinding;
       if (value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
@@ -1252,8 +1253,10 @@ export class Serializer {
           let serializedBinding: SerializedBinding = serializedBindings[name];
           if (serializedBinding.modified && !serializedBinding.referentialized) {
             let serializedBindingId = t.identifier(this.referentializedNameGenerator.generate(name));
+            let serializedValue = serializedBinding.serializedValue;
+            invariant(serializedValue);
             let declar = t.variableDeclaration("var", [
-              t.variableDeclarator(serializedBindingId, serializedBinding.serializedValue)]);
+              t.variableDeclarator(serializedBindingId, serializedValue)]);
             getFunctionBody(instance).push(declar);
             serializedBinding.serializedValue = serializedBindingId;
             serializedBinding.referentialized = true;
@@ -1388,7 +1391,11 @@ export class Serializer {
         for (let instance of instances) {
           let { functionValue, serializedBindings, insertionPoint } = instance;
           let id = this._getValIdForReference(functionValue);
-          let flatArgs: Array<BabelNodeExpression> = factoryNames.map((name) => serializedBindings[name].serializedValue);
+          let flatArgs: Array<BabelNodeExpression> = factoryNames.map((name) => {
+            let serializedValue = serializedBindings[name].serializedValue;
+            invariant(serializedValue);
+            return serializedValue;
+          });
           let node;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
           invariant(insertionPoint !== undefined);

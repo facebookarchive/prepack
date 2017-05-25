@@ -33,7 +33,8 @@ export type FunctionInfo = {
 
 export type SerializedBindings = { [key: string]: SerializedBinding };
 export type SerializedBinding = {
-  serializedValue: BabelNodeExpression;
+  // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
+  serializedValue?: BabelNodeExpression;
   value?: Value;
   referentialized?: boolean;
   modified?: boolean;
