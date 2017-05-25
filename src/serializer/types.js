@@ -17,7 +17,8 @@ import invariant from "../invariant.js";
 export type TryQuery<T> = (f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean) => T;
 
 export type FunctionInstance = {
-  serializedBindings: SerializedBindings;
+  serializedBindings?: SerializedBindings;
+  visitedBindings: VisitedBindings;
   functionValue: FunctionValue;
   insertionPoint?: BodyReference;
 };
@@ -35,6 +36,13 @@ export type SerializedBindings = { [key: string]: SerializedBinding };
 export type SerializedBinding = {
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
   serializedValue?: BabelNodeExpression;
+  value?: Value;
+  referentialized?: boolean;
+  modified?: boolean;
+}
+
+export type VisitedBindings = { [key: string]: VisitedBinding };
+export type VisitedBinding = {
   value?: Value;
   referentialized?: boolean;
   modified?: boolean;
