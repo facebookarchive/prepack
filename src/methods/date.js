@@ -81,8 +81,7 @@ export function InLeapYear(realm: Realm, t: number): number {
 // ECMA262 20.3.1.4
 export function MonthFromTime(realm: Realm, t: number): number {
   let step: ?number;
-  let year = YearFromTime(realm, t);
-  let d = DayWithinYear(realm, t, year);
+  let d = DayWithinYear(realm, t);
 
   if (d < (step = 31)) return 0;
 
@@ -109,8 +108,7 @@ export function DayWithinYear(realm: Realm, t: number): number {
 export function DateFromTime(realm: Realm, t: number): number {
   let step: ?number;
   let next: ?number;
-  let year = YearFromTime(realm, t);
-  let d = DayWithinYear(realm, t, year);
+  let d = DayWithinYear(realm, t);
 
   if (d <= (next = 30)) return d + 1;
 

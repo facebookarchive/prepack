@@ -161,7 +161,7 @@ export default function (realm: Realm): ObjectValue {
     let timeout = getTimeoutArg(args[0]);
     let displayErrors = getDisplayErrorsArg(args[0]);
     let breakOnSigint = getBreakOnSigintArg(args[0]);
-    return evalMachine(self, timeout, displayErrors, breakOnSigint, args);
+    return evalMachine(self, timeout, displayErrors, breakOnSigint);
   }
 
   function runInContext(self, [sandbox, options]) {

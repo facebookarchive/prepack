@@ -69,7 +69,7 @@
     "eslint-plugin-flow-header": "^0.1.1",
     "eslint-plugin-flowtype": "^2.20.0",
     "eslint-plugin-header": "^1.0.0",
-    "flow-bin": "^0.44.0",
+    "flow-bin": "^0.47.0",
     "graceful-fs": "^4.1.11",
     "invariant": "^2.2.0",
     "istanbul": "^0.4.5",
