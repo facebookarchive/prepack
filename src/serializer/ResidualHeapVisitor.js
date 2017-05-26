@@ -21,7 +21,7 @@ import { Generator } from "../utils/generator.js";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { VisitedBinding, VisitedBindings, FunctionInfo, FunctionInstance } from "./types.js";
+import type { VisitedBinding, VisitedBindings, FunctionInfo } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -35,8 +35,9 @@ export class ResidualHeapVisitor {
     this.requireReturns = requireReturns;
 
     this.declarativeEnvironmentRecordsBindings = new Map();
-    this.functions = new Map();
-    this.functionInstances = [];
+    this.globalBindings = new Map();
+    this.functionInfos = new Map();
+    this.functionBindings = new Map();
     this.values = new Set();
     this.ignoredProperties = new Map();
   }
@@ -47,8 +48,9 @@ export class ResidualHeapVisitor {
   requireReturns: Map<number | string, BabelNodeExpression>;
 
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, VisitedBindings>;
-  functions: Map<BabelNodeBlockStatement, FunctionInfo>;
-  functionInstances: Array<FunctionInstance>;
+  globalBindings: Map<string, VisitedBinding>;
+  functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
+  functionBindings: Map<FunctionValue, VisitedBindings>;
   values: Set<Value>;
   ignoredProperties: Map<ObjectValue, Set<string>>;
 
@@ -222,7 +224,7 @@ export class ResidualHeapVisitor {
       let binding = r.bindings[n];
       invariant(!binding.deletable);
       let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
-      visitedBinding = { value };
+      visitedBinding = { global: false, value, modified: false };
       visitedBindings[n] = visitedBinding;
       this.visitValue(value);
     }
@@ -323,17 +325,16 @@ export class ResidualHeapVisitor {
     let code = val.$ECMAScriptCode;
     invariant(code != null);
 
-    let functionInfo = this.functions.get(code);
+    let functionInfo = this.functionInfos.get(code);
 
     if (!functionInfo) {
       functionInfo = {
         names: Object.create(null),
         modified: Object.create(null),
-        instances: [],
         usesArguments: false,
         usesThis: false,
       };
-      this.functions.set(code, functionInfo);
+      this.functionInfos.set(code, functionInfo);
 
       let state = {
         tryQuery: this.logger.tryQuery.bind(this.logger),
@@ -363,10 +364,6 @@ export class ResidualHeapVisitor {
     }
 
     let visitedBindings = Object.create(null);
-    let instance: FunctionInstance = {
-      visitedBindings,
-      functionValue: val,
-    };
     for (let innerName in functionInfo.names) {
       let visitedBinding;
       let doesNotMatter = true;
@@ -391,10 +388,10 @@ export class ResidualHeapVisitor {
         }
       }
       visitedBindings[innerName] = visitedBinding;
-      if (functionInfo.modified[innerName]) visitedBindings.modified = true;
+      if (functionInfo.modified[innerName]) visitedBinding.modified = true;
     }
 
-    functionInfo.instances.push(instance);
+    this.functionBindings.set(val, visitedBindings);
   }
 
   visitValueObject(val: ObjectValue): void {
@@ -493,10 +490,16 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitGlobalBinding(key: string): void {
-    let value = this.realm.getGlobalLetBinding(key);
-    // Check for let binding vs global property
-    if (value) this.visitValue(value);
+  visitGlobalBinding(key: string): VisitedBinding {
+    let binding = this.globalBindings.get(key);
+    if (!binding) {
+      let value = this.realm.getGlobalLetBinding(key);
+      binding = ({ global: true, value, modified: true }: VisitedBinding);
+      this.globalBindings.set(key, binding);
+      // Check for let binding vs global property
+      if (value) this.visitValue(value);
+    }
+    return binding;
   }
 
   visitGenerator(generator: Generator): void {
