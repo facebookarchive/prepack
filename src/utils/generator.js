@@ -244,7 +244,7 @@ export class Generator {
 
   serialize(body: Array<BabelNodeStatement>, context: SerializationContext) {
     for (let bodyEntry of this.body) {
-      let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg, context.reasons));
+      let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg));
       body.push(bodyEntry.buildNode(nodes, context));
       let id = bodyEntry.declaresDerivedId;
       if (id !== undefined) context.announceDeclaredDerivedId(id);

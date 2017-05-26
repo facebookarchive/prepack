@@ -54,10 +54,10 @@ function callBothFunctionsAndJoinTheirEffects(args: Array<Value>, ast: BabelNode
   invariant(func2.getType() === FunctionValue);
 
   let [compl1, gen1, bindings1, properties1, createdObj1] =
-    realm.partially_evaluate(() => EvaluateCall(func1, func1, ast, strictCode, env, realm), strictCode, env);
+    realm.partially_evaluate(() => EvaluateCall(func1, func1, ast, strictCode, env, realm));
 
   let [compl2, gen2, bindings2, properties2, createdObj2] =
-    realm.partially_evaluate(() => EvaluateCall(func2, func2, ast, strictCode, env, realm), strictCode, env);
+    realm.partially_evaluate(() => EvaluateCall(func2, func2, ast, strictCode, env, realm));
 
   let joinedEffects =
     joinEffects(realm, cond,
