@@ -18,7 +18,6 @@ import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeBlockStatement } from "babel-types";
 import { Generator } from "../utils/generator.js";
-// import { transform } from "babel-core";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { VisitedBinding, VisitedBindings, FunctionInfo } from "./types.js";
@@ -26,6 +25,12 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 
+/* This class visits all values that are reachable in the residual heap.
+   In particular, this "filters out" values that are...
+   - captured by a DeclarativeEnvironmentRecord, but not actually used by any closure.
+   - Unmodified prototype objects
+   TODO #492: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
+*/
 export class ResidualHeapVisitor {
   constructor(realm: Realm, logger: Logger, modules: Modules, requireReturns: Map<number | string, BabelNodeExpression>) {
     invariant(realm.useAbstractInterpretation);
