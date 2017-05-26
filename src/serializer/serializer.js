@@ -108,6 +108,7 @@ export class Serializer {
     this.statistics = new SerializerStatistics();
     this.firstFunctionUsages = new Map();
     this.functionPrototypes = new Map();
+    this.serializedValues = new Set();
   }
 
   globalReasons: {
@@ -150,6 +151,7 @@ export class Serializer {
   residualValues: Set<Value>;
   residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
+  serializedValues: Set<Value>;
 
 
   _getBodyReference() {
@@ -476,6 +478,7 @@ export class Serializer {
       return ref;
     }
 
+    this.serializedValues.add(val);
     reasons = reasons || [];
     if (!referenceOnly && ResidualHeapVisitor.isLeaf(val)) {
       let res = this._serializeValue("", val, reasons);
@@ -1519,6 +1522,8 @@ export class Serializer {
         body: ast_body
       }
     };
+
+    invariant(this.serializedValues.size === this.residualValues.size);
 
     return {
       generated: generate(
