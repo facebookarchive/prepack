@@ -21,8 +21,10 @@ import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMap
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
+import { IteratorBindingInitialization } from "../methods/environment.js";
 import { joinPossiblyNormalCompletionWithAbruptCompletion, composePossiblyNormalCompletions,
   BoundNames, ContainsExpression, GetActiveScriptOrModule, UpdateEmpty } from "../methods/index.js";
+import { CreateListIterator } from "../methods/iterator.js";
 import { PutValue } from "./properties.js";
 import traverse from "../traverse.js";
 import invariant from "../invariant.js";
@@ -291,42 +293,20 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
   }
 
   // 23. Let iteratorRecord be Record {[[Iterator]]: CreateListIterator(argumentsList), [[Done]]: false}.
-  let iteratorRecord = 0;
+  let iteratorRecord = {
+    $Iterator: CreateListIterator(realm, argumentsList),
+    $Done: false,
+  };
 
   // 24. If hasDuplicates is true, then
   if (hasDuplicates === true) {
     // a. Perform ? IteratorBindingInitialization for formals with iteratorRecord and undefined as arguments.
     invariant(formals !== undefined);
-    for (let i = 0; i < formals.length; ++i) {
-      let param = formals[i];
-
-      switch (param.type) {
-      case "Identifier":
-        let value = argumentsList[iteratorRecord] || realm.intrinsics.undefined;
-        ++iteratorRecord;
-        let lhs = ResolveBinding(realm, param.name, strict);
-        PutValue(realm, lhs, value);
-        break;
-      default:
-        throw new ThrowCompletion(new StringValue(realm, "only plain identifiers are supported in parameter lists"));
-      }
-    }
+    IteratorBindingInitialization(realm, formals, iteratorRecord, strict);
   } else { // 25. Else,
     // a. Perform ? IteratorBindingInitialization for formals with iteratorRecord and env as arguments.
     invariant(formals !== undefined);
-    for (let i = 0; i < formals.length; ++i) {
-      let param = formals[i];
-
-      switch (param.type) {
-      case "Identifier":
-        let value = argumentsList[iteratorRecord] || realm.intrinsics.undefined;
-        ++iteratorRecord;
-        envRec.InitializeBinding(param.name, value);
-        break;
-      default:
-        throw new ThrowCompletion(new StringValue(realm, "only plain identifiers are supported in parameter lists"));
-      }
-    }
+    IteratorBindingInitialization(realm, formals, iteratorRecord, strict, env);
   }
 
 

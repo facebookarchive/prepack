@@ -12,7 +12,14 @@
 import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
 import { ThrowCompletion, AbruptCompletion } from "../completions.js";
-import { NumberValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
+import {
+  NumberValue,
+  StringValue,
+  ObjectValue,
+  UndefinedValue,
+  NativeFunctionValue,
+  Value,
+} from "../values/index.js";
 import {
   GetMethod,
   Call,
@@ -23,6 +30,8 @@ import {
 } from "./index.js";
 import invariant from "../invariant.js";
 import type { IterationKind } from "../types.js";
+import { SameValue } from "./abstract.js";
+import { CreateMethodProperty, CreateIterResultObject } from "./create.js";
 
 // ECMA262 7.4.1
 export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefined, method?: Value): ObjectValue {
@@ -96,6 +105,87 @@ export function IteratorNext(realm: Realm, iterator: Value, value?: Value): Obje
 
   // 4. Return result.
   return result;
+}
+
+// ECMA262 7.4.8
+export function CreateListIterator(realm: Realm, list: Array<Value>): ObjectValue {
+  // 1. Let iterator be ObjectCreate(%IteratorPrototype%, « [[IteratorNext]], [[IteratedList]], [[ListIteratorNextIndex]] »).
+  let iterator = ObjectCreate(realm, realm.intrinsics.IteratorPrototype, {
+    $IteratorNext: undefined,
+    $IteratedList: undefined,
+    $ListIteratorNextIndex: undefined,
+  });
+
+  // 2. Set iterator's [[IteratedList]] internal slot to list.
+  iterator.$IteratedList = list;
+
+  // 3. Set iterator's [[ListIteratorNextIndex]] internal slot to 0.
+  iterator.$ListIteratorNextIndex = 0;
+
+  // 4. Let next be a new built-in function object as defined in ListIterator next (7.4.8.1).
+  let next = ListIterator_next(realm);
+
+  // 5. Set iterator's [[IteratorNext]] internal slot to next.
+  iterator.$IteratorNext = next;
+
+  // 6. Perform CreateMethodProperty(iterator, "next", next).
+  CreateMethodProperty(realm, iterator, new StringValue(realm, 'next'), next);
+
+  // 7. Return iterator.
+  return iterator;
+}
+
+// ECMA262 7.4.8.1
+function ListIterator_next(realm: Realm): NativeFunctionValue {
+  let func = new NativeFunctionValue(realm, undefined, "next", 0, (context: ObjectValue) => {
+    // 1. Let O be the this value.
+    let O = context;
+
+    // 2. Let f be the active function object.
+    let f = func;
+
+    // 3. If O does not have a [[IteratorNext]] internal slot, throw a TypeError exception.
+    if (!O.$IteratorNext) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[IteratorNext]] internal slot");
+    }
+
+    // 4. Let next be the value of the [[IteratorNext]] internal slot of O.
+    let next = O.$IteratorNext;
+
+    // 5. If SameValue(f, next) is false, throw a TypeError exception.
+    if (!SameValue(realm, f, next)) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
+
+    // 6. If O does not have an [[IteratedList]] internal slot, throw a TypeError exception.
+    if (!O.$IteratedList) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[IteratedList]] internal slot");
+    }
+
+    // 7. Let list be the value of the [[IteratedList]] internal slot of O.
+    let list = O.$IteratedList;
+
+    // 8. Let index be the value of the [[ListIteratorNextIndex]] internal slot of O.
+    // Default to 0 for Flow.
+    let index = O.$ListIteratorNextIndex || 0;
+
+    // 9. Let len be the number of elements of list.
+    let len = list.length;
+
+    // 10. If index ≥ len, then
+    if (index >= len) {
+      // a. Return CreateIterResultObject(undefined, true).
+      return CreateIterResultObject(realm, new UndefinedValue(realm), true);
+    }
+
+    // 11. Set the value of the [[ListIteratorNextIndex]] internal slot of O to index+1.
+    O.$ListIteratorNextIndex = index + 1;
+
+    // 12. Return CreateIterResultObject(list[index], false).
+    return CreateIterResultObject(realm, list[index], false);
+  });
+
+  return func;
 }
 
 // ECMA262 23.1.5.1
