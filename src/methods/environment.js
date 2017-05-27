@@ -627,7 +627,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
     }
 
     default:
-      throw new ThrowCompletion(new StringValue(realm, `unrecognized parameter of kind '${param.kind}'`));
+      throw new ThrowCompletion(new StringValue(realm, `unrecognized parameter of type '${param.type}'`));
     }
   }
 }
