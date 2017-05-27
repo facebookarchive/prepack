@@ -499,83 +499,135 @@ export function BindingInitialization(realm: Realm, node: BabelNode, value: Valu
   throw new Error("Unknown node " + node.type);
 }
 
-export function IteratorBindingInitialization(realm: Realm, formals: Array<BabelNodeLVal>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strict: boolean, environment?: LexicalEnvironment) {
+export function IteratorBindingInitialization(realm: Realm, formals: Array<BabelNodeLVal>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strict: boolean, environment: void | LexicalEnvironment) {
   for (let param of formals) {
     switch (param.type) {
-      // ECMA262 13.3.3.6
+    // ECMA262 13.3.3.6
 
-      // SingleNameBinding : BindingIdentifier Initializer
-      case 'Identifier': {
-        // 1. Let bindingId be StringValue of BindingIdentifier.
-        let bindingId = param.name;
+    // SingleNameBinding : BindingIdentifier Initializer
+    case 'Identifier': {
+      // 1. Let bindingId be StringValue of BindingIdentifier.
+      let bindingId = param.name;
 
-        // 2. Let lhs be ? ResolveBinding(bindingId, environment).
-        let lhs = ResolveBinding(realm, param.name, strict, environment);
+      // 2. Let lhs be ? ResolveBinding(bindingId, environment).
+      let lhs = ResolveBinding(realm, param.name, strict, environment);
 
-        // Initialized later in the algorithm.
-        let v;
+      // Initialized later in the algorithm.
+      let v;
 
-        // 3. If iteratorRecord.[[Done]] is false, then
-        if (iteratorRecord.$Done === false) {
-          // a. Let next be IteratorStep(iteratorRecord.[[Iterator]]).
-          let next;
+      // 3. If iteratorRecord.[[Done]] is false, then
+      if (iteratorRecord.$Done === false) {
+        // a. Let next be IteratorStep(iteratorRecord.[[Iterator]]).
+        let next;
+        try {
+          next = IteratorStep(realm, iteratorRecord.$Iterator);
+        } catch (e) {
+          // b. If next is an abrupt completion, set iteratorRecord.[[Done]] to true.
+          if (e instanceof AbruptCompletion) {
+            iteratorRecord.$Done = true;
+          }
+          // c. ReturnIfAbrupt(next).
+          throw e;
+        }
+
+        // d. If next is false, set iteratorRecord.[[Done]] to true.
+        if (next === false) {
+          iteratorRecord.$Done = true;
+          // Normally this assignment would be done in step 4, but we do it
+          // here so that Flow knows `v` will always be initialized by step 5.
+          v = new UndefinedValue(realm);
+        } else { // e. Else,
+          // i. Let v be IteratorValue(next).
           try {
-            next = IteratorStep(realm, iteratorRecord.$Iterator);
+            v = IteratorValue(realm, next);
           } catch (e) {
-            // b. If next is an abrupt completion, set iteratorRecord.[[Done]] to true.
+            // ii. If v is an abrupt completion, set iteratorRecord.[[Done]] to true.
             if (e instanceof AbruptCompletion) {
               iteratorRecord.$Done = true;
             }
-
-            // c. ReturnIfAbrupt(next).
+            // iii. ReturnIfAbrupt(v).
             throw e;
           }
-
-          // d. If next is false, set iteratorRecord.[[Done]] to true.
-          if (next === false) {
-            iteratorRecord.$Done = true;
-            // Normally this assignment would be done in step 4, but we do it
-            // here so that Flow knows `v` will always be initialized by step 5.
-            v = new UndefinedValue(realm);
-          } else { // e. Else,
-            // i. Let v be IteratorValue(next).
-            try {
-              v = IteratorValue(realm, next);
-            } catch (e) {
-              // ii. If v is an abrupt completion, set iteratorRecord.[[Done]] to true.
-              if (e instanceof AbruptCompletion) {
-                iteratorRecord.$Done = true;
-              }
-
-              // iii. ReturnIfAbrupt(v).
-              throw e;
-            }
-          }
-        } else { // 4. If iteratorRecord.[[Done]] is true, let v be undefined.
-          v = new UndefinedValue(realm);
         }
+      } else { // 4. If iteratorRecord.[[Done]] is true, let v be undefined.
+        v = new UndefinedValue(realm);
+      }
 
-        // TODO:
-        // 5. If Initializer is present and v is undefined, then
-          // a. Let defaultValue be the result of evaluating Initializer.
-          // b. Let v be ? GetValue(defaultValue).
-          // c. If IsAnonymousFunctionDefinition(Initializer) is true, then
-            // i. Let hasNameProperty be ? HasOwnProperty(v, "name").
-            // ii. If hasNameProperty is false, perform SetFunctionName(v, bindingId).
+      // TODO:
+      // 5. If Initializer is present and v is undefined, then
+        // a. Let defaultValue be the result of evaluating Initializer.
+        // b. Let v be ? GetValue(defaultValue).
+        // c. If IsAnonymousFunctionDefinition(Initializer) is true, then
+          // i. Let hasNameProperty be ? HasOwnProperty(v, "name").
+          // ii. If hasNameProperty is false, perform SetFunctionName(v, bindingId).
 
-        // 6. If environment is undefined, return ? PutValue(lhs, v).
-        if (!environment) {
-          PutValue(realm, lhs, v);
-          break;
-        }
-
-        // 7. Return InitializeReferencedBinding(lhs, v).
-        InitializeReferencedBinding(realm, lhs, v);
+      // 6. If environment is undefined, return ? PutValue(lhs, v).
+      if (!environment) {
+        PutValue(realm, lhs, v);
         break;
       }
 
-      default:
-        throw new ThrowCompletion(new StringValue(realm, "only plain identifiers are supported in parameter lists"));
+      // 7. Return InitializeReferencedBinding(lhs, v).
+      InitializeReferencedBinding(realm, lhs, v);
+      break;
+    }
+
+    // BindingElement : BindingPatternInitializer
+    case 'ObjectPattern':
+    case 'ArrayPattern': {
+      // Initialized later in the algorithm.
+      let v;
+
+      // 1. If iteratorRecord.[[Done]] is false, then
+      if (iteratorRecord.$Done === false) {
+        // a. Let next be IteratorStep(iteratorRecord.[[Iterator]]).
+        let next;
+        try {
+          next = IteratorStep(realm, iteratorRecord.$Iterator);
+        } catch (e) {
+          // b. If next is an abrupt completion, set iteratorRecord.[[Done]] to true.
+          if (e instanceof AbruptCompletion) {
+            iteratorRecord.$Done = true;
+          }
+          // c. ReturnIfAbrupt(next).
+          throw e;
+        }
+
+        // d. If next is false, set iteratorRecord.[[Done]] to true.
+        if (next === false) {
+          iteratorRecord.$Done = true;
+          // Normally this assignment would be done in step 2, but we do it
+          // here so that Flow knows `v` will always be initialized by step 3.
+          v = new UndefinedValue(realm);
+        } else { // e. Else,
+          // i. Let v be IteratorValue(next).
+          try {
+            v = IteratorValue(realm, next);
+          } catch (e) {
+            // ii. If v is an abrupt completion, set iteratorRecord.[[Done]] to true.
+            if (e instanceof AbruptCompletion) {
+              iteratorRecord.$Done = true;
+            }
+            // iii. ReturnIfAbrupt(v).
+            throw e;
+          }
+        }
+      } else { // 2. If iteratorRecord.[[Done]] is true, let v be undefined.
+        v = new UndefinedValue(realm);
+      }
+
+      // TODO:
+      // 3. If Initializer is present and v is undefined, then
+        // a. Let defaultValue be the result of evaluating Initializer.
+        // b. Let v be ? GetValue(defaultValue).
+
+      // 4. Return the result of performing BindingInitialization of BindingPattern with v and environment as the arguments.
+      BindingInitialization(realm, param, v, environment);
+      break;
+    }
+
+    default:
+      throw new ThrowCompletion(new StringValue(realm, `unrecognized parameter of kind '${param.kind}'`));
     }
   }
 }
