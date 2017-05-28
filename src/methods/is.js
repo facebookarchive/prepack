@@ -331,5 +331,6 @@ export function IsIntrospectionError(realm: Realm, value: Value): boolean {
 }
 
 export function IsStatic(classElement: BabelNodeClassMethod): boolean {
+  // $FlowFixMe need to backport static property to BabelNodeClassMethod
   return classElement.static;
 }
