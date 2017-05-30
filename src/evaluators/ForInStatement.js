@@ -80,7 +80,7 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
       envRec.InitializeBinding(n, absStr);
     }
     let [compl, gen, bindings, properties, createdObj] =
-      realm.partially_evaluate_node(body, strictCode, blockEnv);
+      realm.evaluateNodeForEffects(body, strictCode, blockEnv);
     if (compl instanceof Value && gen.body.length === 0 && bindings.size === 0 &&
         properties.size === 1) {
       invariant(createdObj.size === 0); // or there will be more than one property

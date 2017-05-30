@@ -54,10 +54,10 @@ function callBothFunctionsAndJoinTheirEffects(args: Array<Value>, ast: BabelNode
   invariant(func2.getType() === FunctionValue);
 
   let [compl1, gen1, bindings1, properties1, createdObj1] =
-    realm.partially_evaluate(() => EvaluateCall(func1, func1, ast, strictCode, env, realm));
+    realm.evaluateForEffects(() => EvaluateCall(func1, func1, ast, strictCode, env, realm));
 
   let [compl2, gen2, bindings2, properties2, createdObj2] =
-    realm.partially_evaluate(() => EvaluateCall(func2, func2, ast, strictCode, env, realm));
+    realm.evaluateForEffects(() => EvaluateCall(func2, func2, ast, strictCode, env, realm));
 
   let joinedEffects =
     joinEffects(realm, cond,
@@ -69,12 +69,12 @@ function callBothFunctionsAndJoinTheirEffects(args: Array<Value>, ast: BabelNode
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    realm.capture_effects();
+    realm.captureEffects();
   }
 
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.
-  realm.apply_effects(joinedEffects);
+  realm.applyEffects(joinedEffects);
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;

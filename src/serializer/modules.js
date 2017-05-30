@@ -74,7 +74,7 @@ class ModuleTracer extends Tracer {
         this.requireStack.push(moduleIdValue);
         let requireSequenceStart = this.requireSequence.length;
         this.requireSequence.push(moduleIdValue);
-        let effects = realm.partially_evaluate(() => {
+        let effects = realm.evaluateForEffects(() => {
           try {
             return performCall();
           } catch (e) {
@@ -113,7 +113,7 @@ class ModuleTracer extends Tracer {
             ValuesDomain.topVal, [],
              ([]) => t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)]));
         } else {
-          realm.apply_effects(effects, `initialization of module ${moduleIdValue}`);
+          realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
         }
       } finally {
         let popped = this.requireStack.pop();
@@ -276,11 +276,11 @@ export class Modules {
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let effects = realm.partially_evaluate_node(node, true, env);
+      let effects = realm.evaluateNodeForEffects(node, true, env);
       let result = effects[0];
       if (result instanceof IntrospectionThrowCompletion) return effects;
 
-      realm.apply_effects(effects, message);
+      realm.applyEffects(effects, message);
       if (result instanceof Completion) {
         console.log(`=== UNEXPECTED ERROR during ${message} ===`);
         this.logger.logCompletion(result);
@@ -347,7 +347,7 @@ export class Modules {
         let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
         let [compl, generator, bindings, properties, createdObjects] =
-          realm.partially_evaluate_node(node, true, env);
+          realm.evaluateNodeForEffects(node, true, env);
         // for lint unused
         invariant(bindings);
 
