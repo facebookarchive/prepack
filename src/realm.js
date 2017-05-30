@@ -226,11 +226,11 @@ export class Realm {
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
-  partially_evaluate_node(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
-    return this.partially_evaluate(() => env.evaluateAbstractCompletion(ast, strictCode));
+  evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
+    return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode));
   }
 
-  partially_evaluate(f: () => Completion | Value | Reference): Effects {
+  evaluateForEffects(f: () => Completion | Value | Reference): Effects {
     // Save old state and set up empty state for ast
     let context = this.getRunningContext();
     let savedContextEffects = context.savedEffects;
@@ -264,8 +264,8 @@ export class Realm {
         let savedEffects = context.savedEffects;
         invariant(savedEffects !== undefined);
         // add prior effects that are not already present
-        this.add_prior_effects(savedEffects, result);
-        this.update_abrupt_completions(savedEffects, c);
+        this.addPriorEffects(savedEffects, result);
+        this.updateAbruptCompletions(savedEffects, c);
       }
       return result;
     } finally {
@@ -282,7 +282,7 @@ export class Realm {
     }
   }
 
-  add_prior_effects(priorEffects: Effects, subsequentEffects: Effects) {
+  addPriorEffects(priorEffects: Effects, subsequentEffects: Effects) {
     let [pc, pg, pb, pp, po] = priorEffects;
     let [sc, sg, sb, sp, so] = subsequentEffects;
 
@@ -307,25 +307,25 @@ export class Realm {
     });
   }
 
-  update_abrupt_completions(priorEffects: Effects, c: PossiblyNormalCompletion) {
+  updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion) {
     if (c.consequent instanceof AbruptCompletion) {
-      this.add_prior_effects(priorEffects, c.consequentEffects);
+      this.addPriorEffects(priorEffects, c.consequentEffects);
       let alternate = c.alternate;
       if (alternate instanceof PossiblyNormalCompletion)
-        this.update_abrupt_completions(priorEffects, alternate);
+        this.updateAbruptCompletions(priorEffects, alternate);
     } else {
       invariant(c.alternate instanceof AbruptCompletion);
-      this.add_prior_effects(priorEffects, c.alternateEffects);
+      this.addPriorEffects(priorEffects, c.alternateEffects);
       let consequent = c.consequent;
       if (consequent instanceof PossiblyNormalCompletion)
-        this.update_abrupt_completions(priorEffects, consequent);
+        this.updateAbruptCompletions(priorEffects, consequent);
     }
   }
 
-  capture_effects() {
+  captureEffects() {
     let context = this.getRunningContext();
     if (context.savedEffects !== undefined) {
-      // Already called capture_effects in this context, just carry on
+      // Already called captureEffects in this context, just carry on
       return;
     }
     context.savedEffects = [this.intrinsics.undefined, this.generator,
@@ -336,7 +336,7 @@ export class Realm {
     this.createdObjects = new Set();
   }
 
-  get_captured_effects(v?: Value): void | Effects {
+  getCapturedEffects(v?: Value): void | Effects {
     let context = this.getRunningContext();
     if (context.savedEffects === undefined) return undefined;
     if (v === undefined) v = this.intrinsics.undefined;
@@ -348,7 +348,7 @@ export class Realm {
        this.modifiedProperties, this.createdObjects];
   }
 
-  stop_effect_capture() {
+  stopEffectCapture() {
     let context = this.getRunningContext();
     if (context.savedEffects !== undefined) {
       let [c, g, b, p, o] = context.savedEffects;
@@ -362,7 +362,7 @@ export class Realm {
   }
 
   // Apply the given effects to the global state
-  apply_effects(effects: Effects, leadingComment: string = "") {
+  applyEffects(effects: Effects, leadingComment: string = "") {
     let [completion, generator, bindings, properties, createdObjects] = effects;
 
     // ignore completion

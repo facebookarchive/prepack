@@ -38,7 +38,7 @@ export class Logger {
     // We use partial evaluation so that we can throw away any state mutations
     try {
       let result;
-      let effects = realm.partially_evaluate(() => {
+      let effects = realm.evaluateForEffects(() => {
         try {
           result = f();
         } catch (e) {
