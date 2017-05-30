@@ -33,22 +33,22 @@ export function joinPossiblyNormalCompletions(
     let empty_effects = construct_empty_effects(realm);
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
-        return new PossiblyNormalCompletion(pnc.joinCondition,
+        return new PossiblyNormalCompletion(pnc.alternate, pnc.joinCondition,
            pnc.consequent, pnc.consequentEffects, c, empty_effects);
       }
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
       let new_alternate = joinPossiblyNormalCompletions(realm, pnc.alternate, c);
-      return new PossiblyNormalCompletion(pnc.joinCondition,
+      return new PossiblyNormalCompletion(new_alternate.value, pnc.joinCondition,
          pnc.consequent, pnc.consequentEffects, new_alternate, empty_effects);
     } else {
       invariant(pnc.alternate instanceof AbruptCompletion);
       if (pnc.consequent instanceof Value) {
-        return new PossiblyNormalCompletion(pnc.joinCondition,
+        return new PossiblyNormalCompletion(pnc.consequent, pnc.joinCondition,
            c, empty_effects, pnc.alternate, pnc.alternateEffects);
       }
       invariant(pnc.consequent instanceof PossiblyNormalCompletion);
       let new_consequent = joinPossiblyNormalCompletions(realm, pnc.consequent, c);
-      return new PossiblyNormalCompletion(pnc.joinCondition,
+      return new PossiblyNormalCompletion(new_consequent.value, pnc.joinCondition,
          new_consequent, empty_effects, pnc.alternate, pnc.alternateEffects);
     }
 }
@@ -207,8 +207,17 @@ function joinResults(realm: Realm, joinCondition: AbstractValue,
   if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
     return joinPossiblyNormalCompletions(realm, result1, result2);
   }
-  if (result1 instanceof AbruptCompletion || result2 instanceof AbruptCompletion) {
-    return new PossiblyNormalCompletion(joinCondition, result1, e1, result2, e2);
+  if (result1 instanceof AbruptCompletion) {
+    let value = result2;
+    if (result2 instanceof Completion) value = result2.value;
+    invariant(value instanceof Value);
+    return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2);
+  }
+  if (result2 instanceof AbruptCompletion) {
+    let value = result1;
+    if (result1 instanceof Completion) value = result1.value;
+    invariant(value instanceof Value);
+    return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2);
   }
   if (result1 instanceof PossiblyNormalCompletion) {
     invariant(result2 instanceof Value);
