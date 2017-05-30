@@ -240,6 +240,20 @@ export class Realm {
     return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode));
   }
 
+  partiallyEvaluateNodeForEffects(
+    ast: BabelNode, strictCode: boolean, env: LexicalEnvironment
+  ): [Effects, BabelNode, Array<BabelNodeStatement>] {
+    let nodeAst, nodeIO;
+    function partialEval() {
+      let result;
+      [result, nodeAst, nodeIO] = env.partiallyEvaluateCompletionDeref(ast, strictCode);
+      return result;
+    }
+    let effects = this.evaluateForEffects(partialEval);
+    invariant(nodeAst !== undefined && nodeIO !== undefined);
+    return [effects, nodeAst, nodeIO];
+  }
+
   evaluateForEffects(f: () => Completion | Value | Reference): Effects {
     // Save old state and set up empty state for ast
     let context = this.getRunningContext();
@@ -272,10 +286,11 @@ export class Realm {
       result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
       if (c instanceof PossiblyNormalCompletion) {
         let savedEffects = context.savedEffects;
-        invariant(savedEffects !== undefined);
-        // add prior effects that are not already present
-        this.addPriorEffects(savedEffects, result);
-        this.updateAbruptCompletions(savedEffects, c);
+        if (savedEffects !== undefined) {
+          // add prior effects that are not already present
+          this.addPriorEffects(savedEffects, result);
+          this.updateAbruptCompletions(savedEffects, c);
+        }
       }
       return result;
     } finally {

@@ -12,7 +12,7 @@
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
-import { Completion, ThrowCompletion, ReturnCompletion, AbruptCompletion, NormalCompletion, PossiblyNormalCompletion, IntrospectionThrowCompletion } from "../completions.js";
+import { Completion, ThrowCompletion, ReturnCompletion, AbruptCompletion, JoinedAbruptCompletions, NormalCompletion, PossiblyNormalCompletion, IntrospectionThrowCompletion } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
 import { Value, BoundFunctionValue, EmptyValue, FunctionValue, ObjectValue, StringValue, SymbolValue, NumberValue } from "../values/index.js";
@@ -22,7 +22,8 @@ import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall,
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
 import { IteratorBindingInitialization } from "../methods/environment.js";
-import { joinPossiblyNormalCompletionWithAbruptCompletion, composePossiblyNormalCompletions,
+import { composePossiblyNormalCompletions, joinAndRemoveNestedReturnCompletions,
+  joinPossiblyNormalCompletionWithAbruptCompletion, stopEffectCaptureAndJoinCompletions,
   BoundNames, ContainsExpression, GetActiveScriptOrModule, UpdateEmpty } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
 import traverse from "../traverse.js";
@@ -600,16 +601,19 @@ function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
     invariant(realm.getRunningContext() === callerContext);
 
     for (let t2 of realm.tracers)
-      t2.afterCall(F, thisArgument, argsList, undefined, result);
+      t2.afterCall(F, thisArgument, argsList, undefined, (result: any));
   }
 
   // 9. If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
   if (result instanceof ReturnCompletion) {
     return result.value;
   }
+  if (result instanceof JoinedAbruptCompletions) {
+    result = joinAndRemoveNestedReturnCompletions(realm, result);
+  }
 
-  // 10. ReturnIfAbrupt(result).
-  if (result instanceof AbruptCompletion) {
+  // 10. ReturnIfAbrupt(result).  or if possibly abrupt
+  if (result instanceof Completion) {
     throw result;
   }
 
@@ -1004,18 +1008,7 @@ export function EvaluateStatements(
         } else {
           invariant(blockValue instanceof PossiblyNormalCompletion);
           if (res instanceof AbruptCompletion) {
-            let e = realm.getCapturedEffects();
-            invariant(e !== undefined);
-            realm.stopEffectCaptureAndUndoEffects();
-            if (res instanceof IntrospectionThrowCompletion) {
-              realm.applyEffects(e);
-              throw res;
-            }
-            invariant(blockValue instanceof PossiblyNormalCompletion);
-            e[0] = res;
-            let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, blockValue, res, e);
-            realm.applyEffects(joined_effects);
-            throw joined_effects[0];
+            throw stopEffectCaptureAndJoinCompletions(blockValue, res, realm);
           } else {
             if (res instanceof Value)
               blockValue.value = res;

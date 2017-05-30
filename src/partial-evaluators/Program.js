@@ -38,8 +38,8 @@ export default function (
       partialBody.push((partialAst: any));
       if (!(potentialVal instanceof EmptyValue)) val = potentialVal;
     } else {
-      throw realm.createIntrospectionErrorThrowCompletion(
-        "function declarations are not yet supported");
+      // TODO: this goes away once residual functions are partially evaluated.
+      partialBody.push(node);
     }
   }
 
