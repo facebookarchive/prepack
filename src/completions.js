@@ -73,6 +73,7 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
 // action must be taken to deal with the possibly abrupt case of the completion.
 export class PossiblyNormalCompletion extends NormalCompletion {
   constructor(
+      value: Value,
       joinCondition: AbstractValue,
       consequent: Completion | Value,
       consequentEffects: Effects,
@@ -81,7 +82,11 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     invariant(consequent instanceof NormalCompletion || consequent instanceof Value ||
        alternate instanceof NormalCompletion || alternate instanceof Value);
     invariant(consequent instanceof AbruptCompletion || alternate instanceof AbruptCompletion);
-    super(alternate instanceof Value ? alternate : alternate.value);
+    invariant(value === consequent || consequent instanceof AbruptCompletion ||
+      (consequent instanceof NormalCompletion && value === consequent.value));
+    invariant(value === alternate || alternate instanceof AbruptCompletion ||
+      (alternate instanceof NormalCompletion && value === alternate.value));
+    super(value);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
     this.consequentEffects = consequentEffects;
