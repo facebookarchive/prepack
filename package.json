@@ -29,6 +29,7 @@
     "lint": "eslint src scripts",
     "flow": "flow check",
     "test-residual": "node scripts/test-residual.js",
+    "test-residual-with-coverage": "./node_modules/.bin/istanbul cover ./scripts/test-residual.js && ./node_modules/.bin/remap-istanbul -i coverage/coverage.json -o coverage-sourcemapped -t html && echo You can find coverage reports here: && echo   coverage/lcov-report/index.html && echo   coverage-sourcemapped/index.html",
     "test-serializer": "node scripts/test-runner.js",
     "test-serializer-with-coverage": "./node_modules/.bin/istanbul cover ./scripts/test-runner.js && ./node_modules/.bin/remap-istanbul -i coverage/coverage.json -o coverage-sourcemapped -t html && echo You can find coverage reports here: && echo   coverage/lcov-report/index.html && echo   coverage-sourcemapped/index.html",
     "test-sourcemaps": "babel-node scripts/generate-sourcemaps-test.js && bash < scripts/test-sourcemaps.sh",

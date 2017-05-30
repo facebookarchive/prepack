@@ -1027,11 +1027,7 @@ export function EvaluateStatements(
           if (res instanceof AbruptCompletion) {
             let e = realm.getCapturedEffects();
             invariant(e !== undefined);
-            realm.stopEffectCapture();
-            let [_c, _g, b, p, _o] = e;
-            _c; _g; _o;
-            realm.restoreBindings(b);
-            realm.restoreProperties(p);
+            realm.stopEffectCaptureAndUndoEffects();
             if (res instanceof IntrospectionThrowCompletion) {
               realm.applyEffects(e);
               throw res;
@@ -1081,11 +1077,7 @@ export function PartiallyEvaluateStatements(
           if (res instanceof AbruptCompletion) {
             let e = realm.getCapturedEffects();
             invariant(e !== undefined);
-            realm.stopEffectCapture();
-            let [_c, _g, b, p, _o] = e;
-            _c; _g; _o;
-            realm.restoreBindings(b);
-            realm.restoreProperties(p);
+            realm.stopEffectCaptureAndUndoEffects();
             if (res instanceof IntrospectionThrowCompletion) {
               realm.applyEffects(e);
               throw res;

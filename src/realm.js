@@ -353,7 +353,12 @@ export class Realm {
        this.modifiedProperties, this.createdObjects];
   }
 
-  stopEffectCapture() {
+  stopEffectCaptureAndUndoEffects() {
+    // Roll back the state changes
+    this.restoreBindings(this.modifiedBindings);
+    this.restoreProperties(this.modifiedProperties);
+
+    // Restore saved state
     let context = this.getRunningContext();
     if (context.savedEffects !== undefined) {
       let [c, g, b, p, o] = context.savedEffects;
@@ -603,10 +608,13 @@ export class Realm {
   }
 
   appendGenerator(generator: Generator, leadingComment: string = ""): void {
-    let realmGenerator = this.generator;
-    invariant(realmGenerator);
-    let realmGeneratorBody = realmGenerator.body;
     let generatorBody = generator.body;
+    let realmGenerator = this.generator;
+    if (realmGenerator === undefined) {
+      invariant(generatorBody.length === 0);
+      return;
+    }
+    let realmGeneratorBody = realmGenerator.body;
     let i = 0;
     if (generatorBody.length > 0 && leadingComment.length > 0) {
       let firstEntry = generatorBody[i++];

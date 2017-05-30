@@ -58,6 +58,14 @@ export default class Value {
     return !!this.intrinsicName;
   }
 
+  mightBeFalse(): boolean {
+    throw new Error("abstract method; please override");
+  }
+
+  mightNotBeFalse(): boolean {
+    throw new Error("abstract method; please override");
+  }
+
   mightBeNumber(): boolean {
     throw new Error("abstract method; please override");
   }
@@ -76,6 +84,14 @@ export default class Value {
 
   mightNotBeString(): boolean {
     throw new Error("abstract method; please override");
+  }
+
+  mightBeTrue(): boolean {
+    return this.mightNotBeFalse();
+  }
+
+  mightNotBeTrue(): boolean {
+    return this.mightBeFalse();
   }
 
   mightBeUndefined(): boolean {

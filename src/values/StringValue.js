@@ -20,6 +20,10 @@ export default class StringValue extends PrimitiveValue {
 
   value: string;
 
+  mightBeFalse(): boolean {
+    return this.value.length === 0;
+  }
+
   _serialize(): string {
     return this.value;
   }

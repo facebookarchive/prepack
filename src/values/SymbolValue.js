@@ -20,6 +20,10 @@ export default class SymbolValue extends PrimitiveValue {
 
   $Description: ?string;
 
+  mightBeFalse(): boolean {
+    return false;
+  }
+
   _serialize(): Symbol {
     return Symbol(this.$Description);
   }
