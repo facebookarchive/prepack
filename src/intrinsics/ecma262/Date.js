@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue, NumberValue, StringValue, ObjectValue } from "../../values/index.js";
+import { AbstractValue, NativeFunctionValue, NumberValue, StringValue, ObjectValue } from "../../values/index.js";
 import { ToInteger, ToNumber, ToPrimitive } from "../../methods/to.js";
 import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
 import { MakeTime, MakeDate, MakeDay, TimeClip, UTC, ToDateString, thisTimeValue } from "../../methods/date.js";
@@ -189,8 +189,12 @@ export default function (realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.3.3.2
   func.defineNativeMethod("parse", 1, (context, [string]) => {
-    const parsedDate = Date.parse(string.value);
-    return new NumberValue(realm, parsedDate);
+    if (realm.useAbstractInterpretation) {
+      throw AbstractValue.createIntrospectionErrorThrowCompletion(string);
+    } else {
+      const parsedDate = Date.parse(string.value);
+      return new NumberValue(realm, parsedDate);
+    }
   });
 
   // ECMA262 20.3.3.4
