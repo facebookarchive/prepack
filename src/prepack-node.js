@@ -50,7 +50,9 @@ export function prepackString(filename: string, code: string, sourceMap: string,
    }
 }
 
-export function prepackStdin(options: Options = defaultOptions, callback: Function) {
+export function prepackStdin(
+    options: Options = defaultOptions,
+    callback: ({code: string, map?: SourceMap})=>void) {
   let sourceMapFilename = options.inputSourceMapFilename || '';
   process.stdin.setEncoding('utf8');
   process.stdin.resume();
@@ -73,7 +75,11 @@ export function prepackStdin(options: Options = defaultOptions, callback: Functi
   });
 }
 
-export function prepackFile(filename: string, options: Options = defaultOptions, callback: Function) {
+export function prepackFile(
+    filename: string,
+    options: Options = defaultOptions,
+    callback: ({code: string, map?: SourceMap})=>void,
+    errorHandler?: (err: ?Error)=>void) {
   if (options.compatibility === 'node-cli') {
     prepackNodeCLI(filename, options, callback);
     return;
@@ -81,7 +87,7 @@ export function prepackFile(filename: string, options: Options = defaultOptions,
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
-      callback(fileErr);
+      if (errorHandler) errorHandler(fileErr);
       return;
     }
     fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
@@ -96,7 +102,7 @@ export function prepackFile(filename: string, options: Options = defaultOptions,
         callback(err);
         return;
       }
-      callback(null, serialized);
+      callback(serialized);
     });
   });
 }
