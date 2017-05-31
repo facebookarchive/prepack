@@ -1038,15 +1038,14 @@ export class LexicalEnvironment {
 
   evaluateAbstract(ast: BabelNode, strictCode: boolean, metadata?: any): NormalCompletion | Value | Reference {
     this.realm.currentLocation = ast.loc;
-    if (this.realm.timeout) this.realm.testTimeout();
+    this.realm.testTimeout();
 
     let evaluator = this.realm.evaluators[(ast.type: string)];
     if (evaluator) {
       return evaluator(ast, strictCode, this, this.realm, metadata);
     }
 
-    let err = new TypeError(`Unsupported node type ${ast.type}`);
-    throw err;
+    throw new TypeError(`Unsupported node type ${ast.type}`);
   }
 }
 

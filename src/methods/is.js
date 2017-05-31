@@ -92,7 +92,7 @@ export function IsExtensible(realm: Realm, O: ObjectValue | AbstractObjectValue)
 export function IsCallable(realm: Realm, func: Value): boolean {
   // 1. If Type(argument) is not Object, return false.
   if (!func.mightBeObject()) return false;
-  if (HasCompatibleType(realm, func, FunctionValue)) return true;
+  if (HasCompatibleType(func, FunctionValue)) return true;
 
   // 2. If argument has a [[Call]] internal method, return true.
   func = func.throwIfNotConcreteObject();

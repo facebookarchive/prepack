@@ -607,7 +607,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 7. If element0 is undefined or null, let R be the empty String; otherwise, let R be ? ToString(element0).
     let R: ?string;
-    if (HasSomeCompatibleType(realm, element0, UndefinedValue, NullValue)) {
+    if (HasSomeCompatibleType(element0, UndefinedValue, NullValue)) {
       R = "";
     } else {
       R = ToStringPartial(realm, element0);
@@ -626,7 +626,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // c. If element is undefined or null, let next be the empty String; otherwise, let next be ? ToString(element).
       let next: ?string;
-      if (HasSomeCompatibleType(realm, element, UndefinedValue, NullValue)) {
+      if (HasSomeCompatibleType(element, UndefinedValue, NullValue)) {
         next = "";
       } else {
         next = ToStringPartial(realm, element);
@@ -1614,7 +1614,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 6. If firstElement is undefined or null, then
     let R: ?string;
-    if (HasSomeCompatibleType(realm, firstElement, UndefinedValue, NullValue)) {
+    if (HasSomeCompatibleType(firstElement, UndefinedValue, NullValue)) {
       // a. Let R be the empty String.
       R = "";
     } else { // 7. Else,
@@ -1634,7 +1634,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
       let nextElement = Get(realm, array, new StringValue(realm, k + "")).throwIfNotConcrete();
 
       // c. If nextElement is undefined or null, then
-      if (HasSomeCompatibleType(realm, nextElement, UndefinedValue, NullValue)) {
+      if (HasSomeCompatibleType(nextElement, UndefinedValue, NullValue)) {
         // i. Let R be the empty String.
         R = "";
       } else { // d. Else,

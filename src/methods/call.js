@@ -230,7 +230,7 @@ export function OrdinaryCallBindThis(realm: Realm, F: FunctionValue, calleeConte
     thisValue = (thisArgument: any);
   } else { // 6. Else,
     // a. If thisArgument is null or undefined, then
-    if (HasSomeCompatibleType(realm, thisArgument, NullValue, UndefinedValue)) {
+    if (HasSomeCompatibleType(thisArgument, NullValue, UndefinedValue)) {
       // i. Let globalEnv be calleeRealm.[[GlobalEnv]].
       let globalEnv = realm.$GlobalEnv;
 

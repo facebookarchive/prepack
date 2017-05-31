@@ -45,18 +45,18 @@ let flags = {
 };
 
 while (args.length) {
-  let arg = args[0]; args.shift();
+  let arg = args.shift();
   if (!arg.startsWith("--")) {
     inputFilename = arg;
   } else {
     arg = arg.slice(2);
     switch (arg) {
       case "out":
-        arg = args[0]; args.shift();
+        arg = args.shift();
         outputFilename = arg;
         break;
       case "compatibility":
-        arg = args[0]; args.shift();
+        arg = args.shift();
         if (!CompatibilityValues.includes(arg)) {
           console.error(`Unsupported compatibility: ${arg}`);
           process.exit(1);
@@ -64,13 +64,13 @@ while (args.length) {
         compatibility = (arg: any);
         break;
       case "mathRandomSeed":
-        mathRandomSeed = args[0]; args.shift();
+        mathRandomSeed = args.shift();
         break;
       case "srcmapIn":
-        inputSourceMap = args[0]; args.shift();
+        inputSourceMap = args.shift();
         break;
       case "srcmapOut":
-        outputSourceMap = args[0]; args.shift();
+        outputSourceMap = args.shift();
         break;
       case "help":
         console.log("Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ] [ --singlePass ] [ --debugNames ]" + "\n" + HELP_STR);

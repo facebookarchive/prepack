@@ -347,7 +347,7 @@ export class Modules {
         let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
         let [compl, generator, bindings, properties, createdObjects] =
-          realm.partially_evaluate_node(node, true, env, false);
+          realm.partially_evaluate_node(node, true, env);
         // for lint unused
         invariant(bindings);
 

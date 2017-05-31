@@ -527,7 +527,7 @@ export default function (realm: Realm): ObjectValue {
       }
 
       // 6. Assert: unfiltered will be either a primitive value or an object that is defined by either an ArrayLiteral or an ObjectLiteral.
-      invariant(HasSomeCompatibleType(realm, unfiltered, PrimitiveValue, ObjectValue, ArrayValue), "expected primitive, object or array");
+      invariant(HasSomeCompatibleType(unfiltered, PrimitiveValue, ObjectValue, ArrayValue), "expected primitive, object or array");
     }
 
     // 7. If IsCallable(reviver) is true, then

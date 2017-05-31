@@ -136,7 +136,7 @@ export function ForInOfHeadEvaluation(realm: Realm, env: LexicalEnvironment, TDZ
   // 6. If iterationKind is enumerate, then
   if (iterationKind === "enumerate") {
     // a. If exprValue.[[Value]] is null or undefined, then
-    if (HasSomeCompatibleType(realm, exprValue, NullValue, UndefinedValue)) {
+    if (HasSomeCompatibleType(exprValue, NullValue, UndefinedValue)) {
       // i. Return Completion{[[Type]]: break, [[Value]]: empty, [[Target]]: empty}.
       throw new BreakCompletion(realm.intrinsics.empty, undefined);
     }

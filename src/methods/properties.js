@@ -757,7 +757,7 @@ export function PutValue(realm: Realm, V: Value | Reference, W: Value) {
     // a. If HasPrimitiveBase(V) is true, then
     if (HasPrimitiveBase(realm, V)) {
       // i. Assert: In realm case, base will never be null or undefined.
-      invariant(base instanceof Value && !HasSomeCompatibleType(realm, base, UndefinedValue, NullValue));
+      invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
       // ii. Set base to ToObject(base).
       base = ToObjectPartial(realm, base);

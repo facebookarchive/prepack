@@ -58,7 +58,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
 
   // 1. If pattern is undefined, let P be the empty String.
   let P;
-  if (!pattern || HasCompatibleType(realm, pattern, UndefinedValue)) {
+  if (!pattern || HasCompatibleType(pattern, UndefinedValue)) {
     P = "";
   } else { // 2. Else, let P be ? ToString(pattern).
     P = ToStringPartial(realm, pattern);
@@ -66,7 +66,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
 
   // 3. If flags is undefined, let F be the empty String.
   let F;
-  if (!flags || HasCompatibleType(realm, flags, UndefinedValue)) {
+  if (!flags || HasCompatibleType(flags, UndefinedValue)) {
     F = "";
   } else { // 4. Else, let F be ? ToString(flags).
     F = ToStringPartial(realm, flags);
@@ -162,7 +162,7 @@ export function RegExpExec(realm: Realm, R: ObjectValue, S: string): ObjectValue
     let result = Call(realm, exec, R, [new StringValue(realm, S)]);
 
     // b. If Type(result) is neither Object or Null, throw a TypeError exception.
-    if (!HasSomeCompatibleType(realm, result, ObjectValue, NullValue)) {
+    if (!HasSomeCompatibleType(result, ObjectValue, NullValue)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(result) is neither Object or Null");
     }
 
