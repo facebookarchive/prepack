@@ -189,7 +189,8 @@ export default function (realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.3.3.2
   func.defineNativeMethod("parse", 1, (context, [string]) => {
-    throw new Error("TODO: Implement Date.parse");
+    const parsedDate = Date.parse(string.value);
+    return new NumberValue(realm, parsedDate);
   });
 
   // ECMA262 20.3.3.4
