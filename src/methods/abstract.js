@@ -55,7 +55,7 @@ export function SplitMatch(realm: Realm, S: string, q: number, R: string): false
 
 // ECMA262 7.2.1
 export function RequireObjectCoercible<T: Value>(realm: Realm, arg: T): T {
-  if (HasSomeCompatibleType(realm, arg, NullValue, UndefinedValue)) {
+  if (HasSomeCompatibleType(arg, NullValue, UndefinedValue)) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "null or undefined");
   } else {
     return arg;
@@ -452,13 +452,13 @@ export function Type(realm: Realm, val: Value): string {
     return "Undefined";
   } else if (val instanceof NullValue) {
     return "Null";
-  } else if (HasCompatibleType(realm, val, BooleanValue)) {
+  } else if (HasCompatibleType(val, BooleanValue)) {
     return "Boolean";
-  } else if (HasCompatibleType(realm, val, StringValue)) {
+  } else if (HasCompatibleType(val, StringValue)) {
     return "String";
-  } else if (HasCompatibleType(realm, val, SymbolValue)) {
+  } else if (HasCompatibleType(val, SymbolValue)) {
     return "Symbol";
-  } else if (HasCompatibleType(realm, val, NumberValue)) {
+  } else if (HasCompatibleType(val, NumberValue)) {
     return "Number";
   } else if (!val.mightNotBeObject()) {
     return "Object";

@@ -121,7 +121,7 @@ export function OrdinaryHasProperty(realm: Realm, O: ObjectValue, P: PropertyKey
 // Checks if the given value is equal to or a subtype of the given type.
 // If the value is an abstract value without precise type information,
 // an introspection error is thrown.
-export function HasCompatibleType(realm: Realm, value: Value, type: typeof Value): boolean {
+export function HasCompatibleType(value: Value, type: typeof Value): boolean {
   let valueType = value.getType();
   if (valueType === Value) {
     invariant(value instanceof AbstractValue);
@@ -130,7 +130,7 @@ export function HasCompatibleType(realm: Realm, value: Value, type: typeof Value
   return Value.isTypeCompatibleWith(valueType, type);
 }
 
-export function HasSomeCompatibleType(realm: Realm, value: Value, ...manyTypes: Array<typeof Value>): boolean {
+export function HasSomeCompatibleType(value: Value, ...manyTypes: Array<typeof Value>): boolean {
   let valueType = value.getType();
   if (valueType === Value) {
     invariant(value instanceof AbstractValue);

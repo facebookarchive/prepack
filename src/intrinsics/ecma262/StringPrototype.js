@@ -308,7 +308,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. If regexp is neither undefined nor null, then
-    if (!HasSomeCompatibleType(realm, regexp, UndefinedValue, NullValue)) {
+    if (!HasSomeCompatibleType(regexp, UndefinedValue, NullValue)) {
       // a. Let matcher be ? GetMethod(regexp, @@match).
       let matcher = GetMethod(realm, regexp, realm.intrinsics.SymbolMatch);
 
@@ -468,7 +468,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. If searchValue is neither undefined nor null, then
-    if (!HasSomeCompatibleType(realm, searchValue, NullValue, UndefinedValue)) {
+    if (!HasSomeCompatibleType(searchValue, NullValue, UndefinedValue)) {
       // a. Let replacer be ? GetMethod(searchValue, @@replace).
       let replacer = GetMethod(realm, searchValue, realm.intrinsics.SymbolReplace);
 
@@ -539,7 +539,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. If regexp is neither undefined nor null, then
-    if (!HasSomeCompatibleType(realm, regexp, UndefinedValue, NullValue)) {
+    if (!HasSomeCompatibleType(regexp, UndefinedValue, NullValue)) {
       // a. Let searcher be ? GetMethod(regexp, @@search).
       let searcher = GetMethod(realm, regexp, realm.intrinsics.SymbolSearch);
 
@@ -596,7 +596,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. If separator is neither undefined nor null, then
-    if (!HasSomeCompatibleType(realm, separator, UndefinedValue, NullValue)) {
+    if (!HasSomeCompatibleType(separator, UndefinedValue, NullValue)) {
       // a. Let splitter be ? GetMethod(separator, @@split).
       let splitter = GetMethod(realm, separator, realm.intrinsics.SymbolSplit);
 

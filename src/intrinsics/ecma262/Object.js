@@ -48,7 +48,7 @@ export default function (realm: Realm): NativeFunctionValue {
     }
 
     // 2. If value is null, undefined or not supplied, return ObjectCreate(%ObjectPrototype%).
-    if (HasSomeCompatibleType(realm, value, NullValue, UndefinedValue)) {
+    if (HasSomeCompatibleType(value, NullValue, UndefinedValue)) {
       return ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     }
 
@@ -73,7 +73,7 @@ export default function (realm: Realm): NativeFunctionValue {
       let keys, frm;
 
       // a. If nextSource is undefined or null, let keys be a new empty List.
-      if (HasSomeCompatibleType(realm, nextSource, NullValue, UndefinedValue)) {
+      if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) {
         continue;
       } else { // b. Else,
         // i. Let from be ToObject(nextSource).
@@ -126,7 +126,7 @@ export default function (realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.2
   func.defineNativeMethod("create", 2, (context, [O, Properties]) => {
     // 1. If Type(O) is neither Object nor Null, throw a TypeError exception.
-    if (!HasSomeCompatibleType(realm, O, ObjectValue, NullValue)) {
+    if (!HasSomeCompatibleType(O, ObjectValue, NullValue)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 
@@ -368,7 +368,7 @@ export default function (realm: Realm): NativeFunctionValue {
     O = RequireObjectCoercible(realm, O);
 
     // 2. If Type(proto) is neither Object nor Null, throw a TypeError exception.
-    if (!HasSomeCompatibleType(realm, proto, ObjectValue, NullValue)) {
+    if (!HasSomeCompatibleType(proto, ObjectValue, NullValue)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 

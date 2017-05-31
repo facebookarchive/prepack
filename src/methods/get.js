@@ -237,7 +237,7 @@ export function GetMethod(realm: Realm, V: Value, P: PropertyKeyValue): Undefine
   let func = GetV(realm, V, P);
 
   // 3. If func is either undefined or null, return undefined.
-  if (HasSomeCompatibleType(realm, func, NullValue, UndefinedValue)) {
+  if (HasSomeCompatibleType(func, NullValue, UndefinedValue)) {
     return realm.intrinsics.undefined;
   }
 

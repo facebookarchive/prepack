@@ -55,7 +55,7 @@ export function IsSuperReference(realm: Realm, V: Reference): boolean {
 // HasPrimitiveBase(V). Returns true if Type(base) is Boolean, String, Symbol, or Number.
 export function HasPrimitiveBase(realm: Realm, V: Reference): boolean {
   let base = GetBase(realm, V);
-  return base instanceof Value && HasSomeCompatibleType(realm, base, BooleanValue, StringValue, SymbolValue, NumberValue);
+  return base instanceof Value && HasSomeCompatibleType(base, BooleanValue, StringValue, SymbolValue, NumberValue);
 }
 
 // ECMA262 6.2.3
@@ -91,7 +91,7 @@ export function GetValue(realm: Realm, V: Reference | Value): Value {
     // a. If HasPrimitiveBase(V) is true, then
     if (HasPrimitiveBase(realm, V)) {
       // i. Assert: In this case, base will never be null or undefined.
-      invariant(base instanceof Value && !HasSomeCompatibleType(realm, base, UndefinedValue, NullValue));
+      invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
       // ii. Let base be ToObject(base).
       base = ToObjectPartial(realm, base);

@@ -101,7 +101,7 @@ export function SpeciesConstructor(realm: Realm, O: ObjectValue, defaultConstruc
   let S = Get(realm, C, realm.intrinsics.SymbolSpecies);
 
   // 6. If S is either undefined or null, return defaultConstructor.
-  if (HasSomeCompatibleType(realm, S, UndefinedValue, NullValue)) return defaultConstructor;
+  if (HasSomeCompatibleType(S, UndefinedValue, NullValue)) return defaultConstructor;
 
   // 7. If IsConstructor(S) is true, return S.
   if (IsConstructor(realm, S)) {

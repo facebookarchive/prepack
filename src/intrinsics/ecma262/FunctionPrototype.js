@@ -63,7 +63,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 2. If argArray is null or undefined, then
-    if (HasSomeCompatibleType(realm, argArray, NullValue, UndefinedValue)) {
+    if (HasSomeCompatibleType(argArray, NullValue, UndefinedValue)) {
       // TODO a. Perform PrepareForTailCall().
 
       // b. Return ? Call(func, thisArg).

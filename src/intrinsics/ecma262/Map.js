@@ -45,7 +45,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
     // 5. If iterable is either undefined or null, let iter be undefined.
     let iter, adder;
-    if (HasSomeCompatibleType(realm, iterable, NullValue, UndefinedValue)) {
+    if (HasSomeCompatibleType(iterable, NullValue, UndefinedValue)) {
       adder = realm.intrinsics.undefined;
       iter = realm.intrinsics.undefined;
     } else { // 6. Else,

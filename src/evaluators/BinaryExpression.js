@@ -63,8 +63,8 @@ export function getPureBinaryOperationResultType(realm: Realm, op: BabelBinaryOp
 export function computeBinary(realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value): Value {
   // partial evaluation shortcut for a particular pattern (avoiding general throwIfNotConcrete check)
   if (op === "==" || op === "===" || op === "!=" || op === "!==") {
-    if (!lval.mightNotBeObject() && HasSomeCompatibleType(realm, rval, NullValue, UndefinedValue) ||
-      HasSomeCompatibleType(realm, lval, NullValue, UndefinedValue) && !rval.mightNotBeObject())
+    if (!lval.mightNotBeObject() && HasSomeCompatibleType(rval, NullValue, UndefinedValue) ||
+      HasSomeCompatibleType(lval, NullValue, UndefinedValue) && !rval.mightNotBeObject())
       return new BooleanValue(realm, op[0] !== "=");
   }
 

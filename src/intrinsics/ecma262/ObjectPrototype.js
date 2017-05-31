@@ -110,7 +110,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
       let O = RequireObjectCoercible(realm, context);
 
       // 2. If Type(proto) is neither Object nor Null, return undefined.
-      if (!HasSomeCompatibleType(realm, proto, ObjectValue, NullValue)) return realm.intrinsics.undefined;
+      if (!HasSomeCompatibleType(proto, ObjectValue, NullValue)) return realm.intrinsics.undefined;
 
       // 3. If Type(O) is not Object, return undefined.
       if (!O.mightBeObject()) return realm.intrinsics.undefined;
