@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeNumericLiteral } from "babel-types";
+import type { BabelNodeNumericLiteral, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -17,7 +17,7 @@ import { NumberValue } from "../values/index.js";
 
 export default function (
   ast: BabelNodeNumericLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [NumberValue, BabelNodeNumericLiteral] {
+): [NumberValue, BabelNodeNumericLiteral, Array<BabelNodeStatement>] {
   let result = new NumberValue(realm, ast.value);
-  return [result, ast];
+  return [result, ast, []];
 }

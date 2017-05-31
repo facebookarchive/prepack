@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeExpressionStatement } from "babel-types";
+import type { BabelNodeExpressionStatement, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -20,8 +20,8 @@ import * as t from "babel-types";
 // ECMA262 13.5.1
 export default function (
   ast: BabelNodeExpressionStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [Completion | Value, BabelNodeExpressionStatement] {
-  let [result, partial_expression_ast] = env.partiallyEvaluateCompletionDeref(ast.expression, strictCode);
+): [Completion | Value, BabelNodeExpressionStatement, Array<BabelNodeStatement>] {
+  let [result, partial_expression_ast, io] = env.partiallyEvaluateCompletionDeref(ast.expression, strictCode);
   let partial_ast = t.expressionStatement((partial_expression_ast: any));
-  return [result, partial_ast];
+  return [result, partial_ast, io];
 }

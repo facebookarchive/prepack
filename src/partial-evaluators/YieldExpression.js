@@ -9,13 +9,13 @@
 
 /* @flow */
 
-import type { BabelNodeYieldExpression } from "babel-types";
+import type { BabelNodeYieldExpression, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import type { Value } from "../values/index.js";
 
 export default function (
   ast: BabelNodeYieldExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [Value, BabelNodeYieldExpression] {
+): [Value, BabelNodeYieldExpression, Array<BabelNodeStatement>] {
   throw new Error("TODO: YieldExpression");
 }

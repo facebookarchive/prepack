@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeArrayExpression } from "babel-types";
+import type { BabelNodeArrayExpression, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -24,13 +24,14 @@ import * as t from "babel-types";
 // ECMA262 2.2.5.3
 export default function (
   ast: BabelNodeArrayExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [AbruptCompletion | Value, BabelNodeArrayExpression] {
+): [AbruptCompletion | Value, BabelNodeArrayExpression, Array<BabelNodeStatement>] {
   // 1. Let array be ArrayCreate(0).
   let array = ArrayCreate(realm, 0);
 
   // 2. Let len be the result of performing ArrayAccumulation for ElementList with arguments array and 0.
   let elements = ast.elements || [];
   let partial_elements = [];
+  let io = [];
   let len = elements.length;
   let nextIndex = 0;
   for (let i = 0; i < len; i++) {
@@ -40,16 +41,17 @@ export default function (
       continue;
     }
 
-    let elemValue, elemAst;
+    let elemValue, elemAst, elemIO;
     if (elem.type === "SpreadElement")
-      [elemValue, elemAst] = env.partiallyEvaluateCompletionDeref(elem.argument, strictCode);
+      [elemValue, elemAst, elemIO] = env.partiallyEvaluateCompletionDeref(elem.argument, strictCode);
     else
-      [elemValue, elemAst] = env.partiallyEvaluateCompletionDeref(elem, strictCode);
+      [elemValue, elemAst, elemIO] = env.partiallyEvaluateCompletionDeref(elem, strictCode);
+    io.concat(elemIO);
     if (elemValue instanceof AbruptCompletion) {
-      return [elemValue, ast]; //todo: log an error message
+      return [elemValue, ast, io]; //todo: log an error message
     } else if (elemValue instanceof PossiblyNormalCompletion) {
       // TODO: there was a conditional abrupt completion while evaluating elem, so join states somehow
-      return [AbstractValue.createIntrospectionErrorThrowCompletion(elemValue.value), ast];
+      return [AbstractValue.createIntrospectionErrorThrowCompletion(elemValue.value), ast, io];
     }
     invariant(elemValue instanceof Value);
     partial_elements[nextIndex] = (elemAst: any);
@@ -107,7 +109,7 @@ export default function (
         // expressions will be evaluated at runtime. As a consequence their effects
         // have be provisional.
         // TODO: join states somehow
-        return [AbstractValue.createIntrospectionErrorThrowCompletion(spreadObj), ast];
+        return [AbstractValue.createIntrospectionErrorThrowCompletion(spreadObj), ast, io];
       }
     } else if (array.isPartial()) {
       // Dealing with an array element that follows on a spread object that
@@ -145,5 +147,5 @@ export default function (
   // 5. NOTE: The above Set cannot fail because of the nature of the object returned by ArrayCreate.
 
   // 6. Return array.
-  return [array, t.arrayExpression(partial_elements)];
+  return [array, t.arrayExpression(partial_elements), io];
 }

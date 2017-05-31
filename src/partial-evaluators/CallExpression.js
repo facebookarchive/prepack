@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeCallExpression } from "babel-types";
+import type { BabelNodeCallExpression, BabelNodeStatement } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
@@ -18,7 +18,7 @@ import { Value } from "../values/index.js";
 
 export default function (
   ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [AbruptCompletion | Value, BabelNodeCallExpression] {
+): [AbruptCompletion | Value, BabelNodeCallExpression, Array<BabelNodeStatement>] {
   let result = env.evaluateCompletionDeref(ast, strictCode);
-  return [result, ast];
+  return [result, ast, []];
 }

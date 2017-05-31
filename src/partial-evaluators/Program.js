@@ -23,7 +23,7 @@ import * as t from "babel-types";
 
 export default function (
   ast: BabelNodeProgram, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [Completion | Value, BabelNodeProgram] {
+): [Completion | Value, BabelNodeProgram, Array<BabelNodeStatement>] {
   strictCode = IsStrict(ast);
 
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);
@@ -33,7 +33,8 @@ export default function (
 
   for (let node of ast.body) {
     if (node.type !== "FunctionDeclaration") {
-      let [potentialVal, partialAst] = env.partiallyEvaluateCompletionDeref(node, strictCode);
+      let [potentialVal, partialAst, nio] = env.partiallyEvaluateCompletionDeref(node, strictCode);
+      for (let ioAst of nio) partialBody.push(ioAst);
       partialBody.push((partialAst: any));
       if (!(potentialVal instanceof EmptyValue)) val = potentialVal;
     } else {
@@ -48,5 +49,5 @@ export default function (
   // the global state.
 
   let result = val || realm.intrinsics.empty;
-  return [result, t.program(partialBody, ast.directives)];
+  return [result, t.program(partialBody, ast.directives), []];
 }

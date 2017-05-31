@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeBooleanLiteral } from "babel-types";
+import type { BabelNodeBooleanLiteral, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -17,7 +17,7 @@ import { BooleanValue } from "../values/index.js";
 
 export default function (
   ast: BabelNodeBooleanLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [BooleanValue, BabelNodeBooleanLiteral]  {
+): [BooleanValue, BabelNodeBooleanLiteral, Array<BabelNodeStatement>] {
   let result = new BooleanValue(realm, ast.value);
-  return [result, ast];
+  return [result, ast, []];
 }

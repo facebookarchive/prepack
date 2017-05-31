@@ -21,7 +21,7 @@ import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptComple
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeExpression } from "babel-types";
+import type { BabelNode, BabelNodeSourceLocation, BabelNodeStatement, BabelNodeExpression } from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
@@ -164,7 +164,7 @@ export class Realm {
   partialEvaluators: {
     [key: string]: (
       ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any
-    ) => [Completion | Reference | Value, BabelNode] };
+    ) => [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] };
 
   tracers: Array<Tracer>;
 

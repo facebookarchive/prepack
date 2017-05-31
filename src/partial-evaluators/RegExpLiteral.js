@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeRegExpLiteral } from "babel-types";
+import type { BabelNodeRegExpLiteral, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -18,7 +18,7 @@ import { ObjectValue, StringValue } from "../values/index.js";
 
 export default function (
   ast: BabelNodeRegExpLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [ObjectValue, BabelNodeRegExpLiteral] {
+): [ObjectValue, BabelNodeRegExpLiteral, Array<BabelNodeStatement>] {
   let result = RegExpCreate(realm, new StringValue(realm, ast.pattern), ast.flags ? new StringValue(realm, ast.flags) : undefined);
-  return [result, ast];
+  return [result, ast, []];
 }
