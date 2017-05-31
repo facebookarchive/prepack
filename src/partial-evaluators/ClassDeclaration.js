@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeClassDeclaration } from "babel-types";
+import type { BabelNodeClassDeclaration, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -18,6 +18,6 @@ import { Value } from "../values/index.js";
 
 export default function (
   ast: BabelNodeClassDeclaration, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [AbruptCompletion | Value, BabelNodeClassDeclaration] {
+): [AbruptCompletion | Value, BabelNodeClassDeclaration, Array<BabelNodeStatement>] {
   throw new Error("TODO: ClassDeclaration");
 }

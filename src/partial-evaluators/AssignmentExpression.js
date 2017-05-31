@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeAssignmentExpression } from "babel-types";
+import type { BabelNodeAssignmentExpression, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -19,7 +19,7 @@ import { Value } from "../values/index.js";
 // ECMA262 12.15 Assignment Operators
 export default function (
   ast: BabelNodeAssignmentExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [AbruptCompletion | Value, BabelNodeAssignmentExpression] {
+): [AbruptCompletion | Value, BabelNodeAssignmentExpression, Array<BabelNodeStatement>] {
   let result = env.evaluateCompletionDeref(ast, strictCode);
-  return [result, ast];
+  return [result, ast, []];
 }

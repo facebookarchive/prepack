@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeFile } from "babel-types";
+import type { BabelNodeFile, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -19,8 +19,8 @@ import * as t from "babel-types";
 
 export default function (
   ast: BabelNodeFile, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [Completion | Value, BabelNodeFile] {
-  let [result, partial_program] = env.partiallyEvaluateCompletionDeref(ast.program, strictCode);
+): [Completion | Value, BabelNodeFile, Array<BabelNodeStatement>] {
+  let [result, partial_program, io] = env.partiallyEvaluateCompletionDeref(ast.program, strictCode);
   let partial_file = t.file((partial_program: any), ast.comments, ast.tokens);
-  return [result, partial_file];
+  return [result, partial_file, io];
 }

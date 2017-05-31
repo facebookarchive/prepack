@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeFile } from "babel-types";
+import type { BabelNode, BabelNodeFile, BabelNodeStatement } from "babel-types";
 import type { Realm } from "./realm.js";
 import type { SourceMap, SourceType } from "./types.js";
 
@@ -956,22 +956,22 @@ export class LexicalEnvironment {
 
   partiallyEvaluateCompletionDeref(
     ast: BabelNode, strictCode: boolean, metadata?: any
-  ): [Completion | Value, BabelNode] {
-    let [result, partial_ast] = this.partiallyEvaluateCompletion(ast, strictCode, metadata);
+  ): [Completion | Value, BabelNode, Array<BabelNodeStatement>] {
+    let [result, partial_ast, partial_io] = this.partiallyEvaluateCompletion(ast, strictCode, metadata);
     if (result instanceof Reference) {
       result = GetValue(this.realm, result);
     }
-    return [result, partial_ast];
+    return [result, partial_ast, partial_io];
   }
 
   partiallyEvaluateCompletion(
     ast: BabelNode, strictCode: boolean, metadata?: any
-  ): [Completion | Reference | Value, BabelNode] {
+  ): [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] {
     try {
       return this.partiallyEvaluate(ast, strictCode, metadata);
     } catch (err) {
       if (err instanceof AbruptCompletion)
-        return [err, ast];
+        return [err, ast, []];
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;
@@ -1114,7 +1114,7 @@ export class LexicalEnvironment {
 
   partiallyEvaluate(
     ast: BabelNode, strictCode: boolean, metadata?: any
-  ): [Completion | Reference | Value, BabelNode] {
+  ): [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] {
     let partialEvaluator = this.realm.partialEvaluators[(ast.type: string)];
     if (partialEvaluator) {
       return partialEvaluator(ast, strictCode, this, this.realm, metadata);

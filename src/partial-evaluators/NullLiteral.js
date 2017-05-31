@@ -9,14 +9,14 @@
 
 /* @flow */
 
-import type { BabelNodeNullLiteral } from "babel-types";
+import type { BabelNodeNullLiteral, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { NullValue } from "../values/index.js";
 import type { Realm } from "../realm.js";
 
 export default function (
   ast: BabelNodeNullLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [NullValue, BabelNodeNullLiteral] {
+): [NullValue, BabelNodeNullLiteral, Array<BabelNodeStatement>] {
   let result = realm.intrinsics.null;
-  return [result, ast];
+  return [result, ast, []];
 }
