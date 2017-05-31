@@ -15,7 +15,7 @@ import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObje
 import type { Descriptor, PropertyBinding } from "../types.js";
 
 import { AbruptCompletion, BreakCompletion, Completion, ContinueCompletion,
-   PossiblyNormalCompletion, JoinedAbruptCompletions,
+   PossiblyNormalCompletion, JoinedAbruptCompletions, NormalCompletion,
    ReturnCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Reference } from "../environment.js";
@@ -27,6 +27,39 @@ import { AbstractValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
+
+export function unbundleNormalCompletion(
+  completionOrValue: Completion | Value | Reference
+): [void | NormalCompletion, Value | Reference] {
+  let completion, value;
+  if (completionOrValue instanceof NormalCompletion) {
+    completion = completionOrValue;
+    value = completionOrValue.value;
+  } else {
+    invariant(completionOrValue instanceof Value || completionOrValue instanceof Reference);
+    value = completionOrValue;
+  }
+  return [completion, value];
+}
+
+export function composeNormalCompletions(
+  leftCompletion: void | NormalCompletion, rightCompletion: void | NormalCompletion, resultValue: Value, realm: Realm
+): PossiblyNormalCompletion | Value {
+  if (leftCompletion instanceof PossiblyNormalCompletion) {
+    if (rightCompletion instanceof PossiblyNormalCompletion) {
+      updatePossiblyNormalCompletionWithValue(realm, rightCompletion, resultValue);
+      return composePossiblyNormalCompletions(realm, leftCompletion, rightCompletion);
+    }
+    updatePossiblyNormalCompletionWithValue(realm, leftCompletion, resultValue);
+    return leftCompletion;
+  } else if (rightCompletion instanceof PossiblyNormalCompletion) {
+    updatePossiblyNormalCompletionWithValue(realm, rightCompletion, resultValue);
+    return rightCompletion;
+  } else {
+    invariant(leftCompletion === undefined && rightCompletion === undefined);
+    return resultValue;
+  }
+}
 
 export function composePossiblyNormalCompletions(
     realm: Realm, pnc: PossiblyNormalCompletion, c: PossiblyNormalCompletion): PossiblyNormalCompletion {

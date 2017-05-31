@@ -43,8 +43,8 @@ function search(dir, relative) {
 let tests = search(`${__dirname}/../test/residual`, "test/residual");
 
 function exec(code) {
-  let script = new vm.Script(`var global = this; var self = this; __result = ${code} // keep newline here as code may end with comment
-report(__result);`, { cachedDataProduced: false });
+  let script = new vm.Script(`var global = this; var self = this; var __result = ${code} // keep newline here as code may end with comment
+; report(__result);`, { cachedDataProduced: false });
 
   let result = "";
   let logOutput = "";
@@ -102,8 +102,8 @@ function runTest(name, code) {
       }
     }
     try {
-      expected = exec(`(function () {return ${code}; // keep newline here as code may end with comment
-}).call(this);`);
+      expected = exec(`(function () { ${code}; // keep newline here as code may end with comment
+return __result; }).call(this);`);
 
       let i = 0;
       let max = 4;
@@ -123,7 +123,8 @@ function runTest(name, code) {
           }
         }
         if (markersIssue) break;
-        actual = exec(newCode);
+        actual =  exec(`(function () { ${newCode}; // keep newline here as code may end with comment
+          return __result; }).call(this);`);
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
           break;

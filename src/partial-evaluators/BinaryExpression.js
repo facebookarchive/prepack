@@ -9,14 +9,14 @@
 
 /* @flow */
 
-import type { BabelNodeBinaryExpression, BabelNodeExpression, BabelNodeStatement } from "babel-types";
+import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
 import { computeBinary, getPureBinaryOperationResultType } from "../evaluators/BinaryExpression.js";
-import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { composePossiblyNormalCompletions, updatePossiblyNormalCompletionWithValue } from "../methods/index.js";
+import { composeNormalCompletions, unbundleNormalCompletion } from "../methods/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
 
 import * as t from "babel-types";
@@ -27,11 +27,7 @@ export default function (
 ): [Completion | Value, BabelNodeExpression, Array<BabelNodeStatement>] {
   let [lval, leftAst, leftIO] = env.partiallyEvaluateCompletionDeref(ast.left, strictCode);
   if (lval instanceof AbruptCompletion) return [lval, (leftAst: any), leftIO];
-  let leftCompletion;
-  if (lval instanceof PossiblyNormalCompletion) {
-    leftCompletion = lval;
-    lval = leftCompletion.value;
-  }
+  let leftCompletion; [leftCompletion, lval] = unbundleNormalCompletion(lval);
   invariant(lval instanceof Value);
 
   let [rval, rightAst, rightIO] = env.partiallyEvaluateCompletionDeref(ast.right, strictCode);
@@ -39,11 +35,7 @@ export default function (
   if (rval instanceof AbruptCompletion) {
     return [rval, t.binaryExpression(ast.operator, (leftAst: any), (rightAst: any)), io];
   }
-  let rightCompletion;
-  if (rval instanceof PossiblyNormalCompletion) {
-    rightCompletion = rval;
-    rval = rightCompletion.value;
-  }
+  let rightCompletion; [rightCompletion, rval] = unbundleNormalCompletion(rval);
   invariant(rval instanceof Value);
 
   let op = ast.operator;
@@ -54,7 +46,10 @@ export default function (
       resultAst = t.valueToNode(resultValue.serialize());
     }
   }
+  // if resultValue is undefined, one or both operands are abstract.
   if (resultValue === undefined && (op === "==" || op === "===" || op === "!=" || op === "!==")) {
+    // When comparing to null or undefined, we can return a compile time value if we know the
+    // other operand must be an object.
     if (!lval.mightNotBeObject() && (rval instanceof NullValue || rval instanceof UndefinedValue) ||
         !rval.mightNotBeObject() && (lval instanceof NullValue || lval instanceof UndefinedValue)) {
       resultValue = new BooleanValue(realm, op[0] !== "=");
@@ -62,6 +57,17 @@ export default function (
     }
   }
   // todo: special case if one result is known to be 0 or 1
+  if (resultAst === undefined) {
+    resultAst = t.binaryExpression(op, (leftAst: any), (rightAst: any));
+  }
+  return createAbstractValueForBinary(op, resultAst, lval, rval, leftCompletion, rightCompletion, resultValue, io, realm);
+}
+
+export function createAbstractValueForBinary(
+    op: BabelBinaryOperator, ast: BabelNodeExpression, lval: Value, rval: Value,
+    leftCompletion: void | NormalCompletion, rightCompletion: void | NormalCompletion,
+    resultValue: void | Value, io: Array<BabelNodeStatement>, realm: Realm
+): [Completion | Value, BabelNodeExpression, Array<BabelNodeStatement>] {
   if (resultValue === undefined) {
     let resultType = getPureBinaryOperationResultType(realm, op, lval, rval);
     if (resultType === undefined) {
@@ -77,22 +83,6 @@ export default function (
     resultValue = realm.createAbstract(
       new TypesDomain(resultType), ValuesDomain.topVal, [], t.identifier("never used"));
   }
-  if (resultAst === undefined) {
-    resultAst = t.binaryExpression(op, (leftAst: any), (rightAst: any));
-  }
-  if (leftCompletion instanceof PossiblyNormalCompletion) {
-    if (rightCompletion instanceof PossiblyNormalCompletion) {
-      updatePossiblyNormalCompletionWithValue(realm, rightCompletion, resultValue);
-      let completion = composePossiblyNormalCompletions(realm, leftCompletion, rightCompletion);
-      return [completion, resultAst, io];
-    }
-    updatePossiblyNormalCompletionWithValue(realm, leftCompletion, resultValue);
-    return [leftCompletion, resultAst, io];
-  } else if (rightCompletion instanceof PossiblyNormalCompletion) {
-    updatePossiblyNormalCompletionWithValue(realm, rightCompletion, resultValue);
-    return [rightCompletion, resultAst, io];
-  } else {
-    invariant(!leftCompletion && !rightCompletion);
-    return [resultValue, resultAst, io];
-  }
+  let r = composeNormalCompletions(leftCompletion, rightCompletion, resultValue, realm);
+  return [r, ast, io];
 }
