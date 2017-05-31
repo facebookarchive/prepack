@@ -96,7 +96,7 @@ export function prepackFile(filename: string, options: Options = defaultOptions,
         callback(err);
         return;
       }
-      callback(null, serialized);
+      callback(serialized);
     });
   });
 }
