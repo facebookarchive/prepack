@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeCatchClause } from "babel-types";
+import type { BabelNodeCatchClause, BabelNodeStatement } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
@@ -20,9 +20,9 @@ import invariant from "../invariant.js";
 // ECAM262 13.15.7
 export default function (
   ast: BabelNodeCatchClause, strictCode: boolean, env: LexicalEnvironment, realm: Realm, thrownValue: any
-): [AbruptCompletion | Value, BabelNodeCatchClause] {
+): [AbruptCompletion | Value, BabelNodeCatchClause, Array<BabelNodeStatement>] {
   invariant(thrownValue instanceof ThrowCompletion, "Metadata isn't a throw completion");
 
   let result = env.evaluateCompletionDeref(ast, strictCode);
-  return [result, ast];
+  return [result, ast, []];
 }

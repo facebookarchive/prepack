@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeEmptyStatement } from "babel-types";
+import type { BabelNodeEmptyStatement, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -17,6 +17,6 @@ import { EmptyValue } from "../values/index.js";
 
 export default function (
   ast: BabelNodeEmptyStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [EmptyValue,  BabelNodeEmptyStatement] {
-  return [realm.intrinsics.empty, ast];
+): [EmptyValue,  BabelNodeEmptyStatement, Array<BabelNodeStatement>] {
+  return [realm.intrinsics.empty, ast, []];
 }

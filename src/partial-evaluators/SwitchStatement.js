@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeSwitchStatement } from "babel-types";
+import type { BabelNodeSwitchStatement, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -19,7 +19,7 @@ import { Value } from "../values/index.js";
 // 13.12.11
 export default function (
   ast: BabelNodeSwitchStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm, labelSet: Array<string>
-): [AbruptCompletion | Value, BabelNodeSwitchStatement] {
+): [AbruptCompletion | Value, BabelNodeSwitchStatement, Array<BabelNodeStatement>] {
   let result = env.evaluateCompletionDeref(ast, strictCode);
-  return [result, ast];
+  return [result, ast, []];
 }

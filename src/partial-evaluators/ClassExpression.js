@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeClassExpression } from "babel-types";
+import type { BabelNodeClassExpression, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -18,6 +18,6 @@ import { Value } from "../values/index.js";
 
 export default function (
   ast: BabelNodeClassExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [AbruptCompletion | Value, BabelNodeClassExpression] {
+): [AbruptCompletion | Value, BabelNodeClassExpression, Array<BabelNodeStatement>] {
   throw new Error("TODO: ClassExpression");
 }

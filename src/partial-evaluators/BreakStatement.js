@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeBreakStatement } from "babel-types";
+import type { BabelNodeBreakStatement, BabelNodeStatement } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
@@ -17,7 +17,7 @@ import { BreakCompletion } from "../completions.js";
 
 export default function (
   ast: BabelNodeBreakStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [BreakCompletion, BabelNodeBreakStatement] {
+): [BreakCompletion, BabelNodeBreakStatement, Array<BabelNodeStatement>] {
   let result = new BreakCompletion(realm.intrinsics.empty, ast.label && ast.label.name);
-  return [result, ast];
+  return [result, ast, []];
 }
