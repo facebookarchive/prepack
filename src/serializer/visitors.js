@@ -20,8 +20,6 @@ import type { TryQuery, FunctionInfo, Names } from "./types.js";
 export type ClosureRefVisitorState = {
   tryQuery: TryQuery<*>,
   val: FunctionValue;
-  reasons: Array<string>;
-  name: string;
   functionInfo: FunctionInfo;
   map: Names;
   realm: Realm;

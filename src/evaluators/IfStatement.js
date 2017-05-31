@@ -63,11 +63,11 @@ export function evaluateWithAbstractConditional(condValue: AbstractValue,
     env: LexicalEnvironment, realm: Realm): NormalCompletion | Value | Reference {
   // Evaluate consequent and alternate in sandboxes and get their effects.
   let [compl1, gen1, bindings1, properties1, createdObj1] =
-    realm.partially_evaluate_node(consequent, strictCode, env);
+    realm.evaluateNodeForEffects(consequent, strictCode, env);
 
   let [compl2, gen2, bindings2, properties2, createdObj2] =
     alternate ?
-      realm.partially_evaluate_node(alternate, strictCode, env) :
+      realm.evaluateNodeForEffects(alternate, strictCode, env) :
       construct_empty_effects(realm);
 
   // Join the effects, creating an abstract view of what happened, regardless
@@ -82,11 +82,11 @@ export function evaluateWithAbstractConditional(condValue: AbstractValue,
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    realm.capture_effects();
+    realm.captureEffects();
   }
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.
-  realm.apply_effects(joinedEffects);
+  realm.applyEffects(joinedEffects);
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;

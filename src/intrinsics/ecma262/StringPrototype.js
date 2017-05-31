@@ -792,7 +792,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
       if (locales) locales = locales.serialize();
     }
 
-    if (realm.isPartial && (type === "LocaleUpper" || type === "LocaleLower")) {
+    if (realm.useAbstractInterpretation && (type === "LocaleUpper" || type === "LocaleLower")) {
       // The locale is environment-dependent
       throw AbstractValue.createIntrospectionErrorThrowCompletion(O);
     }

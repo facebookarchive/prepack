@@ -199,7 +199,7 @@ function initializeStreamWrap(realm) {
     configurable: false
   });
 
-  let ShutdownWrap = createAbstractValue(realm, FunctionValue, "process.binding('stream_wrap').ShutdownWrap", {});
+  let ShutdownWrap = createAbstractValue(realm, FunctionValue, "process.binding('stream_wrap').ShutdownWrap");
   DefinePropertyOrThrow(realm, obj, "ShutdownWrap", {
     value: ShutdownWrap,
     writable: true,
@@ -213,7 +213,7 @@ function initializeStreamWrap(realm) {
 
 function initializeFSEvent(realm) {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('fs_event_wrap')");
-  let FSEvent = createAbstractValue(realm, FunctionValue, "process.binding('fs_event_wrap').FSEvent", {});
+  let FSEvent = createAbstractValue(realm, FunctionValue, "process.binding('fs_event_wrap').FSEvent");
   DefinePropertyOrThrow(realm, obj, "FSEvent", {
     value: FSEvent,
     writable: true,
@@ -272,7 +272,7 @@ function reverseConfigJSON(config) {
 }
 
 export default function (realm: Realm, processArgv: Array<string>): ObjectValue {
-  if (!realm.isPartial) {
+  if (!realm.useAbstractInterpretation) {
     throw new Error('Realm is not partial');
   }
   // TODO: This causes a dependency on the native `process` which doesn't
@@ -492,7 +492,7 @@ export default function (realm: Realm, processArgv: Array<string>): ObjectValue 
     enumerable: true,
   });
 
-  let argv = createAbstractValue(realm, ObjectValue, "process.argv", {});
+  let argv = createAbstractValue(realm, ObjectValue, "process.argv");
 
   DefinePropertyOrThrow(realm, argv, "0", {
     value: argv0,

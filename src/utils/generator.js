@@ -33,11 +33,12 @@ export type BodyEntry = {
   declaresDerivedId?: BabelNodeIdentifier;
   args: Array<Value>;
   buildNode: GeneratorBuildNodeFunction;
+  dependencies?: Array<Generator>;
 }
 
 export class Generator {
   constructor(realm: Realm) {
-    invariant(realm.isPartial);
+    invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
@@ -243,10 +244,20 @@ export class Generator {
 
   serialize(body: Array<BabelNodeStatement>, context: SerializationContext) {
     for (let bodyEntry of this.body) {
-      let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg, context.reasons));
+      let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg));
       body.push(bodyEntry.buildNode(nodes, context));
       let id = bodyEntry.declaresDerivedId;
       if (id !== undefined) context.announceDeclaredDerivedId(id);
+    }
+  }
+
+  visit(visitValue: Value => void) {
+    for (let bodyEntry of this.body) {
+      for (let boundArg of bodyEntry.args)
+        visitValue(boundArg);
+      if (bodyEntry.dependencies)
+        for (let dependency of bodyEntry.dependencies)
+          dependency.visit(visitValue);
     }
   }
 }

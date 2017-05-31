@@ -299,16 +299,16 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     let code = F.$ECMAScriptCode;
     invariant(code !== undefined);
     let c = realm.getRunningContext().lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
-    let e = realm.get_captured_effects();
+    let e = realm.getCapturedEffects();
     if (e !== undefined) {
-      realm.stop_effect_capture();
+      realm.stopEffectCapture();
       let [_c, _g, b, p, _o] = e;
       _c; _g; _o;
       realm.restoreBindings(b);
       realm.restoreProperties(p);
     }
     if (c instanceof JoinedAbruptCompletions) {
-      if (e !== undefined) realm.apply_effects(e);
+      if (e !== undefined) realm.applyEffects(e);
       throw AbstractValue.createIntrospectionErrorThrowCompletion(c.joinCondition);
     } else if (c instanceof PossiblyNormalCompletion) {
       // If the abrupt part of the completion is a return completion, then the
@@ -317,12 +317,12 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
       // in the realm.
       invariant(e !== undefined);
       let joinedEffects = joinEffectsAndRemoveNestedReturnCompletions(realm, c, e);
-      realm.apply_effects(joinedEffects);
+      realm.applyEffects(joinedEffects);
       invariant(joinedEffects[0] instanceof ReturnCompletion);
       return joinedEffects[0];
     } else {
       invariant(c instanceof Value || c instanceof AbruptCompletion);
-      if (e !== undefined) realm.apply_effects(e);
+      if (e !== undefined) realm.applyEffects(e);
       return c;
     }
   }
@@ -395,6 +395,17 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
   // 2. If IsCallable(F) is false, throw a TypeError exception.
   if (IsCallable(realm, F) === false) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
+  }
+  if (F instanceof AbstractValue && F.getType() === FunctionValue) {
+    let fullArgs = [F].concat(argsList);
+    return realm.deriveAbstract(
+      TypesDomain.topVal,
+      ValuesDomain.topVal,
+      fullArgs,
+      (nodes) => {
+        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+        return t.callExpression(nodes[0], fun_args);
+      });
   }
   invariant(F instanceof ObjectValue);
 

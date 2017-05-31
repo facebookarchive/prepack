@@ -55,7 +55,7 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean,
 
   // Evaluate ast.right in a sandbox to get its effects
   let [compl2, gen2, bindings2, properties2, createdObj2] =
-    realm.partially_evaluate_node(ast.right, strictCode, env);
+    realm.evaluateNodeForEffects(ast.right, strictCode, env);
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of lval.
@@ -77,11 +77,11 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean,
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    realm.capture_effects();
+    realm.captureEffects();
   }
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.
-  realm.apply_effects(joinedEffects);
+  realm.applyEffects(joinedEffects);
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;

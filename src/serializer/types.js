@@ -26,17 +26,24 @@ export type Names = { [key: string]: true };
 export type FunctionInfo = {
   names: Names;
   modified: Names;
-  instances: Array<FunctionInstance>;
   usesArguments: boolean;
   usesThis: boolean;
 }
 
 export type SerializedBindings = { [key: string]: SerializedBinding };
 export type SerializedBinding = {
-  serializedValue: BabelNodeExpression;
-  value?: Value;
-  referentialized?: boolean;
-  modified?: boolean;
+  value: void | Value;
+  // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
+  serializedValue: void | BabelNodeExpression;
+  referentialized: boolean;
+  modified: boolean;
+};
+
+export type VisitedBindings = { [key: string]: VisitedBinding };
+export type VisitedBinding = {
+  global: boolean;
+  value: void | Value;
+  modified: boolean;
 }
 
 export function AreSameSerializedBindings(x: SerializedBinding, y: SerializedBinding) {

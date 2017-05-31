@@ -47,6 +47,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
       filename: test_path,
       internalDebug: true,
       sourceMaps: true,
+      serialize: true,
     });
     if (!s) {
       process.exit(1);
@@ -62,6 +63,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
       inputSourceMapFilename: name + ".new1.js.map",
       internalDebug: true,
       sourceMaps: true,
+      serialize: true,
     });
     if (!s) {
       process.exit(1);

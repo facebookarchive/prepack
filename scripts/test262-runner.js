@@ -194,6 +194,7 @@ class QuitMessage {
 class BannerData {
   info: string;
   es5id: string;
+  es6id: string;
   description: string;
   flags: string[];
   features: string[];
@@ -204,6 +205,7 @@ class BannerData {
   constructor() {
     this.info = "";
     this.es5id = "";
+    this.es6id = "";
     this.description = "";
     this.flags = [];
     this.features = [];
@@ -219,6 +221,9 @@ class BannerData {
     }
     if ("es5id" in obj && typeof obj.es5id === "string") {
       bd.es5id = obj.es5id;
+    }
+    if ("es6id" in obj && typeof obj.es6id === "string") {
+      bd.es6id = obj.es6id;
     }
     if ("description" in obj && typeof obj.description === "string") {
       bd.description = obj.description;
@@ -617,7 +622,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22821 || numPassedES6 < 7398 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 22817 || numPassedES6 < 7402 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -1208,11 +1213,11 @@ function filterDescription(data: BannerData): boolean {
 function filterCircleCI(data: BannerData): boolean {
   let skipTests = ['7.8.5_A1.4_T2', '7.8.5_A2.4_T2', '7.8.5_A2.1_T2', '7.8.5_A1.1_T2',
                     '15.1.2.2_A8', '15.1.2.3_A6', '7.4_A5', '7.4_A6',
-                    'S15.10.2.12_A3_T', 'S15.10.2.12_A4_T1', 'S15.10.2.12_A5_T1'];
+                    '15.10.2.12_A3_T1', '15.10.2.12_A4_T1', '15.10.2.12_A5_T1', '15.10.2.12_A6_T1'];
+  let skipTests6 = ['22.1.3.1_3'];
 
-  if (!process.env.NIGHTLY_BUILD && skipTests.indexOf(data.es5id) > -1) return false;
-
-  return true;
+  return (!!process.env.NIGHTLY_BUILD ||
+      (skipTests.indexOf(data.es5id) < 0 && skipTests6.indexOf(data.es6id) < 0));
 }
 /**
  * Run a given ${test} whose file contents are ${testFileContents} and return

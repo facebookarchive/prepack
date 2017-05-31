@@ -1025,21 +1025,21 @@ export function EvaluateStatements(
         } else {
           invariant(blockValue instanceof PossiblyNormalCompletion);
           if (res instanceof AbruptCompletion) {
-            let e = realm.get_captured_effects();
+            let e = realm.getCapturedEffects();
             invariant(e !== undefined);
-            realm.stop_effect_capture();
+            realm.stopEffectCapture();
             let [_c, _g, b, p, _o] = e;
             _c; _g; _o;
             realm.restoreBindings(b);
             realm.restoreProperties(p);
             if (res instanceof IntrospectionThrowCompletion) {
-              realm.apply_effects(e);
+              realm.applyEffects(e);
               throw res;
             }
             invariant(blockValue instanceof PossiblyNormalCompletion);
             e[0] = res;
             let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, blockValue, res, e);
-            realm.apply_effects(joined_effects);
+            realm.applyEffects(joined_effects);
             throw joined_effects[0];
           } else {
             if (res instanceof Value)

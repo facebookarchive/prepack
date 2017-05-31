@@ -9,13 +9,11 @@
 
 /* @flow */
 
-import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
-import { IsUnresolvableReference, ResolveBinding, ToLength, IsArray, Get } from "../methods/index.js";
+import { ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
-import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, NumberValue, Value, ObjectValue, PrimitiveValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
-import { describeLocation } from "../intrinsics/ecma262/Error.js";
+import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
@@ -24,14 +22,15 @@ import generate from "babel-generator";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { SerializedBinding, SerializedBindings, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
-import { BodyReference, AreSameSerializedBindings, SerializerStatistics } from "./types.js";
-import { ClosureRefVisitor, ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
+import type { SerializedBinding, VisitedBinding, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
+import { BodyReference, AreSameSerializedBindings, SerializerStatistics, type VisitedBindings } from "./types.js";
+import { ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
+import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 
-type SourceMap = {
+export type SourceMap = {
   sources: Array<string>,
   names: Array<string>,
   mappings: string,
@@ -62,7 +61,7 @@ function isSameNode(left, right) {
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
-    invariant(realm.isPartial);
+    invariant(realm.useAbstractInterpretation);
     // Start tracking mutations
     realm.generator = new Generator(realm);
 
@@ -100,6 +99,7 @@ export class Serializer {
     this.declaredDerivedIds = new Set();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
+    this.needsAuxiliaryConstructor = false;
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
@@ -108,19 +108,20 @@ export class Serializer {
     this.statistics = new SerializerStatistics();
     this.firstFunctionUsages = new Map();
     this.functionPrototypes = new Map();
+    this.serializedValues = new Set();
   }
 
   globalReasons: {
     [filename: string]: Array<string>
   };
 
-  declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, SerializedBindings>;
+  declarativeEnvironmentRecordsBindings: Map<VisitedBinding, SerializedBinding>;
   serializationStack: Array<Value>;
   delayedSerializations: Array<() => void>;
   delayedKeyedSerializations: Map<BabelNodeIdentifier, Array<{values: Array<Value>, func: () => void}>>;
   unstrictFunctionBodies: Array<BabelNodeFunctionDeclaration>;
   strictFunctionBodies: Array<BabelNodeFunctionDeclaration>;
-  functions: Map<BabelNodeBlockStatement, FunctionInfo>;
+  functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
   functionInstances: Array<FunctionInstance>;
   //value to intermediate references generated like $0, $1, $2,...
   refs: Map<Value, BabelNodeIdentifier>;
@@ -134,6 +135,7 @@ export class Serializer {
   generator: Generator;
   descriptors: Map<string, BabelNodeIdentifier>;
   needsEmptyVar: boolean;
+  needsAuxiliaryConstructor: boolean;
   valueNameGenerator: NameGenerator;
   referentializedNameGenerator: NameGenerator;
   descriptorNameGenerator: NameGenerator;
@@ -145,6 +147,12 @@ export class Serializer {
   statistics: SerializerStatistics;
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
+  ignoredProperties: Map<ObjectValue, Set<string>>;
+  residualValues: Set<Value>;
+  residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
+  residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
+  serializedValues: Set<Value>;
+
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -172,82 +180,7 @@ export class Serializer {
     return res;
   }
 
-  shouldInline(val: Value): boolean {
-    if (val instanceof SymbolValue) {
-      return false;
-    }
-
-    if (val instanceof AbstractValue && val.hasIdentifier()) {
-      invariant(!this.preludeGenerator.derivedIds.has(val.getIdentifier().name) ||
-        this.declaredDerivedIds.has(val.getIdentifier()));
-      return true;
-    }
-
-    if (val.isIntrinsic()) {
-      return false;
-    }
-
-    return val instanceof PrimitiveValue;
-  }
-
-  _canIgnoreProperty(val: ObjectValue, key: string, desc: Descriptor) {
-    if (IsArray(this.realm, val)) {
-      if (key === "length" && desc.writable && !desc.enumerable && !desc.configurable) {
-        // length property has the correct descriptor values
-        return true;
-      }
-    } else if (val instanceof FunctionValue) {
-      if (key === "length") {
-        if (desc.value === undefined) {
-          this.logger.logError(val, "Functions with length accessor properties are not supported.");
-          // Rationale: .bind() would call the accessor, which might throw, mutate state, or do whatever...
-        }
-        // length property will be inferred already by the amount of parameters
-        return !desc.writable && !desc.enumerable && desc.configurable && val.hasDefaultLength();
-      }
-
-      if (key === "name") {
-        // TODO #474: Make sure that we retain original function names. Or set name property. Or ensure that nothing references the name property.
-        return true;
-      }
-
-      // Properties `caller` and `arguments` are added to normal functions in non-strict mode to prevent TypeErrors.
-      // Because they are autogenerated, they should be ignored.
-      if (key === "arguments" || key === "caller") {
-        if (!val.$Strict && desc.writable && !desc.enumerable && desc.configurable && desc.value instanceof UndefinedValue && val.$FunctionKind === 'normal')
-          return true;
-      }
-
-      // ignore the `prototype` property when it's the right one
-      if (key === "prototype") {
-        if (!desc.configurable && !desc.enumerable && desc.writable &&
-            desc.value instanceof ObjectValue && desc.value.originalConstructor === val) {
-          return true;
-        }
-      }
-    } else {
-      let kind = val.getKind();
-      switch (kind) {
-        case "RegExp":
-          if (key === "lastIndex" && desc.writable && !desc.enumerable && !desc.configurable) {
-            // length property has the correct descriptor values
-            let v = desc.value;
-            return v instanceof NumberValue && v.value === 0;
-          }
-          break;
-        default:
-          break;
-      }
-    }
-
-    if (key === "constructor") {
-      if (desc.configurable && !desc.enumerable && desc.writable && desc.value === val.originalConstructor) return true;
-    }
-
-    return false;
-  }
-
-  addProperties(name: string, obj: ObjectValue, reasons: Array<string>, alternateProperties: ?Map<string, PropertyBinding>) {
+  addProperties(name: string, obj: ObjectValue, reasons: Array<string>, alternateProperties: ?Map<string, PropertyBinding>, objectPrototypeAlreadyEstablished: boolean = false) {
     /*
     for (let symbol of obj.symbols.keys()) {
       // TODO #22: serialize symbols
@@ -255,11 +188,12 @@ export class Serializer {
     */
 
     // inject properties
+    let ignoredProperties = this.ignoredProperties.get(obj);
     for (let [key, propertyBinding] of alternateProperties || obj.properties) {
       invariant(propertyBinding);
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; //deleted
-      if (this._canIgnoreProperty(obj, key, desc)) continue;
+      if (ignoredProperties && ignoredProperties.has(key)) continue;
       invariant(desc !== undefined);
       this._eagerOrDelay(this._getDescriptorValues(desc).concat(obj), () => {
         invariant(desc !== undefined);
@@ -281,17 +215,33 @@ export class Serializer {
     }
 
     // prototype
-    this.addObjectPrototype(name, obj, reasons);
+    this.addObjectPrototype(name, obj, reasons, objectPrototypeAlreadyEstablished);
     if (obj instanceof FunctionValue) this.addConstructorPrototype(name, obj, reasons);
 
     this.statistics.objects++;
     this.statistics.objectProperties += obj.properties.size;
   }
 
-  addObjectPrototype(name: string, obj: ObjectValue, reasons: Array<string>) {
-    let proto = obj.$Prototype;
-
+  addObjectPrototype(name: string, obj: ObjectValue, reasons: Array<string>, objectPrototypeAlreadyEstablished: boolean) {
     let kind = obj.getKind();
+    let proto = obj.$Prototype;
+    if (objectPrototypeAlreadyEstablished) {
+      // Emitting an assertion. This can be removed in the future, or put under a DEBUG flag.
+      this._eagerOrDelay([proto, obj], () => {
+        invariant(proto);
+        let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
+        let uid = this._getValIdForReference(obj);
+        let condition = t.binaryExpression("!==", t.memberExpression(uid, t.identifier("__proto__")), serializedProto);
+        let throwblock = t.blockStatement([
+          t.throwStatement(
+            t.newExpression(
+              t.identifier("Error"),
+              [t.stringLiteral("unexpected prototype")]))
+          ]);
+        this.body.push(t.ifStatement(condition, throwblock));
+      });
+      return;
+    }
     if (proto === this.realm.intrinsics[kind + "Prototype"]) return;
 
     this._eagerOrDelay([proto, obj], () => {
@@ -317,10 +267,8 @@ export class Serializer {
     // If the original prototype object was mutated,
     // request its serialization here as this might be observable by
     // residual code.
-    let prototype = this._getPropertyValue(func, "prototype");
-    if (prototype instanceof ObjectValue &&
-      prototype.originalConstructor === func &&
-      !this._isDefaultPrototype(prototype)) {
+    let prototype = ResidualHeapVisitor.getPropertyValue(func, "prototype");
+    if (prototype instanceof ObjectValue && this.residualValues.has(prototype)) {
       this._eagerOrDelay([func], () => {
         invariant(prototype);
         this.serializeValue(prototype, reasons.concat(`Prototype of ${name}`));
@@ -475,23 +423,18 @@ export class Serializer {
     }
   }
 
-  _serializeDeclarativeEnvironmentRecordBinding(r: DeclarativeEnvironmentRecord, n: string, functionName: string, reasons: Array<string>): SerializedBinding {
-    let serializedBindings = this.declarativeEnvironmentRecordsBindings.get(r);
-    if (!serializedBindings) {
-      serializedBindings = Object.create(null);
-      this.declarativeEnvironmentRecordsBindings.set(r, serializedBindings);
-    }
-    let serializedBinding: ?SerializedBinding = serializedBindings[n];
+  _serializeDeclarativeEnvironmentRecordBinding(boundName: string, visitedBinding: VisitedBinding, functionName: string, reasons: Array<string>): SerializedBinding {
+    let serializedBinding = this.declarativeEnvironmentRecordsBindings.get(visitedBinding);
     if (!serializedBinding) {
-      let realm = this.realm;
-      let binding = r.bindings[n];
-      invariant(!binding.deletable);
-      let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
+      let value = visitedBinding.value;
+      invariant(value);
+      // Set up binding identity before starting to serialize value. This is needed in case of recursive dependencies.
+      serializedBinding = { serializedValue: undefined, value, modified: visitedBinding.modified, referentialized: false };
+      this.declarativeEnvironmentRecordsBindings.set(visitedBinding, serializedBinding);
       let serializedValue = this.serializeValue(
         value,
-        reasons.concat(`access in ${functionName} to ${n}`));
-      serializedBinding = { serializedValue, value };
-      serializedBindings[n] = serializedBinding;
+        reasons.concat(`access in ${functionName} to ${boundName}`));
+      serializedBinding.serializedValue = serializedValue;
       if (value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
@@ -528,14 +471,16 @@ export class Serializer {
   }
 
   serializeValue(val: Value, reasons?: Array<string>, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
+    invariant(this.residualValues.has(val));
 
     let ref = this._getValIdForReferenceOptional(val);
     if (ref) {
       return ref;
     }
 
+    this.serializedValues.add(val);
     reasons = reasons || [];
-    if (!referenceOnly && this.shouldInline(val)) {
+    if (!referenceOnly && ResidualHeapVisitor.isLeaf(val)) {
       let res = this._serializeValue("", val, reasons);
       invariant(res !== undefined);
       return res;
@@ -654,10 +599,21 @@ export class Serializer {
       if (delayReason) return delayReason;
     } else if (val instanceof ObjectValue) {
       let kind = val.getKind();
-      if (kind === "Date") {
-        invariant(val.$DateValue !== undefined);
-        delayReason = this._shouldDelayValue(val.$DateValue);
-        if (delayReason) return delayReason;
+      switch (kind) {
+        case "Object":
+          let proto = val.$Prototype;
+          if (proto instanceof ObjectValue) {
+            delayReason = this._shouldDelayValue(val.$Prototype);
+            if (delayReason) return delayReason;
+          }
+          break;
+        case "Date":
+          invariant(val.$DateValue !== undefined);
+          delayReason = this._shouldDelayValue(val.$DateValue);
+          if (delayReason) return delayReason;
+          break;
+        default:
+          break;
       }
     }
 
@@ -800,7 +756,7 @@ export class Serializer {
     let kind = val.getKind();
     let elems = [];
 
-    let entries = val.$SetData;
+    let entries;
     if (kind === "Set") {
       entries = val.$SetData;
     } else {
@@ -895,28 +851,6 @@ export class Serializer {
     }
   }
 
-  _getPropertyValue(val: ObjectValue, name: string): void | Value {
-    let prototypeBinding = val.properties.get(name);
-    if (prototypeBinding === undefined) return undefined;
-    let prototypeDesc = prototypeBinding.descriptor;
-    if (prototypeDesc === undefined) return undefined;
-    return prototypeDesc.value;
-  }
-
-  _isDefaultPrototype(prototype: ObjectValue): boolean {
-    if (prototype.symbols.size !== 0 ||
-      prototype.$Prototype !== this.realm.intrinsics.ObjectPrototype ||
-      !prototype.getExtensible()) return false;
-    let foundConstructor = false;
-    for (let name of prototype.properties.keys())
-      if (name === "constructor" &&
-        this._getPropertyValue(prototype, name) === prototype.originalConstructor)
-        foundConstructor = true;
-      else
-        return false;
-    return foundConstructor;
-  }
-
   _serializeValueFunction(name: string, val: FunctionValue, reasons: Array<string>): void | BabelNodeExpression {
     if (val instanceof BoundFunctionValue) {
       this.addProperties(name, val, reasons);
@@ -936,107 +870,51 @@ export class Serializer {
       throw new Error("TODO: do not know how to serialize non-intrinsic native function value");
     }
 
-    invariant(val.constructor === FunctionValue);
-    let formalParameters = val.$FormalParameters;
-    invariant(formalParameters != null);
-    let code = val.$ECMAScriptCode;
-    invariant(code != null);
-
-    let functionInfo = this.functions.get(code);
-
-    if (!functionInfo) {
-      functionInfo = {
-        names: Object.create(null),
-        modified: Object.create(null),
-        instances: [],
-        usesArguments: false,
-        usesThis: false,
-      };
-      this.functions.set(code, functionInfo);
-
-      let state = {
-        tryQuery: this.logger.tryQuery.bind(this.logger),
-        val,
-        reasons,
-        name,
-        functionInfo,
-        map: functionInfo.names,
-        realm: this.realm };
-
-      traverse(
-        t.file(t.program([
-          t.expressionStatement(
-            t.functionExpression(
-              null,
-              formalParameters,
-              code
-            )
-          )
-        ])),
-        ClosureRefVisitor,
-        null,
-        state
-      );
-
-      if (val.isResidual && Object.keys(functionInfo.names).length) {
-        this.logger.logError(val, `residual function ${describeLocation(this.realm, val, undefined, code.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
-      }
-    }
+    let residualBindings = this.residualFunctionBindings.get(val);
+    invariant(residualBindings);
 
     let serializedBindings = Object.create(null);
     let instance: FunctionInstance = {
       serializedBindings,
       functionValue: val,
     };
+
     let delayed = 1;
     let undelay = () => {
       if (--delayed === 0) {
         instance.insertionPoint = this._getBodyReference();
         this.functionInstances.push(instance);
+
+        let code = val.$ECMAScriptCode;
+        invariant(code != null);
+        let functionInstances = this.functions.get(code);
+        if (functionInstances === undefined) this.functions.set(code, functionInstances = []);
+        functionInstances.push(instance);
       }
     };
-    for (let innerName in functionInfo.names) {
+    for (let boundName in residualBindings) {
+      let residualBinding = residualBindings[boundName];
       let referencedValues = [];
       let serializeBindingFunc;
-      let doesNotMatter = true;
-      let reference = this.logger.tryQuery(
-        () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
-        undefined, true);
-      if (reference === undefined) {
-        serializeBindingFunc = () => this._serializeGlobalBinding(innerName);
+      if (residualBinding.global) {
+        serializeBindingFunc = () => this._serializeGlobalBinding(boundName, residualBinding, name, reasons);
       } else {
-        invariant(!IsUnresolvableReference(this.realm, reference));
-        let referencedBase = reference.base;
-        let referencedName: string = (reference.referencedName: any);
-        if (typeof referencedName !== "string") {
-          throw new Error("TODO: do not know how to serialize reference with symbol");
-        }
-        if (reference.base instanceof GlobalEnvironmentRecord) {
-          serializeBindingFunc = () => this._serializeGlobalBinding(referencedName);
-        } else if (referencedBase instanceof DeclarativeEnvironmentRecord) {
-          serializeBindingFunc = () => {
-            invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
-            return this._serializeDeclarativeEnvironmentRecordBinding(referencedBase, referencedName, name, reasons);
-          };
-          let binding = referencedBase.bindings[referencedName];
-          if (binding.initialized && binding.value) referencedValues.push(binding.value);
-        } else {
-          invariant(false);
-        }
+        serializeBindingFunc = () => {
+          return this._serializeDeclarativeEnvironmentRecordBinding(boundName, residualBinding, name, reasons);
+        };
+        invariant(residualBinding.value !== undefined);
+        referencedValues.push(residualBinding.value);
       }
       delayed++;
       this._eagerOrDelay(referencedValues, () => {
         let serializedBinding = serializeBindingFunc();
         invariant(serializedBinding);
-        serializedBindings[innerName] = serializedBinding;
-        invariant(functionInfo);
-        if (functionInfo.modified[innerName]) serializedBinding.modified = true;
+        serializedBindings[boundName] = serializedBinding;
         undelay();
       });
     }
 
     undelay();
-    functionInfo.instances.push(instance);
 
     this.addProperties(name, val, reasons);
   }
@@ -1047,6 +925,11 @@ export class Serializer {
     return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
     else
       return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;
+  }
+
+  _findLastObjectPrototype(obj: ObjectValue): ObjectValue {
+    while (obj.$Prototype instanceof ObjectValue) obj = obj.$Prototype;
+    return obj;
   }
 
   _serializeValueObject(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
@@ -1118,21 +1001,26 @@ export class Serializer {
       case "WeakSet":
         return this._serializeValueSet(name, val, reasons);
       default:
-        if (kind !== "Object")
-          this.logger.logError(val, `Serialization of an object of kind ${kind} is not supported.`);
-        if (this.$ParameterMap !== undefined)
-          this.logger.logError(val, `Serialization of an arguments object is not supported.`);
+        invariant(kind === "Object", "invariant established by visitor");
+        invariant(this.$ParameterMap === undefined, "invariant established by visitor");
+
+        let proto = val.$Prototype;
+        let createViaAuxiliaryConstructor =
+          proto !== this.realm.intrinsics.ObjectPrototype &&
+          this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
+          proto instanceof ObjectValue;
 
         let remainingProperties = new Map(val.properties);
         let props = [];
+        let ignoredProperties = this.ignoredProperties.get(val);
         for (let [key, propertyBinding] of val.properties) {
           let descriptor = propertyBinding.descriptor;
           if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
-          if (this._canEmbedProperty(val, key, descriptor)) {
+          if (!createViaAuxiliaryConstructor && this._canEmbedProperty(val, key, descriptor)) {
             remainingProperties.delete(key);
             let propValue = descriptor.value;
             invariant(propValue instanceof Value);
-            if (this._canIgnoreProperty(val, key, descriptor)) continue;
+            if (ignoredProperties && ignoredProperties.has(key)) continue;
             let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
             let delayReason = this._shouldDelayValue(propValue) || mightHaveBeenDeleted;
             if (delayReason) {
@@ -1159,8 +1047,21 @@ export class Serializer {
           }
         }
 
-        this.addProperties(name, val, reasons, remainingProperties);
-        return t.objectExpression(props);
+        this.addProperties(name, val, reasons, remainingProperties, createViaAuxiliaryConstructor);
+
+        if (createViaAuxiliaryConstructor) {
+          this.needsAuxiliaryConstructor = true;
+          let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
+          return t.sequenceExpression([
+            t.assignmentExpression(
+              "=",
+              t.memberExpression(t.identifier("__constructor"), t.identifier("prototype")),
+              serializedProto),
+            t.newExpression(t.identifier("__constructor"), [])
+          ]);
+        } else {
+          return t.objectExpression(props);
+        }
     }
   }
 
@@ -1178,8 +1079,7 @@ export class Serializer {
   }
 
   _serializeAbstractValue(name: string, val: AbstractValue, reasons: Array<string>): BabelNodeExpression {
-    if (val.kind === "sentinel member expression")
-      this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
+    invariant(val.kind !== "sentinel member expression", "invariant established by visitor");
     let serializedArgs = val.args.map((abstractArg, i) => this.serializeValue(abstractArg, reasons.concat(`Argument ${i} of ${name}`)));
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
@@ -1198,7 +1098,7 @@ export class Serializer {
     } else if (val instanceof EmptyValue) {
       this.needsEmptyVar = true;
       return t.identifier("__empty");
-    } else if (this.shouldInline(val)) {
+    } else if (ResidualHeapVisitor.isLeaf(val)) {
       return t.valueToNode(val.serialize());
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
@@ -1216,20 +1116,18 @@ export class Serializer {
     }
   }
 
-  _serializeGlobalBinding(key: string): void | SerializedBinding {
-    let value = this.realm.getGlobalLetBinding(key);
+  _serializeGlobalBinding(boundName: string, visitedBinding: VisitedBinding, functionName: string, reasons: Array<string>): SerializedBinding {
+    invariant(visitedBinding.global);
+    let value = this.realm.getGlobalLetBinding(boundName);
     // Check for let binding vs global property
     if (value) {
-      let id = this.serializeValue(value, ["global let binding"], true, "let");
+      let id = this.serializeValue(value, reasons.concat(`access in ${functionName} to global let binding ${boundName}`), true, "let");
       // increment ref count one more time as the value has been
       // referentialized (stored in a variable) by serializeValue
       this._incrementValToRefCount(value);
-      return {
-        serializedValue: id,
-        modified: true, referentialized: true
-      };
+      return { serializedValue: id, value: undefined, modified: true, referentialized: true };
     } else {
-      return { serializedValue: this.preludeGenerator.globalReference(key), modified: true, referentialized: true };
+      return { serializedValue: this.preludeGenerator.globalReference(boundName), value: undefined, modified: true, referentialized: true };
     }
   }
 
@@ -1244,16 +1142,21 @@ export class Serializer {
     let requireStatistics = { replaced: 0, count: 0 };
 
     // Ensure that all bindings that actually get modified get proper variables
-    let functionEntries: Array<[BabelNodeBlockStatement, FunctionInfo]> = Array.from(this.functions.entries());
-    for (let [, { instances, names }] of functionEntries) {
+    let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(this.functions.entries());
+    for (let [funcBody, instances] of functionEntries) {
+      let functionInfo = this.residualFunctionInfos.get(funcBody);
+      invariant(functionInfo);
+      let { names } = functionInfo;
       for (let instance of instances) {
         let serializedBindings = instance.serializedBindings;
         for (let name in names) {
           let serializedBinding: SerializedBinding = serializedBindings[name];
           if (serializedBinding.modified && !serializedBinding.referentialized) {
             let serializedBindingId = t.identifier(this.referentializedNameGenerator.generate(name));
+            let serializedValue = serializedBinding.serializedValue;
+            invariant(serializedValue);
             let declar = t.variableDeclaration("var", [
-              t.variableDeclarator(serializedBindingId, serializedBinding.serializedValue)]);
+              t.variableDeclarator(serializedBindingId, serializedValue)]);
             getFunctionBody(instance).push(declar);
             serializedBinding.serializedValue = serializedBindingId;
             serializedBinding.referentialized = true;
@@ -1265,7 +1168,10 @@ export class Serializer {
 
     this.statistics.functions = functionEntries.length;
     let hoistedBody = [];
-    for (let [funcBody, { usesArguments, usesThis, instances, names, modified }] of functionEntries) {
+    for (let [funcBody, instances] of functionEntries) {
+      let functionInfo = this.residualFunctionInfos.get(funcBody);
+      invariant(functionInfo);
+      let { names, modified, usesThis, usesArguments } = functionInfo;
       let params = instances[0].functionValue.$FormalParameters;
       invariant(params !== undefined);
 
@@ -1388,7 +1294,11 @@ export class Serializer {
         for (let instance of instances) {
           let { functionValue, serializedBindings, insertionPoint } = instance;
           let id = this._getValIdForReference(functionValue);
-          let flatArgs: Array<BabelNodeExpression> = factoryNames.map((name) => serializedBindings[name].serializedValue);
+          let flatArgs: Array<BabelNodeExpression> = factoryNames.map((name) => {
+            let serializedValue = serializedBindings[name].serializedValue;
+            invariant(serializedValue);
+            return serializedValue;
+          });
           let node;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
           invariant(insertionPoint !== undefined);
@@ -1550,12 +1460,16 @@ export class Serializer {
     // build ast
     let body = [];
     if (this.needsEmptyVar) {
-      body = [(t.variableDeclaration("var", [
+      body.push(t.variableDeclaration("var", [
         t.variableDeclarator(
           t.identifier("__empty"),
           t.objectExpression([])
         ),
-      ]))];
+      ]));
+    }
+    if (this.needsAuxiliaryConstructor) {
+      body.push(t.functionDeclaration(
+        t.identifier("__constructor"), [], t.blockStatement([])));
     }
     body = body.concat(this.prelude, hoistedBody, this.body);
     this.factorifyObjects(body);
@@ -1608,6 +1522,8 @@ export class Serializer {
         body: ast_body
       }
     };
+
+    invariant(this.serializedValues.size === this.residualValues.size);
 
     return {
       generated: generate(
@@ -1788,6 +1704,14 @@ export class Serializer {
       this.modules.initializeMoreModules();
       if (this.logger.hasErrors()) return undefined;
     }
+
+    let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules, this.requireReturns);
+    residualHeapVisitor.visitRoots();
+    if (this.logger.hasErrors()) return undefined;
+    this.ignoredProperties = residualHeapVisitor.ignoredProperties;
+    this.residualValues = residualHeapVisitor.values;
+    this.residualFunctionBindings = residualHeapVisitor.functionBindings;
+    this.residualFunctionInfos = residualHeapVisitor.functionInfos;
 
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
