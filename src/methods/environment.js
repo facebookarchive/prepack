@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
-import { PropertyKeyValue } from "../types.js";
+import type { PropertyKeyValue } from "../types.js";
 import {
   AbstractValue,
   UndefinedValue,
@@ -555,7 +555,7 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
 
 // ECMA262 13.3.3.6
 // ECMA262 14.1.19
-export function IteratorBindingInitialization(realm: Realm, formals: Array<BabelNodeLVal>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strictCode: boolean, environment: void | LexicalEnvironment) {
+export function IteratorBindingInitialization(realm: Realm, formals: Array<BabelNodeLVal | null>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strictCode: boolean, environment: void | LexicalEnvironment) {
   let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
   // Check if the last formal is a rest element. If so then we want to save the
@@ -565,7 +565,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
   let restEl;
   if (formals.length > 0) {
     let lastFormal = formals.pop();
-    if (lastFormal.type === 'RestElement') {
+    if (lastFormal !== null && lastFormal.type === "RestElement") {
       restEl = lastFormal;
     } else {
       formals.push(lastFormal);
@@ -746,7 +746,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
   }
 
   // Handle the rest element if we have one.
-  if (restEl && restEl.argument.type === 'Identifier') {
+  if (restEl && restEl.argument.type === "Identifier") {
     // BindingRestElement : ...BindingIdentifier
 
     // 1. Let lhs be ? ResolveBinding(StringValue of BindingIdentifier, environment).
@@ -792,6 +792,66 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
 
         // ii. Return InitializeReferencedBinding(lhs, A).
         InitializeReferencedBinding(realm, lhs, A);
+        break;
+      }
+
+      // c. Let nextValue be IteratorValue(next).
+      let nextValue;
+      try {
+        nextValue = IteratorValue(realm, next);
+      } catch (e) {
+        // d. If nextValue is an abrupt completion, set iteratorRecord.[[Done]] to true.
+        if (e instanceof AbruptCompletion) {
+          iteratorRecord.$Done = true;
+        }
+        // e. ReturnIfAbrupt(nextValue).
+        throw e;
+      }
+
+      // f. Let status be CreateDataProperty(A, ! ToString(n), nextValue).
+      let status = CreateDataProperty(realm, A, n.toString(), nextValue);
+
+      // g. Assert: status is true.
+      invariant(status, "expected to create data property");
+
+      // h. Increment n by 1.
+      n += 1;
+    }
+  } else if (restEl && (restEl.argument.type === "ArrayPattern" || restEl.argument.type === "ObjectPattern")) {
+    // 1. Let A be ArrayCreate(0).
+    let A = ArrayCreate(realm, 0);
+
+    // 2. Let n be 0.
+    let n = 0;
+
+    // 3. Repeat,
+    while (true) {
+      // Initialized later in the algorithm.
+      let next;
+
+      // a. If iteratorRecord.[[Done]] is false, then
+      if (iteratorRecord.$Done === false) {
+        // i. Let next be IteratorStep(iteratorRecord.[[Iterator]]).
+        try {
+          next = IteratorStep(realm, iteratorRecord.$Iterator);
+        } catch (e) {
+          // ii. If next is an abrupt completion, set iteratorRecord.[[Done]] to true.
+          if (e instanceof AbruptCompletion) {
+            iteratorRecord.$Done = true;
+          }
+          // iii. ReturnIfAbrupt(next).
+          throw e;
+        }
+        // iv. If next is false, set iteratorRecord.[[Done]] to true.
+        if (next === false) {
+          iteratorRecord.$Done = true;
+        }
+      }
+
+      // b. If iteratorRecord.[[Done]] is true, then
+      if (iteratorRecord.$Done === true) {
+        // i. Return the result of performing BindingInitialization of BindingPattern with A and environment as the arguments.
+        BindingInitialization(realm, restEl.argument, A, strictCode, environment);
         break;
       }
 

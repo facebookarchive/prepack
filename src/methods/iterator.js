@@ -267,7 +267,12 @@ export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: A
   if (ret instanceof UndefinedValue) return completion;
 
   // 5. Let innerResult be Call(return, iterator, « »).
-  let innerResult = Call(realm, ret.throwIfNotConcrete(), iterator, []);
+  let innerResult;
+  try {
+    innerResult = Call(realm, ret.throwIfNotConcrete(), iterator, []);
+  } catch (error) {
+    innerResult = error;
+  }
 
   // 6. If completion.[[Type]] is throw, return Completion(completion).
   if (completion instanceof ThrowCompletion) return completion;

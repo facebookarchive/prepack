@@ -30,6 +30,7 @@ import {
   UpdateEmpty,
   BoundNames,
   BindingInitialization,
+  DestructuringAssignmentEvaluation,
   GetIterator,
   IsDestructuring,
   HasSomeCompatibleType
@@ -255,12 +256,12 @@ export function ForInOfBodyEvaluation(realm: Realm, env: LexicalEnvironment, lhs
       } else { // g. Else,
         // i. If lhsKind is assignment, then
         if (lhsKind === "assignment") {
-          // This should have been asserted in step 4.a, but we repeat the
-          // assertion here for Flow.
-          invariant(lhs.type !== "VariableDeclaration");
+          // This should be true given the algorithm. We add a check here mostly
+          // for Flow.
+          invariant(lhs.type === "ArrayPattern" || lhs.type === "ObjectPattern");
 
           // 1. Let status be the result of performing DestructuringAssignmentEvaluation of assignmentPattern using nextValue as the argument.
-          BindingInitialization(realm, lhs, nextValue, strictCode, iterationEnv);
+          status = DestructuringAssignmentEvaluation(realm, lhs, nextValue, strictCode, iterationEnv || env);
         } else if (lhsKind === "varBinding") { // ii. Else if lhsKind is varBinding, then
           // 1. Assert: lhs is a ForBinding.
           invariant(lhs.type !== "VariableDeclaration");

@@ -790,8 +790,8 @@ function handleTest(
     } else {
       invariant(testFileContents, "testFileContents should not be null if banners are not None");
       // filter out by flags, features, and includes
-      let keepThisTest = filterFeatures(banners) && filterFlags(banners) &&
-        filterIncludes(banners) && filterDescription(banners) && filterCircleCI(banners);
+      let keepThisTest = filterFeatures(banners) && filterFlags(banners) && filterIncludes(banners) &&
+        filterDescription(banners) && filterCircleCI(banners) && filterSneakyGenerators(banners, testFileContents);
       let testResults = [];
       if (keepThisTest) {
         // now run the test
@@ -1225,6 +1225,16 @@ function filterCircleCI(data: BannerData): boolean {
   return (!!process.env.NIGHTLY_BUILD ||
       (skipTests.indexOf(data.es5id) < 0 && skipTests6.indexOf(data.es6id) < 0));
 }
+
+function filterSneakyGenerators(data: BannerData, testFileContents: string) {
+  // The sneaky generator tests mostly appear when the `destructuring-binding`
+  // feature is enabled.
+  if (data.features.includes('destructuring-binding')) {
+    return !/function\*/.test(testFileContents) && !/\*method\(/.test(testFileContents);
+  }
+  return true;
+}
+
 /**
  * Run a given ${test} whose file contents are ${testFileContents} and return
  * a list of results, one for each strictness level (strict or not).
