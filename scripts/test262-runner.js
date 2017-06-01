@@ -1101,7 +1101,9 @@ function testFilterByMetadata(
   if (test.location.includes("Simd")) return false;
 
   // temporarily disable intl402 tests (ES5)
-  if (test.location.includes("intl402")) return false;
+  if (test.location.includes("intl402") && !test.location.includes('/Date/')) {
+    return false;
+  }
 
   // temporarily disable tests which use realm.
   if (test.location.includes("realm")) return false;
