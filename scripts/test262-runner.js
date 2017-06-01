@@ -1226,10 +1226,11 @@ function filterCircleCI(data: BannerData): boolean {
 }
 
 function filterSneakyGenerators(data: BannerData, testFileContents: string) {
-  // The sneaky generator tests mostly appear when the `destructuring-binding`
-  // feature is enabled.
+  // There are some sneaky tests that use generators but are not labeled with
+  // the "generators" or "generator" feature tag. Here we use a simple heuristic
+  // to filter out tests with sneaky generators.
   if (data.features.includes('destructuring-binding')) {
-    return !/function\*/.test(testFileContents) && !/\*method\(/.test(testFileContents);
+    return !testFileContents.includes("function*") && !testFileContents.includes("*method");
   }
   return true;
 }
