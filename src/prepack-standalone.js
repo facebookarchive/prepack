@@ -28,7 +28,6 @@ export function InitializationError() {
 Object.setPrototypeOf(InitializationError, Error);
 Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
 
-
 export function prepack(code: string, options: Options = defaultOptions) {
   let filename = options.filename || 'unknown';
   let realm = construct_realm(getRealmOptions(options));
