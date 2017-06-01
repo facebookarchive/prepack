@@ -1197,7 +1197,9 @@ function filterFeatures(data: BannerData): boolean {
   if (features.includes("class")) return false;
   if (features.includes("default-parameters")) return false;
   if (features.includes("generators")) return false;
-  return true;
+  if (features.includes("generator")) return false;
+  return features.includes('destructuring-binding');
+  // return true;
 }
 
 function filterIncludes(data: BannerData): boolean {

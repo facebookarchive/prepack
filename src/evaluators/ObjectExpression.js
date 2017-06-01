@@ -33,7 +33,7 @@ import invariant from "../invariant.js";
 import type { BabelNodeObjectExpression, BabelNodeObjectProperty, BabelNodeObjectMethod } from "babel-types";
 
 // Returns the result of evaluating PropertyName.
-function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): PropertyKeyValue {
+export function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): PropertyKeyValue {
   if (prop.computed) {
     let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode)).throwIfNotConcrete();
     return ToPropertyKey(realm, propertyKeyName);

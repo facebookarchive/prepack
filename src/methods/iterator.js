@@ -273,6 +273,7 @@ export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: A
   if (completion instanceof ThrowCompletion) return completion;
 
   // 7. If innerResult.[[Type]] is throw, return Completion(innerResult).
+  if (innerResult instanceof ThrowCompletion) return innerResult;
 
   // 8. If Type(innerResult.[[Value]]) is not Object, throw a TypeError exception.
   if (!(innerResult instanceof ObjectValue)) {
