@@ -906,7 +906,8 @@ function prepareTest(
 
 function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create a new realm.
-  let realm = construct_realm({ timeout: timeout * 1000 });
+  let realm = construct_realm({ timeout: timeout * 1000,
+                                strictlyMonotonicDataNow: true });
   initializeGlobals(realm);
   let executionContext = new ExecutionContext();
   executionContext.realm = realm;
