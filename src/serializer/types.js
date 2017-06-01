@@ -9,8 +9,11 @@
 
 /* @flow */
 
-import { FunctionValue, Value } from "../values/index.js";
+import { DeclarativeEnvironmentRecord } from "../environment.js";
+import { ConcreteValue, FunctionValue, Value } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
+import { SameValue } from "../methods/abstract.js";
+import { Realm } from "../realm.js";
 import { Completion } from "../completions.js";
 import invariant from "../invariant.js";
 
@@ -20,6 +23,7 @@ export type FunctionInstance = {
   serializedBindings: SerializedBindings;
   functionValue: FunctionValue;
   insertionPoint?: BodyReference;
+  scopeInstances: Set<ScopeBinding>;
 };
 
 export type Names = { [key: string]: true };
@@ -37,18 +41,29 @@ export type SerializedBinding = {
   serializedValue: void | BabelNodeExpression;
   referentialized: boolean;
   modified: boolean;
+  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord;
+  scope?: ScopeBinding
 };
 
 export type VisitedBindings = { [key: string]: VisitedBinding };
 export type VisitedBinding = {
-  global: boolean;
   value: void | Value;
   modified: boolean;
+  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord;
 }
 
-export function AreSameSerializedBindings(x: SerializedBinding, y: SerializedBinding) {
+export type ScopeBinding = {
+  name: string;
+  id: number;
+  initializationValues: Map<string, BabelNodeExpression>;
+}
+
+export function AreSameSerializedBindings(realm: Realm, x: SerializedBinding, y: SerializedBinding) {
   if (x.serializedValue === y.serializedValue) return true;
   if (x.value && x.value === y.value) return true;
+  if (x.value instanceof ConcreteValue && y.value instanceof ConcreteValue) {
+    return SameValue(realm, x.value, y.value);
+  }
   return false;
 }
 

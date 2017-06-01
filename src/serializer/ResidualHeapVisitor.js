@@ -229,7 +229,7 @@ export class ResidualHeapVisitor {
       let binding = r.bindings[n];
       invariant(!binding.deletable);
       let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
-      visitedBinding = { global: false, value, modified: false };
+      visitedBinding = { value, modified: false, declarativeEnvironmentRecord: r };
       visitedBindings[n] = visitedBinding;
       this.visitValue(value);
     }
@@ -499,7 +499,7 @@ export class ResidualHeapVisitor {
     let binding = this.globalBindings.get(key);
     if (!binding) {
       let value = this.realm.getGlobalLetBinding(key);
-      binding = ({ global: true, value, modified: true }: VisitedBinding);
+      binding = ({ value, modified: true }: VisitedBinding);
       this.globalBindings.set(key, binding);
       // Check for let binding vs global property
       if (value) this.visitValue(value);

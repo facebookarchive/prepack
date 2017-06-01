@@ -85,6 +85,7 @@ function runTest(name, code) {
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let speculate = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
+  let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   let options = {
     filename: name,
     compatibility,
@@ -189,6 +190,14 @@ function runTest(name, code) {
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
           break;
+        }
+        // Test the number of clone functions generated with the inital prepack call
+        if (i === 0 && functionCloneCountMatch) {
+          let functionCount = parseInt(functionCloneCountMatch[1], 10);
+          if (functionCount !== serialized.statistics.functionClones) {
+            console.log(chalk.red(`Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${serialized.statistics.functionClones}`));
+            break;
+          }
         }
         if (oldCode.replace(new RegExp(oldUniqueSuffix, "g"), "") === newCode.replace(new RegExp(newUniqueSuffix, "g"), "") || delayUnsupportedRequires) {
           // The generated code reached a fixed point!
