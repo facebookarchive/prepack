@@ -906,7 +906,10 @@ function prepareTest(
 
 function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create a new realm.
-  let realm = construct_realm({ timeout: timeout * 1000 });
+  let realm = construct_realm({
+    strictlyMonotonicDateNow: true,
+    timeout: timeout * 1000,
+  });
   initializeGlobals(realm);
   let executionContext = new ExecutionContext();
   executionContext.realm = realm;
@@ -1098,7 +1101,9 @@ function testFilterByMetadata(
   if (test.location.includes("Simd")) return false;
 
   // temporarily disable intl402 tests (ES5)
-  if (test.location.includes("intl402")) return false;
+  if (test.location.includes("intl402") && !test.location.includes('/Date/')) {
+    return false;
+  }
 
   // temporarily disable tests which use realm.
   if (test.location.includes("realm")) return false;
