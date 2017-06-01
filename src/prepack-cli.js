@@ -113,25 +113,24 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
   );
 
   if (!inputFilename) {
-    prepackStdin(resolvedOptions, function (serialized) {
-      processSerializedCode(serialized);
-    });
-  } else {
-    try {
-      let serialized = prepackFileSync(
-        inputFilename,
-        resolvedOptions
-      );
-      processSerializedCode(serialized);
-    } catch (x) {
-      if (x instanceof InitializationError) {
-        // Ignore InitializationError since they have already logged
-        // their errors to the console, but exit with an error code.
-        process.exit(1);
-      }
-      // For any other type of error, rethrow.
-      throw x;
+    prepackStdin(resolvedOptions, processSerializedCode);
+    return;
+  }
+
+  try {
+    let serialized = prepackFileSync(
+      inputFilename,
+      resolvedOptions
+    );
+    processSerializedCode(serialized);
+  } catch (x) {
+    if (x instanceof InitializationError) {
+      // Ignore InitializationError since they have already logged
+      // their errors to the console, but exit with an error code.
+      process.exit(1);
     }
+    // For any other type of error, rethrow.
+    throw x;
   }
 
   function processSerializedCode(serialized) {
