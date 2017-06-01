@@ -85,7 +85,13 @@ export default function (realm: Realm): NativeFunctionValue {
         // c. Let intLen be 1.
         intLen = 1;
       } else { // 7. Else,
-        len = len.throwIfNotConcreteNumber();
+        try {
+          len = len.throwIfNotConcreteNumber();
+        } catch (err) {
+          if (!realm.handleError(err)) throw err;
+          len = new NumberValue(realm, 0);
+        }
+
         // a. Let intLen be ToUint32(len).
         intLen = ToUint32(realm, len);
 

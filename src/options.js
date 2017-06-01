@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { RealmOptions, Compatibility } from "./types";
+import type { RealmOptions, Compatibility, ErrorHandler } from "./types";
 import type { SerializerOptions } from "./serializer/types";
 
 export type Options = {|
@@ -31,6 +31,7 @@ export type Options = {|
   residual?: boolean,
   serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
+  errorHandler?: ErrorHandler,
 |};
 
 export const defaultOptions = {};
@@ -43,7 +44,8 @@ export function getRealmOptions({
   timeout,
   residual,
   serialize,
-  strictlyMonotonicDateNow
+  strictlyMonotonicDateNow,
+  errorHandler,
 }: Options): RealmOptions {
   return {
     compatibility,
@@ -54,6 +56,7 @@ export function getRealmOptions({
     residual,
     serialize,
     strictlyMonotonicDateNow,
+    errorHandler,
   };
 }
 

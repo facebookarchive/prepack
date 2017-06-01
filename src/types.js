@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { NumberValue, BooleanValue, NativeFunctionValue, FunctionValue, StringValue, SymbolValue, UndefinedValue, NullValue, EmptyValue, Value, AbstractObjectValue } from "./values/index.js";
+import type { IntrospectionThrowCompletion } from "./completions.js";
 import { ObjectValue } from "./values/index.js";
 
 export const ElementSize = {
@@ -40,6 +41,8 @@ export const CompatibilityValues = [
   "node-cli"
 ];
 
+export type ErrorHandler = (error: IntrospectionThrowCompletion) => boolean;
+
 export type RealmOptions = {
   residual?: boolean,
   serialize?: boolean,
@@ -49,6 +52,7 @@ export type RealmOptions = {
   compatibility?: Compatibility,
   mathRandomSeed?: string,
   strictlyMonotonicDateNow?: boolean,
+  errorHandler?: ErrorHandler,
 };
 
 export type AbstractTime = "early" | "late";

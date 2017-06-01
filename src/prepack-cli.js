@@ -12,6 +12,7 @@
 /* eslint-disable no-shadow */
 
 import { prepackStdin, prepackFileSync, InitializationError } from "./prepack-node.js";
+import { type IntrospectionThrowCompletion } from "./completions.js";
 import { CompatibilityValues, type Compatibility } from './types.js';
 import fs from "fs";
 
@@ -111,6 +112,11 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
     },
     flags
   );
+  resolvedOptions.errorHandler =
+    (error: IntrospectionThrowCompletion) => {
+      console.log("error handler called");
+      return true;
+    };
 
   if (!inputFilename) {
     prepackStdin(resolvedOptions, function (serialized) {

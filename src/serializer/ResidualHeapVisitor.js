@@ -22,7 +22,7 @@ import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { VisitedBinding, VisitedBindings, FunctionInfo } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
-import { Logger } from "./logger.js";
+import { Logger } from "../logger.js";
 import { Modules } from "./modules.js";
 
 /* This class visits all values that are reachable in the residual heap.

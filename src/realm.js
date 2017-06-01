@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
+import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor, ErrorHandler } from "./types.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
@@ -25,6 +25,7 @@ import type { BabelNode, BabelNodeSourceLocation, BabelNodeExpression } from "ba
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
+import type { Logger } from "./logger.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -130,6 +131,9 @@ export class Realm {
     this.$GlobalObject = (({}: any): ObjectValue);
     this.evaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
+
+    this.errorHandler = opts.errorHandler;
+    this.errors = [];
   }
 
   start: number;
@@ -164,6 +168,9 @@ export class Realm {
   tracers: Array<Tracer>;
 
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
+
+  errorHandler: ?ErrorHandler;
+  errors: Array<IntrospectionThrowCompletion>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -613,5 +620,35 @@ export class Realm {
       realmGeneratorBody.push({ declaresDerivedId: firstEntry.declaresDerivedId, args: firstEntry.args, buildNode: buildNode });
     }
     for (; i < generatorBody.length; i++) realmGeneratorBody.push(generatorBody[i]);
+  }
+
+  handleError(error: IntrospectionThrowCompletion): boolean {
+    // It's important to accumulate the erors so that even if there's a handler
+    // and we recover-and-continue, we can still fail the run at the end and
+    // report the errors we found.
+    this.errors.push(error);
+    if (this.errorHandler) return this.errorHandler(error);
+
+    // Default behaviour is to bail on the first error
+    return false;
+  }
+
+  hasErrors(): boolean {
+    return this.errors.length > 0;
+  }
+
+  logErrors(logger: Logger): void {
+    if (!this.hasErrors()) return;
+
+    console.log(`Realm has ${this.errors.length} errors:`);
+    let context = new ExecutionContext();
+    this.pushContext(context);
+    try {
+      for (let err of this.errors) {
+        logger.logCompletion(err);
+      }
+    } finally {
+      this.popContext(context);
+    }
   }
 }

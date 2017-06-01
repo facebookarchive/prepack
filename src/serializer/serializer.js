@@ -25,7 +25,7 @@ import invariant from "../invariant.js";
 import type { SerializedBinding, VisitedBinding, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
 import { BodyReference, AreSameSerializedBindings, SerializerStatistics, type VisitedBindings } from "./types.js";
 import { ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
-import { Logger } from "./logger.js";
+import { Logger } from "../logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
@@ -164,6 +164,9 @@ export class Serializer {
     let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast =>
       traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames));
 
+    // Log the errors accumulated in the realm during execution if there are any
+    realm.logErrors(this.logger);
+
     if (res instanceof Completion) {
       let context = new ExecutionContext();
       realm.pushContext(context);
@@ -171,6 +174,7 @@ export class Serializer {
         if (onError) {
           onError(realm, res.value);
         }
+        console.log("Execution returned a completion!");
         this.logger.logCompletion(res);
       } finally {
         realm.popContext(context);

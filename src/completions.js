@@ -41,6 +41,9 @@ export class ThrowCompletion extends AbruptCompletion {
 export class IntrospectionThrowCompletion extends ThrowCompletion {
   reason: void | "readonly";
 }
+export class AggregateIntrospectionThrowCompletion extends AbruptCompletion {
+  errors: Array<IntrospectionThrowCompletion>;
+}
 export class ContinueCompletion extends AbruptCompletion {}
 export class BreakCompletion extends AbruptCompletion {}
 export class ReturnCompletion extends AbruptCompletion {}
