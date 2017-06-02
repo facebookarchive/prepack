@@ -164,9 +164,6 @@ export class Serializer {
     let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast =>
       traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames));
 
-    // Log the errors accumulated in the realm during execution if there are any
-    realm.logErrors(this.logger);
-
     if (res instanceof Completion) {
       let context = new ExecutionContext();
       realm.pushContext(context);

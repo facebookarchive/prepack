@@ -9,13 +9,14 @@
 
 /* @flow */
 
-import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor, ErrorHandler } from "./types.js";
+import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
+import { NativeIntrospectionError, type ErrorHandler } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
+import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted, ToStringPartial, Get } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import invariant from "./invariant.js";
@@ -627,10 +628,20 @@ export class Realm {
     // and we recover-and-continue, we can still fail the run at the end and
     // report the errors we found.
     this.errors.push(error);
-    if (this.errorHandler) return this.errorHandler(error);
 
     // Default behaviour is to bail on the first error
-    return false;
+    let errorHandler = this.errorHandler;
+    if (!errorHandler) return false;
+
+    let value = error.value;
+    invariant(value instanceof ObjectValue);
+    value = ((value: any): ObjectValue);
+
+    let nativeError = new NativeIntrospectionError(
+      ToStringPartial(this, Get(this, value, "message")),
+      ToStringPartial(this, Get(this, value, "stack"))
+    );
+    return errorHandler(nativeError);
   }
 
   hasErrors(): boolean {

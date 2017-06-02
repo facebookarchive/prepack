@@ -12,8 +12,8 @@
 /* eslint-disable no-shadow */
 
 import { prepackStdin, prepackFileSync, InitializationError } from "./prepack-node.js";
-import { type IntrospectionThrowCompletion } from "./completions.js";
 import { CompatibilityValues, type Compatibility } from './types.js';
+import type { NativeIntrospectionError } from "./errors.js";
 import fs from "fs";
 
 // Prepack helper
@@ -113,8 +113,8 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
     flags
   );
   resolvedOptions.errorHandler =
-    (error: IntrospectionThrowCompletion) => {
-      console.log("error handler called");
+    (error: NativeIntrospectionError) => {
+      console.log(`${error.message}\n${error.stack}`);
       return true;
     };
 

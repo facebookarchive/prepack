@@ -37,6 +37,7 @@ import {
 import { ToString, ToUint32, ToObject, ToLength } from "../../methods/to.js";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import invariant from "../../invariant.js";
+import { recoverableError } from "../../utils/recoverable-error.js";
 
 export default function (realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "Array", "Array", 1, (context, [...items], argCount, NewTarget) => {
@@ -85,12 +86,11 @@ export default function (realm: Realm): NativeFunctionValue {
         // c. Let intLen be 1.
         intLen = 1;
       } else { // 7. Else,
-        try {
-          len = len.throwIfNotConcreteNumber();
-        } catch (err) {
-          if (!realm.handleError(err)) throw err;
-          len = new NumberValue(realm, 0);
-        }
+        // len = recoverableError(() => len.throwIfNotConcreteNumber(), ()=>new NumberValue(realm, 0));
+        len = recoverableError(
+          realm,
+          ()=>len.throwIfNotConcreteNumber(),
+          ()=>new NumberValue(realm, 0));
 
         // a. Let intLen be ToUint32(len).
         intLen = ToUint32(realm, len);

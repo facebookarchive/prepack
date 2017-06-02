@@ -9,7 +9,8 @@
 
 /* @flow */
 
-import type { RealmOptions, Compatibility, ErrorHandler } from "./types";
+import type { RealmOptions, Compatibility } from "./types";
+import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions } from "./serializer/types";
 
 export type Options = {|
