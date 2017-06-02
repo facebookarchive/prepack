@@ -13,8 +13,8 @@ import invariant from "../invariant.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
-import { Value, StringValue, ObjectValue, UndefinedValue } from "../values/index.js";
-import { AbruptCompletion, ThrowCompletion } from "../completions.js";
+import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
+import { AbruptCompletion } from "../completions.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   RequireObjectCoercible,
@@ -29,9 +29,7 @@ import {
   SetFunctionName,
   GetReferencedName,
   PutValue,
-  ResolveBinding,
   ArrayCreate,
-  InitializeReferencedBinding,
   CreateDataProperty,
   GetV,
 } from "./index.js";

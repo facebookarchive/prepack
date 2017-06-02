@@ -16,7 +16,7 @@ import { ThrowCompletion, ReturnCompletion, AbruptCompletion, NormalCompletion, 
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
 import { Value, BoundFunctionValue, EmptyValue, FunctionValue, ObjectValue, StringValue, SymbolValue, NumberValue } from "../values/index.js";
-import { DefinePropertyOrThrow, NewDeclarativeEnvironment, ResolveBinding } from "./index.js";
+import { DefinePropertyOrThrow, NewDeclarativeEnvironment } from "./index.js";
 import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
@@ -25,7 +25,6 @@ import { IteratorBindingInitialization } from "../methods/environment.js";
 import { joinPossiblyNormalCompletionWithAbruptCompletion, composePossiblyNormalCompletions,
   BoundNames, ContainsExpression, GetActiveScriptOrModule, UpdateEmpty } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
-import { PutValue } from "./properties.js";
 import traverse from "../traverse.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
