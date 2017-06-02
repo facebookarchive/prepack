@@ -9,11 +9,11 @@
 
 /* @flow */
 
-import { Realm, ExecutionContext } from "./realm.js";
-import { ToStringPartial, Get, InstanceofOperator } from "./methods/index.js";
-import { Completion, ThrowCompletion } from "./completions.js";
-import { ObjectValue, StringValue, Value } from "./values/index.js";
-import invariant from "./invariant.js";
+import { Realm, ExecutionContext } from "../realm.js";
+import { ToStringPartial, Get, InstanceofOperator } from "../methods/index.js";
+import { Completion, ThrowCompletion } from "../completions.js";
+import { ObjectValue, StringValue, Value } from "../values/index.js";
+import invariant from "../invariant.js";
 
 export class Logger {
   constructor(realm: Realm, internalDebug: boolean) {

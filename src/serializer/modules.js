@@ -19,7 +19,7 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
 import invariant from "../invariant.js";
-import { Logger } from "../logger.js";
+import { Logger } from "./logger.js";
 
 class ModuleTracer extends Tracer {
   constructor(modules: Modules, logModules: boolean) {

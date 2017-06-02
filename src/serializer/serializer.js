@@ -25,7 +25,7 @@ import invariant from "../invariant.js";
 import type { SerializedBinding, VisitedBinding, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
 import { BodyReference, AreSameSerializedBindings, SerializerStatistics, type VisitedBindings } from "./types.js";
 import { ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
-import { Logger } from "../logger.js";
+import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";

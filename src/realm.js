@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
-import { NativeIntrospectionError, type ErrorHandler } from "./errors.js";
+import { NativeError, type ErrorHandler } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
@@ -26,7 +26,6 @@ import type { BabelNode, BabelNodeSourceLocation, BabelNodeExpression } from "ba
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
-import type { Logger } from "./logger.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -134,7 +133,7 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.errorHandler = opts.errorHandler;
-    this.errors = [];
+    this.hasErrors = false;
   }
 
   start: number;
@@ -171,7 +170,7 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
-  errors: Array<IntrospectionThrowCompletion>;
+  hasErrors: boolean;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -627,7 +626,7 @@ export class Realm {
     // It's important to accumulate the erors so that even if there's a handler
     // and we recover-and-continue, we can still fail the run at the end and
     // report the errors we found.
-    this.errors.push(error);
+    this.hasErrors = true;
 
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
@@ -637,29 +636,10 @@ export class Realm {
     invariant(value instanceof ObjectValue);
     value = ((value: any): ObjectValue);
 
-    let nativeError = new NativeIntrospectionError(
+    let nativeError = new NativeError(
       ToStringPartial(this, Get(this, value, "message")),
       ToStringPartial(this, Get(this, value, "stack"))
     );
     return errorHandler(nativeError);
-  }
-
-  hasErrors(): boolean {
-    return this.errors.length > 0;
-  }
-
-  logErrors(logger: Logger): void {
-    if (!this.hasErrors()) return;
-
-    console.log(`Realm has ${this.errors.length} errors:`);
-    let context = new ExecutionContext();
-    this.pushContext(context);
-    try {
-      for (let err of this.errors) {
-        logger.logCompletion(err);
-      }
-    } finally {
-      this.popContext(context);
-    }
   }
 }

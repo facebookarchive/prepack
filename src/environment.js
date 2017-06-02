@@ -13,6 +13,7 @@ import type { BabelNode, BabelNodeFile } from "babel-types";
 import type { NormalCompletion } from "./completions.js";
 import type { Realm } from "./realm.js";
 import type { SourceType } from "./types.js";
+import { DeferredErrorsError } from "./errors.js";
 
 import { AbruptCompletion, Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
 import { ExecutionContext } from "./realm.js";
@@ -1008,16 +1009,14 @@ export class LexicalEnvironment {
       this.realm.popContext(context);
     }
     if (res instanceof AbruptCompletion) return res;
+
     // We support "recovering" from errors such that we continue to evaluate the
     // code and can report more than one error per run (as opposed to bailing on
     // the first error we encounter), but when we perform such a recovery, the
-    // end result of execution is not valid, so we need to check if any errors
-    // occured and return an error in that case.
-    //
-    // TODO:   return an "aggregate error" that has the details of the other errors
-    // internally, rather than just the first error
-    // e.g. something like if (this.realm.hasErrors()) return this.realm.getAggregateErrorThrowCompletion();
-    if (this.realm.errors.length > 0) return this.realm.errors[0];
+    // end result of execution is not valid.
+    if (this.realm.hasErrors) {
+      throw new DeferredErrorsError("Errors encountered during execution");
+    }
 
     return GetValue(this.realm, res);
   }
