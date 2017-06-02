@@ -10,10 +10,9 @@
 /* @flow */
 
 import { IntrospectionThrowCompletion } from "../completions.js";
-import NumberValue from "../values/NumberValue.js";
 import { Realm } from "../realm.js";
 
-export function recoverableError(realm: Realm, action: ()=>NumberValue, recovery: ()=>NumberValue): NumberValue {
+export function recoverableError<T>(realm: Realm, action: ()=>T, recovery: ()=>T): T {
   try {
     return action();
   } catch (err) {
