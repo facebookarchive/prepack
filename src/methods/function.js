@@ -21,7 +21,7 @@ import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMap
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
-import { joinPossiblyNormalCompletionWithAbruptCompletion, joinPossiblyNormalCompletions,
+import { joinPossiblyNormalCompletionWithAbruptCompletion, composePossiblyNormalCompletions,
   BoundNames, ContainsExpression, GetActiveScriptOrModule, UpdateEmpty } from "../methods/index.js";
 import { PutValue } from "./properties.js";
 import traverse from "../traverse.js";
@@ -1047,7 +1047,7 @@ export function EvaluateStatements(
             else {
               invariant(blockValue instanceof PossiblyNormalCompletion);
               invariant(res instanceof PossiblyNormalCompletion);
-              blockValue = joinPossiblyNormalCompletions(realm, blockValue, res);
+              blockValue = composePossiblyNormalCompletions(realm, blockValue, res);
             }
           }
         }

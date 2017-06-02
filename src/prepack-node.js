@@ -12,13 +12,14 @@ import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import fs from "fs";
+import { AbruptCompletion } from "./completions.js";
 import { getRealmOptions, getSerializerOptions } from "./options";
 import { InitializationError } from "./prepack-standalone";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment";
 
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
-import type { SourceMap } from "./serializer/serializer.js";
+import type { SourceMap } from "./types.js";
 import invariant from "./invariant.js";
 
 export * from "./prepack-standalone";
@@ -43,10 +44,15 @@ export function prepackString(filename: string, code: string, sourceMap: string,
        throw new InitializationError();
      }
      if (!options.residual) return serialized;
-     return { code: "not yet implemented" };
+     let result = realm.$GlobalEnv.executePartialEvaluator(
+       filename, serialized.code, JSON.stringify(serialized.map));
+     if (result instanceof AbruptCompletion) throw result;
+     return result;
    } else {
      invariant(options.residual);
-     return { code: "not yet implemented" };
+     let result = realm.$GlobalEnv.executePartialEvaluator(filename, code, sourceMap);
+     if (result instanceof AbruptCompletion) throw result;
+     return result;
    }
 }
 
