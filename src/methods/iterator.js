@@ -137,7 +137,9 @@ export function CreateListIterator(realm: Realm, list: Array<Value>): ObjectValu
 
 // ECMA262 7.4.8.1
 function ListIterator_next(realm: Realm): NativeFunctionValue {
-  let func = new NativeFunctionValue(realm, undefined, "next", 0, (context: ObjectValue) => {
+  let func = new NativeFunctionValue(realm, undefined, "next", 0, context => {
+    invariant(context instanceof ObjectValue);
+
     // 1. Let O be the this value.
     let O = context;
 

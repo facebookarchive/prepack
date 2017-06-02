@@ -95,18 +95,17 @@ export function DestructuringAssignmentEvaluation(realm: Realm, pattern: BabelNo
 }
 
 // ECMA262 12.15.5.3
-export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements: Array<BabelNodeLVal | null>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strictCode: boolean, env: LexicalEnvironment) {
-  // Check if the last formal is a rest element. If so then we want to save the
+export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements: $ReadOnlyArray<BabelNodeLVal | null>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strictCode: boolean, env: LexicalEnvironment) {
+  // Check if the last element is a rest element. If so then we want to save the
   // element and handle it separately after we iterate through the other
   // formals. This also enforces that a rest element may only ever be in the
   // last position.
   let restEl;
   if (elements.length > 0) {
-    let lastEl = elements.pop();
+    let lastEl = elements[elements.length - 1];
     if (lastEl !== null && lastEl.type === "RestElement") {
       restEl = lastEl;
-    } else {
-      elements.push(lastEl);
+      elements = elements.slice(0, -1);
     }
   }
 

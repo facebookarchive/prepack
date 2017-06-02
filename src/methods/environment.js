@@ -555,7 +555,7 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
 
 // ECMA262 13.3.3.6
 // ECMA262 14.1.19
-export function IteratorBindingInitialization(realm: Realm, formals: Array<BabelNodeLVal | null>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strictCode: boolean, environment: void | LexicalEnvironment) {
+export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyArray<BabelNodeLVal | null>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strictCode: boolean, environment: void | LexicalEnvironment) {
   let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
   // Check if the last formal is a rest element. If so then we want to save the
@@ -564,11 +564,10 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
   // last position.
   let restEl;
   if (formals.length > 0) {
-    let lastFormal = formals.pop();
+    let lastFormal = formals[formals.length - 1];
     if (lastFormal !== null && lastFormal.type === "RestElement") {
       restEl = lastFormal;
-    } else {
-      formals.push(lastFormal);
+      formals = formals.slice(0, -1);
     }
   }
 
@@ -620,7 +619,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
       // 3. If iteratorRecord.[[Done]] is false, then
       if (iteratorRecord.$Done === false) {
         // a. Let next be IteratorStep(iteratorRecord.[[Iterator]]).
-        let next;
+        let next: ObjectValue | false;
         try {
           next = IteratorStep(realm, iteratorRecord.$Iterator);
         } catch (e) {
@@ -664,7 +663,8 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
         v = GetValue(realm, defaultValue);
 
         // c. If IsAnonymousFunctionDefinition(Initializer) is true, then
-        if (IsAnonymousFunctionDefinition(realm, Initializer)) {
+        if (IsAnonymousFunctionDefinition(realm, Initializer) &&
+            v instanceof ObjectValue) {
           // i. Let hasNameProperty be ? HasOwnProperty(v, "name").
           let hasNameProperty = HasOwnProperty(realm, v, "name");
 
@@ -761,7 +761,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
     // 4. Repeat,
     while (true) {
       // Initialized later in the algorithm.
-      let next;
+      let next: ObjectValue | false;
 
       // a. If iteratorRecord.[[Done]] is false, then
       if (iteratorRecord.$Done === false) {
@@ -794,6 +794,11 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
         InitializeReferencedBinding(realm, lhs, A);
         break;
       }
+
+      // Given the nature of the algorithm this should always be true, however
+      // it is difficult to arrange the code in such a way where Flow's control
+      // flow analysis will pick that up, so we add an invariant here.
+      invariant(next instanceof ObjectValue);
 
       // c. Let nextValue be IteratorValue(next).
       let nextValue;
@@ -854,6 +859,11 @@ export function IteratorBindingInitialization(realm: Realm, formals: Array<Babel
         BindingInitialization(realm, restEl.argument, A, strictCode, environment);
         break;
       }
+
+      // Given the nature of the algorithm this should always be true, however
+      // it is difficult to arrange the code in such a way where Flow's control
+      // flow analysis will pick that up, so we add an invariant here.
+      invariant(next instanceof ObjectValue);
 
       // c. Let nextValue be IteratorValue(next).
       let nextValue;
@@ -970,7 +980,8 @@ export function KeyedBindingInitialization(realm: Realm, node: BabelNodeIdentifi
       v = GetValue(realm, defaultValue);
 
       // c. If IsAnonymousFunctionDefinition(Initializer) is true, then
-      if (IsAnonymousFunctionDefinition(realm, Initializer)) {
+      if (IsAnonymousFunctionDefinition(realm, Initializer) &&
+          v instanceof ObjectValue) {
         // i. Let hasNameProperty be ? HasOwnProperty(v, "name").
         let hasNameProperty = HasOwnProperty(realm, v, "name");
 
