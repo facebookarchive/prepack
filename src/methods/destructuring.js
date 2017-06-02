@@ -15,7 +15,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { Reference } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
-import { AbruptCompletion } from "../completions.js";
+import { Completion, AbruptCompletion } from "../completions.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   RequireObjectCoercible,
@@ -80,12 +80,10 @@ export function DestructuringAssignmentEvaluation(realm: Realm, pattern: BabelNo
     }
 
     // 4. If iteratorRecord.[[Done]] is false, return ? IteratorClose(iterator, result).
-    // TODO: Why does this work?
     if (iteratorRecord.$Done === false) {
-      let completion = new AbruptCompletion(new UndefinedValue(realm));
-      let actualCompletion = IteratorClose(realm, iterator, completion);
-      if (actualCompletion !== completion) {
-        throw actualCompletion;
+      let completion = IteratorClose(realm, iterator, new Completion(realm.intrinsics.undefined));
+      if (completion instanceof AbruptCompletion) {
+        throw completion;
       }
     }
 

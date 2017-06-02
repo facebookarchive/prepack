@@ -14,14 +14,14 @@ import type { LexicalEnvironment } from "../environment.js";
 import { Value, ObjectValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import {
+  DestructuringAssignmentEvaluation,
+  GetReferencedName,
   GetValue,
-  PutValue,
-  SetFunctionName,
+  HasOwnProperty,
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
-  HasOwnProperty,
-  GetReferencedName,
-  DestructuringAssignmentEvaluation,
+  PutValue,
+  SetFunctionName,
 } from "../methods/index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "babel-types";

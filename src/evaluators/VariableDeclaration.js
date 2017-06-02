@@ -23,7 +23,6 @@ import {
   SetFunctionName,
   BindingInitialization,
 } from "../methods/index.js";
-import { ThrowCompletion } from "../completions.js";
 import invariant from "../invariant.js";
 import type { BabelNodeVariableDeclaration } from "babel-types";
 
@@ -130,7 +129,7 @@ export default function (ast: BabelNodeVariableDeclaration, strictCode: boolean,
       // 3. Return the result of performing BindingInitialization for BindingPattern passing rval and undefined as arguments.
       BindingInitialization(realm, declar.id, rval, strictCode, undefined);
     } else {
-      throw new ThrowCompletion(new StringValue(realm, "unrecognized declaration"));
+      invariant(false, "unrecognized declaration");
     }
   }
 

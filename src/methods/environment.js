@@ -35,7 +35,7 @@ import {
   Reference,
   LexicalEnvironment
 } from "../environment.js";
-import { AbruptCompletion, ThrowCompletion } from "../completions.js";
+import { Completion, AbruptCompletion, ThrowCompletion } from "../completions.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   GetV,
@@ -495,9 +495,11 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
       $Done: false,
     };
 
+    let result;
+
     // 3. Let result be IteratorBindingInitialization for ArrayBindingPattern using iteratorRecord and environment as arguments.
     try {
-      IteratorBindingInitialization(realm, node.elements, iteratorRecord, strictCode, environment);
+      result = IteratorBindingInitialization(realm, node.elements, iteratorRecord, strictCode, environment);
     } catch (error) {
       // 4. If iteratorRecord.[[Done]] is false, return ? IteratorClose(iterator, result).
       if (iteratorRecord.$Done === false && error instanceof AbruptCompletion) {
@@ -507,17 +509,15 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
     }
 
     // 4. If iteratorRecord.[[Done]] is false, return ? IteratorClose(iterator, result).
-    // TODO: Why does this work?
     if (iteratorRecord.$Done === false) {
-      let completion = new AbruptCompletion(new UndefinedValue(realm));
-      let actualCompletion = IteratorClose(realm, iterator, completion);
-      if (actualCompletion !== completion) {
-        throw actualCompletion;
+      let completion = IteratorClose(realm, iterator, new Completion(realm.intrinsics.undefined));
+      if (completion instanceof AbruptCompletion) {
+        throw completion;
       }
     }
 
     // 5. Return result.
-    return;
+    return result;
   } else if (node.type === "ObjectPattern") { // ECMA262 13.3.3.5
     // BindingPattern : ObjectBindingPattern
 
@@ -525,7 +525,6 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
     RequireObjectCoercible(realm, value);
 
     // 2. Return the result of performing BindingInitialization for ObjectBindingPattern using value and environment as arguments.
-
     for (let property of node.properties) {
       let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
@@ -542,8 +541,7 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
     let name = ((node: any): BabelNodeIdentifier).name;
 
     // 2. Return ? InitializeBoundName(name, value, environment).
-    InitializeBoundName(realm, name, value, environment);
-    return;
+    return InitializeBoundName(realm, name, value, environment);
   } else if (node.type === "VariableDeclaration") { // ECMA262 13.7.5.9
     for (let decl of ((node: any): BabelNodeVariableDeclaration).declarations) {
       BindingInitialization(realm, decl.id, value, strictCode, environment);

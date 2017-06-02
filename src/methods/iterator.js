@@ -11,22 +11,22 @@
 
 import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
-import { ThrowCompletion, AbruptCompletion } from "../completions.js";
+import { Completion, ThrowCompletion } from "../completions.js";
 import {
-  NumberValue,
-  StringValue,
-  ObjectValue,
-  UndefinedValue,
   NativeFunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
   Value,
 } from "../values/index.js";
 import {
-  GetMethod,
   Call,
   Get,
-  ToBooleanPartial,
+  GetMethod,
   Invoke,
   ObjectCreate,
+  ToBooleanPartial,
 } from "./index.js";
 import invariant from "../invariant.js";
 import type { IterationKind } from "../types.js";
@@ -255,12 +255,12 @@ export function CreateSetIterator(realm: Realm, set: Value, kind: IterationKind)
 }
 
 // ECMA262 7.4.6
-export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: AbruptCompletion): AbruptCompletion {
+export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: Completion): Completion {
   // 1. Assert: Type(iterator) is Object.
   invariant(iterator instanceof ObjectValue, "expected object");
 
   // 2. Assert: completion is a Completion Record.
-  invariant(completion instanceof AbruptCompletion, "expected completion record");
+  invariant(completion instanceof Completion, "expected completion record");
 
   // 3. Let return be ? GetMethod(iterator, "return").
   let ret = GetMethod(realm, iterator, "return");
@@ -284,7 +284,7 @@ export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: A
 
   // 8. If Type(innerResult.[[Value]]) is not Object, throw a TypeError exception.
   if (!(innerResult instanceof ObjectValue)) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    return realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
   }
 
   // 9. Return Completion(completion).
