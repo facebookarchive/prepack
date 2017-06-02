@@ -192,6 +192,7 @@
 
   // Flow
     "flowtype/boolean-style": [2, "boolean"], // a problem is raised when using bool instead of boolean
+    "flowtype/define-flow-type": 2,
     "flowtype/generic-spacing": [2, "never"],
     "flowtype/space-before-type-colon": [2, "never"],
     "flowtype/space-before-generic-bracket": [2, "never"],
