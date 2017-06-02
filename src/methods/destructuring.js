@@ -12,6 +12,7 @@
 import invariant from "../invariant.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
+import { Reference } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
 import { AbruptCompletion } from "../completions.js";
@@ -246,6 +247,11 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
 
       // b. If hasNameProperty is false, perform SetFunctionName(v, GetReferencedName(lref)).
       if (hasNameProperty === false) {
+        // All of the nodes that may be evaluated to produce lref create
+        // references. Assert this with an invariant as GetReferencedName may
+        // not be called with a value.
+        invariant(lref instanceof Reference);
+
         SetFunctionName(realm, v, GetReferencedName(realm, lref));
       }
     }
@@ -391,7 +397,8 @@ export function KeyedDestructuringAssignmentEvaluation(realm: Realm, node: Babel
   // The spec assumes we haven't yet distinguished between literals and
   // patterns, but our parser does that work for us. That means we check for
   // "*Pattern" instead of "*Literal" like the spec text suggests.
-  if (DestructuringAssignmentTarget.type === "ObjectPattern" || DestructuringAssignmentTarget.type === "ArrayPattern") {
+  if (DestructuringAssignmentTarget.type === "ObjectPattern" ||
+      DestructuringAssignmentTarget.type === "ArrayPattern") {
     // a. Let assignmentPattern be the parse of the source text corresponding to DestructuringAssignmentTarget using either AssignmentPattern or AssignmentPattern[Yield] as the goal symbol depending upon whether this AssignmentElement has the [Yield] parameter.
     let assignmentPattern = DestructuringAssignmentTarget;
 
@@ -399,16 +406,26 @@ export function KeyedDestructuringAssignmentEvaluation(realm: Realm, node: Babel
     return DestructuringAssignmentEvaluation(realm, assignmentPattern, rhsValue, strictCode, env);
   }
 
+  // `lref` will always be defined at this point. Let Flow know with an
+  // invariant.
+  invariant(lref);
+
   // 6. If Initializer is present and v is undefined and IsAnonymousFunctionDefinition(Initializer) and IsIdentifierRef of DestructuringAssignmentTarget are both true, then
   if (Initializer &&
       v instanceof UndefinedValue &&
       IsAnonymousFunctionDefinition(realm, Initializer) &&
-      IsIdentifierRef(realm, DestructuringAssignmentTarget)) {
+      IsIdentifierRef(realm, DestructuringAssignmentTarget) &&
+      rhsValue instanceof ObjectValue) {
     // a. Let hasNameProperty be ? HasOwnProperty(rhsValue, "name").
     let hasNameProperty = HasOwnProperty(realm, rhsValue, "name");
 
     // b. If hasNameProperty is false, perform SetFunctionName(rhsValue, GetReferencedName(lref)).
     if (hasNameProperty === false) {
+      // All of the nodes that may be evaluated to produce lref create
+      // references. Assert this with an invariant as GetReferencedName may
+      // not be called with a value.
+      invariant(lref instanceof Reference);
+
       SetFunctionName(realm, rhsValue, GetReferencedName(realm, lref));
     }
   }

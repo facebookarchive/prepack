@@ -196,7 +196,7 @@ export function ForInOfBodyEvaluation(realm: Realm, env: LexicalEnvironment, lhs
     let nextValue = IteratorValue(realm, nextResult);
 
     // d. If lhsKind is either assignment or varBinding, then
-    let iterationEnv : LexicalEnvironment;
+    let iterationEnv : LexicalEnvironment | void;
     let lhsRef;
     if (lhsKind === "assignment" || lhsKind === "varBinding") {
       // i. If destructuring is false, then
