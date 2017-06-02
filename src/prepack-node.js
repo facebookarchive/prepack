@@ -12,13 +12,14 @@ import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import fs from "fs";
+import { AbruptCompletion } from "./completions.js";
 import { getRealmOptions, getSerializerOptions } from "./options";
 import { InitializationError } from "./prepack-standalone";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment";
 
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
-import type { SourceMap } from "./serializer/serializer.js";
+import type { SourceMap } from "./types.js";
 import invariant from "./invariant.js";
 
 export * from "./prepack-standalone";
@@ -43,14 +44,21 @@ export function prepackString(filename: string, code: string, sourceMap: string,
        throw new InitializationError();
      }
      if (!options.residual) return serialized;
-     return { code: "not yet implemented" };
+     let result = realm.$GlobalEnv.executePartialEvaluator(
+       filename, serialized.code, JSON.stringify(serialized.map));
+     if (result instanceof AbruptCompletion) throw result;
+     return result;
    } else {
      invariant(options.residual);
-     return { code: "not yet implemented" };
+     let result = realm.$GlobalEnv.executePartialEvaluator(filename, code, sourceMap);
+     if (result instanceof AbruptCompletion) throw result;
+     return result;
    }
 }
 
-export function prepackStdin(options: Options = defaultOptions, callback: Function) {
+export function prepackStdin(
+    options: Options = defaultOptions,
+    callback: ({code: string, map?: SourceMap})=>void) {
   let sourceMapFilename = options.inputSourceMapFilename || '';
   process.stdin.setEncoding('utf8');
   process.stdin.resume();
@@ -73,7 +81,11 @@ export function prepackStdin(options: Options = defaultOptions, callback: Functi
   });
 }
 
-export function prepackFile(filename: string, options: Options = defaultOptions, callback: Function) {
+export function prepackFile(
+    filename: string,
+    options: Options = defaultOptions,
+    callback: ({code: string, map?: SourceMap})=>void,
+    errorHandler?: (err: ?Error)=>void) {
   if (options.compatibility === 'node-cli') {
     prepackNodeCLI(filename, options, callback);
     return;
@@ -81,7 +93,7 @@ export function prepackFile(filename: string, options: Options = defaultOptions,
   let sourceMapFilename = options.inputSourceMapFilename || (filename + ".map");
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
-      callback(fileErr);
+      if (errorHandler) errorHandler(fileErr);
       return;
     }
     fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
@@ -96,7 +108,7 @@ export function prepackFile(filename: string, options: Options = defaultOptions,
         callback(err);
         return;
       }
-      callback(null, serialized);
+      callback(serialized);
     });
   });
 }

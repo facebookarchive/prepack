@@ -20,7 +20,12 @@ import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index
    one value, one of which will by the EmptyValue.  */
 
 export default class ValuesDomain {
-  constructor(values: void | Set<ConcreteValue>) {
+  constructor(values: void | Set<ConcreteValue> | ConcreteValue) {
+    if (values instanceof ConcreteValue) {
+      let valueSet = new Set();
+      valueSet.add(values);
+      values = valueSet;
+    }
     this._elements = values;
   }
 

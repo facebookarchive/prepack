@@ -15,7 +15,7 @@ import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObje
 import type { Descriptor, PropertyBinding } from "../types.js";
 
 import { AbruptCompletion, BreakCompletion, Completion, ContinueCompletion,
-   PossiblyNormalCompletion, JoinedAbruptCompletions,
+   PossiblyNormalCompletion, JoinedAbruptCompletions, NormalCompletion,
    ReturnCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Reference } from "../environment.js";
@@ -28,7 +28,40 @@ import { AbstractValue, Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
-export function joinPossiblyNormalCompletions(
+export function unbundleNormalCompletion(
+  completionOrValue: Completion | Value | Reference
+): [void | NormalCompletion, Value | Reference] {
+  let completion, value;
+  if (completionOrValue instanceof NormalCompletion) {
+    completion = completionOrValue;
+    value = completionOrValue.value;
+  } else {
+    invariant(completionOrValue instanceof Value || completionOrValue instanceof Reference);
+    value = completionOrValue;
+  }
+  return [completion, value];
+}
+
+export function composeNormalCompletions(
+  leftCompletion: void | NormalCompletion, rightCompletion: void | NormalCompletion, resultValue: Value, realm: Realm
+): PossiblyNormalCompletion | Value {
+  if (leftCompletion instanceof PossiblyNormalCompletion) {
+    if (rightCompletion instanceof PossiblyNormalCompletion) {
+      updatePossiblyNormalCompletionWithValue(realm, rightCompletion, resultValue);
+      return composePossiblyNormalCompletions(realm, leftCompletion, rightCompletion);
+    }
+    updatePossiblyNormalCompletionWithValue(realm, leftCompletion, resultValue);
+    return leftCompletion;
+  } else if (rightCompletion instanceof PossiblyNormalCompletion) {
+    updatePossiblyNormalCompletionWithValue(realm, rightCompletion, resultValue);
+    return rightCompletion;
+  } else {
+    invariant(leftCompletion === undefined && rightCompletion === undefined);
+    return resultValue;
+  }
+}
+
+export function composePossiblyNormalCompletions(
     realm: Realm, pnc: PossiblyNormalCompletion, c: PossiblyNormalCompletion): PossiblyNormalCompletion {
     let empty_effects = construct_empty_effects(realm);
     if (pnc.consequent instanceof AbruptCompletion) {
@@ -37,7 +70,7 @@ export function joinPossiblyNormalCompletions(
            pnc.consequent, pnc.consequentEffects, c, empty_effects);
       }
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
-      let new_alternate = joinPossiblyNormalCompletions(realm, pnc.alternate, c);
+      let new_alternate = composePossiblyNormalCompletions(realm, pnc.alternate, c);
       return new PossiblyNormalCompletion(new_alternate.value, pnc.joinCondition,
          pnc.consequent, pnc.consequentEffects, new_alternate, empty_effects);
     } else {
@@ -47,10 +80,30 @@ export function joinPossiblyNormalCompletions(
            c, empty_effects, pnc.alternate, pnc.alternateEffects);
       }
       invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-      let new_consequent = joinPossiblyNormalCompletions(realm, pnc.consequent, c);
+      let new_consequent = composePossiblyNormalCompletions(realm, pnc.consequent, c);
       return new PossiblyNormalCompletion(new_consequent.value, pnc.joinCondition,
          new_consequent, empty_effects, pnc.alternate, pnc.alternateEffects);
     }
+}
+
+export function updatePossiblyNormalCompletionWithValue(
+    realm: Realm,  pnc: PossiblyNormalCompletion, v: Value) {
+  pnc.value = v;
+  if (pnc.consequent instanceof AbruptCompletion) {
+    if (pnc.alternate instanceof Value) {
+      pnc.alternate = v;
+    } else {
+      invariant(pnc.alternate instanceof PossiblyNormalCompletion);
+      updatePossiblyNormalCompletionWithValue(realm, pnc.alternate, v);
+    }
+  } else {
+    if (pnc.consequent instanceof Value) {
+      pnc.consequent = v;
+    } else {
+      invariant(pnc.consequent instanceof PossiblyNormalCompletion);
+      updatePossiblyNormalCompletionWithValue(realm, pnc.consequent, v);
+    }
+  }
 }
 
 export function joinPossiblyNormalCompletionWithAbruptCompletion(
@@ -205,7 +258,7 @@ function joinResults(realm: Realm, joinCondition: AbstractValue,
     return joinValues(realm, result1, result2, getAbstractValue);
   }
   if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
-    return joinPossiblyNormalCompletions(realm, result1, result2);
+    return composePossiblyNormalCompletions(realm, result1, result2);
   }
   if (result1 instanceof AbruptCompletion) {
     let value = result2;

@@ -22,7 +22,7 @@ import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptComple
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeExpression } from "babel-types";
+import type { BabelNode, BabelNodeSourceLocation, BabelNodeStatement, BabelNodeExpression } from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
@@ -130,6 +130,7 @@ export class Realm {
     this.intrinsics = ({}: any);
     this.$GlobalObject = (({}: any): ObjectValue);
     this.evaluators = (Object.create(null): any);
+    this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.errorHandler = opts.errorHandler;
@@ -164,6 +165,10 @@ export class Realm {
   timeoutCounter: number;
   timeoutCounterThreshold: number;
   evaluators: { [key: string]: (ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any) => NormalCompletion | Value | Reference };
+  partialEvaluators: {
+    [key: string]: (
+      ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any
+    ) => [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] };
 
   tracers: Array<Tracer>;
 

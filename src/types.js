@@ -29,6 +29,13 @@ export type IterationKind = "key+value" | "value" | "key";
 
 export type SourceType = "module" | "script";
 
+export type SourceMap = {
+  sources: Array<string>,
+  names: Array<string>,
+  mappings: string,
+  sourcesContent: Array<string>
+};
+
 export type Compatibility =
   | "browser"
   | "jsc-600-1-4-17"
