@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
-import { Completion, ThrowCompletion } from "../completions.js";
+import { Completion, AbruptCompletion, ThrowCompletion } from "../completions.js";
 import {
   NativeFunctionValue,
   NumberValue,
@@ -177,7 +177,7 @@ function ListIterator_next(realm: Realm): NativeFunctionValue {
     // 10. If index ≥ len, then
     if (index >= len) {
       // a. Return CreateIterResultObject(undefined, true).
-      return CreateIterResultObject(realm, new UndefinedValue(realm), true);
+      return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     }
 
     // 11. Set the value of the [[ListIteratorNextIndex]] internal slot of O to index+1.
@@ -273,7 +273,11 @@ export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: C
   try {
     innerResult = Call(realm, ret.throwIfNotConcrete(), iterator, []);
   } catch (error) {
-    innerResult = error;
+    if (error instanceof AbruptCompletion) {
+      innerResult = error;
+    } else {
+      throw error;
+    }
   }
 
   // 6. If completion.[[Type]] is throw, return Completion(completion).

@@ -183,7 +183,7 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
         iteratorRecord.$Done = true;
         // Normally this assignment would be done in step 3, but we do it
         // here so that Flow knows `value` will always be initialized by step 4.
-        value = new UndefinedValue(realm);
+        value = realm.intrinsics.undefined;
       } else { // e. Else,
         // i. Let value be IteratorValue(next).
         try {
@@ -198,7 +198,7 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
         }
       }
     } else { // 3. If iteratorRecord.[[Done]] is true, let value be undefined.
-      value = new UndefinedValue(realm);
+      value = realm.intrinsics.undefined;
     }
 
     let v;

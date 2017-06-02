@@ -634,7 +634,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
           iteratorRecord.$Done = true;
           // Normally this assignment would be done in step 4, but we do it
           // here so that Flow knows `v` will always be initialized by step 5.
-          v = new UndefinedValue(realm);
+          v = realm.intrinsics.undefined;
         } else { // e. Else,
           // i. Let v be IteratorValue(next).
           try {
@@ -649,7 +649,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
           }
         }
       } else { // 4. If iteratorRecord.[[Done]] is true, let v be undefined.
-        v = new UndefinedValue(realm);
+        v = realm.intrinsics.undefined;
       }
 
       // 5. If Initializer is present and v is undefined, then
@@ -708,7 +708,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
           iteratorRecord.$Done = true;
           // Normally this assignment would be done in step 2, but we do it
           // here so that Flow knows `v` will always be initialized by step 3.
-          v = new UndefinedValue(realm);
+          v = realm.intrinsics.undefined;
         } else { // e. Else,
           // i. Let v be IteratorValue(next).
           try {
@@ -723,7 +723,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
           }
         }
       } else { // 2. If iteratorRecord.[[Done]] is true, let v be undefined.
-        v = new UndefinedValue(realm);
+        v = realm.intrinsics.undefined;
       }
 
       // 3. If Initializer is present and v is undefined, then
