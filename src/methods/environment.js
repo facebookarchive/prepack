@@ -35,7 +35,7 @@ import {
   Reference,
   LexicalEnvironment
 } from "../environment.js";
-import { Completion, AbruptCompletion, ThrowCompletion } from "../completions.js";
+import { NormalCompletion, AbruptCompletion, ThrowCompletion } from "../completions.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   GetV,
@@ -510,7 +510,7 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
 
     // 4. If iteratorRecord.[[Done]] is false, return ? IteratorClose(iterator, result).
     if (iteratorRecord.$Done === false) {
-      let completion = IteratorClose(realm, iterator, new Completion(realm.intrinsics.undefined));
+      let completion = IteratorClose(realm, iterator, new NormalCompletion(realm.intrinsics.undefined));
       if (completion instanceof AbruptCompletion) {
         throw completion;
       }

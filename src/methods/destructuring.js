@@ -15,7 +15,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { Reference } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
-import { Completion, AbruptCompletion } from "../completions.js";
+import { NormalCompletion, AbruptCompletion } from "../completions.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   RequireObjectCoercible,
@@ -81,7 +81,7 @@ export function DestructuringAssignmentEvaluation(realm: Realm, pattern: BabelNo
 
     // 4. If iteratorRecord.[[Done]] is false, return ? IteratorClose(iterator, result).
     if (iteratorRecord.$Done === false) {
-      let completion = IteratorClose(realm, iterator, new Completion(realm.intrinsics.undefined));
+      let completion = IteratorClose(realm, iterator, new NormalCompletion(realm.intrinsics.undefined));
       if (completion instanceof AbruptCompletion) {
         throw completion;
       }

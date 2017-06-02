@@ -167,9 +167,11 @@ function ListIterator_next(realm: Realm): NativeFunctionValue {
     // 7. Let list be the value of the [[IteratedList]] internal slot of O.
     let list = O.$IteratedList;
 
+    invariant(typeof O.$ListIteratorNextIndex === "number");
+
     // 8. Let index be the value of the [[ListIteratorNextIndex]] internal slot of O.
     // Default to 0 for Flow.
-    let index = O.$ListIteratorNextIndex || 0;
+    let index = O.$ListIteratorNextIndex;
 
     // 9. Let len be the number of elements of list.
     let len = list.length;
