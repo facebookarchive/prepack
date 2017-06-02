@@ -12,7 +12,7 @@
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
-import { ThrowCompletion, ReturnCompletion, AbruptCompletion, NormalCompletion, PossiblyNormalCompletion, IntrospectionThrowCompletion } from "../completions.js";
+import { Completion, ThrowCompletion, ReturnCompletion, AbruptCompletion, NormalCompletion, PossiblyNormalCompletion, IntrospectionThrowCompletion } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
 import { Value, BoundFunctionValue, EmptyValue, FunctionValue, ObjectValue, StringValue, SymbolValue, NumberValue } from "../values/index.js";
@@ -1057,6 +1057,62 @@ export function EvaluateStatements(
 
   // 7. Return blockValue.
   return blockValue || realm.intrinsics.empty;
+
+}
+
+export function PartiallyEvaluateStatements(
+  body: Array<BabelNodeStatement>, blockValue: void | NormalCompletion | Value,
+  strictCode: boolean, blockEnv: LexicalEnvironment, realm: Realm
+): [Completion | Value, Array<BabelNodeStatement>] {
+  let statementAsts = [];
+  for (let node of body) {
+    if (node.type !== "FunctionDeclaration") {
+      let [res, nast, nio] = blockEnv.partiallyEvaluateCompletionDeref(node, strictCode);
+      for (let ioAst of nio) statementAsts.push(ioAst);
+      statementAsts.push((nast: any));
+      if (!(res instanceof EmptyValue)) {
+        if (blockValue === undefined || blockValue instanceof Value) {
+          if (res instanceof AbruptCompletion)
+            return [UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty), statementAsts];
+          invariant(res instanceof NormalCompletion || res instanceof Value);
+          blockValue = res;
+        } else {
+          invariant(blockValue instanceof PossiblyNormalCompletion);
+          if (res instanceof AbruptCompletion) {
+            let e = realm.getCapturedEffects();
+            invariant(e !== undefined);
+            realm.stopEffectCapture();
+            let [_c, _g, b, p, _o] = e;
+            _c; _g; _o;
+            realm.restoreBindings(b);
+            realm.restoreProperties(p);
+            if (res instanceof IntrospectionThrowCompletion) {
+              realm.applyEffects(e);
+              throw res;
+            }
+            invariant(blockValue instanceof PossiblyNormalCompletion);
+            e[0] = res;
+            let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, blockValue, res, e);
+            realm.applyEffects(joined_effects);
+            let jres = joined_effects[0];
+            invariant(jres instanceof Value || jres instanceof Completion);
+            return [jres, statementAsts];
+          } else {
+            if (res instanceof Value)
+              blockValue.value = res;
+            else {
+              invariant(blockValue instanceof PossiblyNormalCompletion);
+              invariant(res instanceof PossiblyNormalCompletion);
+              blockValue = composePossiblyNormalCompletions(realm, blockValue, res);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 7. Return blockValue.
+  return [blockValue || realm.intrinsics.empty, statementAsts];
 
 }
 
