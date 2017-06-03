@@ -12,7 +12,6 @@
 import type { BabelNode, BabelNodeFile, BabelNodeStatement } from "babel-types";
 import type { Realm } from "./realm.js";
 import type { SourceMap, SourceType } from "./types.js";
-import { DeferredErrorsError } from "./errors.js";
 
 import { AbruptCompletion, Completion, JoinedAbruptCompletions, NormalCompletion, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
 import { ExecutionContext } from "./realm.js";
@@ -1048,7 +1047,7 @@ export class LexicalEnvironment {
     // the first error we encounter), but when we perform such a recovery, the
     // end result of execution is not valid.
     if (this.realm.hasErrors) {
-      throw new DeferredErrorsError("Errors encountered during execution");
+      throw new Error("Errors encountered during execution");
     }
 
     return GetValue(this.realm, res);

@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
-import { NativeError, type ErrorHandler } from "./errors.js";
+import { ProgramEvaluationError, type ErrorHandler } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
@@ -627,10 +627,10 @@ export class Realm {
     for (; i < generatorBody.length; i++) realmGeneratorBody.push(generatorBody[i]);
   }
 
+  // Pass the error to the realm's error-handler
+  // Return value indicates whether the caller should try to recover from the
+  // error or not ('true' means recover if possible).
   handleError(error: IntrospectionThrowCompletion): boolean {
-    // It's important to accumulate the erors so that even if there's a handler
-    // and we recover-and-continue, we can still fail the run at the end and
-    // report the errors we found.
     this.hasErrors = true;
 
     // Default behaviour is to bail on the first error
@@ -641,10 +641,10 @@ export class Realm {
     invariant(value instanceof ObjectValue);
     value = ((value: any): ObjectValue);
 
-    let nativeError = new NativeError(
+    let evaluationError = new ProgramEvaluationError(
       ToStringPartial(this, Get(this, value, "message")),
       ToStringPartial(this, Get(this, value, "stack"))
     );
-    return errorHandler(nativeError);
+    return errorHandler(evaluationError);
   }
 }

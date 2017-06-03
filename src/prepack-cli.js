@@ -13,7 +13,7 @@
 
 import { prepackStdin, prepackFileSync, InitializationError } from "./prepack-node.js";
 import { CompatibilityValues, type Compatibility } from './types.js';
-import { type NativeError, DeferredErrorsError } from "./errors.js";
+import { type ProgramEvaluationError } from "./errors.js";
 import fs from "fs";
 
 // Prepack helper
@@ -113,7 +113,7 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
     flags
   );
   resolvedOptions.errorHandler =
-    (error: NativeError) => {
+    (error: ProgramEvaluationError) => {
       console.log(`${error.message}\n${error.stack}`);
       return true;
     };
@@ -134,15 +134,7 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
       // their errors to the console, but exit with an error code.
       process.exit(1);
     }
-    if (x instanceof DeferredErrorsError) {
-      // Report the general failure reason. The specific errors were already
-      // handled and reported by the error-handler
-      console.log(x.message);
-      process.exit(1);
-    }
-
-    // For any other type of error, rethrow.
-    throw x;
+    console.log(x.message);
   }
 
   function processSerializedCode(serialized) {

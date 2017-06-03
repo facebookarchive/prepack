@@ -164,7 +164,6 @@ export class Serializer {
         if (onError) {
           onError(realm, res.value);
         }
-        console.log("Execution returned a completion!");
         this.logger.logCompletion(res);
       } finally {
         realm.popContext(context);
