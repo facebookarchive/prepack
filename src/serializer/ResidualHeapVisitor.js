@@ -25,6 +25,8 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 
+class GlobalScope {}
+
 /* This class visits all values that are reachable in the residual heap.
    In particular, this "filters out" values that are...
    - captured by a DeclarativeEnvironmentRecord, but not actually used by any closure.
@@ -43,8 +45,9 @@ export class ResidualHeapVisitor {
     this.globalBindings = new Map();
     this.functionInfos = new Map();
     this.functionBindings = new Map();
-    this.values = new Set();
+    this.values = new Map();
     this.ignoredProperties = new Map();
+    this.scope = new GlobalScope();
   }
 
   realm: Realm;
@@ -56,8 +59,16 @@ export class ResidualHeapVisitor {
   globalBindings: Map<string, VisitedBinding>;
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   functionBindings: Map<FunctionValue, VisitedBindings>;
-  values: Set<Value>;
   ignoredProperties: Map<ObjectValue, Set<string>>;
+  scope: GlobalScope | FunctionValue;
+  values: Map<Value, Set<GlobalScope | FunctionValue>>;
+
+  withScope(scope: GlobalScope | FunctionValue, f: () => void) {
+    let oldScope = this.scope;
+    this.scope = scope;
+    f();
+    this.scope = oldScope;
+  }
 
   static isLeaf(val: Value): boolean {
     if (val instanceof SymbolValue) {
@@ -371,32 +382,34 @@ export class ResidualHeapVisitor {
     }
 
     let visitedBindings = Object.create(null);
-    for (let innerName in functionInfo.names) {
-      let visitedBinding;
-      let doesNotMatter = true;
-      let reference = this.logger.tryQuery(
-        () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
-        undefined, true);
-      if (reference === undefined) {
-        visitedBinding = this.visitGlobalBinding(innerName);
-      } else {
-        invariant(!IsUnresolvableReference(this.realm, reference));
-        let referencedBase = reference.base;
-        let referencedName: string = (reference.referencedName: any);
-        if (typeof referencedName !== "string") {
-          throw new Error("TODO: do not know how to visit reference with symbol");
-        }
-        if (reference.base instanceof GlobalEnvironmentRecord) {
-          visitedBinding = this.visitGlobalBinding(referencedName);
-        } else if (referencedBase instanceof DeclarativeEnvironmentRecord) {
-          visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
+    this.withScope(val, () => {
+      for (let innerName in functionInfo.names) {
+        let visitedBinding;
+        let doesNotMatter = true;
+        let reference = this.logger.tryQuery(
+          () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
+          undefined, true);
+        if (reference === undefined) {
+          visitedBinding = this.visitGlobalBinding(innerName);
         } else {
-          invariant(false);
+          invariant(!IsUnresolvableReference(this.realm, reference));
+          let referencedBase = reference.base;
+          let referencedName: string = (reference.referencedName: any);
+          if (typeof referencedName !== "string") {
+            throw new Error("TODO: do not know how to visit reference with symbol");
+          }
+          if (reference.base instanceof GlobalEnvironmentRecord) {
+            visitedBinding = this.visitGlobalBinding(referencedName);
+          } else if (referencedBase instanceof DeclarativeEnvironmentRecord) {
+            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
+          } else {
+            invariant(false);
+          }
         }
+        visitedBindings[innerName] = visitedBinding;
+        if (functionInfo.modified[innerName]) visitedBinding.modified = true;
       }
-      visitedBindings[innerName] = visitedBinding;
-      if (functionInfo.modified[innerName]) visitedBinding.modified = true;
-    }
+    });
 
     this.functionBindings.set(val, visitedBindings);
   }
@@ -473,8 +486,10 @@ export class ResidualHeapVisitor {
   }
 
   visitValue(val: Value): void {
-    if (this.values.has(val)) return;
-    this.values.add(val);
+    let scopes = this.values.get(val);
+    if (scopes === undefined) this.values.set(val, scopes = new Set());
+    if (scopes.has(this.scope)) return;
+    scopes.add(this.scope);
     if (val instanceof AbstractValue) {
       this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
