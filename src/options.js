@@ -33,7 +33,7 @@ export type Options = {|
   strictlyMonotonicDateNow?: boolean,
 |};
 
-export const defaultOptions = { };
+export const defaultOptions = {};
 
 export function getRealmOptions({
   compatibility = "browser",
