@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/Errors.js";
+import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
 import { prepack } from "../lib/prepack-node.js";
 
 let chalk = require("chalk");
