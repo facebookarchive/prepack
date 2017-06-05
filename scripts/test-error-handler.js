@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { type ProgramEvaluationError } from "../lib/Errors.js";
+import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/Errors.js";
 import { prepack } from "../lib/prepack-node.js";
 
 let chalk = require("chalk");
@@ -38,11 +38,11 @@ function search(dir, relative) {
   return tests;
 }
 
-let tests = search(`${__dirname}/../test/error-recovery`, "test/error-recovery");
+let tests = search(`${__dirname}/../test/error-handler`, "test/error-handler");
 
-function errorHandler(shouldRecover: boolean, errors: Array<ProgramEvaluationError>, error: ProgramEvaluationError): boolean {
+function errorHandler(retval: ErrorHandlerResult, errors: Array<CompilerDiagnostics>, error: CompilerDiagnostics): ErrorHandlerResult {
   errors.push(error);
-  return shouldRecover;
+  return retval;
 }
 
 function runTest(name: string, code: string): boolean {
@@ -61,7 +61,7 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       serialize: true,
       speculate: true,
-      errorHandler: errorHandler.bind(null, recover, errors),
+      errorHandler: errorHandler.bind(null, recover ? 'RecoverIfPossible' : 'Fail', errors),
     });
     console.log(chalk.red("Serialization succeeded though it should have failed"));
     return false;

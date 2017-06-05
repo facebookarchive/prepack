@@ -9,13 +9,28 @@
 
 /* @flow */
 
+export type Severity = 'Error' | 'Warning';
+export type ErrorHandlerResult = 'Fail' | 'RecoverIfPossible';
+export type ErrorCode = 'PP0001';
+
 // This is the error format used to report errors to the caller-supplied
 // error-handler
-export class ProgramEvaluationError extends Error {
-  constructor(message: string, stack: string) {
+export class CompilerDiagnostics extends Error {
+  constructor(message: string, location: string, severity: Severity = 'Error', errorCode: string) {
     super(message);
-    this.stack = stack;
+
+    this.location = location;
+    this.severity = severity;
+    this.errorCode = errorCode;
   }
+
+  location: string;
+  severity: Severity;
+  errorCode: string;
 }
 
-export type ErrorHandler = (error: ProgramEvaluationError) => boolean;
+export type ErrorHandler = (error: CompilerDiagnostics) => ErrorHandlerResult;
+
+export const errorDetails: {[ErrorCode]: string} = {
+  'PP0001': 'Array size must be a concrete number',
+};

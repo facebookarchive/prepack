@@ -1042,14 +1042,6 @@ export class LexicalEnvironment {
     }
     if (res instanceof AbruptCompletion) return res;
 
-    // We support "recovering" from errors such that we continue to evaluate the
-    // code and can report more than one error per run (as opposed to bailing on
-    // the first error we encounter), but when we perform such a recovery, the
-    // end result of execution is not valid.
-    if (this.realm.hasErrors) {
-      throw new Error("Errors encountered during execution");
-    }
-
     return GetValue(this.realm, res);
   }
 

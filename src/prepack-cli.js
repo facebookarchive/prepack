@@ -13,7 +13,6 @@
 
 import { prepackStdin, prepackFileSync, InitializationError } from "./prepack-node.js";
 import { CompatibilityValues, type Compatibility } from './types.js';
-import { type ProgramEvaluationError } from "./errors.js";
 import fs from "fs";
 
 // Prepack helper
@@ -112,11 +111,6 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
     },
     flags
   );
-  resolvedOptions.errorHandler =
-    (error: ProgramEvaluationError) => {
-      console.log(`${error.message}\n${error.stack}`);
-      return true;
-    };
 
   if (!inputFilename) {
     prepackStdin(resolvedOptions, processSerializedCode);

@@ -12,6 +12,7 @@
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
+import { CompilerDiagnostics } from "../../errors.js";
 import {
     AbstractValue,
     BooleanValue,
@@ -33,11 +34,11 @@ import {
     IsConstructor,
     IsCallable,
     Set,
+    ToStringPartial,
 } from "../../methods/index.js";
 import { ToString, ToUint32, ToObject, ToLength } from "../../methods/to.js";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import invariant from "../../invariant.js";
-import { recoverableError } from "../../utils/recoverable-error.js";
 
 export default function (realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "Array", "Array", 1, (context, [...items], argCount, NewTarget) => {
@@ -86,7 +87,27 @@ export default function (realm: Realm): NativeFunctionValue {
         // c. Let intLen be 1.
         intLen = 1;
       } else { // 7. Else,
-        len = recoverableError(realm, ()=>len.throwIfNotConcreteNumber(), ()=>new NumberValue(realm, 0));
+
+        try {
+          len = len.throwIfNotConcreteNumber();
+        } catch (err) {
+          let value = err.value;
+          invariant(value instanceof ObjectValue);
+          value = ((value: any): ObjectValue);
+
+          realm.handleError(new CompilerDiagnostics(
+            ToStringPartial(realm, Get(realm, value, "message")),
+            ToStringPartial(realm, Get(realm, value, "stack")),
+            'Error',
+            'PP0001'
+          ));
+
+          // Rethrow.
+          // TODO: In the future, we can try and recover from the error based on the
+          // return value of 'handleError' (will be looked into a part of the effort
+          // to try and improve error reporting)
+          throw err;
+        }
 
         // a. Let intLen be ToUint32(len).
         intLen = ToUint32(realm, len);

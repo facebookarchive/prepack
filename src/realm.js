@@ -10,13 +10,13 @@
 /* @flow */
 
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
-import { ProgramEvaluationError, type ErrorHandler } from "./errors.js";
+import { CompilerDiagnostics, type ErrorHandlerResult, type ErrorHandler } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted, ToStringPartial, Get } from "./methods/index.js";
+import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import invariant from "./invariant.js";
@@ -134,7 +134,6 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.errorHandler = opts.errorHandler;
-    this.hasErrors = false;
   }
 
   start: number;
@@ -175,7 +174,6 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
-  hasErrors: boolean;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -630,21 +628,10 @@ export class Realm {
   // Pass the error to the realm's error-handler
   // Return value indicates whether the caller should try to recover from the
   // error or not ('true' means recover if possible).
-  handleError(error: IntrospectionThrowCompletion): boolean {
-    this.hasErrors = true;
-
+  handleError(error: CompilerDiagnostics): ErrorHandlerResult {
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
-    if (!errorHandler) return false;
-
-    let value = error.value;
-    invariant(value instanceof ObjectValue);
-    value = ((value: any): ObjectValue);
-
-    let evaluationError = new ProgramEvaluationError(
-      ToStringPartial(this, Get(this, value, "message")),
-      ToStringPartial(this, Get(this, value, "stack"))
-    );
-    return errorHandler(evaluationError);
+    if (!errorHandler) return 'Fail';
+    return errorHandler(error);
   }
 }
