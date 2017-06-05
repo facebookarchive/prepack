@@ -17,6 +17,7 @@ onmessage = function(e) {
       compatibility: 'browser',
       filename: 'repl',
       timeout: 1000,
+      serialize: true,
     });
     if (result) {
       postMessage({type: 'success', data: result.code});
