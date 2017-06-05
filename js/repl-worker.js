@@ -2,7 +2,7 @@ self.importScripts('prepack.min.js');
 
 onmessage = function(e) {
   var buffer = '';
-  var originError = console.error;
+  var originalError = console.error;
   var originalWarn = console.warn;
 
   function redirectOutput() {
