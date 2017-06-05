@@ -61,8 +61,8 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       serialize: true,
       speculate: true,
-      errorHandler: errorHandler.bind(null, recover ? 'RecoverIfPossible' : 'Fail', errors),
-    });
+    },
+    errorHandler.bind(null, recover ? 'RecoverIfPossible' : 'Fail', errors));
     console.log(chalk.red("Serialization succeeded though it should have failed"));
     return false;
   } catch (e) {

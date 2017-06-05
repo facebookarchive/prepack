@@ -13,6 +13,7 @@ import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./options";
+import { type ErrorHandler } from "./errors.js";
 
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
@@ -28,10 +29,14 @@ export function InitializationError() {
 Object.setPrototypeOf(InitializationError, Error);
 Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
 
-export function prepack(code: string, options: Options = defaultOptions) {
+export function prepack(code: string, options: Options = defaultOptions, errorHandler?: ErrorHandler) {
   let filename = options.filename || 'unknown';
-  let realm = construct_realm(getRealmOptions(options));
+
+  let realmOptions = getRealmOptions(options);
+  realmOptions.errorHandler = errorHandler;
+  let realm = construct_realm(realmOptions);
   initializeGlobals(realm);
+
   let serializer = new Serializer(realm, getSerializerOptions(options));
   let serialized = serializer.init(filename, code, "", options.sourceMaps);
   if (!serialized) {
