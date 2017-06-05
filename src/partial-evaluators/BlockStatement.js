@@ -46,7 +46,8 @@ export default function (
       }
     }
 
-    let [res, bAst] = PartiallyEvaluateStatements(ast.body, blockValue, strictCode, blockEnv, realm);
+    let [res, bAst] =
+      PartiallyEvaluateStatements(ast.body, blockValue, strictCode, blockEnv, realm);
     invariant(bAst.length > 0 || res instanceof EmptyValue);
     if (bAst.length === 0) return [res, t.emptyStatement(), []];
     let rAst = t.blockStatement(bAst, ast.directives);
