@@ -256,8 +256,6 @@ export function ForInOfBodyEvaluation(realm: Realm, env: LexicalEnvironment, lhs
       } else { // g. Else,
         // i. If lhsKind is assignment, then
         if (lhsKind === "assignment") {
-          // This should be true given the algorithm. We add a check here mostly
-          // for Flow.
           invariant(lhs.type === "ArrayPattern" || lhs.type === "ObjectPattern");
 
           // 1. Let status be the result of performing DestructuringAssignmentEvaluation of assignmentPattern using nextValue as the argument.
