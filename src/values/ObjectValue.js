@@ -168,6 +168,10 @@ export default class ObjectValue extends ConcreteValue {
   symbols: Map<SymbolValue, PropertyBinding>;
   unknownProperty: void | PropertyBinding;
 
+  mightBeFalse(): boolean {
+    return false;
+  }
+
   mightNotBeObject(): boolean {
     return false;
   }

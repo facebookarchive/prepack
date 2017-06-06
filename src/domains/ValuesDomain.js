@@ -58,6 +58,22 @@ export default class ValuesDomain {
     return false;
   }
 
+  mightBeFalse(): boolean {
+    invariant(!this.isTop());
+    for (let cval of this.getElements()) {
+      if (cval.mightBeFalse()) return true;
+    }
+    return false;
+  }
+
+  mightNotBeFalse(): boolean {
+    invariant(!this.isTop());
+    for (let cval of this.getElements()) {
+      if (cval.mightNotBeFalse()) return true;
+    }
+    return false;
+  }
+
   static joinValues(realm: Realm, v1: void | Value, v2: void | Value): ValuesDomain {
     if (v1 === undefined) v1 = realm.intrinsics.undefined;
     if (v2 === undefined) v2 = realm.intrinsics.undefined;

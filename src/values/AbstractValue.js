@@ -123,6 +123,26 @@ export default class AbstractValue extends Value {
     add_args(this.args);
   }
 
+  mightBeFalse(): boolean {
+    let valueType = this.getType();
+    if (valueType === UndefinedValue) return true;
+    if (valueType === NullValue) return true;
+    if (valueType === SymbolValue) return false;
+    if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return false;
+    if (this.values.isTop()) return true;
+    return this.values.mightBeFalse();
+  }
+
+  mightNotBeFalse(): boolean {
+    let valueType = this.getType();
+    if (valueType === UndefinedValue) return false;
+    if (valueType === NullValue) return false;
+    if (valueType === SymbolValue) return true;
+    if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return true;
+    if (this.values.isTop()) return true;
+    return this.values.mightNotBeFalse();
+  }
+
   mightBeNumber(): boolean {
     let valueType = this.getType();
     if (valueType === NumberValue) return true;

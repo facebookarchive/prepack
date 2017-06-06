@@ -19,6 +19,10 @@ export default class ConcreteValue extends Value {
     super(realm, intrinsicName);
   }
 
+  mightNotBeFalse(): boolean {
+    return !this.mightBeFalse();
+  }
+
   mightBeNumber(): boolean {
     return this instanceof NumberValue;
   }

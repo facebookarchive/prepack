@@ -301,11 +301,7 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     let c = realm.getRunningContext().lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
     let e = realm.getCapturedEffects();
     if (e !== undefined) {
-      realm.stopEffectCapture();
-      let [_c, _g, b, p, _o] = e;
-      _c; _g; _o;
-      realm.restoreBindings(b);
-      realm.restoreProperties(p);
+      realm.stopEffectCaptureAndUndoEffects();
     }
     if (c instanceof JoinedAbruptCompletions) {
       if (e !== undefined) realm.applyEffects(e);

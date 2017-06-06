@@ -15,4 +15,9 @@ export default class UndefinedValue extends PrimitiveValue {
   _serialize() {
     return undefined;
   }
+
+  mightBeFalse(): boolean {
+    return true;
+  }
+
 }

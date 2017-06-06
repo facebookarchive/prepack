@@ -21,6 +21,10 @@ export default class NumberValue extends PrimitiveValue {
 
   value: number;
 
+  mightBeFalse(): boolean {
+    return this.value === 0 || isNaN(this.value);
+  }
+
   throwIfNotConcreteNumber(): NumberValue {
     return this;
   }

@@ -23,6 +23,10 @@ export default class BooleanValue extends PrimitiveValue {
 
   value: boolean;
 
+  mightBeFalse(): boolean {
+    return !this.value;
+  }
+
   _serialize(): boolean {
     return this.value;
   }

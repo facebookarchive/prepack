@@ -15,4 +15,9 @@ export default class NullValue extends PrimitiveValue {
   _serialize(): null {
     return null;
   }
+
+  mightBeFalse(): boolean {
+    return true;
+  }
+
 }

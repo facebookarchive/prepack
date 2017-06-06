@@ -42,7 +42,7 @@ export function getRealmOptions({
   uniqueSuffix,
   timeout,
   residual,
-  serialize,
+  serialize = !residual,
   strictlyMonotonicDateNow,
 }: Options): RealmOptions {
   return {

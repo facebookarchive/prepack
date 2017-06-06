@@ -79,6 +79,14 @@ export default class AbstractObjectValue extends AbstractValue {
     return result;
   }
 
+  mightBeFalse(): boolean {
+    return false;
+  }
+
+  mightNotBeFalse(): boolean {
+    return true;
+  }
+
   makeNotPartial(): void {
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
