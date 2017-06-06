@@ -53,7 +53,7 @@ function runTest(name: string, code: string): boolean {
   let expectedErrors = (code.match(/\/\/\s*expected errors:\s*(.*)/))[1];
   console.log(expectedErrors);
 
-  expectedErrors = eval(expectedErrors);
+  expectedErrors = eval(expectedErrors); // eslint-disable-line no-eval
 
 
   invariant(expectedErrors.constructor === Array);

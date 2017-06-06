@@ -9,6 +9,8 @@
 
 /* @flow */
 
+import type { BabelNodeSourceLocation } from "babel-types";
+
 export type Severity = 'Error' | 'Warning';
 export type ErrorHandlerResult = 'Fail' | 'RecoverIfPossible';
 export type ErrorCode = 'PP0001';
