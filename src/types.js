@@ -11,6 +11,7 @@
 
 import type { NumberValue, BooleanValue, NativeFunctionValue, FunctionValue, StringValue, SymbolValue, UndefinedValue, NullValue, EmptyValue, Value, AbstractObjectValue } from "./values/index.js";
 import { ObjectValue } from "./values/index.js";
+import type { ErrorHandler } from "./errors.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -56,6 +57,7 @@ export type RealmOptions = {
   compatibility?: Compatibility,
   mathRandomSeed?: string,
   strictlyMonotonicDateNow?: boolean,
+  errorHandler?: ErrorHandler,
 };
 
 export type AbstractTime = "early" | "late";

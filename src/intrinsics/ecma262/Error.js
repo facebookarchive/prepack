@@ -74,10 +74,10 @@ function buildStack(realm: Realm, context: ObjectValue) {
     msg.throwIfNotConcrete();
   }
 
-  for (let executionContext of stack) {
+  for (let executionContext of stack.reverse()) {
     let caller = executionContext.caller;
     let locString = describeLocation(realm, caller ? caller.function : undefined, caller ? caller.lexicalEnvironment : undefined, executionContext.loc);
-    if (locString !== undefined) lines.unshift(locString);
+    if (locString !== undefined) lines.push(locString);
   }
 
   return new StringValue(realm, `${header}\n    ${lines.join("\n    ")}`);

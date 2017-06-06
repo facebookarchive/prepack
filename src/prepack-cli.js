@@ -116,7 +116,6 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
     prepackStdin(resolvedOptions, processSerializedCode);
     return;
   }
-
   try {
     let serialized = prepackFileSync(
       inputFilename,
@@ -129,8 +128,7 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
       // their errors to the console, but exit with an error code.
       process.exit(1);
     }
-    // For any other type of error, rethrow.
-    throw x;
+    console.log(x.message);
   }
 
   function processSerializedCode(serialized) {

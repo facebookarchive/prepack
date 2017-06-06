@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
+import { CompilerDiagnostics, type ErrorHandlerResult, type ErrorHandler } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
@@ -131,6 +132,8 @@ export class Realm {
     this.evaluators = (Object.create(null): any);
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
+
+    this.errorHandler = opts.errorHandler;
   }
 
   start: number;
@@ -169,6 +172,8 @@ export class Realm {
   tracers: Array<Tracer>;
 
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
+
+  errorHandler: ?ErrorHandler;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -626,5 +631,15 @@ export class Realm {
       realmGeneratorBody.push({ declaresDerivedId: firstEntry.declaresDerivedId, args: firstEntry.args, buildNode: buildNode });
     }
     for (; i < generatorBody.length; i++) realmGeneratorBody.push(generatorBody[i]);
+  }
+
+  // Pass the error to the realm's error-handler
+  // Return value indicates whether the caller should try to recover from the
+  // error or not ('true' means recover if possible).
+  handleError(error: CompilerDiagnostics): ErrorHandlerResult {
+    // Default behaviour is to bail on the first error
+    let errorHandler = this.errorHandler;
+    if (!errorHandler) return 'Fail';
+    return errorHandler(error);
   }
 }

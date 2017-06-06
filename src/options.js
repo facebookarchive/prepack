@@ -43,7 +43,7 @@ export function getRealmOptions({
   timeout,
   residual,
   serialize = !residual,
-  strictlyMonotonicDateNow
+  strictlyMonotonicDateNow,
 }: Options): RealmOptions {
   return {
     compatibility,
