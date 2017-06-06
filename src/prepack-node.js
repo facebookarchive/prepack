@@ -58,7 +58,7 @@ export function prepackString(filename: string, code: string, sourceMap: string,
 
 export function prepackStdin(
     options: Options = defaultOptions,
-    callback: ({code: string, map?: SourceMap})=>void) {
+    callback: (any, ?{code: string, map?: SourceMap})=>void) {
   let sourceMapFilename = options.inputSourceMapFilename || '';
   process.stdin.setEncoding('utf8');
   process.stdin.resume();
@@ -73,10 +73,10 @@ export function prepackStdin(
       try {
         serialized = prepackString(filename, code, sourceMap, options);
       } catch (err) {
-        callback(err);
+        callback(err, null);
         return;
       }
-      callback(serialized);
+      callback(null, serialized);
     });
   });
 }
@@ -84,7 +84,7 @@ export function prepackStdin(
 export function prepackFile(
     filename: string,
     options: Options = defaultOptions,
-    callback: ({code: string, map?: SourceMap})=>void,
+    callback: (any, ?{code: string, map?: SourceMap})=>void,
     errorHandler?: (err: ?Error)=>void) {
   if (options.compatibility === 'node-cli') {
     prepackNodeCLI(filename, options, callback);
@@ -105,10 +105,10 @@ export function prepackFile(
       try {
         serialized = prepackString(filename, code, sourceMap, options);
       } catch (err) {
-        callback(err);
+        callback(err, null);
         return;
       }
-      callback(serialized);
+      callback(null, serialized);
     });
   });
 }
