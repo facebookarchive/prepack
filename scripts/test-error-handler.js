@@ -50,12 +50,12 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
 
   let recover = code.includes("// recover-from-errors");
-  let expectedErrors = (code.match(/\/\/\s*expected errors:\s*(.*)/))[1];
-  console.log(expectedErrors);
 
+  let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
+  invariant(expectedErrors);
+  invariant(expectedErrors.length > 1);
+  expectedErrors = expectedErrors[1];
   expectedErrors = eval(expectedErrors); // eslint-disable-line no-eval
-
-
   invariant(expectedErrors.constructor === Array);
 
   let errors = [];
