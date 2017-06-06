@@ -16,7 +16,7 @@ export type ErrorCode = 'PP0001';
 // This is the error format used to report errors to the caller-supplied
 // error-handler
 export class CompilerDiagnostics extends Error {
-  constructor(message: string, location: string, severity: Severity = 'Error', errorCode: string) {
+  constructor(message: string, location: BabelNodeSourceLocation, errorCode: string, severity: Severity = 'Error') {
     super(message);
 
     this.location = location;
@@ -24,7 +24,7 @@ export class CompilerDiagnostics extends Error {
     this.errorCode = errorCode;
   }
 
-  location: string;
+  location: BabelNodeSourceLocation;
   severity: Severity;
   errorCode: string;
 }

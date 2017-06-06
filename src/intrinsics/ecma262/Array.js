@@ -97,10 +97,10 @@ export default function (realm: Realm): NativeFunctionValue {
 
           realm.handleError(new CompilerDiagnostics(
             ToStringPartial(realm, Get(realm, value, "message")),
-            ToStringPartial(realm, Get(realm, value, "stack")),
+            realm.currentLocation,
+            'PP0001',
             'Error',
-            'PP0001'
-          ));
+        ));
 
           // Rethrow.
           // TODO: In the future, we can try and recover from the error based on the

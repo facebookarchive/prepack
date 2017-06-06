@@ -11,6 +11,7 @@
 
 import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
 import { prepack } from "../lib/prepack-node.js";
+import invariant from "../lib/invariant.js";
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -49,8 +50,13 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
 
   let recover = code.includes("// recover-from-errors");
-  let errorCountMatch = code.match(/\/\/ expected errors:\s*(\d*)/);
-  let expectedErrorCount = Number(errorCountMatch ? errorCountMatch[1] : 0);
+  let expectedErrors = (code.match(/\/\/\s*expected errors:\s*(.*)/))[1];
+  console.log(expectedErrors);
+
+  expectedErrors = eval(expectedErrors);
+
+
+  invariant(expectedErrors.constructor === Array);
 
   let errors = [];
   try {
@@ -68,9 +74,18 @@ function runTest(name: string, code: string): boolean {
   } catch (e) {
     // We expect serialization to fail, so catch the error and continue
   }
-  if (errors.length !== expectedErrorCount) {
-    console.log(chalk.red(`Expected ${expectedErrorCount} errors, but found ${errors.length}`));
+  if (errors.length !== expectedErrors.length) {
+    console.log(chalk.red(`Expected ${expectedErrors.length} errors, but found ${errors.length}`));
     return false;
+  }
+
+  for (let i = 0; i < expectedErrors.length; ++i) {
+    for (let prop in expectedErrors[i]) {
+      if (expectedErrors[i][prop] !== errors[i][prop]) {
+        console.log(chalk.red(`Error ${i}: Expected ${expectedErrors[i][prop]} errors, but found ${errors[i][prop]}`));
+        return false;
+      }
+    }
   }
 
   return true;
