@@ -38,7 +38,7 @@
     "test-internal": "babel-node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=8192 scripts/test-internal.js",
     "test-error-handler": "babel-node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=8192 scripts/test-error-handler.js",
     "test-node-cli-mode": "bash < scripts/test-node-cli-mode.sh",
-    "test": "npm run test-residual && npm run test-serializer && npm run test-sourcemaps && npm run test-test262 && npm run test-internal",
+    "test": "npm run test-residual && npm run test-serializer && npm run test-sourcemaps && npm run test-test262 && npm run test-internal && npm run test-error-handler",
     "repl": "node lib/repl-cli.js",
     "prepack": "node lib/prepack-cli.js",
     "prepack-prepack": "node --stack_size=10000 --max_old_space_size=8096 ./bin/prepack.js ./lib/prepack-cli.js --out ./lib/prepack-cli.prepacked.js --compatibility node-cli --mathRandomSeed rnd",
