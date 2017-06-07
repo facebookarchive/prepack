@@ -39,6 +39,7 @@ import invariant from "../invariant.js";
 function EvaluateClassHeritage(realm: Realm, ClassHeritage: BabelNodeExpression, strictCode: boolean): ObjectValue | null {
   let ref = realm.getRunningContext().lexicalEnvironment.evaluate(ClassHeritage, strictCode);
   let val = GetValue(realm, ref);
+  val = val.throwIfNotConcrete();
   if (!(val instanceof ObjectValue)) {
     return null;
   }
@@ -110,6 +111,7 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
       // iii. ReturnIfAbrupt(protoParent).
 
       // iv. If Type(protoParent) is neither Object nor Null, throw a TypeError exception.
+      protoParent = protoParent.throwIfNotConcrete();
       if (!(protoParent instanceof ObjectValue || protoParent instanceof NullValue)) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, 'protoParent must be an instance of Object or Null');
       }
