@@ -12,6 +12,7 @@ test:
   override:
     - npm run lint
     - npm run flow
+    - npm run depcheck
     - npm run test-serializer-with-coverage
     - npm run test-sourcemaps
     - npm run test-node-cli-mode
