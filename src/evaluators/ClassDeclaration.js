@@ -45,6 +45,8 @@ function EvaluateClassHeritage(realm: Realm, ClassHeritage: BabelNodeExpression,
   return val;
 }
 
+
+// ECMA262 14.5.14
 function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration, className: string | void, strictCode: boolean, env: LexicalEnvironment) {
   // 1. Let lex be the LexicalEnvironment of the running execution context.
   let lex = env;
@@ -232,7 +234,7 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
   return F;
 }
 
-// 14.5.15
+// ECMA2 14.5.15
 function BindingClassDeclarationEvaluation(realm: Realm, ast: BabelNodeClassDeclaration, strictCode: boolean, env: LexicalEnvironment) {
   // ClassDeclaration : class BindingIdentifier ClassTail
   if (ast.id) {
