@@ -100,6 +100,11 @@ export default class ObjectValue extends ConcreteValue {
   $Capabilities: void | PromiseCapability;
   $RemainingElements: void | { value: number };
 
+  // iterator
+  $IteratedList: void | Array<Value>;
+  $ListIteratorNextIndex: void | number;
+  $IteratorNext: void | NativeFunctionValue;
+
   // set
   $SetIterationKind: void | IterationKind;
   $SetNextIndex: void | number;

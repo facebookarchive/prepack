@@ -12,10 +12,17 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Value, ObjectValue } from "../values/index.js";
-import { GetValue } from "../methods/index.js";
 import { Reference } from "../environment.js";
-import { PutValue, SetFunctionName, IsAnonymousFunctionDefinition, HasOwnProperty, GetReferencedName } from "../methods/index.js";
-import { IsIdentifierRef } from "../methods/is.js";
+import {
+  DestructuringAssignmentEvaluation,
+  GetReferencedName,
+  GetValue,
+  HasOwnProperty,
+  IsAnonymousFunctionDefinition,
+  IsIdentifierRef,
+  PutValue,
+  SetFunctionName,
+} from "../methods/index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "babel-types";
 import { computeBinary } from "./BinaryExpression.js";
@@ -32,7 +39,12 @@ export default function (ast: BabelNodeAssignmentExpression, strictCode: boolean
   // AssignmentExpression : LeftHandSideExpression = AssignmentExpression
   if (AssignmentOperator === "="){
     // 1. If LeftHandSideExpression is neither an ObjectLiteral nor an ArrayLiteral, then
-    if (LeftHandSideExpression.type !== "ObjectLiteral" && LeftHandSideExpression.type !== "ArrayLiteral") {
+    //
+    // The spec assumes we haven't yet distinguished between literals and
+    // patterns, but our parser does that work for us. That means we check for
+    // "*Pattern" instead of "*Literal" like the spec text suggests.
+    if (LeftHandSideExpression.type !== "ObjectPattern" &&
+        LeftHandSideExpression.type !== "ArrayPattern") {
       // a. Let lref be the result of evaluating LeftHandSideExpression.
       let lref = env.evaluate(LeftHandSideExpression, strictCode);
       // b. ReturnIfAbrupt(lref). -- Not neccessary
@@ -57,13 +69,23 @@ export default function (ast: BabelNodeAssignmentExpression, strictCode: boolean
       // g. Return rval.
       return rval;
     }
-    throw new Error("Patterns aren't supported yet");
+
     // 2. Let assignmentPattern be the parse of the source text corresponding to LeftHandSideExpression using AssignmentPattern[?Yield] as the goal symbol.
+    let assignmentPattern = LeftHandSideExpression;
+
     // 3. Let rref be the result of evaluating AssignmentExpression.
+    let rref = env.evaluate(AssignmentExpression, strictCode);
+
     // 4. Let rval be ? GetValue(rref).
+    let rval = GetValue(realm, rref);
+
     // 5. Let status be the result of performing DestructuringAssignmentEvaluation of assignmentPattern using rval as the argument.
+    DestructuringAssignmentEvaluation(realm, assignmentPattern, rval, strictCode, env);
+
     // 6. ReturnIfAbrupt(status).
+
     // 7. Return rval.
+    return rval;
   }
 
   // AssignmentExpression : LeftHandSideExpression AssignmentOperator AssignmentExpression

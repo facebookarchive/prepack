@@ -11,18 +11,27 @@
 
 import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
-import { ThrowCompletion, AbruptCompletion } from "../completions.js";
-import { NumberValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
+import { Completion, AbruptCompletion, ThrowCompletion } from "../completions.js";
 import {
-  GetMethod,
+  NativeFunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
+  Value,
+} from "../values/index.js";
+import {
   Call,
   Get,
-  ToBooleanPartial,
+  GetMethod,
   Invoke,
   ObjectCreate,
+  ToBooleanPartial,
 } from "./index.js";
 import invariant from "../invariant.js";
 import type { IterationKind } from "../types.js";
+import { SameValue } from "./abstract.js";
+import { CreateMethodProperty, CreateIterResultObject } from "./create.js";
 
 // ECMA262 7.4.1
 export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefined, method?: Value): ObjectValue {
@@ -98,6 +107,91 @@ export function IteratorNext(realm: Realm, iterator: Value, value?: Value): Obje
   return result;
 }
 
+// ECMA262 7.4.8
+export function CreateListIterator(realm: Realm, list: Array<Value>): ObjectValue {
+  // 1. Let iterator be ObjectCreate(%IteratorPrototype%, « [[IteratorNext]], [[IteratedList]], [[ListIteratorNextIndex]] »).
+  let iterator = ObjectCreate(realm, realm.intrinsics.IteratorPrototype, {
+    $IteratorNext: undefined,
+    $IteratedList: undefined,
+    $ListIteratorNextIndex: undefined,
+  });
+
+  // 2. Set iterator's [[IteratedList]] internal slot to list.
+  iterator.$IteratedList = list;
+
+  // 3. Set iterator's [[ListIteratorNextIndex]] internal slot to 0.
+  iterator.$ListIteratorNextIndex = 0;
+
+  // 4. Let next be a new built-in function object as defined in ListIterator next (7.4.8.1).
+  let next = ListIterator_next(realm);
+
+  // 5. Set iterator's [[IteratorNext]] internal slot to next.
+  iterator.$IteratorNext = next;
+
+  // 6. Perform CreateMethodProperty(iterator, "next", next).
+  CreateMethodProperty(realm, iterator, new StringValue(realm, 'next'), next);
+
+  // 7. Return iterator.
+  return iterator;
+}
+
+// ECMA262 7.4.8.1
+function ListIterator_next(realm: Realm): NativeFunctionValue {
+  let func = new NativeFunctionValue(realm, undefined, "next", 0, context => {
+    invariant(context instanceof ObjectValue);
+
+    // 1. Let O be the this value.
+    let O = context;
+
+    // 2. Let f be the active function object.
+    let f = func;
+
+    // 3. If O does not have a [[IteratorNext]] internal slot, throw a TypeError exception.
+    if (!O.$IteratorNext) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[IteratorNext]] internal slot");
+    }
+
+    // 4. Let next be the value of the [[IteratorNext]] internal slot of O.
+    let next = O.$IteratorNext;
+
+    // 5. If SameValue(f, next) is false, throw a TypeError exception.
+    if (!SameValue(realm, f, next)) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
+
+    // 6. If O does not have an [[IteratedList]] internal slot, throw a TypeError exception.
+    if (!O.$IteratedList) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[IteratedList]] internal slot");
+    }
+
+    // 7. Let list be the value of the [[IteratedList]] internal slot of O.
+    let list = O.$IteratedList;
+
+    invariant(typeof O.$ListIteratorNextIndex === "number");
+
+    // 8. Let index be the value of the [[ListIteratorNextIndex]] internal slot of O.
+    // Default to 0 for Flow.
+    let index = O.$ListIteratorNextIndex;
+
+    // 9. Let len be the number of elements of list.
+    let len = list.length;
+
+    // 10. If index ≥ len, then
+    if (index >= len) {
+      // a. Return CreateIterResultObject(undefined, true).
+      return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+    }
+
+    // 11. Set the value of the [[ListIteratorNextIndex]] internal slot of O to index+1.
+    O.$ListIteratorNextIndex = index + 1;
+
+    // 12. Return CreateIterResultObject(list[index], false).
+    return CreateIterResultObject(realm, list[index], false);
+  });
+
+  return func;
+}
+
 // ECMA262 23.1.5.1
 export function CreateMapIterator(realm: Realm, map: Value, kind: IterationKind): ObjectValue {
   // 1. If Type(map) is not Object, throw a TypeError exception.
@@ -163,12 +257,12 @@ export function CreateSetIterator(realm: Realm, set: Value, kind: IterationKind)
 }
 
 // ECMA262 7.4.6
-export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: AbruptCompletion): AbruptCompletion {
+export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: Completion): Completion {
   // 1. Assert: Type(iterator) is Object.
   invariant(iterator instanceof ObjectValue, "expected object");
 
   // 2. Assert: completion is a Completion Record.
-  invariant(completion instanceof AbruptCompletion, "expected completion record");
+  invariant(completion instanceof Completion, "expected completion record");
 
   // 3. Let return be ? GetMethod(iterator, "return").
   let ret = GetMethod(realm, iterator, "return");
@@ -177,16 +271,26 @@ export function IteratorClose(realm: Realm, iterator: ObjectValue, completion: A
   if (ret instanceof UndefinedValue) return completion;
 
   // 5. Let innerResult be Call(return, iterator, « »).
-  let innerResult = Call(realm, ret.throwIfNotConcrete(), iterator, []);
+  let innerResult;
+  try {
+    innerResult = Call(realm, ret.throwIfNotConcrete(), iterator, []);
+  } catch (error) {
+    if (error instanceof AbruptCompletion) {
+      innerResult = error;
+    } else {
+      throw error;
+    }
+  }
 
   // 6. If completion.[[Type]] is throw, return Completion(completion).
   if (completion instanceof ThrowCompletion) return completion;
 
   // 7. If innerResult.[[Type]] is throw, return Completion(innerResult).
+  if (innerResult instanceof ThrowCompletion) return innerResult;
 
   // 8. If Type(innerResult.[[Value]]) is not Object, throw a TypeError exception.
   if (!(innerResult instanceof ObjectValue)) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    return realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
   }
 
   // 9. Return Completion(completion).

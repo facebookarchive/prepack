@@ -790,8 +790,8 @@ function handleTest(
     } else {
       invariant(testFileContents, "testFileContents should not be null if banners are not None");
       // filter out by flags, features, and includes
-      let keepThisTest = filterFeatures(banners) && filterFlags(banners) &&
-        filterIncludes(banners) && filterDescription(banners) && filterCircleCI(banners);
+      let keepThisTest = filterFeatures(banners) && filterFlags(banners) && filterIncludes(banners) &&
+        filterDescription(banners) && filterCircleCI(banners) && filterSneakyGenerators(banners, testFileContents);
       let testResults = [];
       if (keepThisTest) {
         // now run the test
@@ -1196,8 +1196,8 @@ function filterFeatures(data: BannerData): boolean {
   let features = data.features;
   if (features.includes("class")) return false;
   if (features.includes("default-parameters")) return false;
-  if (features.includes("destructuring-binding")) return false;
   if (features.includes("generators")) return false;
+  if (features.includes("generator")) return false;
   return true;
 }
 
@@ -1224,6 +1224,17 @@ function filterCircleCI(data: BannerData): boolean {
   return (!!process.env.NIGHTLY_BUILD ||
       (skipTests.indexOf(data.es5id) < 0 && skipTests6.indexOf(data.es6id) < 0));
 }
+
+function filterSneakyGenerators(data: BannerData, testFileContents: string) {
+  // There are some sneaky tests that use generators but are not labeled with
+  // the "generators" or "generator" feature tag. Here we use a simple heuristic
+  // to filter out tests with sneaky generators.
+  if (data.features.includes('destructuring-binding')) {
+    return !testFileContents.includes("function*") && !testFileContents.includes("*method");
+  }
+  return true;
+}
+
 /**
  * Run a given ${test} whose file contents are ${testFileContents} and return
  * a list of results, one for each strictness level (strict or not).

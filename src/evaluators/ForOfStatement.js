@@ -30,6 +30,7 @@ import {
   UpdateEmpty,
   BoundNames,
   BindingInitialization,
+  DestructuringAssignmentEvaluation,
   GetIterator,
   IsDestructuring,
   HasSomeCompatibleType
@@ -178,6 +179,7 @@ export function ForInOfBodyEvaluation(realm: Realm, env: LexicalEnvironment, lhs
   // 4. If destructuring is true and if lhsKind is assignment, then
   if (destructuring && lhsKind === "assignment") {
     // a. Assert: lhs is a LeftHandSideExpression.
+    invariant(lhs.type !== "VariableDeclaration");
 
     // b. Let assignmentPattern be the parse of the source text corresponding to lhs using AssignmentPattern as the goal symbol.
   }
@@ -194,7 +196,7 @@ export function ForInOfBodyEvaluation(realm: Realm, env: LexicalEnvironment, lhs
     let nextValue = IteratorValue(realm, nextResult);
 
     // d. If lhsKind is either assignment or varBinding, then
-    let iterationEnv : LexicalEnvironment;
+    let iterationEnv : void | LexicalEnvironment;
     let lhsRef;
     if (lhsKind === "assignment" || lhsKind === "varBinding") {
       // i. If destructuring is false, then
@@ -254,21 +256,26 @@ export function ForInOfBodyEvaluation(realm: Realm, env: LexicalEnvironment, lhs
       } else { // g. Else,
         // i. If lhsKind is assignment, then
         if (lhsKind === "assignment") {
+          invariant(lhs.type === "ArrayPattern" || lhs.type === "ObjectPattern");
+
           // 1. Let status be the result of performing DestructuringAssignmentEvaluation of assignmentPattern using nextValue as the argument.
+          status = DestructuringAssignmentEvaluation(realm, lhs, nextValue, strictCode, iterationEnv || env);
         } else if (lhsKind === "varBinding") { // ii. Else if lhsKind is varBinding, then
           // 1. Assert: lhs is a ForBinding.
+          invariant(lhs.type !== "VariableDeclaration");
 
           // 2. Let status be the result of performing BindingInitialization for lhs passing nextValue and undefined as the arguments.
-          status = BindingInitialization(realm, lhs, nextValue, undefined);
+          status = BindingInitialization(realm, lhs, nextValue, strictCode, undefined);
         } else { // iii. Else,
           // 1. Assert: lhsKind is lexicalBinding.
           invariant(lhsKind === "lexicalBinding");
 
           // 2. Assert: lhs is a ForDeclaration.
+          invariant(lhs.type !== "VariableDeclaration");
 
           // 3. Let status be the result of performing BindingInitialization for lhs passing nextValue and iterationEnv as arguments.
           invariant(iterationEnv !== undefined);
-          status = BindingInitialization(realm, lhs, nextValue, iterationEnv);
+          status = BindingInitialization(realm, lhs, nextValue, strictCode, iterationEnv);
         }
       }
     } catch (e) {

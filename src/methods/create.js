@@ -541,6 +541,26 @@ export function CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyV
   return O.$DefineOwnProperty(P, newDesc);
 }
 
+// ECMA262 7.3.5
+export function CreateMethodProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean {
+  // 1. Assert: Type(O) is Object.
+  invariant(O instanceof ObjectValue, "Not an object value");
+
+  // 2. Assert: IsPropertyKey(P) is true.
+  invariant(IsPropertyKey(realm, P), "Not a property key");
+
+  // 3. Let newDesc be the PropertyDescriptor{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
+  let newDesc = {
+    value: V,
+    writable: true,
+    enumerable: false,
+    configurable: true
+  };
+
+  // 4. Return ? O.[[DefineOwnProperty]](P, newDesc).
+  return O.$DefineOwnProperty(P, newDesc);
+}
+
 // ECMA262 7.3.6
 export function CreateDataPropertyOrThrow(realm: Realm, O: Value, P: PropertyKeyValue, V: Value): boolean {
   // 1. Assert: Type(O) is Object.

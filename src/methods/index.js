@@ -26,6 +26,7 @@ export * from "./iterator.js";
 export * from "./join.js";
 export * from "./own.js";
 export * from "./properties.js";
+export * from "./destructuring.js";
 export * from "./regexp.js";
 export * from "./promise.js";
 export * from "./arraybuffer.js";

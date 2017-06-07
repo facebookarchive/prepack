@@ -42,7 +42,7 @@ export default function (ast: BabelNodeCatchClause, strictCode: boolean, env: Le
 
   try {
     // 6. Let status be the result of performing BindingInitialization for CatchParameter passing thrownValue and catchEnv as arguments.
-    BindingInitialization(realm, ast.param, thrownValue.value, catchEnv);
+    BindingInitialization(realm, ast.param, thrownValue.value, strictCode, catchEnv);
 
     // 7. If status is an abrupt completion, then
       // a. Set the running execution context's LexicalEnvironment to oldEnv.

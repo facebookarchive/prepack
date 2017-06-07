@@ -10,9 +10,8 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { LexicalEnvironment } from "../environment.js";
+import type { LexicalEnvironment, Reference } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 import {
   PutValue,
@@ -22,6 +21,7 @@ import {
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
   SetFunctionName,
+  BindingInitialization,
 } from "../methods/index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeVariableDeclaration } from "babel-types";
@@ -83,39 +83,54 @@ export default function (ast: BabelNodeVariableDeclaration, strictCode: boolean,
   }
 
   for (let declar of ast.declarations) {
-    if (declar.id.type !== "Identifier") {
-      throw new Error("TODO: Patterns aren't supported yet");
-    }
-
     let Initializer = declar.init;
-    if (!Initializer) continue;
 
-    // 1. Let bindingId be StringValue of BindingIdentifier.
-    let bindingId = declar.id.name;
+    if (declar.id.type === "Identifier" && !Initializer) {
+      // VariableDeclaration : BindingIdentifier
 
-    // 2. Let lhs be ? ResolveBinding(bindingId).
-    let lhs = ResolveBinding(realm, bindingId, strictCode);
+      // 1. Return NormalCompletion(empty).
+      continue;
+    } else if (declar.id.type === "Identifier" && Initializer) {
+      // VariableDeclaration : BindingIdentifier Initializer
 
-    // 3. Let rhs be the result of evaluating Initializer.
-    let rhs = env.evaluate(Initializer, strictCode);
+      // 1. Let bindingId be StringValue of BindingIdentifier.
+      let bindingId = declar.id.name;
 
-    // 4. Let value be ? GetValue(rhs).
-    let value = GetValue(realm, rhs);
-    if (declar.id && declar.id.name) value.__originalName = bindingId;
+      // 2. Let lhs be ? ResolveBinding(bindingId).
+      let lhs = ResolveBinding(realm, bindingId, strictCode);
 
-    // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
-    if (IsAnonymousFunctionDefinition(realm, Initializer)) {
-      invariant(value instanceof ObjectValue);
+      // 3. Let rhs be the result of evaluating Initializer.
+      let rhs = env.evaluate(Initializer, strictCode);
 
-      // a. Let hasNameProperty be ? HasOwnProperty(value, "name").
-      let hasNameProperty = HasOwnProperty(realm, value, "name");
+      // 4. Let value be ? GetValue(rhs).
+      let value = GetValue(realm, rhs);
+      if (declar.id && declar.id.name) value.__originalName = bindingId;
 
-      // b. If hasNameProperty is false, perform SetFunctionName(value, bindingId).
-      if (!hasNameProperty) SetFunctionName(realm, value, new StringValue(realm, bindingId));
+      // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
+      if (IsAnonymousFunctionDefinition(realm, Initializer)) {
+        invariant(value instanceof ObjectValue);
+
+        // a. Let hasNameProperty be ? HasOwnProperty(value, "name").
+        let hasNameProperty = HasOwnProperty(realm, value, "name");
+
+        // b. If hasNameProperty is false, perform SetFunctionName(value, bindingId).
+        if (!hasNameProperty) SetFunctionName(realm, value, new StringValue(realm, bindingId));
+      }
+
+      // 6. Return ? PutValue(lhs, value).
+      PutValue(realm, lhs, value);
+    } else if ((declar.id.type === "ObjectPattern" || declar.id.type === "ArrayPattern") && Initializer) {
+      // 1. Let rhs be the result of evaluating Initializer.
+      let rhs = env.evaluate(Initializer, strictCode);
+
+      // 2. Let rval be ? GetValue(rhs).
+      let rval = GetValue(realm, rhs);
+
+      // 3. Return the result of performing BindingInitialization for BindingPattern passing rval and undefined as arguments.
+      BindingInitialization(realm, declar.id, rval, strictCode, undefined);
+    } else {
+      invariant(false, "unrecognized declaration");
     }
-
-    // 6. Return ? PutValue(lhs, value).
-    PutValue(realm, lhs, value);
   }
 
   return realm.intrinsics.empty;
