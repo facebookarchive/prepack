@@ -23,10 +23,11 @@ import initializeProcess from "./intrinsics/node/process.js";
 
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
+import type { SourceMap } from "./types.js";
 
 declare var process: any;
 
-export function prepackNodeCLI(filename: string, options: Options = defaultOptions, callback: Function) {
+export function prepackNodeCLI(filename: string, options: Options = defaultOptions, callback: (any, ?{code: string, map?: SourceMap})=>void) {
   let serialized;
   try {
     serialized = prepackNodeCLISync(filename, options);
