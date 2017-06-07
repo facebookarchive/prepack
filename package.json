@@ -45,7 +45,8 @@
     "prepack-prepack": "node --stack_size=10000 --max_old_space_size=8096 ./bin/prepack.js ./lib/prepack-cli.js --out ./lib/prepack-cli.prepacked.js --compatibility node-cli --mathRandomSeed rnd",
     "validate": "npm run build && npm run build-scripts && npm run lint && npm run depcheck && npm run flow && npm test",
     "prepublish": "npm run build",
-    "depcheck": "babel-node scripts/detect_bad_deps.js"
+    "depcheck": "babel-node scripts/detect_bad_deps.js",
+    "prettier": "prettier --write --no-bracket-spacing --single-quote --jsx-bracket-same-line --trailing-comma all --print-width 80 \"src/**/*.js\""
   },
   "dependencies": {
     "babel-core": "^6.8.0",
@@ -82,6 +83,7 @@
     "kcheck": "^2.0.0",
     "madge": "^1.6.0",
     "minimist": "^1.2.0",
+    "prettier": "^1.4.2",
     "remap-istanbul": "^0.9.1",
     "source-map-support": "^0.4.6",
     "uglify-js": "^2.6.2",
