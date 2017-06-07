@@ -76,17 +76,18 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
   } else { // 6. Else
     // a. Set the running execution context’s LexicalEnvironment to classScope.
     realm.getRunningContext().lexicalEnvironment = classScope;
-
-    // b. Let superclass be the result of evaluating ClassHeritage.
-    let ClassHeritage = null;
     let superclass = null;
-    if (ast.superClass != null) {
-      ClassHeritage = ast.superClass;
-      superclass = EvaluateClassHeritage(realm, ClassHeritage, strictCode);
+    try {
+      // b. Let superclass be the result of evaluating ClassHeritage.
+      let ClassHeritage = null;
+      if (ast.superClass != null) {
+        ClassHeritage = ast.superClass;
+        superclass = EvaluateClassHeritage(realm, ClassHeritage, strictCode);
+      }
+    } finally {
+      // c. Set the running execution context’s LexicalEnvironment to lex.
+      realm.getRunningContext().lexicalEnvironment = lex;
     }
-
-    // c. Set the running execution context’s LexicalEnvironment to lex.
-    realm.getRunningContext().lexicalEnvironment = lex;
 
     // d. ReturnIfAbrupt(superclass).
 
@@ -164,68 +165,71 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
   // 11. Set the running execution context’s LexicalEnvironment to classScope.
   realm.getRunningContext().lexicalEnvironment = classScope;
 
-  // 12. Let constructorInfo be the result of performing DefineMethod for constructor with arguments proto and constructorParent as the optional functionPrototype argument.
-  let constructorInfo = DefineMethod(realm, constructor, proto, env, strictCode, constructorParent);
+  let F;
+  try {
+    // 12. Let constructorInfo be the result of performing DefineMethod for constructor with arguments proto and constructorParent as the optional functionPrototype argument.
+    let constructorInfo = DefineMethod(realm, constructor, proto, env, strictCode, constructorParent);
 
-  // 13. Assert: constructorInfo is not an abrupt completion.
+    // 13. Assert: constructorInfo is not an abrupt completion.
 
-  // 14. Let F be constructorInfo.[[closure]]
-  let F = constructorInfo.$Closure;
+    // 14. Let F be constructorInfo.[[closure]]
+    F = constructorInfo.$Closure;
 
-  // 15. If ClassHeritage opt is present, set F’s [[ConstructorKind]] internal slot to "derived".
-  if (ast.superClass) {
-    F.$ConstructorKind = "derived";
-  }
-
-  // 16. Perform MakeConstructor(F, false, proto).
-  MakeConstructor(realm, F, false, proto);
-
-  // 17. Perform MakeClassConstructor(F).
-  MakeClassConstructor(realm, F);
-
-  // 18. Perform CreateMethodProperty(proto, "constructor", F).
-  CreateMethodProperty(realm, proto, "constructor", F);
-
-  let methods;
-  // 19. If ClassBody opt is not present, let methods be a new empty List.
-  if (ClassBody.length === 0) {
-    methods = [];
-  } else { // 20. Else, let methods be NonConstructorMethodDefinitions of ClassBody.
-    methods = NonConstructorMethodDefinitions(realm, ClassBody);
-  }
-
-  // 21. For each ClassElement m in order from methods
-  for (let m of methods) {
-    let status;
-    try {
-      // a. If IsStatic of m is false, then
-      if (!IsStatic(m)) {
-        // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments proto and false.
-        PropertyDefinitionEvaluation(realm, m, proto, env, strictCode, false);
-      } else { // Else,
-        // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments F and false.
-        PropertyDefinitionEvaluation(realm, m, F, env, strictCode, false);
-      }
-    } catch (e) {
-      if (e instanceof AbruptCompletion) {
-        status = e;
-      } else {
-        throw e;
-      }
+    // 15. If ClassHeritage opt is present, set F’s [[ConstructorKind]] internal slot to "derived".
+    if (ast.superClass) {
+      F.$ConstructorKind = "derived";
     }
 
-    // c. If status is an abrupt completion, then
-    if (status instanceof AbruptCompletion) {
-      // i. Set the running execution context's LexicalEnvironment to lex.
-      realm.getRunningContext().lexicalEnvironment = lex;
+    // 16. Perform MakeConstructor(F, false, proto).
+    MakeConstructor(realm, F, false, proto);
 
-      // ii. Return Completion(status).
-      throw status;
+    // 17. Perform MakeClassConstructor(F).
+    MakeClassConstructor(realm, F);
+
+    // 18. Perform CreateMethodProperty(proto, "constructor", F).
+    CreateMethodProperty(realm, proto, "constructor", F);
+
+    let methods;
+    // 19. If ClassBody opt is not present, let methods be a new empty List.
+    if (ClassBody.length === 0) {
+      methods = [];
+    } else { // 20. Else, let methods be NonConstructorMethodDefinitions of ClassBody.
+      methods = NonConstructorMethodDefinitions(realm, ClassBody);
     }
-  }
 
-  // 22. Set the running execution context’s LexicalEnvironment to lex.
-  realm.getRunningContext().lexicalEnvironment = lex;
+    // 21. For each ClassElement m in order from methods
+    for (let m of methods) {
+      let status;
+      try {
+        // a. If IsStatic of m is false, then
+        if (!IsStatic(m)) {
+          // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments proto and false.
+          PropertyDefinitionEvaluation(realm, m, proto, env, strictCode, false);
+        } else { // Else,
+          // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments F and false.
+          PropertyDefinitionEvaluation(realm, m, F, env, strictCode, false);
+        }
+      } catch (e) {
+        if (e instanceof AbruptCompletion) {
+          status = e;
+        } else {
+          throw e;
+        }
+      }
+
+      // c. If status is an abrupt completion, then
+      if (status instanceof AbruptCompletion) {
+        // i. Set the running execution context's LexicalEnvironment to lex.
+        realm.getRunningContext().lexicalEnvironment = lex;
+
+        // ii. Return Completion(status).
+        throw status;
+      }
+    }
+  } finally {
+    // 22. Set the running execution context’s LexicalEnvironment to lex.
+    realm.getRunningContext().lexicalEnvironment = lex;
+  }
 
   // 23. If className is not undefined, then
   if (className !== undefined) {
