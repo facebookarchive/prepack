@@ -33,7 +33,6 @@ export default class Value {
   static getTypeFromName(typeName: string): void | typeof Value {
     switch (typeName) {
       case "empty": return EmptyValue;
-      case "undefined": return UndefinedValue;
       case "void" : return UndefinedValue;
       case "null": return NullValue;
       case "boolean": return BooleanValue;
