@@ -24,10 +24,12 @@ let buildDateNow = buildExpressionTemplate("Date.now()");
 export default function (realm: Realm): NativeFunctionValue {
   let lastNow;
   let offsetGenerator;
-  function getCurrentTime() {
+  function getCurrentTime(): AbstractValue | NumberValue {
     if (realm.useAbstractInterpretation) {
       let dummyArg = new StringValue(realm, "__Date.now()");
-      return realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [dummyArg], buildDateNow);
+      let tmp = realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [dummyArg], buildDateNow);
+      invariant(tmp instanceof AbstractValue, "getCurrentTime() should always return and abstract value");
+      return tmp;
     } else {
       let newNow = Date.now();
       if (realm.strictlyMonotonicDateNow && lastNow >= newNow) {

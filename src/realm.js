@@ -536,7 +536,7 @@ export class Realm {
     }
   }
 
-  rebuildNestedProperties(abstractValue: AbstractValue, path: string) {
+  rebuildNestedProperties(abstractValue: AbstractValue | UndefinedValue, path: string) {
     if (!(abstractValue instanceof AbstractObjectValue)) return;
     let template = abstractValue.getTemplate();
     invariant(!template.intrinsicName || template.intrinsicName === path);
