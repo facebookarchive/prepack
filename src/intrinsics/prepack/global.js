@@ -132,6 +132,35 @@ export default function (realm: Realm): void {
     configurable: true
   });
 
+  global.$DefineOwnProperty("__residual_unsafe", {
+    value: new NativeFunctionValue(realm, "global.__residual", "__residual", 2, (context, [typeNameOrTemplate, f, ...args]) => {
+      if (!realm.useAbstractInterpretation) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
+      }
+
+      let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
+
+      if (f.constructor !== FunctionValue) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cannot determine residual function");
+      }
+      invariant(f instanceof FunctionValue);
+      f.isResidual = true;
+      f.isUnsafeResidual = true;
+
+      let types = new TypesDomain(type);
+      let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
+      let result = realm.deriveAbstract(types, values, [f].concat(args), nodes => t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>)));
+      if (template) {
+        template.makePartial();
+        realm.rebuildNestedProperties(result, ((result.buildNode: any): BabelNodeIdentifier).name);
+      }
+      return result;
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
+
   // TODO: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
   global.$DefineOwnProperty("__annotate", {
     value: realm.intrinsics.undefined,

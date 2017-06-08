@@ -38,6 +38,9 @@ export default class FunctionValue extends ObjectValue {
   // identifiers defined outside of the local scope.
   isResidual: void | true;
 
+  //Added functinality
+  isUnsafeResidual: void | true;
+
   getKind(): ObjectKind {
     return "Function";
   }
