@@ -192,7 +192,7 @@ export class Generator {
       nodes => t.callExpression(createCallee(), nodes));
   }
 
-  deriveResidual(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction): void {
+  emitVoidExpression(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression): UndefinedValue {
     this.body.push({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => t.expressionStatement(
