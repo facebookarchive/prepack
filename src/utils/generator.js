@@ -192,6 +192,18 @@ export class Generator {
       nodes => t.callExpression(createCallee(), nodes));
   }
 
+  deriveResidual(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction): void {
+    this.body.push({
+      args,
+      buildNode: (nodes: Array<BabelNodeExpression>) => t.expressionStatement(
+        (buildNode_: any) instanceof Function ?
+        ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes) :
+        ((buildNode_: any): BabelNodeExpression)
+      )
+    });
+    return this.realm.intrinsics.undefined;
+  }
+
   derive(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression, kind?: string): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));

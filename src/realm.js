@@ -11,7 +11,7 @@
 
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
-import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue } from "./values/index.js";
+import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue, UndefinedValue } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
@@ -558,7 +558,11 @@ export class Realm {
     invariant(this.useAbstractInterpretation);
     let generator = this.generator;
     invariant(generator);
-    return generator.derive(types, values, args, buildNode, kind);
+    if (types.getType() === UndefinedValue) {
+      return generator.deriveResidual(types, values, args, buildNode, kind);
+    } else {
+      return generator.derive(types, values, args, buildNode, kind);
+    }
   }
 
   createExecutionContext(): ExecutionContext {
