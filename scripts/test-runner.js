@@ -21,6 +21,9 @@ let chalk = require("chalk");
 let path  = require("path");
 let fs    = require("fs");
 let vm    = require("vm");
+let os    = require("os");
+let minimist = require("minimist");
+const EOL = os.EOL;
 
 function search(dir, relative) {
   let tests = [];
@@ -80,7 +83,7 @@ report(inspect());`, { cachedDataProduced: false });
 
 class Success {}
 
-function runTest(name, code) {
+function runTest(name, code, args) {
   console.log(chalk.inverse(name));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let speculate = code.includes("// initialize more modules");
@@ -177,6 +180,7 @@ function runTest(name, code) {
         }
         let newCode = serialized.code;
         codeIterations.push(newCode);
+        if (args.verbose) console.log(newCode);
         let markersIssue = false;
         for (let { positive, value, start } of markersToFind) {
           let found = newCode.indexOf(value, start) !== -1;
@@ -225,7 +229,7 @@ function runTest(name, code) {
     return false;
   }
 }
-function run() {
+function run(args) {
   let failed = 0;
   let passed = 0;
   let total  = 0;
@@ -235,9 +239,11 @@ function run() {
     if (path.basename(test.name)[0] === ".") continue;
     if (test.name.endsWith("~")) continue;
     if (test.file.includes("// skip")) continue;
+    //only run specific tests if desired
+    if (!test.name.includes(args.filter)) continue;
 
     total++;
-    if (runTest(test.name, test.file))
+    if (runTest(test.name, test.file, args))
       passed++;
     else
       failed++;
@@ -247,5 +253,76 @@ function run() {
   return failed === 0;
 }
 
-if (!run())
-  process.exit(1);
+
+// Object to store all command line arguments
+class ProgramArgs {
+  constructor(verbose, filter) {
+    this.verbose = verbose;
+    this.filter = filter; //lets user choose specific test files, runs all tests if omitted
+  }
+}
+
+// Execution of tests begins here
+function main() {
+  try {
+    let args = argsParse();
+    if (!run(args)) {
+      process.exit(1);
+    } else {
+      return 0;
+    }
+  } catch (e) {
+    if (e instanceof ArgsParseError) {
+      console.log("Illegal argument: %s.\n%s", e.message, usage());
+    } else {
+      console.log(e);
+    }
+    return 1;
+  }
+  return 0;
+
+}
+
+// Helper function to provide correct usage information to the user
+function usage() {
+  return `Usage: ${process.argv[0]} ${process.argv[1]} ` + EOL +
+    `[--verbose] [--filter <string>]`;
+}
+
+
+// NOTE: inheriting from Error does not seem to pass through an instanceof
+// check
+class ArgsParseError {
+  constructor(message) {
+    this.message = message;
+  }
+}
+
+// Parses through the command line arguments and throws errors if usage is incorrect
+function argsParse() {
+  let parsedArgs = minimist(process.argv.slice(2), {
+    string: [
+      "filter"
+    ],
+    boolean: [
+      "verbose"
+    ],
+    default: {
+      verbose: false,
+      statusFile: "/"
+    }
+  });
+  if (typeof parsedArgs.verbose !== "boolean") {
+    throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
+  }
+  if (typeof parsedArgs.filter !== "string") {
+    throw new ArgsParseError("filter must be a string (relative path from serialize dirctory) (--filter abstract/Residual.js)");
+  }
+  let programArgs = new ProgramArgs(
+    parsedArgs.verbose,
+    parsedArgs.filter
+  );
+  return programArgs;
+}
+
+main();
