@@ -25,8 +25,7 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 
-export class GlobalScope {}
-export type Scope = GlobalScope | FunctionValue | Generator;
+export type Scope = FunctionValue | Generator;
 
 /* This class visits all values that are reachable in the residual heap.
    In particular, this "filters out" values that are...
@@ -48,7 +47,9 @@ export class ResidualHeapVisitor {
     this.functionBindings = new Map();
     this.values = new Map();
     this.ignoredProperties = new Map();
-    this.scope = new GlobalScope();
+    let generator = this.realm.generator;
+    invariant(generator);
+    this.scope = this.realmGenerator = generator;
   }
 
   realm: Realm;
@@ -62,9 +63,10 @@ export class ResidualHeapVisitor {
   functionBindings: Map<FunctionValue, VisitedBindings>;
   ignoredProperties: Map<ObjectValue, Set<string>>;
   scope: Scope;
+  realmGenerator: Generator;
   values: Map<Value, Set<Scope>>;
 
-  withScope(scope: Scope, f: () => void) {
+  _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
     this.scope = scope;
     f();
@@ -243,8 +245,9 @@ export class ResidualHeapVisitor {
       let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
       visitedBinding = { value, modified: false, declarativeEnvironmentRecord: r };
       visitedBindings[n] = visitedBinding;
-      this.visitValue(value);
     }
+    invariant(visitedBinding.value !== undefined);
+    this.visitValue(visitedBinding.value);
     return visitedBinding;
   }
 
@@ -383,7 +386,7 @@ export class ResidualHeapVisitor {
     }
 
     let visitedBindings = Object.create(null);
-    this.withScope(val, () => {
+    this._withScope(val, () => {
       invariant(functionInfo);
       for (let innerName in functionInfo.names) {
         let visitedBinding;
@@ -487,28 +490,50 @@ export class ResidualHeapVisitor {
       this.visitValue(abstractArg);
   }
 
-  visitValue(val: Value): void {
+  _mark(val: Value): boolean {
     let scopes = this.values.get(val);
     if (scopes === undefined) this.values.set(val, scopes = new Set());
-    if (scopes.has(this.scope)) return;
+    if (scopes.has(this.scope)) return false;
     scopes.add(this.scope);
+    return true;
+  }
+
+  visitValue(val: Value): void {
     if (val instanceof AbstractValue) {
-      this.visitAbstractValue(val);
+      if (this._mark(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      this.visitValueIntrinsic(val);
+      // For scoping reasons, we fall back to the main body for intrinsics.
+      this._withScope(this.realmGenerator, () => {
+        if (this._mark(val)) this.visitValueIntrinsic(val);
+      });
     } else if (val instanceof EmptyValue) {
+      this._mark(val);
     } else if (ResidualHeapVisitor.isLeaf(val)) {
+      this._mark(val);
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
-      this.visitValueArray(val);
+      if (this._mark(val)) this.visitValueArray(val);
     } else if (val instanceof ProxyValue) {
-      this.visitValueProxy(val);
+      if (this._mark(val)) this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
-      this.visitValueFunction(val);
+      // Function declarations should get hoisted in the global code so that instances only get allocated once
+      this._withScope(this.realmGenerator, () => {
+        invariant(val instanceof FunctionValue);
+        if (this._mark(val)) this.visitValueFunction(val);
+      });
     } else if (val instanceof SymbolValue) {
-      this.visitValueSymbol(val);
+      if (this._mark(val)) this.visitValueSymbol(val);
     } else if (val instanceof ObjectValue) {
-      this.visitValueObject(val);
+      // Prototypes are reachable via function declarations, and those get hoised, so we need to move
+      // prototype initialization to the global code as well.
+      if (val.originalConstructor !== undefined) {
+        this._withScope(this.realmGenerator, () => {
+          invariant(val instanceof ObjectValue);
+          if (this._mark(val)) this.visitValueObject(val);
+        });
+      } else {
+        if (this._mark(val)) this.visitValueObject(val);
+      }
     } else {
       invariant(false);
     }
@@ -520,20 +545,19 @@ export class ResidualHeapVisitor {
       let value = this.realm.getGlobalLetBinding(key);
       binding = ({ value, modified: true }: VisitedBinding);
       this.globalBindings.set(key, binding);
-      // Check for let binding vs global property
-      if (value) this.visitValue(value);
     }
+    if (binding.value) this.visitValue(binding.value);
     return binding;
   }
 
   visitGenerator(generator: Generator): void {
-    this.withScope(generator, () => {
+    this._withScope(generator, () => {
       generator.visit(this.visitValue.bind(this), this.visitGenerator.bind(this));
     });
   }
 
   visitRoots(): void {
-    if (this.realm.generator) this.visitGenerator(this.realm.generator);
+    this.visitGenerator(this.realmGenerator);
     for (let [, moduleValue] of this.modules.initializedModules)
       this.visitValue(moduleValue);
   }
