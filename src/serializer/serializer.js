@@ -29,7 +29,7 @@ import { ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
-import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
+import { ResidualHeapVisitor, GlobalScope } from "./ResidualHeapVisitor.js";
 
 const GLOBAL_CAPTURED_SCOPE_NAME = "__captured_scopes";
 
@@ -129,8 +129,8 @@ export class Serializer {
 
   declarativeEnvironmentRecordsBindings: Map<VisitedBinding, SerializedBinding>;
   serializationStack: Array<Value>;
-  delayedSerializations: Array<() => void>;
-  delayedKeyedSerializations: Map<BabelNodeIdentifier, Array<{values: Array<Value>, func: () => void}>>;
+  delayedSerializations: Array<{body: Array<BabelNodeStatement>, func: () => void}>;
+  delayedKeyedSerializations: Map<BabelNodeIdentifier, Array<{body: Array<BabelNodeStatement>, values: Array<Value>, func: () => void}>>;
   unstrictFunctionBodies: Array<BabelNodeFunctionDeclaration>;
   strictFunctionBodies: Array<BabelNodeFunctionDeclaration>;
   functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
@@ -160,7 +160,7 @@ export class Serializer {
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   ignoredProperties: Map<ObjectValue, Set<string>>;
-  residualValues: Set<Value>;
+  residualValues: Map<Value, Set<GlobalScope | FunctionValue>>;
   residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
@@ -541,11 +541,14 @@ export class Serializer {
 
     this.serializationStack.pop();
     if (this.serializationStack.length === 0) {
+      let oldBody = this.body;
       while (this.delayedSerializations.length) {
         invariant(this.serializationStack.length === 0);
-        let serializer = this.delayedSerializations.shift();
-        serializer();
+        let delayed = this.delayedSerializations.shift();
+        this.body = delayed.body;
+        delayed.func();
       }
+      this.body = oldBody;
     }
 
     return result;
@@ -559,11 +562,11 @@ export class Serializer {
   _delay(reason: boolean | BabelNodeIdentifier, values: Array<Value>, func: () => void) {
     invariant(reason);
     if (reason === true) {
-      this.delayedSerializations.push(func);
+      this.delayedSerializations.push({ body: this.body, func });
     } else {
       let a = this.delayedKeyedSerializations.get(reason);
       if (a === undefined) this.delayedKeyedSerializations.set(reason, a = []);
-      a.push({ values, func });
+      a.push({ body: this.body, values, func });
     }
   }
 
@@ -1523,12 +1526,15 @@ export class Serializer {
         this.declaredDerivedIds.add(id);
         let a = this.delayedKeyedSerializations.get(id);
         if (a !== undefined) {
-          while (a.length) {
+          let oldBody = this.body;
+          while (a.length > 0) {
             invariant(this.serializationStack.length === 0);
             invariant(this.delayedSerializations.length === 0);
-            let { values, func } = a.shift();
+            let { body, values, func } = a.shift();
+            this.body = body;
             this._eagerOrDelay(values, func);
           }
+          this.body = oldBody;
           this.delayedKeyedSerializations.delete(id);
         }
       }
@@ -1858,7 +1864,7 @@ export class Serializer {
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     this.ignoredProperties = residualHeapVisitor.ignoredProperties;
-    this.residualValues = new Set(residualHeapVisitor.values.keys());
+    this.residualValues = residualHeapVisitor.values;
     this.residualFunctionBindings = residualHeapVisitor.functionBindings;
     this.residualFunctionInfos = residualHeapVisitor.functionInfos;
     if (this.options.profile) console.timeEnd("[Profiling] Deep Traversal of Heap");

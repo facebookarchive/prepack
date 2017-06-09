@@ -25,7 +25,7 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 
-class GlobalScope {}
+export class GlobalScope {}
 
 /* This class visits all values that are reachable in the residual heap.
    In particular, this "filters out" values that are...
