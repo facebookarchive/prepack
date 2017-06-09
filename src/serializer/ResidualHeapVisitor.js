@@ -26,6 +26,7 @@ import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 
 export class GlobalScope {}
+export type Scope = GlobalScope | FunctionValue | Generator;
 
 /* This class visits all values that are reachable in the residual heap.
    In particular, this "filters out" values that are...
@@ -60,10 +61,10 @@ export class ResidualHeapVisitor {
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   functionBindings: Map<FunctionValue, VisitedBindings>;
   ignoredProperties: Map<ObjectValue, Set<string>>;
-  scope: GlobalScope | FunctionValue;
-  values: Map<Value, Set<GlobalScope | FunctionValue>>;
+  scope: Scope;
+  values: Map<Value, Set<Scope>>;
 
-  withScope(scope: GlobalScope | FunctionValue, f: () => void) {
+  withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
     this.scope = scope;
     f();
@@ -526,7 +527,9 @@ export class ResidualHeapVisitor {
   }
 
   visitGenerator(generator: Generator): void {
-    generator.visit(this.visitValue.bind(this));
+    this.withScope(generator, () => {
+      generator.visit(this.visitValue.bind(this), this.visitGenerator.bind(this));
+    });
   }
 
   visitRoots(): void {

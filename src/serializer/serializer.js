@@ -29,7 +29,8 @@ import { ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
-import { ResidualHeapVisitor, GlobalScope } from "./ResidualHeapVisitor.js";
+import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
+import type { Scope } from "./ResidualHeapVisitor.js";
 
 const GLOBAL_CAPTURED_SCOPE_NAME = "__captured_scopes";
 
@@ -160,7 +161,7 @@ export class Serializer {
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   ignoredProperties: Map<ObjectValue, Set<string>>;
-  residualValues: Map<Value, Set<GlobalScope | FunctionValue>>;
+  residualValues: Map<Value, Set<Scope>>;
   residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
