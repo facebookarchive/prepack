@@ -30,7 +30,7 @@ const defaultOptions = {
   'single-quote': 'true',
   'jsx-bracket-same-line': 'true',
   'trailing-comma': 'all',
-  'print-width': 80,
+  'print-width': 120,
 };
 const config = {
   default: {
