@@ -122,6 +122,7 @@ export default function (realm: Realm): void {
       let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
       let result = realm.deriveAbstract(types, values, [f].concat(args), nodes => t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>)));
       if (template) {
+        invariant(result instanceof AbstractValue, "the nested properties should only be rebuilt for an abstract value");
         template.makePartial();
         realm.rebuildNestedProperties(result, ((result.buildNode: any): BabelNodeIdentifier).name);
       }
