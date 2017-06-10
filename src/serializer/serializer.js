@@ -14,7 +14,7 @@ import { Realm, ExecutionContext } from "../realm.js";
 import type { Descriptor, PropertyBinding, SourceMap } from "../types.js";
 import { ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
-import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue } from "../values/index.js";
+import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
@@ -62,6 +62,11 @@ function isSameNode(left, right) {
 }
 
 export class Serializer {
+  static voidExpression = t.unaryExpression("void", t.numericLiteral(0), true);
+  static emptyExpression = t.identifier("__empty");
+  static constructorExpression = t.identifier("__constructor");
+  static protoExpression = t.identifier("__proto__");
+
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
     invariant(realm.useAbstractInterpretation);
     // Start tracking mutations
@@ -240,7 +245,7 @@ export class Serializer {
         invariant(proto);
         let serializedProto = this.serializeValue(proto, reasons.concat(`Referred to as the prototype for ${name}`));
         let uid = this._getValIdForReference(obj);
-        let condition = t.binaryExpression("!==", t.memberExpression(uid, t.identifier("__proto__")), serializedProto);
+        let condition = t.binaryExpression("!==", t.memberExpression(uid, Serializer.protoExpression), serializedProto);
         let throwblock = t.blockStatement([
           t.throwStatement(
             t.newExpression(
@@ -265,7 +270,7 @@ export class Serializer {
       else {
         this.body.push(t.expressionStatement(t.assignmentExpression(
           "=",
-          t.memberExpression(uid, t.identifier("__proto__")),
+          t.memberExpression(uid, Serializer.protoExpression),
           serializedProto
         )));
       }
@@ -1067,9 +1072,9 @@ export class Serializer {
           return t.sequenceExpression([
             t.assignmentExpression(
               "=",
-              t.memberExpression(t.identifier("__constructor"), t.identifier("prototype")),
+              t.memberExpression(Serializer.constructorExpression, t.identifier("prototype")),
               serializedProto),
-            t.newExpression(t.identifier("__constructor"), [])
+            t.newExpression(Serializer.constructorExpression, [])
           ]);
         } else {
           return t.objectExpression(props);
@@ -1109,7 +1114,9 @@ export class Serializer {
       return this._serializeValueIntrinsic(val);
     } else if (val instanceof EmptyValue) {
       this.needsEmptyVar = true;
-      return t.identifier("__empty");
+      return Serializer.emptyExpression;
+    } else if (val instanceof UndefinedValue) {
+      return Serializer.voidExpression;
     } else if (ResidualHeapVisitor.isLeaf(val)) {
       return t.valueToNode(val.serialize());
     } else if (IsArray(this.realm, val)) {
@@ -1133,7 +1140,7 @@ export class Serializer {
     if (boundName === "undefined") {
       // The global 'undefined' property is not writable and not configurable, and thus we can just use 'undefined' here,
       // encoded as 'void 0' to avoid the possibility of interference with local variables named 'undefined'.
-      return { serializedValue: t.unaryExpression("void", t.numericLiteral(0), true), value: undefined, modified: true, referentialized: true };
+      return { serializedValue: Serializer.voidExpression, value: undefined, modified: true, referentialized: true };
     }
 
     let value = this.realm.getGlobalLetBinding(boundName);
@@ -1607,14 +1614,14 @@ export class Serializer {
     if (this.needsEmptyVar) {
       body.push(t.variableDeclaration("var", [
         t.variableDeclarator(
-          t.identifier("__empty"),
+          Serializer.emptyExpression,
           t.objectExpression([])
         ),
       ]));
     }
     if (this.needsAuxiliaryConstructor) {
       body.push(t.functionDeclaration(
-        t.identifier("__constructor"), [], t.blockStatement([])));
+        Serializer.constructorExpression, [], t.blockStatement([])));
     }
     body = body.concat(this.prelude, hoistedBody, this.body);
     this.factorifyObjects(body);
