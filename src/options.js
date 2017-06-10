@@ -31,6 +31,7 @@ export type Options = {|
   residual?: boolean,
   serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
+  maxStackDepth?: number
 |};
 
 export const defaultOptions = {};
@@ -44,6 +45,7 @@ export function getRealmOptions({
   residual,
   serialize = !residual,
   strictlyMonotonicDateNow,
+  maxStackDepth,
 }: Options): RealmOptions {
   return {
     compatibility,
@@ -54,6 +56,7 @@ export function getRealmOptions({
     residual,
     serialize,
     strictlyMonotonicDateNow,
+    maxStackDepth,
   };
 }
 
