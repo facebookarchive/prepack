@@ -62,7 +62,7 @@ function runTest(name: string, code: string): boolean {
   try {
     prepack(code, {
       filename: name,
-      internalDebug: true,
+      internalDebug: false,
       compatibility: "jsc-600-1-4-17",
       mathRandomSeed: "0",
       serialize: true,
