@@ -1130,6 +1130,12 @@ export class Serializer {
 
   _serializeGlobalBinding(boundName: string, visitedBinding: VisitedBinding, functionName: string, reasons: Array<string>): SerializedBinding {
     invariant(!visitedBinding.declarativeEnvironmentRecord);
+    if (boundName === "undefined") {
+      // The global 'undefined' property is not writable and not configurable, and thus we can just use 'undefined' here,
+      // encoded as 'void 0' to avoid the possibility of interference with local variables named 'undefined'.
+      return { serializedValue: t.unaryExpression("void", t.numericLiteral(0), true), value: undefined, modified: true, referentialized: true };
+    }
+
     let value = this.realm.getGlobalLetBinding(boundName);
     // Check for let binding vs global property
     if (value) {
