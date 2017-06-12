@@ -1029,7 +1029,9 @@ export class LexicalEnvironment {
     let ast, res;
     try {
       try {
+        if (this.options.profile) console.time("[Profiling] Parsing Source Code into AST");
         ast = parse(this.realm, code, filename, sourceType);
+        if (this.options.profile) console.timeEnd("[Profiling] Parsing Source Code into AST");
       } catch (e) {
         if (e instanceof ThrowCompletion) return e;
         throw e;

@@ -1676,11 +1676,13 @@ export class Serializer {
 
     invariant(this.serializedValues.size === this.residualValues.size);
 
+    if (this.options.profile) console.time("[Profiling] Generating Source Code From AST");
     let generated = generate(
         ast,
         { sourceMaps: sourceMaps, sourceFileName: filename },
         code);
 
+    if (this.options.profile)  console.timeEnd("[Profiling] Generating Source Code From AST");
     return {
       generated: {
         code: generated.code,
