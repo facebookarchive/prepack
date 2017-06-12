@@ -514,9 +514,9 @@ export function ToPrimitive(realm: Realm, input: ConcreteValue, hint?: "default"
 
 // Returns result type of ToPrimitive if it is pure (terminates, does not throw exception, does not read or write heap), otherwise undefined.
 export function GetToPrimitivePureResultType(realm: Realm, input: Value): void | typeof Value {
-  // This carefully abstracts the behavior of ToPrimitive.
-  if (input instanceof PrimitiveValue || input instanceof AbstractValue) return input.getType();
-  invariant(input instanceof ObjectValue);
+  let type = input.getType();
+  if (input instanceof PrimitiveValue) return type;
+  if (input instanceof AbstractValue && Value.isTypeCompatibleWith(type, PrimitiveValue)) return type;
   return undefined;
 }
 
