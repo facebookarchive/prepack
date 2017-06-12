@@ -35,7 +35,7 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
     --trace    Traces the order of module initialization.
     --serialize    Serializes the partially evaluated global environment as a program that recreates it. (default = true)
     --residual    Produces the residual program that results after constant folding.
-    --profile    Enables profile console logging of Interpret phase, first and second Serialize phase.
+    --profile    Enables console logging of profile information of different phases of prepack.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
