@@ -312,7 +312,7 @@ function argsParse() {
     ],
     default: {
       verbose: false,
-      statusFile: "/"
+      filter: ""
     }
   });
   if (typeof parsedArgs.verbose !== "boolean") {
