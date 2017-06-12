@@ -256,6 +256,8 @@ function run(args) {
 
 // Object to store all command line arguments
 class ProgramArgs {
+  verbose: boolean;
+  filter: string;
   constructor(verbose, filter) {
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
@@ -293,6 +295,7 @@ function usage() {
 // NOTE: inheriting from Error does not seem to pass through an instanceof
 // check
 class ArgsParseError {
+  message: string;
   constructor(message) {
     this.message = message;
   }
