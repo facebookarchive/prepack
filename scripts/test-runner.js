@@ -258,14 +258,14 @@ function run(args) {
 class ProgramArgs {
   verbose: boolean;
   filter: string;
-  constructor(verbose, filter) {
+  constructor(verbose: boolean, filter: string) {
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
   }
 }
 
 // Execution of tests begins here
-function main() {
+function main(): number {
   try {
     let args = argsParse();
     if (!run(args)) {
@@ -286,7 +286,7 @@ function main() {
 }
 
 // Helper function to provide correct usage information to the user
-function usage() {
+function usage(): string {
   return `Usage: ${process.argv[0]} ${process.argv[1]} ` + EOL +
     `[--verbose] [--filter <string>]`;
 }
@@ -296,13 +296,13 @@ function usage() {
 // check
 class ArgsParseError {
   message: string;
-  constructor(message) {
+  constructor(message: string) {
     this.message = message;
   }
 }
 
 // Parses through the command line arguments and throws errors if usage is incorrect
-function argsParse() {
+function argsParse(): ProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     string: [
       "filter"
