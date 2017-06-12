@@ -1841,18 +1841,22 @@ export class Serializer {
   init(filename: string, code: string, map?: string = "",
       sourceMaps?: boolean = false, onError?: (Realm, Value) => void) {
     // Phase 1: Let's interpret.
-    if (this.options.profile) console.time("Speculative Initialization");
+    if (this.options.profile) console.time("[Profiling] Interpreting Global Code");
     this.execute(filename, code, map, onError);
+    if (this.options.profile) console.timeEnd("[Profiling] Interpreting Global Code");
     if (this.logger.hasErrors()) return undefined;
+    if (this.options.profile) console.time("[Profiling] Resolving Initial Modules");
     this.modules.resolveInitializedModules();
+    if (this.options.profile) console.timeEnd("[Profiling] Resolving Initial Modules");
     if (this.options.initializeMoreModules) {
+      if (this.options.profile) console.time("[Profiling] Speculative Initialization");
       this.modules.initializeMoreModules();
       if (this.logger.hasErrors()) return undefined;
+      if (this.options.profile) console.timeEnd("[Profiling] Speculative Initialization");
     }
-    if (this.options.profile) console.timeEnd("Speculative Initialization");
 
     //Deep traversal of the heap to identify the necessary scope of residual functions
-    if (this.options.profile) console.time("Deep Traversal of Heap");
+    if (this.options.profile) console.time("[Profiling] Deep Traversal of Heap");
     let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules, this.requireReturns);
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
@@ -1860,24 +1864,24 @@ export class Serializer {
     this.residualValues = residualHeapVisitor.values;
     this.residualFunctionBindings = residualHeapVisitor.functionBindings;
     this.residualFunctionInfos = residualHeapVisitor.functionInfos;
-    if (this.options.profile) console.timeEnd("Deep Traversal of Heap");
+    if (this.options.profile) console.timeEnd("[Profiling] Deep Traversal of Heap");
 
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
     if (!this.options.singlePass) {
-      if (this.options.profile) console.time("Optional First Serialize Pass");
+      if (this.options.profile) console.time("[Profiling] Reference Counts Pass");
       this.collectValToRefCountOnly = true;
       this.valToRefCount = new Map();
       this.serialize(filename, code, sourceMaps);
       if (this.logger.hasErrors()) return undefined;
-      if (this.options.profile) console.timeEnd("Optional First Serialize Pass");
+      if (this.options.profile) console.timeEnd("[Profiling] Reference Counts Pass");
     }
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     this._resetSerializeStates();
     this.collectValToRefCountOnly = false;
-    if (this.options.profile) console.time("Second Serialize Pass");
+    if (this.options.profile) console.time("[Profiling] Serialize Pass");
     let serialized = this.serialize(filename, code, sourceMaps);
-    if (this.options.profile) console.timeEnd("Second Serialize Pass");
+    if (this.options.profile) console.timeEnd("[Profiling] Serialize Pass");
     invariant(!this.logger.hasErrors());
     if (this.options.logStatistics) this.statistics.log();
     return serialized.generated;
