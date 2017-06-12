@@ -86,6 +86,8 @@ function runTest(name, code) {
   let speculate = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
+  let maxStackDepthMatch = code.match(/\/\/ limit stack depth: (\d+)/);
+  let maxStackDepth = maxStackDepthMatch ? parseInt(maxStackDepthMatch[1], 10) : 0;
   let options = {
     filename: name,
     compatibility,
@@ -93,7 +95,8 @@ function runTest(name, code) {
     delayUnsupportedRequires,
     internalDebug: true,
     serialize: true,
-    uniqueSuffix: ""
+    uniqueSuffix: "",
+    maxStackDepth
   };
   if (code.includes("// throws introspection error")) {
     let onError = (realm, e) => {
@@ -127,6 +130,16 @@ function runTest(name, code) {
       }
     }
     console.log(chalk.red("Test should have caused error during serialization!"));
+    return false;
+  } else if (code.includes("// exceeds stack depth limit")) {
+    try {
+      prepack(code, options);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("context stack size")) {
+        return true;
+      }
+    }
+    console.log(chalk.red("Test should have exceeded stack depth limit!"));
     return false;
   } else if (code.includes("// no effect")) {
     try {

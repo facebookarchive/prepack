@@ -58,6 +58,7 @@ export type RealmOptions = {
   mathRandomSeed?: string,
   strictlyMonotonicDateNow?: boolean,
   errorHandler?: ErrorHandler,
+  maxStackDepth?: number,
 };
 
 export type AbstractTime = "early" | "late";
