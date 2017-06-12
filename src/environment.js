@@ -970,7 +970,7 @@ export class LexicalEnvironment {
     try {
       return this.partiallyEvaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof AbruptCompletion)
+      if (err instanceof Completion)
         return [err, ast, []];
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace

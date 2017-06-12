@@ -60,36 +60,21 @@ export default function (
   invariant(exprValue instanceof AbstractValue);
 
   // Evaluate consequent and alternate in sandboxes and get their effects.
-  realm.captureEffects();
-  let [conCompl, conAst, conIO] =
-    env.partiallyEvaluateCompletionDeref(ast.consequent, strictCode);
-  let consequentEffects = realm.getCapturedEffects();
-  invariant(consequentEffects !== undefined);
-  let [compl1, gen1, bindings1, properties1, createdObj1] = consequentEffects;
-  compl1;
-  realm.stopEffectCaptureAndUndoEffects();
+  let [consequentEffects, conAst, conIO] =
+    realm.partiallyEvaluateNodeForEffects(ast.consequent, strictCode, env);
+  let [conCompl, gen1, bindings1, properties1, createdObj1] = consequentEffects;
   let consequentAst = (conAst: any);
   if (conIO.length > 0)
     consequentAst = t.blockStatement(conIO.concat(consequentAst));
 
-  let altCompl, altAst, altIO;
-  let alternateEffects;
-  if (ast.alternate) {
-    realm.captureEffects();
-    invariant(ast.alternate);
-    [altCompl, altAst, altIO] = env.partiallyEvaluateCompletionDeref(ast.alternate, strictCode);
-    alternateEffects = realm.getCapturedEffects();
-    realm.stopEffectCaptureAndUndoEffects();
-  } else {
-    alternateEffects = construct_empty_effects(realm);
-    [altCompl, altAst, altIO] = [alternateEffects[0], undefined, []];
-  }
+  let [alternateEffects, altAst, altIO] =
+    ast.alternate ?
+      realm.partiallyEvaluateNodeForEffects(ast.alternate, strictCode, env) :
+      [construct_empty_effects(realm), undefined, []];
+  let [altCompl, gen2, bindings2, properties2, createdObj2] = alternateEffects;
   let alternateAst = (altAst: any);
   if (altIO.length > 0)
     alternateAst = t.blockStatement(altIO.concat(alternateAst));
-  invariant(alternateEffects !== undefined);
-  let [compl2, gen2, bindings2, properties2, createdObj2] = alternateEffects;
-  compl2;
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of exprValue.

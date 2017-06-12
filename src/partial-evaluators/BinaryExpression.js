@@ -33,6 +33,7 @@ export default function (
   let [rval, rightAst, rightIO] = env.partiallyEvaluateCompletionDeref(ast.right, strictCode);
   let io = leftIO.concat(rightIO);
   if (rval instanceof AbruptCompletion) {
+    // todo: if leftCompletion is a PossiblyNormalCompletion, compose
     return [rval, t.binaryExpression(ast.operator, (leftAst: any), (rightAst: any)), io];
   }
   let rightCompletion; [rightCompletion, rval] = unbundleNormalCompletion(rval);

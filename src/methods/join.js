@@ -28,6 +28,23 @@ import { AbstractValue, Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
+export function stopEffectCaptureAndJoinCompletions(
+  c1: PossiblyNormalCompletion, c2: AbruptCompletion, realm: Realm): Completion {
+  let e = realm.getCapturedEffects();
+  invariant(e !== undefined);
+  realm.stopEffectCaptureAndUndoEffects();
+  if (c2 instanceof IntrospectionThrowCompletion) {
+    realm.applyEffects(e);
+    throw c2;
+  }
+  e[0] = c2;
+  let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, c1, c2, e);
+  realm.applyEffects(joined_effects);
+  let result = joined_effects[0];
+  invariant(result instanceof Completion);
+  return result;
+}
+
 export function unbundleNormalCompletion(
   completionOrValue: Completion | Value | Reference
 ): [void | NormalCompletion, Value | Reference] {
@@ -66,7 +83,7 @@ export function composePossiblyNormalCompletions(
     let empty_effects = construct_empty_effects(realm);
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
-        return new PossiblyNormalCompletion(pnc.alternate, pnc.joinCondition,
+        return new PossiblyNormalCompletion(c.value, pnc.joinCondition,
            pnc.consequent, pnc.consequentEffects, c, empty_effects);
       }
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
@@ -76,7 +93,7 @@ export function composePossiblyNormalCompletions(
     } else {
       invariant(pnc.alternate instanceof AbruptCompletion);
       if (pnc.consequent instanceof Value) {
-        return new PossiblyNormalCompletion(pnc.consequent, pnc.joinCondition,
+        return new PossiblyNormalCompletion(c.value, pnc.joinCondition,
            c, empty_effects, pnc.alternate, pnc.alternateEffects);
       }
       invariant(pnc.consequent instanceof PossiblyNormalCompletion);
@@ -164,6 +181,20 @@ export function joinValueWithPossiblyNormalCompletion(
   }
 }
 
+export function joinAndRemoveNestedReturnCompletions(
+  realm: Realm, c: AbruptCompletion
+): AbruptCompletion | PossiblyNormalCompletion | Value {
+  if (c instanceof ReturnCompletion) {
+    return c.value;
+  }
+  if (c instanceof JoinedAbruptCompletions) {
+    let c1 = joinAndRemoveNestedReturnCompletions(realm, c.consequent);
+    let c2 = joinAndRemoveNestedReturnCompletions(realm, c.alternate);
+    return joinResults(realm, c.joinCondition, c1, c2, c.consequentEffects, c.alternateEffects);
+  }
+  return c;
+}
+
 export function joinEffectsAndRemoveNestedReturnCompletions(
     realm: Realm, c: Completion | Value, e: Effects, nested_effects?: Effects): Effects {
   if (c instanceof Value)
@@ -186,7 +217,7 @@ export function joinEffectsAndRemoveNestedReturnCompletions(
       e1[0] = new ReturnCompletion(realm.intrinsics.undefined);
       return joinEffects(realm, c.joinCondition, e1, e2);
     } else {
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(c.joinCondition);
+      throw c;
     }
   }
   invariant(false);
@@ -228,7 +259,7 @@ export function joinEffects(realm: Realm, joinCondition: AbstractValue,
 
 function joinResults(realm: Realm, joinCondition: AbstractValue,
     result1: EvaluationResult, result2: EvaluationResult,
-    e1: Effects, e2: Effects): EvaluationResult {
+    e1: Effects, e2: Effects): AbruptCompletion | PossiblyNormalCompletion | Value {
   function getAbstractValue(v1: void | Value, v2: void | Value): AbstractValue {
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }

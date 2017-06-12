@@ -305,7 +305,7 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     }
     if (c instanceof JoinedAbruptCompletions) {
       if (e !== undefined) realm.applyEffects(e);
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(c.joinCondition);
+      return c;
     } else if (c instanceof PossiblyNormalCompletion) {
       // If the abrupt part of the completion is a return completion, then the
       // effects of its independent control path must be joined with the effects
@@ -325,10 +325,19 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
 }
 
 // ECMA262 12.3.4.3
-export function EvaluateDirectCall(realm: Realm, strictCode: boolean, env: LexicalEnvironment, ref: Value | Reference, func: Value, thisValue: Value, args: Array<BabelNode> | BabelNodeTemplateLiteral, tailPosition?: boolean): Value {
+export function EvaluateDirectCall(realm: Realm, strictCode: boolean, env: LexicalEnvironment, ref: Value | Reference,
+   func: Value, thisValue: Value, args: Array<BabelNode> | BabelNodeTemplateLiteral, tailPosition?: boolean
+ ): Value {
   // 1. Let argList be ? ArgumentListEvaluation(arguments).
   let argList = ArgumentListEvaluation(realm, strictCode, env, args);
 
+  return EvaluateDirectCallWithArgList(realm, strictCode, env, ref, func, thisValue, argList, tailPosition);
+}
+
+export function EvaluateDirectCallWithArgList(
+  realm: Realm, strictCode: boolean, env: LexicalEnvironment, ref: Value | Reference,
+  func: Value, thisValue: Value, argList: Array<Value>, tailPosition?: boolean
+): Value {
   if (func instanceof AbstractValue && func.getType() === FunctionValue) {
     let fullArgs = [func].concat(argList);
     return realm.deriveAbstract(
