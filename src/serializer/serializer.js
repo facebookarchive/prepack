@@ -174,9 +174,10 @@ export class Serializer {
 
   execute(filename: string, code: string, map: string,
       onError: void | ((Realm, Value) => void)) {
+    let profile = this.options.profile ? true : false;
     let realm = this.realm;
     let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast =>
-      traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames));
+      traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames), profile);
 
     if (res instanceof Completion) {
       let context = new ExecutionContext();
@@ -1676,11 +1677,13 @@ export class Serializer {
 
     invariant(this.serializedValues.size === this.residualValues.size);
 
+    if (this.options.profile) console.time("\t[Profiling] Generating Source Code From AST");
     let generated = generate(
         ast,
         { sourceMaps: sourceMaps, sourceFileName: filename },
         code);
 
+    if (this.options.profile)  console.timeEnd("\t[Profiling] Generating Source Code From AST");
     return {
       generated: {
         code: generated.code,
