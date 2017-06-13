@@ -33,7 +33,7 @@ import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 
 const GLOBAL_CAPTURED_SCOPE_NAME = "__captured_scopes";
 
-type SerializedOutput = {
+type AbstractSyntaxTree = {
   type: string,
   program: {
     type: string,
@@ -1573,7 +1573,7 @@ export class Serializer {
     return false;
   }
 
-  serialize(): { ast?: SerializedOutput} {
+  serialize(): AbstractSyntaxTree {
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 
