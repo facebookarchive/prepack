@@ -1018,7 +1018,7 @@ export class LexicalEnvironment {
   }
 
   execute(code: string, filename: string, map: string = "",
-      sourceType: SourceType = "script", onParse: void | ((BabelNodeFile) => void) = undefined): AbruptCompletion | Value {
+      sourceType: SourceType = "script", onParse: void | ((BabelNodeFile) => void) = undefined, profile ?: boolean): AbruptCompletion | Value {
     let context = new ExecutionContext();
     context.lexicalEnvironment = this;
     context.variableEnvironment = this;
@@ -1029,7 +1029,9 @@ export class LexicalEnvironment {
     let ast, res;
     try {
       try {
+        if (profile) console.time("\t[Profiling] Parsing Source Code into AST");
         ast = parse(this.realm, code, filename, sourceType);
+        if (profile) console.timeEnd("\t[Profiling] Parsing Source Code into AST");
       } catch (e) {
         if (e instanceof ThrowCompletion) return e;
         throw e;

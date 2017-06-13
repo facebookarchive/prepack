@@ -364,7 +364,9 @@ export class ResidualHeapVisitor {
       );
 
       if (val.isResidual && Object.keys(functionInfo.names).length) {
-        this.logger.logError(val, `residual function ${describeLocation(this.realm, val, undefined, code.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
+        if (!val.isUnsafeResidual) {
+          this.logger.logError(val, `residual function ${describeLocation(this.realm, val, undefined, code.loc) || "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(functionInfo.names).join(", ")}`);
+        }
       }
     }
 

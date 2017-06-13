@@ -69,8 +69,10 @@ function runTest(name: string, code: string): boolean {
       speculate: true,
     },
     errorHandler.bind(null, recover ? 'RecoverIfPossible' : 'Fail', errors));
-    console.log(chalk.red("Serialization succeeded though it should have failed"));
-    return false;
+    if (!recover) {
+      console.log(chalk.red("Serialization succeeded though it should have failed"));
+      return false;
+    }
   } catch (e) {
     // We expect serialization to fail, so catch the error and continue
   }
@@ -81,8 +83,14 @@ function runTest(name: string, code: string): boolean {
 
   for (let i = 0; i < expectedErrors.length; ++i) {
     for (let prop in expectedErrors[i]) {
-      if (expectedErrors[i][prop] !== errors[i][prop]) {
-        console.log(chalk.red(`Error ${i}: Expected ${expectedErrors[i][prop]} errors, but found ${errors[i][prop]}`));
+      let expected = expectedErrors[i][prop];
+      let actual = (errors[i]: any)[prop];
+      if (prop === "location") {
+        actual = JSON.stringify(actual);
+        expected = JSON.stringify(expected);
+      }
+      if (expected !== actual) {
+        console.log(chalk.red(`Error ${i + 1}: Expected ${expected} errors, but found ${actual}`));
         return false;
       }
     }

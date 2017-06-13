@@ -655,10 +655,10 @@ export class Realm {
   // Pass the error to the realm's error-handler
   // Return value indicates whether the caller should try to recover from the
   // error or not ('true' means recover if possible).
-  handleError(error: CompilerDiagnostics): ErrorHandlerResult {
+  handleError(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
     if (!errorHandler) return 'Fail';
-    return errorHandler(error);
+    return errorHandler(diagnostic);
   }
 }

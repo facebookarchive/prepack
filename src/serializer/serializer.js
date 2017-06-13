@@ -176,9 +176,10 @@ export class Serializer {
 
   execute(filename: string, code: string, map: string,
       onError: void | ((Realm, Value) => void)) {
+    let profile = this.options.profile ? true : false;
     let realm = this.realm;
     let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast =>
-      traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames));
+      traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames), profile);
 
     if (res instanceof Completion) {
       let context = new ExecutionContext();
