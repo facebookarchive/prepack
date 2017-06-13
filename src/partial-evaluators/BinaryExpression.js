@@ -9,7 +9,8 @@
 
 /* @flow */
 
-import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeExpression, BabelNodeStatement } from "babel-types";
+import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeExpression, BabelNodeStatement,
+   BabelNodeSourceLocation } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -61,16 +62,18 @@ export default function (
   if (resultAst === undefined) {
     resultAst = t.binaryExpression(op, (leftAst: any), (rightAst: any));
   }
-  return createAbstractValueForBinary(op, resultAst, lval, rval, leftCompletion, rightCompletion, resultValue, io, realm);
+  return createAbstractValueForBinary(op, resultAst, lval, rval, leftAst.loc, rightAst.loc,
+     leftCompletion, rightCompletion, resultValue, io, realm);
 }
 
 export function createAbstractValueForBinary(
     op: BabelBinaryOperator, ast: BabelNodeExpression, lval: Value, rval: Value,
+    lloc: ?BabelNodeSourceLocation, rloc: ?BabelNodeSourceLocation,
     leftCompletion: void | NormalCompletion, rightCompletion: void | NormalCompletion,
     resultValue: void | Value, io: Array<BabelNodeStatement>, realm: Realm
 ): [Completion | Value, BabelNodeExpression, Array<BabelNodeStatement>] {
   if (resultValue === undefined) {
-    let resultType = getPureBinaryOperationResultType(realm, op, lval, rval);
+    let resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
     if (resultType === undefined) {
       // The operation may result in side effects that we cannot track.
       // Since we have no idea what those effects are, we can either forget

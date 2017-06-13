@@ -11,6 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
+import { CompilerDiagnostics } from "../errors.js";
 import { Value, AbstractValue, UndefinedValue, NullValue, BooleanValue, NumberValue, ObjectValue, StringValue } from "../values/index.js";
 import { GetValue } from "../methods/index.js";
 import { HasProperty, HasSomeCompatibleType } from "../methods/index.js";
@@ -18,7 +19,7 @@ import { Add, AbstractEqualityComparison, StrictEqualityComparison, AbstractRela
 import { ToUint32, ToInt32, ToNumber, ToPrimitive, ToString, ToPropertyKey } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
-import type { BabelNodeBinaryExpression, BabelBinaryOperator } from "babel-types";
+import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
 export default function (ast: BabelNodeBinaryExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
@@ -30,15 +31,36 @@ export default function (ast: BabelNodeBinaryExpression, strictCode: boolean, en
   let rref = env.evaluate(ast.right, strictCode);
   let rval = GetValue(realm, rref);
 
-  return computeBinary(realm, ast.operator, lval, rval);
+  return computeBinary(realm, ast.operator, lval, rval, ast.left.loc, ast.right.loc);
 }
 
+let unknownValueOfOrToString = "might be an object with an unknown valueOf or toString method";
+
 // Returns result type if binary operation is pure (terminates, does not throw exception, does not read or write heap), otherwise undefined.
-export function getPureBinaryOperationResultType(realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value): void | typeof Value {
+export function getPureBinaryOperationResultType(
+  realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value, lloc: ?BabelNodeSourceLocation, rloc: ?BabelNodeSourceLocation
+): void | typeof Value {
   if (op === "+") {
     let ltype = GetToPrimitivePureResultType(realm, lval);
     let rtype = GetToPrimitivePureResultType(realm, rval);
-    if (ltype === undefined || rtype === undefined) return undefined;
+    if (ltype === undefined) {
+      let error = new CompilerDiagnostics(unknownValueOfOrToString, lloc, 'PP0002', 'Error');
+      if (realm.handleError(error) === 'RecoverIfPossible') {
+        // Assume that lval is actually a primitive or otherwise a well behaved object.
+        // Also assume that it does not convert to a string if rtype is a number.
+        return rtype;
+      }
+      return undefined;
+    }
+    if (rtype === undefined) {
+      let error = new CompilerDiagnostics(unknownValueOfOrToString, rloc, 'PP0002', 'Error');
+      if (realm.handleError(error) === 'RecoverIfPossible') {
+        // Assume that rval is actually a primitive or otherwise a well behaved object.
+        // Also assume that it does not convert to a string if ltype is a number.
+        return ltype;
+      }
+      return undefined;
+    }
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=" || op === "!=" || op === "==") {
@@ -60,7 +82,9 @@ export function getPureBinaryOperationResultType(realm: Realm, op: BabelBinaryOp
   invariant(false, "unimplemented " + op);
 }
 
-export function computeBinary(realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value): Value {
+export function computeBinary(
+  realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value, lloc: ?BabelNodeSourceLocation, rloc: ?BabelNodeSourceLocation
+): Value {
   // partial evaluation shortcut for a particular pattern (avoiding general throwIfNotConcrete check)
   if (op === "==" || op === "===" || op === "!=" || op === "!==") {
     if (!lval.mightNotBeObject() && HasSomeCompatibleType(rval, NullValue, UndefinedValue) ||
@@ -69,7 +93,7 @@ export function computeBinary(realm: Realm, op: BabelBinaryOperator, lval: Value
   }
 
   if ((lval instanceof AbstractValue) || (rval instanceof AbstractValue)) {
-    let type = getPureBinaryOperationResultType(realm, op, lval, rval);
+    let type = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
     if (type !== undefined) {
       return realm.createAbstract(new TypesDomain(type), ValuesDomain.topVal, [lval, rval],
         ([lnode, rnode]) => t.binaryExpression(op, lnode, rnode));

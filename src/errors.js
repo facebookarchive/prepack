@@ -32,7 +32,3 @@ export class CompilerDiagnostics extends Error {
 }
 
 export type ErrorHandler = (error: CompilerDiagnostics) => ErrorHandlerResult;
-
-export const errorDetails: {[ErrorCode]: string} = {
-  'PP0001': 'Array size must be a concrete number',
-};
