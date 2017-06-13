@@ -11,7 +11,7 @@
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
-import type { Descriptor, PropertyBinding, SourceMap } from "../types.js";
+import type { Descriptor, PropertyBinding } from "../types.js";
 import { ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
@@ -33,10 +33,12 @@ import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 
 const GLOBAL_CAPTURED_SCOPE_NAME = "__captured_scopes";
 
-type SerializedOutput = {
-  code: string,
-  map: void | SourceMap,
-  statistics: SerializerStatistics
+type AbstractSyntaxTree = {
+  type: string,
+  program: {
+    type: string,
+    body: Array<BabelNodeStatement>
+  }
 };
 
 function isSameNode(left, right) {
@@ -1572,7 +1574,7 @@ export class Serializer {
     return false;
   }
 
-  serialize(filename: string, code: string, sourceMaps: boolean): { generated?: SerializedOutput } {
+  serialize(): AbstractSyntaxTree {
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 
@@ -1676,21 +1678,7 @@ export class Serializer {
     };
 
     invariant(this.serializedValues.size === this.residualValues.size);
-
-    if (this.options.profile) console.time("\t[Profiling] Generating Source Code From AST");
-    let generated = generate(
-        ast,
-        { sourceMaps: sourceMaps, sourceFileName: filename },
-        code);
-
-    if (this.options.profile)  console.timeEnd("\t[Profiling] Generating Source Code From AST");
-    return {
-      generated: {
-        code: generated.code,
-        map: generated.map,
-        statistics: this.statistics
-      }
-    };
+    return ast;
   }
 
   getObjectKeys(obj: BabelNodeObjectExpression): string | false {
@@ -1888,7 +1876,7 @@ export class Serializer {
       if (this.options.profile) console.time("[Profiling] Reference Counts Pass");
       this.collectValToRefCountOnly = true;
       this.valToRefCount = new Map();
-      this.serialize(filename, code, sourceMaps);
+      this.serialize();
       if (this.logger.hasErrors()) return undefined;
       if (this.options.profile) console.timeEnd("[Profiling] Reference Counts Pass");
     }
@@ -1896,10 +1884,18 @@ export class Serializer {
     this._resetSerializeStates();
     this.collectValToRefCountOnly = false;
     if (this.options.profile) console.time("[Profiling] Serialize Pass");
-    let serialized = this.serialize(filename, code, sourceMaps);
+    let ast = this.serialize();
+    let generated = generate(
+        ast,
+        { sourceMaps: sourceMaps, sourceFileName: filename },
+        code);
     if (this.options.profile) console.timeEnd("[Profiling] Serialize Pass");
     invariant(!this.logger.hasErrors());
     if (this.options.logStatistics) this.statistics.log();
-    return serialized.generated;
+    return {
+      code: generated.code,
+      map: generated.map,
+      statistics: this.statistics
+    };
   }
 }
