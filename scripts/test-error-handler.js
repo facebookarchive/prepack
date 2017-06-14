@@ -68,7 +68,7 @@ function runTest(name: string, code: string): boolean {
       serialize: true,
       speculate: true,
     },
-    errorHandler.bind(null, recover ? 'RecoverIfPossible' : 'Fail', errors));
+    errorHandler.bind(null, recover ? 'Recover' : 'Fail', errors));
     if (!recover) {
       console.log(chalk.red("Serialization succeeded though it should have failed"));
       return false;
