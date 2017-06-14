@@ -46,7 +46,7 @@
     "validate": "npm run build && npm run build-scripts && npm run lint && npm run depcheck && npm run flow && npm test",
     "prepublish": "npm run build",
     "depcheck": "babel-node scripts/detect_bad_deps.js",
-    "prettier": "prettier --write --single-quote --jsx-bracket-same-line --trailing-comma all --print-width 120 \"src/**/*.js\""
+    "prettier": "prettier --write --single-quote --jsx-bracket-same-line --trailing-comma all --print-width 120 \"(src|scripts)/**/*.js\""
   },
   "dependencies": {
     "babel-core": "^6.8.0",
