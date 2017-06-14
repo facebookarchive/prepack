@@ -40,38 +40,40 @@ let unknownValueOfOrToString = "might be an object with an unknown valueOf or to
 export function getPureBinaryOperationResultType(
   realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value, lloc: ?BabelNodeSourceLocation, rloc: ?BabelNodeSourceLocation
 ): void | typeof Value {
+  function reportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): void | typeof Value {
+    let leftPure = purityTest(realm, lval);
+    let rightPure = purityTest(realm, rval);
+    if (leftPure && rightPure) return typeIfPure;
+    let loc = !leftPure ? lloc : rloc;
+    let error = new CompilerDiagnostics(unknownValueOfOrToString, loc, 'PP0002', 'Error');
+    if (realm.handleError(error) === 'RecoverIfPossible') {
+      // Assume that an unknown value is actually a primitive or otherwise a well behaved object.
+      return typeIfPure;
+    }
+    return undefined;
+  }
   if (op === "+") {
     let ltype = GetToPrimitivePureResultType(realm, lval);
     let rtype = GetToPrimitivePureResultType(realm, rval);
-    if (ltype === undefined) {
-      let error = new CompilerDiagnostics(unknownValueOfOrToString, lloc, 'PP0002', 'Error');
+    if (ltype === undefined || rtype === undefined) {
+      let [loc, type] = ltype === undefined ? [lloc, rtype] : [rloc, ltype];
+      let error = new CompilerDiagnostics(unknownValueOfOrToString, loc, 'PP0002', 'Error');
       if (realm.handleError(error) === 'RecoverIfPossible') {
-        // Assume that lval is actually a primitive or otherwise a well behaved object.
-        // Also assume that it does not convert to a string if rtype is a number.
-        return rtype;
-      }
-      return undefined;
-    }
-    if (rtype === undefined) {
-      let error = new CompilerDiagnostics(unknownValueOfOrToString, rloc, 'PP0002', 'Error');
-      if (realm.handleError(error) === 'RecoverIfPossible') {
-        // Assume that rval is actually a primitive or otherwise a well behaved object.
-        // Also assume that it does not convert to a string if ltype is a number.
-        return ltype;
+        // Assume that the unknown value is actually a primitive or otherwise a well behaved object.
+        // Also assume that it does not convert to a string if type is a number.
+        return type;
       }
       return undefined;
     }
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=" || op === "!=" || op === "==") {
-    if (IsToPrimitivePure(realm, lval) && IsToPrimitivePure(realm, rval)) return BooleanValue;
-    return undefined;
+    return reportErrorIfNotPure(IsToPrimitivePure, BooleanValue);
   } else if (op === "===" || op === "!==") {
     return BooleanValue;
   } else if (op === ">>>" || op === "<<" || op === ">>" || op === "&" || op === "|" || op === "^" ||
              op === "**" || op === "%" || op === "/" || op === "*" || op === "-") {
-    if (IsToNumberPure(realm, lval) && IsToNumberPure(realm, rval)) return NumberValue;
-    return undefined;
+    return reportErrorIfNotPure(IsToNumberPure, NumberValue);
   } else if (op === "in") {
     // TODO. Tricky. Needs deeper analysis. Can call arbitrary code e.g. when object is a Proxy => Side effects!
     return undefined;

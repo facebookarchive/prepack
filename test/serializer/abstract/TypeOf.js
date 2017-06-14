@@ -5,4 +5,10 @@ s = typeof y;
 let f = y ? ()=>1 : ()=>2;
 t = typeof f;
 
-inspect = function() { return s + t; }
+let yy = y * y;
+u = typeof yy;
+
+let b = y > 3;
+v = typeof b;
+
+inspect = function() { return s + t + u + v; }
