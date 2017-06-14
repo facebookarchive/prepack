@@ -1,5 +1,6 @@
 /**
- * Copyright (c) 2014-present, Facebook, Inc. All rights reserved.
+ * Copyright (c) 2017-present, Facebook, Inc.
+ * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree. An additional grant
@@ -26,7 +27,7 @@ const prettierCmd = path.resolve(
   '../../node_modules/.bin/' + prettier
 );
 const defaultOptions = {
-  'bracket-spacing': 'false',
+  'bracket-spacing': 'true',
   'single-quote': 'true',
   'jsx-bracket-same-line': 'true',
   'trailing-comma': 'all',
@@ -39,9 +40,6 @@ const config = {
   },
   scripts: {
     patterns: ['scripts/**/*.js'],
-    options: {
-      'trailing-comma': 'es5',
-    },
   },
 };
 
