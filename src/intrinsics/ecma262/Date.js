@@ -21,7 +21,7 @@ import seedrandom from "seedrandom";
 
 let buildDateNow = buildExpressionTemplate("Date.now()");
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   let lastNow;
   let offsetGenerator;
   function getCurrentTime(): AbstractValue | NumberValue {
@@ -97,7 +97,8 @@ export default function (realm: Realm): NativeFunctionValue {
 
         // l. Return O.
         return O;
-      } else { // 4. Else,
+      } else {
+        // 4. Else,
         // a. Let now be the Number that is the time value (UTC) identifying the current time.
         let now = getCurrentTime().throwIfNotConcreteNumber().value;
 
@@ -123,7 +124,8 @@ export default function (realm: Realm): NativeFunctionValue {
         if (value instanceof ObjectValue && value.$DateValue !== undefined) {
           // i. Let tv be thisTimeValue(value).
           tv = thisTimeValue(realm, value);
-        } else { // b. Else,
+        } else {
+          // b. Else,
           // i. Let v be ? ToPrimitive(value)
           let v = ToPrimitive(realm, value);
 
@@ -131,10 +133,11 @@ export default function (realm: Realm): NativeFunctionValue {
           if (v instanceof StringValue) {
             // 1. Let tv be the result of parsing v as a date, in exactly the same manner as for the parse
             //    method (20.3.3.2). If the parse resulted in an abrupt completion, tv is the Completion Record.
-            tv = new NumberValue(realm, (new Date(v.value)).getTime());
+            tv = new NumberValue(realm, new Date(v.value).getTime());
 
             // 2. ReturnIfAbrupt(tv).
-          } else { // iii. Else,
+          } else {
+            // iii. Else,
             // 1. Let tv be ? ToNumber(v).
             tv = new NumberValue(realm, ToNumber(realm, v));
           }
@@ -148,7 +151,8 @@ export default function (realm: Realm): NativeFunctionValue {
 
         // e. Return O.
         return O;
-      } else { // 4. Else,
+      } else {
+        // 4. Else,
         // a. Let now be the Number that is the time value (UTC) identifying the current time.
         let now = getCurrentTime().throwIfNotConcreteNumber().value;
 
@@ -174,7 +178,8 @@ export default function (realm: Realm): NativeFunctionValue {
 
         // c. Return O.
         return O;
-      } else { // 4. Else,
+      } else {
+        // 4. Else,
         // a. Let now be the Number that is the time value (UTC) identifying the current time.
         let now = getCurrentTime().throwIfNotConcreteNumber().value;
 
@@ -185,7 +190,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 20.3.3.1
-  func.defineNativeMethod("now", 0, (context) => {
+  func.defineNativeMethod("now", 0, context => {
     return getCurrentTime();
   });
 
@@ -223,7 +228,7 @@ export default function (realm: Realm): NativeFunctionValue {
     let milli = argCount >= 7 ? ToNumber(realm, ms) : 0;
 
     // 8. If y is not NaN and 0 ≤ ToInteger(y) ≤ 99, let yr be 1900+ToInteger(y); otherwise, let yr be y.
-    let yr = (!isNaN(y) && ToInteger(realm, y) >= 0 && ToInteger(realm, y) <= 99) ? 1900 + ToInteger(realm, y) : y;
+    let yr = !isNaN(y) && ToInteger(realm, y) >= 0 && ToInteger(realm, y) <= 99 ? 1900 + ToInteger(realm, y) : y;
 
     // 9. Return TimeClip(MakeDate(MakeDay(yr, m, dt), MakeTime(h, min, s, milli))).
     return TimeClip(realm, MakeDate(realm, MakeDay(realm, yr, m, dt), MakeTime(realm, h, min, s, milli)));

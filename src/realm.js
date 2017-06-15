@@ -12,13 +12,27 @@
 import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
 import { CompilerDiagnostics, type ErrorHandlerResult, type ErrorHandler } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
-import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue, UndefinedValue } from "./values/index.js";
+import {
+  Value,
+  ObjectValue,
+  AbstractValue,
+  AbstractObjectValue,
+  StringValue,
+  ConcreteValue,
+  UndefinedValue,
+} from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
-import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
+import {
+  Completion,
+  IntrospectionThrowCompletion,
+  ThrowCompletion,
+  AbruptCompletion,
+  PossiblyNormalCompletion,
+} from "./completions.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
@@ -37,9 +51,26 @@ export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, 
 export class Tracer {
   beginPartialEvaluation() {}
   endPartialEvaluation(effects: void | Effects) {}
-  detourCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, performCall: () => Value): void | Value {}
-  beforeCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {}
-  afterCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {}
+  detourCall(
+    F: FunctionValue,
+    thisArgument: void | Value,
+    argumentsList: Array<Value>,
+    newTarget: void | ObjectValue,
+    performCall: () => Value
+  ): void | Value {}
+  beforeCall(
+    F: FunctionValue,
+    thisArgument: void | Value,
+    argumentsList: Array<Value>,
+    newTarget: void | ObjectValue
+  ) {}
+  afterCall(
+    F: FunctionValue,
+    thisArgument: void | Value,
+    argumentsList: Array<Value>,
+    newTarget: void | ObjectValue,
+    result: void | Reference | Value | AbruptCompletion
+  ) {}
 }
 
 export class ExecutionContext {
@@ -100,7 +131,7 @@ export function construct_empty_effects(realm: Realm): Effects {
 export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
-    this.useAbstractInterpretation  = !!opts.serialize || !!opts.residual;
+    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
     }
@@ -116,8 +147,7 @@ export class Realm {
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
 
-
-    this.$TemplateMap  = [];
+    this.$TemplateMap = [];
 
     if (this.useAbstractInterpretation) {
       this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
@@ -140,7 +170,7 @@ export class Realm {
   isReadOnly: boolean;
   useAbstractInterpretation: boolean;
   timeout: void | number;
-  mathRandomGenerator: void | () => number;
+  mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
 
   modifiedBindings: void | Bindings;
@@ -157,17 +187,30 @@ export class Realm {
   $GlobalObject: ObjectValue | AbstractObjectValue;
   compatibility: Compatibility;
 
-  $TemplateMap: Array<{$Strings: Array<string>, $Array: ObjectValue}>;
+  $TemplateMap: Array<{ $Strings: Array<string>, $Array: ObjectValue }>;
 
   generator: void | Generator;
   preludeGenerator: void | PreludeGenerator;
   timeoutCounter: number;
   timeoutCounterThreshold: number;
-  evaluators: { [key: string]: (ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any) => NormalCompletion | Value | Reference };
+  evaluators: {
+    [key: string]: (
+      ast: BabelNode,
+      strictCode: boolean,
+      env: LexicalEnvironment,
+      realm: Realm,
+      metadata?: any
+    ) => NormalCompletion | Value | Reference,
+  };
   partialEvaluators: {
     [key: string]: (
-      ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm, metadata?: any
-    ) => [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] };
+      ast: BabelNode,
+      strictCode: boolean,
+      env: LexicalEnvironment,
+      realm: Realm,
+      metadata?: any
+    ) => [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>],
+  };
 
   tracers: Array<Tracer>;
 
@@ -202,7 +245,7 @@ export class Realm {
   setReadOnly(readOnlyValue: boolean) {
     this.isReadOnly = readOnlyValue;
     this.$GlobalEnv.environmentRecord.isReadOnly = readOnlyValue;
-    this.contextStack.forEach((ctx) => {
+    this.contextStack.forEach(ctx => {
       ctx.setReadOnly(readOnlyValue);
     });
   }
@@ -241,7 +284,9 @@ export class Realm {
   }
 
   partiallyEvaluateNodeForEffects(
-    ast: BabelNode, strictCode: boolean, env: LexicalEnvironment
+    ast: BabelNode,
+    strictCode: boolean,
+    env: LexicalEnvironment
   ): [Effects, BabelNode, Array<BabelNodeStatement>] {
     let nodeAst, nodeIO;
     function partialEval() {
@@ -311,7 +356,8 @@ export class Realm {
     let [pc, pg, pb, pp, po] = priorEffects;
     let [sc, sg, sb, sp, so] = subsequentEffects;
 
-    pc; sc;
+    pc;
+    sc;
 
     let saved_generator = this.generator;
     this.generator = pg.clone();
@@ -336,14 +382,12 @@ export class Realm {
     if (c.consequent instanceof AbruptCompletion) {
       this.addPriorEffects(priorEffects, c.consequentEffects);
       let alternate = c.alternate;
-      if (alternate instanceof PossiblyNormalCompletion)
-        this.updateAbruptCompletions(priorEffects, alternate);
+      if (alternate instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, alternate);
     } else {
       invariant(c.alternate instanceof AbruptCompletion);
       this.addPriorEffects(priorEffects, c.alternateEffects);
       let consequent = c.consequent;
-      if (consequent instanceof PossiblyNormalCompletion)
-        this.updateAbruptCompletions(priorEffects, consequent);
+      if (consequent instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, consequent);
     }
   }
 
@@ -353,8 +397,13 @@ export class Realm {
       // Already called captureEffects in this context, just carry on
       return;
     }
-    context.savedEffects = [this.intrinsics.undefined, this.generator,
-      this.modifiedBindings, this.modifiedProperties, this.createdObjects];
+    context.savedEffects = [
+      this.intrinsics.undefined,
+      this.generator,
+      this.modifiedBindings,
+      this.modifiedProperties,
+      this.createdObjects,
+    ];
     this.generator = new Generator(this);
     this.modifiedBindings = new Map();
     this.modifiedProperties = new Map();
@@ -369,8 +418,7 @@ export class Realm {
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
-    return [v, this.generator, this.modifiedBindings,
-       this.modifiedProperties, this.createdObjects];
+    return [v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects];
   }
 
   stopEffectCaptureAndUndoEffects() {
@@ -428,8 +476,7 @@ export class Realm {
     // add created objects
     if (createdObjects.size > 0) {
       let realmCreatedObjects = this.createdObjects;
-      if (realmCreatedObjects === undefined)
-        this.createdObjects = new Set(createdObjects);
+      if (realmCreatedObjects === undefined) this.createdObjects = new Set(createdObjects);
       else {
         createdObjects.forEach((ob, a) => {
           invariant(realmCreatedObjects !== undefined);
@@ -446,8 +493,7 @@ export class Realm {
   }
 
   outputToConsole(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>): void {
-    if (this.isReadOnly)
-      throw this.createReadOnlyError("Trying to create console output in read-only realm");
+    if (this.isReadOnly) throw this.createReadOnlyError("Trying to create console output in read-only realm");
     if (this.useAbstractInterpretation) {
       invariant(this.generator !== undefined);
       this.generator.emitConsoleLog(method, args);
@@ -469,8 +515,7 @@ export class Realm {
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
   recordModifiedBinding(binding: Binding, env: EnvironmentRecord): Binding {
-    if (env.isReadOnly)
-      throw this.createReadOnlyError("Trying to modify a binding in read-only realm");
+    if (env.isReadOnly) throw this.createReadOnlyError("Trying to modify a binding in read-only realm");
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
       this.modifiedBindings.set(binding, binding.value);
     return binding;
@@ -527,25 +572,30 @@ export class Realm {
   // the value the Binding had just before the call to this method.
   restoreProperties(modifiedProperties: void | PropertyBindings) {
     if (modifiedProperties === undefined) return;
-    modifiedProperties.forEach(
-      (desc, propertyBinding, m) => {
-        let d = propertyBinding.descriptor;
-        propertyBinding.descriptor = desc;
-        m.set(propertyBinding, d);
-      });
+    modifiedProperties.forEach((desc, propertyBinding, m) => {
+      let d = propertyBinding.descriptor;
+      propertyBinding.descriptor = desc;
+      m.set(propertyBinding, d);
+    });
   }
 
   // Provide the realm with maps in which to track modifications.
   // A map can be set to undefined if no tracking is required.
-  setModifiedMaps(modifiedBindings: void | Bindings,
-      modifiedProperties: void | PropertyBindings) {
+  setModifiedMaps(modifiedBindings: void | Bindings, modifiedProperties: void | PropertyBindings) {
     this.modifiedBindings = modifiedBindings;
     this.modifiedProperties = modifiedProperties;
   }
 
   // Create a state-less abstract value.
   // NOTE: `buildNode` MUST NOT create an AST which may mutate or access mutable state! Use `deriveAbstract` for that purpose.
-  createAbstract(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode: (Array<BabelNodeExpression> => BabelNodeExpression) | BabelNodeExpression, kind?: string, intrinsicName?: string) {
+  createAbstract(
+    types: TypesDomain,
+    values: ValuesDomain,
+    args: Array<Value>,
+    buildNode: ((Array<BabelNodeExpression>) => BabelNodeExpression) | BabelNodeExpression,
+    kind?: string,
+    intrinsicName?: string
+  ) {
     invariant(this.useAbstractInterpretation);
     let Constructor = types.getType() === ObjectValue ? AbstractObjectValue : AbstractValue;
     return new Constructor(this, types, values, args, buildNode, kind, intrinsicName);
@@ -579,7 +629,13 @@ export class Realm {
   // Create a an abstract value in a way that may observe or mutate state.
   // NOTE: If the state that is observed or mutated by the AST generated by `buildNode` is also represented in some form in the interpreter,
   // i.e. not just external state, then the caller must make sure that all relevant interpreter state is updated correspondingly.
-  deriveAbstract(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode: (Array<BabelNodeExpression> => BabelNodeExpression) | BabelNodeExpression, kind?: string): AbstractValue | UndefinedValue {
+  deriveAbstract(
+    types: TypesDomain,
+    values: ValuesDomain,
+    args: Array<Value>,
+    buildNode: ((Array<BabelNodeExpression>) => BabelNodeExpression) | BabelNodeExpression,
+    kind?: string
+  ): AbstractValue | UndefinedValue {
     invariant(this.useAbstractInterpretation);
     let generator = this.generator;
     invariant(generator);
@@ -647,7 +703,11 @@ export class Realm {
         n.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
         return n;
       };
-      realmGeneratorBody.push({ declaresDerivedId: firstEntry.declaresDerivedId, args: firstEntry.args, buildNode: buildNode });
+      realmGeneratorBody.push({
+        declaresDerivedId: firstEntry.declaresDerivedId,
+        args: firstEntry.args,
+        buildNode: buildNode,
+      });
     }
     for (; i < generatorBody.length; i++) realmGeneratorBody.push(generatorBody[i]);
   }
@@ -658,7 +718,7 @@ export class Realm {
   handleError(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
-    if (!errorHandler) return 'Fail';
+    if (!errorHandler) return "Fail";
     return errorHandler(diagnostic);
   }
 }

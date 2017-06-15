@@ -17,23 +17,22 @@ let fs = require("fs");
 import type { BabelNodeSourceLocation, BabelNodeBlockStatement } from "babel-types";
 
 function createLogStatement(loc: BabelNodeSourceLocation) {
-  return t.expressionStatement(t.callExpression(
-    t.memberExpression(t.identifier("console"), t.identifier("log")),
-    [t.stringLiteral(`[instrumentation] #${loc.start.line}`)]));
+  return t.expressionStatement(
+    t.callExpression(t.memberExpression(t.identifier("console"), t.identifier("log")), [
+      t.stringLiteral(`[instrumentation] #${loc.start.line}`),
+    ])
+  );
 }
 
 function instrument(inputFilename: string, outputFilename: string) {
   let code = fs.readFileSync(inputFilename, "utf8");
   let ast = parse(code, { inputFilename, sourceType: "script" });
-  traverse(
-    ast,
-    function (node) {
-      if (node.type === "BlockStatement") {
-        if (node.loc) ((node: any): BabelNodeBlockStatement).body.unshift(createLogStatement(node.loc));
-      }
-      return false;
+  traverse(ast, function(node) {
+    if (node.type === "BlockStatement") {
+      if (node.loc) ((node: any): BabelNodeBlockStatement).body.unshift(createLogStatement(node.loc));
     }
-  );
+    return false;
+  });
   code = generate(ast, {}, "").code;
   if (!outputFilename) outputFilename = inputFilename + "-instrumented.js";
   fs.writeFileSync(outputFilename, code);
@@ -45,9 +44,11 @@ args.splice(0, 2);
 let inputFilename;
 let outputFilename;
 while (args.length) {
-  let arg = args[0]; args.shift();
+  let arg = args[0];
+  args.shift();
   if (arg === "--out") {
-    arg = args[0]; args.shift();
+    arg = args[0];
+    args.shift();
     outputFilename = arg;
   } else if (arg === "--help") {
     console.log("Usage: instrumentor.js [ --out output.js ] [ -- | input.js ]");

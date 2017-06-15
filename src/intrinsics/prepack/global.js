@@ -10,7 +10,17 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { Value, StringValue, BooleanValue, ObjectValue, FunctionValue, NativeFunctionValue, AbstractValue, AbstractObjectValue, UndefinedValue } from "../../values/index.js";
+import {
+  Value,
+  StringValue,
+  BooleanValue,
+  ObjectValue,
+  FunctionValue,
+  NativeFunctionValue,
+  AbstractValue,
+  AbstractObjectValue,
+  UndefinedValue,
+} from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { ObjectCreate } from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
@@ -20,19 +30,21 @@ import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeIdentifier }
 import invariant from "../../invariant.js";
 import { describeLocation } from "../ecma262/Error.js";
 
-let buildThrowErrorAbstractValue = buildExpressionTemplate("(function(){throw new Error('abstract value defined at ' + LOCATION);})()");
+let buildThrowErrorAbstractValue = buildExpressionTemplate(
+  "(function(){throw new Error('abstract value defined at ' + LOCATION);})()"
+);
 
-export default function (realm: Realm): void {
+export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
   global.$DefineOwnProperty("dump", {
     value: new NativeFunctionValue(realm, "global.dump", "dump", 0, (context, args) => {
-      console.log("dump", args.map((arg) => arg.serialize()));
+      console.log("dump", args.map(arg => arg.serialize()));
       return context;
     }),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   function parseTypeNameOrTemplate(typeNameOrTemplate): { type: typeof Value, template: void | ObjectValue } {
@@ -44,7 +56,12 @@ export default function (realm: Realm): void {
       if (type === undefined) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
       }
-      return { type, template: Value.isTypeCompatibleWith(type, ObjectValue) ? ObjectCreate(realm, realm.intrinsics.ObjectPrototype) : undefined };
+      return {
+        type,
+        template: Value.isTypeCompatibleWith(type, ObjectValue)
+          ? ObjectCreate(realm, realm.intrinsics.ObjectPrototype)
+          : undefined,
+      };
     } else if (typeNameOrTemplate instanceof FunctionValue) {
       return { type: FunctionValue, template: typeNameOrTemplate };
     } else if (typeNameOrTemplate instanceof ObjectValue) {
@@ -61,68 +78,90 @@ export default function (realm: Realm): void {
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
-    value: new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
-      if (!realm.useAbstractInterpretation) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
-      }
-
-      let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
-
-      let nameString = name ? ToStringPartial(realm, name) : "";
-      let buildNode;
-      if (nameString === "") {
-        let locString;
-        for (let executionContext of realm.contextStack.slice().reverse()) {
-          let caller = executionContext.caller;
-          locString = describeLocation(realm, caller ? caller.function : undefined, caller ? caller.lexicalEnvironment : undefined, executionContext.loc);
-          if (locString !== undefined) break;
+    value: new NativeFunctionValue(
+      realm,
+      "global.__abstract",
+      "__abstract",
+      0,
+      (context, [typeNameOrTemplate, name]) => {
+        if (!realm.useAbstractInterpretation) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
 
-        buildNode = () => buildThrowErrorAbstractValue({ LOCATION: t.stringLiteral(locString || "(unknown location)") });
-      } else {
-        buildNode = buildExpressionTemplate(nameString);
-      }
+        let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
 
-      let types = new TypesDomain(type);
-      let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-      let result = realm.createAbstract(types, values, [], buildNode, undefined, nameString);
-      if (template) {
-        template.makePartial();
-        if (nameString) realm.rebuildNestedProperties(result, nameString);
+        let nameString = name ? ToStringPartial(realm, name) : "";
+        let buildNode;
+        if (nameString === "") {
+          let locString;
+          for (let executionContext of realm.contextStack.slice().reverse()) {
+            let caller = executionContext.caller;
+            locString = describeLocation(
+              realm,
+              caller ? caller.function : undefined,
+              caller ? caller.lexicalEnvironment : undefined,
+              executionContext.loc
+            );
+            if (locString !== undefined) break;
+          }
+
+          buildNode = () =>
+            buildThrowErrorAbstractValue({ LOCATION: t.stringLiteral(locString || "(unknown location)") });
+        } else {
+          buildNode = buildExpressionTemplate(nameString);
+        }
+
+        let types = new TypesDomain(type);
+        let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
+        let result = realm.createAbstract(types, values, [], buildNode, undefined, nameString);
+        if (template) {
+          template.makePartial();
+          if (nameString) realm.rebuildNestedProperties(result, nameString);
+        }
+        return result;
       }
-      return result;
-    }),
+    ),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
-
 
   // Helper function used to instatiate a residual function
   function deriveNativeFunctionValue(unsafe: boolean): NativeFunctionValue {
-    return new NativeFunctionValue(realm, "global.__residual", "__residual", 2, (context, [typeNameOrTemplate, f, ...args]) => {
-      if (!realm.useAbstractInterpretation) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
-      }
+    return new NativeFunctionValue(
+      realm,
+      "global.__residual",
+      "__residual",
+      2,
+      (context, [typeNameOrTemplate, f, ...args]) => {
+        if (!realm.useAbstractInterpretation) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
+        }
 
-      let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
+        let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
 
-      if (f.constructor !== FunctionValue) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cannot determine residual function");
+        if (f.constructor !== FunctionValue) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cannot determine residual function");
+        }
+        invariant(f instanceof FunctionValue);
+        f.isResidual = true;
+        if (unsafe) f.isUnsafeResidual = true;
+        let types = new TypesDomain(type);
+        let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
+        let result = realm.deriveAbstract(types, values, [f].concat(args), nodes =>
+          t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>))
+        );
+        if (template) {
+          invariant(
+            result instanceof AbstractValue,
+            "the nested properties should only be rebuilt for an abstract value"
+          );
+          template.makePartial();
+          realm.rebuildNestedProperties(result, ((result.buildNode: any): BabelNodeIdentifier).name);
+        }
+        return result;
       }
-      invariant(f instanceof FunctionValue);
-      f.isResidual = true;
-      if (unsafe) f.isUnsafeResidual = true;
-      let types = new TypesDomain(type);
-      let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-      let result = realm.deriveAbstract(types, values, [f].concat(args), nodes => t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>)));
-      if (template) {
-        invariant(result instanceof AbstractValue, "the nested properties should only be rebuilt for an abstract value");
-        template.makePartial();
-        realm.rebuildNestedProperties(result, ((result.buildNode: any): BabelNodeIdentifier).name);
-      }
-      return result;
-    });
+    );
   }
 
   // Helper function that identifies a computation that must remain part of the residual program and cannot be partially evaluated,
@@ -136,7 +175,7 @@ export default function (realm: Realm): void {
     value: deriveNativeFunctionValue(false),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // Helper function that identifies a variant of the residual function that has implicit dependencies. This version of residual will infer the dependencies
@@ -145,7 +184,7 @@ export default function (realm: Realm): void {
     value: deriveNativeFunctionValue(true),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // TODO: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
@@ -153,7 +192,7 @@ export default function (realm: Realm): void {
     value: realm.intrinsics.undefined,
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // Internal helper function for tests.
@@ -164,7 +203,7 @@ export default function (realm: Realm): void {
     }),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // __makePartial(object) marks an (abstract) object as partial.
@@ -179,7 +218,7 @@ export default function (realm: Realm): void {
     }),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // __makeSimple(object) marks an (abstract) object as one that has no getters or setters.
@@ -194,45 +233,53 @@ export default function (realm: Realm): void {
     }),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // Helper function that emits a check whether a given object property has a particular value.
   global.$DefineOwnProperty("__assumeDataProperty", {
-    value: new NativeFunctionValue(realm, "global.__assumeDataProperty", "__assumeDataProperty", 3, (context, [object, propertyName, value]) => {
-      if (!realm.useAbstractInterpretation) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
+    value: new NativeFunctionValue(
+      realm,
+      "global.__assumeDataProperty",
+      "__assumeDataProperty",
+      3,
+      (context, [object, propertyName, value]) => {
+        if (!realm.useAbstractInterpretation) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
+        }
+
+        let key = ToStringPartial(realm, propertyName);
+
+        // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
+        if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
+          let generator = realm.generator;
+          if (generator)
+            generator.emitInvariant(
+              [object, value, object],
+              ([objectNode, valueNode]) =>
+                t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode),
+              objnode => t.memberExpression(objnode, t.identifier(key))
+            );
+          realm.generator = undefined; // don't emit code during the following $Set call
+          // casting to due to Flow workaround above
+          (object: any).$Set(key, value, object);
+          realm.generator = generator;
+          if (object.intrinsicName) realm.rebuildObjectProperty(object, key, value, object.intrinsicName);
+          return context.$Realm.intrinsics.undefined;
+        }
+
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
       }
-
-      let key = ToStringPartial(realm, propertyName);
-
-      // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
-      if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
-        let generator = realm.generator;
-        if (generator)
-          generator.emitInvariant([object, value, object], ([objectNode, valueNode]) =>
-            t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode),
-          (objnode) => t.memberExpression(objnode, t.identifier(key)));
-        realm.generator = undefined; // don't emit code during the following $Set call
-        // casting to due to Flow workaround above
-        (object: any).$Set(key, value, object);
-        realm.generator = generator;
-        if (object.intrinsicName)
-          realm.rebuildObjectProperty(object, key, value, object.intrinsicName);
-        return context.$Realm.intrinsics.undefined;
-      }
-
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
-    }),
+    ),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   global.$DefineOwnProperty("__IntrospectionError", {
     value: realm.intrinsics.__IntrospectionError,
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 }

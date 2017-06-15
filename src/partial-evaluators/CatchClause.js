@@ -18,8 +18,12 @@ import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 
 // ECAM262 13.15.7
-export default function (
-  ast: BabelNodeCatchClause, strictCode: boolean, env: LexicalEnvironment, realm: Realm, thrownValue: any
+export default function(
+  ast: BabelNodeCatchClause,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  thrownValue: any
 ): [AbruptCompletion | Value, BabelNodeCatchClause, Array<BabelNodeStatement>] {
   invariant(thrownValue instanceof ThrowCompletion, "Metadata isn't a throw completion");
 

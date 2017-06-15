@@ -16,9 +16,16 @@ import type { Realm } from "../realm.js";
 import { RegExpCreate } from "../methods/index.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 
-export default function (
-  ast: BabelNodeRegExpLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeRegExpLiteral,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [ObjectValue, BabelNodeRegExpLiteral, Array<BabelNodeStatement>] {
-  let result = RegExpCreate(realm, new StringValue(realm, ast.pattern), ast.flags ? new StringValue(realm, ast.flags) : undefined);
+  let result = RegExpCreate(
+    realm,
+    new StringValue(realm, ast.pattern),
+    ast.flags ? new StringValue(realm, ast.flags) : undefined
+  );
   return [result, ast, []];
 }

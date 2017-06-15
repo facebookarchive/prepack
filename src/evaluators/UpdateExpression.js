@@ -19,7 +19,12 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
 import * as t from "babel-types";
 
-export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeUpdateExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // ECMA262 12.4 Update Expressions
 
   // Let expr be the result of evaluating UnaryExpression.
@@ -27,9 +32,12 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
 
   // Let oldValue be ? ToNumber(? GetValue(expr)).
   let oldExpr = GetValue(realm, expr);
-  if ((oldExpr instanceof AbstractValue) && IsToNumberPure(realm, oldExpr) &&
-      (ast.operator === '++' || ast.operator === '--')) {
-    let op = ast.operator === '++' ? '+' : '-';
+  if (
+    oldExpr instanceof AbstractValue &&
+    IsToNumberPure(realm, oldExpr) &&
+    (ast.operator === "++" || ast.operator === "--")
+  ) {
+    let op = ast.operator === "++" ? "+" : "-";
     let newAbstractValue = realm.createAbstract(
       new TypesDomain(NumberValue),
       ValuesDomain.topVal,

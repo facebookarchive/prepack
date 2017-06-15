@@ -11,7 +11,20 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import { BoundFunctionValue, EmptyValue, NumberValue, SymbolValue, StringValue, NullValue, ObjectValue, Value, BooleanValue, UndefinedValue, ConcreteValue, AbstractValue } from "../values/index.js";
+import {
+  BoundFunctionValue,
+  EmptyValue,
+  NumberValue,
+  SymbolValue,
+  StringValue,
+  NullValue,
+  ObjectValue,
+  Value,
+  BooleanValue,
+  UndefinedValue,
+  ConcreteValue,
+  AbstractValue,
+} from "../values/index.js";
 import { ToPrimitive, ToNumber, ToBooleanPartial } from "./to.js";
 import { Call } from "./call.js";
 import { IsCallable } from "./is.js";
@@ -63,7 +76,12 @@ export function RequireObjectCoercible<T: Value>(realm: Realm, arg: T): T {
 }
 
 // ECMA262 7.2.12 Abstract Relational Comparison
-export function AbstractRelationalComparison(realm: Realm, x: ConcreteValue, y: ConcreteValue, LeftFirst: boolean): BooleanValue | UndefinedValue {
+export function AbstractRelationalComparison(
+  realm: Realm,
+  x: ConcreteValue,
+  y: ConcreteValue,
+  LeftFirst: boolean
+): BooleanValue | UndefinedValue {
   let px, py;
 
   // 1. If the LeftFirst flag is true, then
@@ -73,7 +91,8 @@ export function AbstractRelationalComparison(realm: Realm, x: ConcreteValue, y: 
 
     // b. Let py be ? ToPrimitive(y, hint Number).
     py = ToPrimitive(realm, y, "number");
-  } else { // 2. Else the order of evaluation needs to be reversed to preserve left to right evaluation
+  } else {
+    // 2. Else the order of evaluation needs to be reversed to preserve left to right evaluation
     // a. Let py be ? ToPrimitive(y, hint Number).
     py = ToPrimitive(realm, y, "number");
 
@@ -103,7 +122,8 @@ export function AbstractRelationalComparison(realm: Realm, x: ConcreteValue, y: 
 
     // f. If m < n, return true. Otherwise, return false.
     return m < n ? realm.intrinsics.true : realm.intrinsics.false;
-  } else { // 4. Else,
+  } else {
+    // 4. Else,
     // a. Let nx be ? ToNumber(px). Because px and py are primitive values evaluation order is not important.
     let nx = ToNumber(realm, px);
 
@@ -495,11 +515,10 @@ export function UpdateEmpty(realm: Realm, completionRecord: Value | Completion, 
 
   // 2. If completionRecord.[[Value]] is not empty, return Completion(completionRecord).
   if (completionRecord instanceof EmptyValue) return value;
-  if (completionRecord instanceof Value ||
-    (completionRecord.value && !(completionRecord.value instanceof EmptyValue))) return completionRecord;
+  if (completionRecord instanceof Value || (completionRecord.value && !(completionRecord.value instanceof EmptyValue)))
+    return completionRecord;
 
   // 3. Return Completion{[[Type]]: completionRecord.[[Type]], [[Value]]: value, [[Target]]: completionRecord.[[Target]] }.'
   completionRecord.value = value;
   return completionRecord;
-
 }

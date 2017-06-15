@@ -71,5 +71,4 @@ export default class ConcreteValue extends Value {
   throwIfNotObject(): ObjectValue {
     invariant(false, "expected this to be an object if concrete");
   }
-
 }

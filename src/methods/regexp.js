@@ -36,7 +36,7 @@ export function RegExpAlloc(realm: Realm, newTarget: ObjectValue): ObjectValue {
   let obj = OrdinaryCreateFromConstructor(realm, newTarget, "RegExpPrototype", {
     $RegExpMatcher: undefined, // always initialized to not undefined before use
     $OriginalSource: undefined, // ditto
-    $OriginalFlags: undefined // ditto
+    $OriginalFlags: undefined, // ditto
   });
 
   // 2. Perform ! DefinePropertyOrThrow(obj, "lastIndex", PropertyDescriptor {[[Writable]]: true,
@@ -44,7 +44,7 @@ export function RegExpAlloc(realm: Realm, newTarget: ObjectValue): ObjectValue {
   DefinePropertyOrThrow(realm, obj, "lastIndex", {
     writable: true,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   // 3. Return obj.
@@ -60,7 +60,8 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
   let P;
   if (!pattern || HasCompatibleType(pattern, UndefinedValue)) {
     P = "";
-  } else { // 2. Else, let P be ? ToString(pattern).
+  } else {
+    // 2. Else, let P be ? ToString(pattern).
     P = ToStringPartial(realm, pattern);
   }
 
@@ -68,7 +69,8 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
   let F;
   if (!flags || HasCompatibleType(flags, UndefinedValue)) {
     F = "";
-  } else { // 4. Else, let F be ? ToString(flags).
+  } else {
+    // 4. Else, let F be ? ToString(flags).
     F = ToStringPartial(realm, flags);
   }
 
@@ -94,14 +96,14 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
     //    Pattern. Throw a SyntaxError exception if P did not conform to the grammar, if any elements of P
     //    were not matched by the parse, or if any Early Error conditions exist.
     // b. Let patternCharacters be a List whose elements are the code unit elements of P.
-  } else { // 8. Else,
+  } else {
+    // 8. Else,
     // a. Parse P using the grammars in 21.2.1 and interpreting P as UTF-16 encoded Unicode code points
     //    (6.1.4). The goal symbol for the parse is Pattern[U]. Throw a SyntaxError exception if P did not
     //    conform to the grammar, if any elements of P were not matched by the parse, or if any Early Error
     //    conditions exist.
     // b. Let patternCharacters be a List whose elements are the code points resulting from applying UTF-16
     //    decoding to P's sequence of elements.
-
   }
 
   // 9. Set the value of obj's [[OriginalSource]] internal slot to P.
@@ -128,14 +130,13 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
       }
       return {
         endIndex: match.index + match[0].length,
-        captures: match
+        captures: match,
       };
     };
   } catch (e) {
     if (e instanceof SyntaxError) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "invalid RegExp");
-    } else
-      throw e;
+    } else throw e;
   }
 
   // 12. Perform ? Set(obj, "lastIndex", 0, true).
@@ -172,7 +173,10 @@ export function RegExpExec(realm: Realm, R: ObjectValue, S: string): ObjectValue
 
   // 5. If R does not have a [[RegExpMatcher]] internal slot, throw a TypeError exception.
   if (R.$RegExpMatcher === undefined) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "R does not have a [[RegExpMatcher]] internal slot");
+    throw realm.createErrorThrowCompletion(
+      realm.intrinsics.TypeError,
+      "R does not have a [[RegExpMatcher]] internal slot"
+    );
   }
 
   // 6. Return ? RegExpBuiltinExec(R, S).
@@ -182,7 +186,10 @@ export function RegExpExec(realm: Realm, R: ObjectValue, S: string): ObjectValue
 // ECMA262 21.2.5.2.2
 export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): ObjectValue | NullValue {
   // 1. Assert: R is an initialized RegExp instance.
-  invariant(R.$RegExpMatcher !== undefined && R.$OriginalSource !== undefined && R.$OriginalFlags !== undefined, "R is an initialized RegExp instance");
+  invariant(
+    R.$RegExpMatcher !== undefined && R.$OriginalSource !== undefined && R.$OriginalFlags !== undefined,
+    "R is an initialized RegExp instance"
+  );
 
   // 2. Assert: Type(S) is String.
   invariant(typeof S === "string", "Type(S) is String");
@@ -242,7 +249,8 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
       }
       // ii. Let lastIndex be AdvanceStringIndex(S, lastIndex, fullUnicode).
       lastIndex = AdvanceStringIndex(realm, S, lastIndex, fullUnicode);
-    } else { // d. Else,
+    } else {
+      // d. Else,
       // i. Assert: r is a State.
       invariant(r, "r is a State");
 
@@ -279,7 +287,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
   // 18. Assert: The value of A's "length" property is n + 1.
   let lengthOfA = Get(realm, A, "length").throwIfNotConcrete();
   invariant(lengthOfA instanceof NumberValue);
-  invariant(lengthOfA.value === n + 1, "The value of A's \"length\" property is n + 1");
+  invariant(lengthOfA.value === n + 1, 'The value of A\'s "length" property is n + 1');
 
   // 19. Let matchIndex be lastIndex.
   let matchIndex = lastIndex;
@@ -305,11 +313,13 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
     // b. If captureI is undefined, let capturedValue be undefined.
     if (captureI === undefined) {
       capturedValue = realm.intrinsics.undefined;
-    } else if (fullUnicode) { // c. Else if fullUnicode is true, then
+    } else if (fullUnicode) {
+      // c. Else if fullUnicode is true, then
       // TODO: i. Assert: captureI is a List of code points.
       // TODO: ii. Let capturedValue be a string whose code units are the UTF16Encoding of the code points of captureI.
       capturedValue = realm.intrinsics.undefined;
-    } else { // d. Else, fullUnicode is false,
+    } else {
+      // d. Else, fullUnicode is false,
       // i. Assert: captureI is a List of code units.
       invariant(typeof captureI === "string");
 
@@ -348,18 +358,18 @@ export function AdvanceStringIndex(realm: Realm, S: string, index: number, unico
   let first = S.charCodeAt(index);
 
   // 8. If first < 0xD800 or first > 0xDBFF, return index+1.
-  if (first < 0xD800 || first > 0xDBFF) return index + 1;
+  if (first < 0xd800 || first > 0xdbff) return index + 1;
 
   // 9. Let second be the code unit value at index index+1 in S.
   let second = S.charCodeAt(index + 1);
 
   // 10. If second < 0xDC00 or second > 0xDFFF, return index+1.
-  if (second < 0xDC00 || second > 0xDFFF) return index + 1;
+  if (second < 0xdc00 || second > 0xdfff) return index + 1;
 
   // 11. Return index+2.
   return index + 2;
 }
 
 export function EscapeRegExpPattern(realm: Realm, P: string, F: string): string {
-  return P.replace("/", "\/");
+  return P.replace("/", "/");
 }

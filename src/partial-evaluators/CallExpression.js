@@ -16,26 +16,38 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { EnvironmentRecord, Reference } from "../environment.js";
-import { composeNormalCompletions, EvaluateDirectCallWithArgList,
-   GetBase, GetReferencedName, GetThisValue, GetValue,
-   IsInTailPosition, IsPropertyReference,
-   joinEffects, PerformEval,
-   SameValue, stopEffectCaptureAndJoinCompletions, unbundleNormalCompletion } from "../methods/index.js";
+import {
+  composeNormalCompletions,
+  EvaluateDirectCallWithArgList,
+  GetBase,
+  GetReferencedName,
+  GetThisValue,
+  GetValue,
+  IsInTailPosition,
+  IsPropertyReference,
+  joinEffects,
+  PerformEval,
+  SameValue,
+  stopEffectCaptureAndJoinCompletions,
+  unbundleNormalCompletion,
+} from "../methods/index.js";
 import { AbstractValue, BooleanValue, FunctionValue, Value } from "../values/index.js";
 
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 
 // ECMA262 12.3.4.1
-export default function (
-  ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [Completion | Value, BabelNodeExpression, Array<BabelNodeStatement>] {
   realm.setNextExecutionContextLocation(ast.loc);
 
   // 1. Let ref be the result of evaluating MemberExpression.
   let [ref, calleeAst, calleeIO] = env.partiallyEvaluateCompletion(ast.callee, strictCode);
-  if (ref instanceof AbruptCompletion)
-    return [ref, (calleeAst: any), calleeIO];
+  if (ref instanceof AbruptCompletion) return [ref, (calleeAst: any), calleeIO];
   let completion;
   if (ref instanceof PossiblyNormalCompletion) {
     completion = ref;
@@ -56,8 +68,7 @@ export default function (
     if (argValue instanceof AbruptCompletion) {
       if (completion instanceof PossiblyNormalCompletion)
         completion = stopEffectCaptureAndJoinCompletions(completion, argValue, realm);
-      else
-        completion = argValue;
+      else completion = argValue;
       let resultAst = t.callExpression((calleeAst: any), partialArgs);
       return [completion, resultAst, io];
     }
@@ -65,9 +76,8 @@ export default function (
       argVals.push(argValue.value);
       if (completion instanceof PossiblyNormalCompletion)
         completion = composeNormalCompletions(completion, argValue, argValue.value, realm);
-      else
-        completion = argValue;
-    } else  {
+      else completion = argValue;
+    } else {
       invariant(argValue instanceof Value);
       argVals.push(argValue);
     }
@@ -77,12 +87,12 @@ export default function (
   if (callResult instanceof AbruptCompletion) {
     if (completion instanceof PossiblyNormalCompletion)
       completion = stopEffectCaptureAndJoinCompletions(completion, callResult, realm);
-    else
-      completion = callResult;
+    else completion = callResult;
     let resultAst = t.callExpression((calleeAst: any), partialArgs);
     return [completion, resultAst, io];
   }
-  let callCompletion; [callCompletion, callResult] = unbundleNormalCompletion(callResult);
+  let callCompletion;
+  [callCompletion, callResult] = unbundleNormalCompletion(callResult);
   invariant(callResult instanceof Value);
   invariant(completion === undefined || completion instanceof PossiblyNormalCompletion);
   completion = composeNormalCompletions(completion, callCompletion, callResult, realm);
@@ -93,23 +103,32 @@ export default function (
 }
 
 function callBothFunctionsAndJoinTheirEffects(
-  funcs: Array<Value>, ast: BabelNodeCallExpression, argVals: Array<Value>, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+  funcs: Array<Value>,
+  ast: BabelNodeCallExpression,
+  argVals: Array<Value>,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): Completion | Value {
   let [cond, func1, func2] = funcs;
   invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
   invariant(func1.getType() === FunctionValue);
   invariant(func2.getType() === FunctionValue);
 
-  let [compl1, gen1, bindings1, properties1, createdObj1] =
-    realm.evaluateForEffects(() => EvaluateCall(func1, func1, ast, argVals, strictCode, env, realm));
+  let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateForEffects(() =>
+    EvaluateCall(func1, func1, ast, argVals, strictCode, env, realm)
+  );
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] =
-    realm.evaluateForEffects(() => EvaluateCall(func2, func2, ast, argVals, strictCode, env, realm));
+  let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateForEffects(() =>
+    EvaluateCall(func2, func2, ast, argVals, strictCode, env, realm)
+  );
 
-  let joinedEffects =
-    joinEffects(realm, cond,
-      [compl1, gen1, bindings1, properties1, createdObj1],
-      [compl2, gen2, bindings2, properties2, createdObj2]);
+  let joinedEffects = joinEffects(
+    realm,
+    cond,
+    [compl1, gen1, bindings1, properties1, createdObj1],
+    [compl2, gen2, bindings2, properties2, createdObj2]
+  );
   let joinedCompletion = joinedEffects[0];
   if (joinedCompletion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
@@ -129,8 +148,13 @@ function callBothFunctionsAndJoinTheirEffects(
 }
 
 function EvaluateCall(
-  ref: Value | Reference, func: Value, ast: BabelNodeCallExpression,
-  argList: Array<Value>, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+  ref: Value | Reference,
+  func: Value,
+  ast: BabelNodeCallExpression,
+  argList: Array<Value>,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): Completion | Value {
   if (func instanceof AbstractValue && func.getType() === FunctionValue) {
     if (func.kind === "conditional")
@@ -140,8 +164,7 @@ function EvaluateCall(
     // such functions have no visible side-effects. Hence we can carry on
     // by returning a call node with the arguments updated with their partial counterparts.
     // TODO: obtain the type of the return value from the abstract function.
-    return realm.createAbstract(
-      TypesDomain.topVal, ValuesDomain.topVal, [], t.identifier("never used"));
+    return realm.createAbstract(TypesDomain.topVal, ValuesDomain.topVal, [], t.identifier("never used"));
   }
   // If func is abstract and not known to be a safe function, we can't safely continue.
   func = func.throwIfNotConcrete();
@@ -177,7 +200,8 @@ function EvaluateCall(
     if (IsPropertyReference(realm, ref)) {
       // i. Let thisValue be GetThisValue(ref).
       thisValue = GetThisValue(realm, ref);
-    } else { // b. Else, the base of ref is an Environment Record
+    } else {
+      // b. Else, the base of ref is an Environment Record
       // i. Let refEnv be GetBase(ref).
       let refEnv = GetBase(realm, ref);
       invariant(refEnv instanceof EnvironmentRecord);
@@ -185,7 +209,8 @@ function EvaluateCall(
       // ii. Let thisValue be refEnv.WithBaseObject().
       thisValue = refEnv.WithBaseObject();
     }
-  } else { // 5. Else Type(ref) is not Reference,
+  } else {
+    // 5. Else Type(ref) is not Reference,
     // a. Let thisValue be undefined.
     thisValue = realm.intrinsics.undefined;
   }

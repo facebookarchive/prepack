@@ -28,6 +28,6 @@ export default function(opts: RealmOptions = {}): Realm {
   initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
   for (let name in partialEvaluators) r.partialEvaluators[name] = partialEvaluators[name];
-  r.$GlobalEnv =  NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
+  r.$GlobalEnv = NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
   return r;
 }

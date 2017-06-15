@@ -14,7 +14,7 @@ import { NativeFunctionValue, BooleanValue } from "../../values/index.js";
 import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
 import { ToBooleanPartial } from "../../methods/to.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.3.1.1
   let func = new NativeFunctionValue(realm, "Boolean", "Boolean", 1, (context, [value], argCount, NewTarget) => {
     // 1. Let b be ToBoolean(value).

@@ -19,7 +19,13 @@ import { NewDeclarativeEnvironment, BoundNames, BindingInitialization } from "..
 import type { BabelNodeCatchClause } from "babel-types";
 
 // ECAM262 13.15.7
-export default function (ast: BabelNodeCatchClause, strictCode: boolean, env: LexicalEnvironment, realm: Realm, thrownValue: any): Value | Reference {
+export default function(
+  ast: BabelNodeCatchClause,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  thrownValue: any
+): Value | Reference {
   invariant(thrownValue instanceof ThrowCompletion, "Metadata isn't a throw completion");
 
   // 1. Let oldEnv be the running execution context's LexicalEnvironment.
@@ -45,8 +51,8 @@ export default function (ast: BabelNodeCatchClause, strictCode: boolean, env: Le
     BindingInitialization(realm, ast.param, thrownValue.value, strictCode, catchEnv);
 
     // 7. If status is an abrupt completion, then
-      // a. Set the running execution context's LexicalEnvironment to oldEnv.
-      // b. Return Completion(status).
+    // a. Set the running execution context's LexicalEnvironment to oldEnv.
+    // b. Return Completion(status).
 
     // 8. Let B be the result of evaluating Block.
     let B = catchEnv.evaluate(ast.body, strictCode);

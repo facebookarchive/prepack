@@ -13,7 +13,13 @@ import type { Realm } from "../../realm.js";
 import type { ElementType, TypedArrayKind } from "../../types.js";
 import { ElementSize } from "../../types.js";
 import { NumberValue, NativeFunctionValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
-import { ArrayElementSize, ArrayElementType, AllocateTypedArray, AllocateTypedArrayBuffer, TypedArrayCreate } from "../../methods/typedarray.js";
+import {
+  ArrayElementSize,
+  ArrayElementType,
+  AllocateTypedArray,
+  AllocateTypedArrayBuffer,
+  TypedArrayCreate,
+} from "../../methods/typedarray.js";
 import { SpeciesConstructor } from "../../methods/construct.js";
 import { ToIndexPartial, ToLength, ToString, ToObjectPartial } from "../../methods/to.js";
 import { Get, GetMethod } from "../../methods/get.js";
@@ -21,11 +27,16 @@ import { Set } from "../../methods/properties.js";
 import { IterableToList } from "../../methods/iterator.js";
 import { IsDetachedBuffer, IsConstructor, IsCallable } from "../../methods/is.js";
 import { Call } from "../../methods/call.js";
-import { CloneArrayBuffer, AllocateArrayBuffer, GetValueFromBuffer, SetValueInBuffer } from "../../methods/arraybuffer.js";
+import {
+  CloneArrayBuffer,
+  AllocateArrayBuffer,
+  GetValueFromBuffer,
+  SetValueInBuffer,
+} from "../../methods/arraybuffer.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
-  let func = new NativeFunctionValue(realm, 'TypedArray', 'TypedArray', 0, (context) => {
+export default function(realm: Realm): NativeFunctionValue {
+  let func = new NativeFunctionValue(realm, "TypedArray", "TypedArray", 0, context => {
     // 1. Throw a TypeError exception.
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "TypedArray");
   });
@@ -51,7 +62,8 @@ export default function (realm: Realm): NativeFunctionValue {
 
       // b. Let mapping be true.
       mapping = true;
-    } else { // 4. Else, let mapping be false.
+    } else {
+      // 4. Else, let mapping be false.
       mapfn === undefined || mapfn.throwIfNotConcrete();
       mapping = false;
     }
@@ -89,7 +101,8 @@ export default function (realm: Realm): NativeFunctionValue {
         if (mapping === true) {
           // 1. Let mappedValue be ? Call(mapfn, T, « kValue, k »).
           mappedValue = Call(realm, mapfn, T, [kValue, new NumberValue(realm, k)]);
-        } else { // iv. Else, let mappedValue be kValue.
+        } else {
+          // iv. Else, let mappedValue be kValue.
           mappedValue = kValue;
         }
 
@@ -134,7 +147,8 @@ export default function (realm: Realm): NativeFunctionValue {
       if (mapping === true) {
         // i. Let mappedValue be ? Call(mapfn, T, « kValue, k »).
         mappedValue = Call(realm, mapfn, T, [kValue, new NumberValue(realm, k)]);
-      } else { // d. Else, let mappedValue be kValue.
+      } else {
+        // d. Else, let mappedValue be kValue.
         mappedValue = kValue;
       }
 
@@ -192,7 +206,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 22.2.2.4
-  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, (context) => {
+  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, context => {
     // 1. Return the this value
     return context;
   });
@@ -203,16 +217,26 @@ export default function (realm: Realm): NativeFunctionValue {
 // ECMA262 22.2 Table 50
 function getConstructorName(type: ElementType): TypedArrayKind {
   switch (type) {
-    case "Float32": return "Float32Array";
-    case "Float64": return "Float64Array";
-    case "Int8": return "Int8Array";
-    case "Int16": return "Int16Array";
-    case "Int32": return "Int32Array";
-    case "Uint8": return "Uint8Array";
-    case "Uint16": return "Uint16Array";
-    case "Uint32": return "Uint32Array";
-    case "Uint8Clamped": return "Uint8ClampedArray";
-    default: invariant(false);
+    case "Float32":
+      return "Float32Array";
+    case "Float64":
+      return "Float64Array";
+    case "Int8":
+      return "Int8Array";
+    case "Int16":
+      return "Int16Array";
+    case "Int32":
+      return "Int32Array";
+    case "Uint8":
+      return "Uint8Array";
+    case "Uint16":
+      return "Uint16Array";
+    case "Uint32":
+      return "Uint32Array";
+    case "Uint8Clamped":
+      return "Uint8ClampedArray";
+    default:
+      invariant(false);
   }
 }
 
@@ -251,7 +275,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 5. Return ? AllocateTypedArray(constructorName, NewTarget, "%TypedArrayPrototype%", elementLength).
       return AllocateTypedArray(realm, constructorName, NewTarget, `${type}ArrayPrototype`, elementLength);
-    } else if ('$TypedArrayName' in args[0]) {
+    } else if ("$TypedArrayName" in args[0]) {
       // ECMA262 22.2.4.3
       let typedArray = args[0].throwIfNotConcrete();
 
@@ -273,7 +297,8 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       let srcArray = typedArray;
 
       // 6. Let srcData be srcArray.[[ViewedArrayBuffer]].
-      let srcData = srcArray.$ViewedArrayBuffer; invariant(srcData);
+      let srcData = srcArray.$ViewedArrayBuffer;
+      invariant(srcData);
 
       // 7. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, srcData) === true) {
@@ -281,16 +306,19 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       }
 
       // 8. Let constructorName be the String value of O.[[TypedArrayName]].
-      constructorName = O.$TypedArrayName; invariant(typeof constructorName === "string");
+      constructorName = O.$TypedArrayName;
+      invariant(typeof constructorName === "string");
 
       // 9. Let elementType be the String value of the Element Type value in Table 50 for constructorName.
       let elementType = ArrayElementType[constructorName];
 
       // 10. Let elementLength be srcArray.[[ArrayLength]].
-      let elementLength = srcArray.$ArrayLength; invariant(typeof elementLength === "number");
+      let elementLength = srcArray.$ArrayLength;
+      invariant(typeof elementLength === "number");
 
       // 11. Let srcName be the String value of srcArray.[[TypedArrayName]].
-      let srcName = srcArray.$TypedArrayName; invariant(typeof srcName === "string");
+      let srcName = srcArray.$TypedArrayName;
+      invariant(typeof srcName === "string");
 
       // 12. Let srcType be the String value of the Element Type value in Table 50 for srcName.
       let srcType = ArrayElementType[srcName];
@@ -299,7 +327,8 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       let srcElementSize = ArrayElementSize[srcName];
 
       // 14. Let srcByteOffset be srcArray.[[ByteOffset]].
-      let srcByteOffset = srcArray.$ByteOffset; invariant(typeof srcByteOffset === "number");
+      let srcByteOffset = srcArray.$ByteOffset;
+      invariant(typeof srcByteOffset === "number");
 
       // 15. Let elementSize be the Element Size value in Table 50 for constructorName.
       let elementSize = ArrayElementSize[constructorName];
@@ -312,7 +341,8 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       if (elementType === srcType) {
         // a. Let data be ? CloneArrayBuffer(srcData, srcByteOffset).
         data = CloneArrayBuffer(realm, srcData, srcByteOffset);
-      } else { // 18. Else,
+      } else {
+        // 18. Else,
         // a. Let bufferConstructor be ? SpeciesConstructor(srcData, %ArrayBuffer%).
         let bufferConstructor = SpeciesConstructor(realm, srcData, realm.intrinsics.ArrayBuffer);
 
@@ -366,7 +396,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
       // 23. Return O.
       return O;
-    } else if (!('$ArrayBufferData' in args[0]) && !('$TypedArrayName' in args[0])) {
+    } else if (!("$ArrayBufferData" in args[0]) && !("$TypedArrayName" in args[0])) {
       // ECMA262 22.2.4.4
       let object = args[0].throwIfNotConcrete();
 
@@ -456,10 +486,12 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       return O;
     } else {
       // ECMA262 22.2.4.5
-      let buffer = args[0].throwIfNotConcrete(), byteOffset = args[1], length = args[2];
+      let buffer = args[0].throwIfNotConcrete(),
+        byteOffset = args[1],
+        length = args[2];
 
       // 1. Assert: Type(buffer) is Object and buffer has an [[ArrayBufferData]] internal slot.
-      invariant(buffer instanceof ObjectValue && '$ArrayBufferData' in buffer);
+      invariant(buffer instanceof ObjectValue && "$ArrayBufferData" in buffer);
 
       // 2. If NewTarget is undefined, throw a TypeError exception.
       if (!NewTarget) {
@@ -473,7 +505,8 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       let O = AllocateTypedArray(realm, constructorName, NewTarget, `${type}ArrayPrototype`);
 
       // 5. Let constructorName be the String value of O.[[TypedArrayName]].
-      constructorName = O.$TypedArrayName; invariant(constructorName);
+      constructorName = O.$TypedArrayName;
+      invariant(constructorName);
 
       // 6. Let elementSize be the Number value of the Element Size value in Table 50 for constructorName.
       let elementSize = ArrayElementSize[constructorName];
@@ -492,14 +525,18 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       }
 
       // 10. Let bufferByteLength be buffer.[[ArrayBufferByteLength]].
-      let bufferByteLength = buffer.$ArrayBufferByteLength; invariant(typeof bufferByteLength === "number");
+      let bufferByteLength = buffer.$ArrayBufferByteLength;
+      invariant(typeof bufferByteLength === "number");
 
       let newByteLength;
       // 11. If length is either not present or undefined, then
       if (!length || length instanceof UndefinedValue) {
         // a. If bufferByteLength modulo elementSize ≠ 0, throw a RangeError exception.
         if (bufferByteLength % elementSize !== 0) {
-          throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "bufferByteLength modulo elementSize ≠ 0");
+          throw realm.createErrorThrowCompletion(
+            realm.intrinsics.RangeError,
+            "bufferByteLength modulo elementSize ≠ 0"
+          );
         }
         // b. Let newByteLength be bufferByteLength - offset.
         newByteLength = bufferByteLength - offset;
@@ -508,7 +545,8 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
         if (newByteLength < 0) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "newByteLength < 0");
         }
-      } else { // 12. Else,
+      } else {
+        // 12. Else,
         // a. Let newLength be ? ToIndex(length).
         let newLength = ToIndexPartial(realm, length);
 
@@ -517,7 +555,10 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
 
         // c. If offset+newByteLength > bufferByteLength, throw a RangeError exception.
         if (offset + newByteLength > bufferByteLength) {
-          throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "offset+newByteLength > bufferByteLength");
+          throw realm.createErrorThrowCompletion(
+            realm.intrinsics.RangeError,
+            "offset+newByteLength > bufferByteLength"
+          );
         }
       }
 

@@ -14,7 +14,7 @@ import { ReturnCompletion } from "../../completions.js";
 import { ObjectValue, StringValue } from "../../values/index.js";
 import { GeneratorResume, GeneratorResumeAbrupt } from "../../methods/generator.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 25.3.1.2
   obj.defineNativeMethod("next", 1, (context, [value]) => {
     // 1. Let g be the this value.
@@ -49,5 +49,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 25.3.1.5
-  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Generator"), { writable: false });
+  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Generator"), {
+    writable: false,
+  });
 }

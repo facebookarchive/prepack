@@ -28,23 +28,26 @@ import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "babel-t
 import { computeBinary } from "./BinaryExpression.js";
 
 // ECMA262 12.15 Assignment Operators
-export default function (ast: BabelNodeAssignmentExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
-  if ((!ast.hasOwnProperty("operator")) || (ast.operator === null))
-    throw Error("Unexpected AST form");
+export default function(
+  ast: BabelNodeAssignmentExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
+  if (!ast.hasOwnProperty("operator") || ast.operator === null) throw Error("Unexpected AST form");
 
   let LeftHandSideExpression = ast.left;
   let AssignmentExpression = ast.right;
   let AssignmentOperator = ast.operator;
 
   // AssignmentExpression : LeftHandSideExpression = AssignmentExpression
-  if (AssignmentOperator === "="){
+  if (AssignmentOperator === "=") {
     // 1. If LeftHandSideExpression is neither an ObjectLiteral nor an ArrayLiteral, then
     //
     // The spec assumes we haven't yet distinguished between literals and
     // patterns, but our parser does that work for us. That means we check for
     // "*Pattern" instead of "*Literal" like the spec text suggests.
-    if (LeftHandSideExpression.type !== "ObjectPattern" &&
-        LeftHandSideExpression.type !== "ArrayPattern") {
+    if (LeftHandSideExpression.type !== "ObjectPattern" && LeftHandSideExpression.type !== "ArrayPattern") {
       // a. Let lref be the result of evaluating LeftHandSideExpression.
       let lref = env.evaluate(LeftHandSideExpression, strictCode);
       // b. ReturnIfAbrupt(lref). -- Not neccessary
@@ -53,13 +56,15 @@ export default function (ast: BabelNodeAssignmentExpression, strictCode: boolean
       // d. Let rval be ? GetValue(rref).
       let rval = GetValue(realm, rref);
       // e. If IsAnonymousFunctionDefinition(AssignmentExpression) and IsIdentifierRef of LeftHandSideExpression are both true, then
-      if (IsAnonymousFunctionDefinition(realm, AssignmentExpression) &&
-          IsIdentifierRef(realm, LeftHandSideExpression)) {
+      if (
+        IsAnonymousFunctionDefinition(realm, AssignmentExpression) &&
+        IsIdentifierRef(realm, LeftHandSideExpression)
+      ) {
         invariant(rval instanceof ObjectValue);
         // i. Let hasNameProperty be ? HasOwnProperty(rval, "name").
         let hasNameProperty = HasOwnProperty(realm, rval, "name");
         // ii. If hasNameProperty is false, perform SetFunctionName(rval, GetReferencedName(lref)).
-        if (!hasNameProperty){
+        if (!hasNameProperty) {
           invariant(lref instanceof Reference);
           SetFunctionName(realm, rval, GetReferencedName(realm, lref));
         }
@@ -99,7 +104,7 @@ export default function (ast: BabelNodeAssignmentExpression, strictCode: boolean
   // 4. Let rval be ? GetValue(rref).
   let rval = GetValue(realm, rref);
   // 5. Let op be the @ where AssignmentOperator is @=.
-  let op  = ((AssignmentOperator.slice(0, -1): any): BabelBinaryOperator);
+  let op = ((AssignmentOperator.slice(0, -1): any): BabelBinaryOperator);
   // 6. Let r be the result of applying op to lval and rval as if evaluating the expression lval op rval.
   let r = GetValue(realm, computeBinary(realm, op, lval, rval, ast.left.loc, ast.right.loc));
   // 7. Perform ? PutValue(lref, r).

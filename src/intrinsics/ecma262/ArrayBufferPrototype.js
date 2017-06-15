@@ -11,12 +11,19 @@
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, NumberValue, UndefinedValue } from "../../values/index.js";
-import { Construct, SpeciesConstructor, IsDetachedBuffer, ToInteger, SameValue, CopyDataBlockBytes } from "../../methods/index.js";
+import {
+  Construct,
+  SpeciesConstructor,
+  IsDetachedBuffer,
+  ToInteger,
+  SameValue,
+  CopyDataBlockBytes,
+} from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 24.1.4.1
-  obj.defineNativeGetter("byteLength", (context) => {
+  obj.defineNativeGetter("byteLength", context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -26,8 +33,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
-    if (!('$ArrayBufferData' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[ArrayBufferData]] internal slot");
+    if (!("$ArrayBufferData" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have an [[ArrayBufferData]] internal slot"
+      );
     }
 
     // 4. If IsDetachedBuffer(O) is true, throw a TypeError exception.
@@ -54,8 +64,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
-    if (!('$ArrayBufferData' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[ArrayBufferData]] internal slot");
+    if (!("$ArrayBufferData" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have an [[ArrayBufferData]] internal slot"
+      );
     }
 
     // 4. If IsDetachedBuffer(O) is true, throw a TypeError exception.
@@ -89,8 +102,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let New = Construct(realm, ctor, [new NumberValue(realm, newLen)]);
 
     // 13. If New does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
-    if (!('$ArrayBufferData' in New)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "new does not have an [[ArrayBufferData]] internal slot");
+    if (!("$ArrayBufferData" in New)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "new does not have an [[ArrayBufferData]] internal slot"
+      );
     }
 
     // 14. If IsDetachedBuffer(New) is true, throw a TypeError exception.
@@ -116,10 +132,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 19. Let fromBuf be O.[[ArrayBufferData]].
-    let fromBuf = O.$ArrayBufferData; invariant(fromBuf);
+    let fromBuf = O.$ArrayBufferData;
+    invariant(fromBuf);
 
     // 20. Let toBuf be New.[[ArrayBufferData]].
-    let toBuf = New.$ArrayBufferData; invariant(toBuf);
+    let toBuf = New.$ArrayBufferData;
+    invariant(toBuf);
 
     // 21. Perform CopyDataBlockBytes(toBuf, 0, fromBuf, first, newLen).
     CopyDataBlockBytes(realm, toBuf, 0, fromBuf, first, newLen);
@@ -129,5 +147,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.1.4.4
-  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "ArrayBuffer"), { writable: false });
+  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "ArrayBuffer"), {
+    writable: false,
+  });
 }

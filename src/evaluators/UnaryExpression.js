@@ -11,7 +11,17 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { Value, BooleanValue, NumberValue, StringValue, UndefinedValue, NullValue, SymbolValue, ObjectValue, AbstractValue } from "../values/index.js";
+import {
+  Value,
+  BooleanValue,
+  NumberValue,
+  StringValue,
+  UndefinedValue,
+  NullValue,
+  SymbolValue,
+  ObjectValue,
+  AbstractValue,
+} from "../values/index.js";
 import { Reference, EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -28,7 +38,7 @@ import {
   IsUnresolvableReference,
   IsStrictReference,
   IsPropertyReference,
-  IsToNumberPure
+  IsToNumberPure,
 } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNodeUnaryExpression } from "babel-types";
@@ -38,11 +48,17 @@ function isInstance(proto, Constructor): boolean {
 }
 
 function computeAbstractly(realm, type, op, val) {
-  return realm.createAbstract(new TypesDomain(type), ValuesDomain.topVal, [val],
-    ([node]) => t.unaryExpression(op, node));
+  return realm.createAbstract(new TypesDomain(type), ValuesDomain.topVal, [val], ([node]) =>
+    t.unaryExpression(op, node)
+  );
 }
 
-export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeUnaryExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   let expr = env.evaluate(ast.argument, strictCode);
 
   if (ast.operator === "-") {
@@ -53,7 +69,8 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
     // 2. Let oldValue be ? ToNumber(? GetValue(expr)).
     let value = GetValue(realm, expr);
-    if (value instanceof AbstractValue && IsToNumberPure(realm, value)) return computeAbstractly(realm, NumberValue, "-", value);
+    if (value instanceof AbstractValue && IsToNumberPure(realm, value))
+      return computeAbstractly(realm, NumberValue, "-", value);
     let oldValue = ToNumber(realm, value.throwIfNotConcrete());
 
     // 3. If oldValue is NaN, return NaN.
@@ -71,7 +88,8 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
     // 2. Return ? ToNumber(? GetValue(expr)).
     let value = GetValue(realm, expr);
-    if (value instanceof AbstractValue && IsToNumberPure(realm, value)) return computeAbstractly(realm, NumberValue, "+", value);
+    if (value instanceof AbstractValue && IsToNumberPure(realm, value))
+      return computeAbstractly(realm, NumberValue, "+", value);
     return new NumberValue(realm, ToNumber(realm, value.throwIfNotConcrete()));
   } else if (ast.operator === "~") {
     // ECMA262 12.5.8
@@ -81,7 +99,8 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
     // 2. Let oldValue be ? ToInt32(? GetValue(expr)).
     let value = GetValue(realm, expr);
-    if (value instanceof AbstractValue && IsToNumberPure(realm, value)) return computeAbstractly(realm, NumberValue, "~", value);
+    if (value instanceof AbstractValue && IsToNumberPure(realm, value))
+      return computeAbstractly(realm, NumberValue, "~", value);
     let oldValue = ToInt32(realm, value.throwIfNotConcrete());
 
     // 3. Return the result of applying bitwise complement to oldValue. The result is a signed 32-bit integer.
@@ -94,7 +113,8 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
     // 2. Let oldValue be ToBoolean(? GetValue(expr)).
     let value = GetValue(realm, expr);
-    if (value instanceof AbstractValue && value.mightNotBeObject()) return computeAbstractly(realm, NumberValue, "!", value);
+    if (value instanceof AbstractValue && value.mightNotBeObject())
+      return computeAbstractly(realm, NumberValue, "!", value);
     let oldValue = ToBooleanPartial(realm, value);
 
     // 3. If oldValue is true, return false.

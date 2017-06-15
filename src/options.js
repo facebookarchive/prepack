@@ -31,7 +31,7 @@ export type Options = {|
   residual?: boolean,
   serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
-  profile?: boolean
+  profile?: boolean,
 |};
 
 export const defaultOptions = {};
@@ -66,7 +66,7 @@ export function getSerializerOptions({
   logModules = false,
   delayUnsupportedRequires = false,
   internalDebug = false,
-  profile = false
+  profile = false,
 }: Options): SerializerOptions {
   return {
     initializeMoreModules: speculate,
@@ -76,6 +76,6 @@ export function getSerializerOptions({
     logModules,
     delayUnsupportedRequires,
     internalDebug,
-    profile
+    profile,
   };
 }

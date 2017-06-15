@@ -10,31 +10,49 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { AbstractValue, Value, FunctionValue, UndefinedValue, NullValue, StringValue, BooleanValue, NumberValue, SymbolValue, ObjectValue, ConcreteValue } from "../values/index.js";
+import {
+  AbstractValue,
+  Value,
+  FunctionValue,
+  UndefinedValue,
+  NullValue,
+  StringValue,
+  BooleanValue,
+  NumberValue,
+  SymbolValue,
+  ObjectValue,
+  ConcreteValue,
+} from "../values/index.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as base62 from "base62";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeStatement, BabelNodeMemberExpression, BabelNodeThisExpression } from "babel-types";
+import type {
+  BabelNodeExpression,
+  BabelNodeIdentifier,
+  BabelNodeStatement,
+  BabelNodeMemberExpression,
+  BabelNodeThisExpression,
+} from "babel-types";
 
 export type SerializationContext = {
-  reasons: Array<string>;
-  serializeValue: Value => BabelNodeExpression;
-  startBody: () => Array<BabelNodeStatement>;
-  endBody: Array<BabelNodeStatement> => void;
-  announceDeclaredDerivedId: BabelNodeIdentifier => void;
-}
+  reasons: Array<string>,
+  serializeValue: Value => BabelNodeExpression,
+  startBody: () => Array<BabelNodeStatement>,
+  endBody: (Array<BabelNodeStatement>) => void,
+  announceDeclaredDerivedId: BabelNodeIdentifier => void,
+};
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
 export type BodyEntry = {
-  declaresDerivedId?: BabelNodeIdentifier;
-  args: Array<Value>;
-  buildNode: GeneratorBuildNodeFunction;
-  dependencies?: Array<Generator>;
-}
+  declaresDerivedId?: BabelNodeIdentifier,
+  args: Array<Value>,
+  buildNode: GeneratorBuildNodeFunction,
+  dependencies?: Array<Generator>,
+};
 
 export class Generator {
   constructor(realm: Realm) {
@@ -84,19 +102,16 @@ export class Generator {
   emitGlobalAssignment(key: string, value: Value) {
     this.body.push({
       args: [value],
-      buildNode: ([valueNode]) => t.expressionStatement(t.assignmentExpression(
-        "=",
-        this.preludeGenerator.globalReference(key, true),
-        valueNode))
+      buildNode: ([valueNode]) =>
+        t.expressionStatement(t.assignmentExpression("=", this.preludeGenerator.globalReference(key, true), valueNode)),
     });
   }
 
   emitGlobalDelete(key: string) {
     this.body.push({
       args: [],
-      buildNode: ([]) => t.expressionStatement(t.unaryExpression(
-        "delete",
-        this.preludeGenerator.globalReference(key, true)))
+      buildNode: ([]) =>
+        t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, true))),
     });
   }
 
@@ -104,10 +119,10 @@ export class Generator {
     let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object, value],
-      buildNode: ([objectNode, valueNode]) => t.expressionStatement(t.assignmentExpression(
-        "=",
-        t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
-        valueNode))
+      buildNode: ([objectNode, valueNode]) =>
+        t.expressionStatement(
+          t.assignmentExpression("=", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)), valueNode)
+        ),
     });
   }
 
@@ -119,7 +134,12 @@ export class Generator {
     } else {
       desc = Object.assign({}, desc);
       this.body.push({
-        args: [object, desc.value || object.$Realm.intrinsics.undefined, desc.get || object.$Realm.intrinsics.undefined, desc.set || object.$Realm.intrinsics.undefined],
+        args: [
+          object,
+          desc.value || object.$Realm.intrinsics.undefined,
+          desc.get || object.$Realm.intrinsics.undefined,
+          desc.set || object.$Realm.intrinsics.undefined,
+        ],
         buildNode: ([objectNode, valueNode, getNode, setNode]) => {
           let descProps = [];
           descProps.push(t.objectProperty(t.identifier("enumerable"), t.booleanLiteral(!!desc.enumerable)));
@@ -131,11 +151,14 @@ export class Generator {
             descProps.push(t.objectProperty(t.identifier("get"), getNode));
             descProps.push(t.objectProperty(t.identifier("set"), setNode));
           }
-          return t.expressionStatement(t.callExpression(
-            this.preludeGenerator.memoizeReference("Object.defineProperty"),
-            [objectNode, t.stringLiteral(key), t.objectExpression(descProps)]
-          ));
-        }
+          return t.expressionStatement(
+            t.callExpression(this.preludeGenerator.memoizeReference("Object.defineProperty"), [
+              objectNode,
+              t.stringLiteral(key),
+              t.objectExpression(descProps),
+            ])
+          );
+        },
       });
     }
   }
@@ -144,76 +167,102 @@ export class Generator {
     let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object],
-      buildNode: ([objectNode]) => t.expressionStatement(t.unaryExpression(
-        "delete",
-        t.memberExpression(objectNode, propName, !t.isIdentifier(propName))))
+      buildNode: ([objectNode]) =>
+        t.expressionStatement(
+          t.unaryExpression("delete", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)))
+        ),
     });
   }
 
   emitCall(createCallee: () => BabelNodeExpression, args: Array<Value>) {
     this.body.push({
       args,
-      buildNode: values => t.expressionStatement(
-        t.callExpression(createCallee(), [...values]))
+      buildNode: values => t.expressionStatement(t.callExpression(createCallee(), [...values])),
     });
   }
 
   emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
     this.emitCall(
       () => t.memberExpression(t.identifier("console"), t.identifier(method)),
-      args.map(v => typeof v === "string" ? new StringValue(this.realm, v) : v));
+      args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v))
+    );
   }
 
   // Pushes "if (violationConditionFn()) { throw new Error("invariant violation"); }"
-  emitInvariant(args: Array<Value>, violationConditionFn: (Array<BabelNodeExpression> => BabelNodeExpression), appendLastToInvariantFn?: (BabelNodeExpression => BabelNodeExpression)): void {
+  emitInvariant(
+    args: Array<Value>,
+    violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
+    appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression
+  ): void {
     this.body.push({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
         let throwString = t.stringLiteral("Prepack model invariant violation");
         if (appendLastToInvariantFn) {
           let last = nodes.pop();
-          throwString = t.binaryExpression("+",
+          throwString = t.binaryExpression(
+            "+",
             t.stringLiteral("Prepack model invariant violation: "),
-            appendLastToInvariantFn(last));
+            appendLastToInvariantFn(last)
+          );
         }
         let condition = violationConditionFn(nodes);
-        let throwblock = t.blockStatement([
-          t.throwStatement(
-            t.newExpression(
-              t.identifier("Error"),
-              [throwString]))
-          ]);
+        let throwblock = t.blockStatement([t.throwStatement(t.newExpression(t.identifier("Error"), [throwString]))]);
         return t.ifStatement(condition, throwblock);
-      } });
+      },
+    });
   }
 
-  emitCallAndCaptureResult(types: TypesDomain, values: ValuesDomain, createCallee: () => BabelNodeExpression, args: Array<Value>, kind?: string): AbstractValue {
-    return this.derive(types, values, args,
-      nodes => t.callExpression(createCallee(), nodes));
+  emitCallAndCaptureResult(
+    types: TypesDomain,
+    values: ValuesDomain,
+    createCallee: () => BabelNodeExpression,
+    args: Array<Value>,
+    kind?: string
+  ): AbstractValue {
+    return this.derive(types, values, args, nodes => t.callExpression(createCallee(), nodes));
   }
 
-  emitVoidExpression(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression): UndefinedValue {
+  emitVoidExpression(
+    types: TypesDomain,
+    values: ValuesDomain,
+    args: Array<Value>,
+    buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression
+  ): UndefinedValue {
     this.body.push({
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>) => t.expressionStatement(
-        (buildNode_: any) instanceof Function ?
-        ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes) :
-        ((buildNode_: any): BabelNodeExpression)
-      )
+      buildNode: (nodes: Array<BabelNodeExpression>) =>
+        t.expressionStatement(
+          (buildNode_: any) instanceof Function
+            ? ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes)
+            : ((buildNode_: any): BabelNodeExpression)
+        ),
     });
     return this.realm.intrinsics.undefined;
   }
 
-  derive(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression, kind?: string): AbstractValue {
+  derive(
+    types: TypesDomain,
+    values: ValuesDomain,
+    args: Array<Value>,
+    buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    kind?: string
+  ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
     this.body.push({
       declaresDerivedId: id,
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>) => t.variableDeclaration("var", [
-        t.variableDeclarator(id, (buildNode_: any) instanceof Function ? ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes) : ((buildNode_: any): BabelNodeExpression))
-      ])
+      buildNode: (nodes: Array<BabelNodeExpression>) =>
+        t.variableDeclaration("var", [
+          t.variableDeclarator(
+            id,
+            (buildNode_: any) instanceof Function
+              ? ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes)
+              : ((buildNode_: any): BabelNodeExpression)
+          ),
+        ]),
     });
     let res = this.realm.createAbstract(types, values, args, id, kind);
     let type = types.getType();
@@ -232,23 +281,25 @@ export class Generator {
       // should mean the model is wrong.
       this.emitInvariant(
         [res, res],
-        (nodes) => {
+        nodes => {
           invariant(typeofString !== undefined);
-          let condition =
-            t.binaryExpression("!==",
-              t.unaryExpression("typeof", nodes[0]), t.stringLiteral(typeofString));
+          let condition = t.binaryExpression(
+            "!==",
+            t.unaryExpression("typeof", nodes[0]),
+            t.stringLiteral(typeofString)
+          );
           if (typeofString === "object") {
-            condition =
-              t.logicalExpression("&&", condition,
-                t.binaryExpression("!==",
-                  t.unaryExpression("typeof", nodes[0]), t.stringLiteral("function")));
-            condition =
-              t.logicalExpression("||", condition,
-                t.binaryExpression("===", nodes[0], t.nullLiteral()));
+            condition = t.logicalExpression(
+              "&&",
+              condition,
+              t.binaryExpression("!==", t.unaryExpression("typeof", nodes[0]), t.stringLiteral("function"))
+            );
+            condition = t.logicalExpression("||", condition, t.binaryExpression("===", nodes[0], t.nullLiteral()));
           }
           return condition;
         },
-        (node) => node);
+        node => node
+      );
     }
 
     return res;
@@ -265,11 +316,8 @@ export class Generator {
 
   visit(visitValue: Value => void) {
     for (let bodyEntry of this.body) {
-      for (let boundArg of bodyEntry.args)
-        visitValue(boundArg);
-      if (bodyEntry.dependencies)
-        for (let dependency of bodyEntry.dependencies)
-          dependency.visit(visitValue);
+      for (let boundArg of bodyEntry.args) visitValue(boundArg);
+      if (bodyEntry.dependencies) for (let dependency of bodyEntry.dependencies) dependency.visit(visitValue);
     }
   }
 }
@@ -293,10 +341,8 @@ export class NameGenerator {
       id = this.prefix + base62.encode(this.uidCounter++);
       if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
       if (this.debugNames) {
-        if (debugSuffix)
-          id += "_" + debugSuffix.replace(/[.,:]/g, "_");
-        else
-          id += "_";
+        if (debugSuffix) id += "_" + debugSuffix.replace(/[.,:]/g, "_");
+        else id += "_";
       }
     } while (this.forbiddenNames.has(id));
     return id;
@@ -321,13 +367,18 @@ export class PreludeGenerator {
   declaredGlobals: Set<string>;
 
   createNameGenerator(prefix: string): NameGenerator {
-    return new NameGenerator(this.nameGenerator.forbiddenNames, this.nameGenerator.debugNames, this.nameGenerator.uniqueSuffix, prefix);
+    return new NameGenerator(
+      this.nameGenerator.forbiddenNames,
+      this.nameGenerator.debugNames,
+      this.nameGenerator.uniqueSuffix,
+      prefix
+    );
   }
 
   convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression {
     return str
       .split(".")
-      .map((name) => {
+      .map(name => {
         if (name === "::global") {
           this.usesThis = true;
           return t.thisExpression();
@@ -349,9 +400,7 @@ export class PreludeGenerator {
     if (ref) return ref;
 
     ref = t.identifier(this.nameGenerator.generate(key));
-    this.prelude.push(t.variableDeclaration("var", [
-      t.variableDeclarator(ref, this.convertStringToMember(key))
-    ]));
+    this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(ref, this.convertStringToMember(key))]));
     this.memoizedRefs.set(key, ref);
     return ref;
   }

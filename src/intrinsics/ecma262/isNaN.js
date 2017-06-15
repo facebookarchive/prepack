@@ -13,16 +13,23 @@ import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { ToNumber } from "../../methods/index.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.3
-  return new NativeFunctionValue(realm, "isNaN", "isNaN", 1, (context, [number]) => {
-    // 1. Let num be ? ToNumber(number).
-    let num = ToNumber(realm, number);
+  return new NativeFunctionValue(
+    realm,
+    "isNaN",
+    "isNaN",
+    1,
+    (context, [number]) => {
+      // 1. Let num be ? ToNumber(number).
+      let num = ToNumber(realm, number);
 
-    // 2. If num is NaN, return true.
-    if (isNaN(num)) return realm.intrinsics.true;
+      // 2. If num is NaN, return true.
+      if (isNaN(num)) return realm.intrinsics.true;
 
-    // 3. Otherwise, return false.
-    return realm.intrinsics.false;
-  }, false);
+      // 3. Otherwise, return false.
+      return realm.intrinsics.false;
+    },
+    false
+  );
 }

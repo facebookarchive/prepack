@@ -13,22 +13,37 @@ import type { Realm } from "../../realm.js";
 import type { ElementType } from "../../types.js";
 import { ElementSize } from "../../types.js";
 import { ObjectValue, StringValue, NumberValue, UndefinedValue, NullValue } from "../../values/index.js";
-import { ToInteger, ToString, ToStringPartial, ToBooleanPartial, ToObject, ToObjectPartial, ToLength, ToNumber } from "../../methods/to.js";
+import {
+  ToInteger,
+  ToString,
+  ToStringPartial,
+  ToBooleanPartial,
+  ToObject,
+  ToObjectPartial,
+  ToLength,
+  ToNumber,
+} from "../../methods/to.js";
 import { Call, Invoke } from "../../methods/call.js";
 import { Get } from "../../methods/get.js";
 import { Set, DeletePropertyOrThrow } from "../../methods/properties.js";
 import { HasProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { IsDetachedBuffer, IsCallable } from "../../methods/is.js";
-import { ArrayElementSize, ArrayElementType, ValidateTypedArray, TypedArraySpeciesCreate, IntegerIndexedElementSet, IntegerIndexedElementGet }
- from "../../methods/typedarray.js";
+import {
+  ArrayElementSize,
+  ArrayElementType,
+  ValidateTypedArray,
+  TypedArraySpeciesCreate,
+  IntegerIndexedElementSet,
+  IntegerIndexedElementGet,
+} from "../../methods/typedarray.js";
 import { CreateArrayIterator } from "../../methods/create.js";
 import { SetValueInBuffer, GetValueFromBuffer, CloneArrayBuffer } from "../../methods/arraybuffer.js";
 import { SameValue, SameValueZeroPartial, StrictEqualityComparisonPartial } from "../../methods/abstract.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.1
-  obj.defineNativeGetter("buffer", (context) => {
+  obj.defineNativeGetter("buffer", context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -38,8 +53,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (!('$TypedArrayName' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
+    if (!("$TypedArrayName" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have a [[TypedArrayName]] internal slot"
+      );
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
@@ -53,7 +71,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.2
-  obj.defineNativeGetter("byteLength", (context) => {
+  obj.defineNativeGetter("byteLength", context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -63,29 +81,33 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (!('$TypedArrayName' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
+    if (!("$TypedArrayName" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have a [[TypedArrayName]] internal slot"
+      );
     }
 
     // 4. Assert: O has [[ViewedArrayBuffer]] and [[ArrayLength]] internal slots.
     invariant(O.$ViewedArrayBuffer, "O has a [[ViewedArrayBuffer]] internal slot");
 
     // 5. Let buffer be O.[[ViewedArrayBuffer]].
-    let buffer = O.$ViewedArrayBuffer; invariant(buffer);
+    let buffer = O.$ViewedArrayBuffer;
+    invariant(buffer);
 
     // 6. If IsDetachedBuffer(buffer) is true, return 0.
     if (IsDetachedBuffer(realm, buffer) === true) return realm.intrinsics.zero;
 
     // 7. Let size be O.[[ByteLength]].
-    let size = O.$ByteLength; invariant(typeof size === "number");
+    let size = O.$ByteLength;
+    invariant(typeof size === "number");
 
     // 8. Return size.
     return new NumberValue(realm, size);
   });
 
-
   // ECMA262 22.2.3.3
-  obj.defineNativeGetter("byteOffset", (context) => {
+  obj.defineNativeGetter("byteOffset", context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -95,21 +117,26 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (!('$TypedArrayName' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
+    if (!("$TypedArrayName" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have a [[TypedArrayName]] internal slot"
+      );
     }
 
     // 4. Assert: O has [[ViewedArrayBuffer]] and [[ArrayLength]] internal slots.
     invariant(O.$ViewedArrayBuffer, "O has a [[ViewedArrayBuffer]] internal slot");
 
     // 5. Let buffer be O.[[ViewedArrayBuffer]].
-    let buffer = O.$ViewedArrayBuffer; invariant(buffer);
+    let buffer = O.$ViewedArrayBuffer;
+    invariant(buffer);
 
     // 6. If IsDetachedBuffer(buffer) is true, return 0.
     if (IsDetachedBuffer(realm, buffer) === true) return realm.intrinsics.zero;
 
     // 7. Let offset be O.[[ByteOffset]].
-    let offset = O.$ByteOffset; invariant(typeof offset === "number");
+    let offset = O.$ByteOffset;
+    invariant(typeof offset === "number");
 
     // 8. Return offset.
     return new NumberValue(realm, offset);
@@ -124,7 +151,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. Let relativeTarget be ? ToInteger(target).
     let relativeTarget = ToInteger(realm, target);
@@ -139,7 +167,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let from = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = (!end || end instanceof UndefinedValue) ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
 
     // 9. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -158,7 +186,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // c. Let to be to + count - 1.
       to = to + count - 1;
-    } else { // 12. Else,
+    } else {
+      // 12. Else,
       // a. Let direction be 1.
       direction = 1;
     }
@@ -180,7 +209,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
         let fromVal = Get(realm, O, fromKey);
         // ii. Perform ? Set(O, toKey, fromVal, true).
         Set(realm, O, toKey, fromVal, true);
-      } else { // e. Else fromPresent is false,
+      } else {
+        // e. Else fromPresent is false,
         // i. Perform ? DeletePropertyOrThrow(O, toKey).
         DeletePropertyOrThrow(realm, O, toKey);
       }
@@ -200,7 +230,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.6
-  obj.defineNativeMethod("entries", 0, (context) => {
+  obj.defineNativeMethod("entries", 0, context => {
     // 1. Let O be the this value.
     let O = context;
 
@@ -221,7 +251,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -271,7 +302,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. Let relativeStart be ? ToInteger(start).
     let relativeStart = ToInteger(realm, start || realm.intrinsics.undefined);
@@ -280,7 +312,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let k = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 6. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = (!end || end instanceof UndefinedValue) ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
 
     // 7. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -311,7 +343,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     invariant(O instanceof ObjectValue);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (IsCallable(realm, callbackfn) === false) {
@@ -382,7 +415,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(predicate) is false, throw a TypeError exception.
     if (!IsCallable(realm, predicate)) {
@@ -426,7 +460,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(predicate) is false, throw a TypeError exception.
     if (IsCallable(realm, predicate) === false) {
@@ -470,7 +505,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -517,7 +553,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If len is 0, return false.
     if (len === 0) return realm.intrinsics.false;
@@ -530,7 +567,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (n >= 0) {
       // a. Let k be n.
       k = n;
-    } else { // 7. Else n < 0,
+    } else {
+      // 7. Else n < 0,
       // a. Let k be len + n.
       k = len + n;
       // b. If k < 0, let k be 0.
@@ -562,7 +600,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If len is 0, return -1.
     if (len === 0) return new NumberValue(realm, -1);
@@ -578,7 +617,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (n >= 0) {
       // a. If n is -0, let k be +0; else let k be n.
       k = Object.is(n, -0) ? +0 : n;
-    } else { // 8. Else n < 0,
+    } else {
+      // 8. Else n < 0,
       // a. Let k be len + n.
       k = len + n;
 
@@ -620,7 +660,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If separator is undefined, let separator be the single-element String ",".
     if (!separator || separator instanceof UndefinedValue) separator = new StringValue(realm, ",");
@@ -673,7 +714,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.16
-  obj.defineNativeMethod("keys", 0, (context) => {
+  obj.defineNativeMethod("keys", 0, context => {
     // 1. Let O be the this value.
     let O = context;
 
@@ -694,7 +735,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If len is 0, return -1.
     if (len === 0) return new NumberValue(realm, -1);
@@ -707,7 +749,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (n >= 0) {
       // a. If n is -0, let k be +0; else let k be min(n, len - 1).
       k = Object.is(n, -0) ? +0 : Math.min(n, len - 1);
-    } else { // 7. Else n < 0,
+    } else {
+      // 7. Else n < 0,
       // a. Let k be len + n.
       k = len + n;
     }
@@ -738,7 +781,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.18
-  obj.defineNativeGetter("length", (context) => {
+  obj.defineNativeGetter("length", context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -748,21 +791,26 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (!('$TypedArrayName' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
+    if (!("$TypedArrayName" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have a [[TypedArrayName]] internal slot"
+      );
     }
 
     // 4. Assert: O has [[ViewedArrayBuffer]] and [[ArrayLength]] internal slots.
     invariant(O.$ViewedArrayBuffer, "O has a [[ViewedArrayBuffer]] internal slot");
 
     // 5. Let buffer be O.[[ViewedArrayBuffer]].
-    let buffer = O.$ViewedArrayBuffer; invariant(buffer);
+    let buffer = O.$ViewedArrayBuffer;
+    invariant(buffer);
 
     // 6. If IsDetachedBuffer(buffer) is true, return 0.
     if (IsDetachedBuffer(realm, buffer) === true) return realm.intrinsics.zero;
 
     // 7. Let length be O.[[ArrayLength]].
-    let length = O.$ArrayLength; invariant(typeof length === "number");
+    let length = O.$ArrayLength;
+    invariant(typeof length === "number");
 
     // 8. Return length.
     return new NumberValue(realm, length);
@@ -778,7 +826,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     invariant(O instanceof ObjectValue);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (IsCallable(realm, callbackfn) === false) {
@@ -825,7 +874,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -845,7 +895,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (initialValue) {
       // a. Set accumulator to initialValue.
       accumulator = initialValue;
-    } else { // 8. Else initialValue is not present,
+    } else {
+      // 8. Else initialValue is not present,
       // a. Let kPresent be false.
       let kPresent = false;
 
@@ -889,7 +940,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let accumulator be ? Call(callbackfn, undefined, « accumulator, kValue, k, O »).
-        accumulator = Call(realm, callbackfn, realm.intrinsics.undefined, [accumulator, kValue, new NumberValue(realm, k), O]);
+        accumulator = Call(realm, callbackfn, realm.intrinsics.undefined, [
+          accumulator,
+          kValue,
+          new NumberValue(realm, k),
+          O,
+        ]);
       }
 
       // d. Increase k by 1.
@@ -909,7 +965,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -929,7 +986,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (initialValue) {
       // 1. Set accumulator to initialValue.
       accumulator = initialValue;
-    } else { // 8. Else initialValue is not present,
+    } else {
+      // 8. Else initialValue is not present,
       // a. Let kPresent be false.
       let kPresent = false;
 
@@ -971,7 +1029,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let accumulator be ? Call(callbackfn, undefined, « accumulator, kValue, k, O »).
-        accumulator = Call(realm, callbackfn, realm.intrinsics.undefined, [accumulator, kValue, new NumberValue(realm, k), O]);
+        accumulator = Call(realm, callbackfn, realm.intrinsics.undefined, [
+          accumulator,
+          kValue,
+          new NumberValue(realm, k),
+          O,
+        ]);
       }
 
       // d. Decrease k by 1.
@@ -983,7 +1046,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.21
-  obj.defineNativeMethod("reverse", 0, (context) => {
+  obj.defineNativeMethod("reverse", 0, context => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -991,7 +1054,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. Let middle be floor(len/2).
     let middle = Math.floor(len / 2);
@@ -1040,7 +1104,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
         Set(realm, O, upperP, lowerValue, true);
-      } else if (!lowerExists && upperExists) { // i. Else if lowerExists is false and upperExists is true, then
+      } else if (!lowerExists && upperExists) {
+        // i. Else if lowerExists is false and upperExists is true, then
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
@@ -1048,7 +1113,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // ii. Perform ? DeletePropertyOrThrow(O, upperP).
         DeletePropertyOrThrow(realm, O, upperP);
-      } else if (lowerExists && !upperExists) { // j. Else if lowerExists is true and upperExists is false, then
+      } else if (lowerExists && !upperExists) {
+        // j. Else if lowerExists is true and upperExists is false, then
         invariant(lowerValue, "expected lower value to exist");
 
         // i. Perform ? DeletePropertyOrThrow(O, lowerP).
@@ -1056,7 +1122,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
         Set(realm, O, upperP, lowerValue, true);
-      } else { // k. Else both lowerExists and upperExists are false,
+      } else {
+        // k. Else both lowerExists and upperExists are false,
         // i. No action is required.
       }
 
@@ -1086,7 +1153,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 4. If target does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
       if (typeof target.$TypedArrayName !== "string") {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "target does not have a [[TypedArrayName]] internal slot");
+        throw realm.createErrorThrowCompletion(
+          realm.intrinsics.TypeError,
+          "target does not have a [[TypedArrayName]] internal slot"
+        );
       }
 
       // 5. Assert: target has a [[ViewedArrayBuffer]] internal slot.
@@ -1101,7 +1171,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       }
 
       // 8. Let targetBuffer be target.[[ViewedArrayBuffer]].
-      let targetBuffer = target.$ViewedArrayBuffer; invariant(targetBuffer instanceof ObjectValue);
+      let targetBuffer = target.$ViewedArrayBuffer;
+      invariant(targetBuffer instanceof ObjectValue);
 
       // 9. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, targetBuffer) === true) {
@@ -1109,10 +1180,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
       }
 
       // 10. Let targetLength be target.[[ArrayLength]].
-      let targetLength = target.$ArrayLength; invariant(typeof targetLength === "number");
+      let targetLength = target.$ArrayLength;
+      invariant(typeof targetLength === "number");
 
       // 11. Let targetName be the String value of target.[[TypedArrayName]].
-      let targetName = target.$TypedArrayName; invariant(typeof targetName === "string");
+      let targetName = target.$TypedArrayName;
+      invariant(typeof targetName === "string");
 
       // 12. Let targetElementSize be the Number value of the Element Size value specified in Table 50 for targetName.
       let targetElementSize = ArrayElementSize[targetName];
@@ -1121,7 +1194,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       let targetType = ArrayElementType[targetName];
 
       // 14. Let targetByteOffset be target.[[ByteOffset]].
-      let targetByteOffset = target.$ByteOffset; invariant(typeof targetByteOffset === "number");
+      let targetByteOffset = target.$ByteOffset;
+      invariant(typeof targetByteOffset === "number");
 
       // 15. Let src be ? ToObject(array).
       let src = ToObjectPartial(realm, array);
@@ -1184,7 +1258,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 4. If target does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
       if (typeof target.$TypedArrayName !== "string") {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "target does not have a [[TypedArrayName]] internal slot");
+        throw realm.createErrorThrowCompletion(
+          realm.intrinsics.TypeError,
+          "target does not have a [[TypedArrayName]] internal slot"
+        );
       }
 
       // 5. Assert: target has a [[ViewedArrayBuffer]] internal slot.
@@ -1199,7 +1276,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       }
 
       // 8. Let targetBuffer be target.[[ViewedArrayBuffer]].
-      let targetBuffer = target.$ViewedArrayBuffer; invariant(targetBuffer instanceof ObjectValue);
+      let targetBuffer = target.$ViewedArrayBuffer;
+      invariant(targetBuffer instanceof ObjectValue);
 
       // 9. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, targetBuffer) === true) {
@@ -1207,10 +1285,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
       }
 
       // 10. Let targetLength be target.[[ArrayLength]].
-      let targetLength = target.$ArrayLength; invariant(typeof targetLength === "number");
+      let targetLength = target.$ArrayLength;
+      invariant(typeof targetLength === "number");
 
       // 11. Let srcBuffer be typedArray.[[ViewedArrayBuffer]].
-      let srcBuffer = typedArray.$ViewedArrayBuffer; invariant(srcBuffer);
+      let srcBuffer = typedArray.$ViewedArrayBuffer;
+      invariant(srcBuffer);
 
       // 12. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, srcBuffer) === true) {
@@ -1228,7 +1308,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       let targetElementSize = ArrayElementSize[targetName];
 
       // 16. Let targetByteOffset be target.[[ByteOffset]].
-      let targetByteOffset = target.$ByteOffset; invariant(typeof targetByteOffset === "number");
+      let targetByteOffset = target.$ByteOffset;
+      invariant(typeof targetByteOffset === "number");
 
       // 17. Let srcName be the String value of typedArray.[[TypedArrayName]].
       let srcName = typedArray.$TypedArrayName;
@@ -1241,10 +1322,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
       let srcElementSize = ArrayElementSize[srcName];
 
       // 20. Let srcLength be typedArray.[[ArrayLength]].
-      let srcLength = typedArray.$ArrayLength; invariant(typeof srcLength === "number");
+      let srcLength = typedArray.$ArrayLength;
+      invariant(typeof srcLength === "number");
 
       // 21. Let srcByteOffset be typedArray.[[ByteOffset]].
-      let srcByteOffset = typedArray.$ByteOffset; invariant(typeof srcByteOffset === "number");
+      let srcByteOffset = typedArray.$ByteOffset;
+      invariant(typeof srcByteOffset === "number");
 
       // 22. If srcLength + targetOffset > targetLength, throw a RangeError exception.
       if (srcLength + targetOffset > targetLength) {
@@ -1261,7 +1344,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // c. Let srcByteIndex be 0.
         srcByteIndex = 0;
-      } else { // 24. Else, let srcByteIndex be srcByteOffset.
+      } else {
+        // 24. Else, let srcByteIndex be srcByteOffset.
         srcByteIndex = srcByteOffset;
       }
 
@@ -1289,7 +1373,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
           // iv. Set targetByteIndex to targetByteIndex + 1.
           targetByteIndex += 1;
         }
-      } else { // 28. Else,
+      } else {
+        // 28. Else,
         // a. Repeat, while targetByteIndex < limit
         while (targetByteIndex < limit) {
           // i. Let value be GetValueFromBuffer(srcBuffer, srcByteIndex, srcType).
@@ -1321,7 +1406,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     invariant(O instanceof ObjectValue);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. Let relativeStart be ? ToInteger(start).
     let relativeStart = ToInteger(realm, start);
@@ -1342,13 +1428,15 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let A = TypedArraySpeciesCreate(realm, O, [new NumberValue(realm, count)]);
 
     // 10. Let srcName be the String value of O.[[TypedArrayName]].
-    let srcName = O.$TypedArrayName; invariant(typeof srcName === "string");
+    let srcName = O.$TypedArrayName;
+    invariant(typeof srcName === "string");
 
     // 11. Let srcType be the String value of the Element Type value in Table 50 for srcName.
     let srcType = ArrayElementType[srcName];
 
     // 12. Let targetName be the String value of A.[[TypedArrayName]].
-    let targetName = A.$TypedArrayName; invariant(typeof targetName === "string");
+    let targetName = A.$TypedArrayName;
+    invariant(typeof targetName === "string");
 
     // 13. Let targetType be the String value of the Element Type value in Table 50 for targetName.
     let targetType = ArrayElementType[targetName];
@@ -1375,9 +1463,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
         // v. Increase n by 1.
         n += 1;
       }
-    } else if (count > 0) { // 15. Else if count > 0, then
+    } else if (count > 0) {
+      // 15. Else if count > 0, then
       // a. Let srcBuffer be O.[[ViewedArrayBuffer]].
-      let srcBuffer = O.$ViewedArrayBuffer; invariant(srcBuffer);
+      let srcBuffer = O.$ViewedArrayBuffer;
+      invariant(srcBuffer);
 
       // b. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, srcBuffer) === true) {
@@ -1385,7 +1475,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       }
 
       // c. Let targetBuffer be A.[[ViewedArrayBuffer]].
-      let targetBuffer = A.$ViewedArrayBuffer; invariant(targetBuffer instanceof ObjectValue);
+      let targetBuffer = A.$ViewedArrayBuffer;
+      invariant(targetBuffer instanceof ObjectValue);
 
       // d. Let elementSize be the Number value of the Element Size value specified in Table 50 for srcType.
       let elementSize = ElementSize[srcType];
@@ -1393,10 +1484,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // e. NOTE: If srcType and targetType are the same, the transfer must be performed in a manner that preserves the bit-level encoding of the source data.
 
       // f. Let srcByteOffset be O.[[ByteOffset]].
-      let srcByteOffset = O.$ByteOffset; invariant(typeof srcByteOffset === "number");
+      let srcByteOffset = O.$ByteOffset;
+      invariant(typeof srcByteOffset === "number");
 
       // g. Let targetByteIndex be A.[[ByteOffset]].
-      let targetByteIndex = A.$ByteOffset; invariant(typeof targetByteIndex === "number");
+      let targetByteIndex = A.$ByteOffset;
+      invariant(typeof targetByteIndex === "number");
 
       // h. Let srcByteIndex be (k × elementSize) + srcByteOffset.
       let srcByteIndex = k * elementSize + srcByteOffset;
@@ -1433,11 +1526,15 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "callback passed to Array.prototype.some isn't callable");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "callback passed to Array.prototype.some isn't callable"
+      );
     }
 
     // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -1511,10 +1608,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // If x and y are both NaN, return +0.
       // If x is NaN, return 1.
-       if (isNaN(x.value)) {
-         if (isNaN(y.value)) return realm.intrinsics.zero;
-         return new NumberValue(realm, 1);
-       }
+      if (isNaN(x.value)) {
+        if (isNaN(y.value)) return realm.intrinsics.zero;
+        return new NumberValue(realm, 1);
+      }
 
       // If y is NaN, return -1.
       if (isNaN(y.value)) return new NumberValue(realm, -1);
@@ -1526,12 +1623,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
       if (x.value > y.value) return new NumberValue(realm, +1);
 
       // If x is -0 and y is +0, return -1.
-      if (Object.is(x.value, -0) && Object.is(y.value, +0))
-        return new NumberValue(realm, -1);
+      if (Object.is(x.value, -0) && Object.is(y.value, +0)) return new NumberValue(realm, -1);
 
       // If x is +0 and y is -0, return 1.
-      if (Object.is(x.value, +0) && Object.is(y.value, -0))
-        return new NumberValue(realm, 1);
+      if (Object.is(x.value, +0) && Object.is(y.value, -0)) return new NumberValue(realm, 1);
 
       // Return +0.
       return realm.intrinsics.zero;
@@ -1562,7 +1657,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     arr.sort(comparefn_);
 
     //Apply the permutation back to the original array.
-    for (let j = 0; j < len; j++){
+    for (let j = 0; j < len; j++) {
       IntegerIndexedElementSet(realm, O, j, arr[j]);
     }
 
@@ -1581,18 +1676,23 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (!('$TypedArrayName' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[TypedArrayName]] internal slot");
+    if (!("$TypedArrayName" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have a [[TypedArrayName]] internal slot"
+      );
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
     invariant(O.$ViewedArrayBuffer, "O has a [[ViewedArrayBuffer]] internal slot");
 
     // 5. Let buffer be O.[[ViewedArrayBuffer]].
-    let buffer = O.$ViewedArrayBuffer; invariant(buffer);
+    let buffer = O.$ViewedArrayBuffer;
+    invariant(buffer);
 
     // 6. Let srcLength be O.[[ArrayLength]].
-    let srcLength = O.$ArrayLength; invariant(typeof srcLength === "number");
+    let srcLength = O.$ArrayLength;
+    invariant(typeof srcLength === "number");
 
     // 7. Let relativeBegin be ? ToInteger(begin).
     let relativeBegin = ToInteger(realm, begin);
@@ -1610,13 +1710,15 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let newLength = Math.max(endIndex - beginIndex, 0);
 
     // 12. Let constructorName be the String value of O.[[TypedArrayName]].
-    let constructorName = O.$TypedArrayName; invariant(typeof constructorName === "string");
+    let constructorName = O.$TypedArrayName;
+    invariant(typeof constructorName === "string");
 
     // 13. Let elementSize be the Number value of the Element Size value specified in Table 50 for constructorName.
     let elementSize = ArrayElementSize[constructorName];
 
     // 14. Let srcByteOffset be O.[[ByteOffset]].
-    let srcByteOffset = O.$ByteOffset; invariant(typeof srcByteOffset === "number");
+    let srcByteOffset = O.$ByteOffset;
+    invariant(typeof srcByteOffset === "number");
 
     // 15. Let beginByteOffset be srcByteOffset + beginIndex × elementSize.
     let beginByteOffset = srcByteOffset + beginIndex * elementSize;
@@ -1629,7 +1731,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.28
-  obj.defineNativeMethod("toLocaleString", 0, (context) => {
+  obj.defineNativeMethod("toLocaleString", 0, context => {
     // 1. Let array be ? ToObject(this value).
     let array = ToObject(realm, context.throwIfNotConcrete());
 
@@ -1637,7 +1739,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ValidateTypedArray(realm, array);
 
     // 3. Let len be array.[[ArrayLength]].
-    let len = array.$ArrayLength; invariant(typeof len === "number");
+    let len = array.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. Let separator be the String value for the list-separator String appropriate for the host environment's current locale (this is derived in an implementation-defined way).
     let separator = ",";
@@ -1653,7 +1756,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (HasSomeCompatibleType(firstElement, UndefinedValue, NullValue)) {
       // a. Let R be the empty String.
       R = "";
-    } else { // 8. Else,
+    } else {
+      // 8. Else,
       // a. Let R be ? ToString(? Invoke(firstElement, "toLocaleString")).
       R = ToStringPartial(realm, Invoke(realm, firstElement, "toLocaleString"));
     }
@@ -1673,7 +1777,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       if (HasSomeCompatibleType(nextElement, UndefinedValue, NullValue)) {
         // i. Let R be the empty String.
         R = "";
-      } else { // d. Else,
+      } else {
+        // d. Else,
         // i. Let R be ? ToString(? Invoke(nextElement, "toLocaleString")).
         R = ToStringPartial(realm, Invoke(realm, nextElement, "toLocaleString"));
       }
@@ -1699,7 +1804,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   obj.defineNativeProperty(realm.intrinsics.SymbolIterator, realm.intrinsics.TypedArrayProto_values);
 
   // ECMA262 22.2.3.32
-  obj.defineNativeGetter(realm.intrinsics.SymbolToStringTag, (context) => {
+  obj.defineNativeGetter(realm.intrinsics.SymbolToStringTag, context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -1707,7 +1812,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (!(O instanceof ObjectValue)) return realm.intrinsics.undefined;
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, return undefined.
-    if (!('$TypedArrayName' in O)) return realm.intrinsics.undefined;
+    if (!("$TypedArrayName" in O)) return realm.intrinsics.undefined;
 
     // 4. Let name be O.[[TypedArrayName]].
     let name = O.$TypedArrayName;

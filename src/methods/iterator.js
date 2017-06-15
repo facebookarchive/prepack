@@ -12,22 +12,8 @@
 import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
 import { Completion, AbruptCompletion, ThrowCompletion } from "../completions.js";
-import {
-  NativeFunctionValue,
-  NumberValue,
-  ObjectValue,
-  StringValue,
-  UndefinedValue,
-  Value,
-} from "../values/index.js";
-import {
-  Call,
-  Get,
-  GetMethod,
-  Invoke,
-  ObjectCreate,
-  ToBooleanPartial,
-} from "./index.js";
+import { NativeFunctionValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
+import { Call, Get, GetMethod, Invoke, ObjectCreate, ToBooleanPartial } from "./index.js";
 import invariant from "../invariant.js";
 import type { IterationKind } from "../types.js";
 import { SameValue } from "./abstract.js";
@@ -93,7 +79,8 @@ export function IteratorNext(realm: Realm, iterator: Value, value?: Value): Obje
   if (!value) {
     // a. Let result be ? Invoke(iterator, "next", « »).
     result = Invoke(realm, iterator, "next", []);
-  } else {  // 2. Else,
+  } else {
+    // 2. Else,
     // a. Let result be ? Invoke(iterator, "next", « value »).
     result = Invoke(realm, iterator, "next", [value]);
   }
@@ -129,7 +116,7 @@ export function CreateListIterator(realm: Realm, list: Array<Value>): ObjectValu
   iterator.$IteratorNext = next;
 
   // 6. Perform CreateMethodProperty(iterator, "next", next).
-  CreateMethodProperty(realm, iterator, new StringValue(realm, 'next'), next);
+  CreateMethodProperty(realm, iterator, new StringValue(realm, "next"), next);
 
   // 7. Return iterator.
   return iterator;
@@ -148,7 +135,10 @@ function ListIterator_next(realm: Realm): NativeFunctionValue {
 
     // 3. If O does not have a [[IteratorNext]] internal slot, throw a TypeError exception.
     if (!O.$IteratorNext) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[IteratorNext]] internal slot");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have an [[IteratorNext]] internal slot"
+      );
     }
 
     // 4. Let next be the value of the [[IteratorNext]] internal slot of O.
@@ -161,7 +151,10 @@ function ListIterator_next(realm: Realm): NativeFunctionValue {
 
     // 6. If O does not have an [[IteratedList]] internal slot, throw a TypeError exception.
     if (!O.$IteratedList) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have an [[IteratedList]] internal slot");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have an [[IteratedList]] internal slot"
+      );
     }
 
     // 7. Let list be the value of the [[IteratedList]] internal slot of O.
@@ -208,7 +201,7 @@ export function CreateMapIterator(realm: Realm, map: Value, kind: IterationKind)
   let iterator = ObjectCreate(realm, realm.intrinsics.MapIteratorPrototype, {
     $Map: undefined,
     $MapNextIndex: undefined,
-    $MapIterationKind: undefined
+    $MapIterationKind: undefined,
   });
 
   // 4. Set iterator's [[Map]] internal slot to map.
@@ -240,7 +233,7 @@ export function CreateSetIterator(realm: Realm, set: Value, kind: IterationKind)
   let iterator = ObjectCreate(realm, realm.intrinsics.SetIteratorPrototype, {
     $IteratedSet: undefined,
     $SetNextIndex: undefined,
-    $SetIterationKind: undefined
+    $SetIterationKind: undefined,
   });
 
   // 4. Set iterator's [[IteratedSet]] internal slot to set.

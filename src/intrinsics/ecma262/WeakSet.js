@@ -20,11 +20,11 @@ import {
   IteratorValue,
   GetIterator,
   IteratorStep,
-  Call
+  Call,
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 23.4.1.1
   let func = new NativeFunctionValue(realm, "WeakSet", "WeakSet", 0, (args, [iterable], argCount, NewTarget) => {
     // 1. If NewTarget is undefined, throw a TypeError exception.
@@ -34,7 +34,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
     // 2. Let set be ? OrdinaryCreateFromConstructor(NewTarget, "%WeakSetPrototype%", « [[WeakSetData]] »).
     let set = OrdinaryCreateFromConstructor(realm, NewTarget, "WeakSetPrototype", {
-      $WeakSetData: undefined
+      $WeakSetData: undefined,
     });
 
     // 3. Set set.[[WeakSetData]] to a new empty List.
@@ -48,7 +48,8 @@ export default function (realm: Realm): NativeFunctionValue {
     if ((iterable: any) instanceof UndefinedValue || (iterable: any) instanceof NullValue) {
       iter = realm.intrinsics.undefined;
       adder = realm.intrinsics.undefined;
-    } else { // 6. Else,
+    } else {
+      // 6. Else,
       // a. Let adder be ? Get(set, "add").
       adder = Get(realm, set, "add");
 
@@ -82,7 +83,6 @@ export default function (realm: Realm): NativeFunctionValue {
         // e. If status is an abrupt completion, return ? IteratorClose(iter, status).
         throw IteratorClose(realm, iter, statusCompletion);
       }
-
     }
 
     invariant(false);

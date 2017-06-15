@@ -14,33 +14,33 @@ import { NativeFunctionValue } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
 import { CompilerDiagnostics } from "../../errors.js";
 import {
-    AbstractValue,
-    BooleanValue,
-    NumberValue,
-    UndefinedValue,
-    StringValue,
-    ObjectValue,
+  AbstractValue,
+  BooleanValue,
+  NumberValue,
+  UndefinedValue,
+  StringValue,
+  ObjectValue,
 } from "../../values/index.js";
 import {
-    ArrayCreate,
-    Construct,
-    Call,
-    CreateDataProperty,
-    CreateDataPropertyOrThrow,
-    Get,
-    GetPrototypeFromConstructor,
-    GetMethod,
-    IsArray,
-    IsConstructor,
-    IsCallable,
-    Set,
-    ToStringPartial,
+  ArrayCreate,
+  Construct,
+  Call,
+  CreateDataProperty,
+  CreateDataPropertyOrThrow,
+  Get,
+  GetPrototypeFromConstructor,
+  GetMethod,
+  IsArray,
+  IsConstructor,
+  IsCallable,
+  Set,
+  ToStringPartial,
 } from "../../methods/index.js";
 import { ToString, ToUint32, ToObject, ToLength } from "../../methods/to.js";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "Array", "Array", 1, (context, [...items], argCount, NewTarget) => {
     if (argCount === 0) {
       // 1. Let numberOfArgs be the number of arguments passed to this function call.
@@ -86,7 +86,8 @@ export default function (realm: Realm): NativeFunctionValue {
 
         // c. Let intLen be 1.
         intLen = 1;
-      } else { // 7. Else,
+      } else {
+        // 7. Else,
 
         try {
           len = len.throwIfNotConcreteNumber();
@@ -95,12 +96,14 @@ export default function (realm: Realm): NativeFunctionValue {
           invariant(value instanceof ObjectValue);
           value = ((value: any): ObjectValue);
 
-          realm.handleError(new CompilerDiagnostics(
-            ToStringPartial(realm, Get(realm, value, "message")),
-            realm.currentLocation,
-            'PP0001',
-            'Error',
-        ));
+          realm.handleError(
+            new CompilerDiagnostics(
+              ToStringPartial(realm, Get(realm, value, "message")),
+              realm.currentLocation,
+              "PP0001",
+              "Error"
+            )
+          );
 
           // Rethrow.
           // TODO: In the future, we can try and recover from the error based on the
@@ -182,226 +185,231 @@ export default function (realm: Realm): NativeFunctionValue {
 
   // ECMA262 22.1.2.3
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  func.defineNativeMethod("of", 0, (context, [...items], argCount) => {
-    // 1. Let len be the actual number of arguments passed to this function.
-    let len = argCount;
+    func.defineNativeMethod("of", 0, (context, [...items], argCount) => {
+      // 1. Let len be the actual number of arguments passed to this function.
+      let len = argCount;
 
-    // 2. Let items be the List of arguments passed to this function.
-    items;
+      // 2. Let items be the List of arguments passed to this function.
+      items;
 
-    // 3. Let C be the this value.
-    let C = context;
+      // 3. Let C be the this value.
+      let C = context;
 
-    // 4. If IsConstructor(C) is true, then
-    let A;
-    if (IsConstructor(realm, C)) {
-      invariant(C instanceof ObjectValue);
-      // a. Let A be ? Construct(C, « len »).
-      A = Construct(realm, C, [new NumberValue(realm, len)]);
-    } else { // 5. Else,
-      // a. Let A be ? ArrayCreate(len).
-      A = ArrayCreate(realm, len);
-    }
+      // 4. If IsConstructor(C) is true, then
+      let A;
+      if (IsConstructor(realm, C)) {
+        invariant(C instanceof ObjectValue);
+        // a. Let A be ? Construct(C, « len »).
+        A = Construct(realm, C, [new NumberValue(realm, len)]);
+      } else {
+        // 5. Else,
+        // a. Let A be ? ArrayCreate(len).
+        A = ArrayCreate(realm, len);
+      }
 
-    // 6. Let k be 0.
-    let k = 0;
+      // 6. Let k be 0.
+      let k = 0;
 
-    // 7. Repeat, while k < len
-    while (k < len) {
-      // a. Let kValue be items[k].
-      let kValue = items[k];
+      // 7. Repeat, while k < len
+      while (k < len) {
+        // a. Let kValue be items[k].
+        let kValue = items[k];
 
-      // b. Let Pk be ! ToString(k).
-      let Pk = ToString(realm, new NumberValue(realm, k));
+        // b. Let Pk be ! ToString(k).
+        let Pk = ToString(realm, new NumberValue(realm, k));
 
-      // c. Perform ? CreateDataPropertyOrThrow(A, Pk, kValue).
-      CreateDataPropertyOrThrow(realm, A, Pk, kValue);
+        // c. Perform ? CreateDataPropertyOrThrow(A, Pk, kValue).
+        CreateDataPropertyOrThrow(realm, A, Pk, kValue);
 
-      // d. Increase k by 1.
-      k += 1;
-    }
+        // d. Increase k by 1.
+        k += 1;
+      }
 
-    // 8. Perform ? Set(A, "length", len, true).
-    Set(realm, A, "length", new NumberValue(realm, len), true);
+      // 8. Perform ? Set(A, "length", len, true).
+      Set(realm, A, "length", new NumberValue(realm, len), true);
 
-    // 9. Return A.
-    return A;
-  });
+      // 9. Return A.
+      return A;
+    });
 
   // ECMA262 22.1.2.1
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  func.defineNativeMethod("from", 1, (context, [items, mapfn, thisArg], argCount) => {
-    // 1. Let C be the this value.
-    let C = context;
+    func.defineNativeMethod("from", 1, (context, [items, mapfn, thisArg], argCount) => {
+      // 1. Let C be the this value.
+      let C = context;
 
-    let mapping, T;
-    // 2. If mapfn is undefined, let mapping be false.
-    if (!mapfn || mapfn instanceof UndefinedValue) {
-      mapping = false;
-    } else if (mapfn.mightBeUndefined()) {
-      invariant(mapfn instanceof AbstractValue);
-      mapfn.throwIfNotConcrete();
-    } else { // 3. Else,
-      // a. If IsCallable(mapfn) is false, throw a TypeError exception.
-      if (IsCallable(realm, mapfn) === false) {
+      let mapping, T;
+      // 2. If mapfn is undefined, let mapping be false.
+      if (!mapfn || mapfn instanceof UndefinedValue) {
+        mapping = false;
+      } else if (mapfn.mightBeUndefined()) {
+        invariant(mapfn instanceof AbstractValue);
         mapfn.throwIfNotConcrete();
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsCallable(mapfn) is false");
+      } else {
+        // 3. Else,
+        // a. If IsCallable(mapfn) is false, throw a TypeError exception.
+        if (IsCallable(realm, mapfn) === false) {
+          mapfn.throwIfNotConcrete();
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsCallable(mapfn) is false");
+        }
+
+        // b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+        T = thisArg !== undefined ? thisArg : realm.intrinsics.undefined;
+
+        // c. Let mapping be true.
+        mapping = true;
       }
 
-      // b. If thisArg was supplied, let T be thisArg; else let T be undefined.
-      T = (thisArg !== undefined) ? thisArg : realm.intrinsics.undefined;
+      // 4. Let usingIterator be ? GetMethod(items, @@iterator).
+      let usingIterator = GetMethod(realm, items, realm.intrinsics.SymbolIterator);
 
-      // c. Let mapping be true.
-      mapping = true;
-    }
+      // 5. If usingIterator is not undefined, then
+      if (!usingIterator.mightBeUndefined()) {
+        let A;
+        // a. If IsConstructor(C) is true, then
+        if (IsConstructor(realm, C)) {
+          invariant(C instanceof ObjectValue);
+          // i. Let A be ? Construct(C).
+          A = Construct(realm, C);
+        } else {
+          // b. Else,
+          // i. Let A be ArrayCreate(0).
+          A = ArrayCreate(realm, 0);
+        }
 
-    // 4. Let usingIterator be ? GetMethod(items, @@iterator).
-    let usingIterator = GetMethod(realm, items, realm.intrinsics.SymbolIterator);
+        // c. Let iterator be ? GetIterator(items, usingIterator).
+        let iterator = GetIterator(realm, items, usingIterator);
 
-    // 5. If usingIterator is not undefined, then
-    if (!usingIterator.mightBeUndefined()) {
+        // d. Let k be 0.
+        let k = 0;
+
+        // e. Repeat
+        while (true) {
+          // i. If k ≥ 2^53-1, then
+          if (k >= Math.pow(2, 53) - 1) {
+            // 1. Let error be Completion{[[Type]]: throw, [[Value]]: a newly created TypeError object, [[Target]]: empty}.
+            let error = realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "k >= 2^53 - 1");
+
+            // 2. Return ? IteratorClose(iterator, error).
+            throw IteratorClose(realm, iterator, error);
+          }
+
+          // ii. Let Pk be ! ToString(k).
+          let Pk = ToString(realm, new NumberValue(realm, k));
+
+          // iii. Let next be ? IteratorStep(iterator).
+          let next = IteratorStep(realm, iterator);
+
+          // iv. If next is false, then
+          if (next === false) {
+            // 1. Perform ? Set(A, "length", k, true).
+            Set(realm, A, "length", new NumberValue(realm, k), true);
+
+            // 2. Return A.
+            return A;
+          }
+
+          // v. Let nextValue be ? IteratorValue(next).
+          let nextValue = IteratorValue(realm, next);
+
+          let mappedValue;
+          // vi. If mapping is true, then
+          if (mapping === true) {
+            // 1. Let mappedValue be Call(mapfn, T, « nextValue, k »).
+            try {
+              invariant(T !== undefined);
+              mappedValue = Call(realm, mapfn, T, [nextValue, new NumberValue(realm, k)]);
+            } catch (mappedValueCompletion) {
+              if (mappedValueCompletion instanceof AbruptCompletion) {
+                // 2. If mappedValue is an abrupt completion, return ? IteratorClose(iterator, mappedValue).
+                throw IteratorClose(realm, iterator, mappedValueCompletion);
+              } else {
+                throw mappedValueCompletion;
+              }
+            }
+            // 3. Let mappedValue be mappedValue.[[Value]].
+          } else {
+            // vii. Else, let mappedValue be nextValue.
+            mappedValue = nextValue;
+          }
+
+          // viii. Let defineStatus be CreateDataPropertyOrThrow(A, Pk, mappedValue).
+          try {
+            CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
+          } catch (completion) {
+            if (completion instanceof AbruptCompletion) {
+              // ix. If defineStatus is an abrupt completion, return ? IteratorClose(iterator, defineStatus).
+              throw IteratorClose(realm, iterator, completion);
+            } else throw completion;
+          }
+
+          // x. Increase k by 1.
+          k = k + 1;
+        }
+      } else {
+        usingIterator.throwIfNotConcrete();
+      }
+
+      // 6. NOTE: items is not an Iterable so assume it is an array-like object.
+      items = items.throwIfNotConcrete();
+      invariant(items instanceof ObjectValue);
+
+      // 7. Let arrayLike be ! ToObject(items).
+      let arrayLike = ToObject(realm, items);
+
+      // 8. Let len be ? ToLength(? Get(arrayLike, "length")).
+      let len = ToLength(realm, Get(realm, arrayLike, "length"));
+
       let A;
-      // a. If IsConstructor(C) is true, then
+      // 9. If IsConstructor(C) is true, then
       if (IsConstructor(realm, C)) {
         invariant(C instanceof ObjectValue);
-        // i. Let A be ? Construct(C).
-        A = Construct(realm, C);
-      } else { // b. Else,
-        // i. Let A be ArrayCreate(0).
-        A = ArrayCreate(realm, 0);
+        // a. Let A be ? Construct(C, « len »).
+        A = Construct(realm, C, [new NumberValue(realm, len)]);
+      } else {
+        // 10. Else,
+        // a. Let A be ? ArrayCreate(len).
+        A = ArrayCreate(realm, len);
       }
 
-      // c. Let iterator be ? GetIterator(items, usingIterator).
-      let iterator = GetIterator(realm, items, usingIterator);
-
-      // d. Let k be 0.
+      // 11. Let k be 0.
       let k = 0;
 
-      // e. Repeat
-      while (true) {
-        // i. If k ≥ 2^53-1, then
-        if (k >= Math.pow(2, 53) - 1) {
-          // 1. Let error be Completion{[[Type]]: throw, [[Value]]: a newly created TypeError object, [[Target]]: empty}.
-          let error = realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "k >= 2^53 - 1");
-
-          // 2. Return ? IteratorClose(iterator, error).
-          throw IteratorClose(realm, iterator, error);
-        }
-
-        // ii. Let Pk be ! ToString(k).
+      // 12. Repeat, while k < len
+      while (k < len) {
+        // a. Let Pk be ! ToString(k).
         let Pk = ToString(realm, new NumberValue(realm, k));
 
-        // iii. Let next be ? IteratorStep(iterator).
-        let next = IteratorStep(realm, iterator);
-
-        // iv. If next is false, then
-        if (next === false) {
-          // 1. Perform ? Set(A, "length", k, true).
-          Set(realm, A, "length", new NumberValue(realm, k), true);
-
-          // 2. Return A.
-          return A;
-        }
-
-        // v. Let nextValue be ? IteratorValue(next).
-        let nextValue = IteratorValue(realm, next);
+        // b. Let kValue be ? Get(arrayLike, Pk).
+        let kValue = Get(realm, arrayLike, Pk);
 
         let mappedValue;
-        // vi. If mapping is true, then
+        // c. If mapping is true, then
         if (mapping === true) {
-          // 1. Let mappedValue be Call(mapfn, T, « nextValue, k »).
-          try {
-            invariant(T !== undefined);
-            mappedValue = Call(realm, mapfn, T, [nextValue, new NumberValue(realm, k)]);
-          } catch (mappedValueCompletion) {
-            if (mappedValueCompletion instanceof AbruptCompletion) {
-              // 2. If mappedValue is an abrupt completion, return ? IteratorClose(iterator, mappedValue).
-              throw IteratorClose(realm, iterator, mappedValueCompletion);
-            } else {
-              throw mappedValueCompletion;
-            }
-          }
-          // 3. Let mappedValue be mappedValue.[[Value]].
-        } else { // vii. Else, let mappedValue be nextValue.
-          mappedValue = nextValue;
+          // i. Let mappedValue be ? Call(mapfn, T, « kValue, k »).
+          invariant(T !== undefined);
+          mappedValue = Call(realm, mapfn, T, [kValue, new NumberValue(realm, k)]);
+        } else {
+          // d. Else, let mappedValue be kValue.
+          mappedValue = kValue;
         }
 
-        // viii. Let defineStatus be CreateDataPropertyOrThrow(A, Pk, mappedValue).
-        try {
-          CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
-        } catch (completion) {
-          if (completion instanceof AbruptCompletion) {
-            // ix. If defineStatus is an abrupt completion, return ? IteratorClose(iterator, defineStatus).
-            throw IteratorClose(realm, iterator, completion);
-          } else
-            throw completion;
-        }
+        // e. Perform ? CreateDataPropertyOrThrow(A, Pk, mappedValue).
+        CreateDataPropertyOrThrow(realm, A, new StringValue(realm, Pk), mappedValue);
 
-        // x. Increase k by 1.
+        // f. Increase k by 1.
         k = k + 1;
       }
-    } else {
-      usingIterator.throwIfNotConcrete();
-    }
 
-    // 6. NOTE: items is not an Iterable so assume it is an array-like object.
-    items = items.throwIfNotConcrete();
-    invariant(items instanceof ObjectValue);
+      // 13. Perform ? Set(A, "length", len, true).
+      Set(realm, A, "length", new NumberValue(realm, len), true);
 
-    // 7. Let arrayLike be ! ToObject(items).
-    let arrayLike = ToObject(realm, items);
-
-    // 8. Let len be ? ToLength(? Get(arrayLike, "length")).
-    let len = ToLength(realm, Get(realm, arrayLike, "length"));
-
-    let A;
-    // 9. If IsConstructor(C) is true, then
-    if (IsConstructor(realm, C)) {
-      invariant(C instanceof ObjectValue);
-      // a. Let A be ? Construct(C, « len »).
-      A = Construct(realm, C, [new NumberValue(realm, len)]);
-    } else { // 10. Else,
-      // a. Let A be ? ArrayCreate(len).
-      A = ArrayCreate(realm, len);
-    }
-
-    // 11. Let k be 0.
-    let k = 0;
-
-    // 12. Repeat, while k < len
-    while (k < len) {
-      // a. Let Pk be ! ToString(k).
-      let Pk = ToString(realm, new NumberValue(realm, k));
-
-      // b. Let kValue be ? Get(arrayLike, Pk).
-      let kValue = Get(realm, arrayLike, Pk);
-
-      let mappedValue;
-      // c. If mapping is true, then
-      if (mapping === true) {
-        // i. Let mappedValue be ? Call(mapfn, T, « kValue, k »).
-        invariant(T !== undefined);
-        mappedValue = Call(realm, mapfn, T, [kValue, new NumberValue(realm, k)]);
-      } else { // d. Else, let mappedValue be kValue.
-        mappedValue = kValue;
-      }
-
-      // e. Perform ? CreateDataPropertyOrThrow(A, Pk, mappedValue).
-      CreateDataPropertyOrThrow(realm, A, new StringValue(realm, Pk), mappedValue);
-
-      // f. Increase k by 1.
-      k = k + 1;
-    }
-
-    // 13. Perform ? Set(A, "length", len, true).
-    Set(realm, A, "length", new NumberValue(realm, len), true);
-
-    // 14. Return A.
-    return A;
-  });
+      // 14. Return A.
+      return A;
+    });
 
   // ECMA262 22.1.2.5
-  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, (context) => {
+  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, context => {
     // 1. Return the this value
     return context;
   });

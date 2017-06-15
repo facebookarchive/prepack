@@ -30,7 +30,7 @@ Object.setPrototypeOf(InitializationError, Error);
 Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
 
 export function prepack(code: string, options: Options = defaultOptions, errorHandler?: ErrorHandler) {
-  let filename = options.filename || 'unknown';
+  let filename = options.filename || "unknown";
 
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = errorHandler;

@@ -40,9 +40,9 @@ import {
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.3.4.2
-  obj.defineNativeMethod("getDate", 0, (context) => {
+  obj.defineNativeMethod("getDate", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -54,7 +54,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.3
-  obj.defineNativeMethod("getDay", 0, (context) => {
+  obj.defineNativeMethod("getDay", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -66,7 +66,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.4
-  obj.defineNativeMethod("getFullYear", 0, (context) => {
+  obj.defineNativeMethod("getFullYear", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -78,7 +78,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.5
-  obj.defineNativeMethod("getHours", 0, (context) => {
+  obj.defineNativeMethod("getHours", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -90,7 +90,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.6
-  obj.defineNativeMethod("getMilliseconds", 0, (context) => {
+  obj.defineNativeMethod("getMilliseconds", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -102,7 +102,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.7
-  obj.defineNativeMethod("getMinutes", 0, (context) => {
+  obj.defineNativeMethod("getMinutes", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -114,7 +114,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.8
-  obj.defineNativeMethod("getMonth", 0, (context) => {
+  obj.defineNativeMethod("getMonth", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -126,7 +126,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.9
-  obj.defineNativeMethod("getSeconds", 0, (context) => {
+  obj.defineNativeMethod("getSeconds", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -138,13 +138,13 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.10
-  obj.defineNativeMethod("getTime", 0, (context) => {
+  obj.defineNativeMethod("getTime", 0, context => {
     // 1. Return ? thisTimeValue(this value).
     return thisTimeValue(realm, context);
   });
 
   // ECMA262 20.3.4.11
-  obj.defineNativeMethod("getTimezoneOffset", 0, (context) => {
+  obj.defineNativeMethod("getTimezoneOffset", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -156,7 +156,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.12
-  obj.defineNativeMethod("getUTCDate", 0, (context) => {
+  obj.defineNativeMethod("getUTCDate", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -168,7 +168,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.13
-  obj.defineNativeMethod("getUTCDay", 0, (context) => {
+  obj.defineNativeMethod("getUTCDay", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -180,7 +180,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.14
-  obj.defineNativeMethod("getUTCFullYear", 0, (context) => {
+  obj.defineNativeMethod("getUTCFullYear", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -192,7 +192,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.15
-  obj.defineNativeMethod("getUTCHours", 0, (context) => {
+  obj.defineNativeMethod("getUTCHours", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -204,7 +204,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.16
-  obj.defineNativeMethod("getUTCMilliseconds", 0, (context) => {
+  obj.defineNativeMethod("getUTCMilliseconds", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -216,7 +216,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.17
-  obj.defineNativeMethod("getUTCMinutes", 0, (context) => {
+  obj.defineNativeMethod("getUTCMinutes", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -228,7 +228,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.18
-  obj.defineNativeMethod("getUTCMonth", 0, (context) => {
+  obj.defineNativeMethod("getUTCMonth", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -240,7 +240,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.19
-  obj.defineNativeMethod("getUTCSeconds", 0, (context) => {
+  obj.defineNativeMethod("getUTCSeconds", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
     invariant(context instanceof ObjectValue);
@@ -262,7 +262,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let dt = ToNumber(realm, date);
 
     // 3. Let newDate be MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), dt), TimeWithinDay(t)).
-    let newDate = MakeDate(realm, MakeDay(realm, YearFromTime(realm, t), MonthFromTime(realm, t), dt), TimeWithinDay(realm, t));
+    let newDate = MakeDate(
+      realm,
+      MakeDay(realm, YearFromTime(realm, t), MonthFromTime(realm, t), dt),
+      TimeWithinDay(realm, t)
+    );
 
     // 4. Let u be TimeClip(UTC(newDate)).
     let u = TimeClip(realm, UTC(realm, newDate));
@@ -465,7 +469,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let dt = ToNumber(realm, date);
 
     // 3. Let newDate be MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), dt), TimeWithinDay(t)).
-    let newDate = MakeDate(realm, MakeDay(realm, YearFromTime(realm, t), MonthFromTime(realm, t), dt), TimeWithinDay(realm, t));
+    let newDate = MakeDate(
+      realm,
+      MakeDay(realm, YearFromTime(realm, t), MonthFromTime(realm, t), dt),
+      TimeWithinDay(realm, t)
+    );
 
     // 4. Let v be TimeClip(newDate).
     let v = TimeClip(realm, newDate);
@@ -574,7 +582,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let s;
     if (argCount < 2) {
       s = SecFromTime(realm, t);
-    } else { // 4. Else,
+    } else {
+      // 4. Else,
       // a. Let s be ? ToNumber(sec).
       s = ToNumber(realm, sec);
     }
@@ -583,7 +592,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let milli;
     if (argCount < 3) {
       milli = msFromTime(realm, t);
-    } else { // 6. Else,
+    } else {
+      // 6. Else,
       // a. Let milli be ? ToNumber(ms).
       milli = ToNumber(realm, ms);
     }
@@ -614,7 +624,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let dt;
     if (argCount < 2) {
       dt = DateFromTime(realm, t);
-    } else { // 4. Else,
+    } else {
+      // 4. Else,
       // a. Let dt be ? ToNumber(date).
       dt = ToNumber(realm, date);
     }
@@ -645,7 +656,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let milli;
     if (argCount < 2) {
       milli = msFromTime(realm, t);
-    } else { // 4. Else,
+    } else {
+      // 4. Else,
       // a. Let milli be ? ToNumber(ms).
       milli = ToNumber(realm, ms);
     }
@@ -664,12 +676,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.35
-  obj.defineNativeMethod("toDateString", 0, (context) => {
+  obj.defineNativeMethod("toDateString", 0, context => {
     throw new Error("TODO: implement Date.prototype.toDateString");
   });
 
   // ECMA262 20.3.4.36
-  obj.defineNativeMethod("toISOString", 0, (context) => {
+  obj.defineNativeMethod("toISOString", 0, context => {
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
     if (!isFinite(t)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError);
@@ -696,22 +708,22 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.38
-  obj.defineNativeMethod("toLocaleDateString", 0, (context) => {
+  obj.defineNativeMethod("toLocaleDateString", 0, context => {
     throw new Error("TODO: implement Date.prototype.toLocaleDateString");
   });
 
   // ECMA262 20.3.4.39
-  obj.defineNativeMethod("toLocaleString", 0, (context) => {
+  obj.defineNativeMethod("toLocaleString", 0, context => {
     throw new Error("TODO: implement Date.prototype.toLocaleString");
   });
 
   // ECMA262 20.3.4.40
-  obj.defineNativeMethod("toLocaleTimeString", 0, (context) => {
+  obj.defineNativeMethod("toLocaleTimeString", 0, context => {
     throw new Error("TODO: implement Date.prototype.toLocaleTimeString");
   });
 
   // ECMA262 20.3.4.41
-  obj.defineNativeMethod("toString", 0, (context) => {
+  obj.defineNativeMethod("toString", 0, context => {
     // 1. Let O be this Date object.
     let O = context;
 
@@ -720,7 +732,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (O.$DateValue === undefined) {
       // a. Let tv be NaN.
       tv = NaN;
-    } else { // 3. Else,
+    } else {
+      // 3. Else,
       // a. Let tv be thisTimeValue(O).
       tv = thisTimeValue(realm, O).throwIfNotConcreteNumber().value;
     }
@@ -730,50 +743,57 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.42
-  obj.defineNativeMethod("toTimeString", 0, (context) => {
+  obj.defineNativeMethod("toTimeString", 0, context => {
     throw new Error("TODO: implement Date.prototype.toTimeString");
   });
 
   // ECMA262 20.3.4.43
-  obj.defineNativeMethod("toUTCString", 0, (context) => {
+  obj.defineNativeMethod("toUTCString", 0, context => {
     throw new Error("TODO: implement Date.prototype.toUTCString");
   });
 
   // ECMA262 20.3.4.44
-  obj.defineNativeMethod("valueOf", 0, (context) => {
+  obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? thisTimeValue(this value).
     return thisTimeValue(realm, context);
   });
 
   // ECMA262 20.3.4.45
-  obj.defineNativeMethod(realm.intrinsics.SymbolToPrimitive, 1, (context, [hint]) => {
-    // 1. Let O be the this value.
-    let O = context.throwIfNotConcrete();
+  obj.defineNativeMethod(
+    realm.intrinsics.SymbolToPrimitive,
+    1,
+    (context, [hint]) => {
+      // 1. Let O be the this value.
+      let O = context.throwIfNotConcrete();
 
-    // 2. If Type(O) is not Object, throw a TypeError exception.
-    if (!(O instanceof ObjectValue)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
-    }
+      // 2. If Type(O) is not Object, throw a TypeError exception.
+      if (!(O instanceof ObjectValue)) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
+      }
 
-    let tryFirst;
-    hint = hint.throwIfNotConcrete();
-    // 3. If hint is the String value "string" or the String value "default", then
-    if (hint instanceof StringValue && (hint.value === "string" || hint.value === "default")) {
-      // a. Let tryFirst be "string".
-      tryFirst = "string";
-    } else if (hint instanceof StringValue && hint.value === "number") { // 4. Else if hint is the String value "number", then
-      // a. Let tryFirst be "number".
-      tryFirst = "number";
-    } else { // 5. Else, throw a TypeError exception.
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
-    }
+      let tryFirst;
+      hint = hint.throwIfNotConcrete();
+      // 3. If hint is the String value "string" or the String value "default", then
+      if (hint instanceof StringValue && (hint.value === "string" || hint.value === "default")) {
+        // a. Let tryFirst be "string".
+        tryFirst = "string";
+      } else if (hint instanceof StringValue && hint.value === "number") {
+        // 4. Else if hint is the String value "number", then
+        // a. Let tryFirst be "number".
+        tryFirst = "number";
+      } else {
+        // 5. Else, throw a TypeError exception.
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
+      }
 
-    // 6. Return ? OrdinaryToPrimitive(O, tryFirst).
-    return OrdinaryToPrimitive(realm, O, tryFirst);
-  }, { writable: false });
+      // 6. Return ? OrdinaryToPrimitive(O, tryFirst).
+      return OrdinaryToPrimitive(realm, O, tryFirst);
+    },
+    { writable: false }
+  );
 
   // B.2.4.1
-  obj.defineNativeMethod("getYear", 0, (context) => {
+  obj.defineNativeMethod("getYear", 0, context => {
     // 1. Let t be ? thisTimeValue(this value).
     let t = thisTimeValue(realm, context).throwIfNotConcreteNumber().value;
 
@@ -806,7 +826,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let yyyy;
     if (ToInteger(realm, y) < 99) {
       yyyy = ToInteger(realm, y) + 1900;
-    } else { // 6. Else, let yyyy be y.
+    } else {
+      // 6. Else, let yyyy be y.
       yyyy = y;
     }
 

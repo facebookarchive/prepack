@@ -16,20 +16,26 @@ import { Get } from "../../methods/get.js";
 import { Call } from "../../methods/call.js";
 import { IsCallable } from "../../methods/is.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
-  return new NativeFunctionValue(realm, "Array.prototype.toString", "toString", 0, (context) => {
-    // 1. Let array be ? ToObject(this value).
-    let array = ToObjectPartial(realm, context);
+  return new NativeFunctionValue(
+    realm,
+    "Array.prototype.toString",
+    "toString",
+    0,
+    context => {
+      // 1. Let array be ? ToObject(this value).
+      let array = ToObjectPartial(realm, context);
 
-    // 2. Let func be ? Get(array, "join").
-    let func = Get(realm, array, "join");
+      // 2. Let func be ? Get(array, "join").
+      let func = Get(realm, array, "join");
 
-    // 3. If IsCallable(func) is false, let func be the intrinsic function %ObjProto_toString%.
-    if (!IsCallable(realm, func))
-     func = realm.intrinsics.ObjectProto_toString;
+      // 3. If IsCallable(func) is false, let func be the intrinsic function %ObjProto_toString%.
+      if (!IsCallable(realm, func)) func = realm.intrinsics.ObjectProto_toString;
 
-    // 4. Return ? Call(func, array).
-    return Call(realm, func, array);
-  }, false);
+      // 4. Return ? Call(func, array).
+      return Call(realm, func, array);
+    },
+    false
+  );
 }

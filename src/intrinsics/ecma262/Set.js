@@ -21,11 +21,11 @@ import {
   IteratorValue,
   IteratorClose,
   Get,
-  HasSomeCompatibleType
+  HasSomeCompatibleType,
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 23.2.1.1
   let func = new NativeFunctionValue(realm, "Set", "Set", 0, (context, [iterable], argCount, NewTarget) => {
     // 1. If NewTarget is undefined, throw a TypeError exception.
@@ -35,7 +35,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
     // 2. Let set be ? OrdinaryCreateFromConstructor(NewTarget, "%SetPrototype%", « [[SetData]] »).
     let set = OrdinaryCreateFromConstructor(realm, NewTarget, "SetPrototype", {
-      $SetData: undefined
+      $SetData: undefined,
     });
 
     // 3. Set set's [[SetData]] internal slot to a new empty List.
@@ -49,7 +49,8 @@ export default function (realm: Realm): NativeFunctionValue {
     if (HasSomeCompatibleType(iterable, UndefinedValue, NullValue)) {
       adder = realm.intrinsics.undefined;
       iter = realm.intrinsics.undefined;
-    } else { // 6. Else,
+    } else {
+      // 6. Else,
       // a. Let adder be ? Get(set, "add").
       adder = Get(realm, set, "add");
 
@@ -85,8 +86,7 @@ export default function (realm: Realm): NativeFunctionValue {
         if (status instanceof AbruptCompletion) {
           // e. If status is an abrupt completion, return ? IteratorClose(iter, status).
           throw IteratorClose(realm, iter, status);
-        } else
-          throw status;
+        } else throw status;
       }
     }
 
@@ -94,7 +94,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 23.2.2.2
-  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, (context) => {
+  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, context => {
     // 1. Return the this value
     return context;
   });

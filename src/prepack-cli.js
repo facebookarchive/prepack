@@ -12,20 +12,30 @@
 /* eslint-disable no-shadow */
 
 import { prepackStdin, prepackFileSync, InitializationError } from "./prepack-node.js";
-import { CompatibilityValues, type Compatibility } from './types.js';
+import { CompatibilityValues, type Compatibility } from "./types.js";
 import fs from "fs";
 
 // Prepack helper
-declare var __residual : any;
+declare var __residual: any;
 
 // Currently we need to explictly pass the captured variables we want to access.
 // TODO: In a future version of this can be automatic.
-function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSync, InitializationError, CompatibilityValues, fs) {
-
+function run(
+  Object,
+  Array,
+  console,
+  JSON,
+  process,
+  prepackStdin,
+  prepackFileSync,
+  InitializationError,
+  CompatibilityValues,
+  fs
+) {
   let HELP_STR = `
     input    The name of the file to run Prepack over (for web please provide the single js bundle file)
     --out    The name of the output file
-    --compatibility    The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(', ')}]
+    --compatibility    The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(", ")}]
     --mathRandomSeed    If you want Prepack to evaluate Math.random() calls, please provide a seed.
     --srcmapIn    The input sourcemap filename. If present, Prepack will output a sourcemap that maps from the original file (pre-input sourcemap) to Prepack's output
     --srcmapOut    The output sourcemap filename.
@@ -88,7 +98,11 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
           outputSourceMap = args.shift();
           break;
         case "help":
-          console.log("Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ] [ --singlePass ] [ --debugNames ]" + "\n" + HELP_STR);
+          console.log(
+            "Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ] [ --singlePass ] [ --debugNames ]" +
+              "\n" +
+              HELP_STR
+          );
           break;
         default:
           if (arg in flags) {
@@ -100,8 +114,7 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
       }
     }
   }
-  if (!flags.serialize && !flags.residual)
-    flags.serialize = true;
+  if (!flags.serialize && !flags.residual) flags.serialize = true;
 
   let resolvedOptions = Object.assign(
     {},
@@ -119,10 +132,7 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
     return;
   }
   try {
-    let serialized = prepackFileSync(
-      inputFilename,
-      resolvedOptions
-    );
+    let serialized = prepackFileSync(inputFilename, resolvedOptions);
     processSerializedCode(serialized);
   } catch (x) {
     if (x instanceof InitializationError) {
@@ -141,17 +151,41 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
       console.log(serialized.code);
     }
     if (outputSourceMap) {
-      fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : '');
+      fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
     }
   }
 
   return true;
 }
 
-if (typeof __residual === 'function') {
+if (typeof __residual === "function") {
   // If we're running inside of Prepack. This is the residual function we'll
   // want to leave untouched in the final program.
-  __residual('boolean', run, Object, Array, console, JSON, process, prepackStdin, prepackFileSync, InitializationError, CompatibilityValues, fs);
+  __residual(
+    "boolean",
+    run,
+    Object,
+    Array,
+    console,
+    JSON,
+    process,
+    prepackStdin,
+    prepackFileSync,
+    InitializationError,
+    CompatibilityValues,
+    fs
+  );
 } else {
-  run(Object, Array, console, JSON, process, prepackStdin, prepackFileSync, InitializationError, CompatibilityValues, fs);
+  run(
+    Object,
+    Array,
+    console,
+    JSON,
+    process,
+    prepackStdin,
+    prepackFileSync,
+    InitializationError,
+    CompatibilityValues,
+    fs
+  );
 }

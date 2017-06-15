@@ -14,7 +14,19 @@ import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 
 import { IntrospectionThrowCompletion } from "../completions.js";
-import { AbstractObjectValue, BooleanValue, ConcreteValue, NullValue, NumberValue, ObjectValue, PrimitiveValue, StringValue, SymbolValue, UndefinedValue, Value } from "./index.js";
+import {
+  AbstractObjectValue,
+  BooleanValue,
+  ConcreteValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  PrimitiveValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
+  Value,
+} from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
@@ -24,13 +36,14 @@ export type AbstractValueBuildNodeFunction = (Array<BabelNodeExpression>) => Bab
 
 export default class AbstractValue extends Value {
   constructor(
-      realm: Realm,
-      types: TypesDomain,
-      values: ValuesDomain,
-      args: Array<Value>,
-      buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
-      kind?: string,
-      intrinsicName?: string) {
+    realm: Realm,
+    types: TypesDomain,
+    values: ValuesDomain,
+    args: Array<Value>,
+    buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    kind?: string,
+    intrinsicName?: string
+  ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, intrinsicName);
     invariant(types.getType() !== ObjectValue || this instanceof AbstractObjectValue);
@@ -44,8 +57,7 @@ export default class AbstractValue extends Value {
   }
 
   clone(): AbstractValue {
-    let result = new AbstractValue(
-      this.$Realm, this.types, this.values, this.args, this._buildNode);
+    let result = new AbstractValue(this.$Realm, this.types, this.values, this.args, this._buildNode);
     if (this.mightBeEmpty) result.mightBeEmpty = true;
     if (this.args) result.args = this.args;
     if (this.kind) result.kind = this.kind;
@@ -201,11 +213,14 @@ export default class AbstractValue extends Value {
     let result = this.clone();
     result.mightBeEmpty = false;
     result.values = result.values.promoteEmptyToUndefined();
-    let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+    let cond = this.$Realm.createAbstract(
+      new TypesDomain(BooleanValue),
+      ValuesDomain.topVal,
       [this, this.$Realm.intrinsics.empty],
-      ([x, y]) => t.binaryExpression("===", x, y));
+      ([x, y]) => t.binaryExpression("===", x, y)
+    );
     result.args = [cond, this.$Realm.intrinsics.undefined, this];
-    result._buildNode = (args) => t.conditionalExpression(args[0], args[1], args[2]);
+    result._buildNode = args => t.conditionalExpression(args[0], args[1], args[2]);
     return result;
   }
 
@@ -226,28 +241,29 @@ export default class AbstractValue extends Value {
     throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
   }
 
-  static createIntrospectionErrorThrowCompletion(val: Value, propertyName: void | PropertyKeyValue): IntrospectionThrowCompletion {
+  static createIntrospectionErrorThrowCompletion(
+    val: Value,
+    propertyName: void | PropertyKeyValue
+  ): IntrospectionThrowCompletion {
     let realm = val.$Realm;
 
     let identity;
-    if (val === realm.$GlobalObject)
-      identity = "global";
+    if (val === realm.$GlobalObject) identity = "global";
     else if (val instanceof AbstractValue) {
       let names = [];
       val.addSourceNamesTo(names);
       if (names.length === 0) {
         val.addSourceNamesTo(names);
       }
-      identity = `abstract value${names.length > 1 ? 's' : ''} ${names.join(" and ")}`;
-    } else
-      identity = val.intrinsicName || "(some value)";
+      identity = `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
+    } else identity = val.intrinsicName || "(some value)";
 
     let source_locations = [];
-    if (val instanceof AbstractValue)
-      val.addSourceLocationsTo(source_locations);
+    if (val instanceof AbstractValue) val.addSourceLocationsTo(source_locations);
 
     let location;
-    if (propertyName instanceof SymbolValue) location = `at symbol [${propertyName.$Description || "(no description)"}]`;
+    if (propertyName instanceof SymbolValue)
+      location = `at symbol [${propertyName.$Description || "(no description)"}]`;
     else if (propertyName instanceof StringValue) location = `at ${propertyName.value}`;
     else if (typeof propertyName === "string") location = `at ${propertyName}`;
     else location = source_locations.length === 0 ? "" : `at ${source_locations.join("\n")}`;
@@ -256,5 +272,4 @@ export default class AbstractValue extends Value {
 
     return realm.createIntrospectionErrorThrowCompletion(message);
   }
-
 }

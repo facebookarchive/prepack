@@ -51,20 +51,24 @@ exec("flow check --profile", function(error, stdout, stderr) {
 // NB: This doesn't prevent cycles using "import type" because those are
 // erased in the lib folder but madge doesn't work with flow type imports.
 
-madge('./lib/').then((res) => {
+madge("./lib/").then(res => {
   let deps = res.obj();
-  let idx_deps = res.depends('intrinsics/index');
-  if (idx_deps.length !== 1 || idx_deps[0] !== 'construct_realm') {
+  let idx_deps = res.depends("intrinsics/index");
+  if (idx_deps.length !== 1 || idx_deps[0] !== "construct_realm") {
     console.log("Invalid Dependency: Intrinsics index depends on " + idx_deps[0]);
     process.exit(1);
   }
 
   for (let dep in deps) {
     // Nothing in intrinsics/ecma262 depends on anything but intrinsics/index except Error and global.
-    if (dep.startsWith("intrinsics/ecma262") && dep !== "intrinsics/ecma262/Error" && dep !== "intrinsics/ecma262/global") {
-      let ext_deps =
-        res.depends(dep).filter(
-          (depend) => depend !== "intrinsics/index" && !depend.startsWith("intrinsics/ecma262"));
+    if (
+      dep.startsWith("intrinsics/ecma262") &&
+      dep !== "intrinsics/ecma262/Error" &&
+      dep !== "intrinsics/ecma262/global"
+    ) {
+      let ext_deps = res
+        .depends(dep)
+        .filter(depend => depend !== "intrinsics/index" && !depend.startsWith("intrinsics/ecma262"));
       if (ext_deps.length > 0) {
         console.log("Invalid Dependency: " + dep + " depends on " + ext_deps);
         process.exit(1);

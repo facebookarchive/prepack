@@ -11,7 +11,14 @@
 
 import type { Realm } from "../realm.js";
 import type { TypedArrayKind } from "../types.js";
-import { AbstractValue, IntegerIndexedExotic, ObjectValue, Value, NumberValue, UndefinedValue } from "../values/index.js";
+import {
+  AbstractValue,
+  IntegerIndexedExotic,
+  ObjectValue,
+  Value,
+  NumberValue,
+  UndefinedValue,
+} from "../values/index.js";
 import { GetPrototypeFromConstructor } from "../methods/get.js";
 import { AllocateArrayBuffer } from "../methods/arraybuffer.js";
 import { IsDetachedBuffer, IsInteger } from "../methods/is.js";
@@ -29,7 +36,7 @@ export const ArrayElementSize = {
   Uint8Array: 1,
   Uint16Array: 2,
   Uint32Array: 4,
-  Uint8ClampedArray: 1
+  Uint8ClampedArray: 1,
 };
 
 export const ArrayElementType = {
@@ -41,16 +48,26 @@ export const ArrayElementType = {
   Uint8Array: "Uint8",
   Uint16Array: "Uint16",
   Uint32Array: "Uint32",
-  Uint8ClampedArray: "Uint8Clamped"
+  Uint8ClampedArray: "Uint8Clamped",
 };
 
 // ECMA262 9.4.5.7
-export function IntegerIndexedObjectCreate(realm: Realm, prototype: ObjectValue, internalSlotsList: { [key: string]: void }): ObjectValue {
+export function IntegerIndexedObjectCreate(
+  realm: Realm,
+  prototype: ObjectValue,
+  internalSlotsList: { [key: string]: void }
+): ObjectValue {
   // 1. Assert: internalSlotsList contains the names [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and [[TypedArrayName]].
-  invariant('$ViewedArrayBuffer' in internalSlotsList && '$ArrayLength' in internalSlotsList && '$ByteOffset' in internalSlotsList && '$TypedArrayName' in internalSlotsList);
+  invariant(
+    "$ViewedArrayBuffer" in internalSlotsList &&
+      "$ArrayLength" in internalSlotsList &&
+      "$ByteOffset" in internalSlotsList &&
+      "$TypedArrayName" in internalSlotsList
+  );
 
   // 2. Let A be a newly created object with an internal slot for each name in internalSlotsList.
-  let A = new IntegerIndexedExotic(realm); Object.assign(A, internalSlotsList);
+  let A = new IntegerIndexedExotic(realm);
+  Object.assign(A, internalSlotsList);
 
   // 3. Set A's essential internal methods to the default ordinary object definitions specified in 9.1.
   // 4. Set the [[GetOwnProperty]] internal method of A as specified in 9.4.5.1.
@@ -76,7 +93,13 @@ export function IntegerIndexedElementGet(realm: Realm, O: ObjectValue, index: nu
   invariant(typeof index === "number", "Type(index) is Number");
 
   // 2. Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and [[TypedArrayName]] internal slots.
-  invariant(O instanceof ObjectValue && O.$ViewedArrayBuffer && O.$ArrayLength !== undefined && O.$ByteOffset !== undefined && O.$TypedArrayName);
+  invariant(
+    O instanceof ObjectValue &&
+      O.$ViewedArrayBuffer &&
+      O.$ArrayLength !== undefined &&
+      O.$ByteOffset !== undefined &&
+      O.$TypedArrayName
+  );
 
   // 3. Let buffer be O.[[ViewedArrayBuffer]].
   let buffer = O.$ViewedArrayBuffer;
@@ -93,16 +116,19 @@ export function IntegerIndexedElementGet(realm: Realm, O: ObjectValue, index: nu
   if (Object.is(index, -0)) return realm.intrinsics.undefined;
 
   // 7. Let length be O.[[ArrayLength]].
-  let length = O.$ArrayLength; invariant(typeof length === "number");
+  let length = O.$ArrayLength;
+  invariant(typeof length === "number");
 
   // 8. If index < 0 or index ≥ length, return undefined.
   if (index < 0 || index >= length) return realm.intrinsics.undefined;
 
   // 9. Let offset be O.[[ByteOffset]].
-  let offset = O.$ByteOffset; invariant(typeof offset === "number");
+  let offset = O.$ByteOffset;
+  invariant(typeof offset === "number");
 
   // 10. Let arrayTypeName be the String value of O.[[TypedArrayName]].
-  let arrayTypeName = O.$TypedArrayName; invariant(typeof arrayTypeName === "string");
+  let arrayTypeName = O.$TypedArrayName;
+  invariant(typeof arrayTypeName === "string");
 
   // 11. Let elementSize be the Number value of the Element Size value specified in Table 50 for arrayTypeName.
   let elementSize = ArrayElementSize[arrayTypeName];
@@ -123,13 +149,20 @@ export function IntegerIndexedElementSet(realm: Realm, O: ObjectValue, index: nu
   invariant(typeof index === "number", "Type(index) is Number");
 
   // 2. Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and [[TypedArrayName]] internal slots.
-  invariant(O instanceof ObjectValue && O.$ViewedArrayBuffer && O.$ArrayLength !== undefined && O.$ByteOffset !== undefined && O.$TypedArrayName);
+  invariant(
+    O instanceof ObjectValue &&
+      O.$ViewedArrayBuffer &&
+      O.$ArrayLength !== undefined &&
+      O.$ByteOffset !== undefined &&
+      O.$TypedArrayName
+  );
 
   // 3. Let numValue be ? ToNumber(value).
   let numValue = ToNumber(realm, value);
 
   // 4. Let buffer be O.[[ViewedArrayBuffer]].
-  let buffer = O.$ViewedArrayBuffer; invariant(buffer);
+  let buffer = O.$ViewedArrayBuffer;
+  invariant(buffer);
 
   // 5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, buffer) === true) {
@@ -143,16 +176,19 @@ export function IntegerIndexedElementSet(realm: Realm, O: ObjectValue, index: nu
   if (Object.is(index, -0)) return false;
 
   // 8. Let length be O.[[ArrayLength]].
-  let length = O.$ArrayLength; invariant(typeof length === "number");
+  let length = O.$ArrayLength;
+  invariant(typeof length === "number");
 
   // 9. If index < 0 or index ≥ length, return false.
   if (index < 0 || index >= length) return false;
 
   // 10. Let offset be O.[[ByteOffset]].
-  let offset = O.$ByteOffset; invariant(typeof offset === "number");
+  let offset = O.$ByteOffset;
+  invariant(typeof offset === "number");
 
   // 11. Let arrayTypeName be the String value of O.[[TypedArrayName]].
-  let arrayTypeName = O.$TypedArrayName; invariant(typeof arrayTypeName === "string");
+  let arrayTypeName = O.$TypedArrayName;
+  invariant(typeof arrayTypeName === "string");
 
   // 12. Let elementSize be the Number value of the Element Size value specified in Table 50 for arrayTypeName.
   let elementSize = ArrayElementSize[arrayTypeName];
@@ -200,7 +236,13 @@ export function ValidateTypedArray(realm: Realm, O: Value) {
 }
 
 // ECMA262 22.2.4.2.1
-export function AllocateTypedArray(realm: Realm, constructorName: TypedArrayKind, newTarget: ObjectValue, defaultProto: string, length?: number): ObjectValue {
+export function AllocateTypedArray(
+  realm: Realm,
+  constructorName: TypedArrayKind,
+  newTarget: ObjectValue,
+  defaultProto: string,
+  length?: number
+): ObjectValue {
   // 1. Let proto be ? GetPrototypeFromConstructor(newTarget, defaultProto).
   let proto = GetPrototypeFromConstructor(realm, newTarget, defaultProto);
 
@@ -210,7 +252,7 @@ export function AllocateTypedArray(realm: Realm, constructorName: TypedArrayKind
     $TypedArrayName: undefined,
     $ByteLength: undefined,
     $ByteOffset: undefined,
-    $ArrayLength: undefined
+    $ArrayLength: undefined,
   });
 
   // 3. Assert: obj.[[ViewedArrayBuffer]] is undefined.
@@ -229,7 +271,8 @@ export function AllocateTypedArray(realm: Realm, constructorName: TypedArrayKind
 
     // c. Set obj.[[ArrayLength]] to 0.
     obj.$ArrayLength = 0;
-  } else { // 6. Else,
+  } else {
+    // 6. Else,
     // a. Perform ? AllocateTypedArrayBuffer(obj, length).
     AllocateTypedArrayBuffer(realm, obj, length);
   }
@@ -244,7 +287,10 @@ export function AllocateTypedArrayBuffer(realm: Realm, O: ObjectValue, length: n
   invariant(realm.isNewObject(O));
 
   // 1. Assert: O is an Object that has a [[ViewedArrayBuffer]] internal slot.
-  invariant(O instanceof ObjectValue && '$ViewedArrayBuffer' in O, "O is an Object that has a [[ViewedArrayBuffer]] internal slot");
+  invariant(
+    O instanceof ObjectValue && "$ViewedArrayBuffer" in O,
+    "O is an Object that has a [[ViewedArrayBuffer]] internal slot"
+  );
 
   // 2. Assert: O.[[ViewedArrayBuffer]] is undefined.
   invariant(O.$ViewedArrayBuffer === undefined, "O.[[ViewedArrayBuffer]] is undefined");
@@ -253,7 +299,8 @@ export function AllocateTypedArrayBuffer(realm: Realm, O: ObjectValue, length: n
   invariant(length >= 0, "length ≥ 0");
 
   // 4. Let constructorName be the String value of O.[[TypedArrayName]].
-  let constructorName = O.$TypedArrayName; invariant(constructorName);
+  let constructorName = O.$TypedArrayName;
+  invariant(constructorName);
 
   // 5. Let elementSize be the Element Size value in Table 50 for constructorName.
   let elementSize = ArrayElementSize[constructorName];
@@ -297,15 +344,16 @@ export function TypedArrayCreate(realm: Realm, constructor: ObjectValue, argumen
     // a. If newTypedArray.[[ArrayLength]] < argumentList[0], throw a TypeError exception.
     invariant(typeof newTypedArray.$ArrayLength === "number");
     if (newTypedArray.$ArrayLength < ((argumentList[0].throwIfNotConcrete(): any): NumberValue).value) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "newTypedArray.[[ArrayLength]] < argumentList[0]");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "newTypedArray.[[ArrayLength]] < argumentList[0]"
+      );
     }
   }
-
 
   // 4. Return newTypedArray.
   return newTypedArray;
 }
-
 
 // ECMA262 22.2.4.7
 export function TypedArraySpeciesCreate(realm: Realm, exemplar: ObjectValue, argumentList: Array<Value>): ObjectValue {
@@ -315,15 +363,15 @@ export function TypedArraySpeciesCreate(realm: Realm, exemplar: ObjectValue, arg
   // 2. Let defaultConstructor be the intrinsic object listed in column one of Table 50 for exemplar.[[TypedArrayName]].
   invariant(typeof exemplar.$TypedArrayName === "string");
   let defaultConstructor = {
-      Float32Array: realm.intrinsics.Float32Array,
-      Float64Array: realm.intrinsics.Float64Array,
-      Int8Array: realm.intrinsics.Int8Array,
-      Int16Array: realm.intrinsics.Int16Array,
-      Int32Array: realm.intrinsics.Int32Array,
-      Uint8Array: realm.intrinsics.Uint8Array,
-      Uint16Array: realm.intrinsics.Uint16Array,
-      Uint32Array: realm.intrinsics.Uint32Array,
-      Uint8ClampedArray: realm.intrinsics.Uint8ClampedArray
+    Float32Array: realm.intrinsics.Float32Array,
+    Float64Array: realm.intrinsics.Float64Array,
+    Int8Array: realm.intrinsics.Int8Array,
+    Int16Array: realm.intrinsics.Int16Array,
+    Int32Array: realm.intrinsics.Int32Array,
+    Uint8Array: realm.intrinsics.Uint8Array,
+    Uint16Array: realm.intrinsics.Uint16Array,
+    Uint32Array: realm.intrinsics.Uint32Array,
+    Uint8ClampedArray: realm.intrinsics.Uint8ClampedArray,
   }[exemplar.$TypedArrayName];
 
   // 3. Let constructor be ? SpeciesConstructor(exemplar, defaultConstructor).

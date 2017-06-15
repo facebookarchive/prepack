@@ -17,7 +17,12 @@ import { ThrowCompletion } from "../completions.js";
 import { GetValue } from "../methods/index.js";
 import type { BabelNodeThrowStatement } from "babel-types";
 
-export default function (ast: BabelNodeThrowStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeThrowStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   let exprRef = env.evaluate(ast.argument, strictCode);
   let exprValue = GetValue(realm, exprRef);
   throw new ThrowCompletion(exprValue);

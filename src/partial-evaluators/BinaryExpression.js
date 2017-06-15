@@ -9,8 +9,13 @@
 
 /* @flow */
 
-import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeExpression, BabelNodeStatement,
-   BabelNodeSourceLocation } from "babel-types";
+import type {
+  BabelBinaryOperator,
+  BabelNodeBinaryExpression,
+  BabelNodeExpression,
+  BabelNodeStatement,
+  BabelNodeSourceLocation,
+} from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -23,12 +28,16 @@ import { AbstractValue, BooleanValue, ConcreteValue, NullValue, UndefinedValue, 
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 
-export default function (
-  ast: BabelNodeBinaryExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeBinaryExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [Completion | Value, BabelNodeExpression, Array<BabelNodeStatement>] {
   let [lval, leftAst, leftIO] = env.partiallyEvaluateCompletionDeref(ast.left, strictCode);
   if (lval instanceof AbruptCompletion) return [lval, (leftAst: any), leftIO];
-  let leftCompletion; [leftCompletion, lval] = unbundleNormalCompletion(lval);
+  let leftCompletion;
+  [leftCompletion, lval] = unbundleNormalCompletion(lval);
   invariant(lval instanceof Value);
 
   let [rval, rightAst, rightIO] = env.partiallyEvaluateCompletionDeref(ast.right, strictCode);
@@ -37,7 +46,8 @@ export default function (
     // todo: if leftCompletion is a PossiblyNormalCompletion, compose
     return [rval, t.binaryExpression(ast.operator, (leftAst: any), (rightAst: any)), io];
   }
-  let rightCompletion; [rightCompletion, rval] = unbundleNormalCompletion(rval);
+  let rightCompletion;
+  [rightCompletion, rval] = unbundleNormalCompletion(rval);
   invariant(rval instanceof Value);
 
   let op = ast.operator;
@@ -52,8 +62,10 @@ export default function (
   if (resultValue === undefined && (op === "==" || op === "===" || op === "!=" || op === "!==")) {
     // When comparing to null or undefined, we can return a compile time value if we know the
     // other operand must be an object.
-    if (!lval.mightNotBeObject() && (rval instanceof NullValue || rval instanceof UndefinedValue) ||
-        !rval.mightNotBeObject() && (lval instanceof NullValue || lval instanceof UndefinedValue)) {
+    if (
+      (!lval.mightNotBeObject() && (rval instanceof NullValue || rval instanceof UndefinedValue)) ||
+      (!rval.mightNotBeObject() && (lval instanceof NullValue || lval instanceof UndefinedValue))
+    ) {
       resultValue = new BooleanValue(realm, op[0] !== "=");
       resultAst = t.valueToNode(resultValue.serialize());
     }
@@ -62,15 +74,33 @@ export default function (
   if (resultAst === undefined) {
     resultAst = t.binaryExpression(op, (leftAst: any), (rightAst: any));
   }
-  return createAbstractValueForBinary(op, resultAst, lval, rval, leftAst.loc, rightAst.loc,
-     leftCompletion, rightCompletion, resultValue, io, realm);
+  return createAbstractValueForBinary(
+    op,
+    resultAst,
+    lval,
+    rval,
+    leftAst.loc,
+    rightAst.loc,
+    leftCompletion,
+    rightCompletion,
+    resultValue,
+    io,
+    realm
+  );
 }
 
 export function createAbstractValueForBinary(
-    op: BabelBinaryOperator, ast: BabelNodeExpression, lval: Value, rval: Value,
-    lloc: ?BabelNodeSourceLocation, rloc: ?BabelNodeSourceLocation,
-    leftCompletion: void | NormalCompletion, rightCompletion: void | NormalCompletion,
-    resultValue: void | Value, io: Array<BabelNodeStatement>, realm: Realm
+  op: BabelBinaryOperator,
+  ast: BabelNodeExpression,
+  lval: Value,
+  rval: Value,
+  lloc: ?BabelNodeSourceLocation,
+  rloc: ?BabelNodeSourceLocation,
+  leftCompletion: void | NormalCompletion,
+  rightCompletion: void | NormalCompletion,
+  resultValue: void | Value,
+  io: Array<BabelNodeStatement>,
+  realm: Realm
 ): [Completion | Value, BabelNodeExpression, Array<BabelNodeStatement>] {
   if (resultValue === undefined) {
     let resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
@@ -85,7 +115,11 @@ export function createAbstractValueForBinary(
       return [AbstractValue.createIntrospectionErrorThrowCompletion((val: any)), ast, io];
     }
     resultValue = realm.createAbstract(
-      new TypesDomain(resultType), ValuesDomain.topVal, [], t.identifier("never used"));
+      new TypesDomain(resultType),
+      ValuesDomain.topVal,
+      [],
+      t.identifier("never used")
+    );
   }
   let r = composeNormalCompletions(leftCompletion, rightCompletion, resultValue, realm);
   return [r, ast, io];

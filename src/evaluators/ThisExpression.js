@@ -17,7 +17,12 @@ import { ResolveThisBinding } from "../methods/index.js";
 import type { BabelNodeThisExpression } from "babel-types";
 
 // ECMA262 12.2.2.1
-export default function (ast: BabelNodeThisExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeThisExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Return ? ResolveThisBinding( ).
   return ResolveThisBinding(realm);
 }

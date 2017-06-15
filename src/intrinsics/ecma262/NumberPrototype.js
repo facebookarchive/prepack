@@ -18,7 +18,7 @@ import buildExpressionTemplate from "../../utils/builder.js";
 
 let buildToLocaleString = buildExpressionTemplate("(VALUE).toLocaleString()");
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3
   obj.$NumberData = realm.intrinsics.zero;
 
@@ -84,13 +84,15 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.1.3.4
-  obj.defineNativeMethod("toLocaleString", 0, (context) => {
+  obj.defineNativeMethod("toLocaleString", 0, context => {
     let x = thisNumberValue(realm, context);
     if (realm.useAbstractInterpretation) {
       // The locale is environment-dependent
-      return realm.deriveAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [x], ([n]) => buildToLocaleString({
-        VALUE: n
-      }));
+      return realm.deriveAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [x], ([n]) =>
+        buildToLocaleString({
+          VALUE: n,
+        })
+      );
     } else {
       return new StringValue(realm, x.toLocaleString());
     }
@@ -147,7 +149,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let radixNumber;
     if (!radix || radix instanceof UndefinedValue) {
       radixNumber = 10;
-    } else { // 4. Else let radixNumber be ? ToInteger(radix).
+    } else {
+      // 4. Else let radixNumber be ? ToInteger(radix).
       radixNumber = ToInteger(realm, radix.throwIfNotConcrete());
     }
 
@@ -167,7 +170,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.1.3.7
-  obj.defineNativeMethod("valueOf", 0, (context) => {
+  obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? thisNumberValue(this value).
     return thisNumberValue(realm, context);
   });

@@ -27,18 +27,17 @@ export function HasName(realm: Realm, ast: BabelNodeExpression): boolean {
   // CoverParenthesizedExpressionAndArrowParameterList
 
   // 14.2.7 Static Semantics: HasName
-  if (ast.type === "ArrowFunctionExpression")
-    return false;
+  if (ast.type === "ArrowFunctionExpression") return false;
 
   // 14.1.9 Static Semantics: HasName
-  if (ast.type === "FunctionExpression"){
+  if (ast.type === "FunctionExpression") {
     // FunctionExpression: function (FormalParameters) {FunctionBody}
     if (ast.id === null)
-    // 1. Return false.
+      // 1. Return false.
       return false;
     // FunctionExpression: functionBindingIdentifier (FormalParameters) {FunctionBody}
     if (ast.id !== null)
-    // 2. Return true
+      // 2. Return true
       return true;
   }
 
@@ -46,11 +45,11 @@ export function HasName(realm: Realm, ast: BabelNodeExpression): boolean {
   if (ast.type === "ClassExpression") {
     // ClassExpression : class ClassTail
     if (ast.id === null)
-    //1. Return false.
+      //1. Return false.
       return false;
     // ClassExpression : class BindingIdentifier ClassTail
     if (ast.id !== null)
-    //1. return true;
+      //1. return true;
       return true;
   }
   // 14.4.7 Static Semantics: HasName
