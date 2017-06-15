@@ -509,6 +509,7 @@ export class Serializer {
     }
   }
 
+  // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
   _getTarget(val: Value, scopes: Set<Scope>): { body: Array<BabelNodeStatement>, usedBySingleFunctionValue?: true } {
     let functionValues = [];
     let generators = [];
@@ -1507,7 +1508,9 @@ export class Serializer {
             let node;
             let firstUsage = this.firstFunctionUsages.get(functionValue);
             invariant(insertionPoint !== undefined);
-            if (usesThis ||
+            let scopeInitializer = this.functionInitializers.get(functionValue);
+            if (scopeInitializer !== undefined && scopeInitializer.body.length > 0 ||
+                usesThis ||
                 firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint) ||
                 this.functionPrototypes.get(functionValue) !== undefined) {
               let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
@@ -1570,6 +1573,7 @@ export class Serializer {
       }
     }
 
+    // Inject initializer code for indexed vars into functions
     for (let [functionValue, funcNode] of funcNodes) {
       let scopeInitializer = this.functionInitializers.get(functionValue);
       if (scopeInitializer !== undefined) {
@@ -1584,6 +1588,7 @@ export class Serializer {
           if (location !== undefined) break;
         }
         if (location === undefined) {
+          // Take care of side-effecting code that is associated with an inlined value
           location = this.allocateIndexedVar();
           scopeInitializerBody.unshift(
             t.expressionStatement(
