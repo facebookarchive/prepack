@@ -524,7 +524,7 @@ export class ResidualHeapVisitor {
     } else if (val instanceof SymbolValue) {
       if (this._mark(val)) this.visitValueSymbol(val);
     } else if (val instanceof ObjectValue) {
-      // Prototypes are reachable via function declarations, and those get hoised, so we need to move
+      // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the global code as well.
       if (val.originalConstructor !== undefined) {
         this._withScope(this.realmGenerator, () => {

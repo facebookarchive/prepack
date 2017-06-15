@@ -194,6 +194,10 @@ export class Serializer {
     this.availableVars.push(indexedVar);
   }
 
+  _getBodyReference() {
+    return new BodyReference(this.body, this.body.length);
+  }
+
   execute(filename: string, code: string, map: string,
       onError: void | ((Realm, Value) => void)) {
     let profile = this.options.profile ? true : false;
@@ -429,6 +433,7 @@ export class Serializer {
         descriptorId = t.identifier(this.descriptorNameGenerator.generate(descriptorsKey));
         let declar = t.variableDeclaration("var", [
           t.variableDeclarator(descriptorId, t.objectExpression(descProps))]);
+        // The descriptors are used across all scopes, and thus must be declared in the prelude.
         this.prelude.push(declar);
         this.descriptors.set(descriptorsKey, descriptorId);
       }
@@ -511,24 +516,37 @@ export class Serializer {
 
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
   _getTarget(val: Value, scopes: Set<Scope>): { body: Array<BabelNodeStatement>, usedBySingleFunctionValue?: true } {
+    // All relevant values were visited in at least one scope.
+    invariant(scopes.size >= 1);
+
+    // First, let's figure out from which function and generator scopes this value is referenced.
     let functionValues = [];
     let generators = [];
     for (let scope of scopes) {
       if (scope instanceof FunctionValue) functionValues.push(scope);
       else {
         invariant(scope instanceof Generator);
-        if (scope === this.realm.generator) return { body: this.mainBody };
+        if (scope === this.realm.generator) {
+          // This value is used from the main generator scope. This means that we need to emit the value and its
+          // initialization code into the main body, and cannot delay initialization.
+          return { body: this.mainBody };
+        }
         generators.push(scope);
       }
     }
 
     if (generators.length === 0) {
+      invariant(functionValues.length >= 1);
       if (functionValues.length === 1 && this.detectValuesUsedBySingleFunctionValue) {
         let initializer = this.functionInitializers.get(functionValues[0]);
         if (initializer === undefined) this.functionInitializers.set(functionValues[0], initializer = { body: [], values: [] });
         initializer.values.push(val);
         return { body: initializer.body, usedBySingleFunctionValue: true };
       }
+
+      // This value is referenced by at least two functions.
+      // TODO: We could still delay the initialization of this value, and move the initialization code
+      // into a helper function that is triggered once by the referencing functions.
       return { body: this.mainBody };
     }
 
@@ -562,6 +580,8 @@ export class Serializer {
     let name = this.valueNameGenerator.generate(val.__originalName || "");
     let id;
     if (target.usedBySingleFunctionValue) {
+      // The visitor ensures that all function values are alwauys associated with the
+      // realm generator scope, so they are never just used by a single function scope.
       invariant(!(val instanceof FunctionValue));
       this.needsVars = true;
       id = this.allocateIndexedVar();
@@ -601,7 +621,13 @@ export class Serializer {
       }
     } else {
       if (target.usedBySingleFunctionValue) {
+        // When `target.usedBySingleFunctionValue` is true, then according to the
+        // control-flow above, `id` must have been created by a call to
+        // `allocateIndexedVar`, which always returns a member expression.
         invariant(id.type === "MemberExpression");
+        // We inlined this value, so the indexed variable we allocated earlier is
+        // not actually needed, so we release it back to a pool of indexed vars
+        // that can be re-used.
         this.releaseIndexedVar(((id: any): BabelNodeMemberExpression));
       }
 
@@ -676,7 +702,7 @@ export class Serializer {
         if (delayReason) return delayReason;
       }
     } else if (val instanceof FunctionValue) {
-      if (!this.firstFunctionUsages.has(val)) this.firstFunctionUsages.set(val, new BodyReference(this.body, this.body.length));
+      if (!this.firstFunctionUsages.has(val)) this.firstFunctionUsages.set(val, this._getBodyReference());
       return false;
     } else if (val instanceof AbstractValue) {
       if (val.hasIdentifier() && !this.declaredDerivedIds.has(val.getIdentifier())) return val.getIdentifier();
@@ -975,7 +1001,7 @@ export class Serializer {
     let delayed = 1;
     let undelay = () => {
       if (--delayed === 0) {
-        instance.insertionPoint = new BodyReference(this.body, this.body.length);
+        instance.insertionPoint = this._getBodyReference();
         this.functionInstances.push(instance);
 
         let code = val.$ECMAScriptCode;
@@ -1365,6 +1391,9 @@ export class Serializer {
         for (let instance of instances) {
           let { functionValue, serializedBindings, scopeInstances } = instance;
           let id = this._getValIdForReference(functionValue);
+          // For a `FunctionValue`, value ids are always proper identifiers
+          // as the visitor ensures that `FunctionValues` are visited in the
+          // realm generator scope and thus do not get an indexed var.
           invariant(id.type === "Identifier");
           let funcParams = params.slice();
           let funcNode = t.functionDeclaration(id, funcParams, ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement));
@@ -1483,6 +1512,7 @@ export class Serializer {
 
           factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
 
+          // factory functions do not depend on any nested generator scope, so they go to the prelude
           this.prelude.push(factoryNode);
 
           traverse(
@@ -1561,6 +1591,7 @@ export class Serializer {
             [t.numericLiteral(this.capturedScopeInstanceIdx)])
         )
       ]);
+      // The `scopeVar` must be visible in all scopes.
       this.prelude.unshift(scopeVar);
     }
 
@@ -1579,6 +1610,8 @@ export class Serializer {
       if (scopeInitializer !== undefined) {
         let scopeInitializerBody = scopeInitializer.body;
         if (scopeInitializerBody.length === 0) {
+          // Deleting spurious entry, as we later count how many functions
+          // got initializers, to ensure we reach a fixed point in testing.
           this.functionInitializers.delete(functionValue);
           continue;
         }
@@ -1605,7 +1638,7 @@ export class Serializer {
           t.blockStatement(scopeInitializerBody));
         invariant(funcNode.type === "FunctionDeclaration");
         let blockStatement: BabelNodeBlockStatement = ((funcNode: any): BabelNodeFunctionDeclaration).body;
-        blockStatement.body = [initializerStatement].concat(blockStatement.body);
+        blockStatement.body.unshift(initializerStatement);
       }
     }
 
@@ -1736,6 +1769,15 @@ export class Serializer {
       ]));
     }
     if (this.needsVars) {
+      // We need to allocate an array which holds indexed variables,
+      // representing values that are not needed along the main initialization path,
+      // and whose initialization is getting delaying until a later point, e.g.
+      // within a residual function.
+      // We know that we need up to `nextVarsIndex` many slots in the array,
+      // so we allocate an array of that size.
+      // We fill the with references to itself, representing uninitialized values.
+      // This is to enables efficient checks of the following form:
+      // `if (vars[someIndex] === vars) { /* initialize vars[someIndex] */ }`
       body.push(t.variableDeclaration("var", [
         t.variableDeclarator(
           this.varsExpression,
