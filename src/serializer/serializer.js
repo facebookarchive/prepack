@@ -580,7 +580,7 @@ export class Serializer {
     let name = this.valueNameGenerator.generate(val.__originalName || "");
     let id;
     if (target.usedBySingleFunctionValue) {
-      // The visitor ensures that all function values are alwauys associated with the
+      // The visitor ensures that all function values are always associated with the
       // realm generator scope, so they are never just used by a single function scope.
       invariant(!(val instanceof FunctionValue));
       this.needsVars = true;
