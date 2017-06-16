@@ -47,7 +47,7 @@ Detailed instructions and the API can be found at [Prepack CLI: Getting Started]
 1. `git submodule init`
 2. `git submodule update --init`
 3. Get npm and node, then do
-   `npm install`
+   `yarn install`
 
 ### How to build, lint, type check
 
