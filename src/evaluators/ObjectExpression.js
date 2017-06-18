@@ -27,10 +27,10 @@ import {
   ToStringPartial
 } from "../methods/index.js";
 import invariant from "../invariant.js";
-import type { BabelNodeObjectExpression, BabelNodeObjectProperty, BabelNodeObjectMethod } from "babel-types";
+import type { BabelNodeObjectExpression, BabelNodeObjectProperty, BabelNodeObjectMethod, BabelNodeClassMethod } from "babel-types";
 
 // Returns the result of evaluating PropertyName.
-export function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): PropertyKeyValue {
+export function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): PropertyKeyValue {
   if (prop.computed) {
     let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode)).throwIfNotConcrete();
     return ToPropertyKey(realm, propertyKeyName);
