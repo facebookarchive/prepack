@@ -19,5 +19,6 @@ import { Value } from "../values/index.js";
 export default function (
   ast: BabelNodeClassDeclaration, strictCode: boolean, env: LexicalEnvironment, realm: Realm
 ): [AbruptCompletion | Value, BabelNodeClassDeclaration, Array<BabelNodeStatement>] {
-  throw new Error("TODO: ClassDeclaration");
+  let result = env.evaluateCompletionDeref(ast, strictCode);
+  return [result, ast, []];
 }
