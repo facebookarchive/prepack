@@ -1003,6 +1003,7 @@ function runTest(
       case "TODO: YieldExpression":
       case "Unknown node ArrayPattern":
       case "expected single name":
+      case "Unsupported node type Super":
         return null;
       default:
         if (err.value && err.value.$Prototype &&
