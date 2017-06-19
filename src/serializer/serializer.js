@@ -91,7 +91,7 @@ export class Serializer {
     this.options = serializerOptions;
   }
 
-  _init(detectValuesUsedBySingleFunctionValue: boolean, collectValToRefCountOnly: boolean) {
+  _init(collectValToRefCountOnly: boolean) {
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.serializationStack = [];
     this.delayedSerializations = [];
@@ -118,16 +118,17 @@ export class Serializer {
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
     this.scopeNameGenerator = this.preludeGenerator.createNameGenerator("__scope_");
+    this.initializerNameGenerator = this.preludeGenerator.createNameGenerator("__init_");
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
     this.firstFunctionUsages = new Map();
     this.functionPrototypes = new Map();
     this.serializedValues = new Set();
-    this.functionInitializers = new Map();
+    this.functionInitializerInfos = new Map();
+    this.initializers = new Map();
     this.varsExpression = t.identifier(this.scopeNameGenerator.generate("vars"));
     this.nextVarsIndex = 0;
     this.availableVars = [];
-    this.detectValuesUsedBySingleFunctionValue = detectValuesUsedBySingleFunctionValue;
     this.collectValToRefCountOnly = collectValToRefCountOnly;
     if (collectValToRefCountOnly) this.valToRefCount = new Map();
   }
@@ -163,6 +164,7 @@ export class Serializer {
   descriptorNameGenerator: NameGenerator;
   factoryNameGenerator: NameGenerator;
   scopeNameGenerator: NameGenerator;
+  initializerNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   requireReturns: Map<number | string, BabelNodeExpression>;
@@ -174,14 +176,14 @@ export class Serializer {
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
-  functionInitializers: Map<FunctionValue, { body: Array<BabelNodeStatement>, values: Array<Value> }>;
+  functionInitializerInfos: Map<FunctionValue, { ownId: string, initializerIds: Set<string> }>;
+  initializers: Map<string, { id: string, order: number, body: Array<BabelNodeStatement>, values: Array<Value> }>;
   serializedValues: Set<Value>;
   serializedScopes: Map<DeclarativeEnvironmentRecord, ScopeBinding>;
   capturedScopeInstanceIdx: number;
   varsExpression: BabelNodeIdentifier;
   nextVarsIndex: number;
   availableVars: Array<BabelNodeMemberExpression>;
-  detectValuesUsedBySingleFunctionValue: boolean;
 
   allocateIndexedVar(): BabelNodeMemberExpression {
     if (this.availableVars.length > 0) {
@@ -537,17 +539,18 @@ export class Serializer {
 
     if (generators.length === 0) {
       invariant(functionValues.length >= 1);
-      if (functionValues.length === 1 && this.detectValuesUsedBySingleFunctionValue) {
-        let initializer = this.functionInitializers.get(functionValues[0]);
-        if (initializer === undefined) this.functionInitializers.set(functionValues[0], initializer = { body: [], values: [] });
-        initializer.values.push(val);
-        return { body: initializer.body, usedBySingleFunctionValue: true };
+      let infos = [];
+      for (let functionValue of functionValues) {
+        let info = this.functionInitializerInfos.get(functionValue);
+        if (info === undefined) this.functionInitializerInfos.set(functionValue, info = { ownId: this.functionInitializerInfos.size.toString(), initializerIds: new Set() });
+        infos.push(info);
       }
-
-      // This value is referenced by at least two functions.
-      // TODO: We could still delay the initialization of this value, and move the initialization code
-      // into a helper function that is triggered once by the referencing functions.
-      return { body: this.mainBody };
+      let id = infos.map(info => info.ownId).sort().join();
+      for (let info of infos) info.initializerIds.add(id);
+      let initializer = this.initializers.get(id);
+      if (initializer === undefined) this.initializers.set(id, initializer = { id, order: infos.length, values: [], body: [] });
+      initializer.values.push(val);
+      return { body: initializer.body, usedBySingleFunctionValue: true };
     }
 
     // TODO: What does this mean? Where should the code go? Figure this out.
@@ -1338,6 +1341,21 @@ export class Serializer {
           )));
   }
 
+  _scrubFunctionInitializers() {
+    // Deleting trivial entries in order to avoid creating empty initialization functions that serve no purpose.
+    for (let initializer of this.initializers.values())
+      if (initializer.body.length === 0) this.initializers.delete(initializer.id);
+    for (let [functionValue, info] of this.functionInitializerInfos) {
+      for (let id of info.initializerIds) {
+        let initializer = this.initializers.get(id);
+        if (initializer === undefined) {
+          info.initializerIds.delete(id);
+        }
+      }
+      if (info.initializerIds.size === 0) this.functionInitializerInfos.delete(functionValue);
+    }
+  }
+
   _spliceFunctions() {
     let functionBodies = new Map();
     function getFunctionBody(instance: FunctionInstance): Array<BabelNodeStatement> {
@@ -1538,8 +1556,8 @@ export class Serializer {
             let node;
             let firstUsage = this.firstFunctionUsages.get(functionValue);
             invariant(insertionPoint !== undefined);
-            let scopeInitializer = this.functionInitializers.get(functionValue);
-            if (scopeInitializer !== undefined && scopeInitializer.body.length > 0 ||
+            let initializerInfo = this.functionInitializerInfos.get(functionValue);
+            if (initializerInfo !== undefined ||
                 usesThis ||
                 firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint) ||
                 this.functionPrototypes.get(functionValue) !== undefined) {
@@ -1605,37 +1623,70 @@ export class Serializer {
     }
 
     // Inject initializer code for indexed vars into functions
-    for (let [functionValue, funcNode] of funcNodes) {
-      let scopeInitializer = this.functionInitializers.get(functionValue);
-      if (scopeInitializer !== undefined) {
-        let scopeInitializerBody = scopeInitializer.body;
-        if (scopeInitializerBody.length === 0) {
-          // Deleting spurious entry, as we later count how many functions
-          // got initializers, to ensure we reach a fixed point in testing.
-          this.functionInitializers.delete(functionValue);
-          continue;
-        }
-        let location;
-        for (let value of scopeInitializer.values) {
-          location = this.refs.get(value);
-          if (location !== undefined) break;
-        }
-        if (location === undefined) {
-          // Take care of side-effecting code that is associated with an inlined value
-          location = this.allocateIndexedVar();
-          scopeInitializerBody.unshift(
-            t.expressionStatement(
-              t.assignmentExpression(
-                "=",
-                location,
-                Serializer.voidExpression
-              )
+    let sharedInitializerFunctions = new Map();
+    let conditionalInitialization = (initializedValues, initializationStatements) => {
+      let location;
+      for (let value of initializedValues) {
+        location = this.refs.get(value);
+        if (location !== undefined) break;
+      }
+      if (location === undefined) {
+        // Take care of side-effecting code that is associated with an inlined value
+        location = this.allocateIndexedVar();
+        initializationStatements.unshift(
+          t.expressionStatement(
+            t.assignmentExpression(
+              "=",
+              location,
+              Serializer.voidExpression
             )
-          );
+          )
+        );
+      }
+      return t.ifStatement(
+        t.binaryExpression("===", location, this.varsExpression),
+        t.blockStatement(initializationStatements));
+    };
+    for (let [functionValue, funcNode] of funcNodes) {
+      let initializerInfo = this.functionInitializerInfos.get(functionValue);
+      if (initializerInfo !== undefined) {
+        invariant(initializerInfo.initializerIds.size > 0);
+        let ownInitializer = this.initializers.get(initializerInfo.ownId);
+        let initializedValues;
+        let initializationStatements = [];
+        let initializers = [];
+        for (let initializerId of initializerInfo.initializerIds) {
+          let initializer = this.initializers.get(initializerId);
+          invariant(initializer !== undefined);
+          invariant(initializer.body.length > 0);
+          initializers.push(initializer);
         }
-        let initializerStatement = t.ifStatement(
-          t.binaryExpression("===", location, this.varsExpression),
-          t.blockStatement(scopeInitializerBody));
+        // Sorting initializers by the number of scopes they are required by.
+        // Note that the scope sets form a lattice, and this sorting effectively
+        // ensures that value initializers that depend on other value initializers
+        // get called in the right order.
+        initializers.sort((i, j) => j.order - i.order);
+        for (let initializer of initializers) {
+          if (initializerInfo.initializerIds.size === 1 || initializer === ownInitializer) {
+            initializedValues = initializer.values;
+          }
+          if (initializer === ownInitializer) {
+            initializationStatements = initializationStatements.concat(ownInitializer.body);
+          } else {
+            let f = sharedInitializerFunctions.get(initializer.id);
+            if (f === undefined) {
+              sharedInitializerFunctions.set(initializer.id, f = t.identifier(this.initializerNameGenerator.generate()));
+              this.prelude.push(
+                t.functionDeclaration(f, [],
+                  t.blockStatement([conditionalInitialization(initializer.values, initializer.body)])
+                )
+              )
+            }
+            initializationStatements.push(t.expressionStatement(t.callExpression(f, [])));
+          }
+        }
+
+        let initializerStatement = conditionalInitialization(initializedValues || [], initializationStatements);
         invariant(funcNode.type === "FunctionDeclaration");
         let blockStatement: BabelNodeBlockStatement = ((funcNode: any): BabelNodeFunctionDeclaration).body;
         blockStatement.body.unshift(initializerStatement);
@@ -1733,6 +1784,7 @@ export class Serializer {
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
       this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
 
+    this._scrubFunctionInitializers();
     let hoistedBody = this._spliceFunctions();
 
     // add strict modes
@@ -2045,9 +2097,7 @@ export class Serializer {
     // Serialize for the first time in order to gather reference counts
     if (!this.options.singlePass) {
       if (this.options.profile) console.time("[Profiling] Reference Counts Pass");
-      this._init(
-        /*detectValuesUsedBySingleFunctionValue*/true,
-        /*collectValToRefCountOnly*/true);
+      this._init(/*collectValToRefCountOnly*/true);
       this.serialize();
       if (this.logger.hasErrors()) return undefined;
       if (this.options.profile) console.timeEnd("[Profiling] Reference Counts Pass");
@@ -2055,11 +2105,7 @@ export class Serializer {
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (this.options.profile) console.time("[Profiling] Serialize Pass");
-    // To reach a fixed point in testing, disable optimization to detect and optimize values used by single functions
-    // in case there is just one function with an initializer
-    this._init(
-      /*detectValuesUsedBySingleFunctionValue*/!this.functionInitializers || this.functionInitializers.size !== 1,
-      /*collectValToRefCountOnly*/false);
+    this._init(/*collectValToRefCountOnly*/false);
     let ast = this.serialize();
     let generated = generate(
         ast,
