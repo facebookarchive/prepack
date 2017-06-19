@@ -15,6 +15,11 @@ import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import type { BabelNodeClassExpression } from "babel-types";
 
-export default function (ast: BabelNodeClassExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeClassExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   throw new Error("TODO: ClassExpression");
 }

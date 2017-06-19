@@ -16,7 +16,7 @@ import {
   NewPromiseCapability,
   PerformPromiseAll,
   PerformPromiseRace,
-  CreateResolvingFunctions
+  CreateResolvingFunctions,
 } from "../../methods/promise.js";
 import {
   IsCallable,
@@ -25,12 +25,12 @@ import {
   GetIterator,
   SameValuePartial,
   Get,
-  IsPromise
+  IsPromise,
 } from "../../methods/index.js";
 import { IteratorClose } from "../../methods/iterator.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 25.4.3.1
   let func = new NativeFunctionValue(realm, "Promise", "Promise", 1, (context, [executor], argCount, NewTarget) => {
     // 1. If NewTarget is undefined, throw a TypeError exception.
@@ -49,7 +49,7 @@ export default function (realm: Realm): NativeFunctionValue {
       $PromiseResult: undefined,
       $PromiseFulfillReactions: undefined,
       $PromiseRejectReactions: undefined,
-      $PromiseIsHandled: undefined
+      $PromiseIsHandled: undefined,
     });
 
     // 4. Set promise's [[PromiseState]] internal slot to "pending".
@@ -70,7 +70,10 @@ export default function (realm: Realm): NativeFunctionValue {
     // 9. Let completion be Call(executor, undefined, « resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]] »).
     let completion;
     try {
-      completion = Call(realm, executor, realm.intrinsics.undefined, [resolvingFunctions.resolve, resolvingFunctions.reject]);
+      completion = Call(realm, executor, realm.intrinsics.undefined, [
+        resolvingFunctions.resolve,
+        resolvingFunctions.reject,
+      ]);
     } catch (err) {
       if (err instanceof AbruptCompletion) {
         completion = err;
@@ -111,8 +114,7 @@ export default function (realm: Realm): NativeFunctionValue {
         // 5. IfAbruptRejectPromise(iterator, promiseCapability).
         Call(realm, promiseCapability.reject, realm.intrinsics.undefined, [e.value]);
         return promiseCapability.promise;
-      } else
-        throw e;
+      } else throw e;
     }
 
     // 6. Let iteratorRecord be Record {[[Iterator]]: iterator, [[Done]]: false}.
@@ -123,7 +125,8 @@ export default function (realm: Realm): NativeFunctionValue {
     try {
       invariant(C instanceof FunctionValue);
       result = PerformPromiseAll(realm, iteratorRecord, C, promiseCapability);
-    } catch (e) { // 8. If result is an abrupt completion, then
+    } catch (e) {
+      // 8. If result is an abrupt completion, then
       if (e instanceof AbruptCompletion) {
         // a. If iteratorRecord.[[Done]] is false, let result be IteratorClose(iterator, result).
         if (iteratorRecord.$Done === false) {
@@ -132,8 +135,7 @@ export default function (realm: Realm): NativeFunctionValue {
           } catch (resultCompletion) {
             if (resultCompletion instanceof AbruptCompletion) {
               result = resultCompletion.value;
-            } else
-              throw resultCompletion;
+            } else throw resultCompletion;
           }
         } else {
           result = e.value;
@@ -142,8 +144,7 @@ export default function (realm: Realm): NativeFunctionValue {
         // b. IfAbruptRejectPromise(result, promiseCapability).
         Call(realm, promiseCapability.reject, realm.intrinsics.undefined, [result]);
         return promiseCapability.promise;
-      } else
-        throw e;
+      } else throw e;
     }
 
     // 9. Return Completion(result).
@@ -172,8 +173,7 @@ export default function (realm: Realm): NativeFunctionValue {
         // 5. IfAbruptRejectPromise(iterator, promiseCapability).
         Call(realm, promiseCapability.reject, realm.intrinsics.undefined, [e.value]);
         return promiseCapability.promise;
-      } else
-        throw e;
+      } else throw e;
     }
 
     // 6. Let iteratorRecord be Record {[[Iterator]]: iterator, [[Done]]: false}.
@@ -183,7 +183,8 @@ export default function (realm: Realm): NativeFunctionValue {
     let result;
     try {
       result = PerformPromiseRace(realm, iteratorRecord, promiseCapability, C);
-    } catch (e) { // 8. If result is an abrupt completion, then
+    } catch (e) {
+      // 8. If result is an abrupt completion, then
       if (e instanceof AbruptCompletion) {
         // a. If iteratorRecord.[[Done]] is false, let result be IteratorClose(iterator, result).
         if (iteratorRecord.$Done === false) {
@@ -192,8 +193,7 @@ export default function (realm: Realm): NativeFunctionValue {
           } catch (resultCompletion) {
             if (resultCompletion instanceof AbruptCompletion) {
               result = resultCompletion.value;
-            } else
-              throw resultCompletion;
+            } else throw resultCompletion;
           }
         } else {
           result = e.value;
@@ -202,8 +202,7 @@ export default function (realm: Realm): NativeFunctionValue {
         // b. IfAbruptRejectPromise(result, promiseCapability).
         Call(realm, promiseCapability.reject, realm.intrinsics.undefined, [result]);
         return promiseCapability.promise;
-      } else
-        throw e;
+      } else throw e;
     }
 
     // 9. Return Completion(result).
@@ -261,7 +260,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 25.4.4.6
-  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, (context) => {
+  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, context => {
     // 1. Return the this value
     return context;
   });

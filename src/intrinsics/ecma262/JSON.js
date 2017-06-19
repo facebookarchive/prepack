@@ -10,8 +10,35 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NullValue, BooleanValue, StringValue, PrimitiveValue, ArrayValue, ObjectValue, NumberValue, AbstractValue, UndefinedValue, Value, AbstractObjectValue } from "../../values/index.js";
-import { Call, ToLength, EnumerableOwnProperties, ToInteger, ToNumber, IsArray, Get, CreateDataProperty, ObjectCreate, ToString, ToStringPartial, IsCallable, HasSomeCompatibleType, ThrowIfMightHaveBeenDeleted } from "../../methods/index.js";
+import {
+  NullValue,
+  BooleanValue,
+  StringValue,
+  PrimitiveValue,
+  ArrayValue,
+  ObjectValue,
+  NumberValue,
+  AbstractValue,
+  UndefinedValue,
+  Value,
+  AbstractObjectValue,
+} from "../../values/index.js";
+import {
+  Call,
+  ToLength,
+  EnumerableOwnProperties,
+  ToInteger,
+  ToNumber,
+  IsArray,
+  Get,
+  CreateDataProperty,
+  ObjectCreate,
+  ToString,
+  ToStringPartial,
+  IsCallable,
+  HasSomeCompatibleType,
+  ThrowIfMightHaveBeenDeleted,
+} from "../../methods/index.js";
 import { InternalizeJSONProperty } from "../../methods/json.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
@@ -26,7 +53,7 @@ type Context = {
   ReplacerFunction?: ObjectValue,
   stack: Array<ObjectValue>,
   indent: string,
-  gap: string
+  gap: string,
 };
 
 function SerializeJSONArray(realm: Realm, value: ObjectValue, context: Context): string {
@@ -62,7 +89,8 @@ function SerializeJSONArray(realm: Realm, value: ObjectValue, context: Context):
     if (strP === undefined) {
       // i. Append "null" to partial.
       partial.push("null");
-    } else { // c. Else,
+    } else {
+      // c. Else,
       // i. Append strP to partial.
       partial.push(strP);
     }
@@ -76,7 +104,8 @@ function SerializeJSONArray(realm: Realm, value: ObjectValue, context: Context):
   if (!partial.length) {
     // a. Let final be "[]".
     final = "[]";
-  } else { // 10. Else,
+  } else {
+    // 10. Else,
     // a. If gap is the empty String, then
     if (!context.gap) {
       // i. Let properties be a String formed by concatenating all the element Strings of partial with each adjacent pair of Strings separated with code unit 0x002C (COMMA). A comma is not inserted either before the first String or after the last String.
@@ -84,7 +113,8 @@ function SerializeJSONArray(realm: Realm, value: ObjectValue, context: Context):
 
       // ii. Let final be the result of concatenating "[", properties, and "]".
       final = `[${properties}]`;
-    } else { // b. Else,
+    } else {
+      // b. Else,
       // i. Let separator be the result of concatenating code unit 0x002C (COMMA), code unit 0x000A (LINE FEED), and indent.
       // ii. Let properties be a String formed by concatenating all the element Strings of partial with each adjacent pair of Strings separated with separator. The separator String is not inserted either before the first String or after the last String.
       // iii. Let final be the result of concatenating "[", code unit 0x000A (LINE FEED), indent, properties, code unit 0x000A (LINE FEED), stepback, and "]".
@@ -125,7 +155,8 @@ function SerializeJSONObject(realm: Realm, value: ObjectValue, context: Context)
   if (context.PropertyList !== undefined) {
     // a. Let K be PropertyList.
     K = context.PropertyList;
-  } else { // 6. Else,
+  } else {
+    // 6. Else,
     // a. Let K be ? EnumerableOwnProperties(value, "key").
     K = EnumerableOwnProperties(realm, value, "key");
   }
@@ -167,7 +198,8 @@ function SerializeJSONObject(realm: Realm, value: ObjectValue, context: Context)
   if (!partial.length) {
     // a. Let final be "{}".
     final = "{}";
-  } else { // 10. Else,
+  } else {
+    // 10. Else,
     // a. If gap is the empty String, then
     if (!context.gap) {
       // i. Let properties be a String formed by concatenating all the element Strings of partial with each adjacent pair of Strings separated with code unit 0x002C (COMMA). A comma is not inserted either before the first String or after the last String.
@@ -175,11 +207,10 @@ function SerializeJSONObject(realm: Realm, value: ObjectValue, context: Context)
 
       // ii. Let final be the result of concatenating "{", properties, and "}".
       final = `{${properties}}`;
-    } else { // b. Else gap is not the empty String,
+    } else {
+      // b. Else gap is not the empty String,
       // i. Let separator be the result of concatenating code unit 0x002C (COMMA), code unit 0x000A (LINE FEED), and indent.
-
       // ii. Let properties be a String formed by concatenating all the element Strings of partial with each adjacent pair of Strings separated with separator. The separator String is not inserted either before the first String or after the last String.
-
       // iii. Let final be the result of concatenating "{", code unit 0x000A (LINE FEED), indent, properties, code unit 0x000A (LINE FEED), stepback, and "}".
     }
   }
@@ -222,10 +253,12 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
     if (value.$NumberData) {
       // b. Let value be ? ToNumber(value).
       value = new NumberValue(realm, ToNumber(realm, value));
-    } else if (value.$StringData) { // c. Else if value has a [[StringData]] internal slot, then
+    } else if (value.$StringData) {
+      // c. Else if value has a [[StringData]] internal slot, then
       // d. Let value be ? ToString(value).
       value = new StringValue(realm, ToString(realm, value));
-    } else if (value.$BooleanData) { // e. Else if value has a [[BooleanData]] internal slot, then
+    } else if (value.$BooleanData) {
+      // e. Else if value has a [[BooleanData]] internal slot, then
       // f. Let value be the value of the [[BooleanData]] internal slot of value.
       value = value.$BooleanData;
     }
@@ -248,7 +281,8 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
     // a. If value is finite, return ! ToString(value).
     if (isFinite(value.value)) {
       return ToString(realm, value);
-    } else { // b. Else, return "null".
+    } else {
+      // b. Else, return "null".
       return "null";
     }
   }
@@ -261,7 +295,8 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
     // b. If isArray is true, return ? SerializeJSONArray(value).
     if (isArray) {
       return SerializeJSONArray(realm, value, context);
-    } else { // c. Else, return ? SerializeJSONObject(value).
+    } else {
+      // c. Else, return ? SerializeJSONObject(value).
       return SerializeJSONObject(realm, value, context);
     }
   }
@@ -278,8 +313,7 @@ function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValu
     invariant(binding.descriptor !== undefined);
     let value = binding.descriptor.value;
     ThrowIfMightHaveBeenDeleted(value);
-    if (value === undefined)
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(val, key); // cannot handle accessors
+    if (value === undefined) throw AbstractValue.createIntrospectionErrorThrowCompletion(val, key); // cannot handle accessors
     CreateDataProperty(realm, template, key, InternalJSONClone(realm, value));
   }
   if (valTemplate.isPartial()) template.makePartial();
@@ -290,19 +324,26 @@ function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValu
 function InternalJSONClone(realm: Realm, val: Value): Value {
   if (val instanceof AbstractValue) {
     if (val instanceof AbstractObjectValue) {
-      return realm.createAbstract(new TypesDomain(ObjectValue), new ValuesDomain(new Set([InternalGetTemplate(realm, val)])),
-        [val], ([node]) =>
-        buildJSONParse({
-          STRING: buildJSONStringify({
-            OBJECT: node
+      return realm.createAbstract(
+        new TypesDomain(ObjectValue),
+        new ValuesDomain(new Set([InternalGetTemplate(realm, val)])),
+        [val],
+        ([node]) =>
+          buildJSONParse({
+            STRING: buildJSONStringify({
+              OBJECT: node,
+            }),
           })
-        }));
+      );
     }
     // TODO: NaN and Infinity must be mapped to null.
     return val;
   }
-  if (val instanceof NumberValue && !isFinite(val.value) ||
-    val instanceof UndefinedValue || val instanceof NullValue) {
+  if (
+    (val instanceof NumberValue && !isFinite(val.value)) ||
+    val instanceof UndefinedValue ||
+    val instanceof NullValue
+  ) {
     return realm.intrinsics.null;
   }
   if (val instanceof PrimitiveValue) {
@@ -341,7 +382,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
   invariant(false);
 }
 
-export default function (realm: Realm): ObjectValue {
+export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "JSON");
 
   // ECMA262 24.3.3
@@ -367,7 +408,8 @@ export default function (realm: Realm): ObjectValue {
       if (IsCallable(realm, replacer)) {
         // i. Let ReplacerFunction be replacer.
         ReplacerFunction = replacer;
-      } else { // b. Else,
+      } else {
+        // b. Else,
         // i. Let isArray be ? IsArray(replacer).
         let isArray = IsArray(realm, replacer);
 
@@ -394,9 +436,11 @@ export default function (realm: Realm): ObjectValue {
             // 3. If Type(v) is String, let item be v.
             if (v instanceof StringValue) {
               item = v;
-            } else if (v instanceof NumberValue) { // 4. Else if Type(v) is Number, let item be ! ToString(v).
+            } else if (v instanceof NumberValue) {
+              // 4. Else if Type(v) is Number, let item be ! ToString(v).
               item = new StringValue(realm, ToString(realm, v));
-            } else if (v instanceof ObjectValue) { // 5. Else if Type(v) is Object, then
+            } else if (v instanceof ObjectValue) {
+              // 5. Else if Type(v) is Object, then
               // a. If v has a [[StringData]] or [[NumberData]] internal slot, let item be ? ToString(v).
               if (v.$StringData || v.$NumberData) {
                 item = new StringValue(realm, ToString(realm, v));
@@ -422,7 +466,8 @@ export default function (realm: Realm): ObjectValue {
       if (space.$NumberData) {
         // i. Let space be ? ToNumber(space).
         space = new NumberValue(realm, ToNumber(realm, space));
-      } else if (space.$StringData) { // b. Else if space has a [[StringData]] internal slot, then
+      } else if (space.$StringData) {
+        // b. Else if space has a [[StringData]] internal slot, then
         // i. Let space be ? ToString(space).
         space = new StringValue(realm, ToString(realm, space));
       }
@@ -436,10 +481,12 @@ export default function (realm: Realm): ObjectValue {
 
       // b. Set gap to a String containing space occurrences of code unit 0x0020 (SPACE). This will be the empty String if space is less than 1.
       gap = Array(Math.max(0, space.value)).join(" ");
-    } else if (space instanceof StringValue) { // 7. Else if Type(space) is String, then
+    } else if (space instanceof StringValue) {
+      // 7. Else if Type(space) is String, then
       // a. If the number of elements in space is 10 or less, set gap to space; otherwise set gap to a String consisting of the first 10 elements of space.
       gap = space.value.length <= 10 ? space.value : space.value.substring(0, 10);
-    } else { // 8. Else,
+    } else {
+      // 8. Else,
       // a. Set gap to the empty String.
       gap = "";
     }
@@ -451,11 +498,16 @@ export default function (realm: Realm): ObjectValue {
     if (value instanceof AbstractValue) {
       // Return abstract result. This enables cloning via JSON.parse(JSON.stringify(...)).
       let clonedValue = InternalJSONClone(realm, value);
-      let result = realm.deriveAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [value, clonedValue], ([node]) =>
-        buildJSONStringify({
-          OBJECT: node
-        }),
-        "JSON.stringify(...)");
+      let result = realm.deriveAbstract(
+        new TypesDomain(StringValue),
+        ValuesDomain.topVal,
+        [value, clonedValue],
+        ([node]) =>
+          buildJSONStringify({
+            OBJECT: node,
+          }),
+        "JSON.stringify(...)"
+      );
       if (clonedValue instanceof ObjectValue) {
         let iName = result.intrinsicName;
         invariant(iName);
@@ -476,7 +528,7 @@ export default function (realm: Realm): ObjectValue {
       ReplacerFunction,
       stack,
       indent,
-      gap
+      gap,
     });
     if (str === undefined) {
       return realm.intrinsics.undefined;
@@ -498,9 +550,10 @@ export default function (realm: Realm): ObjectValue {
         template = InternalGetTemplate(realm, clonedValue);
         template._isSimple = realm.intrinsics.true;
       }
-      let buildNode = ([node]) => buildJSONParse({
-        STRING: node
-      });
+      let buildNode = ([node]) =>
+        buildJSONParse({
+          STRING: node,
+        });
       let types = new TypesDomain(type);
       let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
       unfiltered = realm.deriveAbstract(types, values, [text], buildNode, "JSON.parse(...)");
@@ -527,7 +580,10 @@ export default function (realm: Realm): ObjectValue {
       }
 
       // 6. Assert: unfiltered will be either a primitive value or an object that is defined by either an ArrayLiteral or an ObjectLiteral.
-      invariant(HasSomeCompatibleType(unfiltered, PrimitiveValue, ObjectValue, ArrayValue), "expected primitive, object or array");
+      invariant(
+        HasSomeCompatibleType(unfiltered, PrimitiveValue, ObjectValue, ArrayValue),
+        "expected primitive, object or array"
+      );
     }
 
     // 7. If IsCallable(reviver) is true, then
@@ -546,7 +602,8 @@ export default function (realm: Realm): ObjectValue {
 
       // e. Return ? InternalizeJSONProperty(root, rootName).
       return InternalizeJSONProperty(realm, reviver, root, rootName);
-    } else { // 8. Else,
+    } else {
+      // 8. Else,
       // a. Return unfiltered.
       return unfiltered;
     }

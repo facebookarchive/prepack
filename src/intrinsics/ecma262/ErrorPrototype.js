@@ -13,7 +13,7 @@ import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
 import { ToStringPartial, Get } from "../../methods/index.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   return build("Error", realm, obj);
 }
 
@@ -25,7 +25,7 @@ export function build(name: string, realm: Realm, obj: ObjectValue): void {
   obj.defineNativeProperty("name", new StringValue(realm, name));
 
   // ECMA262 19.5.3.4
-  obj.defineNativeMethod("toString", 0, (context) => {
+  obj.defineNativeMethod("toString", 0, context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 

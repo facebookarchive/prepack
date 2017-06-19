@@ -20,43 +20,43 @@ import invariant from "../invariant.js";
 export type TryQuery<T> = (f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean) => T;
 
 export type FunctionInstance = {
-  serializedBindings: SerializedBindings;
-  functionValue: FunctionValue;
-  insertionPoint?: BodyReference;
-  scopeInstances: Set<ScopeBinding>;
+  serializedBindings: SerializedBindings,
+  functionValue: FunctionValue,
+  insertionPoint?: BodyReference,
+  scopeInstances: Set<ScopeBinding>,
 };
 
 export type Names = { [key: string]: true };
 export type FunctionInfo = {
-  names: Names;
-  modified: Names;
-  usesArguments: boolean;
-  usesThis: boolean;
-}
+  names: Names,
+  modified: Names,
+  usesArguments: boolean,
+  usesThis: boolean,
+};
 
 export type SerializedBindings = { [key: string]: SerializedBinding };
 export type SerializedBinding = {
-  value: void | Value;
+  value: void | Value,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
-  serializedValue: void | BabelNodeExpression;
-  referentialized: boolean;
-  modified: boolean;
-  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord;
-  scope?: ScopeBinding
+  serializedValue: void | BabelNodeExpression,
+  referentialized: boolean,
+  modified: boolean,
+  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord,
+  scope?: ScopeBinding,
 };
 
 export type VisitedBindings = { [key: string]: VisitedBinding };
 export type VisitedBinding = {
-  value: void | Value;
-  modified: boolean;
-  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord;
-}
+  value: void | Value,
+  modified: boolean,
+  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord,
+};
 
 export type ScopeBinding = {
-  name: string;
-  id: number;
-  initializationValues: Map<string, BabelNodeExpression>;
-}
+  name: string,
+  id: number,
+  initializationValues: Map<string, BabelNodeExpression>,
+};
 
 export function AreSameSerializedBindings(realm: Realm, x: SerializedBinding, y: SerializedBinding) {
   if (x.serializedValue === y.serializedValue) return true;
@@ -81,14 +81,14 @@ export class BodyReference {
 }
 
 export type SerializerOptions = {
-  initializeMoreModules?: boolean;
-  internalDebug?: boolean;
-  trace?: boolean;
-  singlePass?: boolean;
-  logStatistics?: boolean;
-  logModules?: boolean;
-  delayUnsupportedRequires?: boolean;
-}
+  initializeMoreModules?: boolean,
+  internalDebug?: boolean,
+  trace?: boolean,
+  singlePass?: boolean,
+  logStatistics?: boolean,
+  logModules?: boolean,
+  delayUnsupportedRequires?: boolean,
+};
 
 export class SerializerStatistics {
   constructor() {
@@ -110,7 +110,10 @@ export class SerializerStatistics {
   log() {
     console.log(`=== serialization statistics`);
     console.log(`${this.objects} objects with ${this.objectProperties} properties`);
-    console.log(`${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${this.referentialized} captured mutable variables`);
+    console.log(
+      `${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${this
+        .referentialized} captured mutable variables`
+    );
     console.log(`${this.valueIds} value ids generated and ${this.valueIdsElided} elided`);
   }
 }

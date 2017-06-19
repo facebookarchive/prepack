@@ -18,7 +18,7 @@ import { Invoke } from "../../methods/call.js";
 import { ThrowIfMightHaveBeenDeleted } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.2
   obj.defineNativeMethod("hasOwnProperty", 1, (context, [V]) => {
     // 1. Let P be ? ToPropertyKey(V).
@@ -71,13 +71,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     ThrowIfMightHaveBeenDeleted(desc.value);
 
     // 5. Return the value of desc.[[Enumerable]].
-    return desc.enumerable === undefined
-      ? realm.intrinsics.undefined
-      : new BooleanValue(realm, desc.enumerable);
+    return desc.enumerable === undefined ? realm.intrinsics.undefined : new BooleanValue(realm, desc.enumerable);
   });
 
   // ECMA262 19.1.3.5
-  obj.defineNativeMethod("toLocaleString", 0, (context) => {
+  obj.defineNativeMethod("toLocaleString", 0, context => {
     // 1. Let O be the this value.
     let O = context;
 
@@ -89,14 +87,14 @@ export default function (realm: Realm, obj: ObjectValue): void {
   obj.defineNativeProperty("toString", realm.intrinsics.ObjectProto_toString);
 
   // ECMA262 19.1.3.7
-  obj.defineNativeMethod("valueOf", 0, (context) => {
+  obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? ToObject(this value).
     return ToObjectPartial(realm, context);
   });
 
   obj.$DefineOwnProperty("__proto__", {
     // B.2.2.1.1
-    get: new NativeFunctionValue(realm, "TODO", "get __proto__", 0, (context) => {
+    get: new NativeFunctionValue(realm, "TODO", "get __proto__", 0, context => {
       // 1. Let O be ? ToObject(this value).
       let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -126,6 +124,6 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 6. Return undefined.
       return realm.intrinsics.undefined;
-    })
+    }),
   });
 }

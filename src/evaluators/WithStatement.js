@@ -19,7 +19,12 @@ import invariant from "../invariant.js";
 import type { BabelNodeWithStatement } from "babel-types";
 
 // ECMA262 13.11.7
-export default function (ast: BabelNodeWithStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeWithStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Let val be the result of evaluating Expression.
   let val = env.evaluate(ast.object, strictCode);
 

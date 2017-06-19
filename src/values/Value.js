@@ -11,7 +11,19 @@
 
 import type { BabelNodeSourceLocation } from "babel-types";
 import type { Realm } from "../realm.js";
-import { EmptyValue, UndefinedValue, NullValue, BooleanValue, StringValue, SymbolValue, NumberValue, ObjectValue, ConcreteValue, AbstractObjectValue, FunctionValue } from "./index.js";
+import {
+  EmptyValue,
+  UndefinedValue,
+  NullValue,
+  BooleanValue,
+  StringValue,
+  SymbolValue,
+  NumberValue,
+  ObjectValue,
+  ConcreteValue,
+  AbstractObjectValue,
+  FunctionValue,
+} from "./index.js";
 
 import invariant from "../invariant.js";
 
@@ -32,16 +44,26 @@ export default class Value {
 
   static getTypeFromName(typeName: string): void | typeof Value {
     switch (typeName) {
-      case "empty": return EmptyValue;
-      case "void" : return UndefinedValue;
-      case "null": return NullValue;
-      case "boolean": return BooleanValue;
-      case "string": return StringValue;
-      case "symbol": return SymbolValue;
-      case "number": return NumberValue;
-      case "object": return ObjectValue;
-      case "function": return FunctionValue;
-      default: return undefined;
+      case "empty":
+        return EmptyValue;
+      case "void":
+        return UndefinedValue;
+      case "null":
+        return NullValue;
+      case "boolean":
+        return BooleanValue;
+      case "string":
+        return StringValue;
+      case "symbol":
+        return SymbolValue;
+      case "number":
+        return NumberValue;
+      case "object":
+        return ObjectValue;
+      case "function":
+        return FunctionValue;
+      default:
+        return undefined;
     }
   }
 
@@ -126,7 +148,7 @@ export default class Value {
     if (stack.has(this)) {
       return stack.get(this);
     } else if (this._serialize) {
-      let set = (val) => {
+      let set = val => {
         stack.set(this, val);
         return val;
       };
@@ -140,5 +162,4 @@ export default class Value {
   _serialize(set: Function, stack: Map<Value, any>): any {
     throw new Error("abstract method; please override");
   }
-
 }

@@ -19,7 +19,12 @@ import { HasSomeCompatibleType } from "./has.js";
 import invariant from "../invariant.js";
 
 // ECMA262 9.2.8
-export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototype?: boolean, prototype?: ObjectValue): UndefinedValue {
+export function MakeConstructor(
+  realm: Realm,
+  F: FunctionValue,
+  writablePrototype?: boolean,
+  prototype?: ObjectValue
+): UndefinedValue {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function value");
 
@@ -45,7 +50,7 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
       value: F,
       writable: writablePrototype,
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
   }
 
@@ -54,7 +59,7 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
     value: prototype,
     writable: writablePrototype,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   // 7. Return NormalCompletion(undefined).
@@ -62,7 +67,12 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
 }
 
 // ECMA262 7.3.13
-export function Construct(realm: Realm, F: ObjectValue, argumentsList?: Array<Value>, newTarget?: ObjectValue): ObjectValue {
+export function Construct(
+  realm: Realm,
+  F: ObjectValue,
+  argumentsList?: Array<Value>,
+  newTarget?: ObjectValue
+): ObjectValue {
   // If newTarget was not passed, let newTarget be F.
   if (!newTarget) newTarget = F;
 

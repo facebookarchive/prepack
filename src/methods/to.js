@@ -17,7 +17,20 @@ import { HasProperty } from "./has.js";
 import { Call } from "./call.js";
 import { IsCallable } from "./is.js";
 import { SameValue, SameValueZero } from "./abstract.js";
-import { Value, ConcreteValue, PrimitiveValue, UndefinedValue, BooleanValue, ObjectValue, SymbolValue, StringValue, NumberValue, NullValue, AbstractValue, AbstractObjectValue } from "../values/index.js";
+import {
+  Value,
+  ConcreteValue,
+  PrimitiveValue,
+  UndefinedValue,
+  BooleanValue,
+  ObjectValue,
+  SymbolValue,
+  StringValue,
+  NumberValue,
+  NullValue,
+  AbstractValue,
+  AbstractObjectValue,
+} from "../values/index.js";
 import invariant from "../invariant.js";
 
 export const ElementConv = {
@@ -27,13 +40,13 @@ export const ElementConv = {
   Uint8: ToUint8,
   Uint16: ToUint16,
   Uint32: ToUint32,
-  Uint8Clamped: ToUint8Clamp
+  Uint8Clamped: ToUint8Clamp,
 };
 
 type numberOrValue = number | Value;
 
 function modulo(x: number, y: number): number {
-  return x < 0 ? (x % y + y) : (x % y);
+  return x < 0 ? x % y + y : x % y;
 }
 
 // ECMA262 7.1.5
@@ -412,7 +425,8 @@ export function ToIndex(realm: Realm, value: number | ConcreteValue): number {
   if (value instanceof UndefinedValue) {
     // a. Let index be 0.
     index = 0;
-  } else { // 2. Else,
+  } else {
+    // 2. Else,
     // a. Let integerIndex be ? ToInteger(value).
     let integerIndex = ToInteger(realm, value);
 
@@ -453,7 +467,8 @@ export function ToNumber(realm: Realm, val: numberOrValue): number {
   } else if (val instanceof BooleanValue) {
     if (val.value === true) {
       return 1;
-    } else { // `val.value === false`
+    } else {
+      // `val.value === false`
       return 0;
     }
   } else if (val instanceof NumberValue) {
@@ -472,7 +487,11 @@ export function IsToNumberPure(realm: Realm, val: numberOrValue): boolean {
 }
 
 // ECMA262 7.1.1
-export function ToPrimitive(realm: Realm, input: ConcreteValue, hint?: "default" | "string" | "number"): PrimitiveValue {
+export function ToPrimitive(
+  realm: Realm,
+  input: ConcreteValue,
+  hint?: "default" | "string" | "number"
+): PrimitiveValue {
   if (input instanceof PrimitiveValue) {
     return input;
   }
@@ -538,7 +557,8 @@ export function OrdinaryToPrimitive(realm: Realm, input: ObjectValue, hint: "str
   if (hint === "string") {
     // a. Let methodNames be « "toString", "valueOf" ».
     methodNames = ["toString", "valueOf"];
-  } else { // 4. Else,
+  } else {
+    // 4. Else,
     // a. Let methodNames be « "valueOf", "toString" ».
     methodNames = ["valueOf", "toString"];
   }
@@ -620,7 +640,6 @@ export function ToBooleanPartial(realm: Realm, val: Value): boolean {
   return ToBoolean(realm, val.throwIfNotConcrete());
 }
 
-
 // ECMA262 7.1.14
 export function ToPropertyKey(realm: Realm, arg: ConcreteValue): SymbolValue | string /* but not StringValue */ {
   // 1. Let key be ? ToPrimitive(argument, hint String).
@@ -636,7 +655,10 @@ export function ToPropertyKey(realm: Realm, arg: ConcreteValue): SymbolValue | s
   return ToString(realm, key);
 }
 
-export function ToPropertyKeyPartial(realm: Realm, arg: Value): AbstractValue | SymbolValue | string /* but not StringValue */ {
+export function ToPropertyKeyPartial(
+  realm: Realm,
+  arg: Value
+): AbstractValue | SymbolValue | string /* but not StringValue */ {
   if (arg instanceof ConcreteValue) return ToPropertyKey(realm, arg);
   if (arg.mightNotBeString()) arg.throwIfNotConcrete();
   return arg;
@@ -654,7 +676,8 @@ export function CanonicalNumericIndexString(realm: Realm, argument: StringValue)
   let n = ToNumber(realm, argument);
 
   // 4. If SameValue(ToString(n), argument) is false, return undefined.
-  if (SameValue(realm, new StringValue(realm, ToString(realm, new NumberValue(realm, n))), argument) === false) return undefined;
+  if (SameValue(realm, new StringValue(realm, ToString(realm, new NumberValue(realm, n))), argument) === false)
+    return undefined;
 
   // 5. Return n.
   return n;

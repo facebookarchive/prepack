@@ -16,18 +16,34 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
 import { BoundNames, EnumerableOwnProperties, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
-import { AbstractValue, AbstractObjectValue, ArrayValue, ObjectValue, StringValue, SymbolValue, UndefinedValue, Value } from "../values/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  ArrayValue,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
+  Value,
+} from "../values/index.js";
 import type { BabelNodeForInStatement, BabelNodeStatement, BabelNodeVariableDeclaration } from "babel-types";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
 // ECMA262 13.7.5.11
-export default function (ast: BabelNodeForInStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm, labelSet: ?Array<string>): Value | Reference {
+export default function(
+  ast: BabelNodeForInStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): Value | Reference {
   let { left, right, body } = ast;
 
   try {
     if (left.type === "VariableDeclaration") {
-      if (left.kind === "var") { // for (var ForBinding in Expression) Statement
+      if (left.kind === "var") {
+        // for (var ForBinding in Expression) Statement
         // 1. Let keyResult be ? ForIn/OfHeadEvaluation(« », Expression, enumerate).
         let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "enumerate", strictCode);
 
@@ -36,8 +52,18 @@ export default function (ast: BabelNodeForInStatement, strictCode: boolean, env:
         }
 
         // 2. Return ? ForIn/OfBodyEvaluation(ForBinding, Statement, keyResult, varBinding, labelSet).
-        return ForInOfBodyEvaluation(realm, env, left.declarations[0].id, body, keyResult, "varBinding", labelSet, strictCode);
-      } else { // for (ForDeclaration in Expression) Statement
+        return ForInOfBodyEvaluation(
+          realm,
+          env,
+          left.declarations[0].id,
+          body,
+          keyResult,
+          "varBinding",
+          labelSet,
+          strictCode
+        );
+      } else {
+        // for (ForDeclaration in Expression) Statement
         // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(BoundNames of ForDeclaration, Expression, enumerate).
         let keyResult = ForInOfHeadEvaluation(realm, env, BoundNames(realm, left), right, "enumerate", strictCode);
         keyResult = keyResult.throwIfNotConcreteObject();
@@ -45,7 +71,8 @@ export default function (ast: BabelNodeForInStatement, strictCode: boolean, env:
         // 2. Return ? ForIn/OfBodyEvaluation(ForDeclaration, Statement, keyResult, lexicalBinding, labelSet).
         return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "lexicalBinding", labelSet, strictCode);
       }
-    } else { // for (LeftHandSideExpression in Expression) Statement
+    } else {
+      // for (LeftHandSideExpression in Expression) Statement
       // 1. Let keyResult be ? ForIn/OfHeadEvaluation(« », Expression, enumerate).
       let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "enumerate", strictCode);
       keyResult = keyResult.throwIfNotConcreteObject();
@@ -55,15 +82,21 @@ export default function (ast: BabelNodeForInStatement, strictCode: boolean, env:
     }
   } catch (e) {
     if (e instanceof BreakCompletion) {
-      if (!e.target)
-        return (UpdateEmpty(realm, e, realm.intrinsics.undefined): any).value;
+      if (!e.target) return (UpdateEmpty(realm, e, realm.intrinsics.undefined): any).value;
     }
     throw e;
   }
 }
 
-function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm,
-    lh: BabelNodeVariableDeclaration, ob: AbstractObjectValue, body: BabelNodeStatement) {
+function emitResidualLoopIfSafe(
+  ast: BabelNodeForInStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  lh: BabelNodeVariableDeclaration,
+  ob: AbstractObjectValue,
+  body: BabelNodeStatement
+) {
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
   let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
   realm.getRunningContext().lexicalEnvironment = blockEnv;
@@ -71,7 +104,11 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
     let envRec = blockEnv.environmentRecord;
     invariant(envRec instanceof DeclarativeEnvironmentRecord, "expected declarative environment record");
     let absStr = realm.createAbstract(
-      new TypesDomain(StringValue), ValuesDomain.topVal, [], t.stringLiteral("never used"));
+      new TypesDomain(StringValue),
+      ValuesDomain.topVal,
+      [],
+      t.stringLiteral("never used")
+    );
     let boundName;
     for (let n of BoundNames(realm, lh)) {
       invariant(boundName === undefined);
@@ -79,10 +116,8 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
       envRec.CreateMutableBinding(n, false);
       envRec.InitializeBinding(n, absStr);
     }
-    let [compl, gen, bindings, properties, createdObj] =
-      realm.evaluateNodeForEffects(body, strictCode, blockEnv);
-    if (compl instanceof Value && gen.body.length === 0 && bindings.size === 0 &&
-        properties.size === 1) {
+    let [compl, gen, bindings, properties, createdObj] = realm.evaluateNodeForEffects(body, strictCode, blockEnv);
+    if (compl instanceof Value && gen.body.length === 0 && bindings.size === 0 && properties.size === 1) {
       invariant(createdObj.size === 0); // or there will be more than one property
       let targetObject;
       let sourceObject;
@@ -101,7 +136,11 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
               // an expression of the form sourceObject[absStr].
               let mem = sourceValue.args[1];
               while (mem instanceof AbstractValue) {
-                if (mem.kind === "sentinel member expression" && mem.args[0] instanceof ObjectValue && mem.args[1] === absStr) {
+                if (
+                  mem.kind === "sentinel member expression" &&
+                  mem.args[0] instanceof ObjectValue &&
+                  mem.args[1] === absStr
+                ) {
                   sourceObject = mem.args[0];
                   break;
                 }
@@ -123,11 +162,15 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
       if (targetObject instanceof ObjectValue && sourceObject !== undefined) {
         let oe = ob.values.getElements();
         if (oe.size !== 1) ob.throwIfNotConcreteObject();
-        let o; for (let co of oe) o = co; invariant(o !== undefined);
-        let generator = realm.generator; invariant(generator !== undefined);
+        let o;
+        for (let co of oe) o = co;
+        invariant(o !== undefined);
+        let generator = realm.generator;
+        invariant(generator !== undefined);
         // make target object simple and partial, so that it returns a fully
         // abstract value for every property it is queried for.
-        targetObject.makeSimple(); targetObject.makePartial();
+        targetObject.makeSimple();
+        targetObject.makePartial();
         if (sourceObject === o && sourceObject.isSimple()) {
           // Known enumerable properties of sourceObject can become known
           // properties of targetObject.
@@ -150,10 +193,19 @@ function emitResidualLoopIfSafe(ast: BabelNodeForInStatement, strictCode: boolea
           args: [o, targetObject, sourceObject, targetObject, sourceObject],
           buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {
             invariant(boundName !== undefined);
-            return t.forInStatement(lh, obj,
-              t.blockStatement([t.expressionStatement(t.assignmentExpression("=",
-              t.memberExpression(tgt, boundName, true),
-              t.memberExpression(src, boundName, true)))]));
+            return t.forInStatement(
+              lh,
+              obj,
+              t.blockStatement([
+                t.expressionStatement(
+                  t.assignmentExpression(
+                    "=",
+                    t.memberExpression(tgt, boundName, true),
+                    t.memberExpression(src, boundName, true)
+                  )
+                ),
+              ])
+            );
           },
         });
 

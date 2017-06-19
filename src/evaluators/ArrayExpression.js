@@ -22,7 +22,12 @@ import { IteratorStep, IteratorValue } from "../methods/iterator.js";
 import type { BabelNodeArrayExpression } from "babel-types";
 
 // ECMA262 2.2.5.3
-export default function (ast: BabelNodeArrayExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeArrayExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Let array be ArrayCreate(0).
   let array = ArrayCreate(realm, 0);
 

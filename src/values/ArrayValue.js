@@ -13,7 +13,11 @@ import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
 import { ObjectValue, StringValue, NumberValue } from "./index.js";
 import { ArraySetLength } from "../methods/properties.js";
-import { OrdinaryGetOwnProperty, OrdinaryDefineOwnProperty, ThrowIfMightHaveBeenDeleted } from "../methods/properties.js";
+import {
+  OrdinaryGetOwnProperty,
+  OrdinaryDefineOwnProperty,
+  ThrowIfMightHaveBeenDeleted,
+} from "../methods/properties.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
 import { ToUint32 } from "../methods/to.js";
 import invariant from "../invariant.js";
@@ -38,15 +42,18 @@ export default class ArrayValue extends ObjectValue {
     if (P === "length" || (P instanceof StringValue && P.value === "length")) {
       // a. Return ? ArraySetLength(A, Desc).
       return ArraySetLength(this.$Realm, A, Desc);
-    } else if (IsArrayIndex(this.$Realm, P)) { // 3. Else if P is an array index, then
+    } else if (IsArrayIndex(this.$Realm, P)) {
+      // 3. Else if P is an array index, then
 
       // a. Let oldLenDesc be OrdinaryGetOwnProperty(A, "length").
       let oldLenDesc = OrdinaryGetOwnProperty(this.$Realm, A, "length");
 
       // b. Assert: oldLenDesc will never be undefined or an accessor descriptor because Array objects are
       //    created with a length data property that cannot be deleted or reconfigured.
-      invariant(oldLenDesc !== undefined &&
-        !IsAccessorDescriptor(this.$Realm, oldLenDesc), "cannot be undefined or an accessor descriptor");
+      invariant(
+        oldLenDesc !== undefined && !IsAccessorDescriptor(this.$Realm, oldLenDesc),
+        "cannot be undefined or an accessor descriptor"
+      );
       ThrowIfMightHaveBeenDeleted(oldLenDesc.value);
 
       // c. Let oldLen be oldLenDesc.[[Value]].

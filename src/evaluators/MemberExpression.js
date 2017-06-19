@@ -18,7 +18,12 @@ import { GetValue, ToPropertyKeyPartial, RequireObjectCoercible } from "../metho
 import type { BabelNodeMemberExpression } from "babel-types";
 
 // ECMA262 12.3.2.1
-export default function (ast: BabelNodeMemberExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeMemberExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Let baseReference be the result of evaluating MemberExpression.
   let baseReference = env.evaluate(ast.object, strictCode);
 

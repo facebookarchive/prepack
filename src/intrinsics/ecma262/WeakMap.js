@@ -20,11 +20,11 @@ import {
   IteratorValue,
   GetIterator,
   IteratorStep,
-  Call
+  Call,
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "WeakMap", "WeakMap", 0, (args, [iterable], argCount, NewTarget) => {
     // 1. If NewTarget is undefined, throw a TypeError exception.
     if (!NewTarget) {
@@ -33,7 +33,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
     // 2. Let map be ? OrdinaryCreateFromConstructor(NewTarget, "%WeakMapPrototype%", « [[WeakMapData]] »).
     let map = OrdinaryCreateFromConstructor(realm, NewTarget, "WeakMapPrototype", {
-      $WeakMapData: undefined
+      $WeakMapData: undefined,
     });
 
     // 3. Set map's [[WeakMapData]] internal slot to a new empty List.
@@ -47,7 +47,8 @@ export default function (realm: Realm): NativeFunctionValue {
     if ((iterable: any) instanceof UndefinedValue || (iterable: any) instanceof NullValue) {
       adder = realm.intrinsics.undefined;
       iter = realm.intrinsics.undefined;
-    } else { // 6. Else,
+    } else {
+      // 6. Else,
       // a. Let adder be ? Get(map, "set").
       adder = Get(realm, map, "set");
 
@@ -93,8 +94,7 @@ export default function (realm: Realm): NativeFunctionValue {
         if (kCompletion instanceof AbruptCompletion) {
           // f. If k is an abrupt completion, return ? IteratorClose(iter, k).
           throw IteratorClose(realm, iter, kCompletion);
-        } else
-          throw kCompletion;
+        } else throw kCompletion;
       }
 
       // g. Let v be Get(nextItem, "1").
@@ -105,8 +105,7 @@ export default function (realm: Realm): NativeFunctionValue {
         if (vCompletion instanceof AbruptCompletion) {
           // h. If v is an abrupt completion, return ? IteratorClose(iter, v).
           throw IteratorClose(realm, iter, vCompletion);
-        } else
-          throw vCompletion;
+        } else throw vCompletion;
       }
 
       // i. Let status be Call(adder, map, « k.[[Value]], v.[[Value]] »).
@@ -117,8 +116,7 @@ export default function (realm: Realm): NativeFunctionValue {
         if (statusCompletion instanceof AbruptCompletion) {
           // j. If status is an abrupt completion, return ? IteratorClose(iter, status).
           throw IteratorClose(realm, iter, statusCompletion);
-        } else
-          throw statusCompletion;
+        } else throw statusCompletion;
       }
       status;
     }

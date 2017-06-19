@@ -80,8 +80,10 @@ export default class ValuesDomain {
     if (v1 instanceof AbstractValue) return v1.values.joinWith(v2);
     if (v2 instanceof AbstractValue) return v2.values.joinWith(v1);
     let union = new Set();
-    invariant(v1 instanceof ConcreteValue); union.add(v1);
-    invariant(v2 instanceof ConcreteValue); union.add(v2);
+    invariant(v1 instanceof ConcreteValue);
+    union.add(v1);
+    invariant(v2 instanceof ConcreteValue);
+    union.add(v2);
     return new ValuesDomain(union);
   }
 
@@ -90,7 +92,7 @@ export default class ValuesDomain {
     let union = new Set(this.getElements());
     if (y instanceof AbstractValue) {
       if (y.values.isTop()) return y.values;
-      y.values.getElements().forEach((v) => union.add(v));
+      y.values.getElements().forEach(v => union.add(v));
     } else {
       invariant(y instanceof ConcreteValue);
       union.add(y);
@@ -115,7 +117,7 @@ export default class ValuesDomain {
     let elements = this._elements;
     if (y instanceof AbstractValue) {
       if (y.values.isTop()) return this;
-      y.values.getElements().forEach((v) => {
+      y.values.getElements().forEach(v => {
         if (elements === undefined || elements.has(v)) intersection.add(v);
       });
     } else {
@@ -129,10 +131,8 @@ export default class ValuesDomain {
     if (this.isTop()) return this;
     let newSet = new Set();
     for (let cval of this.getElements()) {
-      if (cval instanceof EmptyValue)
-        newSet.add(cval.$Realm.intrinsics.undefined);
-      else
-        newSet.add(cval);
+      if (cval instanceof EmptyValue) newSet.add(cval.$Realm.intrinsics.undefined);
+      else newSet.add(cval);
     }
     return new ValuesDomain(newSet);
   }

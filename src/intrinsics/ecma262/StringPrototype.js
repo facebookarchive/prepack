@@ -16,12 +16,20 @@ import { GetMethod, GetSubstitution } from "../../methods/get.js";
 import { Call, Invoke } from "../../methods/call.js";
 import { CreateStringIterator, CreateDataProperty, ArrayCreate, CreateHTML } from "../../methods/create.js";
 import { RegExpCreate } from "../../methods/regexp.js";
-import { ToString, ToStringPartial, thisStringValue, ToInteger, ToUint32, ToNumber, ToLength } from "../../methods/to.js";
+import {
+  ToString,
+  ToStringPartial,
+  thisStringValue,
+  ToInteger,
+  ToUint32,
+  ToNumber,
+  ToLength,
+} from "../../methods/to.js";
 import { SplitMatch, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasSomeCompatibleType } from "../../methods/has.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): ObjectValue {
+export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   // ECMA262 21.1.3
   obj.$StringData = realm.intrinsics.emptyString;
 
@@ -73,29 +81,29 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
   // ECMA262 21.1.3.3
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("codePointAt", 1, (context, [pos]) => {
-    // 1. Let O be ? RequireObjectCoercible(this value).
-    let O = RequireObjectCoercible(realm, context);
+    obj.defineNativeMethod("codePointAt", 1, (context, [pos]) => {
+      // 1. Let O be ? RequireObjectCoercible(this value).
+      let O = RequireObjectCoercible(realm, context);
 
-    // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+      // 2. Let S be ? ToString(O).
+      let S = ToString(realm, O.throwIfNotConcrete());
 
-    // 3. Let position be ? ToInteger(pos).
-    let position = ToInteger(realm, pos);
+      // 3. Let position be ? ToInteger(pos).
+      let position = ToInteger(realm, pos);
 
-    // 4. Let size be the number of elements in S.
-    let size = S.length;
+      // 4. Let size be the number of elements in S.
+      let size = S.length;
 
-    // 5. If position < 0 or position ≥ size, return undefined.
-    if (position < 0 || position >= size) return realm.intrinsics.undefined;
+      // 5. If position < 0 or position ≥ size, return undefined.
+      if (position < 0 || position >= size) return realm.intrinsics.undefined;
 
-    // 6. Let first be the code unit value of the element at index position in the String S.
-    // 7. If first < 0xD800 or first > 0xDBFF or position+1 = size, return first.
-    // 8. Let second be the code unit value of the element at index position+1 in the String S.
-    // 9. If second < 0xDC00 or second > 0xDFFF, return first.
-    // 10. Return UTF16Decode(first, second).
-    return new NumberValue(realm, S.codePointAt(position));
-  });
+      // 6. Let first be the code unit value of the element at index position in the String S.
+      // 7. If first < 0xD800 or first > 0xDBFF or position+1 = size, return first.
+      // 8. Let second be the code unit value of the element at index position+1 in the String S.
+      // 9. If second < 0xDC00 or second > 0xDFFF, return first.
+      // 10. Return UTF16Decode(first, second).
+      return new NumberValue(realm, S.codePointAt(position));
+    });
 
   // ECMA262 21.1.3.4
   obj.defineNativeMethod("concat", 1, (context, args, argCount) => {
@@ -129,108 +137,106 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
   // ECMA262 21.1.3.6
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("endsWith", 1, (context, [searchString, endPosition]) => {
-    // 1. Let O be ? RequireObjectCoercible(this value).
-    let O = RequireObjectCoercible(realm, context);
+    obj.defineNativeMethod("endsWith", 1, (context, [searchString, endPosition]) => {
+      // 1. Let O be ? RequireObjectCoercible(this value).
+      let O = RequireObjectCoercible(realm, context);
 
-    // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+      // 2. Let S be ? ToString(O).
+      let S = ToString(realm, O.throwIfNotConcrete());
 
-    // 3. Let isRegExp be ? IsRegExp(searchString).
-    let isRegExp = IsRegExp(realm, searchString);
+      // 3. Let isRegExp be ? IsRegExp(searchString).
+      let isRegExp = IsRegExp(realm, searchString);
 
-    // 4. If isRegExp is true, throw a TypeError exception.
-    if (isRegExp) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-        "String.prototype");
-    }
+      // 4. If isRegExp is true, throw a TypeError exception.
+      if (isRegExp) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "String.prototype");
+      }
 
-    // 5. Let searchStr be ? ToString(searchString).
-    let searchStr = ToStringPartial(realm, searchString);
+      // 5. Let searchStr be ? ToString(searchString).
+      let searchStr = ToStringPartial(realm, searchString);
 
-    // 6. Let len be the number of elements in S.
-    let len = S.length;
+      // 6. Let len be the number of elements in S.
+      let len = S.length;
 
-    // 7. If endPosition is undefined, let pos be len, else let pos be ? ToInteger(endPosition).)
-    let pos;
-    if (!endPosition || endPosition instanceof UndefinedValue) {
-      pos = len;
-    } else {
-      pos = ToInteger(realm, endPosition.throwIfNotConcrete());
-    }
+      // 7. If endPosition is undefined, let pos be len, else let pos be ? ToInteger(endPosition).)
+      let pos;
+      if (!endPosition || endPosition instanceof UndefinedValue) {
+        pos = len;
+      } else {
+        pos = ToInteger(realm, endPosition.throwIfNotConcrete());
+      }
 
-    // 8. Let end be min(max(pos, 0), len).
-    let end = Math.min(Math.max(pos, 0), len);
+      // 8. Let end be min(max(pos, 0), len).
+      let end = Math.min(Math.max(pos, 0), len);
 
-    // 9. Let searchLength be the number of elements in searchStr.
-    let searchLength = searchStr.length;
+      // 9. Let searchLength be the number of elements in searchStr.
+      let searchLength = searchStr.length;
 
-    // 10. Let start be end - searchLength.
-    let start = end - searchLength;
+      // 10. Let start be end - searchLength.
+      let start = end - searchLength;
 
-    // 11. If start is less than 0, return false.
-    if (start < 0) return realm.intrinsics.false;
+      // 11. If start is less than 0, return false.
+      if (start < 0) return realm.intrinsics.false;
 
-    // 12. If the sequence of elements of S starting at start of length searchLength is the same as the full
-    //     element sequence of searchStr, return true.
-    if (S.substr(start, searchLength) === searchStr) return realm.intrinsics.true;
+      // 12. If the sequence of elements of S starting at start of length searchLength is the same as the full
+      //     element sequence of searchStr, return true.
+      if (S.substr(start, searchLength) === searchStr) return realm.intrinsics.true;
 
-    // 13. Otherwise, return false.
-    return realm.intrinsics.false;
-  });
+      // 13. Otherwise, return false.
+      return realm.intrinsics.false;
+    });
 
   // ECMA262 21.1.3.7
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("includes", 1, (context, [searchString, position]) => {
-    // 1. Let O be ? RequireObjectCoercible(this value).
-    let O = RequireObjectCoercible(realm, context);
+    obj.defineNativeMethod("includes", 1, (context, [searchString, position]) => {
+      // 1. Let O be ? RequireObjectCoercible(this value).
+      let O = RequireObjectCoercible(realm, context);
 
-    // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+      // 2. Let S be ? ToString(O).
+      let S = ToString(realm, O.throwIfNotConcrete());
 
-    // 3. Let isRegExp be ? IsRegExp(searchString).
-    let isRegExp = IsRegExp(realm, searchString);
+      // 3. Let isRegExp be ? IsRegExp(searchString).
+      let isRegExp = IsRegExp(realm, searchString);
 
-    // 4. If isRegExp is true, throw a TypeError exception.
-    if (isRegExp) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-        "String.prototype");
-    }
-
-    // 5. Let searchStr be ? ToString(searchString).
-    let searchStr = ToStringPartial(realm, searchString);
-
-    // 6. Let pos be ? ToInteger(position). (If position is undefined, this step produces the value 0.)
-    let pos = ToInteger(realm, position || realm.intrinsics.undefined);
-
-    // 7. Let len be the number of elements in S.
-    let len = S.length;
-
-    // 8. Let start be min(max(pos, 0), len).
-    let start = Math.min(Math.max(pos, 0), len);
-
-    // 9. Let searchLen be the number of elements in searchStr.
-    let searchLen = searchStr.length;
-
-    // 10. If there exists any integer k not smaller than start such that k + searchLen is not greater than
-    //     len, and for all nonnegative integers j less than searchLen, the code unit at index k+j of S is the
-    //     same as the code unit at index j of searchStr, return true; but if there is no such integer k,
-    //     return false.
-    if (searchLen === 0) {
-      return realm.intrinsics.true;
-    } else {
-      for (let k = start; k + searchLen <= len; ++k) {
-        let found = true;
-        for (let j = 0; j < searchLen; ++j) {
-          if (S.charCodeAt(k + j) !== searchStr.charCodeAt(j)) {
-            found = false;
-          }
-        }
-        if (found) return realm.intrinsics.true;
+      // 4. If isRegExp is true, throw a TypeError exception.
+      if (isRegExp) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "String.prototype");
       }
-      return realm.intrinsics.false;
-    }
-  });
+
+      // 5. Let searchStr be ? ToString(searchString).
+      let searchStr = ToStringPartial(realm, searchString);
+
+      // 6. Let pos be ? ToInteger(position). (If position is undefined, this step produces the value 0.)
+      let pos = ToInteger(realm, position || realm.intrinsics.undefined);
+
+      // 7. Let len be the number of elements in S.
+      let len = S.length;
+
+      // 8. Let start be min(max(pos, 0), len).
+      let start = Math.min(Math.max(pos, 0), len);
+
+      // 9. Let searchLen be the number of elements in searchStr.
+      let searchLen = searchStr.length;
+
+      // 10. If there exists any integer k not smaller than start such that k + searchLen is not greater than
+      //     len, and for all nonnegative integers j less than searchLen, the code unit at index k+j of S is the
+      //     same as the code unit at index j of searchStr, return true; but if there is no such integer k,
+      //     return false.
+      if (searchLen === 0) {
+        return realm.intrinsics.true;
+      } else {
+        for (let k = start; k + searchLen <= len; ++k) {
+          let found = true;
+          for (let j = 0; j < searchLen; ++j) {
+            if (S.charCodeAt(k + j) !== searchStr.charCodeAt(j)) {
+              found = false;
+            }
+          }
+          if (found) return realm.intrinsics.true;
+        }
+        return realm.intrinsics.false;
+      }
+    });
 
   // ECMA262 21.1.3.8
   obj.defineNativeMethod("indexOf", 1, (context, [searchString, position]) => {
@@ -332,133 +338,135 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
   // ECMA262 21.1.3.12
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("normalize", 0, (context, [form]) => {
-    // 1. Let O be ? RequireObjectCoercible(this value).
-    let O = RequireObjectCoercible(realm, context);
+    obj.defineNativeMethod("normalize", 0, (context, [form]) => {
+      // 1. Let O be ? RequireObjectCoercible(this value).
+      let O = RequireObjectCoercible(realm, context);
 
-    // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+      // 2. Let S be ? ToString(O).
+      let S = ToString(realm, O.throwIfNotConcrete());
 
-    // 3. If form is not provided or form is undefined, let form be "NFC".
-    if (!form || form instanceof UndefinedValue) form = new StringValue(realm, "NFC");
+      // 3. If form is not provided or form is undefined, let form be "NFC".
+      if (!form || form instanceof UndefinedValue) form = new StringValue(realm, "NFC");
 
-    // 4. Let f be ? ToString(form).
-    let f = ToStringPartial(realm, form);
+      // 4. Let f be ? ToString(form).
+      let f = ToStringPartial(realm, form);
 
-    // 5. If f is not one of "NFC", "NFD", "NFKC", or "NFKD", throw a RangeError exception.
-    if (f !== "NFC" && f !== "NFD" && f !== "NFKC" && f !== "NFKD") {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError);
-    }
+      // 5. If f is not one of "NFC", "NFD", "NFKC", or "NFKD", throw a RangeError exception.
+      if (f !== "NFC" && f !== "NFD" && f !== "NFKC" && f !== "NFKD") {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError);
+      }
 
-    // 6. Let ns be the String value that is the result of normalizing S into the normalization form named by
-    //    f as specified in http://www.unicode.org/reports/tr15/tr15-29.html.
-    // 7. Return ns.
-    return new StringValue(realm, S.normalize(f));
-  });
+      // 6. Let ns be the String value that is the result of normalizing S into the normalization form named by
+      //    f as specified in http://www.unicode.org/reports/tr15/tr15-29.html.
+      // 7. Return ns.
+      return new StringValue(realm, S.normalize(f));
+    });
 
   // ECMA262 21.1.3.13
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("padEnd", 1, (context, [maxLength, fillString]) => {
-    // 1. Let O be ? RequireObjectCoercible(this value).
-    let O = RequireObjectCoercible(realm, context);
+    obj.defineNativeMethod("padEnd", 1, (context, [maxLength, fillString]) => {
+      // 1. Let O be ? RequireObjectCoercible(this value).
+      let O = RequireObjectCoercible(realm, context);
 
-    // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+      // 2. Let S be ? ToString(O).
+      let S = ToString(realm, O.throwIfNotConcrete());
 
-    // 3. Let intMaxLength be ? ToLength(maxLength).
-    let intMaxLength = ToLength(realm, maxLength);
+      // 3. Let intMaxLength be ? ToLength(maxLength).
+      let intMaxLength = ToLength(realm, maxLength);
 
-    // 4. Let stringLength be the number of elements in S.
-    let stringLength = S.length;
+      // 4. Let stringLength be the number of elements in S.
+      let stringLength = S.length;
 
-    // 5. If intMaxLength is not greater than stringLength, return S.
-    if (intMaxLength <= stringLength) return new StringValue(realm, S);
+      // 5. If intMaxLength is not greater than stringLength, return S.
+      if (intMaxLength <= stringLength) return new StringValue(realm, S);
 
-    let filler;
-    // 6. If fillString is undefined, let filler be a String consisting solely of the code unit 0x0020 (SPACE).
-    if (!fillString || fillString instanceof UndefinedValue) filler = " ";
-    // 7. Else, let filler be ? ToString(fillString).
-    else filler = ToStringPartial(realm, fillString);
+      let filler;
+      // 6. If fillString is undefined, let filler be a String consisting solely of the code unit 0x0020 (SPACE).
+      if (!fillString || fillString instanceof UndefinedValue) filler = " ";
+      else
+        // 7. Else, let filler be ? ToString(fillString).
+        filler = ToStringPartial(realm, fillString);
 
-    // 8. If filler is the empty String, return S.
-    if (filler === "") return new StringValue(realm, S);
+      // 8. If filler is the empty String, return S.
+      if (filler === "") return new StringValue(realm, S);
 
-    // 9. Let fillLen be intMaxLength - stringLength.
-    let fillLen = intMaxLength - stringLength;
+      // 9. Let fillLen be intMaxLength - stringLength.
+      let fillLen = intMaxLength - stringLength;
 
-    // 10. Let truncatedStringFiller be a new String value consisting of repeated concatenations of filler truncated to length fillLen.
-    let truncatedStringFiller = filler.repeat(Math.ceil(fillLen / filler.length)).substr(0, fillLen);
+      // 10. Let truncatedStringFiller be a new String value consisting of repeated concatenations of filler truncated to length fillLen.
+      let truncatedStringFiller = filler.repeat(Math.ceil(fillLen / filler.length)).substr(0, fillLen);
 
-    // 11. Return a new String value computed by the concatenation of S and truncatedStringFiller.
-    return new StringValue(realm, S + truncatedStringFiller);
-  });
+      // 11. Return a new String value computed by the concatenation of S and truncatedStringFiller.
+      return new StringValue(realm, S + truncatedStringFiller);
+    });
 
   // ECMA262 21.1.3.14
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("padStart", 1, (context, [maxLength, fillString]) => {
-    // 1. Let O be ? RequireObjectCoercible(this value).
-    let O = RequireObjectCoercible(realm, context);
+    obj.defineNativeMethod("padStart", 1, (context, [maxLength, fillString]) => {
+      // 1. Let O be ? RequireObjectCoercible(this value).
+      let O = RequireObjectCoercible(realm, context);
 
-    // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+      // 2. Let S be ? ToString(O).
+      let S = ToString(realm, O.throwIfNotConcrete());
 
-    // 3. Let intMaxLength be ? ToLength(maxLength).
-    let intMaxLength = ToLength(realm, maxLength);
+      // 3. Let intMaxLength be ? ToLength(maxLength).
+      let intMaxLength = ToLength(realm, maxLength);
 
-    // 4. Let stringLength be the number of elements in S.
-    let stringLength = S.length;
+      // 4. Let stringLength be the number of elements in S.
+      let stringLength = S.length;
 
-    // 5. If intMaxLength is not greater than stringLength, return S.
-    if (intMaxLength <= stringLength) return new StringValue(realm, S);
+      // 5. If intMaxLength is not greater than stringLength, return S.
+      if (intMaxLength <= stringLength) return new StringValue(realm, S);
 
-    let filler;
-    // 6. If fillString is undefined, let filler be a String consisting solely of the code unit 0x0020 (SPACE).
-    if (!fillString || fillString instanceof UndefinedValue) filler = " ";
-    // 7. Else, let filler be ? ToString(fillString).
-    else filler = ToStringPartial(realm, fillString);
+      let filler;
+      // 6. If fillString is undefined, let filler be a String consisting solely of the code unit 0x0020 (SPACE).
+      if (!fillString || fillString instanceof UndefinedValue) filler = " ";
+      else
+        // 7. Else, let filler be ? ToString(fillString).
+        filler = ToStringPartial(realm, fillString);
 
-    // 8. If filler is the empty String, return S.
-    if (filler === "") return new StringValue(realm, S);
+      // 8. If filler is the empty String, return S.
+      if (filler === "") return new StringValue(realm, S);
 
-    // 9. Let fillLen be intMaxLength - stringLength.
-    let fillLen = intMaxLength - stringLength;
+      // 9. Let fillLen be intMaxLength - stringLength.
+      let fillLen = intMaxLength - stringLength;
 
-    // 10. Let truncatedStringFiller be a new String value consisting of repeated concatenations of filler truncated to length fillLen.
-    let truncatedStringFiller = filler.repeat(Math.ceil(fillLen / filler.length)).substr(0, fillLen);
+      // 10. Let truncatedStringFiller be a new String value consisting of repeated concatenations of filler truncated to length fillLen.
+      let truncatedStringFiller = filler.repeat(Math.ceil(fillLen / filler.length)).substr(0, fillLen);
 
-    // 11. Return a new String value computed by the concatenation of truncatedStringFiller and S.
-    return new StringValue(realm, truncatedStringFiller + S);
-  });
+      // 11. Return a new String value computed by the concatenation of truncatedStringFiller and S.
+      return new StringValue(realm, truncatedStringFiller + S);
+    });
 
   // ECMA262 21.1.3.13
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("repeat", 1, (context, [count]) => {
-    // 1. Let O be ? RequireObjectCoercible(this value).
-    let O = RequireObjectCoercible(realm, context);
+    obj.defineNativeMethod("repeat", 1, (context, [count]) => {
+      // 1. Let O be ? RequireObjectCoercible(this value).
+      let O = RequireObjectCoercible(realm, context);
 
-    // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+      // 2. Let S be ? ToString(O).
+      let S = ToString(realm, O.throwIfNotConcrete());
 
-    // 3. Let n be ? ToInteger(count).
-    let n = ToInteger(realm, count);
+      // 3. Let n be ? ToInteger(count).
+      let n = ToInteger(realm, count);
 
-    // 4. If n < 0, throw a RangeError exception.
-    if (n < 0) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError);
-    }
+      // 4. If n < 0, throw a RangeError exception.
+      if (n < 0) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError);
+      }
 
-    // 5. If n is +∞, throw a RangeError exception.
-    if (!isFinite(n)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError);
-    }
+      // 5. If n is +∞, throw a RangeError exception.
+      if (!isFinite(n)) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError);
+      }
 
-    // 6. Let T be a String value that is made from n copies of S appended together. If n is 0, T is the empty String.
-    let T = "";
-    if (S) while (n--) T += S;
+      // 6. Let T be a String value that is made from n copies of S appended together. If n is 0, T is the empty String.
+      let T = "";
+      if (S) while (n--) T += S;
 
-    // 7. Return T.
-    return new StringValue(realm, T);
-  });
+      // 7. Return T.
+      return new StringValue(realm, T);
+    });
 
   // ECMA262 21.1.3.14
   obj.defineNativeMethod("replace", 2, (context, [searchValue, replaceValue]) => {
@@ -508,11 +516,16 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
     // 8. If functionalReplace is true, then
     if (functionalReplace === true) {
       // a. Let replValue be ? Call(replaceValue, undefined, « matched, pos, string »).
-      let replValue = Call(realm, replaceValue, realm.intrinsics.undefined, [new StringValue(realm, matched), new NumberValue(realm, pos), new StringValue(realm, string)]);
+      let replValue = Call(realm, replaceValue, realm.intrinsics.undefined, [
+        new StringValue(realm, matched),
+        new NumberValue(realm, pos),
+        new StringValue(realm, string),
+      ]);
 
       // b. Let replStr be ? ToString(replValue).
       replStr = ToStringPartial(realm, replValue);
-    } else { // 9. Else,
+    } else {
+      // 9. Else,
       // a. Let captures be an empty List.
       let captures = [];
 
@@ -617,7 +630,9 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
     let lengthA = 0;
 
     // 6. If limit is undefined, let lim be 232-1; else let lim be ? ToUint32(limit).
-    let lim = !limit || limit instanceof UndefinedValue ? Math.pow(2, 32) - 1 : ToUint32(realm, limit.throwIfNotConcrete());
+    let lim = !limit || limit instanceof UndefinedValue
+      ? Math.pow(2, 32) - 1
+      : ToUint32(realm, limit.throwIfNotConcrete());
 
     // 7. Let s be the number of elements in S.
     let s = S.length;
@@ -665,11 +680,13 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
       // b. If e is false, let q be q+1.
       if (e === false) {
         q++;
-      } else { // c. Else e is an integer index ≤ s,
+      } else {
+        // c. Else e is an integer index ≤ s,
         // i. If e = p, let q be q+1.
         if (e === p) {
           q++;
-        } else { // ii. Else e ≠ p,
+        } else {
+          // ii. Else e ≠ p,
           // 1. Let T be a String value equal to the substring of S consisting of the code units at indices p (inclusive) through q (exclusive).
           let T = S.substring(p, q);
 
@@ -703,46 +720,45 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
 
   // ECMA262 21.1.3.18
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("startsWith", 1, (context, [searchString, position]) => {
-    // 1. Let O be ? RequireObjectCoercible(this value).
-    let O = RequireObjectCoercible(realm, context);
+    obj.defineNativeMethod("startsWith", 1, (context, [searchString, position]) => {
+      // 1. Let O be ? RequireObjectCoercible(this value).
+      let O = RequireObjectCoercible(realm, context);
 
-    // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+      // 2. Let S be ? ToString(O).
+      let S = ToString(realm, O.throwIfNotConcrete());
 
-    // 3. Let isRegExp be ? IsRegExp(searchString).
-    let isRegExp = IsRegExp(realm, searchString);
+      // 3. Let isRegExp be ? IsRegExp(searchString).
+      let isRegExp = IsRegExp(realm, searchString);
 
-    // 4. If isRegExp is true, throw a TypeError exception.
-    if (isRegExp) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-        "String.prototype");
-    }
+      // 4. If isRegExp is true, throw a TypeError exception.
+      if (isRegExp) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "String.prototype");
+      }
 
-    // 5. Let searchStr be ? ToString(searchString).
-    let searchStr = ToStringPartial(realm, searchString);
+      // 5. Let searchStr be ? ToString(searchString).
+      let searchStr = ToStringPartial(realm, searchString);
 
-    // 6. Let pos be ? ToInteger(position). (If position is undefined, this step produces the value 0.)
-    let pos = ToInteger(realm, position || realm.intrinsics.undefined);
+      // 6. Let pos be ? ToInteger(position). (If position is undefined, this step produces the value 0.)
+      let pos = ToInteger(realm, position || realm.intrinsics.undefined);
 
-    // 7. Let len be the number of elements in S.
-    let len = S.length;
+      // 7. Let len be the number of elements in S.
+      let len = S.length;
 
-    // 8. Let start be min(max(pos, 0), len).
-    let start = Math.min(Math.max(pos, 0), len);
+      // 8. Let start be min(max(pos, 0), len).
+      let start = Math.min(Math.max(pos, 0), len);
 
-    // 9. Let searchLength be the number of elements in searchStr.
-    let searchLength = searchStr.length;
+      // 9. Let searchLength be the number of elements in searchStr.
+      let searchLength = searchStr.length;
 
-    // 10. If searchLength+start is greater than len, return false.
-    if (searchLength + start > len) return realm.intrinsics.false;
+      // 10. If searchLength+start is greater than len, return false.
+      if (searchLength + start > len) return realm.intrinsics.false;
 
-    // 11. If the sequence of elements of S starting at start of length searchLength is the same as the full element sequence of searchStr, return true.
-    if (S.substr(start, searchLength) === searchStr) return realm.intrinsics.true;
+      // 11. If the sequence of elements of S starting at start of length searchLength is the same as the full element sequence of searchStr, return true.
+      if (S.substr(start, searchLength) === searchStr) return realm.intrinsics.true;
 
-    // 12. Otherwise, return false.
-    return realm.intrinsics.false;
-  });
+      // 12. Otherwise, return false.
+      return realm.intrinsics.false;
+    });
 
   // ECMA262 21.1.3.19
   obj.defineNativeMethod("substring", 2, (context, [start, end]) => {
@@ -814,23 +830,23 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.22
-  obj.defineNativeMethod("toLowerCase", 0, (context) => {
+  obj.defineNativeMethod("toLowerCase", 0, context => {
     return toCase("Lower", context);
   });
 
   // ECMA262 21.1.3.23
-  obj.defineNativeMethod("toString", 0, (context) => {
+  obj.defineNativeMethod("toString", 0, context => {
     // 1. Return ? thisStringValue(this value).
     return thisStringValue(realm, context);
   });
 
   // ECMA262 21.1.3.24
-  obj.defineNativeMethod("toUpperCase", 0, (context) => {
+  obj.defineNativeMethod("toUpperCase", 0, context => {
     return toCase("Upper", context);
   });
 
   // ECMA262 21.1.3.25
-  obj.defineNativeMethod("trim", 0, (context) => {
+  obj.defineNativeMethod("trim", 0, context => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
 
@@ -845,13 +861,13 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.26
-  obj.defineNativeMethod("valueOf", 0, (context) => {
+  obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? thisStringValue(this value).
     return thisStringValue(realm, context);
   });
 
   // ECMA262 21.1.3.27
-  obj.defineNativeMethod(realm.intrinsics.SymbolIterator, 0, (context) => {
+  obj.defineNativeMethod(realm.intrinsics.SymbolIterator, 0, context => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
 
@@ -913,7 +929,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.3
-  obj.defineNativeMethod("big", 0, (context) => {
+  obj.defineNativeMethod("big", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -922,7 +938,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.4
-  obj.defineNativeMethod("blink", 0, (context) => {
+  obj.defineNativeMethod("blink", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -931,7 +947,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.5
-  obj.defineNativeMethod("bold", 0, (context) => {
+  obj.defineNativeMethod("bold", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -940,7 +956,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.6
-  obj.defineNativeMethod("fixed", 0, (context) => {
+  obj.defineNativeMethod("fixed", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -967,7 +983,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.9
-  obj.defineNativeMethod("italics", 0, (context) => {
+  obj.defineNativeMethod("italics", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -985,7 +1001,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.11
-  obj.defineNativeMethod("small", 0, (context) => {
+  obj.defineNativeMethod("small", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -994,7 +1010,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.12
-  obj.defineNativeMethod("strike", 0, (context) => {
+  obj.defineNativeMethod("strike", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -1003,7 +1019,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.13
-  obj.defineNativeMethod("sub", 0, (context) => {
+  obj.defineNativeMethod("sub", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -1012,7 +1028,7 @@ export default function (realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // B.2.3.14
-  obj.defineNativeMethod("sup", 0, (context) => {
+  obj.defineNativeMethod("sup", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 

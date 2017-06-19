@@ -26,14 +26,19 @@ import {
   HasOwnProperty,
   FunctionCreate,
   DefinePropertyOrThrow,
-  MakeMethod
+  MakeMethod,
 } from "../methods/index.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import type { BabelNodeObjectExpression, BabelNodeObjectProperty, BabelNodeObjectMethod } from "babel-types";
 
 // Returns the result of evaluating PropertyName.
-export function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): PropertyKeyValue {
+export function EvalPropertyName(
+  prop: BabelNodeObjectProperty | BabelNodeObjectMethod,
+  env: LexicalEnvironment,
+  realm: Realm,
+  strictCode: boolean
+): PropertyKeyValue {
   if (prop.computed) {
     let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode)).throwIfNotConcrete();
     return ToPropertyKey(realm, propertyKeyName);
@@ -47,7 +52,12 @@ export function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObject
 }
 
 // ECMA262 12.2.6.8
-export default function (ast: BabelNodeObjectExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeObjectExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Let obj be ObjectCreate(%ObjectPrototype%).
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
@@ -119,7 +129,7 @@ export default function (ast: BabelNodeObjectExpression, strictCode: boolean, en
           value: methodDef.$Closure,
           writable: true,
           enumerable: true,
-          configurable: true
+          configurable: true,
         };
 
         // 5. Return ? DefinePropertyOrThrow(object, methodDef.[[Key]], desc).
@@ -152,7 +162,7 @@ export default function (ast: BabelNodeObjectExpression, strictCode: boolean, en
         let desc = {
           get: closure,
           enumerable: true,
-          configurable: true
+          configurable: true,
         };
 
         // 10. Return ? DefinePropertyOrThrow(object, propKey, desc).
@@ -182,7 +192,7 @@ export default function (ast: BabelNodeObjectExpression, strictCode: boolean, en
         let desc = {
           set: closure,
           enumerable: true,
-          configurable: true
+          configurable: true,
         };
 
         // 9. Return ? DefinePropertyOrThrow(object, propKey, desc).

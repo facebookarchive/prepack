@@ -15,8 +15,11 @@ import type { LexicalEnvironment } from "../environment.js";
 
 import { AbruptCompletion, ReturnCompletion } from "../completions.js";
 
-export default function (
-  ast: BabelNodeReturnStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeReturnStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [AbruptCompletion, BabelNodeReturnStatement, Array<BabelNodeStatement>] {
   let result;
   if (ast.argument) {
@@ -24,7 +27,6 @@ export default function (
   } else {
     result = realm.intrinsics.undefined;
   }
-  if (!(result instanceof AbruptCompletion))
-    result = new ReturnCompletion(result);
+  if (!(result instanceof AbruptCompletion)) result = new ReturnCompletion(result);
   return [result, ast, []];
 }

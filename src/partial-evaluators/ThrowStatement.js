@@ -16,8 +16,11 @@ import type { Realm } from "../realm.js";
 import { AbruptCompletion } from "../completions.js";
 import { Value } from "../values/index.js";
 
-export default function (
-  ast: BabelNodeThrowStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeThrowStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [AbruptCompletion | Value, BabelNodeThrowStatement, Array<BabelNodeStatement>] {
   let result = env.evaluateCompletionDeref(ast, strictCode);
   return [result, ast, []];

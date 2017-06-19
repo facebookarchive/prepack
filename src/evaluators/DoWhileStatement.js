@@ -20,7 +20,13 @@ import { AbruptCompletion, BreakCompletion } from "../completions.js";
 import invariant from "../invariant.js";
 import type { BabelNodeDoWhileStatement } from "babel-types";
 
-export default function (ast: BabelNodeDoWhileStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm, labelSet: ?Array<string>): Value | Reference {
+export default function(
+  ast: BabelNodeDoWhileStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): Value | Reference {
   let { body, test } = ast;
 
   // 1. Let V be undefined.
@@ -36,8 +42,7 @@ export default function (ast: BabelNodeDoWhileStatement, strictCode: boolean, en
       invariant(stmt instanceof AbruptCompletion);
       // ECMA262 13.1.7
       if (stmt instanceof BreakCompletion) {
-        if (!stmt.target)
-          return (UpdateEmpty(realm, stmt, V): any).value;
+        if (!stmt.target) return (UpdateEmpty(realm, stmt, V): any).value;
       }
       throw UpdateEmpty(realm, stmt, V);
     }

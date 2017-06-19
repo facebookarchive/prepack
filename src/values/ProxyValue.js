@@ -13,21 +13,11 @@ import { Realm } from "../realm.js";
 import { Value, SymbolValue, NullValue, ObjectValue, UndefinedValue, StringValue } from "./index.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import invariant from "../invariant.js";
-import {
-  ToBooleanPartial,
-  ToPropertyDescriptor
-} from "../methods/to.js";
+import { ToBooleanPartial, ToPropertyDescriptor } from "../methods/to.js";
 import { SameValue, SameValuePartial, SamePropertyKey } from "../methods/abstract.js";
 import { GetMethod } from "../methods/get.js";
-import {
-  CreateListFromArrayLike
-} from "../methods/create.js";
-import {
-  IsExtensible,
-  IsPropertyKey,
-  IsDataDescriptor,
-  IsAccessorDescriptor,
-} from "../methods/is.js";
+import { CreateListFromArrayLike } from "../methods/create.js";
+import { IsExtensible, IsPropertyKey, IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
 import {
   FromPropertyDescriptor,
   CompletePropertyDescriptor,
@@ -392,7 +382,10 @@ export default class ProxyValue extends ObjectValue {
     let descObj = FromPropertyDescriptor(realm, Desc);
 
     // 9. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P, descObj »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, descObj]));
+    let booleanTrapResult = ToBooleanPartial(
+      realm,
+      Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, descObj])
+    );
 
     // 10. If booleanTrapResult is false, return false.
     if (!booleanTrapResult) return false;
@@ -408,7 +401,8 @@ export default class ProxyValue extends ObjectValue {
     if ("configurable" in Desc && !Desc.configurable) {
       // a. Let settingConfigFalse be true.
       settingConfigFalse = true;
-    } else { // 14. Else let settingConfigFalse be false.
+    } else {
+      // 14. Else let settingConfigFalse be false.
       settingConfigFalse = false;
     }
 
@@ -423,7 +417,8 @@ export default class ProxyValue extends ObjectValue {
       if (settingConfigFalse) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
-    } else { // 16. Else targetDesc is not undefined,
+    } else {
+      // 16. Else targetDesc is not undefined,
       ThrowIfMightHaveBeenDeleted(targetDesc.value);
 
       // a. If IsCompatiblePropertyDescriptor(extensibleTarget, Desc, targetDesc) is false, throw a TypeError exception.
@@ -473,7 +468,10 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P]));
+    let booleanTrapResult = ToBooleanPartial(
+      realm,
+      Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P])
+    );
 
     // 9. If booleanTrapResult is false, then
     if (!booleanTrapResult) {
@@ -535,7 +533,11 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let trapResult be ? Call(trap, handler, « target, P, Receiver »).
-    let trapResult = Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, Receiver]);
+    let trapResult = Call(realm, trap, handler, [
+      target,
+      typeof P === "string" ? new StringValue(realm, P) : P,
+      Receiver,
+    ]);
 
     // 9. Let targetDesc be ? target.[[GetOwnProperty]](P).
     let targetDesc = target.$GetOwnProperty(P);
@@ -553,7 +555,11 @@ export default class ProxyValue extends ObjectValue {
       }
 
       // b. If IsAccessorDescriptor(targetDesc) is true and targetDesc.[[Configurable]] is false and targetDesc.[[Get]] is undefined, then
-      if (IsAccessorDescriptor(realm, targetDesc) && targetDesc.configurable === false && (!targetDesc.get || targetDesc.get instanceof UndefinedValue)) {
+      if (
+        IsAccessorDescriptor(realm, targetDesc) &&
+        targetDesc.configurable === false &&
+        (!targetDesc.get || targetDesc.get instanceof UndefinedValue)
+      ) {
         // i. If trapResult is not undefined, throw a TypeError exception.
         if (!(trapResult instanceof UndefinedValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
@@ -597,7 +603,10 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P, V, Receiver »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, V, Receiver]));
+    let booleanTrapResult = ToBooleanPartial(
+      realm,
+      Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, V, Receiver])
+    );
 
     // 9. If booleanTrapResult is false, return false.
     if (!booleanTrapResult) return false;
@@ -663,7 +672,10 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P]));
+    let booleanTrapResult = ToBooleanPartial(
+      realm,
+      Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P])
+    );
 
     // 9. If booleanTrapResult is false, return false.
     if (!booleanTrapResult) return false;
@@ -717,7 +729,10 @@ export default class ProxyValue extends ObjectValue {
     let trapResultArray = Call(realm, trap, handler, [target]);
 
     // 8. Let trapResult be ? CreateListFromArrayLike(trapResultArray, « String, Symbol »).
-    let trapResult : Array<PropertyKeyValue> = ((CreateListFromArrayLike(realm, trapResultArray, ["String", "Symbol"]): any): Array<PropertyKeyValue>);
+    let trapResult: Array<PropertyKeyValue> = ((CreateListFromArrayLike(realm, trapResultArray, [
+      "String",
+      "Symbol",
+    ]): any): Array<PropertyKeyValue>);
 
     // 9. Let extensibleTarget be ? IsExtensible(target).
     let extensibleTarget = IsExtensible(realm, target);
@@ -746,7 +761,8 @@ export default class ProxyValue extends ObjectValue {
       if (desc && desc.configurable === false) {
         // i. Append key as an element of targetNonconfigurableKeys.
         targetNonconfigurableKeys.push(key);
-      } else { // c. Else,
+      } else {
+        // c. Else,
         // i. Append key as an element of targetConfigurableKeys.
         targetConfigurableKeys.push(key);
       }
@@ -766,7 +782,10 @@ export default class ProxyValue extends ObjectValue {
       // a. If key is not an element of uncheckedResultKeys, throw a TypeError exception.
       let index = FindPropertyKey(realm, uncheckedResultKeys, key);
       if (index < 0) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "key is not an element of uncheckedResultKeys");
+        throw realm.createErrorThrowCompletion(
+          realm.intrinsics.TypeError,
+          "key is not an element of uncheckedResultKeys"
+        );
       }
 
       // b. Remove key from uncheckedResultKeys.
@@ -781,7 +800,10 @@ export default class ProxyValue extends ObjectValue {
       // a. If key is not an element of uncheckedResultKeys, throw a TypeError exception.
       let index = FindPropertyKey(realm, uncheckedResultKeys, key);
       if (index < 0) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "key is not an element of uncheckedResultKeys");
+        throw realm.createErrorThrowCompletion(
+          realm.intrinsics.TypeError,
+          "key is not an element of uncheckedResultKeys"
+        );
       }
 
       // b. Remove key from uncheckedResultKeys.

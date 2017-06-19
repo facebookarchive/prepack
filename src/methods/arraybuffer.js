@@ -48,7 +48,14 @@ export function CreateByteDataBlock(realm: Realm, size: number): DataBlock {
 }
 
 // ECMA262 6.2.6.2
-export function CopyDataBlockBytes(realm: Realm, toBlock: DataBlock, toIndex: number, fromBlock: DataBlock, fromIndex: number, count: number): EmptyValue {
+export function CopyDataBlockBytes(
+  realm: Realm,
+  toBlock: DataBlock,
+  toIndex: number,
+  fromBlock: DataBlock,
+  fromIndex: number,
+  count: number
+): EmptyValue {
   // 1. Assert: fromBlock and toBlock are distinct Data Block values.
   invariant(toBlock instanceof Uint8Array && fromBlock instanceof Uint8Array && toBlock !== fromBlock);
 
@@ -73,7 +80,8 @@ export function CopyDataBlockBytes(realm: Realm, toBlock: DataBlock, toIndex: nu
     toBlock[toIndex] = fromBlock[fromIndex];
 
     // b. Increment toIndex and fromIndex each by 1.
-    toIndex += 1; fromIndex += 1;
+    toIndex += 1;
+    fromIndex += 1;
 
     // c. Decrement count by 1.
     count -= 1;
@@ -88,7 +96,7 @@ export function AllocateArrayBuffer(realm: Realm, constructor: ObjectValue, byte
   // 1. Let obj be ? OrdinaryCreateFromConstructor(constructor, "%ArrayBufferPrototype%", « [[ArrayBufferData]], [[ArrayBufferByteLength]] »).
   let obj = OrdinaryCreateFromConstructor(realm, constructor, "ArrayBufferPrototype", {
     $ArrayBufferData: undefined,
-    $ArrayBufferByteLength: undefined
+    $ArrayBufferByteLength: undefined,
   });
 
   // 2. Assert: byteLength is an integer value ≥ 0.
@@ -110,7 +118,9 @@ export function AllocateArrayBuffer(realm: Realm, constructor: ObjectValue, byte
 // ECMA262 24.1.1.3
 export function DetachArrayBuffer(realm: Realm, arrayBuffer: ObjectValue): NullValue {
   // 1. Assert: Type(arrayBuffer) is Object and it has [[ArrayBufferData]] and [[ArrayBufferByteLength]] internal slots.
-  invariant(arrayBuffer instanceof ObjectValue && '$ArrayBufferData' in arrayBuffer && '$ArrayBufferByteLength' in arrayBuffer);
+  invariant(
+    arrayBuffer instanceof ObjectValue && "$ArrayBufferData" in arrayBuffer && "$ArrayBufferByteLength" in arrayBuffer
+  );
 
   // 2. Set arrayBuffer.[[ArrayBufferData]] to null.
   ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData = null;
@@ -123,7 +133,13 @@ export function DetachArrayBuffer(realm: Realm, arrayBuffer: ObjectValue): NullV
 }
 
 // ECMA262 24.2.1.1
-export function GetViewValue(realm: Realm, view: Value, requestIndex: Value, isLittleEndian: Value, type: ElementType): NumberValue {
+export function GetViewValue(
+  realm: Realm,
+  view: Value,
+  requestIndex: Value,
+  isLittleEndian: Value,
+  type: ElementType
+): NumberValue {
   view = view.throwIfNotConcrete();
 
   // 1. If Type(view) is not Object, throw a TypeError exception.
@@ -132,8 +148,11 @@ export function GetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
   }
 
   // 2. If view does not have a [[DataView]] internal slot, throw a TypeError exception.
-  if (!('$DataView' in view)) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "view does not have a [[DataView]] internal slot");
+  if (!("$DataView" in view)) {
+    throw realm.createErrorThrowCompletion(
+      realm.intrinsics.TypeError,
+      "view does not have a [[DataView]] internal slot"
+    );
   }
 
   // 3. Assert: view has a [[ViewedArrayBuffer]] internal slot.
@@ -146,7 +165,8 @@ export function GetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
   let littleEndian = ToBooleanPartial(realm, isLittleEndian);
 
   // 6. Let buffer be view.[[ViewedArrayBuffer]].
-  let buffer = view.$ViewedArrayBuffer; invariant(buffer);
+  let buffer = view.$ViewedArrayBuffer;
+  invariant(buffer);
 
   // 7. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, buffer) === true) {
@@ -154,10 +174,12 @@ export function GetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
   }
 
   // 8. Let viewOffset be view.[[ByteOffset]].
-  let viewOffset = view.$ByteOffset; invariant(typeof viewOffset === "number");
+  let viewOffset = view.$ByteOffset;
+  invariant(typeof viewOffset === "number");
 
   // 9. Let viewSize be view.[[ByteLength]].
-  let viewSize = view.$ByteLength; invariant(typeof viewSize === "number");
+  let viewSize = view.$ByteLength;
+  invariant(typeof viewSize === "number");
 
   // 10. Let elementSize be the Number value of the Element Size value specified in Table 50 for Element Type type.
   let elementSize = ElementSize[type];
@@ -175,18 +197,28 @@ export function GetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
 }
 
 // ECMA262 24.1.1.5
-export function GetValueFromBuffer(realm: Realm, arrayBuffer: ObjectValue, byteIndex: number, type: ElementType, isLittleEndian?: boolean): NumberValue {
+export function GetValueFromBuffer(
+  realm: Realm,
+  arrayBuffer: ObjectValue,
+  byteIndex: number,
+  type: ElementType,
+  isLittleEndian?: boolean
+): NumberValue {
   // 1. Assert: IsDetachedBuffer(arrayBuffer) is false.
   invariant(IsDetachedBuffer(realm, arrayBuffer) === false);
 
   // 2. Assert: There are sufficient bytes in arrayBuffer starting at byteIndex to represent a value of type.
-  invariant(arrayBuffer.$ArrayBufferData instanceof Uint8Array && byteIndex + ElementSize[type] <= arrayBuffer.$ArrayBufferData.length);
+  invariant(
+    arrayBuffer.$ArrayBufferData instanceof Uint8Array &&
+      byteIndex + ElementSize[type] <= arrayBuffer.$ArrayBufferData.length
+  );
 
   // 3. Assert: byteIndex is an integer value ≥ 0.
   invariant(byteIndex >= 0);
 
   // 4. Let block be arrayBuffer.[[ArrayBufferData]].
-  let block = arrayBuffer.$ArrayBufferData; invariant(block instanceof Uint8Array);
+  let block = arrayBuffer.$ArrayBufferData;
+  invariant(block instanceof Uint8Array);
 
   // 5. Let elementSize be the Number value of the Element Size value specified in Table 50 for Element Type type.
   let elementSize = ElementSize[type];
@@ -226,7 +258,8 @@ export function GetValueFromBuffer(realm: Realm, arrayBuffer: ObjectValue, byteI
     } else {
       intValue = rawValue.getUint32(0, isLittleEndian);
     }
-  } else { // 12. Else,
+  } else {
+    // 12. Else,
     // a. Let intValue be the byte elements of rawValue concatenated and interpreted as a bit string encoding of a binary little-endian 2's complement number of bit length elementSize × 8.
     if (elementSize === 1) {
       intValue = rawValue.getInt8(0);
@@ -242,7 +275,14 @@ export function GetValueFromBuffer(realm: Realm, arrayBuffer: ObjectValue, byteI
 }
 
 // ECMA262 24.2.1.2
-export function SetViewValue(realm: Realm, view: Value, requestIndex: Value, isLittleEndian: Value, type: ElementType, value: Value): UndefinedValue {
+export function SetViewValue(
+  realm: Realm,
+  view: Value,
+  requestIndex: Value,
+  isLittleEndian: Value,
+  type: ElementType,
+  value: Value
+): UndefinedValue {
   view = view.throwIfNotConcrete();
 
   // 1. If Type(view) is not Object, throw a TypeError exception.
@@ -251,8 +291,11 @@ export function SetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
   }
 
   // 2. If view does not have a [[DataView]] internal slot, throw a TypeError exception.
-  if (!('$DataView' in view)) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "view does not have a [[DataView]] internal slot");
+  if (!("$DataView" in view)) {
+    throw realm.createErrorThrowCompletion(
+      realm.intrinsics.TypeError,
+      "view does not have a [[DataView]] internal slot"
+    );
   }
 
   // 3. Assert: view has a [[ViewedArrayBuffer]] internal slot.
@@ -268,7 +311,8 @@ export function SetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
   let littleEndian = ToBooleanPartial(realm, isLittleEndian);
 
   // 7. Let buffer be view.[[ViewedArrayBuffer]].
-  let buffer = view.$ViewedArrayBuffer; invariant(buffer);
+  let buffer = view.$ViewedArrayBuffer;
+  invariant(buffer);
 
   // 8. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, buffer) === true) {
@@ -276,10 +320,12 @@ export function SetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
   }
 
   // 9. Let viewOffset be view.[[ByteOffset]].
-  let viewOffset = view.$ByteOffset; invariant(typeof viewOffset === "number");
+  let viewOffset = view.$ByteOffset;
+  invariant(typeof viewOffset === "number");
 
   // 10. Let viewSize be view.[[ByteLength]].
-  let viewSize = view.$ByteLength; invariant(typeof viewSize === "number");
+  let viewSize = view.$ByteLength;
+  invariant(typeof viewSize === "number");
 
   // 11. Let elementSize be the Number value of the Element Size value specified in Table 50 for Element Type type.
   let elementSize = ElementSize[type];
@@ -297,7 +343,12 @@ export function SetViewValue(realm: Realm, view: Value, requestIndex: Value, isL
 }
 
 // ECMA262 24.1.1.4
-export function CloneArrayBuffer(realm: Realm, srcBuffer: ObjectValue, srcByteOffset: number, cloneConstructor?: ObjectValue): ObjectValue {
+export function CloneArrayBuffer(
+  realm: Realm,
+  srcBuffer: ObjectValue,
+  srcByteOffset: number,
+  cloneConstructor?: ObjectValue
+): ObjectValue {
   // 1. Assert: Type(srcBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
   invariant(srcBuffer instanceof ObjectValue && srcBuffer.$ArrayBufferData);
 
@@ -316,7 +367,8 @@ export function CloneArrayBuffer(realm: Realm, srcBuffer: ObjectValue, srcByteOf
   invariant(IsConstructor(realm, cloneConstructor) === true, "IsConstructor(cloneConstructor) is true");
 
   // 4. Let srcLength be the value of srcBuffer's [[ArrayBufferByteLength]] internal slot.
-  let srcLength = srcBuffer.$ArrayBufferByteLength; invariant(typeof srcLength === "number");
+  let srcLength = srcBuffer.$ArrayBufferByteLength;
+  invariant(typeof srcLength === "number");
 
   // 5. Assert: srcByteOffset ≤ srcLength.
   invariant(srcByteOffset <= srcLength, "srcByteOffset ≤ srcLength");
@@ -325,7 +377,8 @@ export function CloneArrayBuffer(realm: Realm, srcBuffer: ObjectValue, srcByteOf
   let cloneLength = srcLength - srcByteOffset;
 
   // 7. Let srcBlock be srcBuffer.[[ArrayBufferData]].
-  let srcBlock = srcBuffer.$ArrayBufferData; invariant(srcBlock);
+  let srcBlock = srcBuffer.$ArrayBufferData;
+  invariant(srcBlock);
 
   // 8. Let targetBuffer be ? AllocateArrayBuffer(cloneConstructor, srcLength).
   let targetBuffer = AllocateArrayBuffer(realm, cloneConstructor, srcLength);
@@ -336,7 +389,8 @@ export function CloneArrayBuffer(realm: Realm, srcBuffer: ObjectValue, srcByteOf
   }
 
   // 10. Let targetBlock be targetBuffer.[[ArrayBufferData]].
-  let targetBlock = targetBuffer.$ArrayBufferData; invariant(targetBlock);
+  let targetBlock = targetBuffer.$ArrayBufferData;
+  invariant(targetBlock);
 
   // 11. Perform CopyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, cloneLength).
   CopyDataBlockBytes(realm, targetBlock, 0, srcBlock, srcByteOffset, cloneLength);
@@ -346,12 +400,22 @@ export function CloneArrayBuffer(realm: Realm, srcBuffer: ObjectValue, srcByteOf
 }
 
 // ECMA262 24.1.1.6
-export function SetValueInBuffer(realm: Realm, arrayBuffer: ObjectValue, byteIndex: number, type: ElementType, value: number, isLittleEndian?: boolean): UndefinedValue {
+export function SetValueInBuffer(
+  realm: Realm,
+  arrayBuffer: ObjectValue,
+  byteIndex: number,
+  type: ElementType,
+  value: number,
+  isLittleEndian?: boolean
+): UndefinedValue {
   // 1. Assert: IsDetachedBuffer(arrayBuffer) is false.
   invariant(IsDetachedBuffer(realm, arrayBuffer) === false);
 
   // 2. Assert: There are sufficient bytes in arrayBuffer starting at byteIndex to represent a value of type.
-  invariant(arrayBuffer.$ArrayBufferData instanceof Uint8Array && byteIndex + ElementSize[type] <= arrayBuffer.$ArrayBufferData.length);
+  invariant(
+    arrayBuffer.$ArrayBufferData instanceof Uint8Array &&
+      byteIndex + ElementSize[type] <= arrayBuffer.$ArrayBufferData.length
+  );
 
   // 3. Assert: byteIndex is an integer value ≥ 0.
   invariant(byteIndex >= 0);
@@ -372,11 +436,13 @@ export function SetValueInBuffer(realm: Realm, arrayBuffer: ObjectValue, byteInd
   // 8. If type is "Float32", then
   if (type === "Float32") {
     // a. Set rawBytes to a List containing the 4 bytes that are the result of converting value to IEEE 754-2008 binary32 format using “Round to nearest, ties to even” rounding mode. If isLittleEndian is false, the bytes are arranged in big endian order. Otherwise, the bytes are arranged in little endian order. If value is NaN, rawValue may be set to any implementation chosen IEEE 754-2008 binary32 format Not-a-Number encoding. An implementation must always choose the same encoding for each implementation distinguishable NaN value.
-    (new DataView(rawBytes.buffer)).setFloat32(0, value, isLittleEndian);
-  } else if (type === "Float64") { // 9. Else if type is "Float64", then
+    new DataView(rawBytes.buffer).setFloat32(0, value, isLittleEndian);
+  } else if (type === "Float64") {
+    // 9. Else if type is "Float64", then
     // a. Set rawBytes to a List containing the 8 bytes that are the IEEE 754-2008 binary64 format encoding of value. If isLittleEndian is false, the bytes are arranged in big endian order. Otherwise, the bytes are arranged in little endian order. If value is NaN, rawValue may be set to any implementation chosen IEEE 754-2008 binary64 format Not-a-Number encoding. An implementation must always choose the same encoding for each implementation distinguishable NaN value.
-    (new DataView(rawBytes.buffer)).setFloat64(0, value, isLittleEndian);
-  } else { // 10. Else,
+    new DataView(rawBytes.buffer).setFloat64(0, value, isLittleEndian);
+  } else {
+    // 10. Else,
     // a. Let n be the Number value of the Element Size specified in Table 50 for Element Type type.
     let n = ElementSize[type];
 
@@ -390,22 +456,23 @@ export function SetValueInBuffer(realm: Realm, arrayBuffer: ObjectValue, byteInd
     if (intValue > 0) {
       // i. Let rawBytes be a List containing the n-byte binary encoding of intValue. If isLittleEndian is false, the bytes are ordered in big endian order. Otherwise, the bytes are ordered in little endian order.
       if (n === 1) {
-        (new DataView(rawBytes.buffer)).setUint8(0, intValue);
+        new DataView(rawBytes.buffer).setUint8(0, intValue);
       } else if (n === 2) {
-        (new DataView(rawBytes.buffer)).setUint16(0, intValue, isLittleEndian);
+        new DataView(rawBytes.buffer).setUint16(0, intValue, isLittleEndian);
       } else if (n === 4) {
-        (new DataView(rawBytes.buffer)).setUint32(0, intValue, isLittleEndian);
+        new DataView(rawBytes.buffer).setUint32(0, intValue, isLittleEndian);
       } else {
         invariant(false);
       }
-    } else { // e. Else,
+    } else {
+      // e. Else,
       // i. Let rawBytes be a List containing the n-byte binary 2's complement encoding of intValue. If isLittleEndian is false, the bytes are ordered in big endian order. Otherwise, the bytes are ordered in little endian order.
       if (n === 1) {
-        (new DataView(rawBytes.buffer)).setInt8(0, intValue);
+        new DataView(rawBytes.buffer).setInt8(0, intValue);
       } else if (n === 2) {
-        (new DataView(rawBytes.buffer)).setInt16(0, intValue, isLittleEndian);
+        new DataView(rawBytes.buffer).setInt16(0, intValue, isLittleEndian);
       } else if (n === 4) {
-        (new DataView(rawBytes.buffer)).setInt32(0, intValue, isLittleEndian);
+        new DataView(rawBytes.buffer).setInt32(0, intValue, isLittleEndian);
       } else {
         invariant(false);
       }

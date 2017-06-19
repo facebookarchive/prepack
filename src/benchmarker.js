@@ -15,15 +15,15 @@ import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import invariant from "./invariant.js";
 
-let chalk     = require("chalk");
-let jsdom     = require("jsdom");
-let zlib      = require("zlib");
-let fs        = require("fs");
-let vm        = require("vm");
+let chalk = require("chalk");
+let jsdom = require("jsdom");
+let zlib = require("zlib");
+let fs = require("fs");
+let vm = require("vm");
 
 function getTime() {
   let stamp = process.hrtime();
-  return ((stamp[0] * 1e9) + stamp[1]) / 1e6;
+  return (stamp[0] * 1e9 + stamp[1]) / 1e6;
 }
 
 function exec(code: string, compatibility: Compatibility) {
@@ -34,7 +34,7 @@ function exec(code: string, compatibility: Compatibility) {
       error() {},
       log(s) {
         console.log(s);
-      }
+      },
     },
   };
 
@@ -52,7 +52,8 @@ Object.getOwnPropertyNames(global).forEach(function(name){ if (name !== "Object"
     sandbox.location = window.location;
   }
   if (compatibility === "jsc-600-1-4-17") {
-    beforeCode += "delete global.clearInterval; delete global.clearImmediate; delete global.clearTimeout; delete global.setImmediate; delete Object.assign;";
+    beforeCode +=
+      "delete global.clearInterval; delete global.clearImmediate; delete global.clearTimeout; delete global.setImmediate; delete Object.assign;";
   }
 
   code = `${beforeCode} ${code}; // keep newline here as code may end with comment
@@ -69,7 +70,7 @@ ${afterCode}`;
     gzip: zlib.gzipSync(code).length,
     executed: executedEnd - executedStart,
     compiled: executedStart - start,
-    total: executedEnd - start
+    total: executedEnd - start,
   };
 }
 
@@ -77,18 +78,23 @@ function line(type, code, compatibility: Compatibility, moreOut = {}, compareSta
   let stats = exec(code, compatibility);
 
   function wrapTime(key) {
-    return wrap(key, (ms) => `${ms.toFixed(2)}ms`, "faster", "slower");
+    return wrap(key, ms => `${ms.toFixed(2)}ms`, "faster", "slower");
   }
 
   function wrapSize(key) {
-    return wrap(key, function (b) {
-      let kilobytes = Math.round(b / 1000);
-      if (kilobytes > 1000) {
-        return `${(kilobytes / 1000).toFixed(2)}MB`;
-      } else {
-        return `${kilobytes}KB`;
-      }
-    }, "smaller", "bigger");
+    return wrap(
+      key,
+      function(b) {
+        let kilobytes = Math.round(b / 1000);
+        if (kilobytes > 1000) {
+          return `${(kilobytes / 1000).toFixed(2)}MB`;
+        } else {
+          return `${kilobytes}KB`;
+        }
+      },
+      "smaller",
+      "bigger"
+    );
   }
 
   function wrap(key, format, positive, negative) {
@@ -115,7 +121,7 @@ function line(type, code, compatibility: Compatibility, moreOut = {}, compareSta
     "VM Execution Time": wrapTime("executed"),
     "Raw Code Size": wrapSize("raw"),
     "Gzip Code Size": wrapSize("gzip"),
-    ...moreOut
+    ...moreOut,
   };
 
   console.log(chalk.bold(type));
@@ -127,7 +133,13 @@ function line(type, code, compatibility: Compatibility, moreOut = {}, compareSta
   return stats;
 }
 
-function dump(name: string, raw: string, min: string = raw, compatibility?: "browser" | "jsc-600-1-4-17" = "browser", outputFilename?: string) {
+function dump(
+  name: string,
+  raw: string,
+  min: string = raw,
+  compatibility?: "browser" | "jsc-600-1-4-17" = "browser",
+  outputFilename?: string
+) {
   console.log(chalk.inverse(name));
   let beforeStats = line("Before", min, compatibility);
 
@@ -140,18 +152,24 @@ function dump(name: string, raw: string, min: string = raw, compatibility?: "bro
     process.exit(1);
     invariant(false);
   }
-  let code  = serialized.code;
+  let code = serialized.code;
   let total = Date.now() - start;
 
   if (code.length >= 1000 || outputFilename) {
-    let filename = outputFilename || (name + "-processed.js");
+    let filename = outputFilename || name + "-processed.js";
     console.log(`Prepacked source code written to ${filename}.`);
     fs.writeFileSync(filename, code);
   }
 
-  line("After", code, compatibility, {
-    "Prepack Compile Time": `${total}ms`
-  }, beforeStats);
+  line(
+    "After",
+    code,
+    compatibility,
+    {
+      "Prepack Compile Time": `${total}ms`,
+    },
+    beforeStats
+  );
 
   if (code.length <= 1000 && !outputFilename) {
     console.log("+++++++++++++++++ Prepacked source code");
@@ -166,12 +184,15 @@ let inputFilename;
 let outputFilename;
 let compatibility;
 while (args.length) {
-  let arg = args[0]; args.shift();
+  let arg = args[0];
+  args.shift();
   if (arg === "--out") {
-    arg = args[0]; args.shift();
+    arg = args[0];
+    args.shift();
     outputFilename = arg;
   } else if (arg === "--compatibility") {
-    arg = args[0]; args.shift();
+    arg = args[0];
+    args.shift();
     if (arg !== "jsc-600-1-4-17") {
       console.error(`Unsupported compatibility: ${arg}`);
       process.exit(1);

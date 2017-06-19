@@ -19,7 +19,12 @@ import * as t from "babel-types";
 import type { BabelNodeArrowFunctionExpression } from "babel-types";
 
 // ECMA262 14.2.16
-export default function (ast: BabelNodeArrowFunctionExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeArrowFunctionExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   let ConciseBody = ast.body;
   if (ConciseBody.type !== "BlockStatement") {
     ConciseBody = t.blockStatement([t.returnStatement(ConciseBody)]);

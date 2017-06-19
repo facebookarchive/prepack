@@ -49,9 +49,8 @@ export function createDeepIntrinsic(realm: Realm, value: Value, intrinsicName: s
       if (prototype !== Object.prototype) {
         throw new Error(
           "Only simple objects are supported for now. Got: " +
-          (typeof prototype.constructor === "function" &&
-          prototype.constructor.name ||
-          Object.prototype.toString.call(prototype))
+            ((typeof prototype.constructor === "function" && prototype.constructor.name) ||
+              Object.prototype.toString.call(prototype))
         );
       }
       let obj = new ObjectValue(
@@ -80,16 +79,13 @@ export function copyProperty(realm: Realm, originalObject: {}, realmObject: Obje
     return;
   }
   if (desc.get || desc.set) {
-    throw new Error(
-      "Getter/setters are not supported because functions are not supported yet."
-    );
+    throw new Error("Getter/setters are not supported because functions are not supported yet.");
   }
   let newDesc = {
     value: value,
     writable: !!desc.writable,
     configurable: !!desc.configurable,
-    enumerable: !!desc.enumerable
+    enumerable: !!desc.enumerable,
   };
   DefinePropertyOrThrow(realm, realmObject, name, newDesc);
 }
-

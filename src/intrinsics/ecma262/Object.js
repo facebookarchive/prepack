@@ -11,7 +11,15 @@
 
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { AbstractValue, ObjectValue, NullValue, UndefinedValue, StringValue, BooleanValue, SymbolValue } from "../../values/index.js";
+import {
+  AbstractValue,
+  ObjectValue,
+  NullValue,
+  UndefinedValue,
+  StringValue,
+  BooleanValue,
+  SymbolValue,
+} from "../../values/index.js";
 import {
   ToObject,
   ToObjectPartial,
@@ -38,7 +46,7 @@ import {
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.1.1
   let func = new NativeFunctionValue(realm, "Object", "Object", 1, (context, [value], argCount, NewTarget) => {
     // 1. If NewTarget is neither undefined nor the active function, then
@@ -75,7 +83,8 @@ export default function (realm: Realm): NativeFunctionValue {
       // a. If nextSource is undefined or null, let keys be a new empty List.
       if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) {
         continue;
-      } else { // b. Else,
+      } else {
+        // b. Else,
         // i. Let from be ToObject(nextSource).
         frm = ToObjectPartial(realm, nextSource);
         let frm_was_partial = frm.isPartial();
@@ -93,8 +102,7 @@ export default function (realm: Realm): NativeFunctionValue {
         // properties at runtime that will overwrite current properties in to.
         // For now, just throw if this happens.
         let to_keys = to.$OwnPropertyKeys();
-        if (to_keys.length !== 0)
-          throw AbstractValue.createIntrospectionErrorThrowCompletion(nextSource);
+        if (to_keys.length !== 0) throw AbstractValue.createIntrospectionErrorThrowCompletion(nextSource);
       }
 
       invariant(frm, "from required");
@@ -231,8 +239,7 @@ export default function (realm: Realm): NativeFunctionValue {
       let descriptor = FromPropertyDescriptor(realm, desc);
 
       // c. If descriptor is not undefined, perform ! CreateDataProperty(descriptors, key, descriptor).
-      if (!(descriptor instanceof UndefinedValue))
-        CreateDataProperty(realm, descriptors, key, descriptor);
+      if (!(descriptor instanceof UndefinedValue)) CreateDataProperty(realm, descriptors, key, descriptor);
     }
 
     // 5. Return descriptors.
@@ -363,30 +370,31 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.20
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) func.defineNativeMethod("setPrototypeOf", 2, (context, [O, proto]) => {
-    // 1. Let O be ? RequireObjectCoercible(O).
-    O = RequireObjectCoercible(realm, O);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+    func.defineNativeMethod("setPrototypeOf", 2, (context, [O, proto]) => {
+      // 1. Let O be ? RequireObjectCoercible(O).
+      O = RequireObjectCoercible(realm, O);
 
-    // 2. If Type(proto) is neither Object nor Null, throw a TypeError exception.
-    if (!HasSomeCompatibleType(proto, ObjectValue, NullValue)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-    }
+      // 2. If Type(proto) is neither Object nor Null, throw a TypeError exception.
+      if (!HasSomeCompatibleType(proto, ObjectValue, NullValue)) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
 
-    // 3. If Type(O) is not Object, return O.
-    O = O.throwIfNotConcrete();
-    if (!(O instanceof ObjectValue)) return O;
+      // 3. If Type(O) is not Object, return O.
+      O = O.throwIfNotConcrete();
+      if (!(O instanceof ObjectValue)) return O;
 
-    // 4. Let status be ? O.[[SetPrototypeOf]](proto).
-    let status = O.$SetPrototypeOf(((proto: any): ObjectValue | NullValue));
+      // 4. Let status be ? O.[[SetPrototypeOf]](proto).
+      let status = O.$SetPrototypeOf(((proto: any): ObjectValue | NullValue));
 
-    // 5. If status is false, throw a TypeError exception.
-    if (status === false) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-    }
+      // 5. If status is false, throw a TypeError exception.
+      if (status === false) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
 
-    // 6. Return O.
-    return O;
-  });
+      // 6. Return O.
+      return O;
+    });
 
   return func;
 }

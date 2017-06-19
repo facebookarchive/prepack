@@ -27,7 +27,11 @@ import type { SourceMap } from "./types.js";
 
 declare var process: any;
 
-export function prepackNodeCLI(filename: string, options: Options = defaultOptions, callback: (any, ?{code: string, map?: SourceMap})=>void) {
+export function prepackNodeCLI(
+  filename: string,
+  options: Options = defaultOptions,
+  callback: (any, ?{ code: string, map?: SourceMap }) => void
+) {
   let serialized;
   try {
     serialized = prepackNodeCLISync(filename, options);
@@ -42,20 +46,17 @@ export function prepackNodeCLISync(filename: string, options: Options = defaultO
   if (process.version !== "v7.9.0") {
     console.warn(
       `Prepack's node-cli mode currently only works on Node v7.9.0.\n` +
-      `You are running version ${process.version} which will likely fail.`
+        `You are running version ${process.version} which will likely fail.`
     );
   }
 
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
 
-  let processObj = initializeProcess(realm, ['node', filename]);
+  let processObj = initializeProcess(realm, ["node", filename]);
   let bootstrapFn = initializeBootstrap(realm);
 
-  let serializer = new Serializer(
-    realm,
-    getSerializerOptions(options),
-  );
+  let serializer = new Serializer(realm, getSerializerOptions(options));
 
   let context = new ExecutionContext();
   context.lexicalEnvironment = realm.$GlobalEnv;
@@ -65,10 +66,7 @@ export function prepackNodeCLISync(filename: string, options: Options = defaultO
   let res;
   try {
     if (bootstrapFn.$Call) {
-      res = bootstrapFn.$Call(
-        realm.intrinsics.null,
-        [processObj]
-      );
+      res = bootstrapFn.$Call(realm.intrinsics.null, [processObj]);
     }
   } catch (err) {
     if (err instanceof Completion) {
@@ -95,15 +93,15 @@ export function prepackNodeCLISync(filename: string, options: Options = defaultO
   // intrinsics that exist in a preinitialized environment. This ensures
   // that we don't end up with duplicates of these. This won't work in an
   // uninitialized environment.
-  let nextTick = realm.$GlobalEnv.execute('process.nextTick', '', '');
+  let nextTick = realm.$GlobalEnv.execute("process.nextTick", "", "");
   invariant(nextTick instanceof Value);
-  nextTick.intrinsicName = 'process.nextTick';
-  let tickCallback = realm.$GlobalEnv.execute('process._tickCallback', '', '');
+  nextTick.intrinsicName = "process.nextTick";
+  let tickCallback = realm.$GlobalEnv.execute("process._tickCallback", "", "");
   invariant(tickCallback instanceof Value);
-  tickCallback.intrinsicName = 'process._tickCallback';
-  let tickDomainCallback = realm.$GlobalEnv.execute('process._tickDomainCallback', '', '');
+  tickCallback.intrinsicName = "process._tickCallback";
+  let tickDomainCallback = realm.$GlobalEnv.execute("process._tickDomainCallback", "", "");
   invariant(tickDomainCallback instanceof Value);
-  tickDomainCallback.intrinsicName = 'process._tickDomainCallback';
+  tickDomainCallback.intrinsicName = "process._tickDomainCallback";
 
   // Serialize
   let serialized = serializer.init("", "", "", options.sourceMaps);

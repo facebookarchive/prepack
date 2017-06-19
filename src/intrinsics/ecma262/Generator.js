@@ -12,7 +12,9 @@
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue } from "../../values/index.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 25.3.1.5
-  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "GeneratorFunction"), { writable: false });
+  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "GeneratorFunction"), {
+    writable: false,
+  });
 }

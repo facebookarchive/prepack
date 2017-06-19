@@ -31,8 +31,7 @@ function serialize(realm: Realm, res: Value | AbruptCompletion): any {
     let err;
     try {
       let value = res.value;
-      if (value instanceof ObjectValue &&
-          InstanceofOperator(realm, value, realm.intrinsics.Error)) {
+      if (value instanceof ObjectValue && InstanceofOperator(realm, value, realm.intrinsics.Error)) {
         err = new Error(ToStringPartial(realm, Get(realm, value, "message")));
         err.stack = ToStringPartial(realm, Get(realm, value, "stack"));
       } else {
@@ -67,5 +66,5 @@ repl.start({
       console.log(err);
       callback(err);
     }
-  }
+  },
 });

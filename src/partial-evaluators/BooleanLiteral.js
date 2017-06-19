@@ -15,8 +15,11 @@ import type { Realm } from "../realm.js";
 
 import { BooleanValue } from "../values/index.js";
 
-export default function (
-  ast: BabelNodeBooleanLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeBooleanLiteral,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [BooleanValue, BabelNodeBooleanLiteral, Array<BabelNodeStatement>] {
   let result = new BooleanValue(realm, ast.value);
   return [result, ast, []];
