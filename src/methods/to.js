@@ -460,14 +460,21 @@ export function ToNumber(realm: Realm, val: numberOrValue): number {
     return val.value;
   } else if (val instanceof StringValue) {
     return Number(val.value);
+  } else if (val instanceof SymbolValue) {
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
   } else {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown value type, can't coerce to a number");
+    invariant(false, "unexpected type of value");
   }
 }
 
 export function IsToNumberPure(realm: Realm, val: numberOrValue): boolean {
-  // This carefully abstracts the behavior of IsToNumberSideEffectFree.
-  if (val instanceof ObjectValue) return IsToPrimitivePure(realm, val);
+  if (val instanceof Value) {
+    if (IsToPrimitivePure(realm, val)) {
+      let type = val.getType();
+      return (type !== SymbolValue && type !== PrimitiveValue && type !== Value);
+    }
+    return false;
+  }
   return true;
 }
 
