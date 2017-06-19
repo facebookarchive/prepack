@@ -9,8 +9,8 @@
 
 /* @flow */
 
+let FatalError = require("../lib/errors.js").FatalError;
 let prepack = require("../lib/prepack-node.js").prepack;
-let InitializationError = require("../lib/prepack-node.js").InitializationError;
 
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
@@ -116,7 +116,7 @@ function runTest(name, code, args) {
         console.log(chalk.red("Test should have caused introspection error!"));
       }
     } catch (err) {
-      if (err instanceof Success) return true;
+      if (err instanceof Success || err instanceof FatalError) return true;
       console.log("Test should have caused introspection error, but instead caused a different internal error!");
       console.log(err);
     }
@@ -125,7 +125,7 @@ function runTest(name, code, args) {
     try {
       prepack(code, options);
     } catch (err) {
-      if (err instanceof InitializationError) {
+      if (err instanceof FatalError) {
         return true;
       }
     }
