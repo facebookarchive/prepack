@@ -1,5 +1,5 @@
 // recover-from-errors
-// expected errors: [{location: {"start":{"line":11,"column":12},"end":{"line":11,"column":13},"identifierName":"y","source":"test/error-handler/BinaryExpression.js"}, errorCode: "PP0002", severity: "Error", message: "might be an object with an unknown valueOf or toString method"}]
+// expected errors: [{location: {"start":{"line":11,"column":12},"end":{"line":11,"column":13},"identifierName":"y","source":"test/error-handler/BinaryExpression.js"}, errorCode: "PP0002", severity: "Error", message: "might be an object with an unknown valueOf or toString method"},{location: {"start":{"line":12,"column":6},"end":{"line":12,"column":7},"identifierName":"y","source":"test/error-handler/BinaryExpression.js"}, errorCode: "PP0002", severity: "Error", message: "might be an object with an unknown valueOf or toString method"}, {"location":{"start":{"line":17,"column":5},"end":{"line":17,"column":6},"identifierName":"y","source":"test/error-handler/BinaryExpression.js"},"severity":"Error","errorCode":"PP0002"}, {"location":{"start":{"line":17,"column":55},"end":{"line":17,"column":56},"identifierName":"y","source":"test/error-handler/BinaryExpression.js"},"severity":"Error","errorCode":"PP0002"}]
 
 var b = global.__abstract ? __abstract("boolean", true) : true;
 var x = global.__abstract ? __abstract("number", 123) : 123;
@@ -9,8 +9,11 @@ var y = b ? ob : x;
 
 try {
   z = 100 + y;
+  z = y + 200;
 } catch (err) {
-  z = 200 + err;
+  z = 300 + err;
 }
 
-inspect = function() { return "" + z; }
+z1 = y < 13 && x > 122 && 123 <= x && x >= 123 && x == y && x != 1 && x === x && x !== y;
+
+inspect = function() { return "" + z + z1; }
