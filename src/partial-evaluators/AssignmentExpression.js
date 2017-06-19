@@ -130,5 +130,6 @@ export default function (
   if (resultAst === undefined) {
     resultAst = t.assignmentExpression(ast.operator, (last: any), (rast: any));
   }
-  return createAbstractValueForBinary(op, resultAst, lval, rval, leftCompletion, rightCompletion, resultValue, io, realm);
+  return createAbstractValueForBinary(op, resultAst, lval, rval, last.loc, rast.loc,
+     leftCompletion, rightCompletion, resultValue, io, realm);
 }

@@ -97,15 +97,10 @@ export default function (realm: Realm): void {
     configurable: true
   });
 
-  // Helper function that identifies a computation that must remain part of the residual program and cannot be partially evaluated,
-  // e.g. because it contains a loop over abstract values.
-  // __residual(typeNameOrTemplate, function, arg0, arg1, ...) creates a new abstract value
-  // that is computed by invoking function(arg0, arg1, ...) in the residual program and
-  // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
-  // The function must not have side effects, and it must not access any state (besides the supplied arguments).
-  // TODO: In some distant future, Prepack should be able to figure out automatically what computations need to remain part of the residual program.
-  global.$DefineOwnProperty("__residual", {
-    value: new NativeFunctionValue(realm, "global.__residual", "__residual", 2, (context, [typeNameOrTemplate, f, ...args]) => {
+
+  // Helper function used to instatiate a residual function
+  function deriveNativeFunctionValue(unsafe: boolean): NativeFunctionValue {
+    return new NativeFunctionValue(realm, "global.__residual", "__residual", 2, (context, [typeNameOrTemplate, f, ...args]) => {
       if (!realm.useAbstractInterpretation) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
       }
@@ -117,7 +112,7 @@ export default function (realm: Realm): void {
       }
       invariant(f instanceof FunctionValue);
       f.isResidual = true;
-
+      if (unsafe) f.isUnsafeResidual = true;
       let types = new TypesDomain(type);
       let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
       let result = realm.deriveAbstract(types, values, [f].concat(args), nodes => t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>)));
@@ -127,7 +122,27 @@ export default function (realm: Realm): void {
         realm.rebuildNestedProperties(result, ((result.buildNode: any): BabelNodeIdentifier).name);
       }
       return result;
-    }),
+    });
+  }
+
+  // Helper function that identifies a computation that must remain part of the residual program and cannot be partially evaluated,
+  // e.g. because it contains a loop over abstract values.
+  // __residual(typeNameOrTemplate, function, arg0, arg1, ...) creates a new abstract value
+  // that is computed by invoking function(arg0, arg1, ...) in the residual program and
+  // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
+  // The function must not have side effects, and it must not access any state (besides the supplied arguments).
+  // TODO: In some distant future, Prepack should be able to figure out automatically what computations need to remain part of the residual program.
+  global.$DefineOwnProperty("__residual", {
+    value: deriveNativeFunctionValue(false),
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
+
+  // Helper function that identifies a variant of the residual function that has implicit dependencies. This version of residual will infer the dependencies
+  // and rewrite the function body to do the same thing as the orignal residual function.
+  global.$DefineOwnProperty("__residual_unsafe", {
+    value: deriveNativeFunctionValue(true),
     writable: true,
     enumerable: false,
     configurable: true

@@ -101,7 +101,7 @@ export default function (ast: BabelNodeAssignmentExpression, strictCode: boolean
   // 5. Let op be the @ where AssignmentOperator is @=.
   let op  = ((AssignmentOperator.slice(0, -1): any): BabelBinaryOperator);
   // 6. Let r be the result of applying op to lval and rval as if evaluating the expression lval op rval.
-  let r = GetValue(realm, computeBinary(realm, op, lval, rval));
+  let r = GetValue(realm, computeBinary(realm, op, lval, rval, ast.left.loc, ast.right.loc));
   // 7. Perform ? PutValue(lref, r).
   PutValue(realm, lref, r);
   // 8. Return r.
