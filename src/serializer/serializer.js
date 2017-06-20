@@ -1675,7 +1675,7 @@ export class Serializer {
             initializedValues = initializer.values;
           }
           if (initializer === ownInitializer) {
-            initializationStatements = initializationStatements.concat(ownInitializer.body);
+            initializationStatements = initializationStatements.concat(initializer.body);
           } else {
             let ast = sharedInitializers.get(initializer.id);
             if (ast === undefined) {
@@ -1690,7 +1690,7 @@ export class Serializer {
                 enter(path) {
                   count++;
                 }
-              });
+              }, null, {});
               if (count > 24) {
                 let id = t.identifier(this.initializerNameGenerator.generate());
                 this.prelude.push(t.functionDeclaration(id, [], t.blockStatement([ast])));
