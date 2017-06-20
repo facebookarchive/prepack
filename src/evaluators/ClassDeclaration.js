@@ -94,7 +94,7 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
     // e. If superclass is null, then
     if (superclass === null) {
       // i. Let protoParent be null.
-      protoParent = new NullValue(realm);
+      protoParent = realm.intrinsics.null;
 
       // ii. Let constructorParent be the intrinsic object %FunctionPrototype%.
       constructorParent = realm.intrinsics.FunctionPrototype;
