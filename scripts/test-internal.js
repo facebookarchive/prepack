@@ -9,6 +9,8 @@
 
 /* @flow */
 
+import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
+import type { BabelNodeSourceLocation } from "babel-types";
 import { prepack } from "../lib/prepack-node.js";
 
 let chalk = require("chalk");
@@ -39,6 +41,13 @@ function search(dir, relative) {
 
 let tests = search(`${__dirname}/../test/internal`, "test/internal");
 
+let errors: Map<BabelNodeSourceLocation, CompilerDiagnostics> = new Map();
+function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
+  if (diagnostic.location)
+    errors.set(diagnostic.location, diagnostic);
+  return "Fail";
+}
+
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
@@ -49,7 +58,8 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       serialize: true,
       speculate: true,
-    });
+    },
+    errorHandler);
     if (!serialized) {
       console.log(chalk.red("Error during serialization"));
       return false;
@@ -59,6 +69,10 @@ function runTest(name: string, code: string): boolean {
   } catch (e) {
     console.log(e);
     return false;
+  } finally {
+    for (let [loc, error] of errors) {
+      console.log(`${loc.start.line}:${loc.start.column} ${error.errorCode} ${error.message}`);
+    }
   }
 }
 
