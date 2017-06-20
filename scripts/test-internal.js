@@ -71,7 +71,7 @@ function runTest(name: string, code: string): boolean {
     return false;
   } finally {
     for (let [loc, error] of errors) {
-      console.log(`${loc.start.line}:${loc.start.column} ${error.errorCode} ${error.message}`);
+      console.log(`${loc.start.line}:${loc.start.column + 1} ${error.errorCode} ${error.message}`);
     }
   }
 }
