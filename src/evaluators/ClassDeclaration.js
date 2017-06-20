@@ -199,32 +199,17 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
 
     // 21. For each ClassElement m in order from methods
     for (let m of methods) {
-      let status;
-      try {
-        // a. If IsStatic of m is false, then
-        if (!IsStatic(m)) {
-          // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments proto and false.
-          PropertyDefinitionEvaluation(realm, m, proto, env, strictCode, false);
-        } else { // Else,
-          // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments F and false.
-          PropertyDefinitionEvaluation(realm, m, F, env, strictCode, false);
-        }
-      } catch (e) {
-        if (e instanceof AbruptCompletion) {
-          status = e;
-        } else {
-          throw e;
-        }
+      // a. If IsStatic of m is false, then
+      if (!IsStatic(m)) {
+        // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments proto and false.
+        PropertyDefinitionEvaluation(realm, m, proto, env, strictCode, false);
+      } else { // Else,
+        // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments F and false.
+        PropertyDefinitionEvaluation(realm, m, F, env, strictCode, false);
       }
-
       // c. If status is an abrupt completion, then
-      if (status instanceof AbruptCompletion) {
         // i. Set the running execution context's LexicalEnvironment to lex.
-        realm.getRunningContext().lexicalEnvironment = lex;
-
         // ii. Return Completion(status).
-        throw status;
-      }
     }
   } finally {
     // 22. Set the running execution context’s LexicalEnvironment to lex.
