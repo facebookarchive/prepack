@@ -74,7 +74,7 @@ export function getPureBinaryOperationResultType(
   } else if (op === ">>>" || op === "<<" || op === ">>" || op === "&" || op === "|" || op === "^" ||
              op === "**" || op === "%" || op === "/" || op === "*" || op === "-") {
     return reportErrorIfNotPure(IsToNumberPure, NumberValue);
-  } else if (op === "in") {
+  } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
       let error = new CompilerDiagnostics(
         `might not be an object, hence the ${op} operator might throw a TypeError`, rloc, 'PP0003', 'RecoverableError');
@@ -94,8 +94,6 @@ export function getPureBinaryOperationResultType(
       // Assume that the object is actually a well behaved object.
       return BooleanValue;
     }
-    return undefined;
-  } else if (op === "instanceof") {
     return undefined;
   }
   invariant(false, "unimplemented " + op);
