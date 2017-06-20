@@ -27,6 +27,10 @@ export default class ArrayValue extends ObjectValue {
     return "Array";
   }
 
+  isSimple(): boolean {
+    return this.$TypedArrayName === undefined;
+  }
+
   // ECMA262 9.4.2.1
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
     let A = this;
