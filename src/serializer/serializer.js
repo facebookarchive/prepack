@@ -1623,8 +1623,12 @@ export class Serializer {
     }
 
     // Inject initializer code for indexed vars into functions
-    let sharedInitializerFunctions = new Map();
+    let sharedInitializers = new Map();
     let conditionalInitialization = (initializedValues, initializationStatements) => {
+      if (initializationStatements.length === 1 && t.isIfStatement(initializationStatements[0])) {
+        return initializationStatements[0];
+      }
+
       let location;
       for (let value of initializedValues) {
         location = this.refs.get(value);
@@ -1673,16 +1677,28 @@ export class Serializer {
           if (initializer === ownInitializer) {
             initializationStatements = initializationStatements.concat(ownInitializer.body);
           } else {
-            let f = sharedInitializerFunctions.get(initializer.id);
-            if (f === undefined) {
-              sharedInitializerFunctions.set(initializer.id, f = t.identifier(this.initializerNameGenerator.generate()));
-              this.prelude.push(
-                t.functionDeclaration(f, [],
-                  t.blockStatement([conditionalInitialization(initializer.values, initializer.body)])
-                )
-              )
+            let ast = sharedInitializers.get(initializer.id);
+            if (ast === undefined) {
+              ast = conditionalInitialization(initializer.values, initializer.body);
+              // We inline compact initializers, as calling a function would introduce too much
+              // overhead. To determine if an initializer is compact, we count the number of
+              // nodes in the AST, and check if it exceeds a certain threshold.
+              // TODO: Study in more detail which threshold is the best compromise in terms of
+              // code size and performance.
+              let count = 0;
+              traverse(t.file(t.program([ast])), {
+                enter(path) {
+                  count++;
+                }
+              });
+              if (count > 24) {
+                let id = t.identifier(this.initializerNameGenerator.generate());
+                this.prelude.push(t.functionDeclaration(id, [], t.blockStatement([ast])));
+                ast = t.expressionStatement(t.callExpression(id, []));
+              }
+              sharedInitializers.set(initializer.id, ast);
             }
-            initializationStatements.push(t.expressionStatement(t.callExpression(f, [])));
+            initializationStatements.push(ast);
           }
         }
 
