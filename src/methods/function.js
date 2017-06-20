@@ -577,7 +577,7 @@ function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
   }
 
   // 2. If F's [[FunctionKind]] internal slot is "classConstructor", throw a TypeError exception.
-  if (F.$FunctionKind === "classConstructor") throw new ThrowCompletion(new StringValue(realm, "TypeError"));
+  if (F.$FunctionKind === "classConstructor") throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
 
   // 3. Let callerContext be the running execution context.
   let callerContext = realm.getRunningContext();
