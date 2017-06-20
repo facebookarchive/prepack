@@ -33,7 +33,6 @@ import {
   InitializeBoundName,
   NonConstructorMethodDefinitions,
 } from "../methods/index.js";
-import { AbruptCompletion } from "../completions.js";
 import invariant from "../invariant.js";
 
 function EvaluateClassHeritage(realm: Realm, ClassHeritage: BabelNodeExpression, strictCode: boolean): ObjectValue | null {
