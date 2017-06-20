@@ -1180,7 +1180,8 @@ export class Serializer {
       let serializedBindings = instance.serializedBindings;
 
       for (let name in names) {
-        let serializedBinding : SerializedBinding = serializedBindings[name];
+        let serializedBinding = serializedBindings[name];
+        invariant(serializedBinding !== undefined);
         if (serializedBinding.modified) {
 
           // Initialize captured scope at function call instead of globally
@@ -1328,6 +1329,7 @@ export class Serializer {
 
             for (let functionInstance of batch) {
               let serializedBinding = functionInstance.serializedBindings[name];
+              invariant(serializedBinding !== undefined);
               let found = false;
               for (let [binding, group] of bindingLookup.entries()) {
                 if (AreSameSerializedBindings(this.realm, serializedBinding, binding)) {
