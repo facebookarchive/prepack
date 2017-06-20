@@ -706,7 +706,7 @@ function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<
 
     // c. If result.[[Value]] is not undefined, throw a TypeError exception.
     if (!result.value.mightBeUndefined())
-      throw new ThrowCompletion(new StringValue(realm, "TypeError"));
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "constructor must return Object");
     result.value.throwIfNotConcrete();
   } else if (result instanceof AbruptCompletion) { // 14. Else, ReturnIfAbrupt(result).
     throw result;
