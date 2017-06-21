@@ -231,6 +231,15 @@ export class Realm {
   popContext(context: ExecutionContext): void {
     let c = this.contextStack.pop();
     invariant(c === context);
+    let savedEffects = context.savedEffects;
+    if (savedEffects !== undefined && this.contextStack.length > 0) {
+      // when unwinding the stack after a fatal error, saved effects are not incorporated into completions
+      // and thus must be propogated to the calling context.
+      let ctx = this.getRunningContext();
+      if (ctx.savedEffects !== undefined)
+        this.addPriorEffects(ctx.savedEffects, savedEffects);
+      ctx.savedEffects = savedEffects;
+    }
   }
 
   // Evaluate the given ast in a sandbox and return the evaluation results
@@ -290,11 +299,15 @@ export class Realm {
           // add prior effects that are not already present
           this.addPriorEffects(savedEffects, result);
           this.updateAbruptCompletions(savedEffects, c);
+          context.savedEffects = undefined;
         }
       }
       return result;
     } finally {
       // Roll back the state changes
+      if (context.savedEffects !== undefined) {
+        this.stopEffectCaptureAndUndoEffects();
+      }
       this.restoreBindings(this.modifiedBindings);
       this.restoreProperties(this.modifiedProperties);
       context.savedEffects = savedContextEffects;
