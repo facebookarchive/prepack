@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { CompilerDiagnostics, fatalError } from "../errors.js";
 import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -78,14 +79,15 @@ function callBothFunctionsAndJoinTheirEffects(args: Array<Value>, ast: BabelNode
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof NormalCompletion || completion instanceof Value || completion instanceof Reference);
+  invariant(completion instanceof NormalCompletion || completion instanceof Value);
   return completion;
 }
 
-function EvaluateCall(ref: Value | Reference, func: Value, ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
-  if (func instanceof AbstractValue && func.getType() === FunctionValue) {
-    if (func.kind === "conditional")
-      return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
+function EvaluateCall(
+  ref: Value | Reference, func: Value, ast: BabelNodeCallExpression,
+  strictCode: boolean, env: LexicalEnvironment, realm: Realm
+): Completion | Value | Reference {
+  function generateRuntimeCall() {
     let args =
       [func].concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
     return realm.deriveAbstract(
@@ -97,12 +99,25 @@ function EvaluateCall(ref: Value | Reference, func: Value, ast: BabelNodeCallExp
         return t.callExpression(nodes[0], fun_args);
       });
   }
-  func = func.throwIfNotConcrete();
+
+  if (func instanceof AbstractValue) {
+    if (func.getType() !== FunctionValue) {
+      let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
+      let error = new CompilerDiagnostics("might not be a function", loc, 'PP0005', 'RecoverableError');
+      if (realm.handleError(error) === 'Fail') throw fatalError;
+    } else if (func.kind === "conditional") {
+      return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
+    } else {
+      // Assume that it is a safe function. TODO: really?
+    }
+    return generateRuntimeCall();
+  }
+  invariant(func instanceof ConcreteValue);
 
   // 3. If Type(ref) is Reference and IsPropertyReference(ref) is false and GetReferencedName(ref) is "eval", then
   if (ref instanceof Reference && !IsPropertyReference(realm, ref) && GetReferencedName(realm, ref) === "eval") {
     // a. If SameValue(func, %eval%) is true, then
-    if (func instanceof ConcreteValue && SameValue(realm, func, realm.intrinsics.eval)) {
+    if (SameValue(realm, func, realm.intrinsics.eval)) {
       // i. Let argList be ? ArgumentListEvaluation(Arguments).
       let argList = ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>));
       // ii. If argList has no elements, return undefined.
@@ -114,6 +129,13 @@ function EvaluateCall(ref: Value | Reference, func: Value, ast: BabelNodeCallExp
       // v. Let evalRealm be the current Realm Record.
       let evalRealm = realm;
       // vi. Return ? PerformEval(evalText, evalRealm, strictCaller, true).
+      if (evalText instanceof AbstractValue) {
+        let loc = ast.arguments[0].loc;
+        let error = new CompilerDiagnostics("eval argument must be a known value", loc, 'PP0006', 'RecoverableError');
+        if (realm.handleError(error) === 'Fail') throw fatalError;
+        // Assume that it is a safe eval with no visible heap changes or abrupt control flow.
+        return generateRuntimeCall();
+      }
       return PerformEval(realm, evalText, evalRealm, strictCaller, true);
     }
   }
