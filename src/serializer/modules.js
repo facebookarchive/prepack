@@ -10,6 +10,7 @@
 /* @flow */
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
+import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, ToStringPartial, Get } from "../methods/index.js";
@@ -288,6 +289,8 @@ export class Modules {
       }
 
       return effects;
+    } catch (err) {
+      if (err instanceof FatalError) return undefined;
     } finally {
       realm.popContext(context);
       this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
@@ -305,7 +308,7 @@ export class Modules {
         moduleId,
         `Speculative initialization of module ${moduleId}`);
 
-      if (effects === undefined) break;
+      if (effects === undefined) continue;
       let result = effects[0];
       if (result instanceof IntrospectionThrowCompletion) {
         invariant(result instanceof IntrospectionThrowCompletion);

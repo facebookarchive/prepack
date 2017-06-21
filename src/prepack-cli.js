@@ -11,7 +11,8 @@
 
 /* eslint-disable no-shadow */
 
-import { prepackStdin, prepackFileSync, InitializationError } from "./prepack-node.js";
+import { FatalError } from "./errors.js";
+import { prepackStdin, prepackFileSync } from "./prepack-node.js";
 import { CompatibilityValues, type Compatibility } from './types.js';
 import fs from "fs";
 
@@ -20,7 +21,7 @@ declare var __residual : any;
 
 // Currently we need to explictly pass the captured variables we want to access.
 // TODO: In a future version of this can be automatic.
-function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSync, InitializationError, CompatibilityValues, fs) {
+function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSync, FatalError, CompatibilityValues, fs) {
 
   let HELP_STR = `
     input    The name of the file to run Prepack over (for web please provide the single js bundle file)
@@ -125,8 +126,8 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
     );
     processSerializedCode(serialized);
   } catch (x) {
-    if (x instanceof InitializationError) {
-      // Ignore InitializationError since they have already logged
+    if (x instanceof FatalError) {
+      // Ignore FatalError since an error has already logged
       // their errors to the console, but exit with an error code.
       process.exit(1);
     }
@@ -151,7 +152,7 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
 if (typeof __residual === 'function') {
   // If we're running inside of Prepack. This is the residual function we'll
   // want to leave untouched in the final program.
-  __residual('boolean', run, Object, Array, console, JSON, process, prepackStdin, prepackFileSync, InitializationError, CompatibilityValues, fs);
+  __residual('boolean', run, Object, Array, console, JSON, process, prepackStdin, prepackFileSync, FatalError, CompatibilityValues, fs);
 } else {
-  run(Object, Array, console, JSON, process, prepackStdin, prepackFileSync, InitializationError, CompatibilityValues, fs);
+  run(Object, Array, console, JSON, process, prepackStdin, prepackFileSync, FatalError, CompatibilityValues, fs);
 }
