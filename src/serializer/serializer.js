@@ -1391,13 +1391,14 @@ export class Serializer {
           for (let key of factoryNames) {
             factoryParams.push(t.identifier(key));
           }
-          factoryParams = factoryParams.concat(params).slice();
 
           let scopeInitialization = [];
           for (let scope of instances[0].scopeInstances) {
             factoryParams.push(t.identifier(scope.name));
             scopeInitialization.push(this._getReferentializedScopeInitialization(scope));
           }
+
+          factoryParams = factoryParams.concat(params).slice();
 
           // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
           let factoryNode = t.functionDeclaration(factoryId, factoryParams, ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement));
@@ -1425,6 +1426,9 @@ export class Serializer {
               invariant(serializedValue);
               return serializedValue;
             });
+            for (let { id } of instance.scopeInstances) {
+              flatArgs.push(t.numericLiteral(id));
+            }
             let node;
             let firstUsage = this.firstFunctionUsages.get(functionValue);
             invariant(insertionPoint !== undefined);
@@ -1440,10 +1444,6 @@ export class Serializer {
                 callArgs.push(((param: any): BabelNodeIdentifier));
               }
 
-              for (let { id } of instance.scopeInstances) {
-                callArgs.push(t.numericLiteral(id));
-              }
-
               let callee = t.memberExpression(factoryId, t.identifier("call"));
 
               let childBody = t.blockStatement([
@@ -1452,10 +1452,6 @@ export class Serializer {
 
               node = t.functionDeclaration(functionId, params, childBody);
             } else {
-              for (let { id } of instance.scopeInstances) {
-                flatArgs.push(t.numericLiteral(id));
-              }
-
               node = t.variableDeclaration("var", [
                 t.variableDeclarator(functionId, t.callExpression(
                   t.memberExpression(factoryId, t.identifier("bind")),
