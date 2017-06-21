@@ -26,6 +26,7 @@ import { composePossiblyNormalCompletions, joinAndRemoveNestedReturnCompletions,
   joinPossiblyNormalCompletionWithAbruptCompletion, stopEffectCaptureAndJoinCompletions,
   BoundNames, ContainsExpression, GetActiveScriptOrModule, UpdateEmpty } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
+import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import traverse from "../traverse.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -46,7 +47,9 @@ import type {
   BabelNodeForStatement,
   BabelNodeForInStatement,
   BabelNodeForOfStatement,
-  BabelNodeTryStatement
+  BabelNodeTryStatement,
+  BabelNodeObjectMethod,
+  BabelNodeClassMethod,
 } from "babel-types";
 
 export function FindVarScopedDeclarations(ast_node: BabelNode): Array<BabelNode> {
@@ -574,7 +577,7 @@ function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
   }
 
   // 2. If F's [[FunctionKind]] internal slot is "classConstructor", throw a TypeError exception.
-  if (F.$FunctionKind === "classConstructor") throw new ThrowCompletion(new StringValue(realm, "TypeError"));
+  if (F.$FunctionKind === "classConstructor") throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
 
   // 3. Let callerContext be the running execution context.
   let callerContext = realm.getRunningContext();
@@ -703,7 +706,7 @@ function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<
 
     // c. If result.[[Value]] is not undefined, throw a TypeError exception.
     if (!result.value.mightBeUndefined())
-      throw new ThrowCompletion(new StringValue(realm, "TypeError"));
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "constructor must return Object");
     result.value.throwIfNotConcrete();
   } else if (result instanceof AbruptCompletion) { // 14. Else, ReturnIfAbrupt(result).
     throw result;
@@ -1349,4 +1352,36 @@ export function MakeMethod(realm: Realm, F: FunctionValue, homeObject: ObjectVal
 
   // 4. Return NormalCompletion(undefined).
   return realm.intrinsics.undefined;
+}
+
+// ECMA 14.3.8
+export function DefineMethod(realm: Realm, prop: BabelNodeObjectMethod | BabelNodeClassMethod, obj: ObjectValue, env: LexicalEnvironment, strictCode: boolean, functionPrototype?: ObjectValue) {
+  // 1. Let propKey be the result of evaluating PropertyName.
+  let propKey = EvalPropertyName(prop, env, realm, strictCode);
+
+  // 2. ReturnIfAbrupt(propKey).
+
+  // 3. If the function code for this MethodDefinition is strict mode code, let strict be true. Otherwise let strict be false.
+  let strict = strictCode || IsStrict(prop.body);
+
+  // 4. Let scope be the running execution context's LexicalEnvironment.
+  let scope = env;
+
+  // 5. If functionPrototype was passed as a parameter, let kind be Normal; otherwise let kind be Method.
+  let kind;
+  if (functionPrototype) {
+    // let kind be Normal;
+    kind = 'normal';
+  } else { // otherwise let kind be Method.
+    kind = 'method';
+  }
+
+  // 6. Let closure be FunctionCreate(kind, StrictFormalParameters, FunctionBody, scope, strict). If functionPrototype was passed as a parameter, then pass its value as the prototype optional argument of FunctionCreate.
+  let closure = FunctionCreate(realm, kind, prop.params, prop.body, scope, strict, functionPrototype);
+
+  // 7. Perform MakeMethod(closure, object).
+  MakeMethod(realm, closure, obj);
+
+  // 8. Return the Record{[[Key]]: propKey, [[Closure]]: closure}.
+  return { $Key: propKey, $Closure: closure };
 }
