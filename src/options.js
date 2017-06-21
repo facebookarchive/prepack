@@ -15,6 +15,7 @@ import type { SerializerOptions } from "./serializer/types";
 export type Options = {|
   filename?: string,
   inputSourceMapFilename?: string,
+  inputSourceMap?: string,
   sourceMaps?: boolean,
   compatibility?: Compatibility,
   mathRandomSeed?: string,

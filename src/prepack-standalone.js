@@ -40,7 +40,7 @@ export function prepack(code: string, options: Options = defaultOptions, errorHa
   initializeGlobals(realm);
 
   let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init(filename, code, "", options.sourceMaps);
+  let serialized = serializer.init(filename, code, options.inputSourceMap, options.sourceMaps);
   if (!serialized) {
     throw fatalError;
   }
@@ -60,7 +60,7 @@ export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: stri
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
   let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init("", code, "", options.sourceMaps);
+  let serialized = serializer.init("", code, options.inputSourceMap, options.sourceMaps);
   if (!serialized) {
     throw fatalError;
   }
