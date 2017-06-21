@@ -733,6 +733,7 @@ export class Serializer {
     }
     invariant(entries !== undefined);
     let len = entries.length;
+    let mapConstructorDoesntTakeArguments = this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION);
 
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
@@ -740,33 +741,33 @@ export class Serializer {
       let value = entry.$Value;
       if (key === undefined || value === undefined) continue;
       let mightHaveBeenDeleted = key.mightHaveBeenDeleted();
-      let delayReason = this._shouldDelayValue(key) ||
-        this._shouldDelayValue(value) || mightHaveBeenDeleted;
-        if (delayReason) {
-          // handle self recursion
-          this._delay(delayReason, [key, value, val], () => {
-            invariant(key !== undefined);
-            invariant(value !== undefined);
-            this.body.push(t.expressionStatement(
-              t.callExpression(
-                t.memberExpression(this._getValIdForReference(val), t.identifier("set")),
-                [this.serializeValue(key, reasons.concat(`Set entry on ${name}`)),
-                 this.serializeValue(value, reasons.concat(`Set entry on ${name}`))]
-              )
-            ));
-          });
-        } else {
-          let serializedKey = this.serializeValue(key, reasons);
-          let serializedValue = this.serializeValue(value, reasons.concat(`Set entry on ${name}`));
-          let elem = t.arrayExpression([serializedKey, serializedValue]);
-          elems.push(elem);
-        }
+      let delayReason = this._shouldDelayValue(key) || this._shouldDelayValue(value) ||
+        mightHaveBeenDeleted || mapConstructorDoesntTakeArguments;
+      if (delayReason) {
+        // handle self recursion
+        this._delay(delayReason, [key, value, val], () => {
+          invariant(key !== undefined);
+          invariant(value !== undefined);
+          this.body.push(t.expressionStatement(
+            t.callExpression(
+              t.memberExpression(this._getValIdForReference(val), t.identifier("set")),
+              [this.serializeValue(key, reasons.concat(`Set entry on ${name}`)),
+               this.serializeValue(value, reasons.concat(`Set entry on ${name}`))]
+            )
+          ));
+        });
+      } else {
+        let serializedKey = this.serializeValue(key, reasons);
+        let serializedValue = this.serializeValue(value, reasons.concat(`Set entry on ${name}`));
+        let elem = t.arrayExpression([serializedKey, serializedValue]);
+        elems.push(elem);
+      }
     }
 
     this.addProperties(name, val, reasons, val.properties);
-    let arrayValue = t.arrayExpression(elems);
+    let args = elems.length > 0 ? [t.arrayExpression(elems)] : [];
     return t.newExpression(
-      this.preludeGenerator.memoizeReference(kind), [arrayValue]);
+      this.preludeGenerator.memoizeReference(kind), args);
   }
 
   _serializeValueSet(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
@@ -782,12 +783,13 @@ export class Serializer {
     }
     invariant(entries !== undefined);
     let len = entries.length;
+    let setConstructorDoesntTakeArguments = this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION);
 
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
       if (entry === undefined) continue;
       let mightHaveBeenDeleted = entry.mightHaveBeenDeleted();
-      let delayReason = this._shouldDelayValue(entry) || mightHaveBeenDeleted;
+      let delayReason = this._shouldDelayValue(entry) || mightHaveBeenDeleted || setConstructorDoesntTakeArguments;
       if (delayReason) {
         // handle self recursion
         this._delay(delayReason, [entry, val], () => {
@@ -809,9 +811,9 @@ export class Serializer {
     }
 
     this.addProperties(name, val, reasons, val.properties);
-    let arrayValue = t.arrayExpression(elems);
+    let args = elems.length > 0 ? [t.arrayExpression(elems)] : [];
     return t.newExpression(
-      this.preludeGenerator.memoizeReference(kind), [arrayValue]);
+      this.preludeGenerator.memoizeReference(kind), args);
   }
 
   _serializeValueTypedArrayOrDataView(
