@@ -263,13 +263,13 @@ export class Generator {
     }
   }
 
-  visit(visitValue: Value => void) {
+  visit(visitValue: Value => void, visitGenerator: Generator => void) {
     for (let bodyEntry of this.body) {
       for (let boundArg of bodyEntry.args)
         visitValue(boundArg);
       if (bodyEntry.dependencies)
         for (let dependency of bodyEntry.dependencies)
-          dependency.visit(visitValue);
+          visitGenerator(dependency);
     }
   }
 }

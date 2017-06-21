@@ -491,7 +491,7 @@ export class FunctionEnvironmentRecord extends DeclarativeEnvironmentRecord {
 
     // 3. If envRec.[[ThisBindingStatus]] is "uninitialized", throw a ReferenceError exception.
     if (envRec.$ThisBindingStatus === "uninitialized") {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError);
     }
 
     // 4. Return envRec.[[ThisValue]].
