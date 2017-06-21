@@ -17,7 +17,7 @@ import { Value } from "./values";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import { getRealmOptions, getSerializerOptions } from "./options";
-import { InitializationError } from "./prepack-standalone";
+import { fatalError } from "./errors.js";
 import initializeBootstrap from "./intrinsics/node/bootstrap.js";
 import initializeProcess from "./intrinsics/node/process.js";
 
@@ -108,7 +108,7 @@ export function prepackNodeCLISync(filename: string, options: Options = defaultO
   // Serialize
   let serialized = serializer.init("", "", "", options.sourceMaps);
   if (!serialized) {
-    throw new InitializationError();
+    throw fatalError;
   }
   return serialized;
 }
