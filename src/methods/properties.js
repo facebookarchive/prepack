@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import { ArrayValue, UndefinedValue, NumberValue, SymbolValue, NullValue, BooleanValue, ObjectValue, StringValue, Value, ConcreteValue, AbstractValue, AbstractObjectValue } from "../values/index.js";
-import { EvalPropertyName } from '../evaluators/ObjectExpression';
+import { EvalPropertyNamePartial } from '../evaluators/ObjectExpression';
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { CreateIterResultObject } from "../methods/create.js";
 import invariant from "../invariant.js";
@@ -1104,7 +1104,7 @@ export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: Bab
     // See 14.4.
     // ECMA 14.4.13
     // 1. Let propKey be the result of evaluating PropertyName.
-    let propKey = EvalPropertyName(MethodDefinition, env, realm, strictCode);
+    let propKey = EvalPropertyNamePartial(MethodDefinition, env, realm, strictCode);
 
     // 2. ReturnIfAbrupt(propKey).
     // 3. If the function code for this GeneratorMethod is strict mode code, let strict be true. Otherwise let strict be false.
@@ -1136,7 +1136,7 @@ export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: Bab
     return DefinePropertyOrThrow(realm, object, propKey, desc);
   } else if (MethodDefinition.kind === "get") {
     // 1. Let propKey be the result of evaluating PropertyName.
-    let propKey = EvalPropertyName(MethodDefinition, env, realm, strictCode);
+    let propKey = EvalPropertyNamePartial(MethodDefinition, env, realm, strictCode);
 
     // 2. ReturnIfAbrupt(propKey).
 
@@ -1169,7 +1169,7 @@ export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: Bab
     DefinePropertyOrThrow(realm, object, propKey, desc);
   } else if (MethodDefinition.kind === 'set') {
     // 1. Let propKey be the result of evaluating PropertyName.
-    let propKey = EvalPropertyName(MethodDefinition, env, realm, strictCode);
+    let propKey = EvalPropertyNamePartial(MethodDefinition, env, realm, strictCode);
 
     // 2. ReturnIfAbrupt(propKey).
 
