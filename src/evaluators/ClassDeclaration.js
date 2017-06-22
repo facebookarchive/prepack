@@ -11,7 +11,8 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment, Reference } from "../environment.js";
-import type { Value } from "../values/index.js";
+import { AbstractValue, Value } from "../values/index.js";
+import { CompilerDiagnostics, fatalError } from "../errors.js";
 import { NullValue, EmptyValue, ObjectValue } from '../values/index.js';
 import type { BabelNodeClassDeclaration, BabelNodeExpression, BabelNodeClassMethod } from "babel-types";
 import parse from "../utils/parse.js";
@@ -38,13 +39,16 @@ import invariant from "../invariant.js";
 function EvaluateClassHeritage(realm: Realm, ClassHeritage: BabelNodeExpression, strictCode: boolean): ObjectValue | null {
   let ref = realm.getRunningContext().lexicalEnvironment.evaluate(ClassHeritage, strictCode);
   let val = GetValue(realm, ref);
-  val = val.throwIfNotConcrete();
+  if (val instanceof AbstractValue) {
+    let error = new CompilerDiagnostics(
+      "unknown super class", ClassHeritage.loc, 'PP0009', 'RecoverableError');
+    if (realm.handleError(error) === 'Fail') throw fatalError;
+  }
   if (!(val instanceof ObjectValue)) {
     return null;
   }
   return val;
 }
-
 
 // ECMA262 14.5.14
 function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration, className: string | void, strictCode: boolean, env: LexicalEnvironment) {
@@ -66,7 +70,8 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
   let protoParent;
   let constructorParent;
   // 5. If ClassHeritage opt is not present, then
-  if (ast.superClass === null) {
+  let ClassHeritage = ast.superClass;
+  if (!ClassHeritage) {
     // a. Let protoParent be the intrinsic object %ObjectPrototype%.
     protoParent = realm.intrinsics.ObjectPrototype;
 
@@ -78,11 +83,7 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
     let superclass = null;
     try {
       // b. Let superclass be the result of evaluating ClassHeritage.
-      let ClassHeritage = null;
-      if (ast.superClass != null) {
-        ClassHeritage = ast.superClass;
-        superclass = EvaluateClassHeritage(realm, ClassHeritage, strictCode);
-      }
+      superclass = EvaluateClassHeritage(realm, ClassHeritage, strictCode);
     } finally {
       // c. Set the running execution context’s LexicalEnvironment to lex.
       realm.getRunningContext().lexicalEnvironment = lex;
@@ -111,9 +112,15 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
       // iii. ReturnIfAbrupt(protoParent).
 
       // iv. If Type(protoParent) is neither Object nor Null, throw a TypeError exception.
-      protoParent = protoParent.throwIfNotConcrete();
       if (!(protoParent instanceof ObjectValue || protoParent instanceof NullValue)) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, 'protoParent must be an instance of Object or Null');
+        if (protoParent instanceof AbstractValue) {
+          let error = new CompilerDiagnostics(
+            "unknown super class prototype", ClassHeritage.loc, 'PP0010', 'RecoverableError');
+          if (realm.handleError(error) === 'Fail') throw fatalError;
+          protoParent = realm.intrinsics.ObjectPrototype;
+        } else {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, 'protoParent must be an instance of Object or Null');
+        }
       }
 
       // v. Let constructorParent be superclass.
