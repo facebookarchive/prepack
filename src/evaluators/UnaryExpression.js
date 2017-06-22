@@ -11,7 +11,8 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { Value, BooleanValue, NumberValue, StringValue, UndefinedValue, NullValue, SymbolValue, ObjectValue, AbstractValue } from "../values/index.js";
+import { CompilerDiagnostics, fatalError } from "../errors.js";
+import { AbstractObjectValue, Value, BooleanValue, ConcreteValue, NumberValue, StringValue, UndefinedValue, NullValue, SymbolValue, ObjectValue, AbstractValue } from "../values/index.js";
 import { Reference, EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -19,8 +20,8 @@ import {
   GetReferencedName,
   GetBase,
   GetValue,
-  ToBooleanPartial,
-  ToObjectPartial,
+  ToBoolean,
+  ToObject,
   ToNumber,
   ToInt32,
   IsSuperReference,
@@ -43,9 +44,31 @@ function computeAbstractly(realm, type, op, val) {
 }
 
 export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+  function reportError() {
+    let error = new CompilerDiagnostics(
+      "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
+      ast.argument.loc, 'PP0008', 'RecoverableError');
+    if (realm.handleError(error) === 'Fail') throw fatalError;
+  }
+
   let expr = env.evaluate(ast.argument, strictCode);
 
-  if (ast.operator === "-") {
+  if (ast.operator === "+") {
+    // ECMA262 12.5.6.1
+
+    // 1. Let expr be the result of evaluating UnaryExpression.
+    expr;
+
+    // 2. Return ? ToNumber(? GetValue(expr)).
+    let value = GetValue(realm, expr);
+    if (value instanceof AbstractValue) {
+      if (!IsToNumberPure(realm, value)) reportError();
+      return computeAbstractly(realm, NumberValue, "+", value);
+    }
+    invariant(value instanceof ConcreteValue);
+
+    return new NumberValue(realm, ToNumber(realm, value));
+  } else if (ast.operator === "-") {
     // ECMA262 12.5.7.1
 
     // 1. Let expr be the result of evaluating UnaryExpression.
@@ -53,8 +76,12 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
     // 2. Let oldValue be ? ToNumber(? GetValue(expr)).
     let value = GetValue(realm, expr);
-    if (value instanceof AbstractValue && IsToNumberPure(realm, value)) return computeAbstractly(realm, NumberValue, "-", value);
-    let oldValue = ToNumber(realm, value.throwIfNotConcrete());
+    if (value instanceof AbstractValue) {
+      if (!IsToNumberPure(realm, value)) reportError();
+      return computeAbstractly(realm, NumberValue, "-", value);
+    }
+    invariant(value instanceof ConcreteValue);
+    let oldValue = ToNumber(realm, value);
 
     // 3. If oldValue is NaN, return NaN.
     if (isNaN(oldValue)) {
@@ -63,16 +90,6 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
     // 4. Return the result of negating oldValue; that is, compute a Number with the same magnitude but opposite sign.
     return new NumberValue(realm, -oldValue);
-  } else if (ast.operator === "+") {
-    // ECMA262 12.5.6.1
-
-    // 1. Let expr be the result of evaluating UnaryExpression.
-    expr;
-
-    // 2. Return ? ToNumber(? GetValue(expr)).
-    let value = GetValue(realm, expr);
-    if (value instanceof AbstractValue && IsToNumberPure(realm, value)) return computeAbstractly(realm, NumberValue, "+", value);
-    return new NumberValue(realm, ToNumber(realm, value.throwIfNotConcrete()));
   } else if (ast.operator === "~") {
     // ECMA262 12.5.8
 
@@ -81,8 +98,12 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
     // 2. Let oldValue be ? ToInt32(? GetValue(expr)).
     let value = GetValue(realm, expr);
-    if (value instanceof AbstractValue && IsToNumberPure(realm, value)) return computeAbstractly(realm, NumberValue, "~", value);
-    let oldValue = ToInt32(realm, value.throwIfNotConcrete());
+    if (value instanceof AbstractValue) {
+      if (!IsToNumberPure(realm, value)) reportError();
+      return computeAbstractly(realm, NumberValue, "~", value);
+    }
+    invariant(value instanceof ConcreteValue);
+    let oldValue = ToInt32(realm, value);
 
     // 3. Return the result of applying bitwise complement to oldValue. The result is a signed 32-bit integer.
     return new NumberValue(realm, ~oldValue);
@@ -94,8 +115,13 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
     // 2. Let oldValue be ToBoolean(? GetValue(expr)).
     let value = GetValue(realm, expr);
-    if (value instanceof AbstractValue && value.mightNotBeObject()) return computeAbstractly(realm, NumberValue, "!", value);
-    let oldValue = ToBooleanPartial(realm, value);
+    if (value instanceof AbstractValue) {
+      if (!value.mightNotBeTrue()) return realm.intrinsics.false;
+      if (!value.mightNotBeFalse()) return realm.intrinsics.true;
+      return computeAbstractly(realm, BooleanValue, "!", value);
+    }
+    invariant(value instanceof ConcreteValue);
+    let oldValue = ToBoolean(realm, value);
 
     // 3. If oldValue is true, return false.
     if (oldValue === true) return realm.intrinsics.false;
@@ -129,28 +155,27 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
     val = GetValue(realm, val);
 
     // 4. Return a String according to Table 35.
-    if (IsCallable(realm, val)) {
-      return new StringValue(realm, "function");
-    } else {
-      let proto = val.getType().prototype;
-      if (isInstance(proto, UndefinedValue)) {
-        return new StringValue(realm, "undefined");
-      } else if (isInstance(proto, NullValue)) {
-        return new StringValue(realm, "object");
-      } else if (isInstance(proto, StringValue)) {
-        return new StringValue(realm, "string");
-      } else if (isInstance(proto, BooleanValue)) {
-        return new StringValue(realm, "boolean");
-      } else if (isInstance(proto, NumberValue)) {
-        return new StringValue(realm, "number");
-      } else if (isInstance(proto, SymbolValue)) {
-        return new StringValue(realm, "symbol");
-      } else if (isInstance(proto, ObjectValue)) {
-        return new StringValue(realm, "object");
-      } else {
-        invariant(val instanceof AbstractValue);
-        return computeAbstractly(realm, StringValue, "typeof", val);
+    let proto = val.getType().prototype;
+    if (isInstance(proto, UndefinedValue)) {
+      return new StringValue(realm, "undefined");
+    } else if (isInstance(proto, NullValue)) {
+      return new StringValue(realm, "object");
+    } else if (isInstance(proto, StringValue)) {
+      return new StringValue(realm, "string");
+    } else if (isInstance(proto, BooleanValue)) {
+      return new StringValue(realm, "boolean");
+    } else if (isInstance(proto, NumberValue)) {
+      return new StringValue(realm, "number");
+    } else if (isInstance(proto, SymbolValue)) {
+      return new StringValue(realm, "symbol");
+    } else if (isInstance(proto, ObjectValue)) {
+      if (IsCallable(realm, val)) {
+        return new StringValue(realm, "function");
       }
+      return new StringValue(realm, "object");
+    } else {
+      invariant(val instanceof AbstractValue);
+      return computeAbstractly(realm, StringValue, "typeof", val);
     }
   } else if (ast.operator === "delete") {
     // ECMA262 12.5.3.2
@@ -181,8 +206,9 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
 
       // b. Let baseObj be ! ToObject(GetBase(ref)).
       let base = GetBase(realm, ref);
-      invariant(base instanceof Value);
-      let baseObj = ToObjectPartial(realm, base);
+      // Constructing the reference checks that base is coercible to an object hence
+      invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
+      let baseObj = base instanceof ConcreteValue ? ToObject(realm, base) : base;
 
       // c. Let deleteStatus be ? baseObj.[[Delete]](GetReferencedName(ref)).
       let deleteStatus = baseObj.$Delete(GetReferencedName(realm, ref));

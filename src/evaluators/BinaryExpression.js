@@ -34,7 +34,7 @@ export default function (ast: BabelNodeBinaryExpression, strictCode: boolean, en
   return computeBinary(realm, ast.operator, lval, rval, ast.left.loc, ast.right.loc);
 }
 
-let unknownValueOfOrToString = "might be an object with an unknown valueOf or toString method";
+let unknownValueOfOrToString = "might be an object with an unknown valueOf or toString or Symbol.toPrimitive method";
 
 // Returns result type if binary operation is pure (terminates, does not throw exception, does not read or write heap), otherwise undefined.
 export function getPureBinaryOperationResultType(
@@ -105,7 +105,7 @@ export function getPureBinaryOperationResultType(
 export function computeBinary(
   realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value, lloc: ?BabelNodeSourceLocation, rloc: ?BabelNodeSourceLocation
 ): Value {
-  // partial evaluation shortcut for a particular pattern (avoiding general throwIfNotConcrete check)
+  // partial evaluation shortcut for a particular pattern
   if (op === "==" || op === "===" || op === "!=" || op === "!==") {
     if (!lval.mightNotBeObject() && HasSomeCompatibleType(rval, NullValue, UndefinedValue) ||
       HasSomeCompatibleType(lval, NullValue, UndefinedValue) && !rval.mightNotBeObject())
