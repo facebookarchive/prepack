@@ -16,7 +16,7 @@ import { ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeIfStatement, BabelNodeMemberExpression, BabelNodeVariableDeclaration } from "babel-types";
+import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeIfStatement, BabelNodeVariableDeclaration } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
 import generate from "babel-generator";
@@ -32,8 +32,6 @@ import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
-
-const GLOBAL_CAPTURED_SCOPE_NAME = "__captured_scopes";
 
 type AbstractSyntaxTree = {
   type: string,
@@ -127,6 +125,7 @@ export class Serializer {
     this.initializers = new Map();
     this.collectValToRefCountOnly = collectValToRefCountOnly;
     if (collectValToRefCountOnly) this.valToRefCount = new Map();
+    this.capturedScopes = t.identifier(this.scopeNameGenerator.generate("main"));
   }
 
   globalReasons: {
@@ -142,7 +141,7 @@ export class Serializer {
   functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
   functionInstances: Array<FunctionInstance>;
   //value to intermediate references generated like $0, $1, $2,...
-  refs: Map<Value, BabelNodeIdentifier | BabelNodeMemberExpression>;
+  refs: Map<Value, BabelNodeIdentifier>;
   collectValToRefCountOnly: boolean;
   valToRefCount: Map<Value, number>;
   prelude: Array<BabelNodeStatement>;
@@ -176,6 +175,7 @@ export class Serializer {
   serializedValues: Set<Value>;
   serializedScopes: Map<DeclarativeEnvironmentRecord, ScopeBinding>;
   capturedScopeInstanceIdx: number;
+  capturedScopes: BabelNodeIdentifier;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -471,13 +471,13 @@ export class Serializer {
     return serializedBinding;
   }
 
-  _getValIdForReference(val: Value): BabelNodeIdentifier | BabelNodeMemberExpression {
+  _getValIdForReference(val: Value): BabelNodeIdentifier {
     let id = this._getValIdForReferenceOptional(val);
     invariant(id !== undefined, "Value Id cannot be null or undefined");
     return id;
   }
 
-  _getValIdForReferenceOptional(val: Value): void | BabelNodeIdentifier | BabelNodeMemberExpression{
+  _getValIdForReferenceOptional(val: Value): void | BabelNodeIdentifier {
     let id = this.refs.get(val);
     if (id !== undefined) {
       this._incrementValToRefCount(val);
@@ -1272,7 +1272,7 @@ export class Serializer {
             // Replace binding usage with scope references
             serializedBinding.serializedValue = t.memberExpression(
                 t.memberExpression(
-                  t.identifier(GLOBAL_CAPTURED_SCOPE_NAME), t.identifier(scope.name), true),
+                  this.capturedScopes, t.identifier(scope.name), true),
                 t.identifier(name), false);
 
             serializedBinding.referentialized = true;
@@ -1298,12 +1298,12 @@ export class Serializer {
     return t.ifStatement(
         t.unaryExpression('!',
             t.memberExpression(
-              t.identifier(GLOBAL_CAPTURED_SCOPE_NAME), t.identifier(scope.name), true)),
+              this.capturedScopes, t.identifier(scope.name), true)),
         t.expressionStatement(
           t.assignmentExpression(
             "=",
             t.memberExpression(
-              t.identifier(GLOBAL_CAPTURED_SCOPE_NAME), t.identifier(scope.name), true),
+              this.capturedScopes, t.identifier(scope.name), true),
             t.objectExpression(properties)
           )));
   }
@@ -1376,10 +1376,6 @@ export class Serializer {
         for (let instance of instances) {
           let { functionValue, serializedBindings, scopeInstances } = instance;
           let id = this._getValIdForReference(functionValue);
-          // For a `FunctionValue`, value ids are always proper identifiers
-          // as the visitor ensures that `FunctionValues` are visited in the
-          // realm generator scope and thus do not get an indexed var.
-          invariant(id.type === "Identifier");
           let funcParams = params.slice();
           let funcNode = t.functionDeclaration(id, funcParams, ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement));
           let scopeInitialization = [];
@@ -1515,7 +1511,6 @@ export class Serializer {
           for (let instance of instances) {
             let { functionValue, serializedBindings, insertionPoint } = instance;
             let functionId = this._getValIdForReference(functionValue);
-            invariant(functionId.type === "Identifier");
             let flatArgs: Array<BabelNodeExpression> = factoryNames.map((name) => {
               let serializedValue = serializedBindings[name].serializedValue;
               invariant(serializedValue);
@@ -1566,7 +1561,7 @@ export class Serializer {
     if (this.capturedScopeInstanceIdx) {
       let scopeVar = t.variableDeclaration("var", [
         t.variableDeclarator(
-          t.identifier(GLOBAL_CAPTURED_SCOPE_NAME),
+          this.capturedScopes,
           t.callExpression(
             t.identifier("Array"),
             [t.numericLiteral(this.capturedScopeInstanceIdx)])
