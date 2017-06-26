@@ -107,6 +107,11 @@ export class ResidualHeapVisitor {
 
       if (key === "name") {
         // TODO #474: Make sure that we retain original function names. Or set name property. Or ensure that nothing references the name property.
+        // For now don't ignore the property if it is different from the function name.
+        // I.e. if it was set explicitly in the code, retain it.
+        if (desc.value !== undefined && (desc.value instanceof AbstractValue ||
+          val.__originalName && val.__originalName !== "" && desc.value.value !== val.__originalName))
+            return false;
         return true;
       }
 

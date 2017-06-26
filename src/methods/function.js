@@ -13,9 +13,10 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
 import { Completion, ThrowCompletion, ReturnCompletion, AbruptCompletion, JoinedAbruptCompletions, NormalCompletion, PossiblyNormalCompletion, IntrospectionThrowCompletion } from "../completions.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
-import { Value, BoundFunctionValue, EmptyValue, FunctionValue, ObjectValue, StringValue, SymbolValue, NumberValue } from "../values/index.js";
+import { AbstractValue, Value, BoundFunctionValue, EmptyValue, FunctionValue, ObjectValue, StringValue, SymbolValue, NumberValue } from "../values/index.js";
 import { DefinePropertyOrThrow, NewDeclarativeEnvironment } from "./index.js";
 import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
@@ -26,7 +27,7 @@ import { composePossiblyNormalCompletions, joinAndRemoveNestedReturnCompletions,
   joinPossiblyNormalCompletionWithAbruptCompletion, stopEffectCaptureAndJoinCompletions,
   BoundNames, ContainsExpression, GetActiveScriptOrModule, UpdateEmpty } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
-import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
+import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression.js";
 import traverse from "../traverse.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -437,12 +438,13 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
 }
 
 // ECMA262 9.2.11
-export function SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyValue, prefix?: string): boolean {
+export function SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyValue | AbstractValue, prefix?: string): boolean {
   // 1. Assert: F is an extensible object that does not have a name own property.
   invariant(F.getExtensible(), "expected object to be extensible and not have a name property");
 
   // 2. Assert: Type(name) is either Symbol or String.
-  invariant(typeof name === "string" || name instanceof StringValue || name instanceof SymbolValue, "expected name to be a string or symbol");
+  invariant(typeof name === "string" || name instanceof StringValue || name instanceof SymbolValue ||
+    name instanceof AbstractValue, "expected name to be a string or symbol");
   if (typeof name === "string") name = new StringValue(realm, name);
 
   // 3. Assert: If prefix was passed, then Type(prefix) is String.
@@ -465,7 +467,13 @@ export function SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyV
   // 5. If prefix was passed, then
   if (prefix) {
     // a. Let name be the concatenation of prefix, code unit 0x0020 (SPACE), and name.
-    name = new StringValue(realm, `${prefix} ${name.value}`);
+    if (name instanceof AbstractValue) {
+      let prefixVal = new StringValue(realm, prefix + " ");
+      name = realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [prefixVal, name],
+        ([lnode, rnode]) => t.binaryExpression("+", lnode, rnode));
+    } else {
+      name = new StringValue(realm, `${prefix} ${name.value}`);
+    }
   }
 
   // 6. Return ! DefinePropertyOrThrow(F, "name", PropertyDescriptor{[[Value]]: name, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
@@ -1357,7 +1365,7 @@ export function MakeMethod(realm: Realm, F: FunctionValue, homeObject: ObjectVal
 // ECMA 14.3.8
 export function DefineMethod(realm: Realm, prop: BabelNodeObjectMethod | BabelNodeClassMethod, obj: ObjectValue, env: LexicalEnvironment, strictCode: boolean, functionPrototype?: ObjectValue) {
   // 1. Let propKey be the result of evaluating PropertyName.
-  let propKey = EvalPropertyName(prop, env, realm, strictCode);
+  let propKey = EvalPropertyNamePartial(prop, env, realm, strictCode);
 
   // 2. ReturnIfAbrupt(propKey).
 
