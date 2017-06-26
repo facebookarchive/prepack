@@ -125,7 +125,7 @@ export class Serializer {
     this.initializers = new Map();
     this.collectValToRefCountOnly = collectValToRefCountOnly;
     if (collectValToRefCountOnly) this.valToRefCount = new Map();
-    this.capturedScopes = t.identifier(this.scopeNameGenerator.generate("main"));
+    this.capturedScopesArray = t.identifier(this.scopeNameGenerator.generate("main"));
   }
 
   globalReasons: {
@@ -175,7 +175,7 @@ export class Serializer {
   serializedValues: Set<Value>;
   serializedScopes: Map<DeclarativeEnvironmentRecord, ScopeBinding>;
   capturedScopeInstanceIdx: number;
-  capturedScopes: BabelNodeIdentifier;
+  capturedScopesArray: BabelNodeIdentifier;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -1272,7 +1272,7 @@ export class Serializer {
             // Replace binding usage with scope references
             serializedBinding.serializedValue = t.memberExpression(
                 t.memberExpression(
-                  this.capturedScopes, t.identifier(scope.name), true),
+                  this.capturedScopesArray, t.identifier(scope.name), true),
                 t.identifier(name), false);
 
             serializedBinding.referentialized = true;
@@ -1298,12 +1298,12 @@ export class Serializer {
     return t.ifStatement(
         t.unaryExpression('!',
             t.memberExpression(
-              this.capturedScopes, t.identifier(scope.name), true)),
+              this.capturedScopesArray, t.identifier(scope.name), true)),
         t.expressionStatement(
           t.assignmentExpression(
             "=",
             t.memberExpression(
-              this.capturedScopes, t.identifier(scope.name), true),
+              this.capturedScopesArray, t.identifier(scope.name), true),
             t.objectExpression(properties)
           )));
   }
@@ -1561,7 +1561,7 @@ export class Serializer {
     if (this.capturedScopeInstanceIdx) {
       let scopeVar = t.variableDeclaration("var", [
         t.variableDeclarator(
-          this.capturedScopes,
+          this.capturedScopesArray,
           t.callExpression(
             t.identifier("Array"),
             [t.numericLiteral(this.capturedScopeInstanceIdx)])
@@ -1587,6 +1587,11 @@ export class Serializer {
         return initializationStatements[0];
       }
 
+      // We have some initialization code, and it should only get executed once,
+      // so we are going to guard it.
+      // First, let's see if one of the initialized values is guaranteed to not
+      // be undefined after initialization. In that case, we can use that state-change
+      // to figure out if initialization needs to run.
       let location;
       for (let value of initializedValues) {
         if (!value.mightBeUndefined()) {
@@ -1595,7 +1600,8 @@ export class Serializer {
         }
       }
       if (location === undefined) {
-        // Take care of side-effecting code that is associated with an inlined value
+        // Second, if we didn't find a non-undefined value, let's make one up.
+        // It will transition from `undefined` to `null`.
         location = t.identifier(this.valueNameGenerator.generate("initialized"));
         this.mainBody.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
         initializationStatements.unshift(
