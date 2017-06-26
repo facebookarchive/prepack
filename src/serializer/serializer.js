@@ -1376,11 +1376,15 @@ export class Serializer {
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
+      this._referentialize(functionInfo.names, instances);
+    }
+
+    for (let [funcBody, instances] of functionEntries) {
+      let functionInfo = this.residualFunctionInfos.get(funcBody);
+      invariant(functionInfo);
       let { names, modified, usesThis, usesArguments } = functionInfo;
       let params = instances[0].functionValue.$FormalParameters;
       invariant(params !== undefined);
-
-      this._referentialize(names, instances);
 
       let shouldInline = !funcBody;
       if (!shouldInline && funcBody.start && funcBody.end) {
