@@ -14,7 +14,8 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
-import { ObjectValue, StringValue } from "../values/index.js";
+import { CompilerDiagnostics, fatalError } from "../errors.js";
+import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
 import {
   ObjectCreate,
   SetFunctionName,
@@ -24,21 +25,31 @@ import {
   HasOwnProperty,
   PropertyDefinitionEvaluation,
   ToPropertyKey,
-  ToStringPartial
+  ToString
 } from "../methods/index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeObjectExpression, BabelNodeObjectProperty, BabelNodeObjectMethod, BabelNodeClassMethod } from "babel-types";
 
 // Returns the result of evaluating PropertyName.
-export function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): PropertyKeyValue {
+export function EvalPropertyNamePartial(prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): PropertyKeyValue {
+  let result = EvalPropertyName(prop, env, realm, strictCode);
+  if (result instanceof AbstractValue) result.throwIfNotConcrete();
+  return (result: any);
+}
+
+function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): AbstractValue | PropertyKeyValue {
   if (prop.computed) {
-    let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode)).throwIfNotConcrete();
+    let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode));
+    if (propertyKeyName instanceof AbstractValue) return propertyKeyName;
+    invariant(propertyKeyName instanceof ConcreteValue);
     return ToPropertyKey(realm, propertyKeyName);
   } else {
     if (prop.key.type === "Identifier") {
       return new StringValue(realm, prop.key.name);
     } else {
-      return ToStringPartial(realm, GetValue(realm, env.evaluate(prop.key, strictCode)));
+      let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode));
+      invariant(propertyKeyName instanceof ConcreteValue); // syntax only allows literals if !prop.computed
+      return ToString(realm, propertyKeyName);
     }
   }
 }
@@ -70,13 +81,26 @@ export default function (ast: BabelNodeObjectExpression, strictCode: boolean, en
         let hasNameProperty = HasOwnProperty(realm, propValue, "name");
 
         // b. If hasNameProperty is false, perform SetFunctionName(propValue, propKey).
-        if (!hasNameProperty) SetFunctionName(realm, propValue, propKey);
+        if (!hasNameProperty) {
+          SetFunctionName(realm, propValue, propKey);
+        }
       }
 
       // 6. Assert: enumerable is true.
 
       // 7. Return CreateDataPropertyOrThrow(object, propKey, propValue).
-      CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
+      if (propKey instanceof AbstractValue) {
+        if (propKey.mightNotBeString()) {
+          let error = new CompilerDiagnostics(
+            "property key value is unknown", prop.loc, 'PP0011', 'FatalError');
+          if (realm.handleError(error) === 'Fail') throw fatalError;
+          continue; // recover by ignoring the property, which is only ever safe to do if the property is dead,
+          // which is assuming a bit much, hence the designation as a FatalError.
+        }
+        obj.$SetPartial(propKey, propValue, obj);
+      } else {
+        CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
+      }
     } else if (prop.type === "ObjectMethod") {
       PropertyDefinitionEvaluation(realm, prop, obj, env, strictCode, true);
     } else {
