@@ -99,7 +99,7 @@ export class SerializerStatistics {
     this.referentialized = 0;
     this.valueIds = 0;
     this.valuesInlined = 0;
-    this.indexedVars = 0;
+    this.delayedValues = 0;
   }
   objects: number;
   objectProperties: number;
@@ -108,11 +108,11 @@ export class SerializerStatistics {
   referentialized: number;
   valueIds: number;
   valuesInlined: number;
-  indexedVars: number;
+  delayedValues: number;
   log() {
     console.log(`=== serialization statistics`);
     console.log(`${this.objects} objects with ${this.objectProperties} properties`);
     console.log(`${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${this.referentialized} captured mutable variables`);
-    console.log(`${this.valueIds} value ids and ${this.indexedVars} indexed variables generated, and ${this.valuesInlined} values inlined`);
+    console.log(`${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${this.valuesInlined} values inlined`);
   }
 }
