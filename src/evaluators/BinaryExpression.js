@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostics, fatalError } from "../errors.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { Value, AbstractValue, AbstractObjectValue, ConcreteValue, UndefinedValue, NullValue, BooleanValue, NumberValue, ObjectValue, StringValue } from "../values/index.js";
 import { GetValue } from "../methods/index.js";
 import { HasProperty, HasSomeCompatibleType } from "../methods/index.js";
@@ -50,7 +50,7 @@ export function getPureBinaryOperationResultType(
       // Assume that an unknown value is actually a primitive or otherwise a well behaved object.
       return typeIfPure;
     }
-    throw fatalError;
+    throw new FatalError();
   }
   if (op === "+") {
     let ltype = GetToPrimitivePureResultType(realm, lval);
@@ -66,7 +66,7 @@ export function getPureBinaryOperationResultType(
         if (ltype === NumberValue && rtype === NumberValue) return NumberValue;
         return Value;
       }
-     throw fatalError;
+     throw new FatalError();
     }
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
@@ -85,7 +85,7 @@ export function getPureBinaryOperationResultType(
         // Assume that the object is actually a well behaved object.
         return BooleanValue;
       }
-      throw fatalError;
+      throw new FatalError();
     }
     if (rval instanceof ObjectValue || rval instanceof AbstractObjectValue) {
        // Simple object won't throw here, aren't proxy objects or typed arrays and do not have @@hasInstance properties.
@@ -97,7 +97,7 @@ export function getPureBinaryOperationResultType(
       // Assume that the object is actually a well behaved object.
       return BooleanValue;
     }
-    throw fatalError;
+    throw new FatalError();
   }
   invariant(false, "unimplemented " + op);
 }

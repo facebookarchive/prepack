@@ -42,6 +42,4 @@ export function FatalError() {
 Object.setPrototypeOf(FatalError, Error);
 Object.setPrototypeOf(FatalError.prototype, Error.prototype);
 
-export const fatalError = new FatalError();
-
 export type ErrorHandler = (error: CompilerDiagnostics) => ErrorHandlerResult;

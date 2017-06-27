@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostics, fatalError } from "../errors.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { AbstractObjectValue, Value, BooleanValue, ConcreteValue, NumberValue, StringValue, UndefinedValue, NullValue, SymbolValue, ObjectValue, AbstractValue } from "../values/index.js";
 import { Reference, EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -48,7 +48,7 @@ export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env
     let error = new CompilerDiagnostics(
       "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
       ast.argument.loc, 'PP0008', 'RecoverableError');
-    if (realm.handleError(error) === 'Fail') throw fatalError;
+    if (realm.handleError(error) === 'Fail') throw new FatalError();
   }
 
   let expr = env.evaluate(ast.argument, strictCode);

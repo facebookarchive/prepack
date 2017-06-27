@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
-import { CompilerDiagnostics, fatalError } from "../errors.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
 import {
   ObjectCreate,
@@ -93,7 +93,7 @@ export default function (ast: BabelNodeObjectExpression, strictCode: boolean, en
         if (propKey.mightNotBeString()) {
           let error = new CompilerDiagnostics(
             "property key value is unknown", prop.loc, 'PP0011', 'FatalError');
-          if (realm.handleError(error) === 'Fail') throw fatalError;
+          if (realm.handleError(error) === 'Fail') throw new FatalError();
           continue; // recover by ignoring the property, which is only ever safe to do if the property is dead,
           // which is assuming a bit much, hence the designation as a FatalError.
         }

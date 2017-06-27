@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment, Reference } from "../environment.js";
 import { AbstractValue, Value } from "../values/index.js";
-import { CompilerDiagnostics, fatalError } from "../errors.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { NullValue, EmptyValue, ObjectValue } from '../values/index.js';
 import type { BabelNodeClassDeclaration, BabelNodeExpression, BabelNodeClassMethod } from "babel-types";
 import parse from "../utils/parse.js";
@@ -42,7 +42,7 @@ function EvaluateClassHeritage(realm: Realm, ClassHeritage: BabelNodeExpression,
   if (val instanceof AbstractValue) {
     let error = new CompilerDiagnostics(
       "unknown super class", ClassHeritage.loc, 'PP0009', 'RecoverableError');
-    if (realm.handleError(error) === 'Fail') throw fatalError;
+    if (realm.handleError(error) === 'Fail') throw new FatalError();
   }
   if (!(val instanceof ObjectValue)) {
     return null;
@@ -116,7 +116,7 @@ function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration,
         if (protoParent instanceof AbstractValue) {
           let error = new CompilerDiagnostics(
             "unknown super class prototype", ClassHeritage.loc, 'PP0010', 'RecoverableError');
-          if (realm.handleError(error) === 'Fail') throw fatalError;
+          if (realm.handleError(error) === 'Fail') throw new FatalError();
           protoParent = realm.intrinsics.ObjectPrototype;
         } else {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, 'protoParent must be an instance of Object or Null');
