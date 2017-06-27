@@ -672,9 +672,12 @@ export class Realm {
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
     if (!errorHandler) {
-      let loc_start = diagnostic.location.start;
-      let loc_end = diagnostic.location.end;
-      let msg = `${diagnostic.errorCode}: ${diagnostic.message} at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+      let msg = `${diagnostic.errorCode}: ${diagnostic.message}`;
+      if (diagnostic.location) {
+        let loc_start = diagnostic.location.start;
+        let loc_end = diagnostic.location.end;
+        msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+      }
       switch (diagnostic.severity) {
         case 'Information':
           console.log(`Info: ${msg}`);
@@ -688,8 +691,9 @@ export class Realm {
         case 'FatalError':
           console.error(`Fatal Error: ${msg}`);
           return 'Fail';
+        default:
+          invariant(false, "Unexpected error type");
       }
-      invariant(false);
     }
     return errorHandler(diagnostic);
   }
