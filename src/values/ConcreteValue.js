@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { EmptyValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "./index.js";
+import { EmptyValue, NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "./index.js";
 import invariant from "../invariant.js";
 
 export default class ConcreteValue extends Value {
@@ -21,6 +21,10 @@ export default class ConcreteValue extends Value {
 
   mightNotBeFalse(): boolean {
     return !this.mightBeFalse();
+  }
+
+  mightBeNull(): boolean {
+    return this instanceof NullValue;
   }
 
   mightBeNumber(): boolean {
