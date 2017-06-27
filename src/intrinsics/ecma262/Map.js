@@ -41,6 +41,9 @@ export default function (realm: Realm): NativeFunctionValue {
     map.$MapData = [];
 
     // 4. If iterable is not present, let iterable be undefined.
+    if (iterable && realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "the map constructor doesn't take arguments");
+    }
     if (!iterable) iterable = realm.intrinsics.undefined;
 
     // 5. If iterable is either undefined or null, let iter be undefined.

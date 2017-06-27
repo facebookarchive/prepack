@@ -203,8 +203,8 @@ export default class ObjectValue extends ConcreteValue {
 
   isSimple(): boolean {
     if (this._isSimple.value) return true;
-    if (this.isPartial())
-      return false;
+    if (this.isPartial()) return false;
+    if (this.symbols.size > 0) return false;
     for (let propertyBinding of this.properties.values()) {
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; // deleted

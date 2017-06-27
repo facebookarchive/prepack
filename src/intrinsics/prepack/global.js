@@ -86,7 +86,7 @@ export default function (realm: Realm): void {
       let types = new TypesDomain(type);
       let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
       let result = realm.createAbstract(types, values, [], buildNode, undefined, nameString);
-      if (template) {
+      if (template && !(template instanceof FunctionValue)) { // why exclude functions?
         template.makePartial();
         if (nameString) realm.rebuildNestedProperties(result, nameString);
       }

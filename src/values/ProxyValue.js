@@ -59,6 +59,10 @@ export default class ProxyValue extends ObjectValue {
     this.realm = realm;
   }
 
+  isSimple(): boolean {
+    return false;
+  }
+
   // ECMA262 9.5.1
   $GetPrototypeOf(): NullValue | ObjectValue {
     let realm = this.realm;

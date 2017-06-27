@@ -11,8 +11,8 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostics } from "../errors.js";
-import { Value, AbstractValue, UndefinedValue, NullValue, BooleanValue, NumberValue, ObjectValue, StringValue } from "../values/index.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { Value, AbstractValue, AbstractObjectValue, ConcreteValue, UndefinedValue, NullValue, BooleanValue, NumberValue, ObjectValue, StringValue } from "../values/index.js";
 import { GetValue } from "../methods/index.js";
 import { HasProperty, HasSomeCompatibleType } from "../methods/index.js";
 import { Add, AbstractEqualityComparison, StrictEqualityComparison, AbstractRelationalComparison, InstanceofOperator, IsToPrimitivePure, GetToPrimitivePureResultType, IsToNumberPure } from "../methods/index.js";
@@ -34,50 +34,70 @@ export default function (ast: BabelNodeBinaryExpression, strictCode: boolean, en
   return computeBinary(realm, ast.operator, lval, rval, ast.left.loc, ast.right.loc);
 }
 
-let unknownValueOfOrToString = "might be an object with an unknown valueOf or toString method";
+let unknownValueOfOrToString = "might be an object with an unknown valueOf or toString or Symbol.toPrimitive method";
 
 // Returns result type if binary operation is pure (terminates, does not throw exception, does not read or write heap), otherwise undefined.
 export function getPureBinaryOperationResultType(
   realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value, lloc: ?BabelNodeSourceLocation, rloc: ?BabelNodeSourceLocation
-): void | typeof Value {
+): typeof Value {
+  function reportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
+    let leftPure = purityTest(realm, lval);
+    let rightPure = purityTest(realm, rval);
+    if (leftPure && rightPure) return typeIfPure;
+    let loc = !leftPure ? lloc : rloc;
+    let error = new CompilerDiagnostics(unknownValueOfOrToString, loc, 'PP0002', 'RecoverableError');
+    if (realm.handleError(error) === 'Recover') {
+      // Assume that an unknown value is actually a primitive or otherwise a well behaved object.
+      return typeIfPure;
+    }
+    throw new FatalError();
+  }
   if (op === "+") {
     let ltype = GetToPrimitivePureResultType(realm, lval);
     let rtype = GetToPrimitivePureResultType(realm, rval);
-    if (ltype === undefined) {
-      let error = new CompilerDiagnostics(unknownValueOfOrToString, lloc, 'PP0002', 'Error');
-      if (realm.handleError(error) === 'RecoverIfPossible') {
-        // Assume that lval is actually a primitive or otherwise a well behaved object.
-        // Also assume that it does not convert to a string if rtype is a number.
-        return rtype;
+    if (ltype === undefined || rtype === undefined) {
+      let loc = ltype === undefined ? lloc : rloc;
+      let error = new CompilerDiagnostics(unknownValueOfOrToString, loc, 'PP0002', 'RecoverableError');
+      if (realm.handleError(error) === 'Recover') {
+        // Assume that the unknown value is actually a primitive or otherwise a well behaved object.
+        ltype = lval.getType();
+        rtype = rval.getType();
+        if (ltype === StringValue || rtype === StringValue) return StringValue;
+        if (ltype === NumberValue && rtype === NumberValue) return NumberValue;
+        return Value;
       }
-      return undefined;
-    }
-    if (rtype === undefined) {
-      let error = new CompilerDiagnostics(unknownValueOfOrToString, rloc, 'PP0002', 'Error');
-      if (realm.handleError(error) === 'RecoverIfPossible') {
-        // Assume that rval is actually a primitive or otherwise a well behaved object.
-        // Also assume that it does not convert to a string if ltype is a number.
-        return ltype;
-      }
-      return undefined;
+     throw new FatalError();
     }
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=" || op === "!=" || op === "==") {
-    if (IsToPrimitivePure(realm, lval) && IsToPrimitivePure(realm, rval)) return BooleanValue;
-    return undefined;
+    return reportErrorIfNotPure(IsToPrimitivePure, BooleanValue);
   } else if (op === "===" || op === "!==") {
     return BooleanValue;
   } else if (op === ">>>" || op === "<<" || op === ">>" || op === "&" || op === "|" || op === "^" ||
              op === "**" || op === "%" || op === "/" || op === "*" || op === "-") {
-    if (IsToNumberPure(realm, lval) && IsToNumberPure(realm, rval)) return NumberValue;
-    return undefined;
-  } else if (op === "in") {
-    // TODO. Tricky. Needs deeper analysis. Can call arbitrary code e.g. when object is a Proxy => Side effects!
-    return undefined;
-  } else if (op === "instanceof") {
-    // TODO. Tricky. Needs deeper analysis. Can throw exceptions, call arbitrary code => Side effects!
-    return undefined;
+    return reportErrorIfNotPure(IsToNumberPure, NumberValue);
+  } else if (op === "in" || op === "instanceof") {
+    if (rval.mightNotBeObject()) {
+      let error = new CompilerDiagnostics(
+        `might not be an object, hence the ${op} operator might throw a TypeError`, rloc, 'PP0003', 'RecoverableError');
+      if (realm.handleError(error) === 'Recover') {
+        // Assume that the object is actually a well behaved object.
+        return BooleanValue;
+      }
+      throw new FatalError();
+    }
+    if (rval instanceof ObjectValue || rval instanceof AbstractObjectValue) {
+       // Simple object won't throw here, aren't proxy objects or typed arrays and do not have @@hasInstance properties.
+      if (rval.isSimple()) return BooleanValue;
+    }
+    let error = new CompilerDiagnostics(
+      `might be an object that behaves badly for the ${op} operator`, rloc, 'PP0004', 'RecoverableError');
+    if (realm.handleError(error) === 'Recover') {
+      // Assume that the object is actually a well behaved object.
+      return BooleanValue;
+    }
+    throw new FatalError();
   }
   invariant(false, "unimplemented " + op);
 }
@@ -85,7 +105,7 @@ export function getPureBinaryOperationResultType(
 export function computeBinary(
   realm: Realm, op: BabelBinaryOperator, lval: Value, rval: Value, lloc: ?BabelNodeSourceLocation, rloc: ?BabelNodeSourceLocation
 ): Value {
-  // partial evaluation shortcut for a particular pattern (avoiding general throwIfNotConcrete check)
+  // partial evaluation shortcut for a particular pattern
   if (op === "==" || op === "===" || op === "!=" || op === "!==") {
     if (!lval.mightNotBeObject() && HasSomeCompatibleType(rval, NullValue, UndefinedValue) ||
       HasSomeCompatibleType(lval, NullValue, UndefinedValue) && !rval.mightNotBeObject())
@@ -94,14 +114,12 @@ export function computeBinary(
 
   if ((lval instanceof AbstractValue) || (rval instanceof AbstractValue)) {
     let type = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-    if (type !== undefined) {
-      return realm.createAbstract(new TypesDomain(type), ValuesDomain.topVal, [lval, rval],
-        ([lnode, rnode]) => t.binaryExpression(op, lnode, rnode));
-    }
+    return realm.createAbstract(new TypesDomain(type), ValuesDomain.topVal, [lval, rval],
+      ([lnode, rnode]) => t.binaryExpression(op, lnode, rnode));
   }
 
-  lval = lval.throwIfNotConcrete();
-  rval = rval.throwIfNotConcrete();
+  invariant(lval instanceof ConcreteValue);
+  invariant(rval instanceof ConcreteValue);
 
   if (op === "+") {
     // ECMA262 12.8.3 The Addition Operator

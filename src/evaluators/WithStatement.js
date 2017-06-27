@@ -11,8 +11,9 @@
 
 import type { Realm } from "../realm.js";
 import { LexicalEnvironment, ObjectEnvironmentRecord } from "../environment.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { AbruptCompletion } from "../completions.js";
-import { Value } from "../values/index.js";
+import { AbstractValue, Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import { ToObjectPartial, GetValue, NewObjectEnvironment, UpdateEmpty } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -24,7 +25,13 @@ export default function (ast: BabelNodeWithStatement, strictCode: boolean, env: 
   let val = env.evaluate(ast.object, strictCode);
 
   // 2. Let obj be ? ToObject(? GetValue(val)).
-  let obj = ToObjectPartial(realm, GetValue(realm, val));
+  val = GetValue(realm, val);
+  if (val instanceof AbstractValue) {
+    let loc = ast.object.loc;
+    let error = new CompilerDiagnostics("with object must be a known value", loc, 'PP0007', 'RecoverableError');
+    if (realm.handleError(error) === "Fail") throw new FatalError();
+  }
+  let obj = ToObjectPartial(realm, val);
 
   // 3. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = env;

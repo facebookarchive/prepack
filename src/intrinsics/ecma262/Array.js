@@ -99,7 +99,7 @@ export default function (realm: Realm): NativeFunctionValue {
             ToStringPartial(realm, Get(realm, value, "message")),
             realm.currentLocation,
             'PP0001',
-            'Error',
+            'FatalError',
         ));
 
           // Rethrow.

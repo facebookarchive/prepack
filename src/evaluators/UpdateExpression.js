@@ -13,10 +13,12 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { Add, GetValue, ToNumber, PutValue, IsToNumberPure } from "../methods/index.js";
 import { AbstractValue, NumberValue } from "../values/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
+import invariant from "../invariant.js";
 import * as t from "babel-types";
 
 export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
@@ -27,8 +29,14 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
 
   // Let oldValue be ? ToNumber(? GetValue(expr)).
   let oldExpr = GetValue(realm, expr);
-  if ((oldExpr instanceof AbstractValue) && IsToNumberPure(realm, oldExpr) &&
-      (ast.operator === '++' || ast.operator === '--')) {
+  if (oldExpr instanceof AbstractValue) {
+    if (!IsToNumberPure(realm, oldExpr)) {
+      let error = new CompilerDiagnostics(
+        "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
+        ast.argument.loc, 'PP0008', 'RecoverableError');
+      if (realm.handleError(error) === 'Fail') throw new FatalError();
+    }
+    invariant(ast.operator === '++' || ast.operator === '--'); // As per BabelNodeUpdateExpression
     let op = ast.operator === '++' ? '+' : '-';
     let newAbstractValue = realm.createAbstract(
       new TypesDomain(NumberValue),
@@ -43,7 +51,6 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
       return oldExpr;
     }
   }
-  oldExpr.throwIfNotConcrete();
   let oldValue = ToNumber(realm, oldExpr);
 
   if (ast.prefix) {
@@ -70,6 +77,7 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
       // 5. Return newValue.
       return newValue;
     }
+    invariant(false);
   } else {
     if (ast.operator === "++") {
       // ECMA262 12.4.4.1
@@ -94,7 +102,7 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
       // 5. Return oldValue.
       return new NumberValue(realm, oldValue);
     }
+    invariant(false);
   }
 
-  throw new Error("unimplemented");
 }

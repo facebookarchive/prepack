@@ -18,7 +18,7 @@ import { FunctionValue, NullValue, ProxyValue, ArrayValue, StringValue,  SymbolV
 import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
-import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal } from "babel-types";
+import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "babel-types";
 
 // ECMA262 22.1.3.1.1
 export function IsConcatSpreadable(realm: Realm, O: Value): boolean {
@@ -328,4 +328,9 @@ export function IsIntrospectionError(realm: Realm, value: Value): boolean {
   if (!value.mightBeObject()) return false;
   value = value.throwIfNotConcreteObject();
   return value.$GetPrototypeOf() === realm.intrinsics.__IntrospectionErrorPrototype;
+}
+
+export function IsStatic(classElement: BabelNodeClassMethod): boolean {
+  // $FlowFixMe need to backport static property to BabelNodeClassMethod
+  return classElement.static;
 }

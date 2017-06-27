@@ -12,6 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import { ArrayValue, UndefinedValue, NumberValue, SymbolValue, NullValue, BooleanValue, ObjectValue, StringValue, Value, ConcreteValue, AbstractValue, AbstractObjectValue } from "../values/index.js";
+import { EvalPropertyNamePartial } from '../evaluators/ObjectExpression';
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { CreateIterResultObject } from "../methods/create.js";
 import invariant from "../invariant.js";
@@ -41,7 +42,16 @@ import {
   SameValuePartial,
   IsPropertyReference,
   HasSomeCompatibleType,
+  DefineMethod,
+  SetFunctionName,
+  GeneratorFunctionCreate,
+  MakeMethod,
+  MakeConstructor,
+  FunctionCreate,
 } from "../methods/index.js";
+import type { BabelNodeObjectMethod, BabelNodeClassMethod } from "babel-types";
+import type { LexicalEnvironment } from "../environment.js";
+import IsStrict from "../utils/strict.js";
 
 function InternalDescriptorPropertyToValue(realm: Realm, value: void | boolean | Value) {
   if (value === undefined) return realm.intrinsics.undefined;
@@ -784,7 +794,7 @@ export function PutValue(realm: Realm, V: Value | Reference, W: Value) {
     return base.SetMutableBinding(referencedName, W, IsStrictReference(realm, V));
   }
 
-  throw new Error("unknown reference type");
+  invariant(false);
 }
 
 // ECMA262 9.4.2.4
@@ -1071,4 +1081,121 @@ export function ThrowIfMightHaveBeenDeleted(value: void | Value): void {
 export function ThrowIfInternalSlotNotWritable<T: ObjectValue>(realm: Realm, object: T, key: string): T {
   if (!realm.isNewObject(object)) throw AbstractValue.createIntrospectionErrorThrowCompletion(object, key);
   return object;
+}
+
+// ECMA 14.3.9
+export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: BabelNodeObjectMethod | BabelNodeClassMethod, object: ObjectValue, env: LexicalEnvironment, strictCode: boolean, enumerable: boolean) {
+  // MethodDefinition : PropertyName ( StrictFormalParameters ) { FunctionBody }
+  if (MethodDefinition.kind === 'method') {
+    // 1. Let methodDef be DefineMethod of MethodDefinition with argument object.
+    let methodDef = DefineMethod(realm, MethodDefinition, object, env, strictCode);
+
+    // 2. ReturnIfAbrupt(methodDef).
+
+    // 3. Perform SetFunctionName(methodDef.[[closure]], methodDef.[[key]]).
+    SetFunctionName(realm, methodDef.$Closure, methodDef.$Key);
+
+    // 4. Let desc be the Property Descriptor{[[Value]]: methodDef.[[closure]], [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
+    let desc: Descriptor = { value: methodDef.$Closure, writable: true, enumerable: enumerable, configurable: true };
+
+    // 5. Return DefinePropertyOrThrow(object, methodDef.[[key]], desc).
+    return DefinePropertyOrThrow(realm, object, methodDef.$Key, desc);
+  } else if (MethodDefinition.kind === 'generator') { // MethodDefinition : GeneratorMethod
+    // See 14.4.
+    // ECMA 14.4.13
+    // 1. Let propKey be the result of evaluating PropertyName.
+    let propKey = EvalPropertyNamePartial(MethodDefinition, env, realm, strictCode);
+
+    // 2. ReturnIfAbrupt(propKey).
+    // 3. If the function code for this GeneratorMethod is strict mode code, let strict be true. Otherwise let strict be false.
+    let strict = strictCode || IsStrict(MethodDefinition.body);
+
+    // 4. Let scope be the running execution context’s LexicalEnvironment.
+    let scope = env;
+
+    // 5. Let closure be GeneratorFunctionCreate(Method, StrictFormalParameters, GeneratorBody, scope, strict).
+    let closure = GeneratorFunctionCreate(realm, "method", MethodDefinition.params, MethodDefinition.body, scope, strict);
+
+    // 6. Perform MakeMethod(closure, object).
+    MakeMethod(realm, closure, object);
+
+    // 7. Let prototype be ObjectCreate(%GeneratorPrototype%).
+    let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
+    prototype.originalConstructor = closure;
+
+    // 8. Perform MakeConstructor(closure, true, prototype).
+    MakeConstructor(realm, closure, true, prototype);
+
+    // 9. Perform SetFunctionName(closure, propKey).
+    SetFunctionName(realm, closure, propKey);
+
+    // 10. Let desc be the Property Descriptor{[[Value]]: closure, [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
+    let desc: Descriptor = { value: closure, writable: true, enumerable: enumerable, configurable: true };
+
+    // 11. Return DefinePropertyOrThrow(object, propKey, desc).
+    return DefinePropertyOrThrow(realm, object, propKey, desc);
+  } else if (MethodDefinition.kind === "get") {
+    // 1. Let propKey be the result of evaluating PropertyName.
+    let propKey = EvalPropertyNamePartial(MethodDefinition, env, realm, strictCode);
+
+    // 2. ReturnIfAbrupt(propKey).
+
+    // 3. If the function code for this MethodDefinition is strict mode code, let strict be true. Otherwise let strict be false.
+    let strict = strictCode || IsStrict(MethodDefinition.body);
+
+    // 4. Let scope be the running execution context's LexicalEnvironment.
+    let scope = env;
+
+    // 5. Let formalParameterList be the production FormalParameters:[empty] .
+    let formalParameterList = [];
+
+    // 6. Let closure be FunctionCreate(Method, formalParameterList, FunctionBody, scope, strict).
+    let closure = FunctionCreate(realm, "method", formalParameterList, MethodDefinition.body, scope, strict);
+
+    // 7. Perform MakeMethod(closure, object).
+    MakeMethod(realm, closure, object);
+
+    // 8. Perform SetFunctionName(closure, propKey, "get").
+    SetFunctionName(realm, closure, propKey, "get");
+
+    // 9. Let desc be the PropertyDescriptor{[[Get]]: closure, [[Enumerable]]: enumerable, [[Configurable]]: true}.
+    let desc = {
+      get: closure,
+      enumerable: true,
+      configurable: true
+    };
+
+    // 10. Return ? DefinePropertyOrThrow(object, propKey, desc).
+    DefinePropertyOrThrow(realm, object, propKey, desc);
+  } else if (MethodDefinition.kind === 'set') {
+    // 1. Let propKey be the result of evaluating PropertyName.
+    let propKey = EvalPropertyNamePartial(MethodDefinition, env, realm, strictCode);
+
+    // 2. ReturnIfAbrupt(propKey).
+
+    // 3. If the function code for this MethodDefinition is strict mode code, let strict be true. Otherwise let strict be false.
+    let strict = strictCode || IsStrict(MethodDefinition.body);
+
+    // 4. Let scope be the running execution context's LexicalEnvironment.
+    let scope = env;
+
+    // 5. Let closure be FunctionCreate(Method, PropertySetParameterList, FunctionBody, scope, strict).
+    let closure = FunctionCreate(realm, "method", MethodDefinition.params, MethodDefinition.body, scope, strict);
+
+    // 6. Perform MakeMethod(closure, object).
+    MakeMethod(realm, closure, object);
+
+    // 7. Perform SetFunctionName(closure, propKey, "set").
+    SetFunctionName(realm, closure, propKey, "set");
+
+    // 8. Let desc be the PropertyDescriptor{[[Set]]: closure, [[Enumerable]]: enumerable, [[Configurable]]: true}.
+    let desc = {
+      set: closure,
+      enumerable: true,
+      configurable: true
+    };
+
+    // 9. Return ? DefinePropertyOrThrow(object, propKey, desc).
+    DefinePropertyOrThrow(realm, object, propKey, desc);
+  }
 }

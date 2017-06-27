@@ -13,14 +13,14 @@ import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./options";
-import { type ErrorHandler } from "./errors.js";
+import { type ErrorHandler, FatalError } from "./errors.js";
 
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
 import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 
-// This should just be a class but Babel classes doesn't work with
-// built-in super classes.
+// IMPORTANT: This function is now deprecated and will go away in a future release.
+// Please use FatalError instead.
 export function InitializationError() {
   let self = new Error("An error occurred while prepacking. See the error logs.");
   Object.setPrototypeOf(self, InitializationError.prototype);
@@ -28,6 +28,7 @@ export function InitializationError() {
 }
 Object.setPrototypeOf(InitializationError, Error);
 Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
+Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
 
 export function prepack(code: string, options: Options = defaultOptions, errorHandler?: ErrorHandler) {
   let filename = options.filename || 'unknown';
@@ -40,7 +41,7 @@ export function prepack(code: string, options: Options = defaultOptions, errorHa
   let serializer = new Serializer(realm, getSerializerOptions(options));
   let serialized = serializer.init(filename, code, "", options.sourceMaps);
   if (!serialized) {
-    throw new InitializationError();
+    throw new FatalError();
   }
   return serialized;
 }
@@ -60,7 +61,7 @@ export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: stri
   let serializer = new Serializer(realm, getSerializerOptions(options));
   let serialized = serializer.init("", code, "", options.sourceMaps);
   if (!serialized) {
-    throw new InitializationError();
+    throw new FatalError();
   }
   return serialized;
 }

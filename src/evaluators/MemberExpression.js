@@ -38,7 +38,7 @@ export default function (ast: BabelNodeMemberExpression, strictCode: boolean, en
   }
 
   // 5. Let bv be ? RequireObjectCoercible(baseValue).
-  let bv = RequireObjectCoercible(realm, baseValue);
+  let bv = RequireObjectCoercible(realm, baseValue, ast.object.loc);
 
   // 6. Let propertyKey be ? ToPropertyKey(propertyNameValue).
   let propertyKey = ToPropertyKeyPartial(realm, propertyNameValue);

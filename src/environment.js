@@ -16,7 +16,7 @@ import type { SourceMap, SourceType } from "./types.js";
 import { AbruptCompletion, Completion, JoinedAbruptCompletions, NormalCompletion, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
-import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, ObjectValue, AbstractObjectValue, UndefinedValue } from "./values/index.js";
+import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, NumberValue, ObjectValue, AbstractObjectValue, StringValue, UndefinedValue } from "./values/index.js";
 import generate from "babel-generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
@@ -491,7 +491,7 @@ export class FunctionEnvironmentRecord extends DeclarativeEnvironmentRecord {
 
     // 3. If envRec.[[ThisBindingStatus]] is "uninitialized", throw a ReferenceError exception.
     if (envRec.$ThisBindingStatus === "uninitialized") {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError);
     }
 
     // 4. Return envRec.[[ThisValue]].
@@ -1127,16 +1127,30 @@ export class LexicalEnvironment {
 
 }
 
-//
+// ECMA262 6.2.3
+// A Reference is a resolved name or property binding. A Reference consists of three components, the base value,
+// the referenced name and the Boolean valued strict reference flag. The base value is either undefined, an Object,
+// a Boolean, a String, a Symbol, a Number, or an Environment Record. A base value of undefined indicates that the
+// Reference could not be resolved to a binding. The referenced name is a String or Symbol value.
+export type BaseValue = void | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue | EnvironmentRecord;
+export type ReferenceName = string | SymbolValue;
+
+export function canBecomeAnObject(base: Value): boolean {
+  let type = base.getType();
+  return type === BooleanValue || type === StringValue || type === SymbolValue || type === NumberValue;
+}
+
 export class Reference {
-  base: void | Value | EnvironmentRecord;
-  referencedName: AbstractValue | string | SymbolValue;
+  base: BaseValue | AbstractValue;
+  referencedName: ReferenceName | AbstractValue;
   strict: boolean;
   thisValue: void | Value;
 
-  constructor(base: void | Value | EnvironmentRecord,
-      refName: AbstractValue | string | SymbolValue,
+  constructor(base: BaseValue | AbstractValue,
+      refName: ReferenceName | AbstractValue,
       strict: boolean, thisValue?: void | Value) {
+    invariant(base instanceof AbstractObjectValue || base === undefined || base instanceof ObjectValue ||
+      base instanceof EnvironmentRecord || canBecomeAnObject(base));
     this.base = base;
     this.referencedName = refName;
     invariant(!(refName instanceof AbstractValue) || !refName.mightNotBeString());

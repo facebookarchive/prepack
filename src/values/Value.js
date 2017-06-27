@@ -66,6 +66,10 @@ export default class Value {
     throw new Error("abstract method; please override");
   }
 
+  mightBeNull(): boolean {
+    throw new Error("abstract method; please override");
+  }
+
   mightBeNumber(): boolean {
     throw new Error("abstract method; please override");
   }
