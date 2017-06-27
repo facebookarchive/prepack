@@ -671,7 +671,26 @@ export class Realm {
   handleError(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
-    if (!errorHandler) return 'Fail';
+    if (!errorHandler) {
+      let loc_start = diagnostic.location.start;
+      let loc_end = diagnostic.location.end;
+      let msg = `${diagnostic.errorCode}: ${diagnostic.message} at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+      switch (diagnostic.severity) {
+        case 'Information':
+          console.log(`Info: ${msg}`);
+          return 'Recover';
+        case 'Warning':
+          console.warn(`Warn: ${msg}`);
+          return 'Recover';
+        case 'RecoverableError':
+          console.error(`Error: ${msg}`);
+          return 'Fail';
+        case 'FatalError':
+          console.error(`Fatal Error: ${msg}`);
+          return 'Fail';
+      }
+      invariant(false);
+    }
     return errorHandler(diagnostic);
   }
 }
