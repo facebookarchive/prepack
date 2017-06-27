@@ -77,7 +77,11 @@ export function IsSuperReference(realm: Realm, V: Reference): boolean {
 // HasPrimitiveBase(V). Returns true if Type(base) is Boolean, String, Symbol, or Number.
 export function HasPrimitiveBase(realm: Realm, V: Reference): boolean {
   let base = GetBase(realm, V);
-  return base instanceof Value && HasSomeCompatibleType(base, BooleanValue, StringValue, SymbolValue, NumberValue);
+  // void | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue | EnvironmentRecord | AbstractValue;
+  if (!base || base instanceof EnvironmentRecord) return false;
+  if (base instanceof ObjectValue || base instanceof AbstractObjectValue) return false;
+  let type = base.getType();
+  return type === BooleanValue || type === StringValue || type === SymbolValue || type === NumberValue;
 }
 
 // ECMA262 6.2.3
@@ -132,7 +136,7 @@ export function GetValue(realm: Realm, V: Reference | Value): Value {
     return base.GetBindingValue(referencedName, IsStrictReference(realm, V));
   }
 
-  throw new Error("unknown reference type");
+  invariant(false);
 }
 
 // ECMA262 6.2.3
@@ -144,8 +148,8 @@ export function IsStrictReference(realm: Realm, V: Reference): boolean {
 // ECMA262 6.2.3
 // IsPropertyReference(V). Returns true if either the base value is an object or HasPrimitiveBase(V) is true; otherwise returns false.
 export function IsPropertyReference(realm: Realm, V: Reference): boolean {
-  return V.base instanceof ObjectValue || V.base instanceof AbstractObjectValue ||
-    V.base instanceof AbstractObjectValue || HasPrimitiveBase(realm, V);
+  // V.base is AbstractValue | void | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue | EnvironmentRecord;
+  return V.base instanceof AbstractValue || V.base instanceof ObjectValue || HasPrimitiveBase(realm, V);
 }
 
 // ECMA262 6.2.3

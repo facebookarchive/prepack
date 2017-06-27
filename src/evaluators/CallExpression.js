@@ -91,7 +91,7 @@ function EvaluateCall(
     let args =
       [func].concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
     return realm.deriveAbstract(
-      new TypesDomain(AbstractValue),
+      TypesDomain.topVal,
       ValuesDomain.topVal,
       args,
       (nodes) => {
