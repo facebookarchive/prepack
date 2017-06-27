@@ -12,9 +12,8 @@ import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
-import { FatalError } from "./errors.js";
 import { getRealmOptions, getSerializerOptions } from "./options";
-import { type ErrorHandler, fatalError } from "./errors.js";
+import { type ErrorHandler, FatalError } from "./errors.js";
 
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
@@ -42,7 +41,7 @@ export function prepack(code: string, options: Options = defaultOptions, errorHa
   let serializer = new Serializer(realm, getSerializerOptions(options));
   let serialized = serializer.init(filename, code, "", options.sourceMaps);
   if (!serialized) {
-    throw fatalError;
+    throw new FatalError();
   }
   return serialized;
 }
@@ -62,7 +61,7 @@ export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: stri
   let serializer = new Serializer(realm, getSerializerOptions(options));
   let serialized = serializer.init("", code, "", options.sourceMaps);
   if (!serialized) {
-    throw fatalError;
+    throw new FatalError();
   }
   return serialized;
 }
