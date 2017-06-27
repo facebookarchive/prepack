@@ -33,7 +33,7 @@ export default class AbstractValue extends Value {
       intrinsicName?: string) {
     invariant(realm.useAbstractInterpretation);
     super(realm, intrinsicName);
-    invariant(types.getType() !== ObjectValue || this instanceof AbstractObjectValue);
+    invariant(!Value.isTypeCompatibleWith(types.getType(), ObjectValue) || this instanceof AbstractObjectValue);
     invariant(types.getType() !== NullValue && types.getType() !== UndefinedValue);
     this.types = types;
     this.values = values;
@@ -141,6 +141,14 @@ export default class AbstractValue extends Value {
     if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return true;
     if (this.values.isTop()) return true;
     return this.values.mightNotBeFalse();
+  }
+
+  mightBeNull(): boolean {
+    let valueType = this.getType();
+    if (valueType === NullValue) return true;
+    if (valueType !== Value) return false;
+    if (this.values.isTop()) return true;
+    return this.values.includesValueOfType(NullValue);
   }
 
   mightBeNumber(): boolean {

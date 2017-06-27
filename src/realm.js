@@ -560,7 +560,7 @@ export class Realm {
   // NOTE: `buildNode` MUST NOT create an AST which may mutate or access mutable state! Use `deriveAbstract` for that purpose.
   createAbstract(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode: (Array<BabelNodeExpression> => BabelNodeExpression) | BabelNodeExpression, kind?: string, intrinsicName?: string) {
     invariant(this.useAbstractInterpretation);
-    let Constructor = types.getType() === ObjectValue ? AbstractObjectValue : AbstractValue;
+    let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     return new Constructor(this, types, values, args, buildNode, kind, intrinsicName);
   }
 

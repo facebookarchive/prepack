@@ -794,7 +794,7 @@ export function PutValue(realm: Realm, V: Value | Reference, W: Value) {
     return base.SetMutableBinding(referencedName, W, IsStrictReference(realm, V));
   }
 
-  throw new Error("unknown reference type");
+  invariant(false);
 }
 
 // ECMA262 9.4.2.4
