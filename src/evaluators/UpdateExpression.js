@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
-import { CompilerDiagnostics, fatalError } from "../errors.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { Add, GetValue, ToNumber, PutValue, IsToNumberPure } from "../methods/index.js";
 import { AbstractValue, NumberValue } from "../values/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -34,7 +34,7 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
       let error = new CompilerDiagnostics(
         "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
         ast.argument.loc, 'PP0008', 'RecoverableError');
-      if (realm.handleError(error) === 'Fail') throw fatalError;
+      if (realm.handleError(error) === 'Fail') throw new FatalError();
     }
     invariant(ast.operator === '++' || ast.operator === '--'); // As per BabelNodeUpdateExpression
     let op = ast.operator === '++' ? '+' : '-';

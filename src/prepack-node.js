@@ -14,7 +14,7 @@ import initializeGlobals from "./globals.js";
 import fs from "fs";
 import { AbruptCompletion } from "./completions.js";
 import { getRealmOptions, getSerializerOptions } from "./options";
-import { fatalError } from "./errors.js";
+import { FatalError } from "./errors.js";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment";
 
 import type { Options } from "./options";
@@ -41,7 +41,7 @@ export function prepackString(filename: string, code: string, sourceMap: string,
        options.sourceMaps
      );
      if (!serialized) {
-       throw fatalError;
+       throw new FatalError();
      }
      if (!options.residual) return serialized;
      let result = realm.$GlobalEnv.executePartialEvaluator(
