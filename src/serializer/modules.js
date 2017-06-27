@@ -78,13 +78,14 @@ class ModuleTracer extends Tracer {
       this.log(`>require(${moduleIdValue})`);
       if (this.evaluateForEffectsNesting > 0) {
         this.moduleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
+        return undefined;
       } else {
         let result;
         try {
           this.requireStack.push(moduleIdValue);
           let requireSequenceStart = this.requireSequence.length;
           this.requireSequence.push(moduleIdValue);
-          let anyRequiresAccelerated, effects;
+          let acceleratedModuleIds, effects;
           do {
             effects = realm.evaluateForEffects(() => {
               try {
@@ -98,19 +99,27 @@ class ModuleTracer extends Tracer {
             // We gathered all effects, but didn't apply them yet.
             // Let's check if there was any call to `require` in a
             // evaluate-for-effects context. If so, try to initialize
-            // that module right now.
-            anyRequiresAccelerated = false;
+            // that module right now. Acceleration module initialization in this
+            // way might not actually be desirable, but it works around
+            // general prepack-limitations around joined abstract values involving
+            // conditionals. Long term, Prepack needs to implement a notion of refinement
+            // of conditional abstract values under the known path condition.
+            acceleratedModuleIds = [];
             for (let moduleIdRequiredInEvaluateForEffects of this.moduleIdsRequiredInEvaluateForEffects) {
+              console.log(`accelerating require(${moduleIdRequiredInEvaluateForEffects})`);
               let acceleratedEffects = this.modules.tryInitializeModule(
                 moduleIdRequiredInEvaluateForEffects,
-                `accelerated initialization of module ${moduleIdRequiredInEvaluateForEffects} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`);
+                `accelerated initialization of conditional module ${moduleIdRequiredInEvaluateForEffects} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`);
               if (acceleratedEffects === undefined || !(acceleratedEffects[0] instanceof IntrospectionThrowCompletion)) {
-                anyRequiresAccelerated = true;
+                acceleratedModuleIds.push(moduleIdRequiredInEvaluateForEffects);
               }
             }
             this.moduleIdsRequiredInEvaluateForEffects.clear();
             // Keep restarting for as long as we find additional modules to accelerate.
-          } while (anyRequiresAccelerated);
+            if (acceleratedModuleIds.length > 0) {
+              console.log(`restarting require(${moduleIdValue}) after try to accelerate conditional require calls for ${acceleratedModuleIds.join()}`);
+            }
+          } while (acceleratedModuleIds.length > 0);
 
           [result] = effects;
           invariant(result instanceof Value || result instanceof Completion);
@@ -126,8 +135,11 @@ class ModuleTracer extends Tracer {
             // feature completely safe. Open issues are:
             // 1) Side-effects on the heap of delayed factory functions are not discovered or rejected.
             // 2) While we do process an appropriate list of transitively required modules here,
+            //    it's likely just a subset / prefix of all transivitely required modules, as
             //    more modules would have been required if the Introspection exception had not been thrown.
             //    To be correct, those modules would have to be prepacked here as well.
+            //    Watch out for an upcoming change to the __d module declaration where the statically known
+            //    list of dependencies will be announced, so we'll no longer have to guess.
             let nestedModulesIds = new Set();
             for (let i = requireSequenceStart; i < this.requireSequence.length; i++) {
               let nestedModuleId = this.requireSequence[i];
