@@ -30,14 +30,14 @@ class ModuleTracer extends Tracer {
     this.requireStack = [];
     this.requireSequence = [];
     this.logModules = logModules;
-    this.moduleIdsRequiredInEvaluateForEffects = new Set();
+    this.uninitializedModuleIdsRequiredInEvaluateForEffects = new Set();
   }
 
   modules: Modules;
   evaluateForEffectsNesting: number;
   requireStack: Array<number | string | void>;
   requireSequence: Array<number | string>;
-  moduleIdsRequiredInEvaluateForEffects: Set<number | string>;
+  uninitializedModuleIdsRequiredInEvaluateForEffects: Set<number | string>;
   logModules: boolean;
 
   log(message: string) {
@@ -77,7 +77,8 @@ class ModuleTracer extends Tracer {
       }
       this.log(`>require(${moduleIdValue})`);
       if (this.evaluateForEffectsNesting > 0) {
-        this.moduleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
+        if (!this.modules.isModuleInitialized(moduleIdValue))
+          this.uninitializedModuleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
         return undefined;
       } else {
         let result;
@@ -105,16 +106,15 @@ class ModuleTracer extends Tracer {
             // conditionals. Long term, Prepack needs to implement a notion of refinement
             // of conditional abstract values under the known path condition.
             acceleratedModuleIds = [];
-            for (let moduleIdRequiredInEvaluateForEffects of this.moduleIdsRequiredInEvaluateForEffects) {
-              console.log(`accelerating require(${moduleIdRequiredInEvaluateForEffects})`);
-              let acceleratedEffects = this.modules.tryInitializeModule(
-                moduleIdRequiredInEvaluateForEffects,
-                `accelerated initialization of conditional module ${moduleIdRequiredInEvaluateForEffects} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`);
-              if (acceleratedEffects === undefined || !(acceleratedEffects[0] instanceof IntrospectionThrowCompletion)) {
-                acceleratedModuleIds.push(moduleIdRequiredInEvaluateForEffects);
+            for (let nestedModuleId of this.uninitializedModuleIdsRequiredInEvaluateForEffects) {
+              let nestedEffects = this.modules.tryInitializeModule(
+                nestedModuleId,
+                `accelerated initialization of conditional module ${nestedModuleId} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`);
+              if (nestedEffects !== undefined && nestedEffects[0] instanceof Value && this.modules.isModuleInitialized(nestedModuleId)) {
+                acceleratedModuleIds.push(nestedModuleId);
               }
             }
-            this.moduleIdsRequiredInEvaluateForEffects.clear();
+            this.uninitializedModuleIdsRequiredInEvaluateForEffects.clear();
             // Keep restarting for as long as we find additional modules to accelerate.
             if (acceleratedModuleIds.length > 0) {
               console.log(`restarting require(${moduleIdValue}) after try to accelerate conditional require calls for ${acceleratedModuleIds.join()}`);
@@ -376,8 +376,7 @@ export class Modules {
     }
   }
 
-  resolveInitializedModules(): void {
-    // partial evaluate all possible requires and see which are possible to inline
+  isModuleInitialized(moduleId: number | string): void | Value {
     let realm = this.realm;
     // setup execution environment
     let context = new ExecutionContext();
@@ -390,33 +389,37 @@ export class Modules {
     let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
     this.delayUnsupportedRequires = false;
     try {
-      for (let moduleId of this.moduleIds) {
-        let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
+      let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-        let [compl, generator, bindings, properties, createdObjects] =
-          realm.evaluateNodeForEffects(node, true, env);
-        // for lint unused
-        invariant(bindings);
+      let [compl, generator, bindings, properties, createdObjects] =
+        realm.evaluateNodeForEffects(node, true, env);
+      // for lint unused
+      invariant(bindings);
 
-        if (compl instanceof AbruptCompletion) continue;
-        invariant(compl instanceof Value);
+      if (compl instanceof AbruptCompletion) return undefined;
+      invariant(compl instanceof Value);
 
-        if (generator.body.length !== 0 ||
-          (compl instanceof ObjectValue && createdObjects.has(compl))) continue;
-        // Check for escaping property assignments, if none escape, we're safe
-        // to replace the require with its exports object
-        let escapes = false;
-        for (let [binding] of properties) {
-          if (!createdObjects.has(binding.object)) escapes = true;
-        }
-        if (escapes) continue;
-
-        this.initializedModules.set(moduleId, compl);
+      if (generator.body.length !== 0 ||
+        (compl instanceof ObjectValue && createdObjects.has(compl))) return undefined;
+      // Check for escaping property assignments, if none escape, we got an existing object
+      let escapes = false;
+      for (let [binding] of properties) {
+        if (!createdObjects.has(binding.object)) escapes = true;
       }
+      if (escapes) return undefined;
+
+      return compl;
     } finally {
       realm.popContext(context);
       realm.setReadOnly(oldReadOnly);
       this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
+    }
+  }
+
+  resolveInitializedModules(): void {
+    for (let moduleId of this.moduleIds) {
+      let result = this.isModuleInitialized(moduleId);
+      if (result !== undefined) this.initializedModules.set(moduleId, result);
     }
   }
 }
