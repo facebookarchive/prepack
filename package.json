@@ -48,7 +48,8 @@
     "validate": "npm run build && npm run build-scripts && npm run lint && npm run depcheck && npm run flow && npm test",
     "prepublish": "npm run build",
     "depcheck": "babel-node scripts/detect_bad_deps.js",
-    "prettier": "prettier --write --trailing-comma es5 --print-width 120 \"+(src|scripts)/**/*.js\""
+    "prettier": "node ./scripts/prettier.js write",
+    "prettier-ci-check": "node ./scripts/prettier.js"
   },
   "dependencies": {
     "babel-core": "^6.8.0",
@@ -85,7 +86,7 @@
     "kcheck": "^2.0.0",
     "madge": "^1.6.0",
     "minimist": "^1.2.0",
-    "prettier": "^1.4.2",
+    "prettier": "^1.5.1",
     "remap-istanbul": "^0.9.1",
     "source-map-support": "^0.4.6",
     "uglify-js": "^2.6.2",
