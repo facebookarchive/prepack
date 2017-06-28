@@ -34,8 +34,13 @@ import type { BabelNode, BabelNodeCallExpression, BabelNodeExpression, BabelNode
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import SuperCall from './SuperCall';
 
 export default function (ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
+  if (ast.callee.type === 'Super') {
+    return SuperCall(ast.arguments, strictCode, env, realm);
+  }
+
   // ECMA262 12.3.4.1
   realm.setNextExecutionContextLocation(ast.loc);
 
