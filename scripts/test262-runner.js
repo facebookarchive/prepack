@@ -622,7 +622,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22823 || numPassedES6 < 7402 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 22874 || numPassedES6 < 9411 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -998,12 +998,11 @@ function runTest(
     switch (err.message) {
       case "Unsupported node type ArrayPattern":
       case "TODO: Patterns aren't supported yet":
-      case "TODO: ClassDeclaration":
-      case "TODO: ClassExpression":
       case "TODO: AwaitExpression":
       case "TODO: YieldExpression":
       case "Unknown node ArrayPattern":
       case "expected single name":
+      case "Unsupported node type Super":
         return null;
       default:
         if (err.value && err.value.$Prototype &&
@@ -1114,9 +1113,6 @@ function testFilterByMetadata(
   // disable tests which use Atomics
   if (test.location.includes("/Atomics/")) return false;
 
-  // disable tests which use class
-  if (test.location.includes("/class/")) return false;
-
   // disable tests which use generators
   if (test.location.includes("/generators/")) return false;
   if (test.location.includes("/yield/")) return false;
@@ -1194,7 +1190,6 @@ function filterFlags(data: BannerData): boolean {
 
 function filterFeatures(data: BannerData): boolean {
   let features = data.features;
-  if (features.includes("class")) return false;
   if (features.includes("default-parameters")) return false;
   if (features.includes("generators")) return false;
   if (features.includes("generator")) return false;

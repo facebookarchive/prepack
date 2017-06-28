@@ -5,8 +5,7 @@
 npm-debug.log
 .DS_Store
 build/
-coverage-sourcemapped/
-coverage/
+coverage*/
 .vscode
 test/internal
 prepack.min.js

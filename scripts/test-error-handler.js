@@ -63,12 +63,12 @@ function runTest(name: string, code: string): boolean {
     prepack(code, {
       filename: name,
       internalDebug: false,
-      compatibility: "jsc-600-1-4-17",
+      compatibility: "node-cli",
       mathRandomSeed: "0",
       serialize: true,
       speculate: true,
     },
-    errorHandler.bind(null, recover ? 'RecoverIfPossible' : 'Fail', errors));
+    errorHandler.bind(null, recover ? 'Recover' : 'Fail', errors));
     if (!recover) {
       console.log(chalk.red("Serialization succeeded though it should have failed"));
       return false;

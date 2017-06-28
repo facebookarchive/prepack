@@ -16,22 +16,22 @@ import { ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration } from "babel-types";
+import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeIfStatement, BabelNodeVariableDeclaration } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
 import generate from "babel-generator";
+import type SourceMap from "babel-generator";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { SerializedBinding, ScopeBinding, VisitedBinding, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
+import type { SerializedBinding, ScopeBinding, VisitedBinding, FunctionInfo, FunctionInstance, SerializerOptions, Names } from "./types.js";
 import { BodyReference, AreSameSerializedBindings, SerializerStatistics, type VisitedBindings } from "./types.js";
 import { ClosureRefReplacer, IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
-
-const GLOBAL_CAPTURED_SCOPE_NAME = "__captured_scopes";
+import type { Scope } from "./ResidualHeapVisitor.js";
 
 type AbstractSyntaxTree = {
   type: string,
@@ -87,17 +87,16 @@ export class Serializer {
     this.preludeGenerator = realmPreludeGenerator;
 
     this.options = serializerOptions;
-    this._resetSerializeStates();
   }
 
-  _resetSerializeStates() {
+  _init(collectValToRefCountOnly: boolean) {
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.serializationStack = [];
     this.delayedSerializations = [];
     this.delayedKeyedSerializations = new Map();
     this.globalReasons = {};
     this.prelude = [];
-    this.body = [];
+    this.body = this.mainBody = [];
 
     this.serializedScopes = new Map();
     this.capturedScopeInstanceIdx = 0;
@@ -113,15 +112,20 @@ export class Serializer {
     this.needsEmptyVar = false;
     this.needsAuxiliaryConstructor = false;
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
-    this.referentializedNameGenerator = this.preludeGenerator.createNameGenerator("$");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
     this.scopeNameGenerator = this.preludeGenerator.createNameGenerator("__scope_");
+    this.initializerNameGenerator = this.preludeGenerator.createNameGenerator("__init_");
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
     this.firstFunctionUsages = new Map();
     this.functionPrototypes = new Map();
     this.serializedValues = new Set();
+    this.functionInitializerInfos = new Map();
+    this.initializers = new Map();
+    this.collectValToRefCountOnly = collectValToRefCountOnly;
+    if (collectValToRefCountOnly) this.valToRefCount = new Map();
+    this.capturedScopesArray = t.identifier(this.scopeNameGenerator.generate("main"));
   }
 
   globalReasons: {
@@ -130,8 +134,8 @@ export class Serializer {
 
   declarativeEnvironmentRecordsBindings: Map<VisitedBinding, SerializedBinding>;
   serializationStack: Array<Value>;
-  delayedSerializations: Array<() => void>;
-  delayedKeyedSerializations: Map<BabelNodeIdentifier, Array<{values: Array<Value>, func: () => void}>>;
+  delayedSerializations: Array<{body: Array<BabelNodeStatement>, func: () => void}>;
+  delayedKeyedSerializations: Map<BabelNodeIdentifier, Array<{body: Array<BabelNodeStatement>, values: Array<Value>, func: () => void}>>;
   unstrictFunctionBodies: Array<BabelNodeFunctionDeclaration>;
   strictFunctionBodies: Array<BabelNodeFunctionDeclaration>;
   functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
@@ -142,6 +146,7 @@ export class Serializer {
   valToRefCount: Map<Value, number>;
   prelude: Array<BabelNodeStatement>;
   body: Array<BabelNodeStatement>;
+  mainBody: Array<BabelNodeStatement>;
   realm: Realm;
   declaredDerivedIds: Set<BabelNodeIdentifier>;
   preludeGenerator: PreludeGenerator;
@@ -150,10 +155,10 @@ export class Serializer {
   needsEmptyVar: boolean;
   needsAuxiliaryConstructor: boolean;
   valueNameGenerator: NameGenerator;
-  referentializedNameGenerator: NameGenerator;
   descriptorNameGenerator: NameGenerator;
   factoryNameGenerator: NameGenerator;
   scopeNameGenerator: NameGenerator;
+  initializerNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   requireReturns: Map<number | string, BabelNodeExpression>;
@@ -162,13 +167,15 @@ export class Serializer {
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   ignoredProperties: Map<ObjectValue, Set<string>>;
-  residualValues: Set<Value>;
+  residualValues: Map<Value, Set<Scope>>;
   residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
+  functionInitializerInfos: Map<FunctionValue, { ownId: string, initializerIds: Set<string> }>;
+  initializers: Map<string, { id: string, order: number, body: Array<BabelNodeStatement>, values: Array<Value> }>;
   serializedValues: Set<Value>;
   serializedScopes: Map<DeclarativeEnvironmentRecord, ScopeBinding>;
   capturedScopeInstanceIdx: number;
-
+  capturedScopesArray: BabelNodeIdentifier;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -409,7 +416,8 @@ export class Serializer {
         descriptorId = t.identifier(this.descriptorNameGenerator.generate(descriptorsKey));
         let declar = t.variableDeclaration("var", [
           t.variableDeclarator(descriptorId, t.objectExpression(descProps))]);
-        this.body.push(declar);
+        // The descriptors are used across all scopes, and thus must be declared in the prelude.
+        this.prelude.push(declar);
         this.descriptors.set(descriptorsKey, descriptorId);
       }
       invariant(descriptorId !== undefined);
@@ -465,13 +473,13 @@ export class Serializer {
 
   _getValIdForReference(val: Value): BabelNodeIdentifier {
     let id = this._getValIdForReferenceOptional(val);
-    invariant(id, "Value Id cannot be null or undefined");
+    invariant(id !== undefined, "Value Id cannot be null or undefined");
     return id;
   }
 
-  _getValIdForReferenceOptional(val: Value): ?BabelNodeIdentifier {
+  _getValIdForReferenceOptional(val: Value): void | BabelNodeIdentifier {
     let id = this.refs.get(val);
-    if (id) {
+    if (id !== undefined) {
       this._incrementValToRefCount(val);
     }
     return id;
@@ -489,8 +497,52 @@ export class Serializer {
     }
   }
 
+  // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
+  _getTarget(val: Value, scopes: Set<Scope>): { body: Array<BabelNodeStatement>, usedBySingleFunctionValue?: true } {
+    // All relevant values were visited in at least one scope.
+    invariant(scopes.size >= 1);
+
+    // First, let's figure out from which function and generator scopes this value is referenced.
+    let functionValues = [];
+    let generators = [];
+    for (let scope of scopes) {
+      if (scope instanceof FunctionValue) functionValues.push(scope);
+      else {
+        invariant(scope instanceof Generator);
+        if (scope === this.realm.generator) {
+          // This value is used from the main generator scope. This means that we need to emit the value and its
+          // initialization code into the main body, and cannot delay initialization.
+          return { body: this.mainBody };
+        }
+        generators.push(scope);
+      }
+    }
+
+    if (generators.length === 0) {
+      invariant(functionValues.length >= 1);
+      let infos = [];
+      for (let functionValue of functionValues) {
+        let info = this.functionInitializerInfos.get(functionValue);
+        if (info === undefined) this.functionInitializerInfos.set(functionValue, info = { ownId: this.functionInitializerInfos.size.toString(), initializerIds: new Set() });
+        infos.push(info);
+      }
+      let id = infos.map(info => info.ownId).sort().join();
+      for (let info of infos) info.initializerIds.add(id);
+      let initializer = this.initializers.get(id);
+      if (initializer === undefined) this.initializers.set(id, initializer = { id, order: infos.length, values: [], body: [] });
+      initializer.values.push(val);
+      return { body: initializer.body, usedBySingleFunctionValue: true };
+    }
+
+    // TODO: What does this mean? Where should the code go? Figure this out.
+    // TODO #482: If there's more than one generator involved, We should walk up the generator chain, and find the first common generator, and then choose a body that will be emitted just before that common generator.
+    // For now, stick to historical behavior.
+    return { body: this.body };
+  }
+
   serializeValue(val: Value, reasons?: Array<string>, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
-    invariant(this.residualValues.has(val));
+    let scopes = this.residualValues.get(val);
+    invariant(scopes !== undefined);
 
     let ref = this._getValIdForReferenceOptional(val);
     if (ref) {
@@ -504,6 +556,10 @@ export class Serializer {
       invariant(res !== undefined);
       return res;
     }
+
+    let oldBody = this.body;
+    let target = this._getTarget(val, scopes);
+    this.body = target.body;
 
     let name = this.valueNameGenerator.generate(val.__originalName || "");
     let id = t.identifier(name);
@@ -523,33 +579,44 @@ export class Serializer {
     invariant(refCount !== undefined && refCount > 0);
     if (this.collectValToRefCountOnly ||
       refCount !== 1) {
-       if (init) {
-         if (init !== id) {
-           let declar = t.variableDeclaration((bindingType ? bindingType : "var"), [
-             t.variableDeclarator(id, init)
-           ]);
-
-           this.body.push(declar);
-         }
-         this.statistics.valueIds++;
-       }
-     } else {
-       if (init) {
-         this.refs.delete(val);
-         result = init;
-         this.statistics.valueIdsElided++;
-       }
-     }
+      if (init) {
+        if (init !== id) {
+          if (target.usedBySingleFunctionValue) {
+            let declar = t.variableDeclaration((bindingType ? bindingType : "var"), [
+              t.variableDeclarator(id)
+            ]);
+            this.mainBody.push(declar);
+            let assignment = t.expressionStatement(t.assignmentExpression("=", id, init));
+            this.body.push(assignment);
+          } else {
+            let declar = t.variableDeclaration((bindingType ? bindingType : "var"), [
+              t.variableDeclarator(id, init)
+            ]);
+            this.body.push(declar);
+          }
+        }
+        this.statistics.valueIds++;
+        if (target.usedBySingleFunctionValue) this.statistics.delayedValues++;
+      }
+    } else {
+      if (init) {
+        this.refs.delete(val);
+        result = init;
+        this.statistics.valuesInlined++;
+      }
+    }
 
     this.serializationStack.pop();
     if (this.serializationStack.length === 0) {
       while (this.delayedSerializations.length) {
         invariant(this.serializationStack.length === 0);
-        let serializer = this.delayedSerializations.shift();
-        serializer();
+        let delayed = this.delayedSerializations.shift();
+        this.body = delayed.body;
+        delayed.func();
       }
     }
 
+    this.body = oldBody;
     return result;
   }
 
@@ -561,11 +628,11 @@ export class Serializer {
   _delay(reason: boolean | BabelNodeIdentifier, values: Array<Value>, func: () => void) {
     invariant(reason);
     if (reason === true) {
-      this.delayedSerializations.push(func);
+      this.delayedSerializations.push({ body: this.body, func });
     } else {
       let a = this.delayedKeyedSerializations.get(reason);
       if (a === undefined) this.delayedKeyedSerializations.set(reason, a = []);
-      a.push({ values, func });
+      a.push({ body: this.body, values, func });
     }
   }
 
@@ -735,6 +802,7 @@ export class Serializer {
     }
     invariant(entries !== undefined);
     let len = entries.length;
+    let mapConstructorDoesntTakeArguments = this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION);
 
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
@@ -742,33 +810,33 @@ export class Serializer {
       let value = entry.$Value;
       if (key === undefined || value === undefined) continue;
       let mightHaveBeenDeleted = key.mightHaveBeenDeleted();
-      let delayReason = this._shouldDelayValue(key) ||
-        this._shouldDelayValue(value) || mightHaveBeenDeleted;
-        if (delayReason) {
-          // handle self recursion
-          this._delay(delayReason, [key, value, val], () => {
-            invariant(key !== undefined);
-            invariant(value !== undefined);
-            this.body.push(t.expressionStatement(
-              t.callExpression(
-                t.memberExpression(this._getValIdForReference(val), t.identifier("set")),
-                [this.serializeValue(key, reasons.concat(`Set entry on ${name}`)),
-                 this.serializeValue(value, reasons.concat(`Set entry on ${name}`))]
-              )
-            ));
-          });
-        } else {
-          let serializedKey = this.serializeValue(key, reasons);
-          let serializedValue = this.serializeValue(value, reasons.concat(`Set entry on ${name}`));
-          let elem = t.arrayExpression([serializedKey, serializedValue]);
-          elems.push(elem);
-        }
+      let delayReason = this._shouldDelayValue(key) || this._shouldDelayValue(value) ||
+        mightHaveBeenDeleted || mapConstructorDoesntTakeArguments;
+      if (delayReason) {
+        // handle self recursion
+        this._delay(delayReason, [key, value, val], () => {
+          invariant(key !== undefined);
+          invariant(value !== undefined);
+          this.body.push(t.expressionStatement(
+            t.callExpression(
+              t.memberExpression(this._getValIdForReference(val), t.identifier("set")),
+              [this.serializeValue(key, reasons.concat(`Set entry on ${name}`)),
+               this.serializeValue(value, reasons.concat(`Set entry on ${name}`))]
+            )
+          ));
+        });
+      } else {
+        let serializedKey = this.serializeValue(key, reasons);
+        let serializedValue = this.serializeValue(value, reasons.concat(`Set entry on ${name}`));
+        let elem = t.arrayExpression([serializedKey, serializedValue]);
+        elems.push(elem);
+      }
     }
 
     this.addProperties(name, val, reasons, val.properties);
-    let arrayValue = t.arrayExpression(elems);
+    let args = elems.length > 0 ? [t.arrayExpression(elems)] : [];
     return t.newExpression(
-      this.preludeGenerator.memoizeReference(kind), [arrayValue]);
+      this.preludeGenerator.memoizeReference(kind), args);
   }
 
   _serializeValueSet(name: string, val: ObjectValue, reasons: Array<string>): BabelNodeExpression {
@@ -784,12 +852,13 @@ export class Serializer {
     }
     invariant(entries !== undefined);
     let len = entries.length;
+    let setConstructorDoesntTakeArguments = this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION);
 
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
       if (entry === undefined) continue;
       let mightHaveBeenDeleted = entry.mightHaveBeenDeleted();
-      let delayReason = this._shouldDelayValue(entry) || mightHaveBeenDeleted;
+      let delayReason = this._shouldDelayValue(entry) || mightHaveBeenDeleted || setConstructorDoesntTakeArguments;
       if (delayReason) {
         // handle self recursion
         this._delay(delayReason, [entry, val], () => {
@@ -811,9 +880,9 @@ export class Serializer {
     }
 
     this.addProperties(name, val, reasons, val.properties);
-    let arrayValue = t.arrayExpression(elems);
+    let args = elems.length > 0 ? [t.arrayExpression(elems)] : [];
     return t.newExpression(
-      this.preludeGenerator.memoizeReference(kind), [arrayValue]);
+      this.preludeGenerator.memoizeReference(kind), args);
   }
 
   _serializeValueTypedArrayOrDataView(
@@ -942,7 +1011,7 @@ export class Serializer {
   _canEmbedProperty(obj: ObjectValue, key: string, prop: Descriptor): boolean {
     if ((obj instanceof FunctionValue && key === "prototype") ||
         (obj.getKind() === "RegExp" && key === "lastIndex"))
-    return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
+      return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
     else
       return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;
   }
@@ -965,7 +1034,8 @@ export class Serializer {
         invariant(prototypeId !== undefined);
         this.serializeValue(constructor, reasons.concat(`Constructor of object ${name}`));
         this.addProperties(name, val, reasons);
-        this.functionPrototypes.set(constructor, prototypeId);
+        invariant(prototypeId.type === "Identifier");
+        this.functionPrototypes.set(constructor, ((prototypeId: any): BabelNodeIdentifier));
       });
       return prototypeId;
     }
@@ -1159,14 +1229,14 @@ export class Serializer {
     }
   }
 
-  _getSerializedBindingScopeInstance(serializedBinding: SerializedBinding, scopeName: string): ScopeBinding {
+  _getSerializedBindingScopeInstance(serializedBinding: SerializedBinding): ScopeBinding {
     let declarativeEnvironmentRecord = serializedBinding.declarativeEnvironmentRecord;
     invariant(declarativeEnvironmentRecord);
 
     let scope = this.serializedScopes.get(declarativeEnvironmentRecord);
     if (!scope) {
       scope = {
-        name: scopeName,
+        name: this.scopeNameGenerator.generate(),
         id: this.capturedScopeInstanceIdx++,
         initializationValues: new Map()
       };
@@ -1175,6 +1245,82 @@ export class Serializer {
 
     serializedBinding.scope = scope;
     return scope;
+  }
+
+  _referentialize(names: Names, instances: Array<FunctionInstance>): void {
+    for (let instance of instances) {
+      let serializedBindings = instance.serializedBindings;
+
+      for (let name in names) {
+        let serializedBinding = serializedBindings[name];
+        invariant(serializedBinding !== undefined);
+        if (serializedBinding.modified) {
+
+          // Initialize captured scope at function call instead of globally
+          if (!serializedBinding.referentialized) {
+            let scope = this._getSerializedBindingScopeInstance(serializedBinding);
+            // Save the serialized value for initialization at the top of
+            // the factory.
+            // This can serialize more variables than are necessary to execute
+            // the function because every function serializes every
+            // modified variable of its parent scope. In some cases it could be
+            // an improvement to split these variables into multiple
+            // scopes.
+            invariant(serializedBinding.serializedValue);
+            scope.initializationValues.set(name, serializedBinding.serializedValue);
+
+            // Replace binding usage with scope references
+            serializedBinding.serializedValue = t.memberExpression(
+                t.memberExpression(
+                  this.capturedScopesArray, t.identifier(scope.name), true),
+                t.identifier(name), false);
+
+            serializedBinding.referentialized = true;
+            this.statistics.referentialized++;
+          }
+
+          // Already referentialized in prior scope
+          if (serializedBinding.declarativeEnvironmentRecord) {
+            invariant(serializedBinding.scope);
+            instance.scopeInstances.add(serializedBinding.scope);
+          }
+        }
+      }
+    }
+  }
+
+  _getReferentializedScopeInitialization(scope: ScopeBinding): BabelNodeIfStatement {
+    let properties = [];
+    for (let [variableName, value] of scope.initializationValues.entries()) {
+      properties.push(t.objectProperty(t.identifier(variableName), value));
+    }
+
+    return t.ifStatement(
+        t.unaryExpression('!',
+            t.memberExpression(
+              this.capturedScopesArray, t.identifier(scope.name), true)),
+        t.expressionStatement(
+          t.assignmentExpression(
+            "=",
+            t.memberExpression(
+              this.capturedScopesArray, t.identifier(scope.name), true),
+            t.objectExpression(properties)
+          )));
+  }
+
+  _scrubFunctionInitializers() {
+    // Deleting trivial entries in order to avoid creating empty initialization functions that serve no purpose.
+    for (let initializer of this.initializers.values())
+      if (initializer.body.length === 0) this.initializers.delete(initializer.id);
+    for (let [functionValue, info] of this.functionInitializerInfos) {
+      for (let id of info.initializerIds) {
+        let initializer = this.initializers.get(id);
+        if (initializer === undefined) {
+          info.initializerIds.delete(id);
+        }
+      }
+      if (info.initializerIds.size === 0) this.functionInitializerInfos.delete(functionValue);
+    }
   }
 
   _spliceFunctions() {
@@ -1190,6 +1336,13 @@ export class Serializer {
     let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(this.functions.entries());
     this.statistics.functions = functionEntries.length;
     let hoistedBody = [];
+    let funcNodes: Map<FunctionValue, BabelNodeFunctionDeclaration | BabelNodeVariableDeclaration> = new Map();
+
+    for (let [funcBody, instances] of functionEntries) {
+      let functionInfo = this.residualFunctionInfos.get(funcBody);
+      invariant(functionInfo);
+      this._referentialize(functionInfo.names, instances);
+    }
 
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
@@ -1218,35 +1371,25 @@ export class Serializer {
               t.memberExpression(id, t.identifier("prototype")))
           ]));
         }
+        funcNodes.set(functionValue, funcNode);
       };
 
       if (shouldInline || instances.length === 1 || usesArguments) {
         this.statistics.functionClones += instances.length - 1;
 
-        // Ensure that all bindings that actually get modified get proper variables
         for (let instance of instances) {
-          let serializedBindings = instance.serializedBindings;
-          for (let name in names) {
-            let serializedBinding: SerializedBinding = serializedBindings[name];
-            if (serializedBinding.modified && !serializedBinding.referentialized) {
-              let serializedBindingId = t.identifier(this.referentializedNameGenerator.generate(name));
-              let serializedValue = serializedBinding.serializedValue;
-              invariant(serializedValue);
-              let declar = t.variableDeclaration("var", [
-                t.variableDeclarator(serializedBindingId, serializedValue)]);
-              getFunctionBody(instance).push(declar);
-              serializedBinding.serializedValue = serializedBindingId;
-              serializedBinding.referentialized = true;
-              this.statistics.referentialized++;
-            }
-          }
-        }
-
-        for (let instance of instances) {
-          let { functionValue, serializedBindings } = instance;
+          let { functionValue, serializedBindings, scopeInstances } = instance;
           let id = this._getValIdForReference(functionValue);
           let funcParams = params.slice();
           let funcNode = t.functionDeclaration(id, funcParams, ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement));
+          let scopeInitialization = [];
+          for (let scope of scopeInstances) {
+            scopeInitialization.push(t.variableDeclaration("var", [
+              t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))
+            ]));
+            scopeInitialization.push(this._getReferentializedScopeInitialization(scope));
+          }
+          funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
 
           traverse(
             t.file(t.program([funcNode])),
@@ -1279,6 +1422,7 @@ export class Serializer {
 
             for (let functionInstance of batch) {
               let serializedBinding = functionInstance.serializedBindings[name];
+              invariant(serializedBinding !== undefined);
               let found = false;
               for (let [binding, group] of bindingLookup.entries()) {
                 if (AreSameSerializedBindings(this.realm, serializedBinding, binding)) {
@@ -1299,50 +1443,8 @@ export class Serializer {
         this.statistics.functionClones += instanceBatches.length - 1;
 
         for (instances of instanceBatches) {
-
           let suffix = instances[0].functionValue.__originalName || "";
           let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
-          let scopeName = this.scopeNameGenerator.generate(suffix);
-
-          for (let instance of instances) {
-            let serializedBindings = instance.serializedBindings;
-
-            for (let name in names) {
-              let serializedBinding : SerializedBinding = serializedBindings[name];
-              if (serializedBinding.modified) {
-
-                // Initialize captured scope at function call instead of globally
-                if (!serializedBinding.referentialized) {
-
-                  let scope = this._getSerializedBindingScopeInstance(serializedBinding, scopeName);
-                  // Save the serialized value for initialization at the top of
-                  // the factory.
-                  // This can serialize more variables than are necessary to execute
-                  // the function because every function serializes every
-                  // modified variable of its parent scope. In some cases it could be
-                  // an improvement to split these variables into multiple
-                  // scopes.
-                  invariant(serializedBinding.serializedValue);
-                  scope.initializationValues.set(name, serializedBinding.serializedValue);
-
-                  // Replace binding usage with scope references
-                  serializedBinding.serializedValue = t.memberExpression(
-                      t.memberExpression(
-                        t.identifier(GLOBAL_CAPTURED_SCOPE_NAME), t.identifier(scopeName), true),
-                      t.identifier(name), false);
-
-                  serializedBinding.referentialized = true;
-                  this.statistics.referentialized++;
-                }
-
-                // Already referentialized in prior scope
-                if (serializedBinding.declarativeEnvironmentRecord) {
-                  invariant(serializedBinding.scope);
-                  instance.scopeInstances.add(serializedBinding.scope);
-                }
-              }
-            }
-          }
 
           // filter included variables to only include those that are different
           let factoryNames: Array<string> = [];
@@ -1382,35 +1484,21 @@ export class Serializer {
           for (let key of factoryNames) {
             factoryParams.push(t.identifier(key));
           }
-          factoryParams = factoryParams.concat(params).slice();
 
           let scopeInitialization = [];
-          for (let { name, initializationValues } of instances[0].scopeInstances) {
-            factoryParams.push(t.identifier(name));
-
-            let properties = [];
-            for (let [variableName, value] of initializationValues.entries()) {
-              properties.push(t.objectProperty(t.identifier(variableName), value));
-            }
-
-            scopeInitialization.push(t.ifStatement(
-                t.unaryExpression('!',
-                    t.memberExpression(
-                      t.identifier(GLOBAL_CAPTURED_SCOPE_NAME), t.identifier(name), true)),
-                t.expressionStatement(
-                  t.assignmentExpression(
-                    "=",
-                    t.memberExpression(
-                      t.identifier(GLOBAL_CAPTURED_SCOPE_NAME), t.identifier(name), true),
-                    t.objectExpression(properties)
-                  ))));
+          for (let scope of instances[0].scopeInstances) {
+            factoryParams.push(t.identifier(scope.name));
+            scopeInitialization.push(this._getReferentializedScopeInitialization(scope));
           }
+
+          factoryParams = factoryParams.concat(params).slice();
 
           // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
           let factoryNode = t.functionDeclaration(factoryId, factoryParams, ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement));
 
           factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
 
+          // factory functions do not depend on any nested generator scope, so they go to the prelude
           this.prelude.push(factoryNode);
 
           traverse(
@@ -1432,10 +1520,15 @@ export class Serializer {
               invariant(serializedValue);
               return serializedValue;
             });
+            for (let { id } of instance.scopeInstances) {
+              flatArgs.push(t.numericLiteral(id));
+            }
             let node;
             let firstUsage = this.firstFunctionUsages.get(functionValue);
             invariant(insertionPoint !== undefined);
-            if (usesThis ||
+            let initializerInfo = this.functionInitializerInfos.get(functionValue);
+            if (initializerInfo !== undefined ||
+                usesThis ||
                 firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint) ||
                 this.functionPrototypes.get(functionValue) !== undefined) {
               let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
@@ -1447,10 +1540,6 @@ export class Serializer {
                 callArgs.push(((param: any): BabelNodeIdentifier));
               }
 
-              for (let { id } of instance.scopeInstances) {
-                callArgs.push(t.numericLiteral(id));
-              }
-
               let callee = t.memberExpression(factoryId, t.identifier("call"));
 
               let childBody = t.blockStatement([
@@ -1459,10 +1548,6 @@ export class Serializer {
 
               node = t.functionDeclaration(functionId, params, childBody);
             } else {
-              for (let { id } of instance.scopeInstances) {
-                flatArgs.push(t.numericLiteral(id));
-              }
-
               node = t.variableDeclaration("var", [
                 t.variableDeclarator(functionId, t.callExpression(
                   t.memberExpression(factoryId, t.identifier("bind")),
@@ -1480,12 +1565,13 @@ export class Serializer {
     if (this.capturedScopeInstanceIdx) {
       let scopeVar = t.variableDeclaration("var", [
         t.variableDeclarator(
-          t.identifier(GLOBAL_CAPTURED_SCOPE_NAME),
+          this.capturedScopesArray,
           t.callExpression(
             t.identifier("Array"),
             [t.numericLiteral(this.capturedScopeInstanceIdx)])
         )
       ]);
+      // The `scopeVar` must be visible in all scopes.
       this.prelude.unshift(scopeVar);
     }
 
@@ -1495,6 +1581,102 @@ export class Serializer {
         let insertionPoint = instance.insertionPoint;
         invariant(insertionPoint instanceof BodyReference);
         Array.prototype.splice.apply(insertionPoint.body, ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>)));
+      }
+    }
+
+    // Inject initializer code for indexed vars into functions
+    let sharedInitializers = new Map();
+    let conditionalInitialization = (initializedValues, initializationStatements) => {
+      if (initializationStatements.length === 1 && t.isIfStatement(initializationStatements[0])) {
+        return initializationStatements[0];
+      }
+
+      // We have some initialization code, and it should only get executed once,
+      // so we are going to guard it.
+      // First, let's see if one of the initialized values is guaranteed to not
+      // be undefined after initialization. In that case, we can use that state-change
+      // to figure out if initialization needs to run.
+      let location;
+      for (let value of initializedValues) {
+        if (!value.mightBeUndefined()) {
+          location = this.refs.get(value);
+          if (location !== undefined) break;
+        }
+      }
+      if (location === undefined) {
+        // Second, if we didn't find a non-undefined value, let's make one up.
+        // It will transition from `undefined` to `null`.
+        location = t.identifier(this.valueNameGenerator.generate("initialized"));
+        this.mainBody.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
+        initializationStatements.unshift(
+          t.expressionStatement(
+            t.assignmentExpression(
+              "=",
+              location,
+              t.nullLiteral()
+            )
+          )
+        );
+      }
+      return t.ifStatement(
+        t.binaryExpression("===", location, Serializer.voidExpression),
+        t.blockStatement(initializationStatements));
+    };
+    for (let [functionValue, funcNode] of funcNodes) {
+      let initializerInfo = this.functionInitializerInfos.get(functionValue);
+      if (initializerInfo !== undefined) {
+        invariant(initializerInfo.initializerIds.size > 0);
+        let ownInitializer = this.initializers.get(initializerInfo.ownId);
+        let initializedValues;
+        let initializationStatements = [];
+        let initializers = [];
+        for (let initializerId of initializerInfo.initializerIds) {
+          let initializer = this.initializers.get(initializerId);
+          invariant(initializer !== undefined);
+          invariant(initializer.body.length > 0);
+          initializers.push(initializer);
+        }
+        // Sorting initializers by the number of scopes they are required by.
+        // Note that the scope sets form a lattice, and this sorting effectively
+        // ensures that value initializers that depend on other value initializers
+        // get called in the right order.
+        initializers.sort((i, j) => j.order - i.order);
+        for (let initializer of initializers) {
+          if (initializerInfo.initializerIds.size === 1 || initializer === ownInitializer) {
+            initializedValues = initializer.values;
+          }
+          if (initializer === ownInitializer) {
+            initializationStatements = initializationStatements.concat(initializer.body);
+          } else {
+            let ast = sharedInitializers.get(initializer.id);
+            if (ast === undefined) {
+              ast = conditionalInitialization(initializer.values, initializer.body);
+              // We inline compact initializers, as calling a function would introduce too much
+              // overhead. To determine if an initializer is compact, we count the number of
+              // nodes in the AST, and check if it exceeds a certain threshold.
+              // TODO: Study in more detail which threshold is the best compromise in terms of
+              // code size and performance.
+              let count = 0;
+              traverse(t.file(t.program([ast])), {
+                enter(path) {
+                  count++;
+                }
+              }, null, {});
+              if (count > 24) {
+                let id = t.identifier(this.initializerNameGenerator.generate());
+                this.prelude.push(t.functionDeclaration(id, [], t.blockStatement([ast])));
+                ast = t.expressionStatement(t.callExpression(id, []));
+              }
+              sharedInitializers.set(initializer.id, ast);
+            }
+            initializationStatements.push(ast);
+          }
+        }
+
+        let initializerStatement = conditionalInitialization(initializedValues || [], initializationStatements);
+        invariant(funcNode.type === "FunctionDeclaration");
+        let blockStatement: BabelNodeBlockStatement = ((funcNode: any): BabelNodeFunctionDeclaration).body;
+        blockStatement.body.unshift(initializerStatement);
       }
     }
 
@@ -1530,12 +1712,15 @@ export class Serializer {
         this.declaredDerivedIds.add(id);
         let a = this.delayedKeyedSerializations.get(id);
         if (a !== undefined) {
-          while (a.length) {
+          let oldBody = this.body;
+          while (a.length > 0) {
             invariant(this.serializationStack.length === 0);
             invariant(this.delayedSerializations.length === 0);
-            let { values, func } = a.shift();
+            let { body, values, func } = a.shift();
+            this.body = body;
             this._eagerOrDelay(values, func);
           }
+          this.body = oldBody;
           this.delayedKeyedSerializations.delete(id);
         }
       }
@@ -1586,6 +1771,7 @@ export class Serializer {
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
       this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
 
+    this._scrubFunctionInitializers();
     let hoistedBody = this._spliceFunctions();
 
     // add strict modes
@@ -1713,7 +1899,7 @@ export class Serializer {
 
       for (let declar of node.declarations) {
         let { init } = declar;
-        invariant(init);
+        if (!init) continue;
         if (init.type !== "ObjectExpression") continue;
 
         let keys = this.getObjectKeys(init);
@@ -1843,7 +2029,11 @@ export class Serializer {
   }
 
   init(filename: string, code: string, map?: string = "",
-      sourceMaps?: boolean = false, onError?: (Realm, Value) => void) {
+      sourceMaps?: boolean = false, onError?: (Realm, Value) => void): void | {
+    code: string,
+    map: void | SourceMap,
+    statistics: SerializerStatistics
+  } {
     // Phase 1: Let's interpret.
     if (this.options.profile) console.time("[Profiling] Interpreting Global Code");
     this.execute(filename, code, map, onError);
@@ -1874,16 +2064,15 @@ export class Serializer {
     // Serialize for the first time in order to gather reference counts
     if (!this.options.singlePass) {
       if (this.options.profile) console.time("[Profiling] Reference Counts Pass");
-      this.collectValToRefCountOnly = true;
-      this.valToRefCount = new Map();
+      this._init(/*collectValToRefCountOnly*/true);
       this.serialize();
       if (this.logger.hasErrors()) return undefined;
       if (this.options.profile) console.timeEnd("[Profiling] Reference Counts Pass");
     }
+
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
-    this._resetSerializeStates();
-    this.collectValToRefCountOnly = false;
     if (this.options.profile) console.time("[Profiling] Serialize Pass");
+    this._init(/*collectValToRefCountOnly*/false);
     let ast = this.serialize();
     let generated = generate(
         ast,

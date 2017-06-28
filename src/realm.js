@@ -231,6 +231,15 @@ export class Realm {
   popContext(context: ExecutionContext): void {
     let c = this.contextStack.pop();
     invariant(c === context);
+    let savedEffects = context.savedEffects;
+    if (savedEffects !== undefined && this.contextStack.length > 0) {
+      // when unwinding the stack after a fatal error, saved effects are not incorporated into completions
+      // and thus must be propogated to the calling context.
+      let ctx = this.getRunningContext();
+      if (ctx.savedEffects !== undefined)
+        this.addPriorEffects(ctx.savedEffects, savedEffects);
+      ctx.savedEffects = savedEffects;
+    }
   }
 
   // Evaluate the given ast in a sandbox and return the evaluation results
@@ -290,11 +299,15 @@ export class Realm {
           // add prior effects that are not already present
           this.addPriorEffects(savedEffects, result);
           this.updateAbruptCompletions(savedEffects, c);
+          context.savedEffects = undefined;
         }
       }
       return result;
     } finally {
       // Roll back the state changes
+      if (context.savedEffects !== undefined) {
+        this.stopEffectCaptureAndUndoEffects();
+      }
       this.restoreBindings(this.modifiedBindings);
       this.restoreProperties(this.modifiedProperties);
       context.savedEffects = savedContextEffects;
@@ -547,7 +560,7 @@ export class Realm {
   // NOTE: `buildNode` MUST NOT create an AST which may mutate or access mutable state! Use `deriveAbstract` for that purpose.
   createAbstract(types: TypesDomain, values: ValuesDomain, args: Array<Value>, buildNode: (Array<BabelNodeExpression> => BabelNodeExpression) | BabelNodeExpression, kind?: string, intrinsicName?: string) {
     invariant(this.useAbstractInterpretation);
-    let Constructor = types.getType() === ObjectValue ? AbstractObjectValue : AbstractValue;
+    let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     return new Constructor(this, types, values, args, buildNode, kind, intrinsicName);
   }
 
@@ -658,7 +671,30 @@ export class Realm {
   handleError(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
-    if (!errorHandler) return 'Fail';
+    if (!errorHandler) {
+      let msg = `${diagnostic.errorCode}: ${diagnostic.message}`;
+      if (diagnostic.location) {
+        let loc_start = diagnostic.location.start;
+        let loc_end = diagnostic.location.end;
+        msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+      }
+      switch (diagnostic.severity) {
+        case 'Information':
+          console.log(`Info: ${msg}`);
+          return 'Recover';
+        case 'Warning':
+          console.warn(`Warn: ${msg}`);
+          return 'Recover';
+        case 'RecoverableError':
+          console.error(`Error: ${msg}`);
+          return 'Fail';
+        case 'FatalError':
+          console.error(`Fatal Error: ${msg}`);
+          return 'Fail';
+        default:
+          invariant(false, "Unexpected error type");
+      }
+    }
     return errorHandler(diagnostic);
   }
 }

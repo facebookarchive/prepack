@@ -11,14 +11,16 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
+import { CompilerDiagnostics } from "../errors.js";
 import { BoundFunctionValue, EmptyValue, NumberValue, SymbolValue, StringValue, NullValue, ObjectValue, Value, BooleanValue, UndefinedValue, ConcreteValue, AbstractValue } from "../values/index.js";
 import { ToPrimitive, ToNumber, ToBooleanPartial } from "./to.js";
 import { Call } from "./call.js";
 import { IsCallable } from "./is.js";
 import { Completion, ReturnCompletion, ThrowCompletion } from "../completions.js";
 import { GetMethod, Get } from "./get.js";
-import { HasCompatibleType, HasSomeCompatibleType } from "./has.js";
+import { HasCompatibleType } from "./has.js";
 import { ValuesDomain } from "../domains/index.js";
+import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
 export const URIReserved = ";/?:@&=+$,";
@@ -54,11 +56,23 @@ export function SplitMatch(realm: Realm, S: string, q: number, R: string): false
 }
 
 // ECMA262 7.2.1
-export function RequireObjectCoercible<T: Value>(realm: Realm, arg: T): T {
-  if (HasSomeCompatibleType(arg, NullValue, UndefinedValue)) {
+export function RequireObjectCoercible(
+  realm: Realm, arg: Value, argLoc?: ?BabelNodeSourceLocation
+): AbstractValue | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue   {
+  if (arg instanceof AbstractValue && (arg.mightBeNull() || arg.mightBeUndefined())) {
+    if (argLoc) {
+      let error = new CompilerDiagnostics(
+        "member expression object is unknown", argLoc, "PP0012", "FatalError");
+      realm.handleError(error);
+      // can't throw a FatalError here, yet, because there is some code that depends on seeing an
+      // introspection error in this situation. See tests/serializer/optimizations/require_unsupported.js
+    }
+    arg.throwIfNotConcrete();
+  }
+  if (arg instanceof NullValue || arg instanceof UndefinedValue) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "null or undefined");
   } else {
-    return arg;
+    return (arg: any);
   }
 }
 
