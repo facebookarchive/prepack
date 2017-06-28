@@ -14,7 +14,12 @@ import type { LexicalEnvironment, Reference } from "../environment.js";
 import { AbstractValue, Value } from "../values/index.js";
 import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { NullValue, EmptyValue, ObjectValue } from '../values/index.js';
-import type { BabelNodeClassDeclaration, BabelNodeExpression, BabelNodeClassMethod } from "babel-types";
+import type {
+  BabelNodeClassDeclaration,
+  BabelNodeExpression,
+  BabelNodeClassMethod,
+  BabelNodeClassExpression,
+} from "babel-types";
 import parse from "../utils/parse.js";
 import {
   HasOwnProperty,
@@ -51,7 +56,7 @@ function EvaluateClassHeritage(realm: Realm, ClassHeritage: BabelNodeExpression,
 }
 
 // ECMA262 14.5.14
-function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration, className: string | void, strictCode: boolean, env: LexicalEnvironment) {
+export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration | BabelNodeClassExpression, className: string | void, strictCode: boolean, env: LexicalEnvironment) {
   // 1. Let lex be the LexicalEnvironment of the running execution context.
   let lex = env;
 
