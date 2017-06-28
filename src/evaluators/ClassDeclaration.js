@@ -16,9 +16,9 @@ import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { NullValue, EmptyValue, ObjectValue } from '../values/index.js';
 import type {
   BabelNodeClassDeclaration,
-  BabelNodeExpression,
-  BabelNodeClassMethod,
   BabelNodeClassExpression,
+  BabelNodeClassMethod,
+  BabelNodeExpression,
 } from "babel-types";
 import parse from "../utils/parse.js";
 import {
