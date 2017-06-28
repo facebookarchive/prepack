@@ -998,7 +998,6 @@ function runTest(
     switch (err.message) {
       case "Unsupported node type ArrayPattern":
       case "TODO: Patterns aren't supported yet":
-      case "TODO: ClassExpression":
       case "TODO: AwaitExpression":
       case "TODO: YieldExpression":
       case "Unknown node ArrayPattern":

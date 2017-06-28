@@ -14,7 +14,36 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import type { BabelNodeClassExpression } from "babel-types";
+import { HasOwnProperty, SetFunctionName } from "../methods/index.js";
+import { ClassDefinitionEvaluation } from './ClassDeclaration';
 
+// ECMA262 14.5.16
 export default function (ast: BabelNodeClassExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
-  throw new Error("TODO: ClassExpression");
+  // 1. If BindingIdentifieropt is not present, let className be undefined.
+  let className;
+  // 2. Else, let className be StringValue of BindingIdentifier.
+  if (ast.id) {
+    className = ast.id.name;
+  }
+  // 3. Let value be the result of ClassDefinitionEvaluation of ClassTail with argument className.
+  let value = ClassDefinitionEvaluation(realm, ast, className, strictCode, env);
+
+  // 4. ReturnIfAbrupt(value).
+
+  // 5. If className is not undefined, then
+  if (className) {
+    // a. Let hasNameProperty be HasOwnProperty(value, "name").
+    let hasNameProperty = HasOwnProperty(realm, value, "name");
+
+    // b. ReturnIfAbrupt(hasNameProperty).
+
+    // c. If hasNameProperty is false, then
+    if (!hasNameProperty) {
+      // i. Perform SetFunctionName(value, className).
+      SetFunctionName(realm, value, className);
+    }
+  }
+
+  // 6. Return NormalCompletion(value).
+  return value;
 }
