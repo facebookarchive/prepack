@@ -623,7 +623,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22874 || numPassedES6 < 9411 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 22882 || numPassedES6 < 9633 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -999,12 +999,10 @@ function runTest(
     switch (err.message) {
       case "Unsupported node type ArrayPattern":
       case "TODO: Patterns aren't supported yet":
-      case "TODO: ClassExpression":
       case "TODO: AwaitExpression":
       case "TODO: YieldExpression":
       case "Unknown node ArrayPattern":
       case "expected single name":
-      case "Unsupported node type Super":
         return null;
       default:
         if (err.value && err.value.$Prototype &&
