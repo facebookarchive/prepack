@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
-import { prepack } from "../lib/prepack-node.js";
+import { prepackFileSync } from "../lib/prepack-node.js";
 import invariant from "../lib/invariant.js";
 
 let chalk = require("chalk");
@@ -60,15 +60,13 @@ function runTest(name: string, code: string): boolean {
 
   let errors = [];
   try {
-    prepack(code, {
-      filename: name,
+    prepackFileSync(name, {
       internalDebug: false,
-      compatibility: "node-cli",
       mathRandomSeed: "0",
+      onError: errorHandler.bind(null, recover ? 'Recover' : 'Fail', errors),
       serialize: true,
       speculate: true,
-    },
-    errorHandler.bind(null, recover ? 'Recover' : 'Fail', errors));
+    });
     if (!recover) {
       console.log(chalk.red("Serialization succeeded though it should have failed"));
       return false;

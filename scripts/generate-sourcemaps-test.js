@@ -9,7 +9,8 @@
 
 /* @flow */
 
-import { prepack, prepackFileSync } from "../lib/prepack-node.js";
+import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
+import { prepackFileSync } from "../lib/prepack-node.js";
 import invariant from "../lib/invariant.js";
 
 let chalk = require("chalk");
@@ -39,13 +40,22 @@ function search(dir, relative) {
 
 let tests = search(`${__dirname}/../test/source-maps`, "test/source-maps");
 
+function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
+  let loc = diagnostic.location;
+  if (loc)
+    console.log(`${loc.start.line}:${loc.start.column + 1} ${diagnostic.errorCode} ${diagnostic.message}`);
+  else
+    console.log(`unknown location: ${diagnostic.errorCode} ${diagnostic.message}`);
+  return "Fail";
+}
+
 function generateTest(name: string, test_path: string, code: string): boolean {
   console.log(chalk.inverse(name));
   let newCode1, newMap1, newCode2, newMap2;
   try {
-    let s = prepack(code, {
-      filename: test_path,
+    let s = prepackFileSync(test_path, {
       internalDebug: true,
+      onError: errorHandler,
       sourceMaps: true,
       serialize: true,
     });
@@ -62,6 +72,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
       filename: test_path,
       inputSourceMapFilename: name + ".new1.js.map",
       internalDebug: true,
+      onError: errorHandler,
       sourceMaps: true,
       serialize: true,
     });

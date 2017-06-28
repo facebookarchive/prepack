@@ -11,7 +11,7 @@
 
 import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
 import type { BabelNodeSourceLocation } from "babel-types";
-import { prepack } from "../lib/prepack-node.js";
+import { prepackFileSync } from "../lib/prepack-node.js";
 
 let chalk = require("chalk");
 let path  = require("path");
@@ -51,15 +51,14 @@ function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
-    let serialized = prepack(code, {
-      filename: name,
+    let serialized = prepackFileSync(name, {
       internalDebug: true,
       compatibility: "jsc-600-1-4-17",
       mathRandomSeed: "0",
+      onError: errorHandler,
       serialize: true,
       speculate: true,
-    },
-    errorHandler);
+    });
     if (!serialized) {
       console.log(chalk.red("Error during serialization"));
       return false;
