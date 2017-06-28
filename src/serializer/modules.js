@@ -333,6 +333,7 @@ export class Modules {
       return effects;
     } catch (err) {
       if (err instanceof FatalError) return undefined;
+      throw err;
     } finally {
       realm.popContext(context);
       this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
@@ -364,6 +365,7 @@ export class Modules {
       count++;
       this.initializedModules.set(moduleId, result);
     }
+    // TODO: How do FatalError / Realm.handleError participate in these statistics?
     if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
     let a = [];
     for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
