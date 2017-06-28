@@ -17,6 +17,7 @@ dependencies:
 
 test:
   override:
+    - yarn prettier-ci-check
     - yarn lint
     - yarn flow
     - yarn depcheck
