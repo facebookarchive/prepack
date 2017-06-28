@@ -7,10 +7,10 @@ See the official [prepack.io](http://prepack.io) website for an introduction and
 
 ## How to use Prepack
 
-Install the CLI via npm,
+Install the CLI via yarn,
 
 ```bash
-$ npm install -g prepack
+$ yarn global add prepack
 ```
 Or if you prefer yarn,
 
@@ -46,56 +46,56 @@ Detailed instructions and the API can be found at [Prepack CLI: Getting Started]
 0. Clone repository and make it your current directory.
 1. `git submodule init`
 2. `git submodule update --init`
-3. Get npm and node, then do
-   `yarn install`
+3. Get yarn and node, then do
+   `yarn`
 
 ### How to build, lint, type check
 
 0. Get the code
-1. `npm run build`  
-   You can later run `npm run watch` in the background to just compile changed files on the fly.
-2. `npm run lint`
-3. `npm run flow`
+1. `yarn build`  
+   You can later run `yarn watch` in the background to just compile changed files on the fly.
+2. `yarn lint`
+3. `yarn flow`
 
 ### How to run tests
 
 0. Get the code
-1. Make sure the code is built, either by running `npm run build` or `npm run watch`
-2. `npm test`
+1. Make sure the code is built, either by running `yarn build` or `yarn watch`
+2. `yarn test`
 
 You can run individual test suites as follows:
-- `npm run test-serializer`  
+- `yarn test-serializer`  
   This tests the interpreter and serializer. All tests should pass.
-- `npm run test-test262`  
+- `yarn test-test262`  
   This tests conformance against the test262 suite. Not all will pass, increasing conformance is work in progress.
 
 ## How to run the interpreter
 
 0. Get the code
-1. Make sure the code is built, either by running `npm run build` or `npm run watch`
-2. `npm run repl`  
+1. Make sure the code is built, either by running `yarn build` or `yarn watch`
+2. `yarn repl`  
    This starts an interactive interpreter session.
 
 ## How to run Prepack
 
 0. Get the code
-1. Make sure the code is built, either by running `npm run build` or `npm run watch`.
+1. Make sure the code is built, either by running `yarn build` or `yarn watch`.
 2. Have a JavaScript file handy that you want to prepack, for example:  
    `echo "function hello() { return 'hello'; } function world() { return 'world'; } s = hello() + ' ' + world();" >/tmp/sample.js`
 
-3. `cat /tmp/sample.js | npm run prepack`  
+3. `cat /tmp/sample.js | yarn prepack`  
    Try `--help` for more options.
 
 ## How to validate changes
 
 Instead of building, linting, type checking, testing separately, the following does everything together:  
-`npm run validate`
+`yarn validate`
 
 ## How to edit the website
 
 The content for [prepack.io](http://prepack.io) resides in the [gh-pages branch](https://github.com/facebook/prepack/tree/gh-pages) of this repository. To make changes, submit a pull request, just like for any code changes. In order to run the website locally at [localhost:8000](http://localhost:8000), run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the cloned `gh-pages` branch.
 
-At this time, a particular bundled version of Prepack is checked in to the `gh-pages` branch at `js/prepack.min.js`. To update the bundle, run `npm run build-bundle` from the `master` branch, and copy the resulting `prepack.min.js` file into the `gh-pages` branch into the `js` directory, and submit a pull request for that change.
+At this time, a particular bundled version of Prepack is checked in to the `gh-pages` branch at `js/prepack.min.js`. To update the bundle, run `yarn build-bundle` from the `master` branch, and copy the resulting `prepack.min.js` file into the `gh-pages` branch into the `js` directory, and submit a pull request for that change.
 
 ## How to contribute
 
