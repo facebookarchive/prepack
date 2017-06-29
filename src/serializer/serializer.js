@@ -16,7 +16,7 @@ import { ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeObjectExpression, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeIfStatement, BabelNodeVariableDeclaration } from "babel-types";
+import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeStringLiteral, BabelNodeLVal, BabelNodeSpreadElement, BabelVariableKind, BabelNodeFunctionDeclaration, BabelNodeIfStatement, BabelNodeVariableDeclaration } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
 import generate from "babel-generator";
@@ -32,6 +32,7 @@ import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
+import { factorifyObjects } from "./factorify.js";
 
 type AbstractSyntaxTree = {
   type: string,
@@ -40,28 +41,6 @@ type AbstractSyntaxTree = {
     body: Array<BabelNodeStatement>
   }
 };
-
-function isSameNode(left, right) {
-  let type = left.type;
-
-  if (type !== right.type) {
-    return false;
-  }
-
-  if (type === "Identifier") {
-    return left.name === right.name;
-  }
-
-  if (type === "NullLiteral") {
-    return true;
-  }
-
-  if (type === "BooleanLiteral" || type === "StringLiteral" || type === "NumericLiteral") {
-    return left.value === right.value;
-  }
-
-  return false;
-}
 
 export class Serializer {
   static voidExpression = t.unaryExpression("void", t.numericLiteral(0), true);
@@ -1812,7 +1791,7 @@ export class Serializer {
         Serializer.constructorExpression, [], t.blockStatement([])));
     }
     body = body.concat(this.prelude, hoistedBody, this.body);
-    this.factorifyObjects(body);
+    factorifyObjects(body, this.factoryNameGenerator);
 
     let ast_body = [];
     if (this.preludeGenerator.declaredGlobals.size > 0)
@@ -1865,167 +1844,6 @@ export class Serializer {
 
     invariant(this.serializedValues.size === this.residualValues.size);
     return ast;
-  }
-
-  getObjectKeys(obj: BabelNodeObjectExpression): string | false {
-    let keys = [];
-
-    for (let prop of obj.properties) {
-      if (prop.type !== "ObjectProperty") return false;
-
-      let key = prop.key;
-      if (key.type === "StringLiteral") {
-        keys.push(key.value);
-      } else if (key.type === "Identifier") {
-        if (prop.computed) return false;
-        keys.push(key.name);
-      } else {
-        return false;
-      }
-    }
-
-    for (let key of keys) {
-      if (key.indexOf("|") >= 0) return false;
-    }
-
-    return keys.join("|");
-  }
-
-  factorifyObjects(body: Array<BabelNodeStatement>) {
-    let signatures = Object.create(null);
-
-    for (let node of body) {
-      if (node.type !== "VariableDeclaration") continue;
-
-      for (let declar of node.declarations) {
-        let { init } = declar;
-        if (!init) continue;
-        if (init.type !== "ObjectExpression") continue;
-
-        let keys = this.getObjectKeys(init);
-        if (!keys) continue;
-
-        let declars = signatures[keys] = signatures[keys] || [];
-        declars.push(declar);
-      }
-    }
-
-    for (let signatureKey in signatures) {
-      let declars = signatures[signatureKey];
-      if (declars.length < 5) continue;
-
-      let keys = signatureKey.split("|");
-
-      //
-      let rootFactoryParams: Array<BabelNodeLVal> = [];
-      let rootFactoryProps = [];
-      for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
-        let key = keys[keyIndex];
-        let id = t.identifier(`__${keyIndex}`);
-        rootFactoryParams.push(id);
-        let keyNode = t.isValidIdentifier(key) ? t.identifier(key) : t.stringLiteral(key);
-        rootFactoryProps.push(t.objectProperty(keyNode, id));
-      }
-
-      let rootFactoryId = t.identifier(this.factoryNameGenerator.generate("root"));
-      let rootFactoryBody = t.blockStatement([
-        t.returnStatement(t.objectExpression(rootFactoryProps))
-      ]);
-      let rootFactory = t.functionDeclaration(rootFactoryId, rootFactoryParams, rootFactoryBody);
-      body.unshift(rootFactory);
-
-      //
-      for (let declar of declars) {
-        let args = [];
-        for (let prop of declar.init.properties) {
-          args.push(prop.value);
-        }
-
-        declar.init = t.callExpression(rootFactoryId, args);
-      }
-
-      //
-      let seen = new Set();
-      for (let declar of declars) {
-        if (seen.has(declar)) continue;
-
-        // build up a map containing the arguments that are shared
-        let common = new Map();
-        let mostSharedArgsLength = 0;
-        for (let declar2 of declars) {
-          if (seen.has(declar2)) continue;
-          if (declar === declar2) continue;
-
-          let sharedArgs = [];
-          for (let i = 0; i < keys.length; i++) {
-            if (isSameNode(declar.init.arguments[i], declar2.init.arguments[i])) {
-              sharedArgs.push(i);
-            }
-          }
-          if (!sharedArgs.length) continue;
-
-          mostSharedArgsLength = Math.max(mostSharedArgsLength, sharedArgs.length);
-          common.set(declar2, sharedArgs);
-        }
-
-        // build up a mapping of the argument positions that are shared so we can pick the top one
-        let sharedPairs = Object.create(null);
-        for (let [declar2, args] of common.entries()) {
-          if (args.length === mostSharedArgsLength) {
-            args = args.join(",");
-            let pair = sharedPairs[args] = sharedPairs[args] || [];
-            pair.push(declar2);
-          }
-        }
-
-        // get the highest pair
-        let highestPairArgs;
-        let highestPairCount;
-        for (let pairArgs in sharedPairs) {
-          let pair = sharedPairs[pairArgs];
-          if (!highestPairArgs || pair.length > highestPairCount) {
-            highestPairCount = pair.length;
-            highestPairArgs = pairArgs;
-          }
-        }
-        if (!highestPairArgs) continue;
-
-        //
-        let declarsSub = sharedPairs[highestPairArgs].concat(declar);
-        let removeArgs = highestPairArgs.split(",");
-
-        let subFactoryArgs = [];
-        let subFactoryParams = [];
-        let sharedArgs = declarsSub[0].init.arguments;
-        for (let i = 0; i < sharedArgs.length; i++) {
-          let arg = sharedArgs[i];
-          if (removeArgs.indexOf(i + "") >= 0) {
-            subFactoryArgs.push(arg);
-          } else {
-            let id = t.identifier(`__${i}`);
-            subFactoryArgs.push(id);
-            subFactoryParams.push(id);
-          }
-        }
-
-        let subFactoryId = t.identifier(this.factoryNameGenerator.generate("sub"));
-        let subFactoryBody = t.blockStatement([
-          t.returnStatement(t.callExpression(rootFactoryId, subFactoryArgs))
-        ]);
-        let subFactory = t.functionDeclaration(subFactoryId, subFactoryParams, subFactoryBody);
-        body.unshift(subFactory);
-
-        for (let declarSub of declarsSub) {
-          seen.add(declarSub);
-
-          let call = declarSub.init;
-          call.callee = subFactoryId;
-          call.arguments = call.arguments.filter(function (val, i) {
-            return removeArgs.indexOf(i + "") < 0;
-          });
-        }
-      }
-    }
   }
 
   init(filename: string, code: string, map?: string = "",
