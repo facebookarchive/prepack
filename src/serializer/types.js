@@ -116,3 +116,8 @@ export class SerializerStatistics {
     console.log(`${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${this.valuesInlined} values inlined`);
   }
 }
+
+export type LocationService = {
+  getLocation: Value => void | BabelNodeIdentifier,
+  createLocation: () => BabelNodeIdentifier
+};

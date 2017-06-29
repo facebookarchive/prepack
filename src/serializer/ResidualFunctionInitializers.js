@@ -11,16 +11,12 @@
 
 import { FunctionValue, Value } from "../values/index.js";
 import * as t from "babel-types";
-import type { BabelNodeStatement, BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeStatement } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import { voidExpression, nullExpression } from "../utils/internalizer.js";
-
-export type LocationService = {
-  getLocation: Value => void | BabelNodeIdentifier,
-  createLocation: () => BabelNodeIdentifier
-};
+import type { LocationService } from "./types.js";
 
 // This class manages information about values
 // which are only referenced by residual functions,
