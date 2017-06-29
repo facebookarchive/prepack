@@ -42,15 +42,15 @@ export class LoggingTracer extends Tracer {
     console.log(`[calls] ${this.nesting.map(_ => "  ").join("")}${message}`);
   }
 
-  beginPartialEvaluation() {
-    this.log(`>partial evaluation`);
-    this.nesting.push("(partial evaluation)");
+  beginEvaluateForEffects(state: any) {
+    this.log(`>evaluate for effects`);
+    this.nesting.push("(evaluate for effects)");
   }
 
-  endPartialEvaluation(effects: void | Effects) {
+  endEvaluateForEffects(state: any, effects: void | Effects) {
     let name = this.nesting.pop();
-    invariant(name === "(partial evaluation)");
-    this.log(`<partial evaluation`);
+    invariant(name === "(evaluate for effects)");
+    this.log(`<evaluate for effects`);
   }
 
   beforeCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {

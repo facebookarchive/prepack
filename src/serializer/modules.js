@@ -26,33 +26,39 @@ class ModuleTracer extends Tracer {
   constructor(modules: Modules, logModules: boolean) {
     super();
     this.modules = modules;
-    this.partialEvaluation = 0;
+    this.evaluateForEffectsNesting = 0;
     this.requireStack = [];
     this.requireSequence = [];
     this.logModules = logModules;
+    this.uninitializedModuleIdsRequiredInEvaluateForEffects = new Set();
   }
 
   modules: Modules;
-  partialEvaluation: number;
+  evaluateForEffectsNesting: number;
   requireStack: Array<number | string | void>;
   requireSequence: Array<number | string>;
+  uninitializedModuleIdsRequiredInEvaluateForEffects: Set<number | string>;
   logModules: boolean;
 
   log(message: string) {
     if (this.logModules) console.log(`[modules] ${this.requireStack.map(_ => "  ").join("")}${message}`);
   }
 
-  beginPartialEvaluation() {
-    this.log(">partial evaluation");
-    this.partialEvaluation++;
-    this.requireStack.push(undefined);
+  beginEvaluateForEffects(state: any) {
+    if (state !== this) {
+      this.log(">evaluate for effects");
+      this.evaluateForEffectsNesting++;
+      this.requireStack.push(undefined);
+    }
   }
 
-  endPartialEvaluation(effects: void | Effects) {
-    let popped = this.requireStack.pop();
-    invariant(popped === undefined);
-    this.partialEvaluation--;
-    this.log("<partial evaluation");
+  endEvaluateForEffects(state: any, effects: void | Effects) {
+    if (state !== this) {
+      let popped = this.requireStack.pop();
+      invariant(popped === undefined);
+      this.evaluateForEffectsNesting--;
+      this.log("<evaluate for effects");
+    }
   }
 
   detourCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, performCall: () => Value): void | Value {
@@ -70,64 +76,122 @@ class ModuleTracer extends Tracer {
         return undefined;
       }
       this.log(`>require(${moduleIdValue})`);
-      let result;
-      try {
-        this.requireStack.push(moduleIdValue);
-        let requireSequenceStart = this.requireSequence.length;
-        this.requireSequence.push(moduleIdValue);
-        let effects = realm.evaluateForEffects(() => {
-          try {
-            return performCall();
-          } catch (e) {
-            if (e instanceof Completion) return e;
-            throw e;
-          }
-        });
-        [result] = effects;
-        invariant(result instanceof Value || result instanceof Completion);
-        if (result instanceof IntrospectionThrowCompletion) {
-          let [message, stack] = this.modules.getMessageAndStack(effects);
-          console.log(`delaying require(${moduleIdValue}): ${message} ${stack}`);
-          // So we are about to emit a delayed require(...) call.
-          // However, before we do that, let's try to require all modules that we
-          // know this delayed require call will require.
-          // This way, we ensure that those modules will be fully initialized
-          // before the require call executes.
-          // TODO: More needs to be done to make the delayUnsupportedRequires
-          // feature completely safe. Open issues are:
-          // 1) Side-effects on the heap of delayed factory functions are not discovered or rejected.
-          // 2) While we do process an appropriate list of transitively required modules here,
-          //    more modules would have been required if the Introspection exception had not been thrown.
-          //    To be correct, those modules would have to be prepacked here as well.
-          let nestedModulesIds = new Set();
-          for (let i = requireSequenceStart; i < this.requireSequence.length; i++) {
-            let nestedModuleId = this.requireSequence[i];
-            if (nestedModulesIds.has(nestedModuleId)) continue;
-            nestedModulesIds.add(nestedModuleId);
-            this.modules.tryInitializeModule(
-              nestedModuleId,
-              `initialization of module ${nestedModuleId} as it's required by module ${moduleIdValue}`);
+      let isTopLevelRequire = this.requireStack.length === 0;
+      if (this.evaluateForEffectsNesting > 0) {
+        if (isTopLevelRequire)
+          throw new Error("TODO: Non-deterministically conditional top-level require not currently supported");
+        else if (!this.modules.isModuleInitialized(moduleIdValue))
+          this.uninitializedModuleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
+        return undefined;
+      } else {
+        let result;
+        let oldErrorHandler = realm.errorHandler;
+        realm.errorHandler = () => 'Fail';
+        try {
+          this.requireStack.push(moduleIdValue);
+          let requireSequenceStart = this.requireSequence.length;
+          this.requireSequence.push(moduleIdValue);
+          let acceleratedModuleIds, effects;
+          do {
+            try {
+              effects = realm.evaluateForEffects(() => {
+                try {
+                  return performCall();
+                } catch (e) {
+                  if (e instanceof Completion) return e;
+                  throw e;
+                }
+              }, this);
+            } catch (err) {
+              if (err instanceof FatalError) effects = undefined;
+              else throw err;
+            }
+
+            acceleratedModuleIds = [];
+            if (isTopLevelRequire) {
+              // We gathered all effects, but didn't apply them yet.
+              // Let's check if there was any call to `require` in a
+              // evaluate-for-effects context. If so, try to initialize
+              // that module right now. Acceleration module initialization in this
+              // way might not actually be desirable, but it works around
+              // general prepack-limitations around joined abstract values involving
+              // conditionals. Long term, Prepack needs to implement a notion of refinement
+              // of conditional abstract values under the known path condition.
+              for (let nestedModuleId of this.uninitializedModuleIdsRequiredInEvaluateForEffects) {
+                let nestedEffects = this.modules.tryInitializeModule(
+                  nestedModuleId,
+                  `accelerated initialization of conditional module ${nestedModuleId} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`);
+                if (nestedEffects !== undefined && nestedEffects[0] instanceof Value && this.modules.isModuleInitialized(nestedModuleId)) {
+                  acceleratedModuleIds.push(nestedModuleId);
+                }
+              }
+              this.uninitializedModuleIdsRequiredInEvaluateForEffects.clear();
+              // Keep restarting for as long as we find additional modules to accelerate.
+              if (acceleratedModuleIds.length > 0) {
+                console.log(`restarting require(${moduleIdValue}) after accelerating conditional require calls for ${acceleratedModuleIds.join()}`);
+              }
+            }
+          } while (acceleratedModuleIds.length > 0);
+
+          if (effects === undefined) {
+            // TODO: We got here due to a fatal error. Report the message somehow.
+            console.log(`delaying require(${moduleIdValue})`);
+          } else {
+            [result] = effects;
+            invariant(result instanceof Value || result instanceof Completion);
+            if (result instanceof IntrospectionThrowCompletion) {
+              let [message, stack] = this.modules.getMessageAndStack(effects);
+              console.log(`delaying require(${moduleIdValue}): ${message} ${stack}`);
+              effects = undefined;
+            }
           }
 
-          result = realm.deriveAbstract(
-            TypesDomain.topVal,
-            ValuesDomain.topVal, [],
-             ([]) => t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)]));
-        } else {
-          realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
+          if (effects === undefined) {
+            // So we are about to emit a delayed require(...) call.
+            // However, before we do that, let's try to require all modules that we
+            // know this delayed require call will require.
+            // This way, we ensure that those modules will be fully initialized
+            // before the require call executes.
+            // TODO: More needs to be done to make the delayUnsupportedRequires
+            // feature completely safe. Open issues are:
+            // 1) Side-effects on the heap of delayed factory functions are not discovered or rejected.
+            // 2) While we do process an appropriate list of transitively required modules here,
+            //    it's likely just a subset / prefix of all transivitely required modules, as
+            //    more modules would have been required if the Introspection exception had not been thrown.
+            //    To be correct, those modules would have to be prepacked here as well.
+            //    Watch out for an upcoming change to the __d module declaration where the statically known
+            //    list of dependencies will be announced, so we'll no longer have to guess.
+            let nestedModulesIds = new Set();
+            for (let i = requireSequenceStart; i < this.requireSequence.length; i++) {
+              let nestedModuleId = this.requireSequence[i];
+              if (nestedModulesIds.has(nestedModuleId)) continue;
+              nestedModulesIds.add(nestedModuleId);
+              this.modules.tryInitializeModule(
+                nestedModuleId,
+                `initialization of module ${nestedModuleId} as it's required by module ${moduleIdValue}`);
+            }
+
+            result = realm.deriveAbstract(
+              TypesDomain.topVal,
+              ValuesDomain.topVal, [],
+               ([]) => t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)]));
+          } else {
+            realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
+          }
+        } finally {
+          let popped = this.requireStack.pop();
+          invariant(popped === moduleIdValue);
+          let message = "";
+          invariant(!(result instanceof IntrospectionThrowCompletion));
+          if (result instanceof ThrowCompletion) " threw an error";
+          this.log(`<require(${moduleIdValue})${message}`);
+          realm.errorHandler = oldErrorHandler;
         }
-      } finally {
-        let popped = this.requireStack.pop();
-        invariant(popped === moduleIdValue);
-        let message = "";
-        invariant(!(result instanceof IntrospectionThrowCompletion));
-        if (result instanceof ThrowCompletion) message = " threw an error";
-        this.log(`<require(${moduleIdValue})${message}`);
+        if (result instanceof Completion) throw result;
+        return result;
       }
-      if (result instanceof Completion) throw result;
-      return result;
     } else if (F === this.modules.getDefine()) {
-      if (this.partialEvaluation !== 0) this.modules.logger.logError(F, "Defining a module in nested partial evaluation is not supported.");
+      if (this.evaluateForEffectsNesting !== 0) this.modules.logger.logError(F, "Defining a module in nested partial evaluation is not supported.");
       let factoryFunction = argumentsList[0];
       if (factoryFunction instanceof FunctionValue) this.modules.factoryFunctions.add(factoryFunction);
       else this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
@@ -274,6 +338,8 @@ export class Modules {
     let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
     this.delayUnsupportedRequires = false;
     realm.pushContext(context);
+    let oldErrorHandler = realm.errorHandler;
+    realm.errorHandler = () => 'Fail';
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
@@ -291,9 +357,11 @@ export class Modules {
       return effects;
     } catch (err) {
       if (err instanceof FatalError) return undefined;
+      else throw err;
     } finally {
       realm.popContext(context);
       this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
+      realm.errorHandler = oldErrorHandler;
     }
   }
 
@@ -322,6 +390,7 @@ export class Modules {
       count++;
       this.initializedModules.set(moduleId, result);
     }
+    // TODO: How do FatalError / Realm.handleError participate in these statistics?
     if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
     let a = [];
     for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
@@ -332,8 +401,7 @@ export class Modules {
     }
   }
 
-  resolveInitializedModules(): void {
-    // partial evaluate all possible requires and see which are possible to inline
+  isModuleInitialized(moduleId: number | string): void | Value {
     let realm = this.realm;
     // setup execution environment
     let context = new ExecutionContext();
@@ -346,33 +414,37 @@ export class Modules {
     let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
     this.delayUnsupportedRequires = false;
     try {
-      for (let moduleId of this.moduleIds) {
-        let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
+      let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-        let [compl, generator, bindings, properties, createdObjects] =
-          realm.evaluateNodeForEffects(node, true, env);
-        // for lint unused
-        invariant(bindings);
+      let [compl, generator, bindings, properties, createdObjects] =
+        realm.evaluateNodeForEffects(node, true, env);
+      // for lint unused
+      invariant(bindings);
 
-        if (compl instanceof AbruptCompletion) continue;
-        invariant(compl instanceof Value);
+      if (compl instanceof AbruptCompletion) return undefined;
+      invariant(compl instanceof Value);
 
-        if (generator.body.length !== 0 ||
-          (compl instanceof ObjectValue && createdObjects.has(compl))) continue;
-        // Check for escaping property assignments, if none escape, we're safe
-        // to replace the require with its exports object
-        let escapes = false;
-        for (let [binding] of properties) {
-          if (!createdObjects.has(binding.object)) escapes = true;
-        }
-        if (escapes) continue;
-
-        this.initializedModules.set(moduleId, compl);
+      if (generator.body.length !== 0 ||
+        (compl instanceof ObjectValue && createdObjects.has(compl))) return undefined;
+      // Check for escaping property assignments, if none escape, we got an existing object
+      let escapes = false;
+      for (let [binding] of properties) {
+        if (!createdObjects.has(binding.object)) escapes = true;
       }
+      if (escapes) return undefined;
+
+      return compl;
     } finally {
       realm.popContext(context);
       realm.setReadOnly(oldReadOnly);
       this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
+    }
+  }
+
+  resolveInitializedModules(): void {
+    for (let moduleId of this.moduleIds) {
+      let result = this.isModuleInitialized(moduleId);
+      if (result !== undefined) this.initializedModules.set(moduleId, result);
     }
   }
 }
