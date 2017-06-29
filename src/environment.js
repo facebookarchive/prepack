@@ -1007,12 +1007,14 @@ export class LexicalEnvironment {
     try {
       return this.evaluateAbstract(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof AbruptCompletion)
+      if (err instanceof Completion)
         return err;
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;
       // let's wrap into a proper Error to create stack trace
+      if (err instanceof Object)
+        throw new Error(err.constructor.name + ": " + err);
       throw new Error(err);
     }
   }

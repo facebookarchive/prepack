@@ -132,6 +132,7 @@ function run(Object, Array, console, JSON, process, prepackStdin, prepackFileSyn
       process.exit(1);
     }
     console.log(x.message);
+    console.log(x.stack);
   }
 
   function processSerializedCode(serialized) {
