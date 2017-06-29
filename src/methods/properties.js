@@ -19,6 +19,7 @@ import invariant from "../invariant.js";
 import {
   ObjectCreate,
   CreateDataProperty,
+  cloneDescriptor,
   IsAccessorDescriptor,
   IsPropertyKey,
   IsUnresolvableReference,
@@ -434,7 +435,9 @@ export function IsCompatiblePropertyDescriptor(realm: Realm, extensible: boolean
 }
 
 // ECMA262 9.1.6.3
-export function ValidateAndApplyPropertyDescriptor(realm: Realm, O: void | ObjectValue, P: void | PropertyKeyValue, extensible: boolean, Desc: Descriptor, current: ?Descriptor): boolean {
+export function ValidateAndApplyPropertyDescriptor(
+  realm: Realm, O: void | ObjectValue, P: void | PropertyKeyValue, extensible: boolean, Desc: Descriptor, current: ?Descriptor
+): boolean {
   // 1. Assert: If O is not undefined, then IsPropertyKey(P) is true.
   if (O !== undefined) {
     invariant(P !== undefined);
@@ -535,19 +538,19 @@ export function ValidateAndApplyPropertyDescriptor(realm: Realm, O: void | Objec
 
     // b. If IsDataDescriptor(current) is true, then
     if (IsDataDescriptor(realm, current)) {
-      // i. If O is not undefined, convert the property named P of object O from a data property to an accessor property. Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
+      // i. If O is not undefined, convert the property named P of object O from a data property to an accessor property.
+      // Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
       if (O !== undefined) {
         invariant(P !== undefined);
         let key = InternalGetPropertiesKey(P);
         let propertyBinding = InternalGetPropertiesMap(O, P).get(key);
         invariant(propertyBinding !== undefined);
-        let desc = propertyBinding.descriptor;
-        if (desc !== undefined) {
-          delete desc.writable;
-          delete desc.value;
-          desc.get = realm.intrinsics.undefined;
-          desc.set = realm.intrinsics.undefined;
-        }
+        current = cloneDescriptor(current);
+        invariant(current !== undefined);
+        delete current.writable;
+        delete current.value;
+        current.get = realm.intrinsics.undefined;
+        current.set = realm.intrinsics.undefined;
       }
     } else { // c. Else,
       // i. If O is not undefined, convert the property named P of object O from an accessor property to a data property. Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
@@ -556,13 +559,12 @@ export function ValidateAndApplyPropertyDescriptor(realm: Realm, O: void | Objec
         let key = InternalGetPropertiesKey(P);
         let propertyBinding = InternalGetPropertiesMap(O, P).get(key);
         invariant(propertyBinding !== undefined);
-        let desc = propertyBinding.descriptor;
-        if (desc !== undefined) {
-          delete desc.get;
-          delete desc.set;
-          desc.writable = false;
-          desc.value = realm.intrinsics.undefined;
-        }
+        current = cloneDescriptor(current);
+        invariant(current !== undefined);
+        delete current.get;
+        delete current.set;
+        current.writable = false;
+        current.value = realm.intrinsics.undefined;
       }
     }
   } else if (IsDataDescriptor(realm, current) && IsDataDescriptor(realm, Desc)) { // 8. Else if IsDataDescriptor(current) and IsDataDescriptor(Desc) are both true, then
@@ -580,6 +582,8 @@ export function ValidateAndApplyPropertyDescriptor(realm: Realm, O: void | Objec
       }
     } else { // b. Else the [[Configurable]] field of current is true, so any change is acceptable.
     }
+    current = cloneDescriptor(current);
+    invariant(current !== undefined);
   } else { // 9. Else IsAccessorDescriptor(current) and IsAccessorDescriptor(Desc) are both true,
     // a. If the [[Configurable]] field of current is false, then
     if (!current.configurable) {
@@ -589,6 +593,8 @@ export function ValidateAndApplyPropertyDescriptor(realm: Realm, O: void | Objec
       // ii. Return false, if the [[Get]] field of Desc is present and SameValue(Desc.[[Get]], current.[[Get]]) is false.
       if (Desc.get && !SameValuePartial(realm, Desc.get, current.get || realm.intrinsics.undefined)) return false;
     }
+    current = cloneDescriptor(current);
+    invariant(current !== undefined);
   }
 
   // 10. If O is not undefined, then
@@ -597,24 +603,22 @@ export function ValidateAndApplyPropertyDescriptor(realm: Realm, O: void | Objec
     let key = InternalGetPropertiesKey(P);
     let map = InternalGetPropertiesMap(O, P);
     let propertyBinding = map.get(key);
-    let property;
     if (propertyBinding === undefined) {
       propertyBinding = { descriptor: undefined, object: O, key: key };
       realm.recordModifiedProperty(propertyBinding);
-      propertyBinding.descriptor = property = current;
+      propertyBinding.descriptor = current;
       map.set(key, propertyBinding);
     } else if (propertyBinding.descriptor === undefined) {
       realm.recordModifiedProperty(propertyBinding);
-      property = propertyBinding.descriptor = current;
+      propertyBinding.descriptor = current;
     } else {
       realm.recordModifiedProperty(propertyBinding);
-      property = propertyBinding.descriptor;
-      invariant(property !== undefined);
+      propertyBinding.descriptor = current;
     }
 
     // a. For each field of Desc that is present, set the corresponding attribute of the property named P of
     //    object O to the value of the field.
-    for (let field in Desc) property[field] = Desc[field];
+    for (let field in Desc) current[field] = Desc[field];
     InternalUpdatedProperty(realm, O, P);
   }
 

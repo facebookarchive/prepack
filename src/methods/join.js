@@ -483,9 +483,9 @@ export function joinDescriptors(realm: Realm,
     if (IsDataDescriptor(realm, d1) || IsDataDescriptor(realm, d2))
       d3.value = joinValues(realm, d1.value, d2.value, getAbstractValue);
     if (d1.hasOwnProperty("get") || d2.hasOwnProperty("get"))
-      throw new Error("TODO: join callables");
+      d3.get = (joinValues(realm, d1.get, d2.get, getAbstractValue): any);
     if (d1.hasOwnProperty("set") || d2.hasOwnProperty("set"))
-      throw new Error("TODO: join callables");
+      d3.set = (joinValues(realm, d1.set, d2.set, getAbstractValue): any);
     return d3;
   }
 }
