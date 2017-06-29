@@ -8,6 +8,7 @@
  */
 
 /* @flow */
+/* eslint-disable no-extend-native */
 
 import { AbruptCompletion, ThrowCompletion } from "../lib/completions.js";
 import { ObjectValue, StringValue } from "../lib/values/index.js";
