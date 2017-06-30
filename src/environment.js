@@ -377,7 +377,7 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
       if (!S) {
         return realm.intrinsics.undefined;
       } else {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+        throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError);
       }
     }
 
@@ -441,7 +441,7 @@ export class FunctionEnvironmentRecord extends DeclarativeEnvironmentRecord {
 
     // 3. If envRec.[[ThisBindingStatus]] is "initialized", throw a ReferenceError exception.
     if (envRec.$ThisBindingStatus === "initialized") {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError);
     }
 
     // 4. Set envRec.[[ThisValue]] to V.
