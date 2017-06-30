@@ -12,8 +12,8 @@
 /* eslint-disable no-shadow */
 
 import { CompilerDiagnostics, type ErrorHandlerResult, FatalError } from "./errors.js";
+import { type Compatibility, CompatibilityValues } from "./options.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
-import { CompatibilityValues, type Compatibility } from './types.js';
 import type { BabelNodeSourceLocation } from "babel-types";
 import fs from "fs";
 

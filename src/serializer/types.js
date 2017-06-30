@@ -80,16 +80,6 @@ export class BodyReference {
   index: number;
 }
 
-export type SerializerOptions = {
-  initializeMoreModules?: boolean;
-  internalDebug?: boolean;
-  trace?: boolean;
-  singlePass?: boolean;
-  logStatistics?: boolean;
-  logModules?: boolean;
-  delayUnsupportedRequires?: boolean;
-}
-
 export class SerializerStatistics {
   constructor() {
     this.objects = 0;

@@ -18,7 +18,7 @@ import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { SerializerStatistics } from "./serializer/types.js";
-
+import type { SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
 import type { Options } from "./options";
 import { defaultOptions } from "./options";
@@ -36,11 +36,11 @@ Object.setPrototypeOf(InitializationError, Error);
 Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
 Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
 
-export function prepackString(
-  filename: string, code: string, sourceMap: string,
-  options: Options = defaultOptions,
+export function prepackSources(
+  sources: Array<SourceFile>, options: Options = defaultOptions
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics } {
   let realmOptions = getRealmOptions(options);
+  realmOptions.errorHandler = options.onError;
   let realm = construct_realm(realmOptions);
   initializeGlobals(realm);
 
@@ -49,31 +49,62 @@ export function prepackString(
      realm,
      getSerializerOptions(options),
    );
-   let serialized = serializer.init(
-     options.filename || filename,
-     code,
-     sourceMap,
-     options.sourceMaps
-   );
+   let serialized = serializer.init(sources, options.sourceMaps);
    if (!serialized) {
      throw new FatalError("serializer failed");
    }
    if (!options.residual) return serialized;
-   let result = realm.$GlobalEnv.executePartialEvaluator(
-     filename, serialized.code, JSON.stringify(serialized.map));
+   let residualSources = [{ filePath: options.outputFilename || "unknown", fileContents: serialized.code,
+     sourceMapContents: JSON.stringify(serialized.map) }];
+   let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
    if (result instanceof AbruptCompletion) throw result;
-   return (result: any);
+   // $FlowFixMe This looks like a Flow bug
+   return result;
   } else {
    invariant(options.residual);
-   let result = realm.$GlobalEnv.executePartialEvaluator(filename, code, sourceMap);
+   let result = realm.$GlobalEnv.executePartialEvaluator(sources);
    if (result instanceof AbruptCompletion) throw result;
-   return (result: any);
+   // $FlowFixMe This looks like a Flow bug
+   return result;
+  }
+}
+
+export function prepackString(
+  filename: string, code: string, sourceMap: string,
+  options: Options = defaultOptions,
+): { code: string, map?: SourceMap, statistics?: SerializerStatistics } {
+  let sources = [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }];
+  let realmOptions = getRealmOptions(options);
+  let realm = construct_realm(realmOptions);
+  initializeGlobals(realm);
+
+  if (options.serialize || !options.residual) {
+    let serializer = new Serializer(
+     realm,
+     getSerializerOptions(options),
+    );
+    let serialized = serializer.init(sources, options.sourceMaps);
+    if (!serialized) {
+     throw new FatalError();
+    }
+    if (!options.residual) return serialized;
+    let residualSources = [{ filePath: options.outputFilename || "unknown", fileContents: serialized.code,
+     sourceMapContents: JSON.stringify(serialized.map) }];
+    let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
+    if (result instanceof AbruptCompletion) throw result;
+    return (result: any);
+  } else {
+    invariant(options.residual);
+    let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
+    if (result instanceof AbruptCompletion) throw result;
+    return (result: any);
   }
 }
 
 /* deprecated: please use prepackString instead. */
 export function prepack(code: string, options: Options = defaultOptions) {
   let filename = options.filename || 'unknown';
+  let sources = [{ filePath: filename, fileContents: code }];
 
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.onError;
@@ -81,20 +112,22 @@ export function prepack(code: string, options: Options = defaultOptions) {
   initializeGlobals(realm);
 
   let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init(filename, code, "", options.sourceMaps);
+  let serialized = serializer.init(sources, options.sourceMaps);
   if (!serialized) {
     throw new FatalError("serializer failed");
   }
   return serialized;
 }
 
-/* deprecated: pelase use prepackString instead. */
+/* deprecated: please use prepackString instead. */
 export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: string, options: Options = defaultOptions) {
   if (ast && ast.type === "Program") {
     ast = t.file(ast, [], []);
   } else if (!ast || ast.type !== "File") {
     throw new Error("Not a valid ast?");
   }
+  let filename = options.filename || (ast.loc && ast.loc.source) || "unknown";
+  let sources = [{ filePath: filename, fileContents: code }];
 
   // TODO: Expose an option to wire an already parsed ast all the way through
   // to the execution environment. For now, we just reparse.
@@ -102,7 +135,7 @@ export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: stri
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
   let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init("", code, "", options.sourceMaps);
+  let serialized = serializer.init(sources, options.sourceMaps);
   if (!serialized) {
     throw new FatalError("serializer failed");
   }

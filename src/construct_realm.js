@@ -12,7 +12,7 @@
 import { Realm } from "./realm.js";
 import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import initializeGlobal from "./intrinsics/ecma262/global.js";
-import type { RealmOptions } from "./types.js";
+import type { RealmOptions } from "./options.js";
 import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";

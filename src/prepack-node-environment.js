@@ -108,7 +108,8 @@ export function prepackNodeCLISync(filename: string, options: Options = defaultO
   tickDomainCallback.intrinsicName = 'process._tickDomainCallback';
 
   // Serialize
-  let serialized = serializer.init("", "", "", options.sourceMaps);
+  let sources = [{ filePath: "", fileContents: "" }];
+  let serialized = serializer.init(sources, options.sourceMaps);
   if (!serialized) {
     throw new FatalError("serializer failed");
   }

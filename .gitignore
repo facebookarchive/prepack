@@ -7,5 +7,5 @@ npm-debug.log
 build/
 coverage*/
 .vscode
-test/internal
+facebook/test
 prepack.min.js

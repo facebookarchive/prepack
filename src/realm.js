@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { RealmOptions, Intrinsics, Compatibility, PropertyBinding, Descriptor } from "./types.js";
+import type { Intrinsics, PropertyBinding, Descriptor } from "./types.js";
 import { CompilerDiagnostics, type ErrorHandlerResult, type ErrorHandler } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import { Value, ObjectValue, AbstractValue, AbstractObjectValue, StringValue, ConcreteValue, UndefinedValue } from "./values/index.js";
@@ -19,6 +19,7 @@ import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, IntrospectionThrowCompletion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
+import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
