@@ -39,7 +39,7 @@ function search(dir, relative) {
   return tests;
 }
 
-let tests = search(`${__dirname}/../test/internal`, "test/internal");
+let tests = search(`${__dirname}/../facebook/test`, "facebook/test");
 
 let errors: Map<BabelNodeSourceLocation, CompilerDiagnostics> = new Map();
 function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
