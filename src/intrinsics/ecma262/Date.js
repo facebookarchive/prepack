@@ -19,7 +19,7 @@ import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import seedrandom from "seedrandom";
 
-let buildDateNow = buildExpressionTemplate("Date.now()");
+let buildDateNow = buildExpressionTemplate("global.Date.now()");
 
 export default function (realm: Realm): NativeFunctionValue {
   let lastNow;
@@ -27,7 +27,7 @@ export default function (realm: Realm): NativeFunctionValue {
   function getCurrentTime(): AbstractValue | NumberValue {
     if (realm.useAbstractInterpretation) {
       let dummyArg = new StringValue(realm, "__Date.now()");
-      let tmp = realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [dummyArg], buildDateNow);
+      let tmp = realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [dummyArg], buildDateNow(realm.preludeGenerator));
       invariant(tmp instanceof AbstractValue, "getCurrentTime() should always return and abstract value");
       return tmp;
     } else {

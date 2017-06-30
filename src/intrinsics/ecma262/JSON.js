@@ -18,8 +18,8 @@ import nativeToInterp from "../../utils/native-to-interp.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 
-let buildJSONStringify = buildExpressionTemplate("JSON.stringify(OBJECT)");
-let buildJSONParse = buildExpressionTemplate("JSON.parse(STRING)");
+let buildJSONStringify = buildExpressionTemplate("global.JSON.stringify(OBJECT)");
+let buildJSONParse = buildExpressionTemplate("global.JSON.parse(STRING)");
 
 type Context = {
   PropertyList?: Array<StringValue>,
@@ -292,8 +292,8 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
     if (val instanceof AbstractObjectValue) {
       return realm.createAbstract(new TypesDomain(ObjectValue), new ValuesDomain(new Set([InternalGetTemplate(realm, val)])),
         [val], ([node]) =>
-        buildJSONParse({
-          STRING: buildJSONStringify({
+        buildJSONParse(realm.preludeGenerator)({
+          STRING: buildJSONStringify(realm.preludeGenerator)({
             OBJECT: node
           })
         }));
@@ -452,7 +452,7 @@ export default function (realm: Realm): ObjectValue {
       // Return abstract result. This enables cloning via JSON.parse(JSON.stringify(...)).
       let clonedValue = InternalJSONClone(realm, value);
       let result = realm.deriveAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [value, clonedValue], ([node]) =>
-        buildJSONStringify({
+        buildJSONStringify(realm.preludeGenerator)({
           OBJECT: node
         }),
         "JSON.stringify(...)");
@@ -498,7 +498,7 @@ export default function (realm: Realm): ObjectValue {
         template = InternalGetTemplate(realm, clonedValue);
         template._isSimple = realm.intrinsics.true;
       }
-      let buildNode = ([node]) => buildJSONParse({
+      let buildNode = ([node]) => buildJSONParse(realm.preludeGenerator)({
         STRING: node
       });
       let types = new TypesDomain(type);
