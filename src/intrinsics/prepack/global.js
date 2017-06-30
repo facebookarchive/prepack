@@ -20,7 +20,7 @@ import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeIdentifier }
 import invariant from "../../invariant.js";
 import { describeLocation } from "../ecma262/Error.js";
 
-let buildThrowErrorAbstractValue = buildExpressionTemplate("(function(){throw new Error('abstract value defined at ' + LOCATION);})()");
+let buildThrowErrorAbstractValue = buildExpressionTemplate("(function(){throw new global.Error('abstract value defined at ' + LOCATION);})()");
 
 export default function (realm: Realm): void {
   let global = realm.$GlobalObject;
@@ -78,9 +78,9 @@ export default function (realm: Realm): void {
           if (locString !== undefined) break;
         }
 
-        buildNode = () => buildThrowErrorAbstractValue({ LOCATION: t.stringLiteral(locString || "(unknown location)") });
+        buildNode = () => buildThrowErrorAbstractValue(realm.preludeGenerator)({ LOCATION: t.stringLiteral(locString || "(unknown location)") });
       } else {
-        buildNode = buildExpressionTemplate(nameString);
+        buildNode = buildExpressionTemplate(nameString)(realm.preludeGenerator);
       }
 
       let types = new TypesDomain(type);

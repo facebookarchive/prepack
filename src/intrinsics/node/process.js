@@ -112,7 +112,7 @@ function initializeTTYWrap(realm) {
     // ]));
     // let buildNode = buildExpressionTemplate(
     //   `(process.binding('tty_wrap').guessHandleType(${fd}))`
-    // );
+    // )(this.realm.preludeGenerator);
     // return realm.createAbstract(types, values, [], buildNode, undefined, `(process.binding('tty_wrap').guessHandleType(${fd}))`);
   });
   obj.defineNativeMethod("isTTY", 0, (context, args) => {
@@ -124,7 +124,7 @@ function initializeTTYWrap(realm) {
     ]));
     let buildNode = buildExpressionTemplate(
       `(process.binding('tty_wrap').isTTY(${fd}))`
-    );
+    )(realm.preludeGenerator);
     return realm.createAbstract(types, values, [], buildNode, undefined, `(process.binding('tty_wrap').isTTY(${fd}))`);
   });
   // TODO: Implement the rest of this protocol.
@@ -248,7 +248,7 @@ function initializeUtil(realm) {
 function createAbstractValue(realm, type, intrinsicName) {
   let types = new TypesDomain(type);
   let values = type === ObjectValue ? new ValuesDomain(new Set([new ObjectValue(realm)])) : ValuesDomain.topVal;
-  let buildNode = buildExpressionTemplate(intrinsicName);
+  let buildNode = buildExpressionTemplate(intrinsicName)(realm.preludeGenerator);
   return realm.createAbstract(types, values, [], buildNode, undefined, intrinsicName);
 }
 
