@@ -18,6 +18,7 @@ import * as base62 from "base62";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeStatement, BabelNodeMemberExpression, BabelNodeThisExpression } from "babel-types";
+import { nullExpression } from "./internalizer.js";
 
 export type SerializationContext = {
   reasons: Array<string>;
@@ -244,7 +245,7 @@ export class Generator {
                   t.unaryExpression("typeof", nodes[0]), t.stringLiteral("function")));
             condition =
               t.logicalExpression("||", condition,
-                t.binaryExpression("===", nodes[0], t.nullLiteral()));
+                t.binaryExpression("===", nodes[0], nullExpression));
           }
           return condition;
         },

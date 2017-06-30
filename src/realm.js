@@ -35,8 +35,8 @@ export type CreatedObjects = Set<ObjectValue | AbstractObjectValue>;
 export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
 export class Tracer {
-  beginPartialEvaluation() {}
-  endPartialEvaluation(effects: void | Effects) {}
+  beginEvaluateForEffects(state: any) {}
+  endEvaluateForEffects(state: any, effects: void | Effects) {}
   detourCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, performCall: () => Value): void | Value {}
   beforeCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue) {}
   afterCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {}
@@ -263,7 +263,7 @@ export class Realm {
     return [effects, nodeAst, nodeIO];
   }
 
-  evaluateForEffects(f: () => Completion | Value | Reference): Effects {
+  evaluateForEffects(f: () => Completion | Value | Reference, state: any): Effects {
     // Save old state and set up empty state for ast
     let context = this.getRunningContext();
     let savedContextEffects = context.savedEffects;
@@ -274,7 +274,7 @@ export class Realm {
     this.generator = new Generator(this);
     this.createdObjects = new Set();
 
-    for (let t1 of this.tracers) t1.beginPartialEvaluation();
+    for (let t1 of this.tracers) t1.beginEvaluateForEffects(state);
 
     let c;
     let result;
@@ -316,7 +316,7 @@ export class Realm {
       this.modifiedProperties = savedProperties;
       this.createdObjects = saved_createdObjects;
 
-      for (let t2 of this.tracers) t2.endPartialEvaluation(result);
+      for (let t2 of this.tracers) t2.endEvaluateForEffects(state, result);
     }
   }
 
@@ -671,7 +671,30 @@ export class Realm {
   handleError(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
-    if (!errorHandler) return 'Fail';
+    if (!errorHandler) {
+      let msg = `${diagnostic.errorCode}: ${diagnostic.message}`;
+      if (diagnostic.location) {
+        let loc_start = diagnostic.location.start;
+        let loc_end = diagnostic.location.end;
+        msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+      }
+      switch (diagnostic.severity) {
+        case 'Information':
+          console.log(`Info: ${msg}`);
+          return 'Recover';
+        case 'Warning':
+          console.warn(`Warn: ${msg}`);
+          return 'Recover';
+        case 'RecoverableError':
+          console.error(`Error: ${msg}`);
+          return 'Fail';
+        case 'FatalError':
+          console.error(`Fatal Error: ${msg}`);
+          return 'Fail';
+        default:
+          invariant(false, "Unexpected error type");
+      }
+    }
     return errorHandler(diagnostic);
   }
 }

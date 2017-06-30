@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { NumberValue, BooleanValue, NativeFunctionValue, FunctionValue, StringValue, SymbolValue, UndefinedValue, NullValue, EmptyValue, Value, AbstractObjectValue } from "./values/index.js";
+import type { NumberValue, AbstractValue, BooleanValue, NativeFunctionValue, FunctionValue, StringValue, SymbolValue, UndefinedValue, NullValue, EmptyValue, Value, AbstractObjectValue } from "./values/index.js";
 import { ObjectValue } from "./values/index.js";
 import type { ErrorHandler } from "./errors.js";
 
@@ -86,8 +86,8 @@ export type Descriptor = {
   // corresponding property has been deleted.
   value?: Value,
 
-  get?: UndefinedValue | CallableObjectValue,
-  set?: UndefinedValue | CallableObjectValue,
+  get?: UndefinedValue | CallableObjectValue | AbstractValue,
+  set?: UndefinedValue | CallableObjectValue | AbstractValue,
 };
 
 export type PropertyBinding = {

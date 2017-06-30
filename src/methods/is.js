@@ -263,6 +263,9 @@ export function IsFunctionDefinition(realm: Realm, node: BabelNodeExpression): b
     case "ArrowFunctionExpression":
     case "FunctionExpression":
       return true;
+    // 14.5.8 Static Semantics: IsFunctionDefinition
+    case 'ClassExpression':
+        return true;
     default:
       throw Error("Unexpected AST form : " + node.type);
   }
