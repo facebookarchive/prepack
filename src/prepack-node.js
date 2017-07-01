@@ -41,7 +41,7 @@ export function prepackString(filename: string, code: string, sourceMap: string,
        options.sourceMaps
      );
      if (!serialized) {
-       throw new FatalError();
+       throw new FatalError("serializer failed");
      }
      if (!options.residual) return serialized;
      let result = realm.$GlobalEnv.executePartialEvaluator(

@@ -108,7 +108,7 @@ export function prepackNodeCLISync(filename: string, options: Options = defaultO
   // Serialize
   let serialized = serializer.init("", "", "", options.sourceMaps);
   if (!serialized) {
-    throw new FatalError();
+    throw new FatalError("serializer failed");
   }
   return serialized;
 }
