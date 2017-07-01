@@ -16,8 +16,8 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 
-let buildMathRandom = buildExpressionTemplate("Math.random()");
-let buildMathImul = buildExpressionTemplate("Math.imul(A, B)");
+let buildMathRandom = buildExpressionTemplate("global.Math.random()");
+let buildMathImul = buildExpressionTemplate("global.Math.imul(A, B)");
 let buildMathTemplates : Map<string, {f: Function, names: Array<string>}> = new Map();
 
 export default function (realm: Realm): ObjectValue {
@@ -166,7 +166,7 @@ export default function (realm: Realm): ObjectValue {
           invariant(r !== undefined);
           let mapping = {};
           for (let i = 0; i < nodes.length; i++) mapping[r.names[i]] = nodes[i];
-          return r.f(mapping);
+          return r.f(realm.preludeGenerator)(mapping);
         });
       }
 
@@ -179,7 +179,7 @@ export default function (realm: Realm): ObjectValue {
   obj.defineNativeMethod("imul", 2, (context, [x, y]) => {
     if ((x instanceof AbstractValue || y instanceof AbstractValue) &&
       IsToNumberPure(realm, x) && IsToNumberPure(realm, y)) {
-      return realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [x, y], ([a, b]) => buildMathImul({ A: a, B: b }));
+      return realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [x, y], ([a, b]) => buildMathImul(realm.preludeGenerator)({ A: a, B: b }));
     }
 
     return new NumberValue(realm, Math.imul(ToUint32(realm, x.throwIfNotConcrete()), ToUint32(realm, y.throwIfNotConcrete())));
@@ -190,7 +190,7 @@ export default function (realm: Realm): ObjectValue {
     if (realm.mathRandomGenerator !== undefined) {
       return new NumberValue(realm, realm.mathRandomGenerator());
     } else if (realm.useAbstractInterpretation) {
-      return realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [], buildMathRandom);
+      return realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [], buildMathRandom(realm.preludeGenerator));
     } else {
       return new NumberValue(realm, Math.random());
     }

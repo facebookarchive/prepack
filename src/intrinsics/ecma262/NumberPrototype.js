@@ -88,7 +88,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let x = thisNumberValue(realm, context);
     if (realm.useAbstractInterpretation) {
       // The locale is environment-dependent
-      return realm.deriveAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [x], ([n]) => buildToLocaleString({
+      return realm.deriveAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [x], ([n]) => buildToLocaleString(realm.preludeGenerator)({
         VALUE: n
       }));
     } else {
