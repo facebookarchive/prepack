@@ -124,11 +124,14 @@ export class ResidualHeapVisitor {
       }
 
       if (key === "name") {
-        // TODO #474: Make sure that we retain original function names. Or set name property. Or ensure that nothing references the name property.
+        // TODO #474: Make sure that we retain original function names. Or set name property.
+        // Or ensure that nothing references the name property.
+        // NOTE: with some old runtimes notably JSC, function names are not configurable
         // For now don't ignore the property if it is different from the function name.
         // I.e. if it was set explicitly in the code, retain it.
         if (
           desc.value !== undefined &&
+          !this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) &&
           (desc.value instanceof AbstractValue ||
             (val.__originalName && val.__originalName !== "" && desc.value.value !== val.__originalName))
         )

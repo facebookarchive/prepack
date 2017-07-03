@@ -196,7 +196,7 @@ class ModuleTracer extends Tracer {
           invariant(popped === moduleIdValue);
           let message = "";
           invariant(!(result instanceof IntrospectionThrowCompletion));
-          if (result instanceof ThrowCompletion) (" threw an error");
+          if (result instanceof ThrowCompletion) " threw an error";
           this.log(`<require(${moduleIdValue})${message}`);
           realm.errorHandler = oldErrorHandler;
         }
