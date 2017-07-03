@@ -69,7 +69,6 @@ function generateTest(name: string, test_path: string, code: string): boolean {
     fs.writeFileSync(name + ".new1.js.map", JSON.stringify(newMap1));
     s = prepackFileSync(name + ".new1.js", {
       compatibility: "node-source-maps",
-      filename: test_path,
       inputSourceMapFilename: name + ".new1.js.map",
       internalDebug: true,
       onError: errorHandler,
@@ -99,6 +98,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
   console.log(newCode2);
   console.log(chalk.underline("newMap 2"));
   console.log(newMap2);
+
   return false;
 }
 

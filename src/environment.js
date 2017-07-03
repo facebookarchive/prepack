@@ -11,9 +11,10 @@
 
 import type { BabelNode, BabelNodeFile, BabelNodeStatement } from "babel-types";
 import type { Realm } from "./realm.js";
-import type { SourceMap, SourceType } from "./types.js";
+import type { SourceFile, SourceMap, SourceType } from "./types.js";
 
 import { AbruptCompletion, Completion, JoinedAbruptCompletions, NormalCompletion, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
+import { defaultOptions, type Options } from "./options";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
 import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, NumberValue, ObjectValue, AbstractObjectValue, StringValue, UndefinedValue } from "./values/index.js";
@@ -33,6 +34,7 @@ import {
   IsDataDescriptor,
   ThrowIfMightHaveBeenDeleted,
 } from "./methods/index.js";
+import * as t from "babel-types";
 
 const sourceMap = require('source-map');
 
@@ -1041,6 +1043,7 @@ export class LexicalEnvironment {
       if (onParse) onParse(ast);
       res = this.evaluateCompletion(ast, false);
       if (map.length > 0) this.fixup_source_locations(ast, map);
+      this.fixup_filenames(ast);
     } finally {
       this.realm.popContext(context);
     }
@@ -1050,33 +1053,43 @@ export class LexicalEnvironment {
   }
 
   executePartialEvaluator(
-      filename: string, code: string, sourceMaps: string = "",
-      sourceType: SourceType = "script"): AbruptCompletion | { code: string, map?: SourceMap } {
-    let context = new ExecutionContext();
-    context.lexicalEnvironment = this;
-    context.variableEnvironment = this;
-    context.realm = this.realm;
+    sources: Array<SourceFile>, options: Options = defaultOptions, sourceType: SourceType = "script"
+  ): AbruptCompletion | { code: string, map?: SourceMap } {
+    let body: Array<BabelNodeStatement> = [];
+    let code = {};
+    for (let source of sources) {
+      let context = new ExecutionContext();
+      context.lexicalEnvironment = this;
+      context.variableEnvironment = this;
+      context.realm = this.realm;
 
-    this.realm.pushContext(context);
-
-    try {
-      let ast;
+      this.realm.pushContext(context);
       try {
-        ast = parse(this.realm, code, filename, sourceType);
-      } catch (e) {
-        if (e instanceof ThrowCompletion) return e;
-        throw e;
+        let ast;
+        try {
+          ast = parse(this.realm, source.fileContents, source.filePath, sourceType);
+        } catch (e) {
+          if (e instanceof ThrowCompletion) return e;
+          throw e;
+        }
+        let [res, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
+        if (res instanceof AbruptCompletion) return res;
+        invariant(partialAST.type === "File");
+        body = body.concat(((partialAST: any): BabelNodeFile).program.body);
+        if (source.sourceMapContents) {
+          this.fixup_source_locations(partialAST, source.sourceMapContents);
+        }
+        code[source.filePath] = source.fileContents;
+      } finally {
+        this.realm.popContext(context);
       }
-      let [res, partial_ast] = this.partiallyEvaluateCompletionDeref(ast, false);
-      if (res instanceof AbruptCompletion) return res;
-      if (sourceMaps.length > 0) this.fixup_source_locations(partial_ast, sourceMaps);
-      return generate(
-        partial_ast,
-        { sourceMaps: sourceMaps, sourceFileName: filename },
-        code);
-    } finally {
-      this.realm.popContext(context);
     }
+    let prog = t.program(body);
+    this.fixup_filenames(prog);
+    return generate(
+      prog,
+      { sourceMaps: options.sourceMaps },
+      (code: any));
   }
 
   fixup_source_locations(ast: BabelNode, map: string) {
@@ -1091,6 +1104,15 @@ export class LexicalEnvironment {
       new_pos.line = old_pos.line;
       new_pos.column = old_pos.column;
       loc.source = old_pos.source;
+      return false;
+    });
+  }
+
+  fixup_filenames(ast: BabelNode) {
+    traverse(ast, function (node) {
+      let loc = node.loc;
+      if (!!loc && !!loc.source)
+        (loc: any).filename = loc.source;
       return false;
     });
   }

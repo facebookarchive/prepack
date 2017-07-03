@@ -90,7 +90,6 @@ function runTest(name, code, args) {
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   let options = {
-    filename: name,
     compatibility,
     speculate,
     delayUnsupportedRequires,
@@ -109,7 +108,8 @@ function runTest(name, code, args) {
       initializeGlobals(realm);
       let serializerOptions = { initializeMoreModules: speculate, delayUnsupportedRequires, internalDebug: true };
       let serializer = new Serializer(realm, serializerOptions);
-      let serialized = serializer.init(name, code, "", false, onError);
+      let sources = [{ filePath: name, fileContents: code }];
+      let serialized = serializer.init(sources, false, onError);
       if (!serialized) {
         console.log(chalk.red("Error during serialization"));
       } else {
