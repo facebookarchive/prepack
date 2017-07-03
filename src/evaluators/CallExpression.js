@@ -28,16 +28,21 @@ import {
   joinEffects,
   GetReferencedName,
   EvaluateDirectCall,
-  ArgumentListEvaluation
+  ArgumentListEvaluation,
 } from "../methods/index.js";
 import type { BabelNode, BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import SuperCall from './SuperCall';
+import SuperCall from "./SuperCall";
 
-export default function (ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
-  if (ast.callee.type === 'Super') {
+export default function(
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Completion | Value | Reference {
+  if (ast.callee.type === "Super") {
     return SuperCall(ast.arguments, strictCode, env, realm);
   }
 
@@ -53,22 +58,32 @@ export default function (ast: BabelNodeCallExpression, strictCode: boolean, env:
   return EvaluateCall(ref, func, ast, strictCode, env, realm);
 }
 
-function callBothFunctionsAndJoinTheirEffects(args: Array<Value>, ast: BabelNodeCallExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
+function callBothFunctionsAndJoinTheirEffects(
+  args: Array<Value>,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Completion | Value | Reference {
   let [cond, func1, func2] = args;
   invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
   invariant(func1.getType() === FunctionValue);
   invariant(func2.getType() === FunctionValue);
 
-  let [compl1, gen1, bindings1, properties1, createdObj1] =
-    realm.evaluateForEffects(() => EvaluateCall(func1, func1, ast, strictCode, env, realm));
+  let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateForEffects(() =>
+    EvaluateCall(func1, func1, ast, strictCode, env, realm)
+  );
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] =
-    realm.evaluateForEffects(() => EvaluateCall(func2, func2, ast, strictCode, env, realm));
+  let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateForEffects(() =>
+    EvaluateCall(func2, func2, ast, strictCode, env, realm)
+  );
 
-  let joinedEffects =
-    joinEffects(realm, cond,
-      [compl1, gen1, bindings1, properties1, createdObj1],
-      [compl2, gen2, bindings2, properties2, createdObj2]);
+  let joinedEffects = joinEffects(
+    realm,
+    cond,
+    [compl1, gen1, bindings1, properties1, createdObj1],
+    [compl2, gen2, bindings2, properties2, createdObj2]
+  );
   let completion = joinedEffects[0];
   if (completion instanceof NormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
@@ -89,27 +104,26 @@ function callBothFunctionsAndJoinTheirEffects(args: Array<Value>, ast: BabelNode
 }
 
 function EvaluateCall(
-  ref: Value | Reference, func: Value, ast: BabelNodeCallExpression,
-  strictCode: boolean, env: LexicalEnvironment, realm: Realm
+  ref: Value | Reference,
+  func: Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): Completion | Value | Reference {
   function generateRuntimeCall() {
-    let args =
-      [func].concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
-    return realm.deriveAbstract(
-      TypesDomain.topVal,
-      ValuesDomain.topVal,
-      args,
-      (nodes) => {
-        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-        return t.callExpression(nodes[0], fun_args);
-      });
+    let args = [func].concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
+    return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, args, nodes => {
+      let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+      return t.callExpression(nodes[0], fun_args);
+    });
   }
 
   if (func instanceof AbstractValue) {
     if (func.getType() !== FunctionValue) {
       let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
-      let error = new CompilerDiagnostics("might not be a function", loc, 'PP0005', 'RecoverableError');
-      if (realm.handleError(error) === 'Fail') throw new FatalError();
+      let error = new CompilerDiagnostics("might not be a function", loc, "PP0005", "RecoverableError");
+      if (realm.handleError(error) === "Fail") throw new FatalError();
     } else if (func.kind === "conditional") {
       return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
     } else {
@@ -136,8 +150,8 @@ function EvaluateCall(
       // vi. Return ? PerformEval(evalText, evalRealm, strictCaller, true).
       if (evalText instanceof AbstractValue) {
         let loc = ast.arguments[0].loc;
-        let error = new CompilerDiagnostics("eval argument must be a known value", loc, 'PP0006', 'RecoverableError');
-        if (realm.handleError(error) === 'Fail') throw new FatalError();
+        let error = new CompilerDiagnostics("eval argument must be a known value", loc, "PP0006", "RecoverableError");
+        if (realm.handleError(error) === "Fail") throw new FatalError();
         // Assume that it is a safe eval with no visible heap changes or abrupt control flow.
         return generateRuntimeCall();
       }
@@ -153,7 +167,8 @@ function EvaluateCall(
     if (IsPropertyReference(realm, ref)) {
       // i. Let thisValue be GetThisValue(ref).
       thisValue = GetThisValue(realm, ref);
-    } else { // b. Else, the base of ref is an Environment Record
+    } else {
+      // b. Else, the base of ref is an Environment Record
       // i. Let refEnv be GetBase(ref).
       let refEnv = GetBase(realm, ref);
       invariant(refEnv instanceof EnvironmentRecord);
@@ -161,7 +176,8 @@ function EvaluateCall(
       // ii. Let thisValue be refEnv.WithBaseObject().
       thisValue = refEnv.WithBaseObject();
     }
-  } else { // 5. Else Type(ref) is not Reference,
+  } else {
+    // 5. Else Type(ref) is not Reference,
     // a. Let thisValue be undefined.
     thisValue = realm.intrinsics.undefined;
   }
@@ -173,5 +189,14 @@ function EvaluateCall(
   let tailCall = IsInTailPosition(realm, thisCall);
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
-  return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ((ast.arguments: any): Array<BabelNode>), tailCall);
+  return EvaluateDirectCall(
+    realm,
+    strictCode,
+    env,
+    ref,
+    func,
+    thisValue,
+    ((ast.arguments: any): Array<BabelNode>),
+    tailCall
+  );
 }

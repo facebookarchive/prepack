@@ -11,11 +11,17 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { FunctionEnvironmentRecord } from '../environment.js';
+import { FunctionEnvironmentRecord } from "../environment.js";
 import { Completion } from "../completions.js";
 import { Value, UndefinedValue, ObjectValue } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { GetNewTarget, ArgumentListEvaluation, Construct, GetThisEnvironment, IsConstructor } from "../methods/index.js";
+import {
+  GetNewTarget,
+  ArgumentListEvaluation,
+  Construct,
+  GetThisEnvironment,
+  IsConstructor,
+} from "../methods/index.js";
 import invariant from "../invariant.js";
 
 function GetSuperConstructor(realm: Realm) {
@@ -44,7 +50,12 @@ function GetSuperConstructor(realm: Realm) {
 }
 
 // ECMA262 12.3.5.1
-export default function SuperCall(Arguments: Array<BabelNode>, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
+export default function SuperCall(
+  Arguments: Array<BabelNode>,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Completion | Value | Reference {
   // 1. Let newTarget be GetNewTarget().
   let newTarget = GetNewTarget(realm);
 

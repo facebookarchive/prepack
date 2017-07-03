@@ -37,7 +37,8 @@ Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
 Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
 
 export function prepackSources(
-  sources: Array<SourceFile>, options: Options = defaultOptions
+  sources: Array<SourceFile>,
+  options: Options = defaultOptions
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics } {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.onError;
@@ -45,33 +46,37 @@ export function prepackSources(
   initializeGlobals(realm);
 
   if (options.serialize || !options.residual) {
-   let serializer = new Serializer(
-     realm,
-     getSerializerOptions(options),
-   );
-   let serialized = serializer.init(sources, options.sourceMaps);
-   if (!serialized) {
-     throw new FatalError("serializer failed");
-   }
-   if (!options.residual) return serialized;
-   let residualSources = [{ filePath: options.outputFilename || "unknown", fileContents: serialized.code,
-     sourceMapContents: JSON.stringify(serialized.map) }];
-   let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
-   if (result instanceof AbruptCompletion) throw result;
-   // $FlowFixMe This looks like a Flow bug
-   return result;
+    let serializer = new Serializer(realm, getSerializerOptions(options));
+    let serialized = serializer.init(sources, options.sourceMaps);
+    if (!serialized) {
+      throw new FatalError("serializer failed");
+    }
+    if (!options.residual) return serialized;
+    let residualSources = [
+      {
+        filePath: options.outputFilename || "unknown",
+        fileContents: serialized.code,
+        sourceMapContents: JSON.stringify(serialized.map),
+      },
+    ];
+    let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
+    if (result instanceof AbruptCompletion) throw result;
+    // $FlowFixMe This looks like a Flow bug
+    return result;
   } else {
-   invariant(options.residual);
-   let result = realm.$GlobalEnv.executePartialEvaluator(sources);
-   if (result instanceof AbruptCompletion) throw result;
-   // $FlowFixMe This looks like a Flow bug
-   return result;
+    invariant(options.residual);
+    let result = realm.$GlobalEnv.executePartialEvaluator(sources);
+    if (result instanceof AbruptCompletion) throw result;
+    // $FlowFixMe This looks like a Flow bug
+    return result;
   }
 }
 
 export function prepackString(
-  filename: string, code: string, sourceMap: string,
-  options: Options = defaultOptions,
+  filename: string,
+  code: string,
+  sourceMap: string,
+  options: Options = defaultOptions
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics } {
   let sources = [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }];
   let realmOptions = getRealmOptions(options);
@@ -79,17 +84,19 @@ export function prepackString(
   initializeGlobals(realm);
 
   if (options.serialize || !options.residual) {
-    let serializer = new Serializer(
-     realm,
-     getSerializerOptions(options),
-    );
+    let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sources, options.sourceMaps);
     if (!serialized) {
-     throw new FatalError();
+      throw new FatalError();
     }
     if (!options.residual) return serialized;
-    let residualSources = [{ filePath: options.outputFilename || "unknown", fileContents: serialized.code,
-     sourceMapContents: JSON.stringify(serialized.map) }];
+    let residualSources = [
+      {
+        filePath: options.outputFilename || "unknown",
+        fileContents: serialized.code,
+        sourceMapContents: JSON.stringify(serialized.map),
+      },
+    ];
     let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
     if (result instanceof AbruptCompletion) throw result;
     return (result: any);
@@ -103,7 +110,7 @@ export function prepackString(
 
 /* deprecated: please use prepackString instead. */
 export function prepack(code: string, options: Options = defaultOptions) {
-  let filename = options.filename || 'unknown';
+  let filename = options.filename || "unknown";
   let sources = [{ filePath: filename, fileContents: code }];
 
   let realmOptions = getRealmOptions(options);

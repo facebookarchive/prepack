@@ -14,7 +14,7 @@ import { StringValue, ObjectValue } from "../../values/index.js";
 import { SameValuePartial, ThrowIfInternalSlotNotWritable } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.4.3.1
   obj.defineNativeMethod("add", 1, (context, [value]) => {
     // 1. Let S be the this value.
@@ -27,7 +27,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If S does not have a [[WeakSetData]] internal slot, throw a TypeError exception.
     if (!S.$WeakSetData) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "S does not have a [[WeakSetData]] internal slot");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "S does not have a [[WeakSetData]] internal slot"
+      );
     }
 
     // 4. If Type(value) is not Object, throw a TypeError exception.
@@ -69,7 +72,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If S does not have a [[WeakSetData]] internal slot, throw a TypeError exception.
     if (!S.$WeakSetData) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "S does not have a [[WeakSetData]] internal slot");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "S does not have a [[WeakSetData]] internal slot"
+      );
     }
 
     // 4. If Type(value) is not Object, throw a TypeError exception.
@@ -112,7 +118,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If S does not have a [[WeakSetData]] internal slot, throw a TypeError exception.
     if (!S.$WeakSetData) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "S does not have a [[WeakSetData]] internal slot");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "S does not have a [[WeakSetData]] internal slot"
+      );
     }
 
     // 4. Let entries be the List that is S.[[WeakSetData]].

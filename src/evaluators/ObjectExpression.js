@@ -25,19 +25,34 @@ import {
   HasOwnProperty,
   PropertyDefinitionEvaluation,
   ToPropertyKey,
-  ToString
+  ToString,
 } from "../methods/index.js";
 import invariant from "../invariant.js";
-import type { BabelNodeObjectExpression, BabelNodeObjectProperty, BabelNodeObjectMethod, BabelNodeClassMethod } from "babel-types";
+import type {
+  BabelNodeObjectExpression,
+  BabelNodeObjectProperty,
+  BabelNodeObjectMethod,
+  BabelNodeClassMethod,
+} from "babel-types";
 
 // Returns the result of evaluating PropertyName.
-export function EvalPropertyNamePartial(prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): PropertyKeyValue {
+export function EvalPropertyNamePartial(
+  prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod,
+  env: LexicalEnvironment,
+  realm: Realm,
+  strictCode: boolean
+): PropertyKeyValue {
   let result = EvalPropertyName(prop, env, realm, strictCode);
   if (result instanceof AbstractValue) result.throwIfNotConcrete();
   return (result: any);
 }
 
-function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod, env: LexicalEnvironment, realm: Realm, strictCode: boolean): AbstractValue | PropertyKeyValue {
+function EvalPropertyName(
+  prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod,
+  env: LexicalEnvironment,
+  realm: Realm,
+  strictCode: boolean
+): AbstractValue | PropertyKeyValue {
   if (prop.computed) {
     let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode));
     if (propertyKeyName instanceof AbstractValue) return propertyKeyName;
@@ -55,7 +70,12 @@ function EvalPropertyName(prop: BabelNodeObjectProperty | BabelNodeObjectMethod 
 }
 
 // ECMA262 12.2.6.8
-export default function (ast: BabelNodeObjectExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeObjectExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Let obj be ObjectCreate(%ObjectPrototype%).
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
@@ -91,9 +111,8 @@ export default function (ast: BabelNodeObjectExpression, strictCode: boolean, en
       // 7. Return CreateDataPropertyOrThrow(object, propKey, propValue).
       if (propKey instanceof AbstractValue) {
         if (propKey.mightNotBeString()) {
-          let error = new CompilerDiagnostics(
-            "property key value is unknown", prop.loc, 'PP0011', 'FatalError');
-          if (realm.handleError(error) === 'Fail') throw new FatalError();
+          let error = new CompilerDiagnostics("property key value is unknown", prop.loc, "PP0011", "FatalError");
+          if (realm.handleError(error) === "Fail") throw new FatalError();
           continue; // recover by ignoring the property, which is only ever safe to do if the property is dead,
           // which is assuming a bit much, hence the designation as a FatalError.
         }

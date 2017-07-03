@@ -13,14 +13,14 @@ import type { Realm } from "../../realm.js";
 
 import initializeConsole from "../common/console.js";
 
-export default function (realm: Realm): void {
+export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
   global.$DefineOwnProperty("console", {
     value: initializeConsole(realm),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   for (let name of [
@@ -58,13 +58,13 @@ export default function (realm: Realm): void {
     "Blob",
     "URLSearchParams",
     "FileReader",
-    "XMLHttpRequest"
+    "XMLHttpRequest",
   ]) {
     global.$DefineOwnProperty(name, {
       value: realm.intrinsics.undefined,
       writable: true,
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
   }
 }

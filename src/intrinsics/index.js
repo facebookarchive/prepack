@@ -11,7 +11,17 @@
 
 import type { Intrinsics } from "../types.js";
 import type { Realm } from "../realm.js";
-import { NumberValue, StringValue, NullValue, UndefinedValue, EmptyValue, ObjectValue, SymbolValue, BooleanValue, NativeFunctionValue } from "../values/index.js";
+import {
+  NumberValue,
+  StringValue,
+  NullValue,
+  UndefinedValue,
+  EmptyValue,
+  ObjectValue,
+  SymbolValue,
+  BooleanValue,
+  NativeFunctionValue,
+} from "../values/index.js";
 import { AddRestrictedFunctionProperties } from "../methods/function.js";
 
 import initializeObject from "./ecma262/Object.js";
@@ -147,7 +157,6 @@ import initializeThrowTypeError from "./ecma262/ThrowTypeError.js";
 import initialize__IntrospectionError from "./prepack/__IntrospectionError.js";
 import initialize__IntrospectionErrorPrototype from "./prepack/__IntrospectionErrorPrototype.js";
 
-
 export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.undefined = new UndefinedValue(realm);
   i.empty = new EmptyValue(realm);
@@ -164,8 +173,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   //
   i.ObjectPrototype = new ObjectValue(realm, i.ObjectPrototype, "Object.prototype");
   i.FunctionPrototype = i.ObjectPrototype;
-  i.FunctionPrototype = new NativeFunctionValue(realm, "Function.prototype", "",
-    0, (context) => i.undefined, false);
+  i.FunctionPrototype = new NativeFunctionValue(realm, "Function.prototype", "", 0, context => i.undefined, false);
 
   i.parseFloat = initializeParseFloat(realm);
   i.parseInt = initializeParseInt(realm);
@@ -194,7 +202,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
 
   //
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  i.TypedArrayProto_values = initializeTypedArrayProto_values(realm);
+    i.TypedArrayProto_values = initializeTypedArrayProto_values(realm);
 
   //
   i.ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Array.prototype");
@@ -227,7 +235,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
 
   // typed array prototypes
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  i.TypedArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "TypedArray.prototype");
+    i.TypedArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "TypedArray.prototype");
   i.Float32ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float32Array.prototype");
   i.Float64ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float64Array.prototype");
   i.Int8ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Int8Array.prototype");
@@ -243,7 +251,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.MapIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "(new Map()[Symbol.iterator]().__proto__)");
   i.SetIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "(new Set()[Symbol.iterator]().__proto__)");
   i.ArrayIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "([][Symbol.iterator]().__proto__)");
-  i.StringIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, "(\"\"[Symbol.iterator]().__proto__)");
+  i.StringIteratorPrototype = new ObjectValue(realm, i.IteratorPrototype, '(""[Symbol.iterator]().__proto__)');
 
   //
   initializeObjectPrototype(realm, i.ObjectPrototype);
@@ -303,8 +311,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.Symbol = initializeSymbol(realm);
   i.JSON = initializeJSON(realm);
   i.Proxy = initializeProxy(realm);
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  i.Reflect = initializeReflect(realm);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) i.Reflect = initializeReflect(realm);
   i.Promise = initializePromise(realm);
   i.DataView = initializeDataView(realm);
 
@@ -318,8 +325,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.ArrayBuffer = initializeArrayBuffer(realm);
 
   // typed arrays
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  i.TypedArray = initializeTypedArray(realm);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) i.TypedArray = initializeTypedArray(realm);
   i.Float32Array = initializeFloat32Array(realm);
   i.Float64Array = initializeFloat64Array(realm);
   i.Int8Array = initializeInt8Array(realm);
@@ -371,7 +377,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     "Uint8ClampedArray",
     "Uint16Array",
     "Uint32Array",
-    "ArrayBuffer"
+    "ArrayBuffer",
   ];
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     builtins = builtins.concat(["WeakMap", "WeakSet", "TypedArray"]);
@@ -385,21 +391,21 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
       value: fn,
       writable: true,
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
 
     fn.$DefineOwnProperty("prototype", {
       value: proto,
       writable: false,
       enumerable: false,
-      configurable: false
+      configurable: false,
     });
 
     fn.$DefineOwnProperty("constructor", {
       value: i.Function,
       writable: true,
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
   }
 
@@ -414,26 +420,26 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     value: i.GeneratorPrototype,
     writable: false,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
   i.GeneratorPrototype.$DefineOwnProperty("constructor", {
     value: i.Generator,
     writable: false,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   i.GeneratorFunction.$DefineOwnProperty("prototype", {
     value: i.Generator,
     writable: false,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
   i.Generator.$DefineOwnProperty("constructor", {
     value: i.GeneratorFunction,
     writable: false,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   //

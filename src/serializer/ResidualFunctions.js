@@ -13,7 +13,17 @@ import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Realm } from "../realm.js";
 import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeBlockStatement, BabelNodeLVal, BabelNodeSpreadElement, BabelNodeFunctionDeclaration, BabelNodeIfStatement, BabelNodeVariableDeclaration } from "babel-types";
+import type {
+  BabelNodeExpression,
+  BabelNodeStatement,
+  BabelNodeIdentifier,
+  BabelNodeBlockStatement,
+  BabelNodeLVal,
+  BabelNodeSpreadElement,
+  BabelNodeFunctionDeclaration,
+  BabelNodeIfStatement,
+  BabelNodeVariableDeclaration,
+} from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
@@ -29,8 +39,8 @@ type ResidualFunctionsResult = {
   hoistedBody: Array<BabelNodeStatement>,
   unstrictFunctionBodies: Array<BabelNodeFunctionDeclaration>,
   strictFunctionBodies: Array<BabelNodeFunctionDeclaration>,
-  requireStatistics: { replaced: number, count: number }
-}
+  requireStatistics: { replaced: number, count: number },
+};
 
 export class ResidualFunctions {
   constructor(
@@ -63,7 +73,8 @@ export class ResidualFunctions {
     this.residualFunctionInitializers = new ResidualFunctionInitializers(
       locationService,
       prelude,
-      initializerNameGenerator);
+      initializerNameGenerator
+    );
     this.residualFunctionInfos = residualFunctionInfos;
   }
 
@@ -90,7 +101,7 @@ export class ResidualFunctions {
     let code = instance.functionValue.$ECMAScriptCode;
     invariant(code != null);
     let functionInstances = this.functions.get(code);
-    if (functionInstances === undefined) this.functions.set(code, functionInstances = []);
+    if (functionInstances === undefined) this.functions.set(code, (functionInstances = []));
     functionInstances.push(instance);
   }
 
@@ -111,7 +122,7 @@ export class ResidualFunctions {
       scope = {
         name: this.scopeNameGenerator.generate(),
         id: this.capturedScopeInstanceIdx++,
-        initializationValues: new Map()
+        initializationValues: new Map(),
       };
       this.serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
@@ -128,7 +139,6 @@ export class ResidualFunctions {
         let serializedBinding = serializedBindings[name];
         invariant(serializedBinding !== undefined);
         if (serializedBinding.modified) {
-
           // Initialize captured scope at function call instead of globally
           if (!serializedBinding.referentialized) {
             let scope = this._getSerializedBindingScopeInstance(serializedBinding);
@@ -144,9 +154,10 @@ export class ResidualFunctions {
 
             // Replace binding usage with scope references
             serializedBinding.serializedValue = t.memberExpression(
-                t.memberExpression(
-                  this.capturedScopesArray, t.identifier(scope.name), true),
-                t.identifier(name), false);
+              t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true),
+              t.identifier(name),
+              false
+            );
 
             serializedBinding.referentialized = true;
             this.statistics.referentialized++;
@@ -169,16 +180,15 @@ export class ResidualFunctions {
     }
 
     return t.ifStatement(
-        t.unaryExpression('!',
-            t.memberExpression(
-              this.capturedScopesArray, t.identifier(scope.name), true)),
-        t.expressionStatement(
-          t.assignmentExpression(
-            "=",
-            t.memberExpression(
-              this.capturedScopesArray, t.identifier(scope.name), true),
-            t.objectExpression(properties)
-          )));
+      t.unaryExpression("!", t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true)),
+      t.expressionStatement(
+        t.assignmentExpression(
+          "=",
+          t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true),
+          t.objectExpression(properties)
+        )
+      )
+    );
   }
 
   spliceFunctions(): ResidualFunctionsResult {
@@ -187,13 +197,15 @@ export class ResidualFunctions {
     let functionBodies = new Map();
     function getFunctionBody(instance: FunctionInstance): Array<BabelNodeStatement> {
       let b = functionBodies.get(instance);
-      if (b === undefined) functionBodies.set(instance, b = []);
+      if (b === undefined) functionBodies.set(instance, (b = []));
       return b;
     }
 
     let requireStatistics = { replaced: 0, count: 0 };
 
-    let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(this.functions.entries());
+    let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(
+      this.functions.entries()
+    );
     this.statistics.functions = functionEntries.length;
     let hoistedBody = [];
     let unstrictFunctionBodies = [];
@@ -220,19 +232,18 @@ export class ResidualFunctions {
       }
 
       let define = (instance, funcNode) => {
-        let body = funcNode.type === "FunctionDeclaration"
-          ? hoistedBody
-          : getFunctionBody(instance);
+        let body = funcNode.type === "FunctionDeclaration" ? hoistedBody : getFunctionBody(instance);
         body.push(funcNode);
         let { functionValue } = instance;
         let prototypeId = this.functionPrototypes.get(functionValue);
         if (prototypeId !== undefined) {
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
-          body.push(t.variableDeclaration("var", [
-            t.variableDeclarator(prototypeId,
-              t.memberExpression(id, t.identifier("prototype")))
-          ]));
+          body.push(
+            t.variableDeclaration("var", [
+              t.variableDeclarator(prototypeId, t.memberExpression(id, t.identifier("prototype"))),
+            ])
+          );
         }
         funcNodes.set(functionValue, funcNode);
       };
@@ -248,23 +259,20 @@ export class ResidualFunctions {
           let funcNode = t.functionDeclaration(id, funcParams, ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement));
           let scopeInitialization = [];
           for (let scope of scopeInstances) {
-            scopeInitialization.push(t.variableDeclaration("var", [
-              t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))
-            ]));
+            scopeInitialization.push(
+              t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))])
+            );
             scopeInitialization.push(this._getReferentializedScopeInitialization(scope));
           }
           funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
 
-          traverse(
-            t.file(t.program([funcNode])),
-            ClosureRefReplacer,
-            null,
-            { serializedBindings,
-              modified,
-              requireReturns: this.requireReturns,
-              requireStatistics,
-              isRequire: this.modules.getIsRequire(funcParams, [functionValue]) }
-          );
+          traverse(t.file(t.program([funcNode])), ClosureRefReplacer, null, {
+            serializedBindings,
+            modified,
+            requireReturns: this.requireReturns,
+            requireStatistics,
+            isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
+          });
 
           if (functionValue.$Strict) {
             strictFunctionBodies.push(funcNode);
@@ -358,29 +366,30 @@ export class ResidualFunctions {
           factoryParams = factoryParams.concat(params).slice();
 
           // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
-          let factoryNode = t.functionDeclaration(factoryId, factoryParams, ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement));
+          let factoryNode = t.functionDeclaration(
+            factoryId,
+            factoryParams,
+            ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+          );
 
           factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
 
           // factory functions do not depend on any nested generator scope, so they go to the prelude
           this.prelude.push(factoryNode);
 
-          traverse(
-            t.file(t.program([factoryNode])),
-            ClosureRefReplacer,
-            null,
-            { serializedBindings: sameSerializedBindings,
-              modified,
-              requireReturns: this.requireReturns,
-              requireStatistics,
-              isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)) }
-          );
+          traverse(t.file(t.program([factoryNode])), ClosureRefReplacer, null, {
+            serializedBindings: sameSerializedBindings,
+            modified,
+            requireReturns: this.requireReturns,
+            requireStatistics,
+            isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)),
+          });
 
           for (let instance of instances) {
             let { functionValue, serializedBindings, insertionPoint } = instance;
             let functionId = this.locationService.getLocation(functionValue);
             invariant(functionId !== undefined);
-            let flatArgs: Array<BabelNodeExpression> = factoryNames.map((name) => {
+            let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
               let serializedValue = serializedBindings[name].serializedValue;
               invariant(serializedValue);
               return serializedValue;
@@ -391,10 +400,12 @@ export class ResidualFunctions {
             let node;
             let firstUsage = this.firstFunctionUsages.get(functionValue);
             invariant(insertionPoint !== undefined);
-            if (this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
-                usesThis ||
-                firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint) ||
-                this.functionPrototypes.get(functionValue) !== undefined) {
+            if (
+              this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
+              usesThis ||
+              (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
+              this.functionPrototypes.get(functionValue) !== undefined
+            ) {
               let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
               for (let flatArg of flatArgs) callArgs.push(flatArg);
               for (let param of params) {
@@ -406,17 +417,18 @@ export class ResidualFunctions {
 
               let callee = t.memberExpression(factoryId, t.identifier("call"));
 
-              let childBody = t.blockStatement([
-                t.returnStatement(t.callExpression(callee, callArgs))
-              ]);
+              let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
 
               node = t.functionDeclaration(functionId, params, childBody);
             } else {
               node = t.variableDeclaration("var", [
-                t.variableDeclarator(functionId, t.callExpression(
-                  t.memberExpression(factoryId, t.identifier("bind")),
-                  [nullExpression].concat(flatArgs)
-                ))
+                t.variableDeclarator(
+                  functionId,
+                  t.callExpression(
+                    t.memberExpression(factoryId, t.identifier("bind")),
+                    [nullExpression].concat(flatArgs)
+                  )
+                ),
               ]);
             }
 
@@ -430,10 +442,8 @@ export class ResidualFunctions {
       let scopeVar = t.variableDeclaration("var", [
         t.variableDeclarator(
           this.capturedScopesArray,
-          t.callExpression(
-            t.identifier("Array"),
-            [t.numericLiteral(this.capturedScopeInstanceIdx)])
-        )
+          t.callExpression(t.identifier("Array"), [t.numericLiteral(this.capturedScopeInstanceIdx)])
+        ),
       ]);
       // The `scopeVar` must be visible in all scopes.
       this.prelude.unshift(scopeVar);
@@ -444,7 +454,10 @@ export class ResidualFunctions {
       if (functionBody !== undefined) {
         let insertionPoint = instance.insertionPoint;
         invariant(insertionPoint instanceof BodyReference);
-        Array.prototype.splice.apply(insertionPoint.body, ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>)));
+        Array.prototype.splice.apply(
+          insertionPoint.body,
+          ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>))
+        );
       }
     }
 

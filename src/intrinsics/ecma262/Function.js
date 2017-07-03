@@ -13,7 +13,7 @@ import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { CreateDynamicFunction } from "../../methods/create.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.2.1
   let func = new NativeFunctionValue(realm, "Function", "Function", 1, (context, args, argCount, NewTarget) => {
     // 1. Let C be the active function object.

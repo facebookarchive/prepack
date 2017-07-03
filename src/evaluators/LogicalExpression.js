@@ -19,8 +19,12 @@ import { GetValue, joinEffects, ToBoolean } from "../methods/index.js";
 import type { BabelNodeLogicalExpression } from "babel-types";
 import invariant from "../invariant.js";
 
-export default function (ast: BabelNodeLogicalExpression, strictCode: boolean,
-    env: LexicalEnvironment, realm: Realm): Completion | Value | Reference {
+export default function(
+  ast: BabelNodeLogicalExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Completion | Value | Reference {
   let lref = env.evaluate(ast.left, strictCode);
   let lval = GetValue(realm, lref);
 
@@ -41,21 +45,18 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean,
   invariant(lval instanceof AbstractValue);
 
   if (!lval.mightNotBeObject()) {
-    if (ast.operator === "&&")
-      return env.evaluate(ast.right, strictCode);
+    if (ast.operator === "&&") return env.evaluate(ast.right, strictCode);
     else {
       return lval;
     }
   }
 
   // Create empty effects for the case where ast.right is not evaluated
-  let [compl1, gen1, bindings1, properties1, createdObj1] =
-    construct_empty_effects(realm);
+  let [compl1, gen1, bindings1, properties1, createdObj1] = construct_empty_effects(realm);
   compl1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
-  let [compl2, gen2, bindings2, properties2, createdObj2] =
-    realm.evaluateNodeForEffects(ast.right, strictCode, env);
+  let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateNodeForEffects(ast.right, strictCode, env);
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of lval.
@@ -63,13 +64,19 @@ export default function (ast: BabelNodeLogicalExpression, strictCode: boolean,
   // use lval as is for the join condition.
   let joinedEffects;
   if (ast.operator === "&&") {
-    joinedEffects = joinEffects(realm, lval,
+    joinedEffects = joinEffects(
+      realm,
+      lval,
       [compl2, gen2, bindings2, properties2, createdObj2],
-      [lval, gen1, bindings1, properties1, createdObj1]);
+      [lval, gen1, bindings1, properties1, createdObj1]
+    );
   } else {
-    joinedEffects = joinEffects(realm, lval,
+    joinedEffects = joinEffects(
+      realm,
+      lval,
       [lval, gen1, bindings1, properties1, createdObj1],
-      [compl2, gen2, bindings2, properties2, createdObj2]);
+      [compl2, gen2, bindings2, properties2, createdObj2]
+    );
   }
   let completion = joinedEffects[0];
   if (completion instanceof NormalCompletion) {

@@ -19,9 +19,12 @@ import type { BabelNodeConditionalExpression } from "babel-types";
 import invariant from "../invariant.js";
 import type { Realm } from "../realm.js";
 
-export default function (
-    ast: BabelNodeConditionalExpression, strictCode: boolean,
-    env: LexicalEnvironment, realm: Realm): NormalCompletion | Value | Reference {
+export default function(
+  ast: BabelNodeConditionalExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): NormalCompletion | Value | Reference {
   let exprRef = env.evaluate(ast.test, strictCode);
   let exprValue = GetValue(realm, exprRef);
 
@@ -34,8 +37,6 @@ export default function (
   }
   invariant(exprValue instanceof AbstractValue);
 
-  if (!exprValue.mightNotBeObject())
-    return env.evaluate(ast.consequent, strictCode);
-  else
-    return evaluateWithAbstractConditional(exprValue, ast.consequent, ast.alternate, strictCode, env, realm);
+  if (!exprValue.mightNotBeObject()) return env.evaluate(ast.consequent, strictCode);
+  else return evaluateWithAbstractConditional(exprValue, ast.consequent, ast.alternate, strictCode, env, realm);
 }

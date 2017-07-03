@@ -22,7 +22,12 @@ import traverse from "../traverse.js";
 import type { BabelNodeProgram } from "babel-types";
 
 // ECMA262 15.1.11
-export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgram, env: LexicalEnvironment, strictCode: boolean) {
+export function GlobalDeclarationInstantiation(
+  realm: Realm,
+  ast: BabelNodeProgram,
+  env: LexicalEnvironment,
+  strictCode: boolean
+) {
   // 1. Let envRec be env's EnvironmentRecord.
   let envRec = env.environmentRecord;
 
@@ -35,7 +40,7 @@ export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgr
   // 4. Let varNames be the VarDeclaredNames of script.
   let varNames = [];
 
-  traverse(ast, function (node) {
+  traverse(ast, function(node) {
     if (node.type === "VariableDeclaration") {
       if (node.kind === "var") {
         varNames = varNames.concat(BoundNames(realm, node));
@@ -52,14 +57,15 @@ export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgr
   for (let name of lexNames) {
     // a. If envRec.HasVarDeclaration(name) is true, throw a SyntaxError exception.
     if (envRec.HasVarDeclaration(name)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
-        name + " already declared with var");
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, name + " already declared with var");
     }
 
     // b. If envRec.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
     if (envRec.HasLexicalDeclaration(name)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
-        name + " already declared with let or const");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.SyntaxError,
+        name + " already declared with let or const"
+      );
     }
 
     // c. Let hasRestrictedGlobal be ? envRec.HasRestrictedGlobalProperty(name).
@@ -67,8 +73,7 @@ export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgr
 
     // d. If hasRestrictedGlobal is true, throw a SyntaxError exception.
     if (hasRestrictedGlobal) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
-        name + " global object is restricted");
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, name + " global object is restricted");
     }
   }
 
@@ -76,8 +81,10 @@ export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgr
   for (let name of varNames) {
     // a. If envRec.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
     if (envRec.HasLexicalDeclaration(name)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
-        name + " already declared with let or const");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.SyntaxError,
+        name + " already declared with let or const"
+      );
     }
   }
 
@@ -109,8 +116,10 @@ export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgr
 
         // 2. If fnDefinable is false, throw a TypeError exception.
         if (!fnDefinable) {
-          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-            fn + ": global function declarations are not allowed");
+          throw realm.createErrorThrowCompletion(
+            realm.intrinsics.TypeError,
+            fn + ": global function declarations are not allowed"
+          );
         }
 
         // 3. Append fn to declaredFunctionNames.
@@ -138,8 +147,10 @@ export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgr
 
           // 2. If vnDefinable is false, throw a TypeError exception.
           if (!vnDefinable) {
-            throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-              vn + ": global variable declarations are not allowed");
+            throw realm.createErrorThrowCompletion(
+              realm.intrinsics.TypeError,
+              vn + ": global variable declarations are not allowed"
+            );
           }
 
           // 3. If vn is not an element of declaredVarNames, then
@@ -174,7 +185,8 @@ export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgr
       if (d.kind === "const") {
         // 1. Perform ? envRec.CreateImmutableBinding(dn, true).
         envRec.CreateImmutableBinding(dn, true);
-      } else { // ii. Else,
+      } else {
+        // ii. Else,
         // 1. Perform ? envRec.CreateMutableBinding(dn, false).
         envRec.CreateMutableBinding(dn, false);
       }
@@ -204,7 +216,12 @@ export function GlobalDeclarationInstantiation(realm: Realm, ast: BabelNodeProgr
   return realm.intrinsics.empty;
 }
 
-export default function (ast: BabelNodeProgram, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeProgram,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   strictCode = IsStrict(ast);
 
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);

@@ -13,6 +13,6 @@ import type { Realm } from "../../realm.js";
 import type { NativeFunctionValue } from "../../values/index.js";
 import { build } from "../ecma262/Error.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   return build("__IntrospectionError", realm, false);
 }

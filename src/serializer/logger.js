@@ -62,17 +62,29 @@ export class Logger {
     let realm = this.realm;
     let value = res.value;
     if (this.internalDebug) console.error(`=== ${res.constructor.name} ===`);
-    if (this.tryQuery(() => value instanceof ObjectValue && InstanceofOperator(realm, value, realm.intrinsics.Error), false, false)) {
+    if (
+      this.tryQuery(
+        () => value instanceof ObjectValue && InstanceofOperator(realm, value, realm.intrinsics.Error),
+        false,
+        false
+      )
+    ) {
       let object = ((value: any): ObjectValue);
       try {
-        let err = new Error(this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "message")), "(unknown message)", false));
+        let err = new Error(
+          this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "message")), "(unknown message)", false)
+        );
         err.stack = this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "stack")), "(unknown stack)", false);
         console.error(err.message);
         console.error(err.stack);
         if (this.internalDebug && res instanceof ThrowCompletion) console.error(res.nativeStack);
       } catch (err) {
         let message = object.properties.get("message");
-        console.error((message && message.descriptor && message.descriptor.value instanceof StringValue) ? message.descriptor.value.value : "(no message available)");
+        console.error(
+          message && message.descriptor && message.descriptor.value instanceof StringValue
+            ? message.descriptor.value.value
+            : "(no message available)"
+        );
         console.error(err.stack);
         if (object.$ErrorData) {
           console.error(object.$ErrorData.contextStack);

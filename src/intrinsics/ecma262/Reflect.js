@@ -20,10 +20,10 @@ import {
   IsCallable,
   CreateListFromArrayLike,
   Call,
-  IsConstructor
+  IsConstructor,
 } from "../../methods/index.js";
 
-export default function (realm: Realm): ObjectValue {
+export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Reflect");
 
   // ECMA262 26.1.1
@@ -52,7 +52,8 @@ export default function (realm: Realm): ObjectValue {
     // 2. If newTarget is not present, let newTarget be target.
     if (!newTarget) {
       newTarget = target;
-    } else if (!IsConstructor(realm, newTarget)) { // 3. Else if IsConstructor(newTarget) is false, throw a TypeError exception.
+    } else if (!IsConstructor(realm, newTarget)) {
+      // 3. Else if IsConstructor(newTarget) is false, throw a TypeError exception.
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 
@@ -249,7 +250,6 @@ export default function (realm: Realm): ObjectValue {
     // 3. Return ? target.[[SetPrototypeOf]](proto).
     return new BooleanValue(realm, target.$SetPrototypeOf(proto));
   });
-
 
   return obj;
 }

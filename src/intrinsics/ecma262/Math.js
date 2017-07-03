@@ -18,9 +18,9 @@ import buildExpressionTemplate from "../../utils/builder.js";
 
 let buildMathRandom = buildExpressionTemplate("global.Math.random()");
 let buildMathImul = buildExpressionTemplate("global.Math.imul(A, B)");
-let buildMathTemplates : Map<string, {f: Function, names: Array<string>}> = new Map();
+let buildMathTemplates: Map<string, { f: Function, names: Array<string> }> = new Map();
 
-export default function (realm: Realm): ObjectValue {
+export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Math");
 
   // ECMA262 20.2.1.9
@@ -142,7 +142,7 @@ export default function (realm: Realm): ObjectValue {
     ["tanh", 1],
 
     // ECMA262 20.2.2.35
-    ["trunc", 1]
+    ["trunc", 1],
   ];
 
   // ECMA262 20.2.2.11
@@ -159,7 +159,7 @@ export default function (realm: Realm): ObjectValue {
         if (r === undefined) {
           let names = [...new Array(args.length)].map((_, i) => `X${i}`);
           let f = buildExpressionTemplate(`Math.${name}(${names.join(", ")})`);
-          buildMathTemplates.set(name, r = { f, names });
+          buildMathTemplates.set(name, (r = { f, names }));
         }
 
         return realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, args, nodes => {
@@ -170,27 +170,42 @@ export default function (realm: Realm): ObjectValue {
         });
       }
 
-      return new NumberValue(realm, Math[name].apply(null, args.map((arg, i) => ToNumber(realm, arg.throwIfNotConcrete()))));
+      return new NumberValue(
+        realm,
+        Math[name].apply(null, args.map((arg, i) => ToNumber(realm, arg.throwIfNotConcrete())))
+      );
     });
   }
 
-
   // ECMA262 20.2.2.19
   obj.defineNativeMethod("imul", 2, (context, [x, y]) => {
-    if ((x instanceof AbstractValue || y instanceof AbstractValue) &&
-      IsToNumberPure(realm, x) && IsToNumberPure(realm, y)) {
-      return realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [x, y], ([a, b]) => buildMathImul(realm.preludeGenerator)({ A: a, B: b }));
+    if (
+      (x instanceof AbstractValue || y instanceof AbstractValue) &&
+      IsToNumberPure(realm, x) &&
+      IsToNumberPure(realm, y)
+    ) {
+      return realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [x, y], ([a, b]) =>
+        buildMathImul(realm.preludeGenerator)({ A: a, B: b })
+      );
     }
 
-    return new NumberValue(realm, Math.imul(ToUint32(realm, x.throwIfNotConcrete()), ToUint32(realm, y.throwIfNotConcrete())));
+    return new NumberValue(
+      realm,
+      Math.imul(ToUint32(realm, x.throwIfNotConcrete()), ToUint32(realm, y.throwIfNotConcrete()))
+    );
   });
 
   // ECMA262 20.2.2.27
-  obj.defineNativeMethod("random", 0, (context) => {
+  obj.defineNativeMethod("random", 0, context => {
     if (realm.mathRandomGenerator !== undefined) {
       return new NumberValue(realm, realm.mathRandomGenerator());
     } else if (realm.useAbstractInterpretation) {
-      return realm.deriveAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [], buildMathRandom(realm.preludeGenerator));
+      return realm.deriveAbstract(
+        new TypesDomain(NumberValue),
+        ValuesDomain.topVal,
+        [],
+        buildMathRandom(realm.preludeGenerator)
+      );
     } else {
       return new NumberValue(realm, Math.random());
     }

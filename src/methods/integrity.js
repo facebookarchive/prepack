@@ -49,10 +49,11 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
     for (let k of keys) {
       // i. Perform ? DefinePropertyOrThrow(O, k, PropertyDescriptor{[[Configurable]]: false}).
       DefinePropertyOrThrow(realm, O, k, {
-        configurable: false
+        configurable: false,
       });
     }
-  } else if (level === "frozen") { // 7. Else level is "frozen",
+  } else if (level === "frozen") {
+    // 7. Else level is "frozen",
     // a. Repeat for each element k of keys,
     for (let k of keys) {
       // i. Let currentDesc be ? O.[[GetOwnProperty]](k).
@@ -67,7 +68,8 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
         if (IsAccessorDescriptor(realm, currentDesc)) {
           // a. Let desc be the PropertyDescriptor{[[Configurable]]: false}.
           desc = { configurable: false };
-        } else { // 2. Else,
+        } else {
+          // 2. Else,
           // b. Let desc be the PropertyDescriptor { [[Configurable]]: false, [[Writable]]: false }.
           desc = { configurable: false, writable: false };
         }

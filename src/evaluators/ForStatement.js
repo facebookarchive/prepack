@@ -51,7 +51,15 @@ export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings
 }
 
 // ECMA262 13.7.4.8
-function ForBodyEvaluation(realm: Realm, test, increment, stmt, perIterationBindings: Array<string>, labelSet, strictCode: boolean): Value {
+function ForBodyEvaluation(
+  realm: Realm,
+  test,
+  increment,
+  stmt,
+  perIterationBindings: Array<string>,
+  labelSet,
+  strictCode: boolean
+): Value {
   // 1. Let V be undefined.
   let V: Value = realm.intrinsics.undefined;
 
@@ -81,8 +89,7 @@ function ForBodyEvaluation(realm: Realm, test, increment, stmt, perIterationBind
       invariant(result instanceof AbruptCompletion);
       // ECMA262 13.1.7
       if (result instanceof BreakCompletion) {
-        if (!result.target)
-          return (UpdateEmpty(realm, result, V): any).value;
+        if (!result.target) return (UpdateEmpty(realm, result, V): any).value;
       }
       throw UpdateEmpty(realm, result, V);
     }
@@ -109,11 +116,18 @@ function ForBodyEvaluation(realm: Realm, test, increment, stmt, perIterationBind
 }
 
 // ECMA262 13.7.4.7
-export default function (ast: BabelNodeForStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm, labelSet: ?Array<string>): Value | Reference {
+export default function(
+  ast: BabelNodeForStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): Value | Reference {
   let { init, test, update, body } = ast;
 
   if (init && init.type === "VariableDeclaration") {
-    if (init.kind === "var") { // for (var VariableDeclarationList; Expression; Expression) Statement
+    if (init.kind === "var") {
+      // for (var VariableDeclarationList; Expression; Expression) Statement
       // 1. Let varDcl be the result of evaluating VariableDeclarationList.
       let varDcl = env.evaluate(init, strictCode);
 
@@ -122,7 +136,8 @@ export default function (ast: BabelNodeForStatement, strictCode: boolean, env: L
 
       // 3. Return ? ForBodyEvaluation(the first Expression, the second Expression, Statement, « », labelSet).
       return ForBodyEvaluation(realm, test, update, body, [], labelSet, strictCode);
-    } else { // for (LexicalDeclaration Expression; Expression) Statement
+    } else {
+      // for (LexicalDeclaration Expression; Expression) Statement
       // 1. Let oldEnv be the running execution context's LexicalEnvironment.
       let oldEnv = env;
 
@@ -144,7 +159,8 @@ export default function (ast: BabelNodeForStatement, strictCode: boolean, env: L
         if (isConst) {
           // i. Perform ! loopEnvRec.CreateImmutableBinding(dn, true).
           loopEnvRec.CreateImmutableBinding(dn, true);
-        } else { // b. Else,
+        } else {
+          // b. Else,
           // i. Perform ! loopEnvRec.CreateMutableBinding(dn, false).
           loopEnvRec.CreateMutableBinding(dn, false);
         }
@@ -179,7 +195,8 @@ export default function (ast: BabelNodeForStatement, strictCode: boolean, env: L
       // 13. Return Completion(bodyResult).
       return bodyResult;
     }
-  } else { // for (Expression; Expression; Expression) Statement
+  } else {
+    // for (Expression; Expression; Expression) Statement
     // 1. If the first Expression is present, then
     if (init) {
       // a. Let exprRef be the result of evaluating the first Expression.

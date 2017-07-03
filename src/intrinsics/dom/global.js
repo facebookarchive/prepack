@@ -17,35 +17,35 @@ import initializeConsole from "../common/console.js";
 import invariant from "../../invariant.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 
-export default function (realm: Realm): void {
+export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
   global.$DefineOwnProperty("console", {
     value: initializeConsole(realm),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   global.$DefineOwnProperty("self", {
     value: global,
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 
   global.$DefineOwnProperty("window", {
     value: global,
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 
   global.$DefineOwnProperty("document", {
     value: initializeDocument(realm),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   global.$DefineOwnProperty("setTimeout", {
@@ -57,12 +57,15 @@ export default function (realm: Realm): void {
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
       return generator.emitCallAndCaptureResult(
-        TypesDomain.topVal, ValuesDomain.topVal,
-        () => generator.preludeGenerator.memoizeReference("::global.setTimeout"), args);
+        TypesDomain.topVal,
+        ValuesDomain.topVal,
+        () => generator.preludeGenerator.memoizeReference("::global.setTimeout"),
+        args
+      );
     }),
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 
   global.$DefineOwnProperty("clearTimeout", {
@@ -70,13 +73,12 @@ export default function (realm: Realm): void {
       if (!realm.useAbstractInterpretation) throw new Error("TODO: implement global.clearTimeout");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
-      generator.emitCall(
-        () => generator.preludeGenerator.memoizeReference("::global.clearTimeout"), args);
+      generator.emitCall(() => generator.preludeGenerator.memoizeReference("::global.clearTimeout"), args);
       return realm.intrinsics.undefined;
     }),
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 
   global.$DefineOwnProperty("setInterval", {
@@ -88,12 +90,15 @@ export default function (realm: Realm): void {
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
       return generator.emitCallAndCaptureResult(
-        TypesDomain.topVal, ValuesDomain.topVal,
-        () => generator.preludeGenerator.memoizeReference("::global.setInterval"), args);
+        TypesDomain.topVal,
+        ValuesDomain.topVal,
+        () => generator.preludeGenerator.memoizeReference("::global.setInterval"),
+        args
+      );
     }),
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 
   global.$DefineOwnProperty("clearInterval", {
@@ -101,12 +106,11 @@ export default function (realm: Realm): void {
       if (!realm.useAbstractInterpretation) throw new Error("TODO: implement global.clearInterval");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
-      generator.emitCall(
-        () => generator.preludeGenerator.memoizeReference("::global.clearInterval"), args);
+      generator.emitCall(() => generator.preludeGenerator.memoizeReference("::global.clearInterval"), args);
       return realm.intrinsics.undefined;
     }),
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 }

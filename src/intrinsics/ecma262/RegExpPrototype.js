@@ -11,7 +11,15 @@
 
 import type { Realm } from "../../realm.js";
 import invariant from "../../invariant.js";
-import { BooleanValue, StringValue, ObjectValue, NullValue, NumberValue, UndefinedValue, Value } from "../../values/index.js";
+import {
+  BooleanValue,
+  StringValue,
+  ObjectValue,
+  NullValue,
+  NumberValue,
+  UndefinedValue,
+  Value,
+} from "../../values/index.js";
 import { ArrayCreate, CreateDataProperty } from "../../methods/create.js";
 import { SameValue } from "../../methods/abstract.js";
 import { Call } from "../../methods/call.js";
@@ -36,8 +44,12 @@ function InternalHasFlag(realm: Realm, context: Value, flag: string): Value {
     // a. If SameValue(R, %RegExpPrototype%) is true, return undefined.
     if (SameValue(realm, R, realm.intrinsics.RegExpPrototype)) {
       return realm.intrinsics.undefined;
-    } else { // b. Otherwise, throw a TypeError exception.
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "R does not have an [[OriginalFlags]] internal slot");
+    } else {
+      // b. Otherwise, throw a TypeError exception.
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "R does not have an [[OriginalFlags]] internal slot"
+      );
     }
   }
 
@@ -53,7 +65,7 @@ function InternalHasFlag(realm: Realm, context: Value, flag: string): Value {
   return realm.intrinsics.false;
 }
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 21.2.5.2
   obj.defineNativeMethod("exec", 1, (context, [string]) => {
     // 1. Let R be the this value.
@@ -66,7 +78,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If R does not have a [[RegExpMatcher]] internal slot, throw a TypeError exception.
     if (R.$RegExpMatcher === undefined) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "R does not have a [[RegExpMatcher]] internal slot");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "R does not have a [[RegExpMatcher]] internal slot"
+      );
     }
 
     // 4. Let S be ? ToString(string).
@@ -77,7 +92,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.3
-  obj.defineNativeGetter("flags", (context) => {
+  obj.defineNativeGetter("flags", context => {
     // 1. Let R be the this value.
     let R = context.throwIfNotConcrete();
 
@@ -124,12 +139,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.4
-  obj.defineNativeGetter("global", (context) => {
+  obj.defineNativeGetter("global", context => {
     return InternalHasFlag(realm, context, "g");
   });
 
   // ECMA262 21.2.5.5
-  obj.defineNativeGetter("ignoreCase", (context) => {
+  obj.defineNativeGetter("ignoreCase", context => {
     return InternalHasFlag(realm, context, "i");
   });
 
@@ -153,7 +168,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (global === false) {
       // a. Return ? RegExpExec(rx, S).
       return RegExpExec(realm, rx, S);
-    } else { // 6. Else global is true,
+    } else {
+      // 6. Else global is true,
       // a. Let fullUnicode be ToBoolean(? Get(rx, "unicode")).
       let fullUnicode = ToBooleanPartial(realm, Get(realm, rx, "unicode"));
 
@@ -176,15 +192,22 @@ export default function (realm: Realm, obj: ObjectValue): void {
           // 1. If n=0, return null.
           if (n === 0) {
             return realm.intrinsics.null;
-          } else { // 2. Else, return A.
+          } else {
+            // 2. Else, return A.
             return A;
           }
-        } else { // iii. Else result is not null,
+        } else {
+          // iii. Else result is not null,
           // 1. Let matchStr be ? ToString(? Get(result, "0")).
           let matchStr = ToStringPartial(realm, Get(realm, result, "0"));
 
           // 2. Let status be CreateDataProperty(A, ! ToString(n), matchStr).
-          let status = CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, n)), new StringValue(realm, matchStr));
+          let status = CreateDataProperty(
+            realm,
+            A,
+            ToString(realm, new NumberValue(realm, n)),
+            new StringValue(realm, matchStr)
+          );
 
           // 3. Assert: status is true.
           invariant(status === true, "status is true");
@@ -211,7 +234,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.7
-  obj.defineNativeGetter("multiline", (context) => {
+  obj.defineNativeGetter("multiline", context => {
     return InternalHasFlag(realm, context, "m");
   });
 
@@ -267,14 +290,16 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // b. If result is null, set done to true.
       if (result instanceof NullValue) {
         done = true;
-      } else { // c. Else result is not null,
+      } else {
+        // c. Else result is not null,
         // i. Append result to the end of results.
         results.push(result);
 
         // ii. If global is false, set done to true.
         if (global === false) {
           done = true;
-        } else { // iii. Else,
+        } else {
+          // iii. Else,
           invariant(fullUnicode !== undefined);
 
           // 1. Let matchStr be ? ToString(? Get(result, "0")).
@@ -367,7 +392,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // v. Let replacement be ? ToString(replValue).
         replacement = ToStringPartial(realm, replValue);
-      } else { // k. Else,
+      } else {
+        // k. Else,
         invariant(replaceValue instanceof StringValue);
         // i. Let replacement be GetSubstitution(matched, S, position, captures, replaceValue).
         replacement = GetSubstitution(realm, matched, S, position, captures, replaceValue.value);
@@ -377,7 +403,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       if (position >= nextSourcePosition) {
         // i. NOTE position should not normally move backwards. If it does, it is an indication of an ill-behaving RegExp subclass or use of an access triggered side-effect to change the global flag or other characteristics of rx. In such cases, the corresponding substitution is ignored.
         // ii. Let accumulatedResult be the String formed by concatenating the code units of the current value of accumulatedResult with the substring of S consisting of the code units from nextSourcePosition (inclusive) up to position (exclusive) and with the code units of replacement.
-        accumulatedResult = accumulatedResult + S.substr(nextSourcePosition, position - nextSourcePosition) + replacement;
+        accumulatedResult =
+          accumulatedResult + S.substr(nextSourcePosition, position - nextSourcePosition) + replacement;
 
         // iii. Let nextSourcePosition be position + matchLength.
         nextSourcePosition = position + matchLength;
@@ -423,7 +450,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.10
-  obj.defineNativeGetter("source", (context) => {
+  obj.defineNativeGetter("source", context => {
     // 1. Let R be the this value.
     let R = context.throwIfNotConcrete();
 
@@ -437,9 +464,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // a. If SameValue(R, %RegExpPrototype%) is true, return undefined.
       if (SameValue(realm, R, realm.intrinsics.RegExpPrototype)) {
         return new StringValue(realm, "(?:)");
-      } else { // b. Otherwise, throw a TypeError exception.
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-          "R does not have an [[OriginalSource]] internal slot");
+      } else {
+        // b. Otherwise, throw a TypeError exception.
+        throw realm.createErrorThrowCompletion(
+          realm.intrinsics.TypeError,
+          "R does not have an [[OriginalSource]] internal slot"
+        );
       }
     }
 
@@ -481,7 +511,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     // 6. If flags contains "u", let unicodeMatching be true.
     if (flags.indexOf("u") >= 0) {
       unicodeMatching = true;
-    } else { // 7. Else, let unicodeMatching be false.
+    } else {
+      // 7. Else, let unicodeMatching be false.
       unicodeMatching = false;
     }
 
@@ -489,7 +520,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     // 8. If flags contains "y", let newFlags be flags.
     if (flags.indexOf("y") >= 0) {
       newFlags = flags;
-    } else { // 9. Else, let newFlags be the string that is the concatenation of flags and "y".
+    } else {
+      // 9. Else, let newFlags be the string that is the concatenation of flags and "y".
       newFlags = flags + "y";
     }
 
@@ -503,7 +535,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let lengthA = 0;
 
     // 13. If limit is undefined, let lim be 2^32-1; else let lim be ? ToUint32(limit).
-    let lim = limit instanceof UndefinedValue ? (Math.pow(2, 32) - 1) : ToUint32(realm, limit.throwIfNotConcrete());
+    let lim = limit instanceof UndefinedValue ? Math.pow(2, 32) - 1 : ToUint32(realm, limit.throwIfNotConcrete());
 
     // 14. Let size be the number of elements in S.
     let size = S.length;
@@ -543,7 +575,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // c. If z is null, let q be AdvanceStringIndex(S, q, unicodeMatching).
       if (z instanceof NullValue) {
         q = AdvanceStringIndex(realm, S, q, unicodeMatching);
-      } else { // d. Else z is not null,
+      } else {
+        // d. Else z is not null,
         // i. Let e be ? ToLength(? Get(splitter, "lastIndex")).
         let e = ToLength(realm, Get(realm, splitter, "lastIndex"));
 
@@ -553,7 +586,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
         // iii. If e = p, let q be AdvanceStringIndex(S, q, unicodeMatching).
         if (e === p) {
           q = AdvanceStringIndex(realm, S, q, unicodeMatching);
-        } else { // iv. Else e ≠ p,
+        } else {
+          // iv. Else e ≠ p,
           // 1. Let T be a String value equal to the substring of S consisting of the elements at indices p (inclusive) through q (exclusive).
           let T = S.substr(p, q - p);
 
@@ -613,7 +647,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.12
-  obj.defineNativeGetter("sticky", (context) => {
+  obj.defineNativeGetter("sticky", context => {
     return InternalHasFlag(realm, context, "y");
   });
 
@@ -638,7 +672,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.14
-  obj.defineNativeMethod("toString", 0, (context) => {
+  obj.defineNativeMethod("toString", 0, context => {
     // 1. Let R be the this value.
     let R = context.throwIfNotConcrete();
 
@@ -661,7 +695,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.15
-  obj.defineNativeGetter("unicode", (context) => {
+  obj.defineNativeGetter("unicode", context => {
     return InternalHasFlag(realm, context, "u");
   });
 }

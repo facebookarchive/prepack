@@ -19,10 +19,16 @@ import traverse from "babel-traverse";
 import { parse } from "babylon";
 import type { BabelNodeFile } from "babel-types";
 
-export default function (realm: Realm, code: string, filename: string, sourceType: SourceType = "script", startLine: number = 1): BabelNodeFile {
+export default function(
+  realm: Realm,
+  code: string,
+  filename: string,
+  sourceType: SourceType = "script",
+  startLine: number = 1
+): BabelNodeFile {
   try {
     let ast = parse(code, { filename, sourceType, startLine });
-    traverse.cheap(ast, (node) => {
+    traverse.cheap(ast, node => {
       node.loc.source = filename;
     });
     return ast;
@@ -31,13 +37,13 @@ export default function (realm: Realm, code: string, filename: string, sourceTyp
       // Babel reports all errors as syntax errors, even if a SyntaxError should be thrown.
       // What we do here is a totally robust way to address that issue.
       let referenceErrors = [
-        'Invalid left-hand side in postfix operation',
-        'Invalid left-hand side in prefix operation',
-        'Invalid left-hand side in assignment expression',
+        "Invalid left-hand side in postfix operation",
+        "Invalid left-hand side in prefix operation",
+        "Invalid left-hand side in assignment expression",
       ];
 
       let error;
-      if (referenceErrors.some((msg) => e.message.indexOf(msg) >= 0)) {
+      if (referenceErrors.some(msg => e.message.indexOf(msg) >= 0)) {
         error = Construct(realm, realm.intrinsics.ReferenceError, [new StringValue(realm, e.message)]);
       } else {
         error = Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, e.message)]);
@@ -50,7 +56,7 @@ export default function (realm: Realm, code: string, filename: string, sourceTyp
         filename: filename,
         sourceCode: code,
         loc: e.loc,
-        stackDecorated: false
+        stackDecorated: false,
       };
       throw new ThrowCompletion(error);
     } else {

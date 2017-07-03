@@ -9,7 +9,20 @@
 
 /* @flow */
 
-import type { NumberValue, AbstractValue, BooleanValue, NativeFunctionValue, FunctionValue, StringValue, SymbolValue, UndefinedValue, NullValue, EmptyValue, Value, AbstractObjectValue } from "./values/index.js";
+import type {
+  NumberValue,
+  AbstractValue,
+  BooleanValue,
+  NativeFunctionValue,
+  FunctionValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
+  NullValue,
+  EmptyValue,
+  Value,
+  AbstractObjectValue,
+} from "./values/index.js";
 import { ObjectValue } from "./values/index.js";
 
 export const ElementSize = {
@@ -21,7 +34,7 @@ export const ElementSize = {
   Uint8: 1,
   Uint16: 2,
   Uint32: 4,
-  Uint8Clamped: 1
+  Uint8Clamped: 1,
 };
 
 export type IterationKind = "key+value" | "value" | "key";
@@ -31,24 +44,33 @@ export type SourceType = "module" | "script";
 export type SourceFile = {
   filePath: string,
   fileContents: string,
-  sourceMapContents?: string
-}
+  sourceMapContents?: string,
+};
 
 export type SourceMap = {
   sources: Array<string>,
   names: Array<string>,
   mappings: string,
-  sourcesContent: Array<string>
+  sourcesContent: Array<string>,
 };
 
 export type AbstractTime = "early" | "late";
 
-export type ElementType = "Float32" | "Float64" | "Int8" | "Int16" | "Int32" | "Uint8" | "Uint16" | "Uint32" | "Uint8Clamped";
+export type ElementType =
+  | "Float32"
+  | "Float64"
+  | "Int8"
+  | "Int16"
+  | "Int32"
+  | "Uint8"
+  | "Uint16"
+  | "Uint32"
+  | "Uint8Clamped";
 
 //
 
 declare class _CallableObjectValue extends ObjectValue {
-  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value);
+  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value),
 }
 export type CallableObjectValue = _CallableObjectValue | FunctionValue | NativeFunctionValue;
 
@@ -72,10 +94,10 @@ export type Descriptor = {
 };
 
 export type PropertyBinding = {
-  descriptor?: Descriptor;
-  object: ObjectValue | AbstractObjectValue;
-  key: any;
-}
+  descriptor?: Descriptor,
+  object: ObjectValue | AbstractObjectValue,
+  key: any,
+};
 
 export type LexicalEnvironmentTypes = "global" | "module" | "script" | "function" | "block" | "catch" | "loop" | "with";
 
@@ -95,7 +117,7 @@ export type Intrinsics = {
   emptyString: StringValue,
 
   SymbolHasInstance: SymbolValue,
-  SymbolIsConcatSpreadable: SymbolValue;
+  SymbolIsConcatSpreadable: SymbolValue,
   SymbolSpecies: SymbolValue,
   SymbolReplace: SymbolValue,
   SymbolIterator: SymbolValue,
@@ -210,27 +232,47 @@ export type Intrinsics = {
 };
 
 export type PromiseCapability = {
-  promise: ObjectValue | UndefinedValue;
-  resolve: Value;
-  reject: Value;
-}
+  promise: ObjectValue | UndefinedValue,
+  resolve: Value,
+  reject: Value,
+};
 
 export type PromiseReaction = {
-  capabilities: PromiseCapability;
-  handler: Value;
-}
+  capabilities: PromiseCapability,
+  handler: Value,
+};
 
 export type ResolvingFunctions = {
-  resolve: Value;
-  reject: Value;
-}
+  resolve: Value,
+  reject: Value,
+};
 
-export type TypedArrayKind = "Float32Array" | "Float64Array"
-  | "Int8Array" | "Int16Array" | "Int32Array"
-  | "Uint8Array" | "Uint16Array" | "Uint32Array" | "Uint8ClampedArray";
+export type TypedArrayKind =
+  | "Float32Array"
+  | "Float64Array"
+  | "Int8Array"
+  | "Int16Array"
+  | "Int32Array"
+  | "Uint8Array"
+  | "Uint16Array"
+  | "Uint32Array"
+  | "Uint8ClampedArray";
 
-export type ObjectKind = "Object" | "Array" | "Function" | "Symbol" | "String"
-  | "Number" | "Boolean" | "Date" | "RegExp" | "Set" | "Map" | "DataView"
-  | "ArrayBuffer" | "WeakMap" | "WeakSet"
+export type ObjectKind =
+  | "Object"
+  | "Array"
+  | "Function"
+  | "Symbol"
+  | "String"
+  | "Number"
+  | "Boolean"
+  | "Date"
+  | "RegExp"
+  | "Set"
+  | "Map"
+  | "DataView"
+  | "ArrayBuffer"
+  | "WeakMap"
+  | "WeakSet"
   | TypedArrayKind;
 // TODO #26: Promises. All kinds of iterators. Generators.

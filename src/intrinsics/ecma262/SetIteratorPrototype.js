@@ -14,10 +14,9 @@ import { StringValue, ObjectValue, UndefinedValue } from "../../values/index.js"
 import { CreateIterResultObject, CreateArrayFromList } from "../../methods/create.js";
 import invariant from "../../invariant.js";
 
-
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.2.5.2.1
-  obj.defineNativeMethod("next", 0, (context) => {
+  obj.defineNativeMethod("next", 0, context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -27,7 +26,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have all of the internal slots of a Set Iterator Instance (23.2.5.3), throw a TypeError exception.
-    if (!('$IteratedSet' in O) || !('$SetNextIndex' in O) || !('$SetIterationKind' in O)) {
+    if (!("$IteratedSet" in O) || !("$SetNextIndex" in O) || !("$SetIterationKind" in O)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "SetIteratorPrototype.next isn't generic");
     }
 
@@ -83,5 +82,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 23.2.5.2.2
-  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Set Iterator"), { writable: false });
+  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Set Iterator"), {
+    writable: false,
+  });
 }

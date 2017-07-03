@@ -16,6 +16,11 @@ import type { Reference } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
 import type { BabelNodeBreakStatement } from "babel-types";
 
-export default function (ast: BabelNodeBreakStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeBreakStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   throw new BreakCompletion(realm.intrinsics.empty, ast.label && ast.label.name);
 }

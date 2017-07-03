@@ -11,17 +11,8 @@
 
 import type { ErrorHandler } from "./errors.js";
 
-export type Compatibility =
-  | "browser"
-  | "jsc-600-1-4-17"
-  | "node-source-maps"
-  | "node-cli";
-export const CompatibilityValues = [
-  "browser",
-   "jsc-600-1-4-17",
-  "node-source-maps",
-  "node-cli"
-];
+export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps" | "node-cli";
+export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"];
 
 export type RealmOptions = {
   residual?: boolean,
@@ -36,14 +27,14 @@ export type RealmOptions = {
 };
 
 export type SerializerOptions = {
-  initializeMoreModules?: boolean;
-  internalDebug?: boolean;
-  trace?: boolean;
-  singlePass?: boolean;
-  logStatistics?: boolean;
-  logModules?: boolean;
-  delayUnsupportedRequires?: boolean;
-}
+  initializeMoreModules?: boolean,
+  internalDebug?: boolean,
+  trace?: boolean,
+  singlePass?: boolean,
+  logStatistics?: boolean,
+  logModules?: boolean,
+  delayUnsupportedRequires?: boolean,
+};
 
 export type Options = {|
   onError?: ErrorHandler,
@@ -102,7 +93,7 @@ export function getSerializerOptions({
   logModules = false,
   delayUnsupportedRequires = false,
   internalDebug = false,
-  profile = false
+  profile = false,
 }: Options): SerializerOptions {
   return {
     initializeMoreModules: speculate,
@@ -112,6 +103,6 @@ export function getSerializerOptions({
     logModules,
     delayUnsupportedRequires,
     internalDebug,
-    profile
+    profile,
   };
 }

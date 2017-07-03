@@ -16,6 +16,11 @@ import type { Reference } from "../environment.js";
 import { ContinueCompletion } from "../completions.js";
 import type { BabelNodeContinueStatement } from "babel-types";
 
-export default function (ast: BabelNodeContinueStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeContinueStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   throw new ContinueCompletion(realm.intrinsics.empty, ast.label && ast.label.name);
 }

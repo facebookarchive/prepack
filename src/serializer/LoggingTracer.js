@@ -14,7 +14,17 @@ import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { ToStringPartial, Get } from "../methods/index.js";
 import { ThrowCompletion, AbruptCompletion } from "../completions.js";
-import { FunctionValue, Value, NumberValue, BooleanValue, StringValue, UndefinedValue, NullValue, ObjectValue, AbstractValue } from "../values/index.js";
+import {
+  FunctionValue,
+  Value,
+  NumberValue,
+  BooleanValue,
+  StringValue,
+  UndefinedValue,
+  NullValue,
+  ObjectValue,
+  AbstractValue,
+} from "../values/index.js";
 import invariant from "../invariant.js";
 
 function describeValue(realm: Realm, v: Value): string {
@@ -60,7 +70,13 @@ export class LoggingTracer extends Tracer {
     this.nesting.push(name);
   }
 
-  afterCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, result: void | Reference | Value | AbruptCompletion) {
+  afterCall(
+    F: FunctionValue,
+    thisArgument: void | Value,
+    argumentsList: Array<Value>,
+    newTarget: void | ObjectValue,
+    result: void | Reference | Value | AbruptCompletion
+  ) {
     let name = this.nesting.pop();
     this.log(`<${name}${result instanceof ThrowCompletion ? ": error" : ""}`);
   }

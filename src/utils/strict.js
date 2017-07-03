@@ -16,7 +16,7 @@ export default function IsStrict(node: BabelNode): boolean {
   if (node.type !== "BlockStatement" && node.type !== "Program") return false;
   let directives = ((node: any): BabelNodeBlockStatement | BabelNodeProgram).directives;
   if (!directives) return false;
-  return directives.some((directive) => {
+  return directives.some(directive => {
     if (directive.type !== "Directive") {
       return false;
     }

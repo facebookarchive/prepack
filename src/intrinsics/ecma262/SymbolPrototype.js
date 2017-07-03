@@ -13,9 +13,9 @@ import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, SymbolValue } from "../../values/index.js";
 import { SymbolDescriptiveString } from "../../methods/index.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.4.3.2
-  obj.defineNativeMethod("toString", 0, (context) => {
+  obj.defineNativeMethod("toString", 0, context => {
     // 1. Let s be the this value.
     let s = context.throwIfNotConcrete();
 
@@ -23,7 +23,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let sym;
     if (s instanceof SymbolValue) {
       sym = s;
-    } else { // 3. Else,
+    } else {
+      // 3. Else,
       // a. If Type(s) is not Object, throw a TypeError exception.
       if (!(s instanceof ObjectValue)) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
@@ -43,7 +44,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 19.4.3.3
-  obj.defineNativeMethod("valueOf", 0, (context) => {
+  obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Let s be the this value.
     let s = context.throwIfNotConcrete();
 
@@ -65,26 +66,31 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 19.4.3.4
-  obj.defineNativeMethod(realm.intrinsics.SymbolToPrimitive, 1, (context, [hint]) => {
-    // 1. Let s be the this value.
-    let s = context.throwIfNotConcrete();
+  obj.defineNativeMethod(
+    realm.intrinsics.SymbolToPrimitive,
+    1,
+    (context, [hint]) => {
+      // 1. Let s be the this value.
+      let s = context.throwIfNotConcrete();
 
-    // 2. If Type(s) is Symbol, return s.
-    if (s instanceof SymbolValue) return s;
+      // 2. If Type(s) is Symbol, return s.
+      if (s instanceof SymbolValue) return s;
 
-    // 3. If Type(s) is not Object, throw a TypeError exception.
-    if (!(s instanceof ObjectValue)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-    }
+      // 3. If Type(s) is not Object, throw a TypeError exception.
+      if (!(s instanceof ObjectValue)) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
 
-    // 4. If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
-    if (!s.$SymbolData) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-    }
+      // 4. If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
+      if (!s.$SymbolData) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
 
-    // 5. Return s.[[SymbolData]].
-    return s.$SymbolData;
-  }, { writable: false });
+      // 5. Return s.[[SymbolData]].
+      return s.$SymbolData;
+    },
+    { writable: false }
+  );
 
   // ECMA262 19.4.3.5
   obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Symbol"), { writable: false });

@@ -19,7 +19,12 @@ import { StringValue, Value } from "../values/index.js";
 import { EvaluateStatements, NewDeclarativeEnvironment, BlockDeclarationInstantiation } from "../methods/index.js";
 
 // ECMA262 13.2.13
-export default function (ast: BabelNodeBlockStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): NormalCompletion | Value | Reference {
+export default function(
+  ast: BabelNodeBlockStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): NormalCompletion | Value | Reference {
   // 1. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 
@@ -37,7 +42,7 @@ export default function (ast: BabelNodeBlockStatement, strictCode: boolean, env:
     let blockValue: void | NormalCompletion | Value;
 
     if (ast.directives) {
-      for (let directive of (ast.directives)) {
+      for (let directive of ast.directives) {
         blockValue = new StringValue(realm, directive.value.value);
       }
     }

@@ -17,7 +17,12 @@ import { GetValue } from "../methods/index.js";
 import { ReturnCompletion } from "../completions.js";
 import type { BabelNodeReturnStatement } from "babel-types";
 
-export default function (ast: BabelNodeReturnStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeReturnStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   let arg;
   if (ast.argument) {
     arg = GetValue(realm, env.evaluate(ast.argument, strictCode));

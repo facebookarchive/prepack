@@ -14,8 +14,8 @@ import { prepackFileSync } from "../lib/prepack-node.js";
 import invariant from "../lib/invariant.js";
 
 let chalk = require("chalk");
-let path  = require("path");
-let fs    = require("fs");
+let path = require("path");
+let fs = require("fs");
 
 function search(dir, relative) {
   let tests = [];
@@ -42,10 +42,8 @@ let tests = search(`${__dirname}/../test/source-maps`, "test/source-maps");
 
 function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
   let loc = diagnostic.location;
-  if (loc)
-    console.log(`${loc.start.line}:${loc.start.column + 1} ${diagnostic.errorCode} ${diagnostic.message}`);
-  else
-    console.log(`unknown location: ${diagnostic.errorCode} ${diagnostic.message}`);
+  if (loc) console.log(`${loc.start.line}:${loc.start.column + 1} ${diagnostic.errorCode} ${diagnostic.message}`);
+  else console.log(`unknown location: ${diagnostic.errorCode} ${diagnostic.message}`);
   return "Fail";
 }
 
@@ -79,8 +77,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
       process.exit(1);
       invariant(false);
     }
-    newCode2 = s.code +
-      "\nf();\n\n//# sourceMappingURL=" + name + ".new2.js.map\n";
+    newCode2 = s.code + "\nf();\n\n//# sourceMappingURL=" + name + ".new2.js.map\n";
     fs.writeFileSync(name + ".new2.js", newCode2);
     newMap2 = s.map;
     fs.writeFileSync(name + ".new2.js.map", JSON.stringify(newMap2));
@@ -105,7 +102,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
 function run() {
   let failed = 0;
   let passed = 0;
-  let total  = 0;
+  let total = 0;
 
   for (let test of tests) {
     // filter hidden files
@@ -113,15 +110,12 @@ function run() {
     if (test.name.endsWith("~")) continue;
 
     total++;
-    if (generateTest(test.name, test.path, test.file))
-      passed++;
-    else
-      failed++;
+    if (generateTest(test.name, test.path, test.file)) passed++;
+    else failed++;
   }
 
-  console.log("Generated:", `${passed}/${total}`, (Math.round((passed / total) * 100) || 0) + "%");
+  console.log("Generated:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
   return failed === 0;
 }
 
-if (!run())
-  process.exit(1);
+if (!run()) process.exit(1);
