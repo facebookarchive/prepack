@@ -21,7 +21,7 @@ import {
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.2.3.1
   obj.defineNativeMethod("add", 1, (context, [value]) => {
     // 1. Let S be the this value.
@@ -64,7 +64,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 23.2.3.2
-  obj.defineNativeMethod("clear", 0, (context) => {
+  obj.defineNativeMethod("clear", 0, context => {
     // 1. Let S be the this value.
     let S = context.throwIfNotConcrete();
 
@@ -127,7 +127,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 23.2.3.5
-  obj.defineNativeMethod("entries", 0, (context) => {
+  obj.defineNativeMethod("entries", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 
@@ -205,7 +205,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 23.2.3.9 get Set.prototype.size
   obj.$DefineOwnProperty("size", {
-    get: new NativeFunctionValue(realm, "TODO", "get size", 0, (context) => {
+    get: new NativeFunctionValue(realm, "TODO", "get size", 0, context => {
       // 1. Let S be the this value.
       let S = context.throwIfNotConcrete();
 
@@ -234,11 +234,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // 7. Return count.
       return new NumberValue(realm, count);
     }),
-    configurable: true
+    configurable: true,
   });
 
   // ECMA262 23.2.3.10
-  obj.defineNativeMethod("values", 0, (context) => {
+  obj.defineNativeMethod("values", 0, context => {
     // 1. Let S be the this value.
     let S = context;
 

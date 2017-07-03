@@ -33,7 +33,7 @@ import {
   DeclarativeEnvironmentRecord,
   GlobalEnvironmentRecord,
   Reference,
-  LexicalEnvironment
+  LexicalEnvironment,
 } from "../environment.js";
 import { NormalCompletion, AbruptCompletion, ThrowCompletion } from "../completions.js";
 import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression.js";
@@ -65,7 +65,6 @@ import type {
   BabelNodeLVal,
   BabelNodePattern,
 } from "babel-types";
-
 
 // ECMA262 6.2.3
 // IsSuperReference(V). Returns true if this reference has a thisValue component.
@@ -109,7 +108,10 @@ export function GetValue(realm: Realm, V: Reference | Value): Value {
 
   // 4. If IsUnresolvableReference(V) is true, throw a ReferenceError exception.
   if (IsUnresolvableReference(realm, V)) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${V.referencedName.toString()} is not defined`);
+    throw realm.createErrorThrowCompletion(
+      realm.intrinsics.ReferenceError,
+      `${V.referencedName.toString()} is not defined`
+    );
   }
 
   // 5. If IsPropertyReference(V) is true, then
@@ -207,7 +209,7 @@ export function ContainsExpression(realm: Realm, node: ?BabelNode): boolean {
     case "AssignmentPattern":
       return true;
     default:
-     return false;
+      return false;
   }
 }
 
@@ -229,7 +231,12 @@ export function ResolveBinding(realm: Realm, name: string, strict: boolean, env?
 }
 
 // ECMA262 8.1.2.1
-export function GetIdentifierReference(realm: Realm, lex: ?LexicalEnvironment, name: string, strict: boolean): Reference {
+export function GetIdentifierReference(
+  realm: Realm,
+  lex: ?LexicalEnvironment,
+  name: string,
+  strict: boolean
+): Reference {
   // 1. If lex is the value null, then
   if (!lex) {
     // a. Return a value of type Reference whose base value is undefined, whose referenced name is name, and whose strict reference flag is strict.
@@ -246,7 +253,8 @@ export function GetIdentifierReference(realm: Realm, lex: ?LexicalEnvironment, n
   if (exists) {
     // a. Return a value of type Reference whose base value is envRec, whose referenced name is name, and whose strict reference flag is strict.
     return new Reference(envRec, name, strict);
-  } else { // 5. Else,
+  } else {
+    // 5. Else,
     // a. Let outer be the value of lex's outer environment reference.
     let outer = lex.parent;
 
@@ -279,7 +287,12 @@ export function InitializeReferencedBinding(realm: Realm, V: Reference, W: Value
 }
 
 // ECMA262 13.2.14
-export function BlockDeclarationInstantiation(realm: Realm, strictCode: boolean, body: Array<BabelNodeStatement>, env: LexicalEnvironment) {
+export function BlockDeclarationInstantiation(
+  realm: Realm,
+  strictCode: boolean,
+  body: Array<BabelNodeStatement>,
+  env: LexicalEnvironment
+) {
   // 1. Let envRec be env's EnvironmentRecord.
   let envRec = env.environmentRecord;
 
@@ -300,14 +313,14 @@ export function BlockDeclarationInstantiation(realm: Realm, strictCode: boolean,
     for (let dn of BoundNames(realm, d)) {
       if (envRec.HasBinding(dn)) {
         //ECMA262 13.2.1
-        throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
-          dn + " already declared");
+        throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, dn + " already declared");
       }
       // i. If IsConstantDeclaration of d is true, then
       if (d.type === "VariableDeclaration" && d.kind === "const") {
         // 1. Perform ! envRec.CreateImmutableBinding(dn, true).
         envRec.CreateImmutableBinding(dn, true);
-      } else { // ii. Else,
+      } else {
+        // ii. Else,
         // 1. Perform ! envRec.CreateMutableBinding(dn, false).
         envRec.CreateMutableBinding(dn, false);
       }
@@ -329,7 +342,11 @@ export function BlockDeclarationInstantiation(realm: Realm, strictCode: boolean,
 }
 
 // ECMA262 8.1.2.5
-export function NewGlobalEnvironment(realm: Realm, G: ObjectValue | AbstractObjectValue, thisValue: ObjectValue | AbstractObjectValue) {
+export function NewGlobalEnvironment(
+  realm: Realm,
+  G: ObjectValue | AbstractObjectValue,
+  thisValue: ObjectValue | AbstractObjectValue
+) {
   // 1. Let env be a new Lexical Environment.
   let env = new LexicalEnvironment(realm);
 
@@ -364,9 +381,12 @@ export function NewGlobalEnvironment(realm: Realm, G: ObjectValue | AbstractObje
   return env;
 }
 
-
 // ECMA262 8.1.2.3
-export function NewObjectEnvironment(realm: Realm, O: ObjectValue | AbstractObjectValue, E: LexicalEnvironment): LexicalEnvironment {
+export function NewObjectEnvironment(
+  realm: Realm,
+  O: ObjectValue | AbstractObjectValue,
+  E: LexicalEnvironment
+): LexicalEnvironment {
   // 1. Let env be a new Lexical Environment.
   let env = new LexicalEnvironment(realm);
 
@@ -389,7 +409,10 @@ export function NewFunctionEnvironment(realm: Realm, F: FunctionValue, newTarget
   invariant(F instanceof FunctionValue, "expected a function");
 
   // 2. Assert: Type(newTarget) is Undefined or Object.
-  invariant(newTarget === undefined || newTarget instanceof ObjectValue, "expected undefined or object value for new target");
+  invariant(
+    newTarget === undefined || newTarget instanceof ObjectValue,
+    "expected undefined or object value for new target"
+  );
 
   // 3. Let env be a new Lexical Environment.
   let env = new LexicalEnvironment(realm);
@@ -403,7 +426,8 @@ export function NewFunctionEnvironment(realm: Realm, F: FunctionValue, newTarget
   // 6. If F's [[ThisMode]] internal slot is lexical, set envRec.[[ThisBindingStatus]] to "lexical".
   if (F.$ThisMode === "lexical") {
     envRec.$ThisBindingStatus = "lexical";
-  } else { // 7. Else, set envRec.[[ThisBindingStatus]] to "uninitialized".
+  } else {
+    // 7. Else, set envRec.[[ThisBindingStatus]] to "uninitialized".
     envRec.$ThisBindingStatus = "uninitialized";
   }
 
@@ -488,8 +512,15 @@ export function ResolveThisBinding(realm: Realm): NullValue | ObjectValue | Abst
   return envRec.GetThisBinding();
 }
 
-export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: Value, strictCode: boolean, environment: void | LexicalEnvironment) {
-  if (node.type === "ArrayPattern") { // ECMA262 13.3.3.5
+export function BindingInitialization(
+  realm: Realm,
+  node: BabelNodeLVal,
+  value: Value,
+  strictCode: boolean,
+  environment: void | LexicalEnvironment
+) {
+  if (node.type === "ArrayPattern") {
+    // ECMA262 13.3.3.5
     // 1. Let iterator be ? GetIterator(value).
     let iterator = GetIterator(realm, value);
 
@@ -522,7 +553,8 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
 
     // 5. Return result.
     return result;
-  } else if (node.type === "ObjectPattern") { // ECMA262 13.3.3.5
+  } else if (node.type === "ObjectPattern") {
+    // ECMA262 13.3.3.5
     // BindingPattern : ObjectBindingPattern
 
     // 1. Perform ? RequireObjectCoercible(value).
@@ -540,13 +572,15 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
       // 3. Return the result of performing KeyedBindingInitialization for BindingElement using value, environment, and P as arguments.
       KeyedBindingInitialization(realm, property.value, value, strictCode, environment, P);
     }
-  } else if (node.type === "Identifier") { // ECMA262 12.1.5
+  } else if (node.type === "Identifier") {
+    // ECMA262 12.1.5
     // 1. Let name be StringValue of Identifier.
     let name = ((node: any): BabelNodeIdentifier).name;
 
     // 2. Return ? InitializeBoundName(name, value, environment).
     return InitializeBoundName(realm, name, value, environment);
-  } else if (node.type === "VariableDeclaration") { // ECMA262 13.7.5.9
+  } else if (node.type === "VariableDeclaration") {
+    // ECMA262 13.7.5.9
     for (let decl of ((node: any): BabelNodeVariableDeclaration).declarations) {
       BindingInitialization(realm, decl.id, value, strictCode, environment);
     }
@@ -557,7 +591,13 @@ export function BindingInitialization(realm: Realm, node: BabelNodeLVal, value: 
 
 // ECMA262 13.3.3.6
 // ECMA262 14.1.19
-export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyArray<BabelNodeLVal | null>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strictCode: boolean, environment: void | LexicalEnvironment) {
+export function IteratorBindingInitialization(
+  realm: Realm,
+  formals: $ReadOnlyArray<BabelNodeLVal | null>,
+  iteratorRecord: { $Iterator: ObjectValue, $Done: boolean },
+  strictCode: boolean,
+  environment: void | LexicalEnvironment
+) {
   let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
   // Check if the last formal is a rest element. If so then we want to save the
@@ -606,7 +646,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
       param = param.left;
     }
 
-    if (param.type === 'Identifier') {
+    if (param.type === "Identifier") {
       // SingleNameBinding : BindingIdentifier Initializer
 
       // 1. Let bindingId be StringValue of BindingIdentifier.
@@ -639,7 +679,8 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
           // Normally this assignment would be done in step 4, but we do it
           // here so that Flow knows `v` will always be initialized by step 5.
           v = realm.intrinsics.undefined;
-        } else { // e. Else,
+        } else {
+          // e. Else,
           // i. Let v be IteratorValue(next).
           try {
             v = IteratorValue(realm, next);
@@ -652,7 +693,8 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
             throw e;
           }
         }
-      } else { // 4. If iteratorRecord.[[Done]] is true, let v be undefined.
+      } else {
+        // 4. If iteratorRecord.[[Done]] is true, let v be undefined.
         v = realm.intrinsics.undefined;
       }
 
@@ -665,8 +707,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
         v = GetValue(realm, defaultValue);
 
         // c. If IsAnonymousFunctionDefinition(Initializer) is true, then
-        if (IsAnonymousFunctionDefinition(realm, Initializer) &&
-            v instanceof ObjectValue) {
+        if (IsAnonymousFunctionDefinition(realm, Initializer) && v instanceof ObjectValue) {
           // i. Let hasNameProperty be ? HasOwnProperty(v, "name").
           let hasNameProperty = HasOwnProperty(realm, v, "name");
 
@@ -686,7 +727,7 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
       // 7. Return InitializeReferencedBinding(lhs, v).
       InitializeReferencedBinding(realm, lhs, v);
       continue;
-    } else if (param.type === 'ObjectPattern' || param.type === 'ArrayPattern') {
+    } else if (param.type === "ObjectPattern" || param.type === "ArrayPattern") {
       // BindingElement : BindingPatternInitializer
 
       // Initialized later in the algorithm.
@@ -713,7 +754,8 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
           // Normally this assignment would be done in step 2, but we do it
           // here so that Flow knows `v` will always be initialized by step 3.
           v = realm.intrinsics.undefined;
-        } else { // e. Else,
+        } else {
+          // e. Else,
           // i. Let v be IteratorValue(next).
           try {
             v = IteratorValue(realm, next);
@@ -726,7 +768,8 @@ export function IteratorBindingInitialization(realm: Realm, formals: $ReadOnlyAr
             throw e;
           }
         }
-      } else { // 2. If iteratorRecord.[[Done]] is true, let v be undefined.
+      } else {
+        // 2. If iteratorRecord.[[Done]] is true, let v be undefined.
         v = realm.intrinsics.undefined;
       }
 
@@ -909,7 +952,8 @@ export function InitializeBoundName(realm: Realm, name: string, value: Value, en
 
     // c. Return NormalCompletion(undefined).
     return realm.intrinsics.undefined;
-  } else { // 3. Else,
+  } else {
+    // 3. Else,
     // a. Let lhs be ResolveBinding(name).
     // Note that the undefined environment implies non-strict.
     let lhs = ResolveBinding(realm, name, false);
@@ -952,7 +996,14 @@ export function IsDestructuring(ast: BabelNode) {
 }
 
 // ECMA262 13.3.3.7
-export function KeyedBindingInitialization(realm: Realm, node: BabelNodeIdentifier | BabelNodePattern, value: Value, strictCode: boolean, environment: ?LexicalEnvironment, propertyName: PropertyKeyValue) {
+export function KeyedBindingInitialization(
+  realm: Realm,
+  node: BabelNodeIdentifier | BabelNodePattern,
+  value: Value,
+  strictCode: boolean,
+  environment: ?LexicalEnvironment,
+  propertyName: PropertyKeyValue
+) {
   let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
   let Initializer;
@@ -961,7 +1012,7 @@ export function KeyedBindingInitialization(realm: Realm, node: BabelNodeIdentifi
     node = node.left;
   }
 
-  if (node.type === 'Identifier') {
+  if (node.type === "Identifier") {
     // SingleNameBinding : BindingIdentifier Initializer
 
     // 1. Let bindingId be StringValue of BindingIdentifier.
@@ -982,8 +1033,7 @@ export function KeyedBindingInitialization(realm: Realm, node: BabelNodeIdentifi
       v = GetValue(realm, defaultValue);
 
       // c. If IsAnonymousFunctionDefinition(Initializer) is true, then
-      if (IsAnonymousFunctionDefinition(realm, Initializer) &&
-          v instanceof ObjectValue) {
+      if (IsAnonymousFunctionDefinition(realm, Initializer) && v instanceof ObjectValue) {
         // i. Let hasNameProperty be ? HasOwnProperty(v, "name").
         let hasNameProperty = HasOwnProperty(realm, v, "name");
 

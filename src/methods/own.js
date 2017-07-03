@@ -47,13 +47,13 @@ export function OrdinaryOwnPropertyKeys(realm: Realm, o: ObjectValue): Array<Pro
 
   // 2. For each own property key P of O that is an integer index, in ascending numeric index order
   let properties = o.getOwnPropertyKeysArray();
-  for (let key of properties.filter((x) => IsArrayIndex(realm, x)).map((x) => parseInt(x, 10)).sort((x, y) => x - y)) {
+  for (let key of properties.filter(x => IsArrayIndex(realm, x)).map(x => parseInt(x, 10)).sort((x, y) => x - y)) {
     // i. Add P as the last element of keys.
     keys.push(new StringValue(realm, key + ""));
   }
 
   // 3. For each own property key P of O that is a String but is not an integer index, in ascending chronological order of property creation
-  for (let key of properties.filter((x) => !IsArrayIndex(realm, x))) {
+  for (let key of properties.filter(x => !IsArrayIndex(realm, x))) {
     // i. Add P as the last element of keys.
     keys.push(new StringValue(realm, key));
   }
@@ -93,14 +93,16 @@ export function EnumerableOwnProperties(realm: Realm, O: ObjectValue, kind: stri
         // 1. If kind is "key", append key to properties.
         if (kind === "key") {
           properties.push(key);
-        } else { // 2. Else,
+        } else {
+          // 2. Else,
           // a. Let value be ? Get(O, key).
           let value = Get(realm, O, key);
 
           // b. If kind is "value", append value to properties.
           if (kind === "value") {
             properties.push(value);
-          } else { // c. Else,
+          } else {
+            // c. Else,
             // i. Assert: kind is "key+value".
             invariant(kind === "key+value", "expected kind to be key+value");
 

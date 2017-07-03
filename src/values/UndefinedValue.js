@@ -19,5 +19,4 @@ export default class UndefinedValue extends PrimitiveValue {
   mightBeFalse(): boolean {
     return true;
   }
-
 }

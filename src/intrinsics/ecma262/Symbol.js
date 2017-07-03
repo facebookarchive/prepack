@@ -14,9 +14,9 @@ import { NativeFunctionValue, StringValue, SymbolValue, UndefinedValue } from ".
 import { ToStringPartial } from "../../methods/index.js";
 import { SameValue } from "../../methods/abstract.js";
 
-let GlobalSymbolRegistry: Array<{$Key: string, $Symbol: SymbolValue}> = [];
+let GlobalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }> = [];
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.4.1.1
   let func = new NativeFunctionValue(realm, "Symbol", "Symbol", 0, (context, [description], argCount, NewTarget) => {
     // 1. If NewTarget is not undefined, throw a TypeError exception.
@@ -28,7 +28,8 @@ export default function (realm: Realm): NativeFunctionValue {
     let descString;
     if (!description || description instanceof UndefinedValue) {
       descString = undefined;
-    } else { // 3. Else, let descString be ? ToString(description).
+    } else {
+      // 3. Else, let descString be ? ToString(description).
       descString = ToStringPartial(realm, description);
     }
 
@@ -65,8 +66,7 @@ export default function (realm: Realm): NativeFunctionValue {
   func.defineNativeMethod("keyFor", 1, (context, [sym]) => {
     // 1. If Type(sym) is not Symbol, throw a TypeError exception.
     if (!(sym instanceof SymbolValue)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-        "Type(sym) is not Symbol");
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(sym) is not Symbol");
     }
 
     // 2. For each element e of the GlobalSymbolRegistry List (see 19.4.2.1),

@@ -14,14 +14,21 @@ import { NativeFunctionValue } from "../../values/index.js";
 import { NumberValue } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/to.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.4
-  return new NativeFunctionValue(realm, "parseFloat", "parseFloat", 1, (context, [string]) => {
-    if (!string) return realm.intrinsics.NaN;
+  return new NativeFunctionValue(
+    realm,
+    "parseFloat",
+    "parseFloat",
+    1,
+    (context, [string]) => {
+      if (!string) return realm.intrinsics.NaN;
 
-    // 1. Let inputString be ? ToString(string).
-    let inputString = ToStringPartial(realm, string);
+      // 1. Let inputString be ? ToString(string).
+      let inputString = ToStringPartial(realm, string);
 
-    return new NumberValue(realm, parseFloat(inputString));
-  }, false);
+      return new NumberValue(realm, parseFloat(inputString));
+    },
+    false
+  );
 }

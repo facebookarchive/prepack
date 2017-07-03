@@ -15,6 +15,11 @@ import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import type { BabelNodeYieldExpression } from "babel-types";
 
-export default function (ast: BabelNodeYieldExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeYieldExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   throw new Error("TODO: YieldExpression");
 }

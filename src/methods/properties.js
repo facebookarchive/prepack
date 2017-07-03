@@ -11,8 +11,21 @@
 
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
-import { ArrayValue, UndefinedValue, NumberValue, SymbolValue, NullValue, BooleanValue, ObjectValue, StringValue, Value, ConcreteValue, AbstractValue, AbstractObjectValue } from "../values/index.js";
-import { EvalPropertyNamePartial } from '../evaluators/ObjectExpression';
+import {
+  ArrayValue,
+  UndefinedValue,
+  NumberValue,
+  SymbolValue,
+  NullValue,
+  BooleanValue,
+  ObjectValue,
+  StringValue,
+  Value,
+  ConcreteValue,
+  AbstractValue,
+  AbstractObjectValue,
+} from "../values/index.js";
+import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { CreateIterResultObject } from "../methods/create.js";
 import invariant from "../invariant.js";
@@ -124,8 +137,9 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
 // Determines if an object with parent O may create its own property P.
 function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean {
   let ownDesc = O.$GetOwnProperty(P);
-  let ownDescValue = !ownDesc ? realm.intrinsics.undefined :
-    (ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value);
+  let ownDescValue = !ownDesc
+    ? realm.intrinsics.undefined
+    : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
 
   if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
     // O might not object, so first ask its parent
@@ -162,8 +176,9 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
 
   // 2. Let ownDesc be ? O.[[GetOwnProperty]](P).
   let ownDesc = O.$GetOwnProperty(P);
-  let ownDescValue = !ownDesc ? realm.intrinsics.undefined :
-    (ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value);
+  let ownDescValue = !ownDesc
+    ? realm.intrinsics.undefined
+    : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
 
   // 3. If ownDesc is undefined (or might be), then
   if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
@@ -193,7 +208,7 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
         value: realm.intrinsics.undefined,
         writable: true,
         enumerable: true,
-        configurable: true
+        configurable: true,
       };
   }
 
@@ -213,19 +228,22 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
 
     // b. If Type(Receiver) is not Object, return false.
     Receiver = Receiver.throwIfNotConcrete();
-    if (!(Receiver instanceof ObjectValue))
-      return false;
+    if (!(Receiver instanceof ObjectValue)) return false;
 
     // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
     let existingDescriptor = Receiver.$GetOwnProperty(P);
-    let existingDescValue = !existingDescriptor ? realm.intrinsics.undefined :
-      (existingDescriptor.value === undefined ? realm.intrinsics.undefined : existingDescriptor.value);
+    let existingDescValue = !existingDescriptor
+      ? realm.intrinsics.undefined
+      : existingDescriptor.value === undefined ? realm.intrinsics.undefined : existingDescriptor.value;
 
     // d. If existingDescriptor is not undefined, then
     if (existingDescriptor !== undefined) {
       // i. If IsAccessorDescriptor(existingDescriptor) is true, return false.
       if (IsAccessorDescriptor(realm, existingDescriptor)) {
-        invariant(!existingDescValue.mightHaveBeenDeleted(), "should not fail until weak deletes of accessors are suppported");
+        invariant(
+          !existingDescValue.mightHaveBeenDeleted(),
+          "should not fail until weak deletes of accessors are suppported"
+        );
         return false;
       }
 
@@ -255,7 +273,8 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
         Receiver.$Delete(P);
       }
       return Receiver.$DefineOwnProperty(P, valueDesc);
-    } else { // e. Else Receiver does not currently have a property P,
+    } else {
+      // e. Else Receiver does not currently have a property P,
 
       // i. Return ? CreateDataProperty(Receiver, P, V).
       return CreateDataProperty(realm, Receiver, P, V);
@@ -269,8 +288,7 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
   let setter = "set" in ownDesc ? ownDesc.set : undefined;
 
   // 7. If setter is undefined, return false.
-  if (!setter || setter instanceof UndefinedValue)
-    return false;
+  if (!setter || setter instanceof UndefinedValue) return false;
 
   // 8. Perform ? Call(setter, Receiver, « V »).
   Call(realm, setter.throwIfNotConcrete(), Receiver, [V]);
@@ -408,35 +426,46 @@ export function CompletePropertyDescriptor(realm: Realm, Desc: Descriptor): Desc
   // 3. If either IsGenericDescriptor(Desc) or IsDataDescriptor(Desc) is true, then
   if (IsGenericDescriptor(realm, Desc) || IsDataDescriptor(realm, Desc)) {
     // a. If Desc does not have a [[Value]] field, set Desc.[[Value]] to like.[[Value]].
-    if (!('value' in Desc)) Desc.value = like.value;
+    if (!("value" in Desc)) Desc.value = like.value;
     // b. If Desc does not have a [[Writable]] field, set Desc.[[Writable]] to like.[[Writable]].
-    if (!('writable' in Desc)) Desc.writable = like.writable;
-  } else { // 4. Else,
+    if (!("writable" in Desc)) Desc.writable = like.writable;
+  } else {
+    // 4. Else,
     // a. If Desc does not have a [[Get]] field, set Desc.[[Get]] to like.[[Get]].
-    if (!('get' in Desc)) Desc.get = like.get;
+    if (!("get" in Desc)) Desc.get = like.get;
     // b. If Desc does not have a [[Set]] field, set Desc.[[Set]] to like.[[Set]].
-    if (!('set' in Desc)) Desc.set = like.set;
+    if (!("set" in Desc)) Desc.set = like.set;
   }
 
   // 5. If Desc does not have an [[Enumerable]] field, set Desc.[[Enumerable]] to like.[[Enumerable]].
-  if (!('enumerable' in Desc)) Desc.enumerable = like.enumerable;
+  if (!("enumerable" in Desc)) Desc.enumerable = like.enumerable;
 
   // 6. If Desc does not have a [[Configurable]] field, set Desc.[[Configurable]] to like.[[Configurable]].
-  if (!('configurable' in Desc)) Desc.configurable = like.configurable;
+  if (!("configurable" in Desc)) Desc.configurable = like.configurable;
 
   // 7. Return Desc.
   return Desc;
 }
 
 // ECMA262 9.1.6.2
-export function IsCompatiblePropertyDescriptor(realm: Realm, extensible: boolean, Desc: Descriptor, current: ?Descriptor): boolean {
+export function IsCompatiblePropertyDescriptor(
+  realm: Realm,
+  extensible: boolean,
+  Desc: Descriptor,
+  current: ?Descriptor
+): boolean {
   // 1. Return ValidateAndApplyPropertyDescriptor(undefined, undefined, Extensible, Desc, Current).
   return ValidateAndApplyPropertyDescriptor(realm, undefined, undefined, extensible, Desc, current);
 }
 
 // ECMA262 9.1.6.3
 export function ValidateAndApplyPropertyDescriptor(
-  realm: Realm, O: void | ObjectValue, P: void | PropertyKeyValue, extensible: boolean, Desc: Descriptor, current: ?Descriptor
+  realm: Realm,
+  O: void | ObjectValue,
+  P: void | PropertyKeyValue,
+  extensible: boolean,
+  Desc: Descriptor,
+  current: ?Descriptor
 ): boolean {
   // 1. Assert: If O is not undefined, then IsPropertyKey(P) is true.
   if (O !== undefined) {
@@ -461,14 +490,15 @@ export function ValidateAndApplyPropertyDescriptor(
       if (O !== undefined) {
         invariant(P !== undefined);
         InternalSetProperty(realm, O, P, {
-          value: 'value' in Desc ? Desc.value : realm.intrinsics.undefined,
-          writable: 'writable' in Desc ? Desc.writable : false,
-          enumerable: 'enumerable' in Desc ? Desc.enumerable : false,
-          configurable: 'configurable' in Desc ? Desc.configurable : false
+          value: "value" in Desc ? Desc.value : realm.intrinsics.undefined,
+          writable: "writable" in Desc ? Desc.writable : false,
+          enumerable: "enumerable" in Desc ? Desc.enumerable : false,
+          configurable: "configurable" in Desc ? Desc.configurable : false,
         });
         InternalUpdatedProperty(realm, O, P);
       }
-    } else { // d. Else Desc must be an accessor Property Descriptor,
+    } else {
+      // d. Else Desc must be an accessor Property Descriptor,
       // i. If O is not undefined, create an own accessor property named P of object O whose [[Get]],
       //    [[Set]], [[Enumerable]] and [[Configurable]] attribute values are described by Desc. If the value
       //    of an attribute field of Desc is absent, the attribute of the newly created property is set to its
@@ -476,10 +506,10 @@ export function ValidateAndApplyPropertyDescriptor(
       if (O !== undefined) {
         invariant(P !== undefined);
         InternalSetProperty(realm, O, P, {
-          get: 'get' in Desc ? Desc.get : realm.intrinsics.undefined,
-          set: 'set' in Desc ? Desc.set : realm.intrinsics.undefined,
-          enumerable: 'enumerable' in Desc ? Desc.enumerable : false,
-          configurable: 'configurable' in Desc ? Desc.configurable : false
+          get: "get" in Desc ? Desc.get : realm.intrinsics.undefined,
+          set: "set" in Desc ? Desc.set : realm.intrinsics.undefined,
+          enumerable: "enumerable" in Desc ? Desc.enumerable : false,
+          configurable: "configurable" in Desc ? Desc.configurable : false,
         });
         InternalUpdatedProperty(realm, O, P);
       }
@@ -502,8 +532,7 @@ export function ValidateAndApplyPropertyDescriptor(
     } else {
       let dval = InternalDescriptorPropertyToValue(realm, Desc[field]);
       let cval = InternalDescriptorPropertyToValue(realm, current[field]);
-      if (dval instanceof ConcreteValue && cval instanceof ConcreteValue)
-        identical = SameValue(realm, dval, cval);
+      if (dval instanceof ConcreteValue && cval instanceof ConcreteValue) identical = SameValue(realm, dval, cval);
       else {
         identical = dval === cval;
         // This might be false now but true at runtime. This does not
@@ -524,15 +553,15 @@ export function ValidateAndApplyPropertyDescriptor(
     if (Desc.configurable) return false;
 
     // b. Return false, if the [[Enumerable]] field of Desc is present and the [[Enumerable]] fields of current and Desc are the Boolean negation of each other.
-    if ('enumerable' in Desc && Desc.enumerable !== current.enumerable) {
+    if ("enumerable" in Desc && Desc.enumerable !== current.enumerable) {
       return false;
     }
   }
 
   // 6. If IsGenericDescriptor(Desc) is true, no further validation is required.
   if (IsGenericDescriptor(realm, Desc)) {
-
-  } else if (IsDataDescriptor(realm, current) !== IsDataDescriptor(realm, Desc)) { // 7. Else if IsDataDescriptor(current) and IsDataDescriptor(Desc) have different results, then
+  } else if (IsDataDescriptor(realm, current) !== IsDataDescriptor(realm, Desc)) {
+    // 7. Else if IsDataDescriptor(current) and IsDataDescriptor(Desc) have different results, then
     // a. Return false, if the [[Configurable]] field of current is false.
     if (!current.configurable) return false;
 
@@ -552,7 +581,8 @@ export function ValidateAndApplyPropertyDescriptor(
         current.get = realm.intrinsics.undefined;
         current.set = realm.intrinsics.undefined;
       }
-    } else { // c. Else,
+    } else {
+      // c. Else,
       // i. If O is not undefined, convert the property named P of object O from an accessor property to a data property. Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
       if (O !== undefined) {
         invariant(P !== undefined);
@@ -567,7 +597,8 @@ export function ValidateAndApplyPropertyDescriptor(
         current.value = realm.intrinsics.undefined;
       }
     }
-  } else if (IsDataDescriptor(realm, current) && IsDataDescriptor(realm, Desc)) { // 8. Else if IsDataDescriptor(current) and IsDataDescriptor(Desc) are both true, then
+  } else if (IsDataDescriptor(realm, current) && IsDataDescriptor(realm, Desc)) {
+    // 8. Else if IsDataDescriptor(current) and IsDataDescriptor(Desc) are both true, then
     // a. If the [[Configurable]] field of current is false, then
     if (!current.configurable) {
       // i. Return false, if the [[Writable]] field of current is false and the [[Writable]] field of Desc is true.
@@ -580,11 +611,13 @@ export function ValidateAndApplyPropertyDescriptor(
           return false;
         }
       }
-    } else { // b. Else the [[Configurable]] field of current is true, so any change is acceptable.
+    } else {
+      // b. Else the [[Configurable]] field of current is true, so any change is acceptable.
     }
     current = cloneDescriptor(current);
     invariant(current !== undefined);
-  } else { // 9. Else IsAccessorDescriptor(current) and IsAccessorDescriptor(Desc) are both true,
+  } else {
+    // 9. Else IsAccessorDescriptor(current) and IsAccessorDescriptor(Desc) are both true,
     // a. If the [[Configurable]] field of current is false, then
     if (!current.configurable) {
       // i. Return false, if the [[Set]] field of Desc is present and SameValue(Desc.[[Set]], current.[[Set]]) is false.
@@ -627,7 +660,12 @@ export function ValidateAndApplyPropertyDescriptor(
 }
 
 // ECMA262 9.1.6.1
-export function OrdinaryDefineOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, Desc: Descriptor): boolean {
+export function OrdinaryDefineOwnProperty(
+  realm: Realm,
+  O: ObjectValue,
+  P: PropertyKeyValue,
+  Desc: Descriptor
+): boolean {
   invariant(O instanceof ObjectValue);
 
   // 1. Let current be ? O.[[GetOwnProperty]](P).
@@ -693,7 +731,13 @@ export function ObjectDefineProperties(realm: Realm, O: Value, Properties: Value
 }
 
 // ECMA262 7.3.3
-export function Set(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue, V: Value, Throw: boolean): boolean {
+export function Set(
+  realm: Realm,
+  O: ObjectValue | AbstractObjectValue,
+  P: PropertyKeyValue,
+  V: Value,
+  Throw: boolean
+): boolean {
   // 1. Assert: Type(O) is Object.
   invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "expected object value");
 
@@ -716,7 +760,12 @@ export function Set(realm: Realm, O: ObjectValue | AbstractObjectValue, P: Prope
 }
 
 // ECMA262 7.3.7
-export function DefinePropertyOrThrow(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue, desc: Descriptor): boolean {
+export function DefinePropertyOrThrow(
+  realm: Realm,
+  O: ObjectValue | AbstractObjectValue,
+  P: PropertyKeyValue,
+  desc: Descriptor
+): boolean {
   // 1. Assert: Type(O) is Object.
   invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "expected object");
 
@@ -734,7 +783,6 @@ export function DefinePropertyOrThrow(realm: Realm, O: ObjectValue | AbstractObj
   // 5. Return success.
   return success;
 }
-
 
 // ECMA262 6.2.3.2
 export function PutValue(realm: Realm, V: Value | Reference, W: Value) {
@@ -832,8 +880,10 @@ export function ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor): b
 
   // 8. Assert: oldLenDesc will never be undefined or an accessor descriptor because Array objects are created
   //    with a length data property that cannot be deleted or reconfigured.
-  invariant(oldLenDesc !== undefined &&
-    !IsAccessorDescriptor(realm, oldLenDesc), "cannot be undefined or an accessor descriptor");
+  invariant(
+    oldLenDesc !== undefined && !IsAccessorDescriptor(realm, oldLenDesc),
+    "cannot be undefined or an accessor descriptor"
+  );
 
   // 9. Let oldLen be oldLenDesc.[[Value]].
   let oldLen = oldLenDesc.value;
@@ -855,7 +905,8 @@ export function ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor): b
   let newWritable;
   if (!("writable" in newLenDesc) || newLenDesc.writable === true) {
     newWritable = true;
-  } else { // 13. Else,
+  } else {
+    // 13. Else,
     // a. Need to defer setting the [[Writable]] attribute to false in case any elements cannot be deleted.
 
     // b. Let newWritable be false.
@@ -875,10 +926,10 @@ export function ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor): b
   // oldLen to newLen, only the indices that are actually present are touched.
   let oldLenCopy = oldLen;
   let keys = Array.from(A.properties.keys())
-      .map((x) => parseInt(x, 10))
-      .filter((x) => newLen <= x && x <= oldLenCopy)
-      .sort()
-      .reverse();
+    .map(x => parseInt(x, 10))
+    .filter(x => newLen <= x && x <= oldLenCopy)
+    .sort()
+    .reverse();
 
   // 16. While newLen < oldLen repeat,
   for (let key of keys) {
@@ -908,7 +959,7 @@ export function ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor): b
   if (!newWritable) {
     // a. Return OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Writable]]: false}). This call will always return true.
     return OrdinaryDefineOwnProperty(realm, A, "length", {
-      writable: false
+      writable: false,
     });
   }
 
@@ -947,9 +998,9 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
       value = realmGenerator.derive(value.types, value.values, value.args, value._buildNode, "resolved");
       InternalSetProperty(realm, O, P, {
         value: value,
-        writable: 'writable' in X ? X.writable : false,
-        enumerable: 'enumerable' in X ? X.enumerable : false,
-        configurable: 'configurable' in X ? X.configurable : false
+        writable: "writable" in X ? X.writable : false,
+        enumerable: "enumerable" in X ? X.enumerable : false,
+        configurable: "configurable" in X ? X.configurable : false,
       });
     }
 
@@ -958,7 +1009,8 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
 
     // b. Set D.[[Writable]] to the value of X's [[Writable]] attribute.
     D.writable = X.writable;
-  } else { // 6. Else X is an accessor property,
+  } else {
+    // 6. Else X is an accessor property,
     invariant(IsAccessorDescriptor(realm, X), "expected accessor property");
 
     // a. Set D.[[Get]] to the value of X's [[Get]] attribute.
@@ -1006,9 +1058,11 @@ export function OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectVa
     // a. If p is null, let done be true.
     if (p instanceof NullValue) {
       done = true;
-    } else if (SameValue(realm, p, O)) { // b. Else if SameValue(p, O) is true, return false.
+    } else if (SameValue(realm, p, O)) {
+      // b. Else if SameValue(p, O) is true, return false.
       return false;
-    } else { // c. Else,
+    } else {
+      // c. Else,
       // TODO i. If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
 
       // ii. Else, let p be the value of p's [[Prototype]] internal slot.
@@ -1088,9 +1142,16 @@ export function ThrowIfInternalSlotNotWritable<T: ObjectValue>(realm: Realm, obj
 }
 
 // ECMA 14.3.9
-export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: BabelNodeObjectMethod | BabelNodeClassMethod, object: ObjectValue, env: LexicalEnvironment, strictCode: boolean, enumerable: boolean) {
+export function PropertyDefinitionEvaluation(
+  realm: Realm,
+  MethodDefinition: BabelNodeObjectMethod | BabelNodeClassMethod,
+  object: ObjectValue,
+  env: LexicalEnvironment,
+  strictCode: boolean,
+  enumerable: boolean
+) {
   // MethodDefinition : PropertyName ( StrictFormalParameters ) { FunctionBody }
-  if (MethodDefinition.kind === 'method') {
+  if (MethodDefinition.kind === "method") {
     // 1. Let methodDef be DefineMethod of MethodDefinition with argument object.
     let methodDef = DefineMethod(realm, MethodDefinition, object, env, strictCode);
 
@@ -1104,7 +1165,8 @@ export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: Bab
 
     // 5. Return DefinePropertyOrThrow(object, methodDef.[[key]], desc).
     return DefinePropertyOrThrow(realm, object, methodDef.$Key, desc);
-  } else if (MethodDefinition.kind === 'generator') { // MethodDefinition : GeneratorMethod
+  } else if (MethodDefinition.kind === "generator") {
+    // MethodDefinition : GeneratorMethod
     // See 14.4.
     // ECMA 14.4.13
     // 1. Let propKey be the result of evaluating PropertyName.
@@ -1118,7 +1180,14 @@ export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: Bab
     let scope = env;
 
     // 5. Let closure be GeneratorFunctionCreate(Method, StrictFormalParameters, GeneratorBody, scope, strict).
-    let closure = GeneratorFunctionCreate(realm, "method", MethodDefinition.params, MethodDefinition.body, scope, strict);
+    let closure = GeneratorFunctionCreate(
+      realm,
+      "method",
+      MethodDefinition.params,
+      MethodDefinition.body,
+      scope,
+      strict
+    );
 
     // 6. Perform MakeMethod(closure, object).
     MakeMethod(realm, closure, object);
@@ -1166,12 +1235,12 @@ export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: Bab
     let desc = {
       get: closure,
       enumerable: true,
-      configurable: true
+      configurable: true,
     };
 
     // 10. Return ? DefinePropertyOrThrow(object, propKey, desc).
     DefinePropertyOrThrow(realm, object, propKey, desc);
-  } else if (MethodDefinition.kind === 'set') {
+  } else if (MethodDefinition.kind === "set") {
     // 1. Let propKey be the result of evaluating PropertyName.
     let propKey = EvalPropertyNamePartial(MethodDefinition, env, realm, strictCode);
 
@@ -1196,7 +1265,7 @@ export function PropertyDefinitionEvaluation(realm: Realm, MethodDefinition: Bab
     let desc = {
       set: closure,
       enumerable: true,
-      configurable: true
+      configurable: true,
     };
 
     // 9. Return ? DefinePropertyOrThrow(object, propKey, desc).

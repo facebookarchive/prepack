@@ -16,8 +16,11 @@ import type { Realm } from "../realm.js";
 import { AbruptCompletion } from "../completions.js";
 import { Value } from "../values/index.js";
 
-export default function (
-  ast: BabelNodeClassExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeClassExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [AbruptCompletion | Value, BabelNodeClassExpression, Array<BabelNodeStatement>] {
   throw new Error("TODO: ClassExpression");
 }

@@ -13,18 +13,24 @@ import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { CreateDynamicFunction } from "../../methods/create.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 25.2.1
-  let func = new NativeFunctionValue(realm, "GeneratorFunction", "GeneratorFunction", 1, (context, args, argCount, NewTarget) => {
-    // 1. Let C be the active function object.
-    let C = func;
+  let func = new NativeFunctionValue(
+    realm,
+    "GeneratorFunction",
+    "GeneratorFunction",
+    1,
+    (context, args, argCount, NewTarget) => {
+      // 1. Let C be the active function object.
+      let C = func;
 
-    // 2. Let args be the argumentsList that was passed to this function by [[Call]] or [[Construct]].
-    args = argCount > 0 ? args : [];
+      // 2. Let args be the argumentsList that was passed to this function by [[Call]] or [[Construct]].
+      args = argCount > 0 ? args : [];
 
-    // 3. Return ? CreateDynamicFunction(C, NewTarget, "generator", args).
-    return CreateDynamicFunction(realm, C, NewTarget, "generator", args);
-  });
+      // 3. Return ? CreateDynamicFunction(C, NewTarget, "generator", args).
+      return CreateDynamicFunction(realm, C, NewTarget, "generator", args);
+    }
+  );
 
   return func;
 }

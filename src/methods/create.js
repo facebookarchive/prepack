@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   StringExotic,
   ArgumentsExotic,
-  AbstractObjectValue
+  AbstractObjectValue,
 } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "./get.js";
 import { DefinePropertyOrThrow, OrdinaryDefineOwnProperty } from "./properties.js";
@@ -72,7 +72,7 @@ export function StringCreate(realm: Realm, value: StringValue, prototype: Object
     value: new NumberValue(realm, length),
     writable: false,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   // 11. Return S.
@@ -80,7 +80,13 @@ export function StringCreate(realm: Realm, value: StringValue, prototype: Object
 }
 
 // B.2.3.2.1
-export function CreateHTML(realm: Realm, string: Value, tag: string, attribute: string, value: string | Value): StringValue {
+export function CreateHTML(
+  realm: Realm,
+  string: Value,
+  tag: string,
+  attribute: string,
+  value: string | Value
+): StringValue {
   // 1. Let str be ? RequireObjectCoercible(string).
   let str = RequireObjectCoercible(realm, string);
 
@@ -125,16 +131,30 @@ export function CreateHTML(realm: Realm, string: Value, tag: string, attribute: 
 
 // ECMA262 9.4.4.8.1
 export function MakeArgGetter(realm: Realm, name: string, env: EnvironmentRecord): NativeFunctionValue {
-  return new NativeFunctionValue(realm, undefined, undefined, 0, (context) => {
-     return env.GetBindingValue(name, false);
-  }, false);
+  return new NativeFunctionValue(
+    realm,
+    undefined,
+    undefined,
+    0,
+    context => {
+      return env.GetBindingValue(name, false);
+    },
+    false
+  );
 }
 
 // ECMA262 9.4.4.8.1
 export function MakeArgSetter(realm: Realm, name: string, env: EnvironmentRecord): NativeFunctionValue {
-  return new NativeFunctionValue(realm, undefined, undefined, 1, (context, [value]) => {
-     return env.SetMutableBinding(name, value, false);
-  }, false);
+  return new NativeFunctionValue(
+    realm,
+    undefined,
+    undefined,
+    1,
+    (context, [value]) => {
+      return env.SetMutableBinding(name, value, false);
+    },
+    false
+  );
 }
 
 // ECMA262 21.1.5.1
@@ -145,7 +165,7 @@ export function CreateStringIterator(realm: Realm, string: StringValue): ObjectV
   // 2. Let iterator be ObjectCreate(%StringIteratorPrototype%, « [[IteratedString]], [[StringIteratorNextIndex]] »).
   let iterator = ObjectCreate(realm, realm.intrinsics.StringIteratorPrototype, {
     $IteratedString: undefined,
-    $StringIteratorNextIndex: undefined
+    $StringIteratorNextIndex: undefined,
   });
 
   // 3. Set iterator's [[IteratedString]] internal slot to string.
@@ -248,7 +268,7 @@ export function CreateArrayIterator(realm: Realm, array: ObjectValue, kind: Iter
   let iterator = ObjectCreate(realm, realm.intrinsics.ArrayIteratorPrototype, {
     $IteratedObject: undefined,
     $ArrayIteratorNextIndex: undefined,
-    $ArrayIterationKind: undefined
+    $ArrayIterationKind: undefined,
   });
 
   // 3. Set iterator's [[IteratedObject]] internal slot to array.
@@ -297,7 +317,7 @@ export function ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): 
     value: new NumberValue(realm, length),
     writable: true,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   // 11. Return A.
@@ -348,7 +368,7 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
     value: new NumberValue(realm, len),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // 5. Let index be 0.
@@ -372,7 +392,7 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
     value: realm.intrinsics.ArrayProto_values,
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // 8. Perform ! DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Get]]:
@@ -381,7 +401,7 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
     get: realm.intrinsics.ThrowTypeError,
     set: realm.intrinsics.ThrowTypeError,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   // 10. Return obj.
@@ -389,7 +409,13 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
 }
 
 // ECMA262 9.4.4.8
-export function CreateMappedArgumentsObject(realm: Realm, func: FunctionValue, formals: Array<BabelNodeLVal>, argumentsList: Array<Value>, env: EnvironmentRecord): ObjectValue {
+export function CreateMappedArgumentsObject(
+  realm: Realm,
+  func: FunctionValue,
+  formals: Array<BabelNodeLVal>,
+  argumentsList: Array<Value>,
+  env: EnvironmentRecord
+): ObjectValue {
   // 1. Assert: formals does not contain a rest parameter, any binding patterns, or any
   //    initializers. It may contain duplicate identifiers.
   for (let param of formals) {
@@ -457,7 +483,7 @@ export function CreateMappedArgumentsObject(realm: Realm, func: FunctionValue, f
     value: new NumberValue(realm, len),
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // 19. Let mappedNames be an empty List.
@@ -490,7 +516,7 @@ export function CreateMappedArgumentsObject(realm: Realm, func: FunctionValue, f
           set: p,
           get: g,
           enumerable: false,
-          configurable: true
+          configurable: true,
         });
       }
     }
@@ -505,7 +531,7 @@ export function CreateMappedArgumentsObject(realm: Realm, func: FunctionValue, f
     value: realm.intrinsics.ArrayProto_values,
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // 23. Perform ! DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Value]]:
@@ -514,7 +540,7 @@ export function CreateMappedArgumentsObject(realm: Realm, func: FunctionValue, f
     value: func,
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // 24. Return obj.
@@ -534,7 +560,7 @@ export function CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyV
     value: V,
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   };
 
   // 4. Return ? O.[[DefineOwnProperty]](P, newDesc).
@@ -554,7 +580,7 @@ export function CreateMethodProperty(realm: Realm, O: ObjectValue, P: PropertyKe
     value: V,
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   };
 
   // 4. Return ? O.[[DefineOwnProperty]](P, newDesc).
@@ -582,7 +608,11 @@ export function CreateDataPropertyOrThrow(realm: Realm, O: Value, P: PropertyKey
 }
 
 // ECMA262 9.1.12
-export function ObjectCreate(realm: Realm, proto: ObjectValue | NullValue, internalSlotsList?: { [key: string]: void }): ObjectValue {
+export function ObjectCreate(
+  realm: Realm,
+  proto: ObjectValue | NullValue,
+  internalSlotsList?: { [key: string]: void }
+): ObjectValue {
   // 1. If internalSlotsList was not provided, let internalSlotsList be an empty List.
   internalSlotsList = internalSlotsList || {};
 
@@ -603,7 +633,12 @@ export function ObjectCreate(realm: Realm, proto: ObjectValue | NullValue, inter
 }
 
 // ECMA262 9.1.13
-export function OrdinaryCreateFromConstructor(realm: Realm, constructor: ObjectValue, intrinsicDefaultProto: string, internalSlotsList?: { [key: string]: void }): ObjectValue {
+export function OrdinaryCreateFromConstructor(
+  realm: Realm,
+  constructor: ObjectValue,
+  intrinsicDefaultProto: string,
+  internalSlotsList?: { [key: string]: void }
+): ObjectValue {
   // 1. Assert: intrinsicDefaultProto is a String value that is this specification's name of an intrinsic
   //    object. The corresponding object must be an intrinsic that is intended to be used as the [[Prototype]]
   //    value of an object.
@@ -660,7 +695,13 @@ export function CreateListFromArrayLike(realm: Realm, obj: Value, elementTypes?:
 }
 
 // ECMA262 19.2.1.1.1
-export function CreateDynamicFunction(realm: Realm, constructor: ObjectValue, newTarget: void | ObjectValue, kind: "normal" | "generator", args: Array<Value>): Value {
+export function CreateDynamicFunction(
+  realm: Realm,
+  constructor: ObjectValue,
+  newTarget: void | ObjectValue,
+  kind: "normal" | "generator",
+  args: Array<Value>
+): Value {
   // 1. If newTarget is undefined, let newTarget be constructor.
   newTarget = !newTarget ? constructor : newTarget;
 
@@ -673,7 +714,8 @@ export function CreateDynamicFunction(realm: Realm, constructor: ObjectValue, ne
 
     // c. Let fallbackProto be "%FunctionPrototype%".
     fallbackProto = "FunctionPrototype";
-  } else { // 3. Else,
+  } else {
+    // 3. Else,
     // a. Let goal be the grammar symbol GeneratorBody.
 
     // b. Let parameterGoal be the grammar symbol FormalParameters[Yield].
@@ -692,9 +734,11 @@ export function CreateDynamicFunction(realm: Realm, constructor: ObjectValue, ne
   // 6. If argCount = 0, let bodyText be the empty String.
   if (argCount === 0) {
     bodyText = realm.intrinsics.emptyString;
-  } else if (argCount === 1) { // 7. Else if argCount = 1, let bodyText be args[0].
+  } else if (argCount === 1) {
+    // 7. Else if argCount = 1, let bodyText be args[0].
     bodyText = args[0];
-  } else { // 8. Else argCount > 1,
+  } else {
+    // 8. Else argCount > 1,
     // a. Let firstArg be args[0].
     let firstArg = args[0];
 
@@ -763,7 +807,7 @@ export function CreateDynamicFunction(realm: Realm, constructor: ObjectValue, ne
     // a. If parameters Contains YieldExpression is true, throw a SyntaxError exception.
     let containsYield = false;
     for (let param of params) {
-      traverse(param, (node) => {
+      traverse(param, node => {
         if (node.type === "YieldExpression") {
           containsYield = true;
           return true;
@@ -811,9 +855,10 @@ export function CreateDynamicFunction(realm: Realm, constructor: ObjectValue, ne
       value: prototype,
       writable: true,
       enumerable: false,
-      configurable: false
+      configurable: false,
     });
-  } else { // 28. Else, perform MakeConstructor(F).
+  } else {
+    // 28. Else, perform MakeConstructor(F).
     MakeConstructor(realm, F);
   }
 

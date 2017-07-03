@@ -16,9 +16,9 @@ import { ToLength } from "../../methods/to.js";
 import { Get } from "../../methods/get.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.5.2.1
-  obj.defineNativeMethod("next", 0, (context) => {
+  obj.defineNativeMethod("next", 0, context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -28,7 +28,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have all of the internal slots of an Array Iterator Instance (22.1.5.3), throw a TypeError exception.
-    if (O.$IteratedObject === undefined || O.$ArrayIteratorNextIndex === undefined || O.$ArrayIterationKind === undefined) {
+    if (
+      O.$IteratedObject === undefined ||
+      O.$ArrayIteratorNextIndex === undefined ||
+      O.$ArrayIterationKind === undefined
+    ) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "ArrayIteratorPrototype.next isn't generic");
     }
 
@@ -53,7 +57,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // a. Let len be the value of a's [[ArrayLength]] internal slot.
       len = a.$ArrayLength;
       invariant(typeof len === "number");
-    } else { // 9. Else,
+    } else {
+      // 9. Else,
       // a. Let len be ? ToLength(? Get(a, "length")).
       len = ToLength(realm, Get(realm, a, "length"));
     }
@@ -85,7 +90,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let result;
     if (itemKind === "value") {
       result = elementValue;
-    } else { // 16. Else,
+    } else {
+      // 16. Else,
       // a. Assert: itemKind is "key+value".
       invariant(itemKind === "key+value", "expected item kind to be key+value");
 
@@ -98,5 +104,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.5.2.2
-  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Array Iterator"), { writable: false });
+  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Array Iterator"), {
+    writable: false,
+  });
 }

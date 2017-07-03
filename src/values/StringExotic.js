@@ -54,7 +54,8 @@ export default class StringExotic extends ObjectValue {
     if (1.0 / index === -Infinity) return undefined;
 
     // 9. Let str be the String value of S.[[StringData]].
-    let str = this.$StringData; invariant(str);
+    let str = this.$StringData;
+    invariant(str);
 
     // 10. Let len be the number of elements in str.
     let len = str.value.length;
@@ -70,7 +71,7 @@ export default class StringExotic extends ObjectValue {
       value: resultStr,
       writable: false,
       enumerable: true,
-      configurable: false
+      configurable: false,
     };
   }
 
@@ -80,7 +81,8 @@ export default class StringExotic extends ObjectValue {
     let keys = [];
 
     // 2. Let str be the String value of O.[[StringData]].
-    let str = this.$StringData; invariant(str);
+    let str = this.$StringData;
+    invariant(str);
 
     // 3. Let len be the number of elements in str.
     let len = str.value.length;
@@ -93,13 +95,17 @@ export default class StringExotic extends ObjectValue {
 
     // 5. For each own property key P of O such that P is an integer index and ToInteger(P) ≥ len, in ascending numeric index order,
     let properties = this.getOwnPropertyKeysArray();
-    for (let key of properties.filter((x) => IsArrayIndex(this.$Realm, x)).map((x) => parseInt(x, 10)).filter((x) => ToInteger(this.$Realm, x) >= len).sort((x, y) => x - y)) {
+    for (let key of properties
+      .filter(x => IsArrayIndex(this.$Realm, x))
+      .map(x => parseInt(x, 10))
+      .filter(x => ToInteger(this.$Realm, x) >= len)
+      .sort((x, y) => x - y)) {
       // i. Add P as the last element of keys.
       keys.push(new StringValue(this.$Realm, key + ""));
     }
 
     // 6. For each own property key P of O such that Type(P) is String and P is not an integer index, in ascending chronological order of property creation,
-    for (let key of properties.filter((x) => !IsArrayIndex(this.$Realm, x))) {
+    for (let key of properties.filter(x => !IsArrayIndex(this.$Realm, x))) {
       // i. Add P as the last element of keys.
       keys.push(new StringValue(this.$Realm, key));
     }

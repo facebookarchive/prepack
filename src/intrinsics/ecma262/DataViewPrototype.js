@@ -15,9 +15,9 @@ import { IsDetachedBuffer } from "../../methods/is.js";
 import { GetViewValue, SetViewValue } from "../../methods/arraybuffer.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 24.2.4.1
-  obj.defineNativeGetter("buffer", (context) => {
+  obj.defineNativeGetter("buffer", context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -27,8 +27,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[DataView]] internal slot, throw a TypeError exception.
-    if (!('$DataView' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[DataView]] internal slot");
+    if (!("$DataView" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have a [[DataView]] internal slot"
+      );
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
@@ -42,7 +45,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.2
-  obj.defineNativeGetter("byteLength", (context) => {
+  obj.defineNativeGetter("byteLength", context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -52,8 +55,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[DataView]] internal slot, throw a TypeError exception.
-    if (!('$DataView' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[DataView]] internal slot");
+    if (!("$DataView" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have a [[DataView]] internal slot"
+      );
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
@@ -76,7 +82,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.3
-  obj.defineNativeGetter("byteOffset", (context) => {
+  obj.defineNativeGetter("byteOffset", context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -86,8 +92,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[DataView]] internal slot, throw a TypeError exception.
-    if (!('$DataView' in O)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "O does not have a [[DataView]] internal slot");
+    if (!("$DataView" in O)) {
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "O does not have a [[DataView]] internal slot"
+      );
     }
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.

@@ -12,9 +12,9 @@
 import type { Realm } from "../../realm.js";
 import { ObjectValue } from "../../values/index.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 25.1.2.1
-  obj.defineNativeMethod(realm.intrinsics.SymbolIterator, 0, (context) => {
+  obj.defineNativeMethod(realm.intrinsics.SymbolIterator, 0, context => {
     // 1. Return the this value.
     return context;
   });

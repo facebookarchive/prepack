@@ -15,15 +15,26 @@ import type { Realm } from "../realm.js";
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { ArrayCreate, CreateDataProperty, GetIterator, GetMethod, IteratorStep, IteratorValue, Set } from "../methods/index.js";
+import {
+  ArrayCreate,
+  CreateDataProperty,
+  GetIterator,
+  GetMethod,
+  IteratorStep,
+  IteratorValue,
+  Set,
+} from "../methods/index.js";
 import { AbstractValue, NumberValue, ObjectValue, StringValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
 // ECMA262 2.2.5.3
-export default function (
-  ast: BabelNodeArrayExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeArrayExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [AbruptCompletion | Value, BabelNodeArrayExpression, Array<BabelNodeStatement>] {
   // 1. Let array be ArrayCreate(0).
   let array = ArrayCreate(realm, 0);
@@ -44,8 +55,7 @@ export default function (
     let elemValue, elemAst, elemIO;
     if (elem.type === "SpreadElement")
       [elemValue, elemAst, elemIO] = env.partiallyEvaluateCompletionDeref(elem.argument, strictCode);
-    else
-      [elemValue, elemAst, elemIO] = env.partiallyEvaluateCompletionDeref(elem, strictCode);
+    else [elemValue, elemAst, elemIO] = env.partiallyEvaluateCompletionDeref(elem, strictCode);
     io.concat(elemIO);
     if (elemValue instanceof AbruptCompletion) {
       return [elemValue, ast, io]; //todo: log an error message
@@ -118,7 +128,10 @@ export default function (
 
       let abstractIndex = realm.createAbstract(
         new TypesDomain(NumberValue),
-        ValuesDomain.topVal, [], t.identifier("never used"));
+        ValuesDomain.topVal,
+        [],
+        t.identifier("never used")
+      );
       array.$SetPartial(abstractIndex, elemValue, array);
     } else {
       // Redundant steps.

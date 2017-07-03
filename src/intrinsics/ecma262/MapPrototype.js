@@ -21,9 +21,9 @@ import {
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.1.3.1
-  obj.defineNativeMethod("clear", 0, (context) => {
+  obj.defineNativeMethod("clear", 0, context => {
     // 1. Let M be the this value.
     let M = context.throwIfNotConcrete();
 
@@ -56,7 +56,6 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 23.1.3.3
   obj.defineNativeMethod("delete", 1, (context, [key]) => {
-
     // 1. Let M be the this value.
     let M = context.throwIfNotConcrete();
 
@@ -96,7 +95,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 23.1.3.4
-  obj.defineNativeMethod("entries", 0, (context) => {
+  obj.defineNativeMethod("entries", 0, context => {
     // 1. Let M be the this value.
     let M = context;
 
@@ -209,7 +208,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 23.1.3.8
-  obj.defineNativeMethod("keys", 0, (context) => {
+  obj.defineNativeMethod("keys", 0, context => {
     // 1. Let M be the this value.
     let M = context;
 
@@ -265,7 +264,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.1.3.10
   obj.$DefineOwnProperty("size", {
     configurable: true,
-    get: new NativeFunctionValue(realm, undefined, "get size", 0, (context) => {
+    get: new NativeFunctionValue(realm, undefined, "get size", 0, context => {
       // 1. Let M be the this value.
       let M = context.throwIfNotConcrete();
 
@@ -294,11 +293,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // 7. Return count.
       return new NumberValue(realm, count);
-    })
+    }),
   });
 
   // ECMA262 23.1.3.11
-  obj.defineNativeMethod("values", 0, (context) => {
+  obj.defineNativeMethod("values", 0, context => {
     // 1. Let M be the this value.
     let M = context;
 

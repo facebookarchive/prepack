@@ -13,21 +13,27 @@ import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { PerformEval } from "../../methods/function.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.1
-  return new NativeFunctionValue(realm, "eval", "eval", 1, (context, [x]) => {
-    // 1. Let evalRealm be the value of the active function object's [[Realm]] internal slot.
-    let rcontext = realm.getRunningContext();
-    let evalRealm = rcontext.function == null ? realm : rcontext.function.$Realm;
+  return new NativeFunctionValue(
+    realm,
+    "eval",
+    "eval",
+    1,
+    (context, [x]) => {
+      // 1. Let evalRealm be the value of the active function object's [[Realm]] internal slot.
+      let rcontext = realm.getRunningContext();
+      let evalRealm = rcontext.function == null ? realm : rcontext.function.$Realm;
 
-    // 2. Let strictCaller be false.
-    let strictCaller = false;
+      // 2. Let strictCaller be false.
+      let strictCaller = false;
 
-    // 3. Let directEval be false.
-    let directEval = false;
+      // 3. Let directEval be false.
+      let directEval = false;
 
-    // 4. Return ? PerformEval(x, evalRealm, strictCaller, directEval).
-    return PerformEval(realm, x, evalRealm, strictCaller, directEval);
-
-  }, false);
+      // 4. Return ? PerformEval(x, evalRealm, strictCaller, directEval).
+      return PerformEval(realm, x, evalRealm, strictCaller, directEval);
+    },
+    false
+  );
 }

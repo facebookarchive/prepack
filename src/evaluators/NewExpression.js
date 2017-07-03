@@ -19,7 +19,12 @@ import { Construct } from "../methods/index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeNewExpression } from "babel-types";
 
-export default function (ast: BabelNodeNewExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): ObjectValue {
+export default function(
+  ast: BabelNodeNewExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): ObjectValue {
   realm.setNextExecutionContextLocation(ast.loc);
 
   // ECMA262 12.3.3.1 We just implement this method inline since it's only called here.
@@ -45,7 +50,8 @@ export default function (ast: BabelNodeNewExpression, strictCode: boolean, env: 
   // 5. If arguments is empty, let argList be a new empty List.
   if (!args.length) {
     argsList = [];
-  } else { // 6. Else,
+  } else {
+    // 6. Else,
     // a. Let argList be ArgumentListEvaluation of arguments.
     argsList = ArgumentListEvaluation(realm, strictCode, env, args);
 

@@ -14,8 +14,8 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import { prepackFileSync } from "../lib/prepack-node.js";
 
 let chalk = require("chalk");
-let path  = require("path");
-let fs    = require("fs");
+let path = require("path");
+let fs = require("fs");
 
 function search(dir, relative) {
   let tests = [];
@@ -28,7 +28,7 @@ function search(dir, relative) {
       if (stat.isFile()) {
         tests.push({
           file: fs.readFileSync(loc, "utf8"),
-          name: path.join(relative, name)
+          name: path.join(relative, name),
         });
       } else if (stat.isDirectory()) {
         tests = tests.concat(search(loc, path.join(relative, name)));
@@ -43,8 +43,7 @@ let tests = search(`${__dirname}/../facebook/test`, "facebook/test");
 
 let errors: Map<BabelNodeSourceLocation, CompilerDiagnostics> = new Map();
 function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
-  if (diagnostic.location)
-    errors.set(diagnostic.location, diagnostic);
+  if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
   return "Fail";
 }
 
@@ -78,7 +77,7 @@ function runTest(name: string, code: string): boolean {
 function run() {
   let failed = 0;
   let passed = 0;
-  let total  = 0;
+  let total = 0;
 
   for (let test of tests) {
     // filter hidden files
@@ -86,15 +85,12 @@ function run() {
     if (test.name.endsWith("~")) continue;
 
     total++;
-    if (runTest(test.name, test.file))
-      passed++;
-    else
-      failed++;
+    if (runTest(test.name, test.file)) passed++;
+    else failed++;
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.round((passed / total) * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
   return failed === 0;
 }
 
-if (!run())
-  process.exit(1);
+if (!run()) process.exit(1);

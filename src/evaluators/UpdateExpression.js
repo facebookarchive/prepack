@@ -21,7 +21,12 @@ import type { BabelNodeUpdateExpression } from "babel-types";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
-export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeUpdateExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // ECMA262 12.4 Update Expressions
 
   // Let expr be the result of evaluating UnaryExpression.
@@ -33,11 +38,14 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
     if (!IsToNumberPure(realm, oldExpr)) {
       let error = new CompilerDiagnostics(
         "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
-        ast.argument.loc, 'PP0008', 'RecoverableError');
-      if (realm.handleError(error) === 'Fail') throw new FatalError();
+        ast.argument.loc,
+        "PP0008",
+        "RecoverableError"
+      );
+      if (realm.handleError(error) === "Fail") throw new FatalError();
     }
-    invariant(ast.operator === '++' || ast.operator === '--'); // As per BabelNodeUpdateExpression
-    let op = ast.operator === '++' ? '+' : '-';
+    invariant(ast.operator === "++" || ast.operator === "--"); // As per BabelNodeUpdateExpression
+    let op = ast.operator === "++" ? "+" : "-";
     let newAbstractValue = realm.createAbstract(
       new TypesDomain(NumberValue),
       ValuesDomain.topVal,
@@ -104,5 +112,4 @@ export default function (ast: BabelNodeUpdateExpression, strictCode: boolean, en
     }
     invariant(false);
   }
-
 }

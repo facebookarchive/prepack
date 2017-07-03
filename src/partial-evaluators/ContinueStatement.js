@@ -15,8 +15,11 @@ import type { Realm } from "../realm.js";
 
 import { ContinueCompletion } from "../completions.js";
 
-export default function (
-  ast: BabelNodeContinueStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeContinueStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [ContinueCompletion, BabelNodeContinueStatement, Array<BabelNodeStatement>] {
   let result = new ContinueCompletion(realm.intrinsics.empty, ast.label && ast.label.name);
   return [result, ast, []];

@@ -10,7 +10,15 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { FunctionValue, ObjectValue, UndefinedValue, NullValue, Value, AbstractObjectValue, EmptyValue } from "../values/index.js";
+import {
+  FunctionValue,
+  ObjectValue,
+  UndefinedValue,
+  NullValue,
+  Value,
+  AbstractObjectValue,
+  EmptyValue,
+} from "../values/index.js";
 import { IsConstructor, IsStatic } from "./is.js";
 import { ObjectCreate } from "./create.js";
 import { DefinePropertyOrThrow } from "./properties.js";
@@ -19,9 +27,13 @@ import { HasSomeCompatibleType } from "./has.js";
 import invariant from "../invariant.js";
 import type { BabelNodeClassMethod } from "babel-types";
 
-
 // ECMA262 9.2.8
-export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototype?: boolean, prototype?: ObjectValue): UndefinedValue {
+export function MakeConstructor(
+  realm: Realm,
+  F: FunctionValue,
+  writablePrototype?: boolean,
+  prototype?: ObjectValue
+): UndefinedValue {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function value");
 
@@ -47,7 +59,7 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
       value: F,
       writable: writablePrototype,
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
   }
 
@@ -56,7 +68,7 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
     value: prototype,
     writable: writablePrototype,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   // 7. Return NormalCompletion(undefined).
@@ -64,7 +76,12 @@ export function MakeConstructor(realm: Realm, F: FunctionValue, writablePrototyp
 }
 
 // ECMA262 7.3.13
-export function Construct(realm: Realm, F: ObjectValue, argumentsList?: Array<Value>, newTarget?: ObjectValue): ObjectValue {
+export function Construct(
+  realm: Realm,
+  F: ObjectValue,
+  argumentsList?: Array<Value>,
+  newTarget?: ObjectValue
+): ObjectValue {
   // If newTarget was not passed, let newTarget be F.
   if (!newTarget) newTarget = F;
 
@@ -121,7 +138,7 @@ export function MakeClassConstructor(realm: Realm, F: FunctionValue) {
   invariant(F instanceof FunctionValue, "expected function value");
 
   // 2. Assert: F’s [[FunctionKind]] internal slot is "normal".
-  invariant(F.$FunctionKind = "normal");
+  invariant((F.$FunctionKind = "normal"));
 
   // 3. Set F’s [[FunctionKind]] internal slot to "classConstructor".
   F.$FunctionKind = "classConstructor";
@@ -131,7 +148,10 @@ export function MakeClassConstructor(realm: Realm, F: FunctionValue) {
 }
 
 // ECMA 14.5.3
-export function ConstructorMethod(realm: Realm, ClassElementList: Array<BabelNodeClassMethod>): EmptyValue | BabelNodeClassMethod {
+export function ConstructorMethod(
+  realm: Realm,
+  ClassElementList: Array<BabelNodeClassMethod>
+): EmptyValue | BabelNodeClassMethod {
   let ClassElement;
   // ClassElementList : ClassElement
   if (ClassElementList.length === 1) {
@@ -150,7 +170,8 @@ export function ConstructorMethod(realm: Realm, ClassElementList: Array<BabelNod
 
     // 4. Return ClassElement.
     return ClassElement;
-  } else { // ClassElementList : ClassElementList ClassElement
+  } else {
+    // ClassElementList : ClassElementList ClassElement
     // 1. Let head be ConstructorMethod of ClassElementList.
     let head = ConstructorMethod(realm, ClassElementList.slice(0, -1));
     // 2. If head is not empty, return head.
@@ -177,7 +198,10 @@ export function ConstructorMethod(realm: Realm, ClassElementList: Array<BabelNod
 }
 
 // ECMA 14.5.10
-export function NonConstructorMethodDefinitions(realm: Realm, ClassElementList: Array<BabelNodeClassMethod>): Array<BabelNodeClassMethod> {
+export function NonConstructorMethodDefinitions(
+  realm: Realm,
+  ClassElementList: Array<BabelNodeClassMethod>
+): Array<BabelNodeClassMethod> {
   let ClassElement;
   // ClassElementList : ClassElement
   if (ClassElementList.length === 1) {
@@ -185,12 +209,13 @@ export function NonConstructorMethodDefinitions(realm: Realm, ClassElementList: 
     // If ClassElement is the production ClassElement : ; , return a new empty List.
 
     // If IsStatic of ClassElement is false and PropName of ClassElement is "constructor", return a new empty List.
-    if (!IsStatic(ClassElement) && ClassElement.key.name === 'constructor') {
+    if (!IsStatic(ClassElement) && ClassElement.key.name === "constructor") {
       return [];
     }
     // Return a List containing ClassElement.
     return [ClassElement];
-  } else { // ClassElementList : ClassElementList ClassElement
+  } else {
+    // ClassElementList : ClassElementList ClassElement
     ClassElement = ClassElementList[ClassElementList.length - 1];
 
     // Let list be NonConstructorMethodDefinitions of ClassElementList.
@@ -199,7 +224,7 @@ export function NonConstructorMethodDefinitions(realm: Realm, ClassElementList: 
     // If ClassElement is the production ClassElement : ; , return list.
 
     // If IsStatic of ClassElement is false and PropName of ClassElement is "constructor", return list.
-    if (!IsStatic(ClassElement) && ClassElement.key.name === 'constructor') {
+    if (!IsStatic(ClassElement) && ClassElement.key.name === "constructor") {
       return list;
     }
 

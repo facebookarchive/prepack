@@ -15,8 +15,11 @@ import type { Realm } from "../realm.js";
 
 import { StringValue } from "../values/index.js";
 
-export default function (
-  ast: BabelNodeStringLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeStringLiteral,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [StringValue, BabelNodeStringLiteral, Array<BabelNodeStatement>] {
   let result = new StringValue(realm, ast.value);
   return [result, ast, []];

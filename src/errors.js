@@ -11,9 +11,9 @@
 
 import type { BabelNodeSourceLocation } from "babel-types";
 
-export type Severity = 'FatalError' | 'RecoverableError' | 'Warning' | 'Information';
-export type ErrorHandlerResult = 'Fail' | 'Recover';
-export type ErrorCode = 'PP0001';
+export type Severity = "FatalError" | "RecoverableError" | "Warning" | "Information";
+export type ErrorHandlerResult = "Fail" | "Recover";
+export type ErrorCode = "PP0001";
 
 // This is the error format used to report errors to the caller-supplied
 // error-handler

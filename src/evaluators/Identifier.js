@@ -17,7 +17,12 @@ import { ResolveBinding } from "../methods/index.js";
 import type { BabelNodeIdentifier } from "babel-types";
 
 // ECMA262 12.1.6
-export default function (ast: BabelNodeIdentifier, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeIdentifier,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Return ? ResolveBinding(StringValue of Identifier).
   return ResolveBinding(realm, ast.name, strictCode, env);
 }

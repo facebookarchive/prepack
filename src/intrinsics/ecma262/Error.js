@@ -16,11 +16,16 @@ import { OrdinaryCreateFromConstructor, ToStringPartial, Get, DefinePropertyOrTh
 import invariant from "../../invariant.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   return build("Error", realm, false);
 }
 
-export function describeLocation(realm: Realm, callerFn: ?FunctionValue, env: ?LexicalEnvironment, loc: ?BabelNodeSourceLocation): void | string {
+export function describeLocation(
+  realm: Realm,
+  callerFn: ?FunctionValue,
+  env: ?LexicalEnvironment,
+  loc: ?BabelNodeSourceLocation
+): void | string {
   let locString = "";
   let displayName = "";
 
@@ -30,10 +35,8 @@ export function describeLocation(realm: Realm, callerFn: ?FunctionValue, env: ?L
     }
 
     let name = callerFn.$Get("name", callerFn);
-    if (!name.mightBeUndefined())
-      displayName = ToStringPartial(realm, name);
-    else
-      name.throwIfNotConcrete();
+    if (!name.mightBeUndefined()) displayName = ToStringPartial(realm, name);
+    else name.throwIfNotConcrete();
 
     if (env && env.$NewTarget) displayName = `new ${displayName}`;
   }
@@ -76,7 +79,12 @@ function buildStack(realm: Realm, context: ObjectValue) {
 
   for (let executionContext of stack.reverse()) {
     let caller = executionContext.caller;
-    let locString = describeLocation(realm, caller ? caller.function : undefined, caller ? caller.lexicalEnvironment : undefined, executionContext.loc);
+    let locString = describeLocation(
+      realm,
+      caller ? caller.function : undefined,
+      caller ? caller.lexicalEnvironment : undefined,
+      executionContext.loc
+    );
     if (locString !== undefined) lines.push(locString);
   }
 
@@ -92,7 +100,7 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
     let O = OrdinaryCreateFromConstructor(realm, newTarget, `${name}Prototype`, { $ErrorData: undefined });
     O.$ErrorData = {
       contextStack: realm.contextStack.slice(1),
-      locationData: undefined
+      locationData: undefined,
     };
 
     // Build a text description of the stack.
@@ -100,7 +108,7 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
       value: buildStack(realm, O),
       enumerable: false,
       configurable: true,
-      writable: true
+      writable: true,
     };
     DefinePropertyOrThrow(realm, O, "stack", stackDesc);
 
@@ -114,7 +122,7 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
         value: new StringValue(realm, msg),
         writable: true,
         enumerable: false,
-        configurable: true
+        configurable: true,
       };
 
       // c. Perform ! DefinePropertyOrThrow(O, "message", msgDesc).

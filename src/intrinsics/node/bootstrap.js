@@ -15,26 +15,20 @@ import { FunctionValue } from "../../values/index.js";
 
 declare var process: any;
 
-export default function (realm: Realm): FunctionValue {
+export default function(realm: Realm): FunctionValue {
   // Extract the bootstrap source code from the hosting Node version.
-  let nodeSourceCode = process.binding('natives');
-  let bootstrapSource = nodeSourceCode['internal/bootstrap_node'];
-  let bootstrapFilename = 'bootstrap_node.js';
+  let nodeSourceCode = process.binding("natives");
+  let bootstrapSource = nodeSourceCode["internal/bootstrap_node"];
+  let bootstrapFilename = "bootstrap_node.js";
   if (!bootstrapSource) {
-    throw new Error('The node-cli mode is only compatible with Node 7.');
+    throw new Error("The node-cli mode is only compatible with Node 7.");
   }
 
   // We evaluate bootstrap script to get the bootstrap function.
-  let bootstrapFn = realm.$GlobalEnv.execute(
-    bootstrapSource,
-    bootstrapFilename,
-    ''
-  );
+  let bootstrapFn = realm.$GlobalEnv.execute(bootstrapSource, bootstrapFilename, "");
 
   if (!(bootstrapFn instanceof FunctionValue) || !bootstrapFn.$Call) {
-    throw new Error(
-      'The node bootstrap script should always yield a function.'
-    );
+    throw new Error("The node bootstrap script should always yield a function.");
   }
 
   return bootstrapFn;
