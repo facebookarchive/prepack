@@ -9,10 +9,12 @@
 
 /* @flow */
 
+import type { ErrorHandler } from "./errors.js";
 import type { RealmOptions, Compatibility } from "./types";
 import type { SerializerOptions } from "./serializer/types";
 
 export type Options = {|
+  onError?: ErrorHandler,
   filename?: string,
   inputSourceMapFilename?: string,
   sourceMaps?: boolean,
@@ -31,13 +33,14 @@ export type Options = {|
   residual?: boolean,
   serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
-  profile?: boolean
+  profile?: boolean,
 |};
 
 export const defaultOptions = {};
 
 export function getRealmOptions({
   compatibility = "browser",
+  onError,
   mathRandomSeed,
   debugNames = false,
   uniqueSuffix,
@@ -48,6 +51,7 @@ export function getRealmOptions({
 }: Options): RealmOptions {
   return {
     compatibility,
+    errorHandler: onError,
     mathRandomSeed,
     debugNames,
     uniqueSuffix,
