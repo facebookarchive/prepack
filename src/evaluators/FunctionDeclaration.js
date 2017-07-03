@@ -22,7 +22,12 @@ import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionDeclaration } from "babel-types";
 
 // ECMA262 14.1.20
-export default function (ast: BabelNodeFunctionDeclaration, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeFunctionDeclaration,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   if (ast.generator) {
     // 1. If the function code for GeneratorDeclaration is strict mode code, let strict be true. Otherwise let strict be false.
     let strict = strictCode || IsStrict(ast.body);
@@ -45,7 +50,7 @@ export default function (ast: BabelNodeFunctionDeclaration, strictCode: boolean,
     DefinePropertyOrThrow(realm, F, "prototype", {
       value: prototype,
       writable: true,
-      configurable: false
+      configurable: false,
     });
 
     // 6. Perform SetFunctionName(F, name).

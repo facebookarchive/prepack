@@ -61,7 +61,13 @@ class ModuleTracer extends Tracer {
     }
   }
 
-  detourCall(F: FunctionValue, thisArgument: void | Value, argumentsList: Array<Value>, newTarget: void | ObjectValue, performCall: () => Value): void | Value {
+  detourCall(
+    F: FunctionValue,
+    thisArgument: void | Value,
+    argumentsList: Array<Value>,
+    newTarget: void | ObjectValue,
+    performCall: () => Value
+  ): void | Value {
     let realm = this.modules.realm;
     if (F === this.modules.getRequire() && this.modules.delayUnsupportedRequires && argumentsList.length === 1) {
       let moduleId = argumentsList[0];
@@ -86,7 +92,7 @@ class ModuleTracer extends Tracer {
       } else {
         let result;
         let oldErrorHandler = realm.errorHandler;
-        realm.errorHandler = () => 'Fail';
+        realm.errorHandler = () => "Fail";
         try {
           this.requireStack.push(moduleIdValue);
           let requireSequenceStart = this.requireSequence.length;
@@ -120,15 +126,22 @@ class ModuleTracer extends Tracer {
               for (let nestedModuleId of this.uninitializedModuleIdsRequiredInEvaluateForEffects) {
                 let nestedEffects = this.modules.tryInitializeModule(
                   nestedModuleId,
-                  `accelerated initialization of conditional module ${nestedModuleId} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`);
-                if (nestedEffects !== undefined && nestedEffects[0] instanceof Value && this.modules.isModuleInitialized(nestedModuleId)) {
+                  `accelerated initialization of conditional module ${nestedModuleId} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`
+                );
+                if (
+                  nestedEffects !== undefined &&
+                  nestedEffects[0] instanceof Value &&
+                  this.modules.isModuleInitialized(nestedModuleId)
+                ) {
                   acceleratedModuleIds.push(nestedModuleId);
                 }
               }
               this.uninitializedModuleIdsRequiredInEvaluateForEffects.clear();
               // Keep restarting for as long as we find additional modules to accelerate.
               if (acceleratedModuleIds.length > 0) {
-                console.log(`restarting require(${moduleIdValue}) after accelerating conditional require calls for ${acceleratedModuleIds.join()}`);
+                console.log(
+                  `restarting require(${moduleIdValue}) after accelerating conditional require calls for ${acceleratedModuleIds.join()}`
+                );
               }
             }
           } while (acceleratedModuleIds.length > 0);
@@ -168,13 +181,13 @@ class ModuleTracer extends Tracer {
               nestedModulesIds.add(nestedModuleId);
               this.modules.tryInitializeModule(
                 nestedModuleId,
-                `initialization of module ${nestedModuleId} as it's required by module ${moduleIdValue}`);
+                `initialization of module ${nestedModuleId} as it's required by module ${moduleIdValue}`
+              );
             }
 
-            result = realm.deriveAbstract(
-              TypesDomain.topVal,
-              ValuesDomain.topVal, [],
-               ([]) => t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)]));
+            result = realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [], ([]) =>
+              t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
+            );
           } else {
             realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
           }
@@ -183,7 +196,7 @@ class ModuleTracer extends Tracer {
           invariant(popped === moduleIdValue);
           let message = "";
           invariant(!(result instanceof IntrospectionThrowCompletion));
-          if (result instanceof ThrowCompletion) " threw an error";
+          if (result instanceof ThrowCompletion) (" threw an error");
           this.log(`<require(${moduleIdValue})${message}`);
           realm.errorHandler = oldErrorHandler;
         }
@@ -191,18 +204,20 @@ class ModuleTracer extends Tracer {
         return result;
       }
     } else if (F === this.modules.getDefine()) {
-      if (this.evaluateForEffectsNesting !== 0) this.modules.logger.logError(F, "Defining a module in nested partial evaluation is not supported.");
+      if (this.evaluateForEffectsNesting !== 0)
+        this.modules.logger.logError(F, "Defining a module in nested partial evaluation is not supported.");
       let factoryFunction = argumentsList[0];
       if (factoryFunction instanceof FunctionValue) this.modules.factoryFunctions.add(factoryFunction);
       else this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
       let moduleId = argumentsList[1];
-      if (moduleId instanceof NumberValue || moduleId instanceof StringValue) this.modules.moduleIds.add(moduleId.value);
-      else this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
+      if (moduleId instanceof NumberValue || moduleId instanceof StringValue)
+        this.modules.moduleIds.add(moduleId.value);
+      else
+        this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
     }
     return undefined;
   }
 }
-
 
 export class Modules {
   constructor(realm: Realm, logger: Logger, logModules: boolean, delayUnsupportedRequires: boolean) {
@@ -248,14 +263,15 @@ export class Modules {
     return this._define;
   }
 
-  getIsRequire(formalParameters: Array<BabelNodeLVal>, functions: Array<FunctionValue>): (scope: any, node: BabelNodeCallExpression) => boolean {
+  getIsRequire(
+    formalParameters: Array<BabelNodeLVal>,
+    functions: Array<FunctionValue>
+  ): (scope: any, node: BabelNodeCallExpression) => boolean {
     let realm = this.realm;
     let logger = this.logger;
     let modules = this;
-    return function (scope: any, node: BabelNodeCallExpression) {
-      if (!t.isIdentifier(node.callee) ||
-        node.arguments.length !== 1 ||
-        !node.arguments[0]) return false;
+    return function(scope: any, node: BabelNodeCallExpression) {
+      if (!t.isIdentifier(node.callee) || node.arguments.length !== 1 || !node.arguments[0]) return false;
       let argument = node.arguments[0];
       if (!t.isNumericLiteral(argument) && !t.isStringLiteral(argument)) return false;
 
@@ -276,7 +292,9 @@ export class Modules {
         let doesNotMatter = true;
         let reference = logger.tryQuery(
           () => ResolveBinding(realm, innerName, doesNotMatter, f.$Environment),
-          undefined, false);
+          undefined,
+          false
+        );
         if (reference === undefined) {
           // We couldn't resolve as we came across some behavior that we cannot deal with abstractly
           return false;
@@ -287,8 +305,7 @@ export class Modules {
         if (typeof referencedName !== "string") return false;
         let value;
         if (reference.base instanceof GlobalEnvironmentRecord) {
-          value = logger.tryQuery(() =>
-            Get(realm, realm.$GlobalObject, innerName), realm.intrinsics.undefined, false);
+          value = logger.tryQuery(() => Get(realm, realm.$GlobalObject, innerName), realm.intrinsics.undefined, false);
         } else {
           invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
           let binding = referencedBase.bindings[referencedName];
@@ -312,8 +329,16 @@ export class Modules {
     realm.restoreProperties(properties);
 
     let value = result.value;
-    let message: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")), "(cannot get message)", false);
-    let stack: string = this.logger.tryQuery(() => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "stack")), "", false);
+    let message: string = this.logger.tryQuery(
+      () => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")),
+      "(cannot get message)",
+      false
+    );
+    let stack: string = this.logger.tryQuery(
+      () => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "stack")),
+      "",
+      false
+    );
 
     // Undo state changes
     realm.restoreBindings(bindings);
@@ -339,7 +364,7 @@ export class Modules {
     this.delayUnsupportedRequires = false;
     realm.pushContext(context);
     let oldErrorHandler = realm.errorHandler;
-    realm.errorHandler = () => 'Fail';
+    realm.errorHandler = () => "Fail";
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
@@ -372,16 +397,14 @@ export class Modules {
     for (let moduleId of this.moduleIds) {
       if (this.initializedModules.has(moduleId)) continue;
 
-      let effects = this.tryInitializeModule(
-        moduleId,
-        `Speculative initialization of module ${moduleId}`);
+      let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
 
       if (effects === undefined) continue;
       let result = effects[0];
       if (result instanceof IntrospectionThrowCompletion) {
         invariant(result instanceof IntrospectionThrowCompletion);
         let [message, stack] = this.getMessageAndStack(effects);
-        let stacks = introspectionErrors[message] = introspectionErrors[message] || [];
+        let stacks = (introspectionErrors[message] = introspectionErrors[message] || []);
         stacks.push(stack);
         continue;
       }
@@ -416,16 +439,14 @@ export class Modules {
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let [compl, generator, bindings, properties, createdObjects] =
-        realm.evaluateNodeForEffects(node, true, env);
+      let [compl, generator, bindings, properties, createdObjects] = realm.evaluateNodeForEffects(node, true, env);
       // for lint unused
       invariant(bindings);
 
       if (compl instanceof AbruptCompletion) return undefined;
       invariant(compl instanceof Value);
 
-      if (generator.body.length !== 0 ||
-        (compl instanceof ObjectValue && createdObjects.has(compl))) return undefined;
+      if (generator.body.length !== 0 || (compl instanceof ObjectValue && createdObjects.has(compl))) return undefined;
       // Check for escaping property assignments, if none escape, we got an existing object
       let escapes = false;
       for (let [binding] of properties) {

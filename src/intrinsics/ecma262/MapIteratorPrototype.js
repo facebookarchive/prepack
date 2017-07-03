@@ -14,9 +14,9 @@ import { StringValue, NumberValue, ObjectValue, UndefinedValue } from "../../val
 import { CreateIterResultObject, CreateArrayFromList } from "../../methods/create.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.1.5.2.1
-  obj.defineNativeMethod("next", 0, (context) => {
+  obj.defineNativeMethod("next", 0, context => {
     // 1. Let O be the this value.
     let O = context.throwIfNotConcrete();
 
@@ -68,10 +68,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
         let result;
         // i. If itemKind is "key", let result be e.[[Key]].
         if (itemKind === "key") result = e.$Key;
-        // ii. Else if itemKind is "value", let result be e.[[Value]].
-        else if (itemKind === "value") result = e.$Value;
-        // iii. Else,
+        else if (itemKind === "value")
+          // ii. Else if itemKind is "value", let result be e.[[Value]].
+          result = e.$Value;
         else {
+          // iii. Else,
           // 1. Assert: itemKind is "key+value".
           invariant(itemKind === "key+value");
 
@@ -92,5 +93,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 23.1.5.2.2
-  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Map Iterator"), { writable: false });
+  obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Map Iterator"), {
+    writable: false,
+  });
 }

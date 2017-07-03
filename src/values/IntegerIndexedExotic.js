@@ -38,7 +38,10 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
+      let numericIndex = CanonicalNumericIndexString(
+        this.$Realm,
+        typeof P === "string" ? new StringValue(this.$Realm, P) : P
+      );
 
       // b. If numericIndex is not undefined, then
       if (numericIndex !== undefined) {
@@ -74,16 +77,23 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
+      let numericIndex = CanonicalNumericIndexString(
+        this.$Realm,
+        typeof P === "string" ? new StringValue(this.$Realm, P) : P
+      );
 
       // b. If numericIndex is not undefined, then
       if (numericIndex !== undefined) {
         // i. Let buffer be O.[[ViewedArrayBuffer]].
-        let buffer = O.$ViewedArrayBuffer; invariant(buffer);
+        let buffer = O.$ViewedArrayBuffer;
+        invariant(buffer);
 
         // ii. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
         if (IsDetachedBuffer(this.$Realm, buffer) === true) {
-          throw this.$Realm.createErrorThrowCompletion(this.$Realm.intrinsics.TypeError, "IsDetachedBuffer(buffer) is true");
+          throw this.$Realm.createErrorThrowCompletion(
+            this.$Realm.intrinsics.TypeError,
+            "IsDetachedBuffer(buffer) is true"
+          );
         }
 
         // iii. If IsInteger(numericIndex) is false, return false.
@@ -96,7 +106,8 @@ export default class IntegerIndexedExotic extends ObjectValue {
         if (numericIndex < 0) return false;
 
         // vi. If numericIndex ≥ O.[[ArrayLength]], return false.
-        invariant(O.$ArrayLength); if (numericIndex >= O.$ArrayLength) return false;
+        invariant(O.$ArrayLength);
+        if (numericIndex >= O.$ArrayLength) return false;
 
         // vii. Return true.
         return true;
@@ -120,7 +131,10 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
+      let numericIndex = CanonicalNumericIndexString(
+        this.$Realm,
+        typeof P === "string" ? new StringValue(this.$Realm, P) : P
+      );
 
       // b. If numericIndex is not undefined, then
       if (numericIndex !== undefined) {
@@ -134,7 +148,8 @@ export default class IntegerIndexedExotic extends ObjectValue {
         if (numericIndex < 0) return false;
 
         // iv. Let length be O.[[ArrayLength]].
-        let length = this.$ArrayLength; invariant(typeof length === "number");
+        let length = this.$ArrayLength;
+        invariant(typeof length === "number");
 
         // v. If numericIndex ≥ length, return false.
         if (numericIndex >= length) return false;
@@ -179,7 +194,10 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 2. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
+      let numericIndex = CanonicalNumericIndexString(
+        this.$Realm,
+        typeof P === "string" ? new StringValue(this.$Realm, P) : P
+      );
 
       // b. If numericIndex is not undefined, then
       if (numericIndex !== undefined) {
@@ -202,7 +220,10 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 2. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
+      let numericIndex = CanonicalNumericIndexString(
+        this.$Realm,
+        typeof P === "string" ? new StringValue(this.$Realm, P) : P
+      );
 
       // b. If numericIndex is not undefined, then
       if (numericIndex !== undefined) {
@@ -223,10 +244,17 @@ export default class IntegerIndexedExotic extends ObjectValue {
     let keys = [];
 
     // 2. Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and [[TypedArrayName]] internal slots.
-    invariant(O instanceof ObjectValue && O.$ViewedArrayBuffer && O.$ArrayLength !== undefined && O.$ByteOffset !== undefined && O.$TypedArrayName);
+    invariant(
+      O instanceof ObjectValue &&
+        O.$ViewedArrayBuffer &&
+        O.$ArrayLength !== undefined &&
+        O.$ByteOffset !== undefined &&
+        O.$TypedArrayName
+    );
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength; invariant(typeof len === "number");
+    let len = O.$ArrayLength;
+    invariant(typeof len === "number");
 
     // 4. For each integer i starting with 0 such that i < len, in ascending order,
     for (let i = 0; i < len; ++i) {
@@ -236,7 +264,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
 
     // 5. For each own property key P of O such that Type(P) is String and P is not an integer index, in ascending chronological order of property creation
     let properties = O.getOwnPropertyKeysArray();
-    for (let key of properties.filter((x) => !IsArrayIndex(this.$Realm, x))) {
+    for (let key of properties.filter(x => !IsArrayIndex(this.$Realm, x))) {
       // i. Add P as the last element of keys.
       keys.push(new StringValue(this.$Realm, key));
     }

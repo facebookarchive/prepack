@@ -14,7 +14,7 @@ import { StringValue, ObjectValue } from "../../values/index.js";
 import { SameValuePartial, ThrowIfInternalSlotNotWritable } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.3.3.6
   obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "WeakMap"), { writable: false });
 

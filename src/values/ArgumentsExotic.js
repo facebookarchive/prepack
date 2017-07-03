@@ -12,7 +12,14 @@
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
 import { ObjectValue, Value } from "../values/index.js";
-import { OrdinaryGetOwnProperty, OrdinaryDefineOwnProperty, OrdinaryDelete, Set, OrdinarySet, ThrowIfMightHaveBeenDeleted } from "../methods/properties.js";
+import {
+  OrdinaryGetOwnProperty,
+  OrdinaryDefineOwnProperty,
+  OrdinaryDelete,
+  Set,
+  OrdinarySet,
+  ThrowIfMightHaveBeenDeleted,
+} from "../methods/properties.js";
 import { IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
 import { HasOwnProperty } from "../methods/has.js";
 import { SameValuePartial } from "../methods/abstract.js";
@@ -39,7 +46,8 @@ export default class ArgumentsExotic extends ObjectValue {
     ThrowIfMightHaveBeenDeleted(desc.value);
 
     // 4. Let map be args.[[ParameterMap]].
-    let map = args.$ParameterMap; invariant(map);
+    let map = args.$ParameterMap;
+    invariant(map);
 
     // 5. Let isMapped be ! HasOwnProperty(map, P).
     let isMapped = HasOwnProperty(this.$Realm, map, P);
@@ -60,7 +68,8 @@ export default class ArgumentsExotic extends ObjectValue {
     let args = this;
 
     // 2. Let map be args.[[ParameterMap]].
-    let map = args.$ParameterMap; invariant(map);
+    let map = args.$ParameterMap;
+    invariant(map);
 
     // 3. Let isMapped be HasOwnProperty(map, P).
     let isMapped = HasOwnProperty(this.$Realm, map, P);
@@ -92,7 +101,8 @@ export default class ArgumentsExotic extends ObjectValue {
       if (IsAccessorDescriptor(this.$Realm, Desc) === true) {
         // i. Call map.[[Delete]](P).
         map.$Delete(P);
-      } else { // b. Else,
+      } else {
+        // b. Else,
         // i. If Desc.[[Value]] is present, then
         if (Desc.value !== undefined) {
           // 1. Let setStatus be Set(map, P, Desc.[[Value]], false).
@@ -120,7 +130,8 @@ export default class ArgumentsExotic extends ObjectValue {
     let args = this;
 
     // 2. Let map be args.[[ParameterMap]].
-    let map = args.$ParameterMap; invariant(map);
+    let map = args.$ParameterMap;
+    invariant(map);
 
     // 3. Let isMapped be ! HasOwnProperty(map, P).
     let isMapped = HasOwnProperty(this.$Realm, map, P);
@@ -129,7 +140,8 @@ export default class ArgumentsExotic extends ObjectValue {
     if (isMapped === false) {
       // a. Return ? OrdinaryGet(args, P, Receiver).
       return OrdinaryGet(this.$Realm, args, P, Receiver);
-    } else { // 5. Else map contains a formal parameter mapping for P,
+    } else {
+      // 5. Else map contains a formal parameter mapping for P,
       // b. Return Get(map, P).
       return Get(this.$Realm, map, P);
     }
@@ -145,9 +157,11 @@ export default class ArgumentsExotic extends ObjectValue {
     if (SameValuePartial(this.$Realm, args, Receiver) === false) {
       // a. Let isMapped be false.
       isMapped = false;
-    } else { // 3. Else,
+    } else {
+      // 3. Else,
       // a. Let map be args.[[ParameterMap]].
-      map = args.$ParameterMap; invariant(map);
+      map = args.$ParameterMap;
+      invariant(map);
 
       // b. Let isMapped be ! HasOwnProperty(map, P).
       isMapped = HasOwnProperty(this.$Realm, map, P);
@@ -173,7 +187,8 @@ export default class ArgumentsExotic extends ObjectValue {
     let args = this;
 
     // 2. Let map be args.[[ParameterMap]].
-    let map = args.$ParameterMap; invariant(map);
+    let map = args.$ParameterMap;
+    invariant(map);
 
     // 3. Let isMapped be ! HasOwnProperty(map, P).
     let isMapped = HasOwnProperty(this.$Realm, map, P);

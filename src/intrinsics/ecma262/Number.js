@@ -13,7 +13,7 @@ import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue } from "../../values/index.js";
 import { OrdinaryCreateFromConstructor, ToNumber, ToInteger } from "../../methods/index.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 20.1.1
   let func = new NativeFunctionValue(realm, "Number", "Number", 1, (context, [value], argCount, NewTarget) => {
     let n;
@@ -21,7 +21,8 @@ export default function (realm: Realm): NativeFunctionValue {
     // 1. If no arguments were passed to this function invocation, let n be +0.
     if (argCount === 0) {
       n = realm.intrinsics.zero;
-    } else { // 2. Else, let n be ? ToNumber(value).
+    } else {
+      // 2. Else, let n be ? ToNumber(value).
       n = new NumberValue(realm, ToNumber(realm, value));
     }
 
@@ -43,80 +44,83 @@ export default function (realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.1.2.2
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  func.defineNativeMethod("isFinite", 1, (context, [number]) => {
-    // 1. If Type(number) is not Number, return false.
-    if (!number.mightBeNumber()) return realm.intrinsics.false;
+    func.defineNativeMethod("isFinite", 1, (context, [number]) => {
+      // 1. If Type(number) is not Number, return false.
+      if (!number.mightBeNumber()) return realm.intrinsics.false;
 
-    // 2. If number is NaN, +∞, or -∞, return false.
-    number = number.throwIfNotConcreteNumber();
-    if (isNaN(number.value) || number.value === +Infinity || number.value === -Infinity) return realm.intrinsics.false;
+      // 2. If number is NaN, +∞, or -∞, return false.
+      number = number.throwIfNotConcreteNumber();
+      if (isNaN(number.value) || number.value === +Infinity || number.value === -Infinity)
+        return realm.intrinsics.false;
 
-    // 3. Otherwise, return true.
-    return realm.intrinsics.true;
-  });
+      // 3. Otherwise, return true.
+      return realm.intrinsics.true;
+    });
 
   // ECMA262 20.1.2.3
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  func.defineNativeMethod("isInteger", 1, (context, [number]) => {
-    // 1. If Type(number) is not Number, return false.
-    if (!number.mightBeNumber()) return realm.intrinsics.false;
+    func.defineNativeMethod("isInteger", 1, (context, [number]) => {
+      // 1. If Type(number) is not Number, return false.
+      if (!number.mightBeNumber()) return realm.intrinsics.false;
 
-    // 2. If number is NaN, +∞, or -∞, return false.
-    number = number.throwIfNotConcreteNumber();
-    if (isNaN(number.value) || number.value === +Infinity || number.value === -Infinity) return realm.intrinsics.false;
+      // 2. If number is NaN, +∞, or -∞, return false.
+      number = number.throwIfNotConcreteNumber();
+      if (isNaN(number.value) || number.value === +Infinity || number.value === -Infinity)
+        return realm.intrinsics.false;
 
-    // 3. Let integer be ToInteger(number).
-    let integer = ToInteger(realm, number);
+      // 3. Let integer be ToInteger(number).
+      let integer = ToInteger(realm, number);
 
-    // 4. If integer is not equal to number, return false.
-    if (integer !== number.value) return realm.intrinsics.false;
+      // 4. If integer is not equal to number, return false.
+      if (integer !== number.value) return realm.intrinsics.false;
 
-    // 5. Otherwise, return true.
-    return realm.intrinsics.true;
-  });
+      // 5. Otherwise, return true.
+      return realm.intrinsics.true;
+    });
 
   // ECMA262 20.1.2.4
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  func.defineNativeMethod("isNaN", 1, (context, [number]) => {
-    // 1. If Type(number) is not Number, return false.
-    if (!number.mightBeNumber()) return realm.intrinsics.false;
+    func.defineNativeMethod("isNaN", 1, (context, [number]) => {
+      // 1. If Type(number) is not Number, return false.
+      if (!number.mightBeNumber()) return realm.intrinsics.false;
 
-    // 2. If number is NaN, return true.
-    number = number.throwIfNotConcreteNumber();
-    if (isNaN(number.value)) return realm.intrinsics.true;
+      // 2. If number is NaN, return true.
+      number = number.throwIfNotConcreteNumber();
+      if (isNaN(number.value)) return realm.intrinsics.true;
 
-    // 3. Otherwise, return false.
-    return realm.intrinsics.false;
-  });
+      // 3. Otherwise, return false.
+      return realm.intrinsics.false;
+    });
 
   // ECMA262 20.1.2.5
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  func.defineNativeMethod("isSafeInteger", 1, (context, [number]) => {
-    // 1. If Type(number) is not Number, return false.
-    if (!number.mightBeNumber()) return realm.intrinsics.false;
+    func.defineNativeMethod("isSafeInteger", 1, (context, [number]) => {
+      // 1. If Type(number) is not Number, return false.
+      if (!number.mightBeNumber()) return realm.intrinsics.false;
 
-    // 2. If number is NaN, +∞, or -∞, return false.
-    number = number.throwIfNotConcreteNumber();
-    if (isNaN(number.value) || number.value === +Infinity || number.value === -Infinity) return realm.intrinsics.false;
+      // 2. If number is NaN, +∞, or -∞, return false.
+      number = number.throwIfNotConcreteNumber();
+      if (isNaN(number.value) || number.value === +Infinity || number.value === -Infinity)
+        return realm.intrinsics.false;
 
-    // 3. Let integer be ToInteger(number).
-    let integer = ToInteger(realm, number);
+      // 3. Let integer be ToInteger(number).
+      let integer = ToInteger(realm, number);
 
-    // 4. If integer is not equal to number, return false.
-    if (integer !== number.value) return realm.intrinsics.false;
+      // 4. If integer is not equal to number, return false.
+      if (integer !== number.value) return realm.intrinsics.false;
 
-    // 5. If abs(integer) ≤ 2^53-1, return true.
-    if (Math.abs(integer) <= Math.pow(2, 53) - 1) return realm.intrinsics.true;
+      // 5. If abs(integer) ≤ 2^53-1, return true.
+      if (Math.abs(integer) <= Math.pow(2, 53) - 1) return realm.intrinsics.true;
 
-    // 6. Otherwise, return false.
-    return realm.intrinsics.false;
-  });
+      // 6. Otherwise, return false.
+      return realm.intrinsics.false;
+    });
 
   // ECMA262 20.1.2.6
   func.defineNativeConstant("MAX_SAFE_INTEGER", new NumberValue(realm, 9007199254740991));
 
   // ECMA262 20.1.2.7
-  func.defineNativeConstant("MAX_VALUE", new NumberValue(realm, 1.7976931348623157e+308));
+  func.defineNativeConstant("MAX_VALUE", new NumberValue(realm, 1.7976931348623157e308));
 
   // ECMA262 20.1.2.8
   func.defineNativeConstant("MIN_SAFE_INTEGER", new NumberValue(realm, -9007199254740991));
@@ -138,7 +142,6 @@ export default function (realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.1.2.14
   func.defineNativeConstant("POSITIVE_INFINITY", realm.intrinsics.Infinity);
-
 
   return func;
 }

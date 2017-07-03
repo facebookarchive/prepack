@@ -12,8 +12,25 @@
 import invariant from "../../invariant.js";
 import { Realm } from "../../realm.js";
 import { AbruptCompletion, ThrowCompletion } from "../../completions.js";
-import { Value, ConcreteValue, BooleanValue, EmptyValue, NativeFunctionValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
-import { DefinePropertyOrThrow, Set, Get, GetFunctionRealm, ToBoolean, ToInteger, ToString } from "../../methods/index.js";
+import {
+  Value,
+  ConcreteValue,
+  BooleanValue,
+  EmptyValue,
+  NativeFunctionValue,
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
+} from "../../values/index.js";
+import {
+  DefinePropertyOrThrow,
+  Set,
+  Get,
+  GetFunctionRealm,
+  ToBoolean,
+  ToInteger,
+  ToString,
+} from "../../methods/index.js";
 import parse from "../../utils/parse.js";
 import type { BabelNodeFile } from "babel-types";
 
@@ -27,25 +44,25 @@ function transform(code: string, filename: string): string {
   let patchedCode = code.replace(
     // Work around the fact that Babel classes can't extend natives.
     /class FastBuffer extends Uint8Array {\s+constructor\(arg1, arg2, arg3\) {\s+super\(arg1, arg2, arg3\);\s+}\s+}/g,
-    'function FastBuffer(arg1, arg2, arg3) {\n' +
-    '  var self = new Uint8Array(arg1, arg2, arg3);\n' +
-    '  Object.setPrototypeOf(self, FastBuffer.prototype);\n' +
-    '  return self;\n' +
-    '}; Object.setPrototypeOf(FastBuffer, Uint8Array); Object.setPrototypeOf(FastBuffer.prototype, Uint8Array.prototype);'
+    "function FastBuffer(arg1, arg2, arg3) {\n" +
+      "  var self = new Uint8Array(arg1, arg2, arg3);\n" +
+      "  Object.setPrototypeOf(self, FastBuffer.prototype);\n" +
+      "  return self;\n" +
+      "}; Object.setPrototypeOf(FastBuffer, Uint8Array); Object.setPrototypeOf(FastBuffer.prototype, Uint8Array.prototype);"
   );
   let transformedCode = babelTransform(patchedCode, {
     plugins: [
       // Prepack doesn't support classes or destructuring yet.
-      'transform-es2015-classes',
-      'transform-es2015-destructuring',
-      'transform-es2015-parameters',
+      "transform-es2015-classes",
+      "transform-es2015-destructuring",
+      "transform-es2015-parameters",
     ],
     retainLines: true,
   });
   return transformedCode.code;
 }
 
-export default function (realm: Realm): ObjectValue {
+export default function(realm: Realm): ObjectValue {
   let intrinsicName = 'process.binding("contextify")';
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, intrinsicName);
 
@@ -61,10 +78,7 @@ export default function (realm: Realm): ObjectValue {
 
   function makeContextImpl() {
     // TODO: Allow sub-realms to be created and restored.
-    throw realm.createErrorThrowCompletion(
-      realm.intrinsics.Error,
-      "makeContext is not yet implemented in Prepack."
-    );
+    throw realm.createErrorThrowCompletion(realm.intrinsics.Error, "makeContext is not yet implemented in Prepack.");
   }
 
   function isContextImpl() {
@@ -83,10 +97,7 @@ export default function (realm: Realm): ObjectValue {
 
   function ContextifyScriptConstructor(context, args, argLength, newTarget) {
     if (!newTarget) {
-      throw realm.createErrorThrowCompletion(
-        realm.intrinsics.Error,
-        "Must call vm.Script as a constructor."
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.Error, "Must call vm.Script as a constructor.");
     }
     let proto = Get(realm, newTarget, "prototype");
     if (!(proto instanceof ObjectValue)) {
@@ -111,10 +122,12 @@ export default function (realm: Realm): ObjectValue {
       columnOffset: columnOffset,
       displayErrors: displayErrors,
       cachedDataBuf: undefined, // Not serializable.
-      produceCachedData: produceCachedData
+      produceCachedData: produceCachedData,
     };
 
-    let intrinsicConstructor = `new (${intrinsicName}).ContextifyScript(${JSON.stringify(code)}, ${JSON.stringify(resolvedOptions)})`;
+    let intrinsicConstructor = `new (${intrinsicName}).ContextifyScript(${JSON.stringify(code)}, ${JSON.stringify(
+      resolvedOptions
+    )})`;
 
     let self = new ObjectValue(realm, proto, intrinsicConstructor);
 
@@ -143,7 +156,13 @@ export default function (realm: Realm): ObjectValue {
     return self;
   }
 
-  let runInDebugContext = new NativeFunctionValue(realm, `${intrinsicName}.runInDebugContext`, "runInDebugContext", 0, runInDebugContextImpl);
+  let runInDebugContext = new NativeFunctionValue(
+    realm,
+    `${intrinsicName}.runInDebugContext`,
+    "runInDebugContext",
+    0,
+    runInDebugContextImpl
+  );
   Set(realm, obj, "runInDebugContext", runInDebugContext, true);
 
   let makeContext = new NativeFunctionValue(realm, `${intrinsicName}.makeContext`, "makeContext", 0, makeContextImpl);
@@ -152,7 +171,14 @@ export default function (realm: Realm): ObjectValue {
   let isContext = new NativeFunctionValue(realm, `${intrinsicName}.isContext`, "isContext", 0, isContextImpl);
   Set(realm, obj, "isContext", isContext, true);
 
-  let ContextifyScript = new NativeFunctionValue(realm, `${intrinsicName}.ContextifyScript`, "ContextifyScript", 0, ContextifyScriptConstructor, true);
+  let ContextifyScript = new NativeFunctionValue(
+    realm,
+    `${intrinsicName}.ContextifyScript`,
+    "ContextifyScript",
+    0,
+    ContextifyScriptConstructor,
+    true
+  );
   Set(realm, obj, "ContextifyScript", ContextifyScript, true);
 
   // ContextifyScript.prototype
@@ -192,8 +218,8 @@ export default function (realm: Realm): ObjectValue {
     }
 
     let lines = errorLocation.sourceCode.split(/\r?\n/);
-    let line = lines[errorLocation.loc.line - 1] || '';
-    let arrow = ' '.repeat(errorLocation.loc.column) + '^';
+    let line = lines[errorLocation.loc.line - 1] || "";
+    let arrow = " ".repeat(errorLocation.loc.column) + "^";
     let decoratedStack = `${errorLocation.filename}:${errorLocation.loc.line}\n${line}\n${arrow}\n${stack.value}`;
     Set(realm, error, "stack", new StringValue(realm, decoratedStack), false);
 
@@ -205,10 +231,7 @@ export default function (realm: Realm): ObjectValue {
       return false;
     }
     if (!(options instanceof ObjectValue)) {
-      throw realm.createErrorThrowCompletion(
-        realm.intrinsics.TypeError,
-        "options must be an object"
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "options must be an object");
     }
 
     let value = Get(realm, options, "breakOnSigint");
@@ -221,10 +244,7 @@ export default function (realm: Realm): ObjectValue {
       return -1;
     }
     if (!(options instanceof ObjectValue)) {
-      throw realm.createErrorThrowCompletion(
-        realm.intrinsics.TypeError,
-        "options must be an object"
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "options must be an object");
     }
 
     let value = Get(realm, options, "timeout");
@@ -235,10 +255,7 @@ export default function (realm: Realm): ObjectValue {
     let timeout = ToInteger(realm, value);
 
     if (timeout <= 0) {
-      throw realm.createErrorThrowCompletion(
-        realm.intrinsics.RangeError,
-        "timeout must be a positive number"
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "timeout must be a positive number");
     }
 
     return timeout;
@@ -249,10 +266,7 @@ export default function (realm: Realm): ObjectValue {
       return true;
     }
     if (!(options instanceof ObjectValue)) {
-      throw realm.createErrorThrowCompletion(
-        realm.intrinsics.TypeError,
-        "options must be an object"
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "options must be an object");
     }
 
     let value = Get(realm, options, "displayErrors");
@@ -272,10 +286,7 @@ export default function (realm: Realm): ObjectValue {
       return options.value;
     }
     if (!(options instanceof ObjectValue)) {
-      throw realm.createErrorThrowCompletion(
-        realm.intrinsics.TypeError,
-        "options must be an object"
-      );
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "options must be an object");
     }
 
     let value = Get(realm, options, "filename");
@@ -381,7 +392,11 @@ export default function (realm: Realm): ObjectValue {
     }
   }
 
-  let ContextifyScriptPrototype = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `${intrinsicName}.ContextifyScript.prototype`);
+  let ContextifyScriptPrototype = new ObjectValue(
+    realm,
+    realm.intrinsics.ObjectPrototype,
+    `${intrinsicName}.ContextifyScript.prototype`
+  );
 
   ContextifyScriptPrototype.defineNativeMethod("runInContext", 2, runInContext);
   ContextifyScriptPrototype.defineNativeMethod("runInThisContext", 1, runInThisContext);
@@ -390,14 +405,14 @@ export default function (realm: Realm): ObjectValue {
     value: ContextifyScriptPrototype,
     writable: true,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   DefinePropertyOrThrow(realm, ContextifyScriptPrototype, "constructor", {
     value: ContextifyScript,
     writable: true,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   return obj;

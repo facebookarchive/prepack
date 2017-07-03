@@ -22,12 +22,14 @@ import { construct_empty_effects } from "../realm.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 
-export default function (
-  ast: BabelNodeIfStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeIfStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [Completion | Value, BabelNodeStatement, Array<BabelNodeStatement>] {
   let [exprValue, exprAst, exprIO] = env.partiallyEvaluateCompletionDeref(ast.test, strictCode);
-  if (exprValue instanceof AbruptCompletion)
-    return [exprValue, t.expressionStatement((exprAst: any)), exprIO];
+  if (exprValue instanceof AbruptCompletion) return [exprValue, t.expressionStatement((exprAst: any)), exprIO];
   let completion;
   if (exprValue instanceof NormalCompletion) {
     completion = exprValue;
@@ -60,28 +62,26 @@ export default function (
   invariant(exprValue instanceof AbstractValue);
 
   // Evaluate consequent and alternate in sandboxes and get their effects.
-  let [consequentEffects, conAst, conIO] =
-    realm.partiallyEvaluateNodeForEffects(ast.consequent, strictCode, env);
+  let [consequentEffects, conAst, conIO] = realm.partiallyEvaluateNodeForEffects(ast.consequent, strictCode, env);
   let [conCompl, gen1, bindings1, properties1, createdObj1] = consequentEffects;
   let consequentAst = (conAst: any);
-  if (conIO.length > 0)
-    consequentAst = t.blockStatement(conIO.concat(consequentAst));
+  if (conIO.length > 0) consequentAst = t.blockStatement(conIO.concat(consequentAst));
 
-  let [alternateEffects, altAst, altIO] =
-    ast.alternate ?
-      realm.partiallyEvaluateNodeForEffects(ast.alternate, strictCode, env) :
-      [construct_empty_effects(realm), undefined, []];
+  let [alternateEffects, altAst, altIO] = ast.alternate
+    ? realm.partiallyEvaluateNodeForEffects(ast.alternate, strictCode, env)
+    : [construct_empty_effects(realm), undefined, []];
   let [altCompl, gen2, bindings2, properties2, createdObj2] = alternateEffects;
   let alternateAst = (altAst: any);
-  if (altIO.length > 0)
-    alternateAst = t.blockStatement(altIO.concat(alternateAst));
+  if (altIO.length > 0) alternateAst = t.blockStatement(altIO.concat(alternateAst));
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of exprValue.
-  let joinedEffects =
-    joinEffects(realm, exprValue,
-      [conCompl, gen1, bindings1, properties1, createdObj1],
-      [altCompl, gen2, bindings2, properties2, createdObj2]);
+  let joinedEffects = joinEffects(
+    realm,
+    exprValue,
+    [conCompl, gen1, bindings1, properties1, createdObj1],
+    [altCompl, gen2, bindings2, properties2, createdObj2]
+  );
   completion = joinedEffects[0];
   if (completion instanceof NormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that

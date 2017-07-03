@@ -12,7 +12,19 @@
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { Value, AbstractValue, BooleanValue, BoundFunctionValue, NumberValue, ProxyValue, UndefinedValue, StringValue, ObjectValue, NullValue, AbstractObjectValue } from "../values/index.js";
+import {
+  Value,
+  AbstractValue,
+  BooleanValue,
+  BoundFunctionValue,
+  NumberValue,
+  ProxyValue,
+  UndefinedValue,
+  StringValue,
+  ObjectValue,
+  NullValue,
+  AbstractObjectValue,
+} from "../values/index.js";
 import { Reference } from "../environment.js";
 import { ArrayCreate } from "./create.js";
 import { SetIntegrityLevel } from "./integrity.js";
@@ -75,14 +87,21 @@ export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
 }
 
 // ECMA262 9.1.8.1
-export function OrdinaryGet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, Receiver: Value, dataOnly?: boolean): Value {
+export function OrdinaryGet(
+  realm: Realm,
+  O: ObjectValue,
+  P: PropertyKeyValue,
+  Receiver: Value,
+  dataOnly?: boolean
+): Value {
   // 1. Assert: IsPropertyKey(P) is true.
   invariant(IsPropertyKey(realm, P), "expected property key");
 
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
   let desc = O.$GetOwnProperty(P);
-  let descValue = !desc ? realm.intrinsics.undefined :
-    (desc.value === undefined ? realm.intrinsics.undefined : desc.value);
+  let descValue = !desc
+    ? realm.intrinsics.undefined
+    : desc.value === undefined ? realm.intrinsics.undefined : desc.value;
 
   // 3. If desc is undefined, then
   if (!desc || descValue.mightHaveBeenDeleted()) {
@@ -108,9 +127,12 @@ export function OrdinaryGet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, R
       // descValue unless it is empty.
       // Only get the parent value if it does not involve a getter call.
       // Use a property get for the joined value since it does the check for empty.
-      let cond = realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal,
+      let cond = realm.createAbstract(
+        new TypesDomain(BooleanValue),
+        ValuesDomain.topVal,
         [descValue, realm.intrinsics.empty],
-        ([x, y]) => t.binaryExpression("!==", x, y));
+        ([x, y]) => t.binaryExpression("!==", x, y)
+      );
       return joinValuesAsConditional(realm, cond, descValue, parentVal);
     }
     invariant(!desc);
@@ -150,7 +172,14 @@ export function GetGlobalObject(realm: Realm): ObjectValue | AbstractObjectValue
 }
 
 // ECMA262 21.1.3.14.1
-export function GetSubstitution(realm: Realm, matched: string, str: string, position: number, captures: Array<string | void>, replacement: string): string {
+export function GetSubstitution(
+  realm: Realm,
+  matched: string,
+  str: string,
+  position: number,
+  captures: Array<string | void>,
+  replacement: string
+): string {
   // 1. Assert: Type(matched) is String.
   invariant(typeof matched === "string", "expected matched to be a stirng");
 
@@ -251,7 +280,11 @@ export function GetMethod(realm: Realm, V: Value, P: PropertyKeyValue): Undefine
 }
 
 // ECMA262 9.1.14
-export function GetPrototypeFromConstructor(realm: Realm, constructor: ObjectValue, intrinsicDefaultProto: string): ObjectValue {
+export function GetPrototypeFromConstructor(
+  realm: Realm,
+  constructor: ObjectValue,
+  intrinsicDefaultProto: string
+): ObjectValue {
   // 1. Assert: intrinsicDefaultProto is a String value that is this specification's name of an intrinsic
   //   object. The corresponding object must be an intrinsic that is intended to be used as the [[Prototype]]
   //   value of an object.
@@ -324,7 +357,7 @@ export function GetNewTarget(realm: Realm): UndefinedValue | ObjectValue {
   let envRec = GetThisEnvironment(realm);
 
   // 2. Assert: envRec has a [[NewTarget]] field.
-  if (!('$NewTarget' in envRec)) {
+  if (!("$NewTarget" in envRec)) {
     // In the spec we should not get here because earlier static checks are supposed to prevent it.
     // However, we do not have an appropriate place to do this check earlier.
     throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "new.target not allowed here");
@@ -336,7 +369,7 @@ export function GetNewTarget(realm: Realm): UndefinedValue | ObjectValue {
 
 export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTemplateLiteral): ObjectValue {
   // 1. Let rawStrings be TemplateStrings of templateLiteral with argument true.
-  let rawStrings = templateLiteral.quasis.map((quasi) => quasi.value.raw);
+  let rawStrings = templateLiteral.quasis.map(quasi => quasi.value.raw);
 
   // 2. Let realm be the current Realm Record.
   realm;
@@ -367,7 +400,7 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
   }
 
   // 5. Let cookedStrings be TemplateStrings of templateLiteral with argument false.
-  let cookedStrings = templateLiteral.quasis.map((quasi) => quasi.value.cooked);
+  let cookedStrings = templateLiteral.quasis.map(quasi => quasi.value.cooked);
 
   // 6. Let count be the number of elements in the List cookedStrings.
   let count = cookedStrings.length;
@@ -391,10 +424,10 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
 
     // c. Call template.[[DefineOwnProperty]](prop, PropertyDescriptor{[[Value]]: cookedValue, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}).
     template.$DefineOwnProperty(prop, {
-        value: cookedValue,
-        writable: false,
-        enumerable: true,
-        configurable: false
+      value: cookedValue,
+      writable: false,
+      enumerable: true,
+      configurable: false,
     });
 
     // d. Let rawValue be the String value rawStrings[index].
@@ -402,10 +435,10 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
 
     // e. Call rawObj.[[DefineOwnProperty]](prop, PropertyDescriptor{[[Value]]: rawValue, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}).
     rawObj.$DefineOwnProperty(prop, {
-        value: rawValue,
-        writable: false,
-        enumerable: true,
-        configurable: false
+      value: rawValue,
+      writable: false,
+      enumerable: true,
+      configurable: false,
     });
 
     // f. Let index be index+1.
@@ -417,10 +450,10 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
 
   // 12. Call template.[[DefineOwnProperty]]("raw", PropertyDescriptor{[[Value]]: rawObj, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false}).
   template.$DefineOwnProperty("raw", {
-      value: rawObj,
-      writable: false,
-      enumerable: false,
-      configurable: false
+    value: rawObj,
+    writable: false,
+    enumerable: false,
+    configurable: false,
   });
 
   // 13. Perform SetIntegrityLevel(template, "frozen").

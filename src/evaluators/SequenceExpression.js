@@ -17,7 +17,12 @@ import { GetValue } from "../methods/index.js";
 import type { BabelNodeSequenceExpression } from "babel-types";
 import invariant from "../invariant.js";
 
-export default function (ast: BabelNodeSequenceExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeSequenceExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   invariant(ast.expressions.length > 0);
   let val;
   for (let node of ast.expressions) {

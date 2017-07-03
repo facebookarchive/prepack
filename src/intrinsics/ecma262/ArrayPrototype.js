@@ -37,10 +37,10 @@ import {
   DeletePropertyOrThrow,
   Set,
   HasSomeCompatibleType,
-  ThrowIfMightHaveBeenDeleted
+  ThrowIfMightHaveBeenDeleted,
 } from "../../methods/index.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
   obj.defineNativeProperty(realm.intrinsics.SymbolIterator, realm.intrinsics.ArrayProto_values);
 
@@ -107,7 +107,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
           // 5. Increase k by 1.
           k++;
         }
-      } else { // d. Else E is added as a single item rather than spread,
+      } else {
+        // d. Else E is added as a single item rather than spread,
         // i. If n≥2^53-1, throw a TypeError exception.
         if (n > Math.pow(2, 53) - 1) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "too damn high");
@@ -130,88 +131,90 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 22.1.3.3
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("copyWithin", 2, (context, [target, start, end]) => {
-    // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    obj.defineNativeMethod("copyWithin", 2, (context, [target, start, end]) => {
+      // 1. Let O be ? ToObject(this value).
+      let O = ToObject(realm, context.throwIfNotConcrete());
 
-    // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+      // 2. Let len be ? ToLength(? Get(O, "length")).
+      let len = ToLength(realm, Get(realm, O, "length"));
 
-    // 3. Let relativeTarget be ? ToInteger(target).
-    let relativeTarget = ToInteger(realm, target);
+      // 3. Let relativeTarget be ? ToInteger(target).
+      let relativeTarget = ToInteger(realm, target);
 
-    // 4. If relativeTarget < 0, let to be max((len + relativeTarget), 0); else let to be min(relativeTarget, len).
-    let to = relativeTarget < 0 ? Math.max(len + relativeTarget, 0) : Math.min(relativeTarget, len);
+      // 4. If relativeTarget < 0, let to be max((len + relativeTarget), 0); else let to be min(relativeTarget, len).
+      let to = relativeTarget < 0 ? Math.max(len + relativeTarget, 0) : Math.min(relativeTarget, len);
 
-    // 5. Let relativeStart be ? ToInteger(start).
-    let relativeStart = ToInteger(realm, start);
+      // 5. Let relativeStart be ? ToInteger(start).
+      let relativeStart = ToInteger(realm, start);
 
-    // 6. If relativeStart < 0, let from be max((len + relativeStart), 0); else let from be min(relativeStart, len).
-    let from = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
+      // 6. If relativeStart < 0, let from be max((len + relativeStart), 0); else let from be min(relativeStart, len).
+      let from = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
-    // 7. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = (!end || end instanceof UndefinedValue) ? len : ToInteger(realm, end.throwIfNotConcrete());
+      // 7. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
+      let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
 
-    // 8. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
-    let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
+      // 8. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
+      let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
 
-    // 9. Let count be min(final-from, len-to).
-    let count = Math.min(final - from, len - to);
+      // 9. Let count be min(final-from, len-to).
+      let count = Math.min(final - from, len - to);
 
-    let direction;
-    // 10. If from<to and to<from+count, then
-    if (from < to && to < from + count) {
-      // a. Let direction be -1.
-      direction = -1;
+      let direction;
+      // 10. If from<to and to<from+count, then
+      if (from < to && to < from + count) {
+        // a. Let direction be -1.
+        direction = -1;
 
-      // b. Let from be from + count - 1.
-      from = from + count - 1;
+        // b. Let from be from + count - 1.
+        from = from + count - 1;
 
-      // c. Let to be to + count - 1.
-      to = to + count - 1;
-    } else { // 11. Else,
-      // a. Let direction be 1.
-      direction = 1;
-    }
-
-    // 12. Repeat, while count > 0
-    while (count > 0) {
-      // a. Let fromKey be ! ToString(from).
-      let fromKey = ToString(realm, new NumberValue(realm, from));
-
-      // b. Let toKey be ! ToString(to).
-      let toKey = ToString(realm, new NumberValue(realm, to));
-
-      // c. Let fromPresent be ? HasProperty(O, fromKey).
-      let fromPresent = HasProperty(realm, O, fromKey);
-
-      // d. If fromPresent is true, then
-      if (fromPresent === true) {
-        // i. Let fromVal be ? Get(O, fromKey).
-        let fromVal = Get(realm, O, fromKey);
-        // ii. Perform ? Set(O, toKey, fromVal, true).
-        Set(realm, O, toKey, fromVal, true);
-      } else { // e. Else fromPresent is false,
-        // i. Perform ? DeletePropertyOrThrow(O, toKey).
-        DeletePropertyOrThrow(realm, O, toKey);
+        // c. Let to be to + count - 1.
+        to = to + count - 1;
+      } else {
+        // 11. Else,
+        // a. Let direction be 1.
+        direction = 1;
       }
 
-      // f. Let from be from + direction.
-      from = from + direction;
+      // 12. Repeat, while count > 0
+      while (count > 0) {
+        // a. Let fromKey be ! ToString(from).
+        let fromKey = ToString(realm, new NumberValue(realm, from));
 
-      // g. Let to be to + direction.
-      to = to + direction;
+        // b. Let toKey be ! ToString(to).
+        let toKey = ToString(realm, new NumberValue(realm, to));
 
-      // h. Let count be count - 1.
-      count = count - 1;
-    }
+        // c. Let fromPresent be ? HasProperty(O, fromKey).
+        let fromPresent = HasProperty(realm, O, fromKey);
 
-    // 13. Return O.
-    return O;
-  });
+        // d. If fromPresent is true, then
+        if (fromPresent === true) {
+          // i. Let fromVal be ? Get(O, fromKey).
+          let fromVal = Get(realm, O, fromKey);
+          // ii. Perform ? Set(O, toKey, fromVal, true).
+          Set(realm, O, toKey, fromVal, true);
+        } else {
+          // e. Else fromPresent is false,
+          // i. Perform ? DeletePropertyOrThrow(O, toKey).
+          DeletePropertyOrThrow(realm, O, toKey);
+        }
+
+        // f. Let from be from + direction.
+        from = from + direction;
+
+        // g. Let to be to + direction.
+        to = to + direction;
+
+        // h. Let count be count - 1.
+        count = count - 1;
+      }
+
+      // 13. Return O.
+      return O;
+    });
 
   // ECMA262 22.1.3.4
-  obj.defineNativeMethod("entries", 0, (context) => {
+  obj.defineNativeMethod("entries", 0, context => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -281,7 +284,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     let k = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 5. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = (!end || end instanceof UndefinedValue) ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
 
     // 6. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -489,46 +492,47 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 22.1.3.11
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-  obj.defineNativeMethod("includes", 1, (context, [searchElement, fromIndex]) => {
-    // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    obj.defineNativeMethod("includes", 1, (context, [searchElement, fromIndex]) => {
+      // 1. Let O be ? ToObject(this value).
+      let O = ToObject(realm, context.throwIfNotConcrete());
 
-    // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+      // 2. Let len be ? ToLength(? Get(O, "length")).
+      let len = ToLength(realm, Get(realm, O, "length"));
 
-    // 3. If len is 0, return false.
-    if (len === 0) return realm.intrinsics.false;
+      // 3. If len is 0, return false.
+      if (len === 0) return realm.intrinsics.false;
 
-    // 4. Let n be ? ToInteger(fromIndex). (If fromIndex is undefined, this step produces the value 0.)
-    let n = ToInteger(realm, fromIndex || realm.intrinsics.undefined);
+      // 4. Let n be ? ToInteger(fromIndex). (If fromIndex is undefined, this step produces the value 0.)
+      let n = ToInteger(realm, fromIndex || realm.intrinsics.undefined);
 
-    let k;
-    // 5. If n ≥ 0, then
-    if (n >= 0) {
-      // a. Let k be n.
-      k = n;
-    } else { // 6. Else n < 0,
-      // a. Let k be len + n.
-      k = len + n;
-      // b. If k < 0, let k be 0.
-      if (k < 0) k = 0;
-    }
+      let k;
+      // 5. If n ≥ 0, then
+      if (n >= 0) {
+        // a. Let k be n.
+        k = n;
+      } else {
+        // 6. Else n < 0,
+        // a. Let k be len + n.
+        k = len + n;
+        // b. If k < 0, let k be 0.
+        if (k < 0) k = 0;
+      }
 
-    // 7. Repeat, while k < len
-    while (k < len) {
-      // a. Let elementK be the result of ? Get(O, ! ToString(k)).
-      let elementK = Get(realm, O, ToString(realm, new NumberValue(realm, k)));
+      // 7. Repeat, while k < len
+      while (k < len) {
+        // a. Let elementK be the result of ? Get(O, ! ToString(k)).
+        let elementK = Get(realm, O, ToString(realm, new NumberValue(realm, k)));
 
-      // b. If SameValueZero(searchElement, elementK) is true, return true.
-      if (SameValueZeroPartial(realm, searchElement, elementK) === true) return realm.intrinsics.true;
+        // b. If SameValueZero(searchElement, elementK) is true, return true.
+        if (SameValueZeroPartial(realm, searchElement, elementK) === true) return realm.intrinsics.true;
 
-      // c. Increase k by 1.
-      k = k + 1;
-    }
+        // c. Increase k by 1.
+        k = k + 1;
+      }
 
-    // 8. Return false.
-    return realm.intrinsics.false;
-  });
+      // 8. Return false.
+      return realm.intrinsics.false;
+    });
 
   // ECMA262 22.1.3.12
   obj.defineNativeMethod("indexOf", 1, (context, [searchElement, fromIndex]) => {
@@ -552,7 +556,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (n >= 0) {
       // a. If n is -0, let k be +0; else let k be n.
       k = Object.is(n, -0) ? +0 : n;
-    } else { // 7. Else n < 0,
+    } else {
+      // 7. Else n < 0,
       // a. Let k be len + n.
       k = len + n;
 
@@ -644,7 +649,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.14
-  obj.defineNativeMethod("keys", 0, (context) => {
+  obj.defineNativeMethod("keys", 0, context => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -671,7 +676,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (n >= 0) {
       // a. If n is -0, let k be +0; else let k be min(n, len - 1).
       k = Object.is(n, -0) ? +0 : Math.min(n, len - 1);
-    } else { // 6. Else n < 0,
+    } else {
+      // 6. Else n < 0,
       // a. Let k be len + n.
       k = len + n;
     }
@@ -752,7 +758,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.17
-  obj.defineNativeMethod("pop", 0, (context) => {
+  obj.defineNativeMethod("pop", 0, context => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -766,7 +772,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // b. Return undefined.
       return realm.intrinsics.undefined;
-    } else { // 4. Else len > 0,
+    } else {
+      // 4. Else len > 0,
       // a. Let newLen be len-1.
       let newLen = len - 1;
 
@@ -851,7 +858,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (initialValue) {
       // a. Set accumulator to initialValue.
       accumulator = initialValue;
-    } else { // 7. Else initialValue is not present,
+    } else {
+      // 7. Else initialValue is not present,
       // a. Let kPresent be false.
       let kPresent = false;
 
@@ -895,7 +903,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let accumulator be ? Call(callbackfn, undefined, « accumulator, kValue, k, O »).
-        accumulator = Call(realm, callbackfn, realm.intrinsics.undefined, [accumulator, kValue, new NumberValue(realm, k), O]);
+        accumulator = Call(realm, callbackfn, realm.intrinsics.undefined, [
+          accumulator,
+          kValue,
+          new NumberValue(realm, k),
+          O,
+        ]);
       }
 
       // d. Increase k by 1.
@@ -932,7 +945,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (initialValue) {
       // 1. Set accumulator to initialValue.
       accumulator = initialValue;
-    } else { // 7. Else initialValue is not present,
+    } else {
+      // 7. Else initialValue is not present,
       // a. Let kPresent be false.
       let kPresent = false;
 
@@ -974,7 +988,12 @@ export default function (realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let accumulator be ? Call(callbackfn, undefined, « accumulator, kValue, k, O »).
-        accumulator = Call(realm, callbackfn, realm.intrinsics.undefined, [accumulator, kValue, new NumberValue(realm, k), O]);
+        accumulator = Call(realm, callbackfn, realm.intrinsics.undefined, [
+          accumulator,
+          kValue,
+          new NumberValue(realm, k),
+          O,
+        ]);
       }
 
       // d. Decrease k by 1.
@@ -986,7 +1005,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.21
-  obj.defineNativeMethod("reverse", 0, (context) => {
+  obj.defineNativeMethod("reverse", 0, context => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -1040,7 +1059,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
         Set(realm, O, upperP, lowerValue, true);
-      } else if (!lowerExists && upperExists) { // i. Else if lowerExists is false and upperExists is true, then
+      } else if (!lowerExists && upperExists) {
+        // i. Else if lowerExists is false and upperExists is true, then
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
@@ -1048,7 +1068,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // ii. Perform ? DeletePropertyOrThrow(O, upperP).
         DeletePropertyOrThrow(realm, O, upperP);
-      } else if (lowerExists && !upperExists) { // j. Else if lowerExists is true and upperExists is false, then
+      } else if (lowerExists && !upperExists) {
+        // j. Else if lowerExists is true and upperExists is false, then
         invariant(lowerValue, "expected lower value to exist");
 
         // i. Perform ? DeletePropertyOrThrow(O, lowerP).
@@ -1056,7 +1077,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
         Set(realm, O, upperP, lowerValue, true);
-      } else { // k. Else both lowerExists and upperExists are false,
+      } else {
+        // k. Else both lowerExists and upperExists are false,
         // i. No action is required.
       }
 
@@ -1069,7 +1091,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.22
-  obj.defineNativeMethod("shift", 0, (context) => {
+  obj.defineNativeMethod("shift", 0, context => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -1097,7 +1119,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
       let frm = new StringValue(realm, k + "");
 
       // b. Let to be ! ToString(k-1).
-      let to = new StringValue(realm, (k - 1) + "");
+      let to = new StringValue(realm, k - 1 + "");
 
       // c. Let fromPresent be ? HasProperty(O, from).
       let fromPresent = HasProperty(realm, O, frm);
@@ -1109,7 +1131,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
         // ii. Perform ? Set(O, to, fromVal, true).
         Set(realm, O, to, fromVal, true);
-      } else { // d. Else fromPresent is false,
+      } else {
+        // d. Else fromPresent is false,
         // i. Perform ? DeletePropertyOrThrow(O, to).
         DeletePropertyOrThrow(realm, O, to);
       }
@@ -1119,7 +1142,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     }
 
     // 7. Perform ? DeletePropertyOrThrow(O, ! ToString(len-1)).
-    DeletePropertyOrThrow(realm, O, new StringValue(realm, (len - 1) + ""));
+    DeletePropertyOrThrow(realm, O, new StringValue(realm, len - 1 + ""));
 
     // 8. Perform ? Set(O, "length", len-1, true).
     Set(realm, O, "length", new NumberValue(realm, len - 1), true);
@@ -1198,8 +1221,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-        "callback passed to Array.prototype.some isn't callable");
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "callback passed to Array.prototype.some isn't callable"
+      );
     }
 
     // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
@@ -1238,7 +1263,6 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 22.1.3.25
   obj.defineNativeMethod("sort", 1, (context, [comparefn]) => {
-
     // 1. Let obj be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -1248,7 +1272,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     // Within this specification of the sort method, an object, obj, is said to be sparse if the following algorithm returns true:
     let isSparse = () => {
       // 1.For each integer i in the range 0≤i< len
-      for (let i = 0; i < len; i++){
+      for (let i = 0; i < len; i++) {
         // a.Let elem be obj.[[GetOwnProperty]](! ToString(i)).
         let elem = O.$GetOwnProperty(i.toString());
         // b.If elem is undefined, return true.
@@ -1265,29 +1289,32 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // If proto is not null
     if (!(proto instanceof NullValue)) {
-        // and there exists an integer j such that all of the conditions below are satisfied then the sort order is implementation-defined:
-        for (let j = 0; j < len; j++){
-          // HasProperty(proto, ToString(j)) is true.
-          if (HasProperty(realm, proto, j.toString())
-              // obj is sparse
-              && sparse)
-            // We abord when the result of the sort is implementation defined.
-            throw Error("Implentation defined behavior detected");
-        }
+      // and there exists an integer j such that all of the conditions below are satisfied then the sort order is implementation-defined:
+      for (let j = 0; j < len; j++) {
+        // HasProperty(proto, ToString(j)) is true.
+        if (
+          HasProperty(realm, proto, j.toString()) &&
+          // obj is sparse
+          sparse
+        )
+          // We abord when the result of the sort is implementation defined.
+          throw Error("Implentation defined behavior detected");
+      }
     }
 
     // The sort order is also implementation defined if obj is sparse and any of the following conditions are true:
     if (sparse) {
       // IsExtensible(obj) is false.
-      if (!IsExtensible(realm, O))
-        throw Error("Implementation defined behavior, Array is both sparse and extensible");
+      if (!IsExtensible(realm, O)) throw Error("Implementation defined behavior, Array is both sparse and extensible");
       // Any integer index property of obj whose name is a nonnegative integer less than len
-      for (let j = 0; j < len; j++){
+      for (let j = 0; j < len; j++) {
         // is a data property whose [[Configurable]] attribute is false.
         let prop = O.$GetOwnProperty(j.toString());
         if (prop !== undefined && !prop.configurable) {
           ThrowIfMightHaveBeenDeleted(prop.value);
-          throw Error("Implementation defined behavior :  Array is sparse and it's prototype has some numbered properties");
+          throw Error(
+            "Implementation defined behavior :  Array is sparse and it's prototype has some numbered properties"
+          );
         }
       }
     }
@@ -1297,7 +1324,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     // is not the ordinary object implementation of these internal methods.
 
     // Any integer index property of obj whose name is a nonnegative integer less than len
-    for (let j = 0; j < len; j++){
+    for (let j = 0; j < len; j++) {
       //is a data property whose [[writable]] attribute is false.
       let prop = O.$GetOwnProperty(j.toString());
       if (prop !== undefined && !prop.writable) {
@@ -1305,7 +1332,6 @@ export default function (realm: Realm, obj: ObjectValue): void {
         throw Error("Implementation defined behavior : property " + j.toString() + "is non writable : ");
       }
     }
-
 
     // TODO If comparefn is undefined and the application of ToString to any value passed as an argument to SortCompare modifies obj or any object on obj's prototype chain.
     // TODO If comparefn is undefined and all applications of ToString, to any specific value passed as an argument to SortCompare, do not produce the same result.
@@ -1356,14 +1382,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
       return realm.intrinsics.zero;
     };
 
-
     //1. Perform an implementation-dependent sequence of calls to the [[Get]] and [[Set]] internal methods of obj, to the DeletePropertyOrThrow and HasOwnProperty abstract operation with obj as the first argument, and to SortCompare (described below), such that:
     //   The property key argument for each call to [[Get]], [[Set]], HasOwnProperty, or DeletePropertyOrThrow is the string representation of a nonnegative integer less than len.
 
-
     // We leverage the underlying implementation sort by copying the element in a temp. array, sorting it, and
     // transfering back the value inside the our array.
-
 
     let arr = [];
 
@@ -1379,8 +1402,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     for (let j = 0; j < len; j++) {
       // The property key argument for each call to [[Get]], [[Set]], HasOwnProperty, or DeletePropertyOrThrow is the string representation of a nonnegative integer less than len.
-      if (!(HasOwnProperty(realm, O, j.toString())))
-        continue;
+      if (!HasOwnProperty(realm, O, j.toString())) continue;
       // The arguments for calls to SortCompare are values returned by a previous call to the [[Get]] internal method,
       // unless the properties accessed by those previous calls did not exist according to HasOwnProperty.
 
@@ -1395,13 +1417,11 @@ export default function (realm: Realm, obj: ObjectValue): void {
     arr.sort(comparefn_);
 
     //Apply the permutation back to the original array.
-    for (let j = 0; j < len; j++){
-      if (arr.hasOwnProperty(j.toString())){
+    for (let j = 0; j < len; j++) {
+      if (arr.hasOwnProperty(j.toString())) {
         let ok = O.$Set(j.toString(), arr[j], O);
         // If any [[Set]] call returns false a TypeError exception is thrown.
-        if (!ok)
-          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "[[Set]] returned false");
-
+        if (!ok) throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "[[Set]] returned false");
       } else {
         // If obj is not sparse then DeletePropertyOrThrow must not be called.
         invariant(sparse);
@@ -1438,13 +1458,15 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
       // b. Let actualDeleteCount be 0.
       actualDeleteCount = 0;
-    } else if (argLength === 1) { // 6. Else if the number of actual arguments is 1, then
+    } else if (argLength === 1) {
+      // 6. Else if the number of actual arguments is 1, then
       // a. Let insertCount be 0.
       insertCount = 0;
 
       // b. Let actualDeleteCount be len - actualStart.
       actualDeleteCount = len - actualStart;
-    } else { // 7. Else,
+    } else {
+      // 7. Else,
       // a. Let insertCount be the number of actual arguments minus 2.
       insertCount = argLength - 2;
 
@@ -1469,7 +1491,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
     // 11. Repeat, while k < actualDeleteCount
     while (k < actualDeleteCount) {
       // a. Let from be ! ToString(actualStart+k).
-      let frm = new StringValue(realm, (actualStart + k) + "");
+      let frm = new StringValue(realm, actualStart + k + "");
 
       // b. Let fromPresent be ? HasProperty(O, from).
       let fromPresent = HasProperty(realm, O, frm);
@@ -1505,10 +1527,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // b. Repeat, while k < (len - actualDeleteCount)
       while (k < len - actualDeleteCount) {
         // i. Let from be ! ToString(k+actualDeleteCount).
-        let frm = new StringValue(realm, (k + actualDeleteCount) + "");
+        let frm = new StringValue(realm, k + actualDeleteCount + "");
 
         // ii. Let to be ! ToString(k+itemCount).
-        let to = new StringValue(realm, (k + itemCount) + "");
+        let to = new StringValue(realm, k + itemCount + "");
 
         // iii. Let fromPresent be ? HasProperty(O, from).
         let fromPresent = HasProperty(realm, O, frm);
@@ -1520,7 +1542,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
           // 2. Perform ? Set(O, to, fromValue, true).
           Set(realm, O, to, fromValue, true);
-        } else { // v. Else fromPresent is false,
+        } else {
+          // v. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
           DeletePropertyOrThrow(realm, O, to);
         }
@@ -1535,22 +1558,23 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // d. Repeat, while k > (len - actualDeleteCount + itemCount)
       while (k > len - actualDeleteCount + itemCount) {
         // i. Perform ? DeletePropertyOrThrow(O, ! ToString(k-1)).
-        DeletePropertyOrThrow(realm, O, new StringValue(realm, (k - 1) + ""));
+        DeletePropertyOrThrow(realm, O, new StringValue(realm, k - 1 + ""));
 
         // ii. Decrease k by 1.
         k--;
       }
-    } else if (itemCount > actualDeleteCount) { // 16. Else if itemCount > actualDeleteCount, then
+    } else if (itemCount > actualDeleteCount) {
+      // 16. Else if itemCount > actualDeleteCount, then
       // a. Let k be (len - actualDeleteCount).
       k = len - actualDeleteCount;
 
       // b. Repeat, while k > actualStart
       while (k > actualStart) {
         // i. Let from be ! ToString(k + actualDeleteCount - 1).
-        let frm = new StringValue(realm, (k + actualDeleteCount - 1) + "");
+        let frm = new StringValue(realm, k + actualDeleteCount - 1 + "");
 
         // ii. Let to be ! ToString(k + itemCount - 1).
-        let to = new StringValue(realm, (k + itemCount - 1) + "");
+        let to = new StringValue(realm, k + itemCount - 1 + "");
 
         // iii. Let fromPresent be ? HasProperty(O, from).
         let fromPresent = HasProperty(realm, O, frm);
@@ -1562,7 +1586,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
           // 2. Perform ? Set(O, to, fromValue, true).
           Set(realm, O, to, fromValue, true);
-        } else { // v. Else fromPresent is false,
+        } else {
+          // v. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
           DeletePropertyOrThrow(realm, O, to);
         }
@@ -1595,7 +1620,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.27
-  obj.defineNativeMethod("toLocaleString", 0, (context) => {
+  obj.defineNativeMethod("toLocaleString", 0, context => {
     // 1. Let array be ? ToObject(this value).
     let array = ToObject(realm, context.throwIfNotConcrete());
 
@@ -1617,7 +1642,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
     if (HasSomeCompatibleType(firstElement, UndefinedValue, NullValue)) {
       // a. Let R be the empty String.
       R = "";
-    } else { // 7. Else,
+    } else {
+      // 7. Else,
       // a. Let R be ? ToString(? Invoke(firstElement, "toLocaleString")).
       R = ToStringPartial(realm, Invoke(realm, firstElement, "toLocaleString"));
     }
@@ -1637,7 +1663,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       if (HasSomeCompatibleType(nextElement, UndefinedValue, NullValue)) {
         // i. Let R be the empty String.
         R = "";
-      } else { // d. Else,
+      } else {
+        // d. Else,
         // i. Let R be ? ToString(? Invoke(nextElement, "toLocaleString")).
         R = ToStringPartial(realm, Invoke(realm, nextElement, "toLocaleString"));
       }
@@ -1680,10 +1707,10 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // c. Repeat, while k > 0,
       while (k > 0) {
         // i. Let from be ! ToString(k-1).
-        let frm = new StringValue(realm, (k - 1) + "");
+        let frm = new StringValue(realm, k - 1 + "");
 
         // ii. Let to be ! ToString(k+argCount-1).
-        let to = new StringValue(realm, (k + argCount - 1) + "");
+        let to = new StringValue(realm, k + argCount - 1 + "");
 
         // iv. Let fromPresent be ? HasProperty(O, from).
         let fromPresent = HasProperty(realm, O, frm);
@@ -1695,7 +1722,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
           // 2. Perform ? Set(O, to, fromValue, true).
           Set(realm, O, to, fromValue, true);
-        } else { // vi. Else fromPresent is false,
+        } else {
+          // vi. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
           DeletePropertyOrThrow(realm, O, to);
         }
@@ -1767,7 +1795,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
 
     // 11. Return unscopableList.
     obj.defineNativeProperty(realm.intrinsics.SymbolUnscopables, unscopableList, {
-      writable: false
+      writable: false,
     });
   }
 }

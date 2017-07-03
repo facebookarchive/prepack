@@ -26,7 +26,12 @@ import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression
 import invariant from "../invariant.js";
 
 // 13.12.10 Runtime Semantics: CaseSelectorEvaluation
-function CaseSelectorEvaluation(expression: BabelNodeExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
+function CaseSelectorEvaluation(
+  expression: BabelNodeExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
   // 1. Let exprRef be the result of evaluating Expression.
   let exprRef = env.evaluate(expression, strictCode);
 
@@ -34,14 +39,18 @@ function CaseSelectorEvaluation(expression: BabelNodeExpression, strictCode: boo
   return GetValue(realm, exprRef);
 }
 
-function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Reference | Value {
-
+function CaseBlockEvaluation(
+  cases: Array<BabelNodeSwitchCase>,
+  input: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Reference | Value {
   let EvaluateCase = (c: BabelNodeSwitchCase): Reference | Value | AbruptCompletion => {
     let r = realm.intrinsics.empty;
     for (let node of c.consequent) {
       let res = env.evaluateCompletion(node, strictCode);
-      if (res instanceof AbruptCompletion)
-        return (UpdateEmpty(realm, res, r): any);
+      if (res instanceof AbruptCompletion) return (UpdateEmpty(realm, res, r): any);
       if (!(res instanceof EmptyValue)) r = res;
     }
     return r;
@@ -69,7 +78,8 @@ function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, st
         // iii. Let found be the result of performing Strict Equality Comparison input === clauseSelector.[[Value]].
         found = StrictEqualityComparisonPartial(realm, input, clauseSelector);
       }
-      if (found) { // b. If found is true, then
+      if (found) {
+        // b. If found is true, then
         // i. Let R be the result of evaluating C.
         let R = EvaluateCase(C);
 
@@ -91,7 +101,7 @@ function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, st
   if (cases.length === 0) return realm.intrinsics.undefined;
 
   // CaseBlock:{CaseClauses DefaultClause CaseClauses}
-  let default_case_num = cases.findIndex((clause) => {
+  let default_case_num = cases.findIndex(clause => {
     return clause.test === null;
   });
 
@@ -144,7 +154,8 @@ function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, st
 
     // 13. Return NormalCompletion(V).
     return V;
-  } else { // CaseBlock:{CaseClauses}
+  } else {
+    // CaseBlock:{CaseClauses}
     let V;
     [, V] = EvaluateCaseClauses(cases, realm.intrinsics.undefined);
     return V;
@@ -152,9 +163,15 @@ function CaseBlockEvaluation(cases: Array<BabelNodeSwitchCase>, input: Value, st
 }
 
 // 13.12.11
-export default function (ast: BabelNodeSwitchStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm, labelSet: Array<string>): Value | Reference {
+export default function(
+  ast: BabelNodeSwitchStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: Array<string>
+): Value | Reference {
   let expression = ast.discriminant;
-  let cases : Array<BabelNodeSwitchCase> = ast.cases;
+  let cases: Array<BabelNodeSwitchCase> = ast.cases;
 
   // 1. Let exprRef be the result of evaluating Expression.
   let exprRef = env.evaluate(expression, strictCode);
@@ -169,8 +186,7 @@ export default function (ast: BabelNodeSwitchStatement, strictCode: boolean, env
   let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
 
   // 5. Perform BlockDeclarationInstantiation(CaseBlock, blockEnv).
-  let CaseBlock = cases.map(c => c.consequent).reduce(
-    (stmts, case_blk) => stmts.concat(case_blk), []);
+  let CaseBlock = cases.map(c => c.consequent).reduce((stmts, case_blk) => stmts.concat(case_blk), []);
   BlockDeclarationInstantiation(realm, strictCode, CaseBlock, blockEnv);
 
   // 6. Set the running execution context's LexicalEnvironment to blockEnv.
@@ -185,8 +201,7 @@ export default function (ast: BabelNodeSwitchStatement, strictCode: boolean, env
     return R;
   } catch (e) {
     if (e instanceof BreakCompletion) {
-      if (!e.target)
-        return (UpdateEmpty(realm, e, realm.intrinsics.undefined): any).value;
+      if (!e.target) return (UpdateEmpty(realm, e, realm.intrinsics.undefined): any).value;
     }
     throw e;
   } finally {

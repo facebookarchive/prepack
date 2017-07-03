@@ -14,9 +14,9 @@ import { NativeFunctionValue } from "../../values/index.js";
 import { ToObject, CreateArrayIterator } from "../../methods/index.js";
 import { ValidateTypedArray } from "../../methods/typedarray.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
-  return new NativeFunctionValue(realm, "Array.prototype.values", "values", 0, (context) => {
+  return new NativeFunctionValue(realm, "Array.prototype.values", "values", 0, context => {
     // 1. Let O be ? ToObject(this value).
     let O = ToObject(realm, context.throwIfNotConcrete());
 

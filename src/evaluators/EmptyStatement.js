@@ -15,6 +15,11 @@ import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import type { BabelNodeEmptyStatement } from "babel-types";
 
-export default function (ast: BabelNodeEmptyStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeEmptyStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   return realm.intrinsics.empty;
 }

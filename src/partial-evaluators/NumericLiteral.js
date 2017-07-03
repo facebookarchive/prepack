@@ -15,8 +15,11 @@ import type { Realm } from "../realm.js";
 
 import { NumberValue } from "../values/index.js";
 
-export default function (
-  ast: BabelNodeNumericLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeNumericLiteral,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [NumberValue, BabelNodeNumericLiteral, Array<BabelNodeStatement>] {
   let result = new NumberValue(realm, ast.value);
   return [result, ast, []];

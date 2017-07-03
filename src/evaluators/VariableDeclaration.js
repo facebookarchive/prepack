@@ -27,7 +27,12 @@ import invariant from "../invariant.js";
 import type { BabelNodeVariableDeclaration } from "babel-types";
 
 // ECMA262 13.3.1.4
-function letAndConst (ast: BabelNodeVariableDeclaration, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+function letAndConst(
+  ast: BabelNodeVariableDeclaration,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   for (let declar of ast.declarations) {
     if (declar.id.type !== "Identifier") {
       throw new Error("TODO: Patterns aren't supported yet");
@@ -77,7 +82,12 @@ function letAndConst (ast: BabelNodeVariableDeclaration, strictCode: boolean, en
 }
 
 // ECMA262 13.3.2.4
-export default function (ast: BabelNodeVariableDeclaration, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeVariableDeclaration,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   if (ast.kind === "let" || ast.kind === "const") {
     return letAndConst(ast, strictCode, env, realm);
   }

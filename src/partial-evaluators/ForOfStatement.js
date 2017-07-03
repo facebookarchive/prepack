@@ -9,7 +9,6 @@
 
 /* @flow */
 
-
 import type { BabelNodeForOfStatement, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
@@ -18,8 +17,12 @@ import { AbruptCompletion } from "../completions.js";
 import { Value } from "../values/index.js";
 
 // ECMA262 13.7.5.11
-export default function (
-  ast: BabelNodeForOfStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm, labelSet: ?Array<string>
+export default function(
+  ast: BabelNodeForOfStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
 ): [AbruptCompletion | Value, BabelNodeForOfStatement, Array<BabelNodeStatement>] {
   let result = env.evaluateCompletionDeref(ast, strictCode);
   return [result, ast, []];

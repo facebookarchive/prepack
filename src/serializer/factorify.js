@@ -83,7 +83,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       let keys = getObjectKeys(init);
       if (!keys) continue;
 
-      let declars = signatures[keys] = signatures[keys] || [];
+      let declars = (signatures[keys] = signatures[keys] || []);
       declars.push(declar);
     }
   }
@@ -106,9 +106,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
     }
 
     let rootFactoryId = t.identifier(factoryNameGenerator.generate("root"));
-    let rootFactoryBody = t.blockStatement([
-      t.returnStatement(t.objectExpression(rootFactoryProps))
-    ]);
+    let rootFactoryBody = t.blockStatement([t.returnStatement(t.objectExpression(rootFactoryProps))]);
     let rootFactory = t.functionDeclaration(rootFactoryId, rootFactoryParams, rootFactoryBody);
     body.unshift(rootFactory);
 
@@ -151,7 +149,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       for (let [declar2, args] of common.entries()) {
         if (args.length === mostSharedArgsLength) {
           args = args.join(",");
-          let pair = sharedPairs[args] = sharedPairs[args] || [];
+          let pair = (sharedPairs[args] = sharedPairs[args] || []);
           pair.push(declar2);
         }
       }
@@ -187,9 +185,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       }
 
       let subFactoryId = t.identifier(factoryNameGenerator.generate("sub"));
-      let subFactoryBody = t.blockStatement([
-        t.returnStatement(t.callExpression(rootFactoryId, subFactoryArgs))
-      ]);
+      let subFactoryBody = t.blockStatement([t.returnStatement(t.callExpression(rootFactoryId, subFactoryArgs))]);
       let subFactory = t.functionDeclaration(subFactoryId, subFactoryParams, subFactoryBody);
       body.unshift(subFactory);
 
@@ -198,7 +194,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
 
         let call = declarSub.init;
         call.callee = subFactoryId;
-        call.arguments = call.arguments.filter(function (val, i) {
+        call.arguments = call.arguments.filter(function(val, i) {
           return removeArgs.indexOf(i + "") < 0;
         });
       }

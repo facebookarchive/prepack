@@ -10,7 +10,13 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue, ObjectValue, AbstractObjectValue, NullValue, UndefinedValue } from "../../values/index.js";
+import {
+  NativeFunctionValue,
+  ObjectValue,
+  AbstractObjectValue,
+  NullValue,
+  UndefinedValue,
+} from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
 import {
   OrdinaryCreateFromConstructor,
@@ -21,11 +27,11 @@ import {
   IteratorValue,
   GetIterator,
   Call,
-  HasSomeCompatibleType
+  HasSomeCompatibleType,
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "Map", "Map", 0, (context, [iterable], argCount, NewTarget) => {
     // 1. If NewTarget is undefined, throw a TypeError exception.
     if (!NewTarget) {
@@ -34,7 +40,7 @@ export default function (realm: Realm): NativeFunctionValue {
 
     // 2. Let map be ? OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", « [[MapData]] »).
     let map = OrdinaryCreateFromConstructor(realm, NewTarget, "MapPrototype", {
-      $MapData: undefined
+      $MapData: undefined,
     });
 
     // 3. Set map's [[MapData]] internal slot to a new empty List.
@@ -51,7 +57,8 @@ export default function (realm: Realm): NativeFunctionValue {
     if (HasSomeCompatibleType(iterable, NullValue, UndefinedValue)) {
       adder = realm.intrinsics.undefined;
       iter = realm.intrinsics.undefined;
-    } else { // 6. Else,
+    } else {
+      // 6. Else,
       // a. Let adder be ? Get(map, "set").
       adder = Get(realm, map, "set");
 
@@ -95,8 +102,7 @@ export default function (realm: Realm): NativeFunctionValue {
         if (kCompletion instanceof AbruptCompletion) {
           // f. If k is an abrupt completion, return ? IteratorClose(iter, k).
           throw IteratorClose(realm, iter, kCompletion);
-        } else
-          throw kCompletion;
+        } else throw kCompletion;
       }
 
       // g. Let v be Get(nextItem, "1").
@@ -107,8 +113,7 @@ export default function (realm: Realm): NativeFunctionValue {
         if (vCompletion instanceof AbruptCompletion) {
           // h. If v is an abrupt completion, return ? IteratorClose(iter, v).
           throw IteratorClose(realm, iter, vCompletion);
-        } else
-          throw vCompletion;
+        } else throw vCompletion;
       }
 
       // i. Let status be Call(adder, map, « k.[[Value]], v.[[Value]] »).
@@ -119,8 +124,7 @@ export default function (realm: Realm): NativeFunctionValue {
         if (statusCompletion instanceof AbruptCompletion) {
           // j. If status is an abrupt completion, return ? IteratorClose(iter, status).
           throw IteratorClose(realm, iter, statusCompletion);
-        } else
-          throw statusCompletion;
+        } else throw statusCompletion;
       }
       status;
     }
@@ -129,7 +133,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 23.1.2.2
-  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, (context) => {
+  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, context => {
     // 1. Return the this value
     return context;
   });

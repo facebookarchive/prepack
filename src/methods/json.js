@@ -21,7 +21,12 @@ import type { PropertyKeyValue } from "../types.js";
 import invariant from "../invariant.js";
 
 // ECMA262 24.3.1.1
-export function InternalizeJSONProperty(realm: Realm, reviver: ObjectValue, holder: ObjectValue, name: PropertyKeyValue): Value {
+export function InternalizeJSONProperty(
+  realm: Realm,
+  reviver: ObjectValue,
+  holder: ObjectValue,
+  name: PropertyKeyValue
+): Value {
   // 1. Let val be ? Get(holder, name).
   let val = Get(realm, holder, name);
   // 2. If Type(val) is Object, then
@@ -46,7 +51,8 @@ export function InternalizeJSONProperty(realm: Realm, reviver: ObjectValue, hold
         if (newElement instanceof UndefinedValue) {
           // a. Perform ? val.[[Delete]](! ToString(I)).
           val.$Delete(ToString(realm, new NumberValue(realm, I)));
-        } else { // 3. Else,
+        } else {
+          // 3. Else,
           // a. Perform ? CreateDataProperty(val, ! ToString(I), newElement).
           CreateDataProperty(realm, val, ToString(realm, new NumberValue(realm, I)), newElement.throwIfNotConcrete());
 
@@ -56,7 +62,8 @@ export function InternalizeJSONProperty(realm: Realm, reviver: ObjectValue, hold
         // 4. Add 1 to I.
         I += 1;
       }
-    } else { // c. Else,
+    } else {
+      // c. Else,
       // i. Let keys be ? EnumerableOwnProperties(val, "key").
       let keys = EnumerableOwnProperties(realm, val, "key");
 
@@ -71,7 +78,8 @@ export function InternalizeJSONProperty(realm: Realm, reviver: ObjectValue, hold
         if (newElement instanceof UndefinedValue) {
           // a. Perform ? val.[[Delete]](P).
           val.$Delete(P);
-        } else { // 3. Else,
+        } else {
+          // 3. Else,
           // a. Perform ? CreateDataProperty(val, P, newElement).
           CreateDataProperty(realm, val, P, newElement);
 

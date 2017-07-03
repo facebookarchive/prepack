@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
-import { NewDeclarativeEnvironment, SetFunctionName, FunctionCreate,  MakeConstructor } from "../methods/index.js";
+import { NewDeclarativeEnvironment, SetFunctionName, FunctionCreate, MakeConstructor } from "../methods/index.js";
 import { ObjectCreate } from "../methods/create.js";
 import { GeneratorFunctionCreate } from "../methods/function.js";
 import { DefinePropertyOrThrow } from "../methods/properties.js";
@@ -22,7 +22,12 @@ import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionExpression } from "babel-types";
 import invariant from "../invariant.js";
 
-export default function (ast: BabelNodeFunctionExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeFunctionExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // ECMA262 14.1.21
 
   if (ast.id) {
@@ -59,7 +64,7 @@ export default function (ast: BabelNodeFunctionExpression, strictCode: boolean, 
         value: prototype,
         writable: true,
         enumerable: false,
-        configurable: false
+        configurable: false,
       });
 
       // 10. Perform SetFunctionName(closure, name).
@@ -126,7 +131,7 @@ export default function (ast: BabelNodeFunctionExpression, strictCode: boolean, 
         value: prototype,
         writable: true,
         enumerable: false,
-        configurable: false
+        configurable: false,
       });
 
       // 6. Return closure.

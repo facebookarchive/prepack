@@ -14,24 +14,21 @@ import { NativeFunctionValue } from "../../values/index.js";
 import { ToString } from "../../methods/index.js";
 import { StringValue } from "../../values/index.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.6.2
   let name = "decodeURI";
-  return new NativeFunctionValue(realm, name, name, 1,
-    (context, [encodedURI], argCount, NewTarget) => {
-      if (NewTarget)
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, `${name} is not a constructor`);
+  return new NativeFunctionValue(realm, name, name, 1, (context, [encodedURI], argCount, NewTarget) => {
+    if (NewTarget) throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, `${name} is not a constructor`);
 
-      encodedURI = encodedURI.throwIfNotConcrete();
-      // 1. Let uriString be ? ToString(encodedURI).
-      let uriString = ToString(realm, encodedURI);
-      // 2. Let reservedURISet be a String containing one instance of each code unit valid in uriReserved plus "#".
-      // 3. Return ? Decode(uriString, reservedURISet).
-      try {
-        return new StringValue(realm, decodeURI(uriString));
-      } catch (e) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.URIError, e.message);
-      }
+    encodedURI = encodedURI.throwIfNotConcrete();
+    // 1. Let uriString be ? ToString(encodedURI).
+    let uriString = ToString(realm, encodedURI);
+    // 2. Let reservedURISet be a String containing one instance of each code unit valid in uriReserved plus "#".
+    // 3. Return ? Decode(uriString, reservedURISet).
+    try {
+      return new StringValue(realm, decodeURI(uriString));
+    } catch (e) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.URIError, e.message);
     }
-  );
+  });
 }

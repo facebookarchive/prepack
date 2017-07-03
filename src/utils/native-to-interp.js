@@ -27,7 +27,7 @@ export default function convert(realm: Realm, val: any): Value {
   } else if (val === false) {
     return realm.intrinsics.false;
   } else if (Array.isArray(val)) {
-    return CreateArrayFromList(realm, val.map((item) => convert(realm, item)));
+    return CreateArrayFromList(realm, val.map(item => convert(realm, item)));
   } else if (typeof val === "object") {
     let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 
@@ -36,7 +36,7 @@ export default function convert(realm: Realm, val: any): Value {
         enumerable: true,
         writable: true,
         configurable: true,
-        value: convert(realm, val[key])
+        value: convert(realm, val[key]),
       });
     }
 

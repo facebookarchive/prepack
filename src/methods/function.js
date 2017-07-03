@@ -12,20 +12,46 @@
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
-import { Completion, ThrowCompletion, ReturnCompletion, AbruptCompletion, JoinedAbruptCompletions, NormalCompletion, PossiblyNormalCompletion, IntrospectionThrowCompletion } from "../completions.js";
+import {
+  Completion,
+  ThrowCompletion,
+  ReturnCompletion,
+  AbruptCompletion,
+  JoinedAbruptCompletions,
+  NormalCompletion,
+  PossiblyNormalCompletion,
+  IntrospectionThrowCompletion,
+} from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
-import { AbstractValue, Value, BoundFunctionValue, EmptyValue, FunctionValue, ObjectValue, StringValue, SymbolValue, NumberValue } from "../values/index.js";
+import {
+  AbstractValue,
+  Value,
+  BoundFunctionValue,
+  EmptyValue,
+  FunctionValue,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  NumberValue,
+} from "../values/index.js";
 import { DefinePropertyOrThrow, NewDeclarativeEnvironment } from "./index.js";
 import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
 import { IteratorBindingInitialization } from "../methods/environment.js";
-import { composePossiblyNormalCompletions, joinAndRemoveNestedReturnCompletions,
-  joinPossiblyNormalCompletionWithAbruptCompletion, stopEffectCaptureAndJoinCompletions,
-  BoundNames, ContainsExpression, GetActiveScriptOrModule, UpdateEmpty } from "../methods/index.js";
+import {
+  composePossiblyNormalCompletions,
+  joinAndRemoveNestedReturnCompletions,
+  joinPossiblyNormalCompletionWithAbruptCompletion,
+  stopEffectCaptureAndJoinCompletions,
+  BoundNames,
+  ContainsExpression,
+  GetActiveScriptOrModule,
+  UpdateEmpty,
+} from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
 import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression.js";
 import traverse from "../traverse.js";
@@ -57,57 +83,57 @@ export function FindVarScopedDeclarations(ast_node: BabelNode): Array<BabelNode>
   function FindVarScopedDeclarationsFor(ast: BabelNode, level: number) {
     let statements = [];
     switch (ast.type) {
-    case 'Program':
-      statements = ((ast: any): BabelNodeProgram).body;
-      break;
-    case 'BlockStatement':
-      statements = ((ast: any): BabelNodeBlockStatement).body;
-      break;
-    case 'DoWhileStatement':
-      statements = [((ast: any): BabelNodeDoWhileStatement).body];
-      break;
-    case 'WhileStatement':
-      statements = [((ast: any): BabelNodeWhileStatement).body];
-      break;
-    case 'IfStatement':
-      let astIfStatement: BabelNodeIfStatement = (ast: any);
-      statements = [astIfStatement.consequent, astIfStatement.alternate];
-      break;
-    case 'ForStatement':
-      let astForStatement: BabelNodeForStatement = (ast: any);
-      statements = [astForStatement.init, astForStatement.body];
-      break;
-    case 'ForInStatement':
-      let astForInStatement: BabelNodeForInStatement = (ast: any);
-      statements = [astForInStatement.left, astForInStatement.body];
-      break;
-    case 'ForOfStatement':
-      let astForOfStatement: BabelNodeForOfStatement = (ast: any);
-      statements = [astForOfStatement.left, astForOfStatement.body];
-      break;
-    case 'LabeledStatement':
-      statements = [((ast: any): BabelNodeLabeledStatement).body];
-      break;
-    case 'WithStatement':
-      statements = [((ast: any): BabelNodeWithStatement).body];
-      break;
-    case 'SwitchStatement':
-      for (let switchCase of ((ast: any): BabelNodeSwitchStatement).cases) {
-        statements = statements.concat(switchCase.consequent);
-      }
-      break;
-    case 'TryStatement':
-      let astTryStatement: BabelNodeTryStatement = (ast: any);
-      statements = [astTryStatement.block];
-      if (astTryStatement.finalizer) statements.push(astTryStatement.finalizer);
-      if (astTryStatement.handler) statements.push(astTryStatement.handler.body);
-      break;
-    case 'VariableDeclaration':
-      return ast.kind === "var" ? [ast] : [];
-    case 'FunctionDeclaration':
-      return level < 2 ? [ast] : [];
-    default:
-      return [];
+      case "Program":
+        statements = ((ast: any): BabelNodeProgram).body;
+        break;
+      case "BlockStatement":
+        statements = ((ast: any): BabelNodeBlockStatement).body;
+        break;
+      case "DoWhileStatement":
+        statements = [((ast: any): BabelNodeDoWhileStatement).body];
+        break;
+      case "WhileStatement":
+        statements = [((ast: any): BabelNodeWhileStatement).body];
+        break;
+      case "IfStatement":
+        let astIfStatement: BabelNodeIfStatement = (ast: any);
+        statements = [astIfStatement.consequent, astIfStatement.alternate];
+        break;
+      case "ForStatement":
+        let astForStatement: BabelNodeForStatement = (ast: any);
+        statements = [astForStatement.init, astForStatement.body];
+        break;
+      case "ForInStatement":
+        let astForInStatement: BabelNodeForInStatement = (ast: any);
+        statements = [astForInStatement.left, astForInStatement.body];
+        break;
+      case "ForOfStatement":
+        let astForOfStatement: BabelNodeForOfStatement = (ast: any);
+        statements = [astForOfStatement.left, astForOfStatement.body];
+        break;
+      case "LabeledStatement":
+        statements = [((ast: any): BabelNodeLabeledStatement).body];
+        break;
+      case "WithStatement":
+        statements = [((ast: any): BabelNodeWithStatement).body];
+        break;
+      case "SwitchStatement":
+        for (let switchCase of ((ast: any): BabelNodeSwitchStatement).cases) {
+          statements = statements.concat(switchCase.consequent);
+        }
+        break;
+      case "TryStatement":
+        let astTryStatement: BabelNodeTryStatement = (ast: any);
+        statements = [astTryStatement.block];
+        if (astTryStatement.finalizer) statements.push(astTryStatement.finalizer);
+        if (astTryStatement.handler) statements.push(astTryStatement.handler.body);
+        break;
+      case "VariableDeclaration":
+        return ast.kind === "var" ? [ast] : [];
+      case "FunctionDeclaration":
+        return level < 2 ? [ast] : [];
+      default:
+        return [];
     }
 
     let decls = [];
@@ -123,7 +149,11 @@ export function FindVarScopedDeclarations(ast_node: BabelNode): Array<BabelNode>
 }
 
 // ECMA262 9.2.12
-export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionValue, argumentsList: Array<Value>): EmptyValue {
+export function FunctionDeclarationInstantiation(
+  realm: Realm,
+  func: FunctionValue,
+  argumentsList: Array<Value>
+): EmptyValue {
   // 1. Let calleeContext be the running execution context.
   let calleeContext = realm.getRunningContext();
 
@@ -183,7 +213,7 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
 
   // 11. Let varNames be the VarDeclaredNames of code.
   let varNames = [];
-  traverse(code, function (node) {
+  traverse(code, function(node) {
     if (node.type === "VariableDeclaration" && node.kind === "var") {
       varNames = varNames.concat(Object.keys(t.getBindingIdentifiers(node)));
     }
@@ -234,10 +264,12 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
     // a. NOTE Arrow functions never have an arguments objects.
     // b. Let argumentsObjectNeeded be false.
     argumentsObjectNeeded = false;
-  } else if (parameterNames.indexOf("arguments") >= 0) { // 19. Else if "arguments" is an element of parameterNames, then
+  } else if (parameterNames.indexOf("arguments") >= 0) {
+    // 19. Else if "arguments" is an element of parameterNames, then
     // a. Let argumentsObjectNeeded be false.
     argumentsObjectNeeded = false;
-  } else if (hasParameterExpressions === false) { // 20. Else if hasParameterExpressions is false, then
+  } else if (hasParameterExpressions === false) {
+    // 20. Else if hasParameterExpressions is false, then
     // a. If "arguments" is an element of functionNames or if "arguments" is an element of lexicalNames, then
     if (functionNames.indexOf("arguments") >= 0 || lexicalNames.indexOf("arguments") >= 0) {
       // i. Let argumentsObjectNeeded be false.
@@ -273,7 +305,8 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
     if (strict === true || simpleParameterList === false) {
       // i. Let ao be CreateUnmappedArgumentsObject(argumentsList).
       ao = CreateUnmappedArgumentsObject(realm, argumentsList);
-    } else { // b. Else,
+    } else {
+      // b. Else,
       // i. NOTE mapped argument object is only provided for non-strict functions that don't have a rest parameter, any parameter default value initializers, or any destructured parameters.
       // ii. Let ao be CreateMappedArgumentsObject(func, formals, argumentsList, envRec).
       invariant(formals !== undefined);
@@ -284,7 +317,8 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
     if (strict === true) {
       // i. Perform ! envRec.CreateImmutableBinding("arguments", false).
       envRec.CreateImmutableBinding("arguments", false);
-    } else { // d. Else,
+    } else {
+      // d. Else,
       // i. Perform ! envRec.CreateMutableBinding("arguments", false).
       envRec.CreateMutableBinding("arguments", false);
     }
@@ -307,12 +341,12 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
     // a. Perform ? IteratorBindingInitialization for formals with iteratorRecord and undefined as arguments.
     invariant(formals !== undefined);
     IteratorBindingInitialization(realm, formals, iteratorRecord, strict);
-  } else { // 25. Else,
+  } else {
+    // 25. Else,
     // a. Perform ? IteratorBindingInitialization for formals with iteratorRecord and env as arguments.
     invariant(formals !== undefined);
     IteratorBindingInitialization(realm, formals, iteratorRecord, strict, env);
   }
-
 
   // 26. If hasParameterExpressions is false, then
   let varEnv, varEnvRec;
@@ -341,7 +375,8 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
 
     // f. Let varEnvRec be envRec.
     varEnvRec = envRec;
-  } else { // 27. Else,
+  } else {
+    // 27. Else,
     // a. NOTE A separate Environment Record is needed to ensure that closures created by expressions in the formal parameter list do not have visibility of declarations in the function body.
 
     // b. Let varEnv be NewDeclarativeEnvironment(env).
@@ -351,7 +386,7 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
     varEnvRec = varEnv.environmentRecord;
 
     // d. Set the VariableEnvironment of calleeContext to varEnv.
-    calleeContext.variableEnvironment  = varEnv;
+    calleeContext.variableEnvironment = varEnv;
 
     // e. Let instantiatedVarNames be a new empty List.
     let instantiatedVarNames = [];
@@ -370,7 +405,8 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
         let initialValue;
         if (parameterNames.indexOf(n) < 0 || functionNames.indexOf(n) < 0) {
           initialValue = realm.intrinsics.undefined;
-        } else { // 4. Else,
+        } else {
+          // 4. Else,
           // a. Let initialValue be ! envRec.GetBindingValue(n, false).
           initialValue = envRec.GetBindingValue(n, false);
         }
@@ -393,7 +429,8 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
     lexEnv = NewDeclarativeEnvironment(realm, varEnv);
 
     // b. NOTE: Non-strict functions use a separate lexical Environment Record for top-level lexical declarations so that a direct eval (see 12.3.4.1) can determine whether any var scoped declarations introduced by the eval code conflict with pre-existing top-level lexically scoped declarations. realm is not needed for strict functions because a strict direct eval always places all declarations into a new Environment Record.
-  } else { // 30. Else, let lexEnv be varEnv.
+  } else {
+    // 30. Else, let lexEnv be varEnv.
     lexEnv = varEnv;
   }
 
@@ -415,7 +452,8 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
       if (d.kind === "const") {
         // 1. Perform ! lexEnvRec.CreateImmutableBinding(dn, true).
         lexEnvRec.CreateImmutableBinding(dn, true);
-      } else { // ii. Else,
+      } else {
+        // ii. Else,
         // 1. Perform ! lexEnvRec.CreateMutableBinding(dn, false).
         lexEnvRec.CreateMutableBinding(dn, false);
       }
@@ -438,13 +476,23 @@ export function FunctionDeclarationInstantiation(realm: Realm, func: FunctionVal
 }
 
 // ECMA262 9.2.11
-export function SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyValue | AbstractValue, prefix?: string): boolean {
+export function SetFunctionName(
+  realm: Realm,
+  F: ObjectValue,
+  name: PropertyKeyValue | AbstractValue,
+  prefix?: string
+): boolean {
   // 1. Assert: F is an extensible object that does not have a name own property.
   invariant(F.getExtensible(), "expected object to be extensible and not have a name property");
 
   // 2. Assert: Type(name) is either Symbol or String.
-  invariant(typeof name === "string" || name instanceof StringValue || name instanceof SymbolValue ||
-    name instanceof AbstractValue, "expected name to be a string or symbol");
+  invariant(
+    typeof name === "string" ||
+      name instanceof StringValue ||
+      name instanceof SymbolValue ||
+      name instanceof AbstractValue,
+    "expected name to be a string or symbol"
+  );
   if (typeof name === "string") name = new StringValue(realm, name);
 
   // 3. Assert: If prefix was passed, then Type(prefix) is String.
@@ -458,7 +506,8 @@ export function SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyV
     // b. If description is undefined, let name be the empty String.
     if (description === undefined) {
       name = realm.intrinsics.emptyString;
-    } else { // c. Else, let name be the concatenation of "[", description, and "]".
+    } else {
+      // c. Else, let name be the concatenation of "[", description, and "]".
       invariant(description !== null);
       name = new StringValue(realm, `[${description}]`);
     }
@@ -469,8 +518,12 @@ export function SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyV
     // a. Let name be the concatenation of prefix, code unit 0x0020 (SPACE), and name.
     if (name instanceof AbstractValue) {
       let prefixVal = new StringValue(realm, prefix + " ");
-      name = realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [prefixVal, name],
-        ([lnode, rnode]) => t.binaryExpression("+", lnode, rnode));
+      name = realm.createAbstract(
+        new TypesDomain(StringValue),
+        ValuesDomain.topVal,
+        [prefixVal, name],
+        ([lnode, rnode]) => t.binaryExpression("+", lnode, rnode)
+      );
     } else {
       name = new StringValue(realm, `${prefix} ${name.value}`);
     }
@@ -481,12 +534,19 @@ export function SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyV
     value: name,
     enumerable: false,
     writable: false,
-    configurable: true
+    configurable: true,
   });
 }
 
 // ECMA262 9.2.3
-export function FunctionInitialize(realm: Realm, F: FunctionValue, kind: "normal" | "method" | "arrow", ParameterList: Array<BabelNodeLVal>, Body: BabelNodeBlockStatement, Scope: LexicalEnvironment): FunctionValue {
+export function FunctionInitialize(
+  realm: Realm,
+  F: FunctionValue,
+  kind: "normal" | "method" | "arrow",
+  ParameterList: Array<BabelNodeLVal>,
+  Body: BabelNodeBlockStatement,
+  Scope: LexicalEnvironment
+): FunctionValue {
   // Note that F is a new object, and we can thus write to internal slots
   invariant(realm.isNewObject(F));
 
@@ -496,7 +556,7 @@ export function FunctionInitialize(realm: Realm, F: FunctionValue, kind: "normal
   // 2. Let len be the ExpectedArgumentCount of ParameterList.
   let len = 0;
   for (let FormalParameter of ParameterList) {
-    if (FormalParameter.type === 'AssignmentPattern') {
+    if (FormalParameter.type === "AssignmentPattern") {
       break;
     }
     len += 1;
@@ -507,7 +567,7 @@ export function FunctionInitialize(realm: Realm, F: FunctionValue, kind: "normal
     value: new NumberValue(realm, len),
     writable: false,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   // 4. Let Strict be the value of the [[Strict]] internal slot of F.
@@ -528,9 +588,11 @@ export function FunctionInitialize(realm: Realm, F: FunctionValue, kind: "normal
   // 9. If kind is Arrow, set the [[realmMode]] internal slot of F to lexical.
   if (kind === "arrow") {
     F.$ThisMode = "lexical";
-  } else if (Strict === true) { // 10. Else if Strict is true, set the [[realmMode]] internal slot of F to strict.
+  } else if (Strict === true) {
+    // 10. Else if Strict is true, set the [[realmMode]] internal slot of F to strict.
     F.$ThisMode = "strict";
-  } else { // 11. Else set the [[realmMode]] internal slot of F to global.
+  } else {
+    // 11. Else set the [[realmMode]] internal slot of F to global.
     F.$ThisMode = "global";
   }
 
@@ -539,7 +601,14 @@ export function FunctionInitialize(realm: Realm, F: FunctionValue, kind: "normal
 }
 
 // ECMA262 9.2.6
-export function GeneratorFunctionCreate(realm: Realm, kind: "normal" | "method", ParameterList: Array<BabelNodeLVal>, Body: BabelNodeBlockStatement, Scope: LexicalEnvironment, Strict: boolean): FunctionValue {
+export function GeneratorFunctionCreate(
+  realm: Realm,
+  kind: "normal" | "method",
+  ParameterList: Array<BabelNodeLVal>,
+  Body: BabelNodeBlockStatement,
+  Scope: LexicalEnvironment,
+  Strict: boolean
+): FunctionValue {
   // 1. Let functionPrototype be the intrinsic object %Generator%.
   let functionPrototype = realm.intrinsics.Generator;
 
@@ -561,7 +630,7 @@ export function AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm) 
     get: thrower,
     set: thrower,
     enumerable: false,
-    configurable: true
+    configurable: true,
   };
   // 3. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
   return DefinePropertyOrThrow(realm, F, "arguments", desc);
@@ -572,7 +641,13 @@ export function $Call(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
   return InternalCall(realm, F, thisArgument, argsList, 0);
 }
 
-function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsList: Array<Value>, tracerIndex: number): Value {
+function InternalCall(
+  realm: Realm,
+  F: FunctionValue,
+  thisArgument: Value,
+  argsList: Array<Value>,
+  tracerIndex: number
+): Value {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function value");
 
@@ -580,12 +655,15 @@ function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
   while (tracerIndex < realm.tracers.length) {
     let tracer = realm.tracers[tracerIndex];
     let nextIndex = ++tracerIndex;
-    let detourResult = tracer.detourCall(F, thisArgument, argsList, undefined, () => InternalCall(realm, F, thisArgument, argsList, nextIndex));
+    let detourResult = tracer.detourCall(F, thisArgument, argsList, undefined, () =>
+      InternalCall(realm, F, thisArgument, argsList, nextIndex)
+    );
     if (detourResult instanceof Value) return detourResult;
   }
 
   // 2. If F's [[FunctionKind]] internal slot is "classConstructor", throw a TypeError exception.
-  if (F.$FunctionKind === "classConstructor") throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
+  if (F.$FunctionKind === "classConstructor")
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
 
   // 3. Let callerContext be the running execution context.
   let callerContext = realm.getRunningContext();
@@ -595,8 +673,7 @@ function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
 
   let result;
   try {
-    for (let t1 of realm.tracers)
-      t1.beforeCall(F, thisArgument, argsList, undefined);
+    for (let t1 of realm.tracers) t1.beforeCall(F, thisArgument, argsList, undefined);
 
     // 5. Assert: calleeContext is now the running execution context.
     invariant(realm.getRunningContext() === calleeContext, "calleeContext should be current execution context");
@@ -611,8 +688,7 @@ function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
     realm.popContext(calleeContext);
     invariant(realm.getRunningContext() === callerContext);
 
-    for (let t2 of realm.tracers)
-      t2.afterCall(F, thisArgument, argsList, undefined, (result: any));
+    for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argsList, undefined, (result: any));
   }
 
   // 9. If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
@@ -633,11 +709,23 @@ function InternalCall(realm: Realm, F: FunctionValue, thisArgument: Value, argsL
 }
 
 // ECMA262 9.2.2
-export function $Construct(realm: Realm, F: FunctionValue, argumentsList: Array<Value>, newTarget: ObjectValue): ObjectValue {
+export function $Construct(
+  realm: Realm,
+  F: FunctionValue,
+  argumentsList: Array<Value>,
+  newTarget: ObjectValue
+): ObjectValue {
   return InternalConstruct(realm, F, argumentsList, newTarget, undefined, 0);
 }
 
-function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<Value>, newTarget: ObjectValue, thisArgument: void | ObjectValue, tracerIndex: number): ObjectValue {
+function InternalConstruct(
+  realm: Realm,
+  F: FunctionValue,
+  argumentsList: Array<Value>,
+  newTarget: ObjectValue,
+  thisArgument: void | ObjectValue,
+  tracerIndex: number
+): ObjectValue {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function");
 
@@ -660,7 +748,9 @@ function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<
   while (tracerIndex < realm.tracers.length) {
     let tracer = realm.tracers[tracerIndex];
     let nextIndex = ++tracerIndex;
-    let detourResult = tracer.detourCall(F, thisArgument, argumentsList, newTarget, () => InternalConstruct(realm, F, argumentsList, newTarget, thisArgument, nextIndex));
+    let detourResult = tracer.detourCall(F, thisArgument, argumentsList, newTarget, () =>
+      InternalConstruct(realm, F, argumentsList, newTarget, thisArgument, nextIndex)
+    );
     if (detourResult instanceof ObjectValue) return detourResult;
     invariant(detourResult === undefined);
   }
@@ -673,8 +763,7 @@ function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<
 
   let result, envRec;
   try {
-    for (let t1 of realm.tracers)
-      t1.beforeCall(F, thisArgument, argumentsList, newTarget);
+    for (let t1 of realm.tracers) t1.beforeCall(F, thisArgument, argumentsList, newTarget);
 
     // 8. If kind is "base", perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
     if (kind === "base") {
@@ -695,8 +784,7 @@ function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<
     realm.popContext(calleeContext);
     invariant(realm.getRunningContext() === callerContext);
 
-    for (let t2 of realm.tracers)
-      t2.afterCall(F, thisArgument, argumentsList, newTarget, result);
+    for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argumentsList, newTarget, result);
   }
 
   // 13. If result.[[Type]] is return, then
@@ -716,7 +804,8 @@ function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<
     if (!result.value.mightBeUndefined())
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "constructor must return Object");
     result.value.throwIfNotConcrete();
-  } else if (result instanceof AbruptCompletion) { // 14. Else, ReturnIfAbrupt(result).
+  } else if (result instanceof AbruptCompletion) {
+    // 14. Else, ReturnIfAbrupt(result).
     throw result;
   }
 
@@ -727,18 +816,27 @@ function InternalConstruct(realm: Realm, F: FunctionValue, argumentsList: Array<
 }
 
 // ECMA262 9.2.3
-export function FunctionAllocate(realm: Realm, functionPrototype: ObjectValue, strict: boolean, functionKind: "normal" | "non-constructor" | "generator"): FunctionValue {
+export function FunctionAllocate(
+  realm: Realm,
+  functionPrototype: ObjectValue,
+  strict: boolean,
+  functionKind: "normal" | "non-constructor" | "generator"
+): FunctionValue {
   // 1. Assert: Type(functionPrototype) is Object.
   invariant(functionPrototype instanceof ObjectValue, "expected functionPrototype to be an object");
 
   // 2. Assert: functionKind is either "normal", "non-constructor" or "generator".
-  invariant(functionKind === "normal" || functionKind === "non-constructor" || functionKind === "generator", "invalid functionKind");
+  invariant(
+    functionKind === "normal" || functionKind === "non-constructor" || functionKind === "generator",
+    "invalid functionKind"
+  );
 
   // 3. If functionKind is "normal", let needsConstruct be true.
   let needsConstruct;
   if (functionKind === "normal") {
     needsConstruct = true;
-  } else { // 4. Else, let needsConstruct be false.
+  } else {
+    // 4. Else, let needsConstruct be false.
     needsConstruct = false;
   }
 
@@ -807,7 +905,12 @@ function $BoundCall(realm: Realm, F: BoundFunctionValue, thisArgument: Value, ar
 }
 
 // ECMA262 9.4.1.2
-function $BoundConstruct(realm: Realm, F: BoundFunctionValue, argumentsList: Array<Value>, newTarget: ObjectValue): ObjectValue {
+function $BoundConstruct(
+  realm: Realm,
+  F: BoundFunctionValue,
+  argumentsList: Array<Value>,
+  newTarget: ObjectValue
+): ObjectValue {
   // 1. Let target be the value of F's [[BoundTargetFunction]] internal slot.
   let target = F.$BoundTargetFunction;
 
@@ -829,7 +932,12 @@ function $BoundConstruct(realm: Realm, F: BoundFunctionValue, argumentsList: Arr
 }
 
 // ECMA262 9.4.1.3
-export function BoundFunctionCreate(realm: Realm, targetFunction: ObjectValue, boundThis: Value, boundArgs: Array<Value>): ObjectValue {
+export function BoundFunctionCreate(
+  realm: Realm,
+  targetFunction: ObjectValue,
+  boundThis: Value,
+  boundArgs: Array<Value>
+): ObjectValue {
   // 1. Assert: Type(targetFunction) is Object.
   invariant(targetFunction instanceof ObjectValue, "expected an object");
 
@@ -899,7 +1007,8 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
   let strictEval;
   if (strictCaller) {
     strictEval = true;
-  } else { // 7. Else, let strictEval be IsStrict of script.
+  } else {
+    // 7. Else, let strictEval be IsStrict of script.
     strictEval = IsStrict(script);
   }
 
@@ -916,7 +1025,8 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
 
     // b. Let varEnv be ctx's VariableEnvironment.
     varEnv = ctx.variableEnvironment;
-  } else { // 10. Else,
+  } else {
+    // 10. Else,
     // a. Let lexEnv be NewDeclarativeEnvironment(evalRealm.[[GlobalEnv]]).
     lexEnv = NewDeclarativeEnvironment(realm, evalRealm.$GlobalEnv);
 
@@ -1004,16 +1114,19 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
 }
 
 export function EvaluateStatements(
-    body: Array<BabelNodeStatement>, blockValue: void | NormalCompletion | Value,
-    strictCode: boolean, blockEnv: LexicalEnvironment, realm: Realm): NormalCompletion | Value | Reference {
+  body: Array<BabelNodeStatement>,
+  blockValue: void | NormalCompletion | Value,
+  strictCode: boolean,
+  blockEnv: LexicalEnvironment,
+  realm: Realm
+): NormalCompletion | Value | Reference {
   for (let node of body) {
     if (node.type !== "FunctionDeclaration") {
       let res = blockEnv.evaluateAbstractCompletion(node, strictCode);
       invariant(!(res instanceof Reference));
       if (!(res instanceof EmptyValue)) {
         if (blockValue === undefined || blockValue instanceof Value) {
-          if (res instanceof AbruptCompletion)
-            throw UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty);
+          if (res instanceof AbruptCompletion) throw UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty);
           invariant(res instanceof NormalCompletion || res instanceof Value);
           blockValue = res;
         } else {
@@ -1021,8 +1134,7 @@ export function EvaluateStatements(
           if (res instanceof AbruptCompletion) {
             throw stopEffectCaptureAndJoinCompletions(blockValue, res, realm);
           } else {
-            if (res instanceof Value)
-              blockValue.value = res;
+            if (res instanceof Value) blockValue.value = res;
             else {
               invariant(blockValue instanceof PossiblyNormalCompletion);
               invariant(res instanceof PossiblyNormalCompletion);
@@ -1036,12 +1148,14 @@ export function EvaluateStatements(
 
   // 7. Return blockValue.
   return blockValue || realm.intrinsics.empty;
-
 }
 
 export function PartiallyEvaluateStatements(
-  body: Array<BabelNodeStatement>, blockValue: void | NormalCompletion | Value,
-  strictCode: boolean, blockEnv: LexicalEnvironment, realm: Realm
+  body: Array<BabelNodeStatement>,
+  blockValue: void | NormalCompletion | Value,
+  strictCode: boolean,
+  blockEnv: LexicalEnvironment,
+  realm: Realm
 ): [Completion | Value, Array<BabelNodeStatement>] {
   let statementAsts = [];
   for (let node of body) {
@@ -1073,8 +1187,7 @@ export function PartiallyEvaluateStatements(
             invariant(jres instanceof Value || jres instanceof Completion);
             return [jres, statementAsts];
           } else {
-            if (res instanceof Value)
-              blockValue.value = res;
+            if (res instanceof Value) blockValue.value = res;
             else {
               invariant(blockValue instanceof PossiblyNormalCompletion);
               invariant(res instanceof PossiblyNormalCompletion);
@@ -1088,11 +1201,18 @@ export function PartiallyEvaluateStatements(
 
   // 7. Return blockValue.
   return [blockValue || realm.intrinsics.empty, statementAsts];
-
 }
 
 // ECMA262 9.2.5
-export function FunctionCreate(realm: Realm, kind: "normal" | "arrow" | "method", ParameterList: Array<BabelNodeLVal>, Body: BabelNodeBlockStatement, Scope: LexicalEnvironment, Strict: boolean, prototype?: ObjectValue) {
+export function FunctionCreate(
+  realm: Realm,
+  kind: "normal" | "arrow" | "method",
+  ParameterList: Array<BabelNodeLVal>,
+  Body: BabelNodeBlockStatement,
+  Scope: LexicalEnvironment,
+  Strict: boolean,
+  prototype?: ObjectValue
+) {
   // 1. If the prototype argument was not passed, then
   if (!prototype) {
     // a. Let prototype be the intrinsic object %FunctionPrototype%.
@@ -1103,7 +1223,8 @@ export function FunctionCreate(realm: Realm, kind: "normal" | "arrow" | "method"
   let allocKind;
   if (kind !== "normal") {
     allocKind = "non-constructor";
-  } else { // 3. Else, let allocKind be "normal".
+  } else {
+    // 3. Else, let allocKind be "normal".
     allocKind = "normal";
   }
 
@@ -1121,7 +1242,7 @@ export function FunctionCreate(realm: Realm, kind: "normal" | "arrow" | "method"
       value: realm.intrinsics.undefined,
       enumerable: false,
       writable: true,
-      configurable: true
+      configurable: true,
     });
   }
 
@@ -1130,10 +1251,16 @@ export function FunctionCreate(realm: Realm, kind: "normal" | "arrow" | "method"
 }
 
 // ECMA262 18.2.1.2
-export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockStatement, varEnv: LexicalEnvironment, lexEnv: LexicalEnvironment, strict: boolean) {
+export function EvalDeclarationInstantiation(
+  realm: Realm,
+  body: BabelNodeBlockStatement,
+  varEnv: LexicalEnvironment,
+  lexEnv: LexicalEnvironment,
+  strict: boolean
+) {
   // 1. Let varNames be the VarDeclaredNames of body.
   let varNames = [];
-  traverse(body, function (node) {
+  traverse(body, function(node) {
     if (node.type === "VariableDeclaration" && node.kind === "var") {
       varNames = varNames.concat(Object.keys(t.getBindingIdentifiers(node)));
     }
@@ -1163,8 +1290,9 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
         // 1. If varEnvRec.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
         if (varEnvRec.HasLexicalDeclaration(name)) {
           throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.SyntaxError,
-               [new StringValue(realm, name + " global object is restricted")])
+            Construct(realm, realm.intrinsics.SyntaxError, [
+              new StringValue(realm, name + " global object is restricted"),
+            ])
           );
         }
         // 2. NOTE: eval will not create a global var declaration that would be shadowed by a global lexical declaration.
@@ -1185,8 +1313,7 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
           // a. If thisEnvRec.HasBinding(name) is true, then
           if (thisEnvRec.HasBinding(name)) {
             // i. Throw a SyntaxError exception.
-            throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
-              name + " global object is restricted");
+            throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, name + " global object is restricted");
             // ii. NOTE: Annex B.3.5 defines alternate semantics for the above step.
           }
           // b. NOTE: A direct eval will not hoist var declaration over a like-named lexical declaration.
@@ -1221,8 +1348,7 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
           let fnDefinable = varEnvRec.CanDeclareGlobalFunction(fn);
           // b. If fnDefinable is false, throw a TypeError exception.
           if (!fnDefinable) {
-            throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-              fn + " is not definable");
+            throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, fn + " is not definable");
           }
         }
         // 2. Append fn to declaredFunctionNames.
@@ -1252,8 +1378,7 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
             let vnDefinable = varEnvRec.CanDeclareGlobalVar(vn);
             // ii. If vnDefinable is false, throw a TypeError exception.
             if (!vnDefinable) {
-              throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-                vn + " is not definable");
+              throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, vn + " is not definable");
             }
           }
           // b. If vn is not an element of declaredVarNames, then
@@ -1282,10 +1407,11 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
     // b. For each element dn of the BoundNames of d do
     for (let dn of BoundNames(realm, d)) {
       // c. If IsConstantDeclaration of d is true, then
-      if (d.kind === "const"){
+      if (d.kind === "const") {
         // i. Perform ? lexEnvRec.CreateImmutableBinding(dn, true).
         lexEnvRec.CreateImmutableBinding(dn, true);
-      } else { // d. Else,
+      } else {
+        // d. Else,
         // i. Perform ? lexEnvRec.CreateMutableBinding(dn, false).
         lexEnvRec.CreateMutableBinding(dn, false);
       }
@@ -1303,7 +1429,8 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
     if (varEnvRec instanceof GlobalEnvironmentRecord) {
       // i. Perform ? varEnvRec.CreateGlobalFunctionBinding(fn, fo, true).
       varEnvRec.CreateGlobalFunctionBinding(fn, fo, true);
-    } else { // d. Else,
+    } else {
+      // d. Else,
       // i. Let bindingExists be varEnvRec.HasBinding(fn).
       let bindingExists = varEnvRec.HasBinding(fn);
       // ii. If bindingExists is false, then
@@ -1313,7 +1440,8 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
         // 2. Assert: status is not an abrupt completion because of validation preceding step 12.
         // 3. Perform ! varEnvRec.InitializeBinding(fn, fo).
         varEnvRec.InitializeBinding(fn, fo);
-      } else { // iii. Else,
+      } else {
+        // iii. Else,
         // 1. Perform ! varEnvRec.SetMutableBinding(fn, fo, false).
         varEnvRec.SetMutableBinding(fn, fo, false);
       }
@@ -1326,7 +1454,8 @@ export function EvalDeclarationInstantiation(realm: Realm, body: BabelNodeBlockS
     if (varEnvRec instanceof GlobalEnvironmentRecord) {
       // i. Perform ? varEnvRec.CreateGlobalVarBinding(vn, true).
       varEnvRec.CreateGlobalVarBinding(vn, true);
-    } else { // b. Else,
+    } else {
+      // b. Else,
       // i. Let bindingExists be varEnvRec.HasBinding(vn).
       let bindingExists = varEnvRec.HasBinding(vn);
       // ii. If bindingExists is false, then
@@ -1363,7 +1492,14 @@ export function MakeMethod(realm: Realm, F: FunctionValue, homeObject: ObjectVal
 }
 
 // ECMA 14.3.8
-export function DefineMethod(realm: Realm, prop: BabelNodeObjectMethod | BabelNodeClassMethod, obj: ObjectValue, env: LexicalEnvironment, strictCode: boolean, functionPrototype?: ObjectValue) {
+export function DefineMethod(
+  realm: Realm,
+  prop: BabelNodeObjectMethod | BabelNodeClassMethod,
+  obj: ObjectValue,
+  env: LexicalEnvironment,
+  strictCode: boolean,
+  functionPrototype?: ObjectValue
+) {
   // 1. Let propKey be the result of evaluating PropertyName.
   let propKey = EvalPropertyNamePartial(prop, env, realm, strictCode);
 
@@ -1379,9 +1515,10 @@ export function DefineMethod(realm: Realm, prop: BabelNodeObjectMethod | BabelNo
   let kind;
   if (functionPrototype) {
     // let kind be Normal;
-    kind = 'normal';
-  } else { // otherwise let kind be Method.
-    kind = 'method';
+    kind = "normal";
+  } else {
+    // otherwise let kind be Method.
+    kind = "method";
   }
 
   // 6. Let closure be FunctionCreate(kind, StrictFormalParameters, FunctionBody, scope, strict). If functionPrototype was passed as a parameter, then pass its value as the prototype optional argument of FunctionCreate.

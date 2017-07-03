@@ -19,7 +19,12 @@ import { GetValue } from "../methods/environment.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
 
 // ECMA262 12.2.9
-export default function (ast: BabelNodeTemplateLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeTemplateLiteral,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   let str = "";
 
   for (let i = 0; i < ast.quasis.length; i++) {

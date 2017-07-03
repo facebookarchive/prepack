@@ -12,7 +12,7 @@
 import type { Realm } from "../../realm.js";
 import { ObjectValue } from "../../values/index.js";
 
-export default function (realm: Realm): ObjectValue {
+export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "console");
 
   obj.defineNativeMethod("log", 0, (context, args) => {

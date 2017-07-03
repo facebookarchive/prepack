@@ -19,9 +19,12 @@ import { GetValue, joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.
 import type { BabelNode, BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
 
-export function evaluate (
-    ast: BabelNodeIfStatement, strictCode: boolean, env: LexicalEnvironment,
-    realm: Realm): Completion | Value | Reference {
+export function evaluate(
+  ast: BabelNodeIfStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Completion | Value | Reference {
   // 1. Let exprRef be the result of evaluating Expression
   let exprRef = env.evaluate(ast.test, strictCode);
   // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
@@ -41,8 +44,7 @@ export function evaluate (
         stmtCompletion = realm.intrinsics.undefined;
     }
     // 5. Return Completion(UpdateEmpty(stmtCompletion, undefined)
-    if (stmtCompletion instanceof Reference)
-      return stmtCompletion;
+    if (stmtCompletion instanceof Reference) return stmtCompletion;
     stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
     if (stmtCompletion instanceof AbruptCompletion) {
       throw stmtCompletion;
@@ -58,24 +60,29 @@ export function evaluate (
   }
 }
 
-export function evaluateWithAbstractConditional(condValue: AbstractValue,
-    consequent: BabelNode, alternate: ?BabelNode, strictCode: boolean,
-    env: LexicalEnvironment, realm: Realm): NormalCompletion | Value | Reference {
+export function evaluateWithAbstractConditional(
+  condValue: AbstractValue,
+  consequent: BabelNode,
+  alternate: ?BabelNode,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): NormalCompletion | Value | Reference {
   // Evaluate consequent and alternate in sandboxes and get their effects.
-  let [compl1, gen1, bindings1, properties1, createdObj1] =
-    realm.evaluateNodeForEffects(consequent, strictCode, env);
+  let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateNodeForEffects(consequent, strictCode, env);
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] =
-    alternate ?
-      realm.evaluateNodeForEffects(alternate, strictCode, env) :
-      construct_empty_effects(realm);
+  let [compl2, gen2, bindings2, properties2, createdObj2] = alternate
+    ? realm.evaluateNodeForEffects(alternate, strictCode, env)
+    : construct_empty_effects(realm);
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of condValue.
-  let joinedEffects =
-    joinEffects(realm, condValue,
-      [compl1, gen1, bindings1, properties1, createdObj1],
-      [compl2, gen2, bindings2, properties2, createdObj2]);
+  let joinedEffects = joinEffects(
+    realm,
+    condValue,
+    [compl1, gen1, bindings1, properties1, createdObj1],
+    [compl2, gen2, bindings2, properties2, createdObj2]
+  );
   let completion = joinedEffects[0];
   if (completion instanceof NormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that

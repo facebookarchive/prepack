@@ -13,11 +13,29 @@ import type { BabelNode, BabelNodeFile, BabelNodeStatement } from "babel-types";
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
 
-import { AbruptCompletion, Completion, JoinedAbruptCompletions, NormalCompletion, PossiblyNormalCompletion, ThrowCompletion } from "./completions.js";
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  NormalCompletion,
+  PossiblyNormalCompletion,
+  ThrowCompletion,
+} from "./completions.js";
 import { defaultOptions, type Options } from "./options";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
-import { AbstractValue, NullValue, SymbolValue, BooleanValue, FunctionValue, NumberValue, ObjectValue, AbstractObjectValue, StringValue, UndefinedValue } from "./values/index.js";
+import {
+  AbstractValue,
+  NullValue,
+  SymbolValue,
+  BooleanValue,
+  FunctionValue,
+  NumberValue,
+  ObjectValue,
+  AbstractObjectValue,
+  StringValue,
+  UndefinedValue,
+} from "./values/index.js";
 import generate from "babel-generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
@@ -36,7 +54,7 @@ import {
 } from "./methods/index.js";
 import * as t from "babel-types";
 
-const sourceMap = require('source-map');
+const sourceMap = require("source-map");
 
 // ECMA262 8.1.1
 export class EnvironmentRecord {
@@ -61,15 +79,17 @@ export class EnvironmentRecord {
   +GetThisBinding: () => NullValue | ObjectValue | AbstractObjectValue | UndefinedValue;
   +HasSuperBinding: () => boolean;
   +WithBaseObject: () => Value;
-  +BindThisValue: (V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue) => NullValue | ObjectValue | AbstractObjectValue | UndefinedValue;
+  +BindThisValue: (
+    V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
+  ) => NullValue | ObjectValue | AbstractObjectValue | UndefinedValue;
 }
 
 export type Binding = {
-  value?: Value;
-  initialized?: boolean;
-  mutable?: boolean;
-  deletable?: boolean;
-}
+  value?: Value,
+  initialized?: boolean,
+  mutable?: boolean,
+  deletable?: boolean,
+};
 
 // ECMA262 8.1.1.1
 export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
@@ -103,11 +123,14 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(!envRec.bindings[N], `shouldn't have the binding ${N}`);
 
     // 3. Create a mutable binding in envRec for N and record that it is uninitialized. If D is true, record that the newly created binding may be deleted by a subsequent DeleteBinding call.
-    this.bindings[N] = realm.recordModifiedBinding({
-      initialized: false,
-      mutable: true,
-      deletable: D
-    }, envRec);
+    this.bindings[N] = realm.recordModifiedBinding(
+      {
+        initialized: false,
+        mutable: true,
+        deletable: D,
+      },
+      envRec
+    );
 
     // 4. Return NormalCompletion(empty).
     return realm.intrinsics.undefined;
@@ -124,11 +147,14 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(!envRec.bindings[N], `shouldn't have the binding ${N}`);
 
     // 3. Create an immutable binding in envRec for N and record that it is uninitialized. If S is true, record that the newly created binding is a strict binding.
-    this.bindings[N] = realm.recordModifiedBinding({
-      initialized: false,
-      strict: S,
-      deletable: false
-    }, envRec);
+    this.bindings[N] = realm.recordModifiedBinding(
+      {
+        initialized: false,
+        strict: S,
+        deletable: false,
+      },
+      envRec
+    );
 
     // 4. Return NormalCompletion(empty).
     return realm.intrinsics.undefined;
@@ -186,9 +212,11 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     // 4. If the binding for N in envRec has not yet been initialized, throw a ReferenceError exception.
     if (!binding.initialized) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
-    } else if (binding.mutable) { // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
-       realm.recordModifiedBinding(binding, envRec).value = V;
-    } else { // 6. Else,
+    } else if (binding.mutable) {
+      // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
+      realm.recordModifiedBinding(binding, envRec).value = V;
+    } else {
+      // 6. Else,
       // a. Assert: This is an attempt to change the value of an immutable binding.
 
       // b. If S is true, throw a TypeError exception.
@@ -320,12 +348,15 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
     let configValue = D ? true : false;
 
     // 4. Return ? DefinePropertyOrThrow(bindings, N, PropertyDescriptor{[[Value]]: undefined, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: configValue}).
-    return new BooleanValue(realm, DefinePropertyOrThrow(realm, bindings, N, {
-      value: realm.intrinsics.undefined,
-      writable: true,
-      enumerable: true,
-      configurable: configValue
-    }));
+    return new BooleanValue(
+      realm,
+      DefinePropertyOrThrow(realm, bindings, N, {
+        value: realm.intrinsics.undefined,
+        writable: true,
+        enumerable: true,
+        configurable: configValue,
+      })
+    );
   }
 
   // ECMA262 8.1.1.2.3
@@ -432,7 +463,9 @@ export class FunctionEnvironmentRecord extends DeclarativeEnvironmentRecord {
   $FunctionObject: FunctionValue;
 
   // ECMA262 8.1.1.3.1
-  BindThisValue(V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
+  BindThisValue(
+    V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
+  ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
     let realm = this.realm;
 
     // 1. Let envRec be the function Environment Record for which the method was invoked.
@@ -890,7 +923,8 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     if (!existingProp || existingProp.configurable) {
       // a. Let desc be the PropertyDescriptor{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: D}.
       desc = { value: V, writable: true, enumerable: true, configurable: D };
-    } else { // 6. Else,
+    } else {
+      // 6. Else,
       ThrowIfMightHaveBeenDeleted(existingProp.value);
       // a. Let desc be the PropertyDescriptor{[[Value]]: V }.
       desc = { value: V };
@@ -920,7 +954,9 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 // ECMA262 8.1.1.5
 export class ModuleEnvironmentRecord extends DeclarativeEnvironmentRecord {
   // ECMA262 8.1.1.3.1
-  BindThisValue(V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
+  BindThisValue(
+    V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
+  ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
     throw new Error("TODO: implement modules");
   }
 
@@ -940,7 +976,7 @@ export class ModuleEnvironmentRecord extends DeclarativeEnvironmentRecord {
   }
 
   // ECMA262 8.1.1.3.5
-  GetSuperBase(): NullValue | ObjectValue | UndefinedValue  {
+  GetSuperBase(): NullValue | ObjectValue | UndefinedValue {
     throw new Error("TODO: implement modules");
   }
 }
@@ -957,7 +993,9 @@ export class LexicalEnvironment {
   realm: Realm;
 
   partiallyEvaluateCompletionDeref(
-    ast: BabelNode, strictCode: boolean, metadata?: any
+    ast: BabelNode,
+    strictCode: boolean,
+    metadata?: any
   ): [Completion | Value, BabelNode, Array<BabelNodeStatement>] {
     let [result, partial_ast, partial_io] = this.partiallyEvaluateCompletion(ast, strictCode, metadata);
     if (result instanceof Reference) {
@@ -967,13 +1005,14 @@ export class LexicalEnvironment {
   }
 
   partiallyEvaluateCompletion(
-    ast: BabelNode, strictCode: boolean, metadata?: any
+    ast: BabelNode,
+    strictCode: boolean,
+    metadata?: any
   ): [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] {
     try {
       return this.partiallyEvaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof Completion)
-        return [err, ast, []];
+      if (err instanceof Completion) return [err, ast, []];
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;
@@ -984,8 +1023,7 @@ export class LexicalEnvironment {
 
   evaluateCompletionDeref(ast: BabelNode, strictCode: boolean, metadata?: any): AbruptCompletion | Value {
     let result = this.evaluateCompletion(ast, strictCode, metadata);
-    if (result instanceof Reference)
-      result = GetValue(this.realm, result);
+    if (result instanceof Reference) result = GetValue(this.realm, result);
     return result;
   }
 
@@ -995,8 +1033,7 @@ export class LexicalEnvironment {
     } catch (err) {
       if (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion)
         return AbstractValue.createIntrospectionErrorThrowCompletion(err.joinCondition);
-      if (err instanceof AbruptCompletion)
-        return err;
+      if (err instanceof AbruptCompletion) return err;
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;
@@ -1009,20 +1046,24 @@ export class LexicalEnvironment {
     try {
       return this.evaluateAbstract(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof Completion)
-        return err;
+      if (err instanceof Completion) return err;
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;
       // let's wrap into a proper Error to create stack trace
-      if (err instanceof Object)
-        throw new Error(err.constructor.name + ": " + err);
+      if (err instanceof Object) throw new Error(err.constructor.name + ": " + err);
       throw new Error(err);
     }
   }
 
-  execute(code: string, filename: string, map: string = "",
-      sourceType: SourceType = "script", onParse: void | ((BabelNodeFile) => void) = undefined, profile ?: boolean): AbruptCompletion | Value {
+  execute(
+    code: string,
+    filename: string,
+    map: string = "",
+    sourceType: SourceType = "script",
+    onParse: void | (BabelNodeFile => void) = undefined,
+    profile?: boolean
+  ): AbruptCompletion | Value {
     let context = new ExecutionContext();
     context.lexicalEnvironment = this;
     context.variableEnvironment = this;
@@ -1053,7 +1094,9 @@ export class LexicalEnvironment {
   }
 
   executePartialEvaluator(
-    sources: Array<SourceFile>, options: Options = defaultOptions, sourceType: SourceType = "script"
+    sources: Array<SourceFile>,
+    options: Options = defaultOptions,
+    sourceType: SourceType = "script"
   ): AbruptCompletion | { code: string, map?: SourceMap } {
     let body: Array<BabelNodeStatement> = [];
     let code = {};
@@ -1086,20 +1129,16 @@ export class LexicalEnvironment {
     }
     let prog = t.program(body);
     this.fixup_filenames(prog);
-    return generate(
-      prog,
-      { sourceMaps: options.sourceMaps },
-      (code: any));
+    return generate(prog, { sourceMaps: options.sourceMaps }, (code: any));
   }
 
   fixup_source_locations(ast: BabelNode, map: string) {
     const smc = new sourceMap.SourceMapConsumer(map);
-    traverse(ast, function (node) {
+    traverse(ast, function(node) {
       let loc = node.loc;
       if (loc == null || loc.start == null) return false;
       let new_pos = loc.start;
-      let old_pos = smc.originalPositionFor(
-        { line: new_pos.line, column: new_pos.column });
+      let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
       if (old_pos.source == null) return false;
       new_pos.line = old_pos.line;
       new_pos.column = old_pos.column;
@@ -1109,10 +1148,9 @@ export class LexicalEnvironment {
   }
 
   fixup_filenames(ast: BabelNode) {
-    traverse(ast, function (node) {
+    traverse(ast, function(node) {
       let loc = node.loc;
-      if (!!loc && !!loc.source)
-        (loc: any).filename = loc.source;
+      if (!!loc && !!loc.source) (loc: any).filename = loc.source;
       return false;
     });
   }
@@ -1138,7 +1176,9 @@ export class LexicalEnvironment {
   }
 
   partiallyEvaluate(
-    ast: BabelNode, strictCode: boolean, metadata?: any
+    ast: BabelNode,
+    strictCode: boolean,
+    metadata?: any
   ): [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] {
     let partialEvaluator = this.realm.partialEvaluators[(ast.type: string)];
     if (partialEvaluator) {
@@ -1148,7 +1188,6 @@ export class LexicalEnvironment {
     let err = new TypeError(`Unsupported node type ${ast.type}`);
     throw err;
   }
-
 }
 
 // ECMA262 6.2.3
@@ -1170,11 +1209,19 @@ export class Reference {
   strict: boolean;
   thisValue: void | Value;
 
-  constructor(base: BaseValue | AbstractValue,
-      refName: ReferenceName | AbstractValue,
-      strict: boolean, thisValue?: void | Value) {
-    invariant(base instanceof AbstractObjectValue || base === undefined || base instanceof ObjectValue ||
-      base instanceof EnvironmentRecord || canBecomeAnObject(base));
+  constructor(
+    base: BaseValue | AbstractValue,
+    refName: ReferenceName | AbstractValue,
+    strict: boolean,
+    thisValue?: void | Value
+  ) {
+    invariant(
+      base instanceof AbstractObjectValue ||
+        base === undefined ||
+        base instanceof ObjectValue ||
+        base instanceof EnvironmentRecord ||
+        canBecomeAnObject(base)
+    );
     this.base = base;
     this.referencedName = refName;
     invariant(!(refName instanceof AbstractValue) || !refName.mightNotBeString());

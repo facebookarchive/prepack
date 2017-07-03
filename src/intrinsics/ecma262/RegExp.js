@@ -17,7 +17,7 @@ import { SameValuePartial } from "../../methods/abstract.js";
 import { RegExpAlloc, RegExpInitialize } from "../../methods/regexp.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "RegExp", "RegExp", 2, (context, [pattern, flags], argCount, NewTarget) => {
     // 1. Let patternIsRegExp be ? IsRegExp(pattern).
     let patternIsRegExp = IsRegExp(realm, pattern);
@@ -25,7 +25,8 @@ export default function (realm: Realm): NativeFunctionValue {
     // 2. If NewTarget is not undefined, let newTarget be NewTarget.
     if (NewTarget) {
       newTarget = NewTarget;
-    } else { // 3. Else,
+    } else {
+      // 3. Else,
       // a. Let newTarget be the active function object.
       newTarget = func;
 
@@ -53,10 +54,12 @@ export default function (realm: Realm): NativeFunctionValue {
       if (flags instanceof UndefinedValue) {
         invariant(typeof pattern.$OriginalFlags === "string");
         F = new StringValue(realm, pattern.$OriginalFlags);
-      } else { // c. Else, let F be flags.
+      } else {
+        // c. Else, let F be flags.
         F = flags.throwIfNotConcrete();
       }
-    } else if (patternIsRegExp) { // 5. Else if patternIsRegExp is true, then
+    } else if (patternIsRegExp) {
+      // 5. Else if patternIsRegExp is true, then
       invariant(pattern instanceof ObjectValue);
       // a. Let P be ? Get(pattern, "source").
       P = Get(realm, pattern, "source");
@@ -65,10 +68,12 @@ export default function (realm: Realm): NativeFunctionValue {
       if (flags instanceof UndefinedValue) {
         // i. Let F be ? Get(pattern, "flags").
         F = Get(realm, pattern, "flags");
-      } else { // c. Else, let F be flags.
+      } else {
+        // c. Else, let F be flags.
         F = flags.throwIfNotConcrete();
       }
-    } else { // 6. Else,
+    } else {
+      // 6. Else,
       // a. Let P be pattern.
       P = pattern.throwIfNotConcrete();
       // b. Let F be flags.
@@ -83,7 +88,7 @@ export default function (realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 21.2.4.2
-  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, (context) => {
+  func.defineNativeGetter(realm.intrinsics.SymbolSpecies, context => {
     // 1. Return the this value
     return context;
   });

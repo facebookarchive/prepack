@@ -43,18 +43,26 @@ export class ResidualFunctionInitializers {
   prelude: Array<BabelNodeStatement>;
   initializerNameGenerator: NameGenerator;
 
-  registerValueOnlyReferencedByResidualFunctions(functionValues: Array<FunctionValue>, val: Value): Array<BabelNodeStatement> {
+  registerValueOnlyReferencedByResidualFunctions(
+    functionValues: Array<FunctionValue>,
+    val: Value
+  ): Array<BabelNodeStatement> {
     invariant(functionValues.length >= 1);
     let infos = [];
     for (let functionValue of functionValues) {
       let info = this.functionInitializerInfos.get(functionValue);
-      if (info === undefined) this.functionInitializerInfos.set(functionValue, info = { ownId: this.functionInitializerInfos.size.toString(), initializerIds: new Set() });
+      if (info === undefined)
+        this.functionInitializerInfos.set(
+          functionValue,
+          (info = { ownId: this.functionInitializerInfos.size.toString(), initializerIds: new Set() })
+        );
       infos.push(info);
     }
     let id = infos.map(info => info.ownId).sort().join();
     for (let info of infos) info.initializerIds.add(id);
     let initializer = this.initializers.get(id);
-    if (initializer === undefined) this.initializers.set(id, initializer = { id, order: infos.length, values: [], body: [] });
+    if (initializer === undefined)
+      this.initializers.set(id, (initializer = { id, order: infos.length, values: [], body: [] }));
     initializer.values.push(val);
     return initializer.body;
   }
@@ -74,7 +82,10 @@ export class ResidualFunctionInitializers {
     }
   }
 
-  _conditionalInitialization(initializedValues: Array<Value>, initializationStatements: Array<BabelNodeStatement>): BabelNodeStatement  {
+  _conditionalInitialization(
+    initializedValues: Array<Value>,
+    initializationStatements: Array<BabelNodeStatement>
+  ): BabelNodeStatement {
     if (initializationStatements.length === 1 && t.isIfStatement(initializationStatements[0])) {
       return initializationStatements[0];
     }
@@ -95,19 +106,12 @@ export class ResidualFunctionInitializers {
       // Second, if we didn't find a non-undefined value, let's make one up.
       // It will transition from `undefined` to `null`.
       location = this.locationService.createLocation();
-      initializationStatements.unshift(
-        t.expressionStatement(
-          t.assignmentExpression(
-            "=",
-            location,
-            nullExpression
-          )
-        )
-      );
+      initializationStatements.unshift(t.expressionStatement(t.assignmentExpression("=", location, nullExpression)));
     }
     return t.ifStatement(
       t.binaryExpression("===", location, voidExpression),
-      t.blockStatement(initializationStatements));
+      t.blockStatement(initializationStatements)
+    );
   }
 
   hasInitializerStatement(functionValue: FunctionValue): boolean {
@@ -150,11 +154,16 @@ export class ResidualFunctionInitializers {
           // TODO: Study in more detail which threshold is the best compromise in terms of
           // code size and performance.
           let count = 0;
-          traverse(t.file(t.program([ast])), {
-            enter(path) {
-              count++;
-            }
-          }, null, {});
+          traverse(
+            t.file(t.program([ast])),
+            {
+              enter(path) {
+                count++;
+              },
+            },
+            null,
+            {}
+          );
           if (count > 24) {
             let id = t.identifier(this.initializerNameGenerator.generate());
             this.prelude.push(t.functionDeclaration(id, [], t.blockStatement([ast])));

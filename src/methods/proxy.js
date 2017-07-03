@@ -10,13 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import {
-  ProxyValue,
-  NullValue,
-  ObjectValue,
-  Value,
-  UndefinedValue,
-} from "../values/index.js";
+import { ProxyValue, NullValue, ObjectValue, Value, UndefinedValue } from "../values/index.js";
 import { IsCallable } from "./is.js";
 import { GetMethod } from "./get.js";
 import { Construct } from "./construct.js";
@@ -57,7 +51,12 @@ export function ProxyCall(realm: Realm, O: ProxyValue, thisArgument: Value, argu
 }
 
 // ECMA262 9.5.13
-export function ProxyConstruct(realm: Realm, O: ProxyValue, argumentsList: Array<Value>, newTarget: ObjectValue): ObjectValue {
+export function ProxyConstruct(
+  realm: Realm,
+  O: ProxyValue,
+  argumentsList: Array<Value>,
+  newTarget: ObjectValue
+): ObjectValue {
   // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
   let handler = O.$ProxyHandler;
 

@@ -17,6 +17,11 @@ import { GetNewTarget } from "../methods/get.js";
 import type { BabelNodeMetaProperty } from "babel-types";
 
 // ECMA 12.3.8.1
-export default function (ast: BabelNodeMetaProperty, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
-   return GetNewTarget(realm);
+export default function(
+  ast: BabelNodeMetaProperty,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
+  return GetNewTarget(realm);
 }

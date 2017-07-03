@@ -17,10 +17,16 @@ import { BreakCompletion } from "../completions.js";
 import type { BabelNodeLabeledStatement, BabelNode } from "babel-types";
 
 // ECMA262 13.13.14
-function LabelledEvaluation(labelSet: Array<string>, ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+function LabelledEvaluation(
+  labelSet: Array<string>,
+  ast: BabelNode,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // LabelledStatement:LabelIdentifier:LabelledItem
   switch (ast.type) {
-    case 'LabeledStatement':
+    case "LabeledStatement":
       let labeledAst = ((ast: any): BabelNodeLabeledStatement);
       // 1. Let label be the StringValue of LabelIdentifier.
       let label = labeledAst.label.name;
@@ -45,15 +51,14 @@ function LabelledEvaluation(labelSet: Array<string>, ast: BabelNode, strictCode:
       // 5. Return Completion(stmtResult).
       return normalCompletionStmtResult;
 
-    case 'VariableDeclaration':
-      if (ast.kind === 'var') {
+    case "VariableDeclaration":
+      if (ast.kind === "var") {
         return env.evaluate(ast, strictCode);
       }
-      // fall through to throw
-    case 'FunctionDeclaration':
-    case 'ClassDeclaration':
-      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError,
-        ast.type + " may not have a label");
+    // fall through to throw
+    case "FunctionDeclaration":
+    case "ClassDeclaration":
+      throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, ast.type + " may not have a label");
 
     default:
       return env.evaluate(ast, strictCode, labelSet);
@@ -61,7 +66,12 @@ function LabelledEvaluation(labelSet: Array<string>, ast: BabelNode, strictCode:
 }
 
 // ECMA262 13.13.15
-export default function (ast: BabelNodeLabeledStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeLabeledStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   //1. Let newLabelSet be a new empty List.
   let newLabelSet = [];
 

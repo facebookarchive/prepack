@@ -13,7 +13,15 @@ import type { PropertyKeyValue } from "../types.js";
 import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
-import { FunctionValue, ObjectValue, NullValue, UndefinedValue, NativeFunctionValue, AbstractObjectValue, AbstractValue } from "../values/index.js";
+import {
+  FunctionValue,
+  ObjectValue,
+  NullValue,
+  UndefinedValue,
+  NativeFunctionValue,
+  AbstractObjectValue,
+  AbstractValue,
+} from "../values/index.js";
 import {
   GetBase,
   GetValue,
@@ -31,7 +39,12 @@ import {
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
-import { ReturnCompletion, AbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
+import {
+  ReturnCompletion,
+  AbruptCompletion,
+  JoinedAbruptCompletions,
+  PossiblyNormalCompletion,
+} from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -39,7 +52,12 @@ import type { BabelNode, BabelNodeExpression, BabelNodeSpreadElement, BabelNodeT
 import * as t from "babel-types";
 
 // ECMA262 12.3.6.1
-export function ArgumentListEvaluation(realm: Realm, strictCode: boolean, env: LexicalEnvironment, argNodes: Array<BabelNode> | BabelNodeTemplateLiteral): Array<Value> {
+export function ArgumentListEvaluation(
+  realm: Realm,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  argNodes: Array<BabelNode> | BabelNodeTemplateLiteral
+): Array<Value> {
   if (Array.isArray(argNodes)) {
     let args = [];
     for (let node_ of ((argNodes: any): Array<BabelNode>)) {
@@ -105,7 +123,7 @@ export function ArgumentListEvaluation(realm: Realm, strictCode: boolean, env: L
       let firstSub = GetValue(realm, firstSubRef);
 
       // 5. Let restSub be SubstitutionEvaluation of TemplateSpans.
-      let restSub = node.expressions.slice(1, node.expressions.length).map((expr) => {
+      let restSub = node.expressions.slice(1, node.expressions.length).map(expr => {
         return GetValue(realm, env.evaluate(expr, strictCode));
       });
 
@@ -136,7 +154,13 @@ export function Invoke(realm: Realm, V: Value, P: PropertyKeyValue, argumentsLis
 }
 
 // ECMA262 12.3.4.2
-export function EvaluateCall(realm: Realm, strictCode: boolean, env: LexicalEnvironment, ref: Reference | Value, args: Array<BabelNode> | BabelNodeTemplateLiteral): Value {
+export function EvaluateCall(
+  realm: Realm,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  ref: Reference | Value,
+  args: Array<BabelNode> | BabelNodeTemplateLiteral
+): Value {
   let thisValue;
 
   // 1. Let func be ? GetValue(ref).
@@ -148,7 +172,8 @@ export function EvaluateCall(realm: Realm, strictCode: boolean, env: LexicalEnvi
     if (IsPropertyReference(realm, ref)) {
       // i. Let thisValue be GetThisValue(ref).
       thisValue = GetThisValue(realm, ref);
-    } else { // b. Else, the base of ref is an Environment Record
+    } else {
+      // b. Else, the base of ref is an Environment Record
       // i. Let refEnv be GetBase(ref).
       let refEnv = GetBase(realm, ref);
       invariant(refEnv instanceof EnvironmentRecord);
@@ -156,7 +181,8 @@ export function EvaluateCall(realm: Realm, strictCode: boolean, env: LexicalEnvi
       // ii. Let thisValue be refEnv.WithBaseObject().
       thisValue = refEnv.WithBaseObject();
     }
-  } else { // 3. Else Type(ref) is not Reference,
+  } else {
+    // 3. Else Type(ref) is not Reference,
     // a. Let thisValue be undefined.
     thisValue = realm.intrinsics.undefined;
   }
@@ -168,7 +194,10 @@ export function EvaluateCall(realm: Realm, strictCode: boolean, env: LexicalEnvi
 // ECMA262 9.2.1.1
 export function PrepareForOrdinaryCall(realm: Realm, F: FunctionValue, newTarget?: ObjectValue): ExecutionContext {
   // 1. Assert: Type(newTarget) is Undefined or Object.
-  invariant(newTarget === undefined || newTarget instanceof ObjectValue, "expected undefined or object value for new target");
+  invariant(
+    newTarget === undefined || newTarget instanceof ObjectValue,
+    "expected undefined or object value for new target"
+  );
 
   // 2. Let callerContext be the running execution context.
   let callerContext = realm.getRunningContext();
@@ -211,7 +240,12 @@ export function PrepareForOrdinaryCall(realm: Realm, F: FunctionValue, newTarget
 }
 
 // ECMA262 9.2.1.2
-export function OrdinaryCallBindThis(realm: Realm, F: FunctionValue, calleeContext: ExecutionContext, thisArgument: Value): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
+export function OrdinaryCallBindThis(
+  realm: Realm,
+  F: FunctionValue,
+  calleeContext: ExecutionContext,
+  thisArgument: Value
+): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
   // 1. Let thisMode be the value of F's [[ThisMode]] internal slot.
   let thisMode = F.$ThisMode;
 
@@ -228,7 +262,8 @@ export function OrdinaryCallBindThis(realm: Realm, F: FunctionValue, calleeConte
   // 5. If thisMode is strict, let thisValue be thisArgument.
   if (thisMode === "strict" || F instanceof NativeFunctionValue) {
     thisValue = (thisArgument: any);
-  } else { // 6. Else,
+  } else {
+    // 6. Else,
     // a. If thisArgument is null or undefined, then
     if (HasSomeCompatibleType(thisArgument, NullValue, UndefinedValue)) {
       // i. Let globalEnv be calleeRealm.[[GlobalEnv]].
@@ -240,7 +275,8 @@ export function OrdinaryCallBindThis(realm: Realm, F: FunctionValue, calleeConte
 
       // iii. Let thisValue be globalEnvRec.[[GlobalThisValue]].
       thisValue = globalEnvRec.$GlobalThisValue;
-    } else { //  b. Else,
+    } else {
+      //  b. Else,
       // i. Let thisValue be ! ToObject(thisArgument).
       thisValue = ToObjectPartial(calleeRealm, thisArgument);
 
@@ -259,7 +295,11 @@ export function OrdinaryCallBindThis(realm: Realm, F: FunctionValue, calleeConte
 }
 
 // ECMA262 9.2.1.3
-export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumentsList: Array<Value>): Reference | Value | AbruptCompletion {
+export function OrdinaryCallEvaluateBody(
+  realm: Realm,
+  F: FunctionValue,
+  argumentsList: Array<Value>
+): Reference | Value | AbruptCompletion {
   if (F instanceof NativeFunctionValue) {
     let env = realm.getRunningContext().lexicalEnvironment;
     try {
@@ -267,7 +307,7 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     } catch (err) {
       if (err instanceof AbruptCompletion) {
         return err;
-      } else  if (err instanceof Error) {
+      } else if (err instanceof Error) {
         throw err;
       } else {
         throw new Error(err);
@@ -280,7 +320,7 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
     // 2. Let G be ? OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%", « [[GeneratorState]], [[GeneratorContext]] »).
     let G = OrdinaryCreateFromConstructor(realm, F, "GeneratorPrototype", {
       $GeneratorState: undefined,
-      $GeneratorContext: undefined
+      $GeneratorContext: undefined,
     });
 
     // 3. Perform GeneratorStart(G, FunctionBody).
@@ -325,9 +365,16 @@ export function OrdinaryCallEvaluateBody(realm: Realm, F: FunctionValue, argumen
 }
 
 // ECMA262 12.3.4.3
-export function EvaluateDirectCall(realm: Realm, strictCode: boolean, env: LexicalEnvironment, ref: Value | Reference,
-   func: Value, thisValue: Value, args: Array<BabelNode> | BabelNodeTemplateLiteral, tailPosition?: boolean
- ): Value {
+export function EvaluateDirectCall(
+  realm: Realm,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  ref: Value | Reference,
+  func: Value,
+  thisValue: Value,
+  args: Array<BabelNode> | BabelNodeTemplateLiteral,
+  tailPosition?: boolean
+): Value {
   // 1. Let argList be ? ArgumentListEvaluation(arguments).
   let argList = ArgumentListEvaluation(realm, strictCode, env, args);
 
@@ -335,19 +382,21 @@ export function EvaluateDirectCall(realm: Realm, strictCode: boolean, env: Lexic
 }
 
 export function EvaluateDirectCallWithArgList(
-  realm: Realm, strictCode: boolean, env: LexicalEnvironment, ref: Value | Reference,
-  func: Value, thisValue: Value, argList: Array<Value>, tailPosition?: boolean
+  realm: Realm,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  ref: Value | Reference,
+  func: Value,
+  thisValue: Value,
+  argList: Array<Value>,
+  tailPosition?: boolean
 ): Value {
   if (func instanceof AbstractValue && func.getType() === FunctionValue) {
     let fullArgs = [func].concat(argList);
-    return realm.deriveAbstract(
-      TypesDomain.topVal,
-      ValuesDomain.topVal,
-      fullArgs,
-      (nodes) => {
-        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-        return t.callExpression(nodes[0], fun_args);
-      });
+    return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, fullArgs, nodes => {
+      let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+      return t.callExpression(nodes[0], fun_args);
+    });
   }
   func = func.throwIfNotConcrete();
 
@@ -403,14 +452,10 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
   }
   if (F instanceof AbstractValue && F.getType() === FunctionValue) {
     let fullArgs = [F].concat(argsList);
-    return realm.deriveAbstract(
-      TypesDomain.topVal,
-      ValuesDomain.topVal,
-      fullArgs,
-      (nodes) => {
-        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-        return t.callExpression(nodes[0], fun_args);
-      });
+    return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, fullArgs, nodes => {
+      let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+      return t.callExpression(nodes[0], fun_args);
+    });
   }
   invariant(F instanceof ObjectValue);
 

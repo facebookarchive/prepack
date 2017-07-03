@@ -15,10 +15,15 @@ import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import type { BabelNodeClassExpression } from "babel-types";
 import { HasOwnProperty, SetFunctionName } from "../methods/index.js";
-import { ClassDefinitionEvaluation } from './ClassDeclaration';
+import { ClassDefinitionEvaluation } from "./ClassDeclaration";
 
 // ECMA262 14.5.16
-export default function (ast: BabelNodeClassExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeClassExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. If BindingIdentifieropt is not present, let className be undefined.
   let className;
   // 2. Else, let className be StringValue of BindingIdentifier.

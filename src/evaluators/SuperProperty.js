@@ -26,7 +26,7 @@ function MakeSuperPropertyReference(realm: Realm, propertyKey, strict: boolean):
 
   // 2. If env.HasSuperBinding() is false, throw a ReferenceError exception.
   if (!env.HasSuperBinding()) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, 'env does not have super binding');
+    throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, "env does not have super binding");
   }
 
   // 3. Let actualThis be env.GetThisBinding().
@@ -47,7 +47,12 @@ function MakeSuperPropertyReference(realm: Realm, propertyKey, strict: boolean):
 }
 
 // ECMA262 12.3.5.1
-export default function SuperProperty(ast: BabelNodeMemberExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function SuperProperty(
+  ast: BabelNodeMemberExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // SuperProperty : super [ Expression ]
   if (ast.computed) {
     // 1. Let propertyNameReference be the result of evaluating Expression.
@@ -66,7 +71,8 @@ export default function SuperProperty(ast: BabelNodeMemberExpression, strictCode
 
     // 6. Return MakeSuperPropertyReference(propertyKey, strict).
     return MakeSuperPropertyReference(realm, propertyKey, strict);
-  } else { // SuperProperty : super . IdentifierName
+  } else {
+    // SuperProperty : super . IdentifierName
     // 1. Let propertyKey be StringValue of IdentifierName.
     let propertyKey = new StringValue(realm, ast.property.name);
 
