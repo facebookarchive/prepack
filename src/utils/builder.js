@@ -20,7 +20,7 @@ export default function buildExpressionTemplate(code: string): (void | PreludeGe
     if (preludeGenerator !== undefined && code.includes("global"))
       obj = Object.assign(
         {
-          global: preludeGenerator.memoizeReference("::global"),
+          global: preludeGenerator.memoizeReference("global"),
         },
         obj
       );
