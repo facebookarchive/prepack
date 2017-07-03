@@ -10,7 +10,7 @@
 /* @flow */
 
 let FatalError = require("../lib/errors.js").FatalError;
-let prepack = require("../lib/prepack-node.js").prepack;
+let prepackString = require("../lib/prepack-node.js").prepackString;
 
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
@@ -123,7 +123,7 @@ function runTest(name, code, args) {
     return false;
   } else if (code.includes("// cannot serialize")) {
     try {
-      prepack(code, options);
+      prepackString(name, code, "", options);
     } catch (err) {
       if (err instanceof FatalError) {
         return true;
@@ -133,7 +133,7 @@ function runTest(name, code, args) {
     return false;
   } else if (code.includes("// no effect")) {
     try {
-      let serialized = prepack(code, options);
+      let serialized = prepackString(name, code, "", options);
       if (!serialized) {
         console.log(chalk.red("Error during serialization!"));
         return false;
@@ -174,8 +174,8 @@ function runTest(name, code, args) {
       for (; i < max; i++) {
         let newUniqueSuffix = `_unique${unique++}`;
         options.uniqueSuffix = newUniqueSuffix;
-        let serialized = prepack(oldCode, options);
-        if (serialized.statistics.delayedValues > 0) anyDelayedValues = true;
+        let serialized = prepackString(name, oldCode, "", options);
+        if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
         if (!serialized) {
           console.log(chalk.red("Error during serialization!"));
           break;
@@ -200,7 +200,7 @@ function runTest(name, code, args) {
         // Test the number of clone functions generated with the inital prepack call
         if (i === 0 && functionCloneCountMatch) {
           let functionCount = parseInt(functionCloneCountMatch[1], 10);
-          if (functionCount !== serialized.statistics.functionClones) {
+          if (serialized.statistics && functionCount !== serialized.statistics.functionClones) {
             console.log(chalk.red(`Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${serialized.statistics.functionClones}`));
             break;
           }

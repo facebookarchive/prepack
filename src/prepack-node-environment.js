@@ -9,6 +9,8 @@
 
 /* @flow */
 
+/* API functions for running Prepack on code that expects to run on Node */
+
 import invariant from "./invariant.js";
 import { ExecutionContext } from "./realm.js";
 import Serializer from "./serializer/index.js";

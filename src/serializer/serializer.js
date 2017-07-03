@@ -1364,7 +1364,7 @@ export class Serializer {
       sourceMaps?: boolean = false, onError?: (Realm, Value) => void): void | {
     code: string,
     map: void | SourceMap,
-    statistics: SerializerStatistics
+    statistics?: SerializerStatistics
   } {
     // Phase 1: Let's interpret.
     if (this.options.profile) console.time("[Profiling] Interpreting Global Code");
