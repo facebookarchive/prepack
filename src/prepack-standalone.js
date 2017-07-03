@@ -83,7 +83,7 @@ export function prepack(code: string, options: Options = defaultOptions) {
   let serializer = new Serializer(realm, getSerializerOptions(options));
   let serialized = serializer.init(filename, code, "", options.sourceMaps);
   if (!serialized) {
-    throw new FatalError();
+    throw new FatalError("serializer failed");
   }
   return serialized;
 }
@@ -104,7 +104,7 @@ export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: stri
   let serializer = new Serializer(realm, getSerializerOptions(options));
   let serialized = serializer.init("", code, "", options.sourceMaps);
   if (!serialized) {
-    throw new FatalError();
+    throw new FatalError("serializer failed");
   }
   return serialized;
 }
