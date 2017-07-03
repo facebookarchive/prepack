@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Compatibility } from "./types.js";
+import type { Compatibility } from "./options.js";
 import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
@@ -135,7 +135,8 @@ function dump(name: string, raw: string, min: string = raw, compatibility?: "bro
   let realm = construct_realm({ serialize: true, compatibility });
   initializeGlobals(realm);
   let serializer = new Serializer(realm);
-  let serialized = serializer.init(name, raw);
+  let sources = [{ filePath: name, fileContents: raw }];
+  let serialized = serializer.init(sources);
   if (!serialized) {
     process.exit(1);
     invariant(false);

@@ -11,7 +11,6 @@
 
 import type { NumberValue, AbstractValue, BooleanValue, NativeFunctionValue, FunctionValue, StringValue, SymbolValue, UndefinedValue, NullValue, EmptyValue, Value, AbstractObjectValue } from "./values/index.js";
 import { ObjectValue } from "./values/index.js";
-import type { ErrorHandler } from "./errors.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -29,35 +28,17 @@ export type IterationKind = "key+value" | "value" | "key";
 
 export type SourceType = "module" | "script";
 
+export type SourceFile = {
+  filePath: string,
+  fileContents: string,
+  sourceMapContents?: string
+}
+
 export type SourceMap = {
   sources: Array<string>,
   names: Array<string>,
   mappings: string,
   sourcesContent: Array<string>
-};
-
-export type Compatibility =
-  | "browser"
-  | "jsc-600-1-4-17"
-  | "node-source-maps"
-  | "node-cli";
-export const CompatibilityValues = [
-  "browser",
-   "jsc-600-1-4-17",
-  "node-source-maps",
-  "node-cli"
-];
-
-export type RealmOptions = {
-  residual?: boolean,
-  serialize?: boolean,
-  debugNames?: boolean,
-  uniqueSuffix?: string,
-  timeout?: number,
-  compatibility?: Compatibility,
-  mathRandomSeed?: string,
-  strictlyMonotonicDateNow?: boolean,
-  errorHandler?: ErrorHandler,
 };
 
 export type AbstractTime = "early" | "late";

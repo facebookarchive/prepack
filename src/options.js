@@ -10,12 +10,44 @@
 /* @flow */
 
 import type { ErrorHandler } from "./errors.js";
-import type { RealmOptions, Compatibility } from "./types";
-import type { SerializerOptions } from "./serializer/types";
+
+export type Compatibility =
+  | "browser"
+  | "jsc-600-1-4-17"
+  | "node-source-maps"
+  | "node-cli";
+export const CompatibilityValues = [
+  "browser",
+   "jsc-600-1-4-17",
+  "node-source-maps",
+  "node-cli"
+];
+
+export type RealmOptions = {
+  residual?: boolean,
+  serialize?: boolean,
+  debugNames?: boolean,
+  uniqueSuffix?: string,
+  timeout?: number,
+  compatibility?: Compatibility,
+  mathRandomSeed?: string,
+  strictlyMonotonicDateNow?: boolean,
+  errorHandler?: ErrorHandler,
+};
+
+export type SerializerOptions = {
+  initializeMoreModules?: boolean;
+  internalDebug?: boolean;
+  trace?: boolean;
+  singlePass?: boolean;
+  logStatistics?: boolean;
+  logModules?: boolean;
+  delayUnsupportedRequires?: boolean;
+}
 
 export type Options = {|
   onError?: ErrorHandler,
-  filename?: string,
+  outputFilename?: string,
   inputSourceMapFilename?: string,
   sourceMaps?: boolean,
   compatibility?: Compatibility,

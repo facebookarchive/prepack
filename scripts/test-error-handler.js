@@ -84,6 +84,7 @@ function runTest(name: string, code: string): boolean {
       let expected = expectedErrors[i][prop];
       let actual = (errors[i]: any)[prop];
       if (prop === "location") {
+        delete actual.filename;
         actual = JSON.stringify(actual);
         expected = JSON.stringify(expected);
       }

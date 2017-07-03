@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm, ExecutionContext } from "../realm.js";
-import type { Descriptor, PropertyBinding } from "../types.js";
+import type { Descriptor, PropertyBinding, SourceFile } from "../types.js";
 import { ToLength, IsArray, Get } from "../methods/index.js";
 import { Completion } from "../completions.js";
 import { BoundFunctionValue, ProxyValue, SymbolValue, AbstractValue, EmptyValue, FunctionValue, Value, ObjectValue, NativeFunctionValue, UndefinedValue } from "../values/index.js";
@@ -23,7 +23,8 @@ import type SourceMap from "babel-generator";
 // import { transform } from "babel-core";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { SerializedBinding, VisitedBinding, FunctionInfo, FunctionInstance, SerializerOptions } from "./types.js";
+import type { SerializerOptions } from "../options.js";
+import type { SerializedBinding, VisitedBinding, FunctionInfo, FunctionInstance } from "./types.js";
 import { BodyReference, SerializerStatistics, type VisitedBindings } from "./types.js";
 import { IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
@@ -1360,7 +1361,7 @@ export class Serializer {
     return ast;
   }
 
-  init(filename: string, code: string, map?: string = "",
+  init(sources: Array<SourceFile>,
       sourceMaps?: boolean = false, onError?: (Realm, Value) => void): void | {
     code: string,
     map: void | SourceMap,
@@ -1368,7 +1369,11 @@ export class Serializer {
   } {
     // Phase 1: Let's interpret.
     if (this.options.profile) console.time("[Profiling] Interpreting Global Code");
-    this.execute(filename, code, map, onError);
+    let code = {};
+    for (let source of sources) {
+      this.execute(source.filePath, source.fileContents, source.sourceMapContents || "", onError);
+      code[source.filePath] = source.fileContents;
+    }
     if (this.options.profile) console.timeEnd("[Profiling] Interpreting Global Code");
     if (this.logger.hasErrors()) return undefined;
     if (this.options.profile) console.time("[Profiling] Resolving Initial Modules");
@@ -1408,8 +1413,8 @@ export class Serializer {
     let ast = this.serialize();
     let generated = generate(
         ast,
-        { sourceMaps: sourceMaps, sourceFileName: filename },
-        code);
+        { sourceMaps: sourceMaps },
+        (code: any));
     if (this.options.profile) console.timeEnd("[Profiling] Serialize Pass");
     invariant(!this.logger.hasErrors());
     if (this.options.logStatistics) this.statistics.log();

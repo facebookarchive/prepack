@@ -78,12 +78,13 @@ function exec(code) {
 
 function runTest(name, code) {
   let realmOptions = { residual: true };
+  let sources = [{ filePath: name, fileContents: code }];
   console.log(chalk.inverse(name));
   if (code.includes("// throws introspection error")) {
     try {
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
-      let result = realm.$GlobalEnv.executePartialEvaluator(name, code);
+      let result = realm.$GlobalEnv.executePartialEvaluator(sources);
       if (result instanceof IntrospectionThrowCompletion) return true;
       if (result instanceof ThrowCompletion) throw result.value;
     } catch (err) {
@@ -111,7 +112,7 @@ return __result; }).call(this);`);
       for (; i < max; i++) {
         let realm = construct_realm(realmOptions);
         initializeGlobals(realm);
-        let result = realm.$GlobalEnv.executePartialEvaluator(name, code);
+        let result = realm.$GlobalEnv.executePartialEvaluator(sources);
         if (result instanceof ThrowCompletion) throw result.value;
         if (result instanceof AbruptCompletion) throw result;
         let newCode = result.code;
