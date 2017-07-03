@@ -14,26 +14,23 @@ import { NativeFunctionValue } from "../../values/index.js";
 import { ToString } from "../../methods/index.js";
 import { StringValue } from "../../values/index.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.6.3
   let name = "decodeURIComponent";
-  return new NativeFunctionValue(realm, name, name, 1,
-    (context, [encodedURIComponent], argCount, NewTarget) => {
-      if (NewTarget)
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, `${name} is not a constructor`);
+  return new NativeFunctionValue(realm, name, name, 1, (context, [encodedURIComponent], argCount, NewTarget) => {
+    if (NewTarget) throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, `${name} is not a constructor`);
 
-      encodedURIComponent = encodedURIComponent.throwIfNotConcrete();
+    encodedURIComponent = encodedURIComponent.throwIfNotConcrete();
 
-      // 1. Let componentString be ? ToString(uri).
-      let componentString = ToString(realm, encodedURIComponent);
+    // 1. Let componentString be ? ToString(uri).
+    let componentString = ToString(realm, encodedURIComponent);
 
-      // 2. Let reservedURIComponentSet be the empty String.
-      // 3. Return ? Encode(componentString, unescapedURIComponentSet).
-      try {
-        return new StringValue(realm, decodeURIComponent(componentString));
-      } catch (e) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.URIError, e.message);
-      }
+    // 2. Let reservedURIComponentSet be the empty String.
+    // 3. Return ? Encode(componentString, unescapedURIComponentSet).
+    try {
+      return new StringValue(realm, decodeURIComponent(componentString));
+    } catch (e) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.URIError, e.message);
     }
-  );
+  });
 }

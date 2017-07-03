@@ -15,12 +15,22 @@ import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import type { BabelNodeWhileStatement, BabelNode } from "babel-types";
 
-export default function (ast: BabelNodeWhileStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm, labelSet: ?Array<string>): Value | Reference {
-  return env.evaluate((({
-    type: "ForStatement",
-    init: null,
-    test: ast.test,
-    update: null,
-    body: ast.body
-  }: any): BabelNode), strictCode, labelSet);
+export default function(
+  ast: BabelNodeWhileStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): Value | Reference {
+  return env.evaluate(
+    (({
+      type: "ForStatement",
+      init: null,
+      test: ast.test,
+      update: null,
+      body: ast.body,
+    }: any): BabelNode),
+    strictCode,
+    labelSet
+  );
 }

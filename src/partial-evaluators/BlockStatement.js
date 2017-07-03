@@ -15,14 +15,21 @@ import type { LexicalEnvironment } from "../environment.js";
 
 import { Completion, NormalCompletion } from "../completions.js";
 import { EmptyValue, StringValue, Value } from "../values/index.js";
-import { BlockDeclarationInstantiation, NewDeclarativeEnvironment, PartiallyEvaluateStatements } from "../methods/index.js";
+import {
+  BlockDeclarationInstantiation,
+  NewDeclarativeEnvironment,
+  PartiallyEvaluateStatements,
+} from "../methods/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
 // ECMA262 13.2.13
-export default function (
-  ast: BabelNodeBlockStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeBlockStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [Completion | Value, BabelNodeStatement, Array<BabelNodeStatement>] {
   // 1. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
@@ -41,13 +48,12 @@ export default function (
     let blockValue: void | NormalCompletion | Value;
 
     if (ast.directives) {
-      for (let directive of (ast.directives)) {
+      for (let directive of ast.directives) {
         blockValue = new StringValue(realm, directive.value.value);
       }
     }
 
-    let [res, bAst] =
-      PartiallyEvaluateStatements(ast.body, blockValue, strictCode, blockEnv, realm);
+    let [res, bAst] = PartiallyEvaluateStatements(ast.body, blockValue, strictCode, blockEnv, realm);
     invariant(bAst.length > 0 || res instanceof EmptyValue);
     if (bAst.length === 0) return [res, t.emptyStatement(), []];
     let rAst = t.blockStatement(bAst, ast.directives);

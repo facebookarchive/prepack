@@ -33,9 +33,9 @@ import minimist from "minimist";
 
 const EOL = os.EOL;
 const numCPUs = os.cpus().length;
-require('source-map-support').install();
+require("source-map-support").install();
 
-type HarnessMap = { [key: string]: string; };
+type HarnessMap = { [key: string]: string };
 type TestRecord = { test: TestFileInfo, result: TestResult[] };
 type GroupsMap = { [key: string]: TestRecord[] };
 
@@ -57,9 +57,7 @@ class TestTask {
     if ("file" in obj && typeof obj.file === "object") {
       return new TestTask(TestFileInfo.fromObject(obj.file));
     } else {
-      throw new Error(
-        `Cannot be converted to a TestTask: ${JSON.stringify(obj)}`
-      );
+      throw new Error(`Cannot be converted to a TestTask: ${JSON.stringify(obj)}`);
     }
   }
 }
@@ -83,15 +81,10 @@ class TestFileInfo {
   // eslint-disable-next-line flowtype/no-weak-types
   static fromObject(obj: Object): TestFileInfo {
     // attempt to coerce the object into a TestFileInfo
-    if (
-      "location" in obj && typeof obj.location === "string" &&
-      "isES6" in obj && typeof obj.isES6 === "boolean"
-    ) {
+    if ("location" in obj && typeof obj.location === "string" && "isES6" in obj && typeof obj.isES6 === "boolean") {
       return new TestFileInfo(obj.location, obj.isES6);
     } else {
-      throw new Error(
-        `Cannot be converted to a TestFileInfo: ${JSON.stringify(obj)}`
-      );
+      throw new Error(`Cannot be converted to a TestFileInfo: ${JSON.stringify(obj)}`);
     }
   }
 }
@@ -113,19 +106,13 @@ class DoneMessage {
   // eslint-disable-next-line flowtype/no-weak-types
   static fromObject(obj: Object): DoneMessage {
     if (!("type" in obj && typeof obj.type === "string" && obj.type === DoneMessage.sentinel)) {
-      throw new Error(
-        `Cannot be converted to a DoneMessage: ${JSON.stringify(obj)}`
-      );
+      throw new Error(`Cannot be converted to a DoneMessage: ${JSON.stringify(obj)}`);
     }
     if (!("test" in obj && typeof obj.test === "object")) {
       throw new Error("A DoneMessage must have a test");
     }
     let msg = new DoneMessage(obj.test);
-    if (
-      "testResults" in obj &&
-      typeof obj.testResults === "object" &&
-      Array.isArray(obj.testResults)
-    ) {
+    if ("testResults" in obj && typeof obj.testResults === "object" && Array.isArray(obj.testResults)) {
       msg.testResults = obj.testResults;
     }
     return msg;
@@ -145,14 +132,10 @@ class ErrorMessage {
   // eslint-disable-next-line flowtype/no-weak-types
   static fromObject(obj: Object): ErrorMessage {
     if (!("type" in obj && typeof obj.type === "string" && obj.type === ErrorMessage.sentinel)) {
-      throw new Error(
-        `Cannot be converted to an ErrorMessage: ${JSON.stringify(obj)}`
-      );
+      throw new Error(`Cannot be converted to an ErrorMessage: ${JSON.stringify(obj)}`);
     }
     if (!("err" in obj && typeof obj.err === "object")) {
-      throw new Error(
-        `Cannot be converted to an ErrorMessage: ${JSON.stringify(obj)}`
-      );
+      throw new Error(`Cannot be converted to an ErrorMessage: ${JSON.stringify(obj)}`);
     }
     return new ErrorMessage(obj.err);
   }
@@ -166,11 +149,7 @@ class TestResult {
   strict: boolean;
   err: ?Error;
 
-  constructor(
-    passed: boolean,
-    strict: boolean,
-    err: ?Error = null,
-  ) {
+  constructor(passed: boolean, strict: boolean, err: ?Error = null) {
     this.passed = passed;
     this.strict = strict;
     this.err = err;
@@ -261,7 +240,7 @@ class MasterProgramArgs {
     cpuScale: number,
     statusFile: string,
     filterString: string,
-    singleThreaded: boolean,
+    singleThreaded: boolean
   ) {
     this.verbose = verbose;
     this.timeout = timeout;
@@ -291,18 +270,19 @@ class ArgsParseError {
   }
 }
 
-if (!('toJSON' in Error.prototype)) {
+if (!("toJSON" in Error.prototype)) {
   // $FlowFixMe this needs to become defined for Error to be serialized
-  Object.defineProperty(Error.prototype, 'toJSON', { // eslint-disable-line
-    value: function () {
+  Object.defineProperty(Error.prototype, "toJSON", {
+    // eslint-disable-line
+    value: function() {
       let alt = {};
-      Object.getOwnPropertyNames(this).forEach(function (key) {
+      Object.getOwnPropertyNames(this).forEach(function(key) {
         alt[key] = this[key];
       }, this);
       return alt;
     },
     configurable: true,
-    writable: true
+    writable: true,
   });
 }
 
@@ -311,8 +291,8 @@ main();
 function main(): number {
   try {
     if (cluster.isMaster) {
-        let args = masterArgsParse();
-        masterRun(args);
+      let args = masterArgsParse();
+      masterRun(args);
     } else if (cluster.isWorker) {
       let args = workerArgsParse();
       workerRun(args);
@@ -331,28 +311,27 @@ function main(): number {
 }
 
 function usage(): string {
-  return `Usage: ${process.argv[0]} ${process.argv[1]} ` + EOL +
-    `[--verbose] [--timeout <number>] [--bailAfter <number>] ` + EOL +
-    `[--cpuScale <number>] [--statusFile <string>] [--singleThreaded]`;
+  return (
+    `Usage: ${process.argv[0]} ${process.argv[1]} ` +
+    EOL +
+    `[--verbose] [--timeout <number>] [--bailAfter <number>] ` +
+    EOL +
+    `[--cpuScale <number>] [--statusFile <string>] [--singleThreaded]`
+  );
 }
 
 function masterArgsParse(): MasterProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
-    string: [
-      "statusFile"
-    ],
-    boolean: [
-      "verbose",
-      "singleThreaded"
-    ],
+    string: ["statusFile"],
+    boolean: ["verbose", "singleThreaded"],
     default: {
-      verbose: (process.stdout instanceof tty.WriteStream) ? false : true,
+      verbose: process.stdout instanceof tty.WriteStream ? false : true,
       statusFile: "",
       timeout: 10,
       cpuScale: 1,
       bailAfter: Infinity,
-      singleThreaded: false
-    }
+      singleThreaded: false,
+    },
   });
   let filterString = parsedArgs._[0];
   if (typeof parsedArgs.verbose !== "boolean") {
@@ -380,7 +359,7 @@ function masterArgsParse(): MasterProgramArgs {
     parsedArgs.cpuScale,
     parsedArgs.statusFile,
     filterString,
-    parsedArgs.singleThreaded,
+    parsedArgs.singleThreaded
   );
   if (programArgs.filterString) {
     // if filterstring is provided, assume that verbosity is desired
@@ -393,7 +372,7 @@ function workerArgsParse(): WorkerProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     default: {
       timeout: 10,
-    }
+    },
   });
   if (typeof parsedArgs.timeout !== "number") {
     throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
@@ -405,7 +384,7 @@ function masterRun(args: MasterProgramArgs) {
   let tests = getFilesSync(`${__dirname}/../test/test262/test`);
   // remove tests that don't need to be ran
   const originalTestLength = tests.length;
-  tests = tests.filter((test) => {
+  tests = tests.filter(test => {
     return testFilterByMetadata(test, args.filterString);
   });
   let groups: GroupsMap = {};
@@ -423,7 +402,7 @@ function masterRunSingleProcess(
   args: MasterProgramArgs,
   groups: GroupsMap,
   tests: TestFileInfo[],
-  numFiltered: number,
+  numFiltered: number
 ): void {
   console.log("Running the tests as a single process");
   // print out every 5 percent (more granularity than multi-process because multi-process
@@ -462,7 +441,7 @@ function masterRunMultiProcess(
   args: MasterProgramArgs,
   groups: GroupsMap,
   tests: TestFileInfo[],
-  numFiltered: number,
+  numFiltered: number
 ): void {
   if (!cluster.on) {
     // stop flow errors on "cluster.on"
@@ -478,14 +457,14 @@ function masterRunMultiProcess(
   }
 
   let exitCount = 0;
-  cluster.on('exit', (worker, code, signal) => {
+  cluster.on("exit", (worker, code, signal) => {
     exitCount++;
     if (exitCount === numWorkers) {
       process.exit(handleFinished(args, groups, numFiltered));
     }
   });
 
-  const giveTask = (worker) => {
+  const giveTask = worker => {
     // grab another test to run and give it to the child process
     if (tests.length === 0) {
       worker.send(new QuitMessage());
@@ -494,7 +473,7 @@ function masterRunMultiProcess(
     }
   };
 
-  cluster.on('message', (worker, message, handle) => {
+  cluster.on("message", (worker, message, handle) => {
     switch (message.type) {
       case ErrorMessage.sentinel:
         let errMsg = ErrorMessage.fromObject(message);
@@ -521,22 +500,16 @@ function masterRunMultiProcess(
         }
         break;
       default:
-        throw new Error(
-          `Master got an unexpected message: ${JSON.stringify(message)}`
-        );
+        throw new Error(`Master got an unexpected message: ${JSON.stringify(message)}`);
     }
   });
 
-  cluster.on('online', (worker) => {
+  cluster.on("online", worker => {
     giveTask(worker);
   });
 }
 
-function handleFinished(
-  args: MasterProgramArgs,
-  groups: GroupsMap,
-  earlierNumSkipped: number,
-): number {
+function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSkipped: number): number {
   let numPassedES5 = 0;
   let numPassedES6 = 0;
   let numFailedES5 = 0;
@@ -566,13 +539,8 @@ function handleFinished(
           }
         } else {
           if (args.verbose) {
-            errmsg += create_test_message(
-              testName,
-              testResult.passed,
-              testResult.err,
-              t.test.isES6,
-              testResult.strict
-            ) + EOL;
+            errmsg +=
+              create_test_message(testName, testResult.passed, testResult.err, t.test.isES6, testResult.strict) + EOL;
           }
           if (testResult.err && testResult.err.message === "Timed out") {
             numTimeouts++;
@@ -587,7 +555,8 @@ function handleFinished(
     msg +=
       `Passed: ${group_es5_passed} / ${group_es5_passed + group_es5_failed} ` +
       `(${toPercentage(group_es5_passed, group_es5_passed + group_es5_failed)}%) ` +
-      chalk.yellow("(es6)") + `: ${group_es6_passed} / ` +
+      chalk.yellow("(es6)") +
+      `: ${group_es6_passed} / ` +
       `${group_es6_passed + group_es6_failed} ` +
       `(${toPercentage(group_es6_passed, group_es6_passed + group_es6_failed)}%)`;
     if (args.verbose) {
@@ -604,13 +573,18 @@ function handleFinished(
     numFailedES6 += group_es6_failed;
   }
   let status =
-    `=== RESULTS ===` + EOL +
+    `=== RESULTS ===` +
+    EOL +
     `Passes: ${numPassedES5} / ${numPassedES5 + numFailedES5} ` +
-    `(${toPercentage(numPassedES5, numPassedES5 + numFailedES5)}%)` + EOL +
+    `(${toPercentage(numPassedES5, numPassedES5 + numFailedES5)}%)` +
+    EOL +
     `ES6 passes: ${numPassedES6} / ${numPassedES6 + numFailedES6} ` +
-    `(${toPercentage(numPassedES6, numPassedES6 + numFailedES6)}%)` + EOL +
-    `Skipped: ${numSkipped}` + EOL +
-    `Timeouts: ${numTimeouts}` + EOL;
+    `(${toPercentage(numPassedES6, numPassedES6 + numFailedES6)}%)` +
+    EOL +
+    `Skipped: ${numSkipped}` +
+    EOL +
+    `Timeouts: ${numTimeouts}` +
+    EOL;
   console.log(status);
   if (failed_groups.length !== 0) {
     console.log("Groups with failures:");
@@ -623,7 +597,7 @@ function handleFinished(
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22882 || numPassedES6 < 9633 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 22898 || numPassedES6 < 10066 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -632,11 +606,7 @@ function handleFinished(
   }
 }
 
-function getProgressBar(
-  currentTestLength: number,
-  originalTestLength: number,
-  granularity: number
-): string {
+function getProgressBar(currentTestLength: number, originalTestLength: number, granularity: number): string {
   if (currentTestLength % granularity === 0 && currentTestLength !== 0) {
     // print out a percent of tests completed to keep the user informed
     return `Running... ${toPercentage(originalTestLength - currentTestLength, originalTestLength)}%`;
@@ -668,16 +638,10 @@ function toPercentage(x: number, total: number): number {
   if (total === 0) {
     return 100;
   }
-  return Math.floor((x / total) * 100);
+  return Math.floor(x / total * 100);
 }
 
-function create_test_message(
-  name: string,
-  success: boolean,
-  err: ?Error,
-  isES6: boolean,
-  isStrict: boolean
-): string {
+function create_test_message(name: string, success: boolean, err: ?Error, isES6: boolean, isStrict: boolean): string {
   const checkmark = chalk.green("\u2713");
   const xmark = chalk.red("\u2717");
   let msg = "\t";
@@ -706,9 +670,7 @@ function getHarnesses(): HarnessMap {
   for (let harness of harnessesList) {
     // sync is fine, it's an initialization stage and there's not that many
     // harnesses
-    harnesses[path.basename(harness.location)] = fs.readFileSync(
-      harness.location
-    ).toString();
+    harnesses[path.basename(harness.location)] = fs.readFileSync(harness.location).toString();
   }
   return harnesses;
 }
@@ -721,7 +683,7 @@ function workerRun(args: WorkerProgramArgs) {
   // get all the harnesses
   let harnesses = getHarnesses();
   // we're a worker, run a portion of the tests
-  process.on('message', (message) => {
+  process.on("message", message => {
     switch (message.type) {
       case TestTask.sentinel:
         // begin executing this TestTask
@@ -742,11 +704,7 @@ function workerRun(args: WorkerProgramArgs) {
   });
 }
 
-function handleTestResultsMultiProcess(
-  err: ?Error,
-  test: TestFileInfo,
-  testResults: TestResult[]
-): void {
+function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResults: TestResult[]): void {
   if (err) {
     // $FlowFixMe flow says "process.send" could be undefined
     process.send(new ErrorMessage(err));
@@ -791,8 +749,13 @@ function handleTest(
     } else {
       invariant(testFileContents, "testFileContents should not be null if banners are not None");
       // filter out by flags, features, and includes
-      let keepThisTest = filterFeatures(banners) && filterFlags(banners) && filterIncludes(banners) &&
-        filterDescription(banners) && filterCircleCI(banners) && filterSneakyGenerators(banners, testFileContents);
+      let keepThisTest =
+        filterFeatures(banners) &&
+        filterFlags(banners) &&
+        filterIncludes(banners) &&
+        filterDescription(banners) &&
+        filterCircleCI(banners) &&
+        filterSneakyGenerators(banners, testFileContents);
       let testResults = [];
       if (keepThisTest) {
         // now run the test
@@ -849,17 +812,17 @@ function getFiles(
  * This function synchronously fetches from the filesystem, as such it should
  * only be used in initialization code that only runs once.
  */
-function getFilesSync(
-  filepath: string,
-): TestFileInfo[] {
+function getFilesSync(filepath: string): TestFileInfo[] {
   let stat = fs.statSync(filepath);
   if (stat.isFile()) {
     return [new TestFileInfo(filepath, false)];
   } else if (stat.isDirectory()) {
     let subFiles = fs.readdirSync(filepath);
-    return flatten(subFiles.map((f) => {
-      return getFilesSync(path.join(filepath, f));
-    }));
+    return flatten(
+      subFiles.map(f => {
+        return getFilesSync(path.join(filepath, f));
+      })
+    );
   } else {
     throw new Error("That type of file is not supported");
   }
@@ -919,7 +882,7 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create the Host-Defined functions.
   let $ = new ObjectValue(realm);
 
-  $.defineNativeMethod("createRealm", 0, (context) => {
+  $.defineNativeMethod("createRealm", 0, context => {
     return createRealm(timeout).$;
   });
 
@@ -956,7 +919,7 @@ function runTest(
   // eslint-disable-next-line flowtype/no-weak-types
   harnesses: Object,
   strict: boolean,
-  timeout: number,
+  timeout: number
 ): ?TestResult {
   let { realm } = createRealm(timeout);
 
@@ -971,26 +934,21 @@ function runTest(
       }
 
       let completion = realm.$GlobalEnv.execute(
-        (strict ? "\"use strict\";" + EOL : "") + testFileContents,
+        (strict ? '"use strict";' + EOL : "") + testFileContents,
         test.location
       );
       if (completion instanceof ThrowCompletion) throw completion;
       if (completion instanceof AbruptCompletion)
-        return new TestResult(false, strict, new Error(
-          "Unexpected abrupt completion"
-        ));
+        return new TestResult(false, strict, new Error("Unexpected abrupt completion"));
     } catch (err) {
-      if (err.message === "Timed out")
-        return new TestResult(false, strict, err);
+      if (err.message === "Timed out") return new TestResult(false, strict, err);
       if (!data.negative || data.negative !== err.name) {
         throw err;
       }
     }
 
     if (data.negative.type) {
-      throw new Error(
-        "Was supposed to error with type " + data.negative.type + " but passed"
-      );
+      throw new Error("Was supposed to error with type " + data.negative.type + " but passed");
     }
 
     // succeeded
@@ -1005,8 +963,7 @@ function runTest(
       case "expected single name":
         return null;
       default:
-        if (err.value && err.value.$Prototype &&
-          err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
+        if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
           return null;
         }
         break;
@@ -1015,9 +972,7 @@ function runTest(
     let stack = err.stack;
     if (data.negative.type) {
       let type = data.negative.type;
-      if (err && err instanceof ThrowCompletion &&
-        Get(realm, err.value, "name").value === type
-      ) {
+      if (err && err instanceof ThrowCompletion && Get(realm, err.value, "name").value === type) {
         // Expected an error and got one.
         return new TestResult(true, strict);
       } else {
@@ -1025,9 +980,7 @@ function runTest(
         if (err && err instanceof ThrowCompletion) {
           return new TestResult(false, strict, err);
         } else {
-          return new TestResult(false, strict, new Error(
-            `Expected an error, but got something else: ${err.message}`
-          ));
+          return new TestResult(false, strict, new Error(`Expected an error, but got something else: ${err.message}`));
         }
       }
     } else {
@@ -1068,13 +1021,7 @@ function runTest(
         stack = _err.stack;
       }
 
-      return new TestResult(
-        false,
-        strict,
-        new Error(
-          `Got an error, but was not expecting one:${EOL}${stack}`
-        )
-      );
+      return new TestResult(false, strict, new Error(`Got an error, but was not expecting one:${EOL}${stack}`));
     }
   }
 }
@@ -1082,10 +1029,7 @@ function runTest(
 /**
  * Returns true if ${test} should be run, false otherwise
  */
-function testFilterByMetadata(
-  test: TestFileInfo,
-  filterString: string,
-): boolean {
+function testFilterByMetadata(test: TestFileInfo, filterString: string): boolean {
   // filter hidden files
   if (path.basename(test.location)[0] === ".") return false;
 
@@ -1100,7 +1044,7 @@ function testFilterByMetadata(
   if (test.location.includes("Simd")) return false;
 
   // temporarily disable intl402 tests (ES5)
-  if (test.location.includes("intl402") && !test.location.includes('/Date/')) {
+  if (test.location.includes("intl402") && !test.location.includes("/Date/")) {
     return false;
   }
 
@@ -1127,7 +1071,8 @@ function testFilterByMetadata(
   if (test.location.includes("tco")) return false;
 
   // disable nasty unicode tests.
-  if (test.location.includes("U180") || test.location.includes("u180") || test.location.includes("mongolian")) return false;
+  if (test.location.includes("U180") || test.location.includes("u180") || test.location.includes("mongolian"))
+    return false;
 
   // disable function toString tests.
   if (test.location.includes("Function/prototype/toString")) return false;
@@ -1157,10 +1102,7 @@ function testFilterByMetadata(
   return true;
 }
 
-function testFilterByContents(
-  test: TestFileInfo,
-  testFileContents: string
-): boolean {
+function testFilterByContents(test: TestFileInfo, testFileContents: string): boolean {
   // ES6 tests (can only be verified by contents, not by metadata)
   let is_es6 = testFileContents.includes(EOL + "es6id: ");
   test.isES6 = is_es6;
@@ -1168,15 +1110,15 @@ function testFilterByContents(
   // Ignore phase: early tests because those are errors that babel should catch
   // not issues related to Prepack
   let phase_early = testFileContents.indexOf("  phase: early");
-  let end_of_comment = testFileContents.indexOf("---\*/");
+  let end_of_comment = testFileContents.indexOf("---*/");
   if (phase_early > 0 && phase_early < end_of_comment) return false;
 
   let esid_pending = testFileContents.indexOf("esid: pending");
   if (esid_pending > 0 && esid_pending < end_of_comment) return false;
 
   // disable tests that require parser to throw SyntaxError in strict Mode
-  if (test.location.includes("/directive-prologue/") &&
-    testFileContents.includes("assert.throws(SyntaxError,")) return false;
+  if (test.location.includes("/directive-prologue/") && testFileContents.includes("assert.throws(SyntaxError,"))
+    return false;
 
   // disable SharedArrayBuffer tests
   if (testFileContents.includes("SharedArrayBuffer")) return false;
@@ -1205,26 +1147,38 @@ function filterDescription(data: BannerData): boolean {
   // For now, "Complex tests" is used in the description of some
   // encode/decodeURI tests to indicate that they are long running.
   // Filter these
-  return !data.description.includes("Complex tests") &&
+  return (
+    !data.description.includes("Complex tests") &&
     !data.description.includes("iterating") &&
-    !data.description.includes("iterable");
+    !data.description.includes("iterable")
+  );
 }
 
 function filterCircleCI(data: BannerData): boolean {
-  let skipTests = ['7.8.5_A1.4_T2', '7.8.5_A2.4_T2', '7.8.5_A2.1_T2', '7.8.5_A1.1_T2',
-                    '15.1.2.2_A8', '15.1.2.3_A6', '7.4_A5', '7.4_A6',
-                    '15.10.2.12_A3_T1', '15.10.2.12_A4_T1', '15.10.2.12_A5_T1', '15.10.2.12_A6_T1'];
-  let skipTests6 = ['22.1.3.1_3'];
+  let skipTests = [
+    "7.8.5_A1.4_T2",
+    "7.8.5_A2.4_T2",
+    "7.8.5_A2.1_T2",
+    "7.8.5_A1.1_T2",
+    "15.1.2.2_A8",
+    "15.1.2.3_A6",
+    "7.4_A5",
+    "7.4_A6",
+    "15.10.2.12_A3_T1",
+    "15.10.2.12_A4_T1",
+    "15.10.2.12_A5_T1",
+    "15.10.2.12_A6_T1",
+  ];
+  let skipTests6 = ["22.1.3.1_3"];
 
-  return (!!process.env.NIGHTLY_BUILD ||
-      (skipTests.indexOf(data.es5id) < 0 && skipTests6.indexOf(data.es6id) < 0));
+  return !!process.env.NIGHTLY_BUILD || (skipTests.indexOf(data.es5id) < 0 && skipTests6.indexOf(data.es6id) < 0);
 }
 
 function filterSneakyGenerators(data: BannerData, testFileContents: string) {
   // There are some sneaky tests that use generators but are not labeled with
   // the "generators" or "generator" feature tag. Here we use a simple heuristic
   // to filter out tests with sneaky generators.
-  if (data.features.includes('destructuring-binding')) {
+  if (data.features.includes("destructuring-binding")) {
     return !testFileContents.includes("function*") && !testFileContents.includes("*method");
   }
   return true;
@@ -1241,30 +1195,17 @@ function runTestWithStrictness(
   data: BannerData,
   // eslint-disable-next-line flowtype/no-weak-types
   harnesses: Object,
-  timeout: number,
+  timeout: number
 ): Array<TestResult> {
   let fn = (strict: boolean) => {
-    return runTest(
-      test,
-      testFileContents,
-      data,
-      harnesses,
-      strict,
-      timeout,
-    );
+    return runTest(test, testFileContents, data, harnesses, strict, timeout);
   };
   if (data.flags.includes("onlyStrict")) {
-    if (testFileContents.includes("assert.throws(SyntaxError"))
-      return [];
+    if (testFileContents.includes("assert.throws(SyntaxError")) return [];
     let result = fn(true);
     return result ? [result] : [];
-  } else if (
-    data.flags.includes("noStrict") ||
-    test.location.includes("global/global-object.js")
-  ) {
-    if (testFileContents.includes("\"use strict\";") &&
-        testFileContents.includes("assert.throws(SyntaxError"))
-      return [];
+  } else if (data.flags.includes("noStrict") || test.location.includes("global/global-object.js")) {
+    if (testFileContents.includes('"use strict";') && testFileContents.includes("assert.throws(SyntaxError")) return [];
     let result = fn(false);
     return result ? [result] : [];
   } else {
@@ -1278,7 +1219,7 @@ function runTestWithStrictness(
     if (unStrictResult) {
       finalResult.push(unStrictResult);
     }
-    return  finalResult;
+    return finalResult;
   }
 }
 
@@ -1286,18 +1227,15 @@ function runTestWithStrictness(
  * Parses the banners, and returns the banners as arbitrary object data if they
  * were found, or returns an error if the banner it couldn't be parsed.
  */
-function getBanners(
-  test: TestFileInfo,
-  fileContents: string
-): ?BannerData {
+function getBanners(test: TestFileInfo, fileContents: string): ?BannerData {
   let banners = fileContents.match(/---[\s\S]+---/);
   let data = {};
   if (banners) {
     let bannerText = banners[0] || "";
     if (bannerText.includes("StrictMode")) {
-      if (bannerText.includes("\'arguments\'")) return null;
-      if (bannerText.includes("\'caller\'")) return null;
-    } else if (bannerText.includes("properties \"caller\" or \"arguments\"")) {
+      if (bannerText.includes("'arguments'")) return null;
+      if (bannerText.includes("'caller'")) return null;
+    } else if (bannerText.includes('properties "caller" or "arguments"')) {
       return null;
     } else if (bannerText.includes("function caller")) {
       return null;
@@ -1305,8 +1243,7 @@ function getBanners(
       return null;
     } else if (bannerText.includes("attribute of 'arguments'")) {
       return null;
-    } else if (bannerText.includes("poisoned"))
-      return null;
+    } else if (bannerText.includes("poisoned")) return null;
     data = yaml.safeLoad(banners[0].slice(3, -3));
   }
   return BannerData.fromObject(data);

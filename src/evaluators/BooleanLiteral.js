@@ -16,6 +16,11 @@ import type { Reference } from "../environment.js";
 import { BooleanValue } from "../values/index.js";
 import type { BabelNodeBooleanLiteral } from "babel-types";
 
-export default function (ast: BabelNodeBooleanLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeBooleanLiteral,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   return new BooleanValue(realm, ast.value);
 }

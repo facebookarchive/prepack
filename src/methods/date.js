@@ -16,14 +16,14 @@ import invariant from "../invariant.js";
 
 // Constants
 export const SecondsPerMinute = 60;
-export const MinutesPerHour   = 60;
-export const HoursPerDay      = 24;
-export const msPerSecond      = 1000;
-export const msPerMinute      = msPerSecond * SecondsPerMinute;
-export const msPerHour        = msPerMinute * MinutesPerHour;
-export const msPerDay         = msPerHour * HoursPerDay;
+export const MinutesPerHour = 60;
+export const HoursPerDay = 24;
+export const msPerSecond = 1000;
+export const msPerMinute = msPerSecond * SecondsPerMinute;
+export const msPerHour = msPerMinute * MinutesPerHour;
+export const msPerDay = msPerHour * HoursPerDay;
 
-let LocalTZA = -(new Date(0)).getTimezoneOffset() * msPerMinute;
+let LocalTZA = -new Date(0).getTimezoneOffset() * msPerMinute;
 
 // ECMA262 20.3.1.2
 export function Day(realm: Realm, t: number): number {
@@ -37,17 +37,17 @@ export function TimeWithinDay(realm: Realm, t: number): number {
 
 // ECMA262 20.3.1.3
 export function DaysInYear(realm: Realm, y: number): 365 | 366 {
-  if ((y % 4) !== 0) return 365;
-  if ((y % 4) === 0 && (y % 100) !== 0) return 366;
-  if ((y % 100) === 0 && (y % 400) !== 0) return 365;
-  if ((y % 400) === 0) return 366;
+  if (y % 4 !== 0) return 365;
+  if (y % 4 === 0 && y % 100 !== 0) return 366;
+  if (y % 100 === 0 && y % 400 !== 0) return 365;
+  if (y % 400 === 0) return 366;
 
   throw new Error("Invalid condition");
 }
 
 // ECMA262 20.3.1.3
 export function DayFromYear(realm: Realm, y: number): number {
-  return  365 * (y - 1970) + Math.floor((y - 1969) / 4) - Math.floor((y - 1901) / 100) + Math.floor((y - 1601) / 400);
+  return 365 * (y - 1970) + Math.floor((y - 1969) / 4) - Math.floor((y - 1901) / 100) + Math.floor((y - 1601) / 400);
 }
 
 // ECMA262 20.3.1.3
@@ -85,7 +85,7 @@ export function MonthFromTime(realm: Realm, t: number): number {
 
   if (d < (step = 31)) return 0;
 
-  step += (InLeapYear(realm, t) ? 29 : 28);
+  step += InLeapYear(realm, t) ? 29 : 28;
   if (d < step) return 1;
   if (d < (step += 31)) return 2;
   if (d < (step += 30)) return 3;
@@ -113,7 +113,7 @@ export function DateFromTime(realm: Realm, t: number): number {
   if (d <= (next = 30)) return d + 1;
 
   step = next;
-  next += (InLeapYear(realm, t) ? 29 : 28);
+  next += InLeapYear(realm, t) ? 29 : 28;
   if (d <= next) return d - step;
 
   step = next;
@@ -235,7 +235,7 @@ export function MakeDay(realm: Realm, year: number, month: number, date: number)
   let ym = y + Math.floor(m / 12);
 
   // 6. Let mn be m modulo 12.
-  let mn = m < 0 ? (m % 12 + 12) : (m % 12);
+  let mn = m < 0 ? m % 12 + 12 : m % 12;
 
   // 7. Find a value t such that YearFromTime(t) is ym and MonthFromTime(t) is mn and DateFromTime(t) is 1;
   //    but if this is not possible (because some argument is out of range), return NaN.
@@ -244,15 +244,19 @@ export function MakeDay(realm: Realm, year: number, month: number, date: number)
     return NaN;
   }
   const yearDelta = 399999;
-  const baseDay = 365 * (1970 + yearDelta) +
-    Math.floor((1970 + yearDelta) / 4) - Math.floor((1970 + yearDelta) / 100) +
+  const baseDay =
+    365 * (1970 + yearDelta) +
+    Math.floor((1970 + yearDelta) / 4) -
+    Math.floor((1970 + yearDelta) / 100) +
     Math.floor((1970 + yearDelta) / 400);
   let t =
-      365 * (ym + yearDelta) + Math.floor((ym + yearDelta) / 4) -
-      Math.floor((ym + yearDelta) / 100) + Math.floor((ym + yearDelta) / 400) -
-      baseDay;
+    365 * (ym + yearDelta) +
+    Math.floor((ym + yearDelta) / 4) -
+    Math.floor((ym + yearDelta) / 100) +
+    Math.floor((ym + yearDelta) / 400) -
+    baseDay;
 
-  if ((ym % 4 !== 0) || (ym % 100 === 0 && ym % 400 !== 0)) {
+  if (ym % 4 !== 0 || (ym % 100 === 0 && ym % 400 !== 0)) {
     t += [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334][mn];
   } else {
     t += [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335][mn];

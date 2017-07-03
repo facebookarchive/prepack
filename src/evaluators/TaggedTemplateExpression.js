@@ -17,7 +17,12 @@ import { EvaluateCall } from "../methods/call.js";
 import type { BabelNodeTaggedTemplateExpression } from "babel-types";
 
 // ECMA262 12.3.7
-export default function (ast: BabelNodeTaggedTemplateExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeTaggedTemplateExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Let tagRef be the result of evaluating MemberExpression.
   let tagRef = env.evaluate(ast.tag, strictCode);
 

@@ -14,7 +14,7 @@ import initializePrepackGlobals from "./intrinsics/prepack/global.js";
 import initializeDOMGlobals from "./intrinsics/dom/global.js";
 import initializeReactNativeGlobals from "./intrinsics/react-native/global.js";
 
-export default function (realm: Realm): Realm {
+export default function(realm: Realm): Realm {
   initializePrepackGlobals(realm);
   if (realm.isCompatibleWith("browser")) {
     initializeDOMGlobals(realm);

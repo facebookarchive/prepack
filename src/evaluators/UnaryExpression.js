@@ -12,7 +12,19 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostics, FatalError } from "../errors.js";
-import { AbstractObjectValue, Value, BooleanValue, ConcreteValue, NumberValue, StringValue, UndefinedValue, NullValue, SymbolValue, ObjectValue, AbstractValue } from "../values/index.js";
+import {
+  AbstractObjectValue,
+  Value,
+  BooleanValue,
+  ConcreteValue,
+  NumberValue,
+  StringValue,
+  UndefinedValue,
+  NullValue,
+  SymbolValue,
+  ObjectValue,
+  AbstractValue,
+} from "../values/index.js";
 import { Reference, EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -29,7 +41,7 @@ import {
   IsUnresolvableReference,
   IsStrictReference,
   IsPropertyReference,
-  IsToNumberPure
+  IsToNumberPure,
 } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNodeUnaryExpression } from "babel-types";
@@ -39,16 +51,25 @@ function isInstance(proto, Constructor): boolean {
 }
 
 function computeAbstractly(realm, type, op, val) {
-  return realm.createAbstract(new TypesDomain(type), ValuesDomain.topVal, [val],
-    ([node]) => t.unaryExpression(op, node));
+  return realm.createAbstract(new TypesDomain(type), ValuesDomain.topVal, [val], ([node]) =>
+    t.unaryExpression(op, node)
+  );
 }
 
-export default function (ast: BabelNodeUnaryExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeUnaryExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   function reportError() {
     let error = new CompilerDiagnostics(
       "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
-      ast.argument.loc, 'PP0008', 'RecoverableError');
-    if (realm.handleError(error) === 'Fail') throw new FatalError();
+      ast.argument.loc,
+      "PP0008",
+      "RecoverableError"
+    );
+    if (realm.handleError(error) === "Fail") throw new FatalError();
   }
 
   let expr = env.evaluate(ast.argument, strictCode);

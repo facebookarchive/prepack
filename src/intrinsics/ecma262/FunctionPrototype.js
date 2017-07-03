@@ -9,11 +9,19 @@
 
 /* @flow */
 
-
 import type { Realm } from "../../realm.js";
 import { BoundFunctionCreate, SetFunctionName } from "../../methods/function.js";
 import { DefinePropertyOrThrow } from "../../methods/properties.js";
-import { BooleanValue, NullValue, UndefinedValue, NumberValue, StringValue, FunctionValue, NativeFunctionValue, ObjectValue } from "../../values/index.js";
+import {
+  BooleanValue,
+  NullValue,
+  UndefinedValue,
+  NumberValue,
+  StringValue,
+  FunctionValue,
+  NativeFunctionValue,
+  ObjectValue,
+} from "../../values/index.js";
 import { Call } from "../../methods/call.js";
 import { ToInteger } from "../../methods/to.js";
 import { CreateListFromArrayLike } from "../../methods/create.js";
@@ -24,7 +32,7 @@ import { OrdinaryHasInstance } from "../../methods/abstract.js";
 import { ThrowCompletion } from "../../completions.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.2.3
   obj.$Call = (thisArgument, argsList) => {
     return realm.intrinsics.undefined;
@@ -58,8 +66,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("apply", 2, (func, [thisArg, argArray]) => {
     // 1. If IsCallable(func) is false, throw a TypeError exception.
     if (IsCallable(realm, func) === false) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError,
-        "not callable");
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
     }
 
     // 2. If argArray is null or undefined, then
@@ -109,7 +116,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
       // b. If Type(targetLen) is not Number, let L be 0.
       if (!targetLen.mightBeNumber()) {
         L = 0;
-      } else { // c. Else,
+      } else {
+        // c. Else,
         targetLen = targetLen.throwIfNotConcreteNumber();
         // i. Let targetLen be ToInteger(targetLen).
         targetLen = ToInteger(realm, targetLen);
@@ -117,7 +125,8 @@ export default function (realm: Realm, obj: ObjectValue): void {
         // ii. Let L be the larger of 0 and the result of targetLen minus the number of elements of args.
         L = Math.max(0, targetLen - args.length);
       }
-    } else { // 7. Else let L be 0.
+    } else {
+      // 7. Else let L be 0.
       L = 0;
     }
 
@@ -126,7 +135,7 @@ export default function (realm: Realm, obj: ObjectValue): void {
       value: new NumberValue(realm, L),
       writable: false,
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
 
     // 9. Let targetName be ? Get(Target, "name").
@@ -143,15 +152,20 @@ export default function (realm: Realm, obj: ObjectValue): void {
   });
 
   // 19.2.3.6
-  obj.defineNativeMethod(realm.intrinsics.SymbolHasInstance, 1, (context, [V]) => {
-    // 1. Let F be the this value.
-    let F = context;
+  obj.defineNativeMethod(
+    realm.intrinsics.SymbolHasInstance,
+    1,
+    (context, [V]) => {
+      // 1. Let F be the this value.
+      let F = context;
 
-    // 2. Return ? OrdinaryHasInstance(F, V).
-    return new BooleanValue(realm, OrdinaryHasInstance(realm, F, V));
-  }, { writable: false, configurable: false });
+      // 2. Return ? OrdinaryHasInstance(F, V).
+      return new BooleanValue(realm, OrdinaryHasInstance(realm, F, V));
+    },
+    { writable: false, configurable: false }
+  );
 
-  obj.defineNativeMethod("toString", 0, (context) => {
+  obj.defineNativeMethod("toString", 0, context => {
     context = context.throwIfNotConcrete();
     if (context instanceof NativeFunctionValue) {
       return new StringValue(realm, `function ${context.name}() { [native code] }`);

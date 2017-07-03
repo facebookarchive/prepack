@@ -16,6 +16,11 @@ import type { Reference } from "../environment.js";
 import { NumberValue } from "../values/index.js";
 import type { BabelNodeNumericLiteral } from "babel-types";
 
-export default function (ast: BabelNodeNumericLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeNumericLiteral,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   return new NumberValue(realm, ast.value);
 }

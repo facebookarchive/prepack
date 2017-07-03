@@ -15,7 +15,7 @@ import { IsPromise, Invoke, SpeciesConstructor } from "../../methods/index.js";
 import { NewPromiseCapability, PerformPromiseThen } from "../../methods/promise.js";
 import invariant from "../../invariant.js";
 
-export default function (realm: Realm, obj: ObjectValue): void {
+export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 25.4.5.1
   obj.defineNativeMethod("catch", 1, (context, [onRejected]) => {
     // 1. Let promise be the this value.

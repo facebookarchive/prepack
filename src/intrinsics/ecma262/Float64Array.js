@@ -13,6 +13,6 @@ import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { build } from "./TypedArray.js";
 
-export default function (realm: Realm): NativeFunctionValue {
+export default function(realm: Realm): NativeFunctionValue {
   return build(realm, "Float64");
 }

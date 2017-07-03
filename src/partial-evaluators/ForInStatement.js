@@ -17,8 +17,12 @@ import { AbruptCompletion } from "../completions.js";
 import { Value } from "../values/index.js";
 
 // ECMA262 13.7.5.11
-export default function (
-  ast: BabelNodeForInStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm, labelSet: ?Array<string>
+export default function(
+  ast: BabelNodeForInStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
 ): [AbruptCompletion | Value, BabelNodeForInStatement, Array<BabelNodeStatement>] {
   let result = env.evaluateCompletionDeref(ast, strictCode);
   return [result, ast, []];

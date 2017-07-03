@@ -16,9 +16,9 @@ let IntrospectionThrowCompletion = require("../lib/completions.js").Introspectio
 let ThrowCompletion = require("../lib/completions.js").ThrowCompletion;
 
 let chalk = require("chalk");
-let path  = require("path");
-let fs    = require("fs");
-let vm    = require("vm");
+let path = require("path");
+let fs = require("fs");
+let vm = require("vm");
 
 function search(dir, relative) {
   let tests = [];
@@ -30,7 +30,7 @@ function search(dir, relative) {
     if (stat.isFile()) {
       tests.push({
         file: fs.readFileSync(loc, "utf8"),
-        name: path.join(relative, name)
+        name: path.join(relative, name),
       });
     } else if (stat.isDirectory()) {
       tests = tests.concat(search(loc, path.join(relative, name)));
@@ -43,8 +43,11 @@ function search(dir, relative) {
 let tests = search(`${__dirname}/../test/residual`, "test/residual");
 
 function exec(code) {
-  let script = new vm.Script(`var global = this; var self = this; var __result = ${code} // keep newline here as code may end with comment
-; report(__result);`, { cachedDataProduced: false });
+  let script = new vm.Script(
+    `var global = this; var self = this; var __result = ${code} // keep newline here as code may end with comment
+; report(__result);`,
+    { cachedDataProduced: false }
+  );
 
   let result = "";
   let logOutput = "";
@@ -70,20 +73,21 @@ function exec(code) {
       },
       error(...s) {
         write("ERROR:", s);
-      }
-    }
+      },
+    },
   });
   return result + logOutput;
 }
 
 function runTest(name, code) {
   let realmOptions = { residual: true };
+  let sources = [{ filePath: name, fileContents: code }];
   console.log(chalk.inverse(name));
   if (code.includes("// throws introspection error")) {
     try {
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
-      let result = realm.$GlobalEnv.executePartialEvaluator(name, code);
+      let result = realm.$GlobalEnv.executePartialEvaluator(sources);
       if (result instanceof IntrospectionThrowCompletion) return true;
       if (result instanceof ThrowCompletion) throw result.value;
     } catch (err) {
@@ -111,7 +115,7 @@ return __result; }).call(this);`);
       for (; i < max; i++) {
         let realm = construct_realm(realmOptions);
         initializeGlobals(realm);
-        let result = realm.$GlobalEnv.executePartialEvaluator(name, code);
+        let result = realm.$GlobalEnv.executePartialEvaluator(sources);
         if (result instanceof ThrowCompletion) throw result.value;
         if (result instanceof AbruptCompletion) throw result;
         let newCode = result.code;
@@ -125,7 +129,7 @@ return __result; }).call(this);`);
           }
         }
         if (markersIssue) break;
-        actual =  exec(`(function () { ${newCode}; // keep newline here as code may end with comment
+        actual = exec(`(function () { ${newCode}; // keep newline here as code may end with comment
           return __result; }).call(this);`);
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
@@ -159,7 +163,7 @@ return __result; }).call(this);`);
 function run() {
   let failed = 0;
   let passed = 0;
-  let total  = 0;
+  let total = 0;
 
   for (let test of tests) {
     // filter hidden files
@@ -168,15 +172,12 @@ function run() {
     if (test.file.includes("// skip")) continue;
 
     total++;
-    if (runTest(test.name, test.file))
-      passed++;
-    else
-      failed++;
+    if (runTest(test.name, test.file)) passed++;
+    else failed++;
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.round((passed / total) * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
   return failed === 0;
 }
 
-if (!run())
-  process.exit(1);
+if (!run()) process.exit(1);

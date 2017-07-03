@@ -20,7 +20,12 @@ import invariant from "../invariant.js";
 import type { BabelNodeWithStatement } from "babel-types";
 
 // ECMA262 13.11.7
-export default function (ast: BabelNodeWithStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeWithStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Let val be the result of evaluating Expression.
   let val = env.evaluate(ast.object, strictCode);
 
@@ -28,7 +33,7 @@ export default function (ast: BabelNodeWithStatement, strictCode: boolean, env: 
   val = GetValue(realm, val);
   if (val instanceof AbstractValue) {
     let loc = ast.object.loc;
-    let error = new CompilerDiagnostics("with object must be a known value", loc, 'PP0007', 'RecoverableError');
+    let error = new CompilerDiagnostics("with object must be a known value", loc, "PP0007", "RecoverableError");
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
   let obj = ToObjectPartial(realm, val);

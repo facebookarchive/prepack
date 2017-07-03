@@ -10,12 +10,12 @@
 /* @flow */
 
 import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
-import { prepack } from "../lib/prepack-node.js";
+import { prepackFileSync } from "../lib/prepack-node.js";
 import invariant from "../lib/invariant.js";
 
 let chalk = require("chalk");
-let path  = require("path");
-let fs    = require("fs");
+let path = require("path");
+let fs = require("fs");
 
 function search(dir, relative) {
   let tests = [];
@@ -28,7 +28,7 @@ function search(dir, relative) {
       if (stat.isFile()) {
         tests.push({
           file: fs.readFileSync(loc, "utf8"),
-          name: path.join(relative, name)
+          name: path.join(relative, name),
         });
       } else if (stat.isDirectory()) {
         tests = tests.concat(search(loc, path.join(relative, name)));
@@ -41,7 +41,11 @@ function search(dir, relative) {
 
 let tests = search(`${__dirname}/../test/error-handler`, "test/error-handler");
 
-function errorHandler(retval: ErrorHandlerResult, errors: Array<CompilerDiagnostics>, error: CompilerDiagnostics): ErrorHandlerResult {
+function errorHandler(
+  retval: ErrorHandlerResult,
+  errors: Array<CompilerDiagnostics>,
+  error: CompilerDiagnostics
+): ErrorHandlerResult {
   errors.push(error);
   return retval;
 }
@@ -60,15 +64,13 @@ function runTest(name: string, code: string): boolean {
 
   let errors = [];
   try {
-    prepack(code, {
-      filename: name,
+    prepackFileSync(name, {
       internalDebug: false,
-      compatibility: "node-cli",
       mathRandomSeed: "0",
+      onError: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
       speculate: true,
-    },
-    errorHandler.bind(null, recover ? 'Recover' : 'Fail', errors));
+    });
     if (!recover) {
       console.log(chalk.red("Serialization succeeded though it should have failed"));
       return false;
@@ -86,6 +88,7 @@ function runTest(name: string, code: string): boolean {
       let expected = expectedErrors[i][prop];
       let actual = (errors[i]: any)[prop];
       if (prop === "location") {
+        delete actual.filename;
         actual = JSON.stringify(actual);
         expected = JSON.stringify(expected);
       }
@@ -102,7 +105,7 @@ function runTest(name: string, code: string): boolean {
 function run() {
   let failed = 0;
   let passed = 0;
-  let total  = 0;
+  let total = 0;
 
   for (let test of tests) {
     // filter hidden files
@@ -110,15 +113,12 @@ function run() {
     if (test.name.endsWith("~")) continue;
 
     total++;
-    if (runTest(test.name, test.file))
-      passed++;
-    else
-      failed++;
+    if (runTest(test.name, test.file)) passed++;
+    else failed++;
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.round((passed / total) * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
   return failed === 0;
 }
 
-if (!run())
-  process.exit(1);
+if (!run()) process.exit(1);

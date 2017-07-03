@@ -11,8 +11,25 @@
 
 import invariant from "../../invariant.js";
 import type { Realm } from "../../realm.js";
-import { ConcreteValue, ArrayValue, ObjectValue, BooleanValue, NumberValue, StringValue, FunctionValue, NativeFunctionValue } from "../../values/index.js";
-import { Get, DefinePropertyOrThrow, OrdinaryDelete, OrdinaryDefineOwnProperty, ToString, ToInteger, ToBoolean } from "../../methods/index.js";
+import {
+  ConcreteValue,
+  ArrayValue,
+  ObjectValue,
+  BooleanValue,
+  NumberValue,
+  StringValue,
+  FunctionValue,
+  NativeFunctionValue,
+} from "../../values/index.js";
+import {
+  Get,
+  DefinePropertyOrThrow,
+  OrdinaryDelete,
+  OrdinaryDefineOwnProperty,
+  ToString,
+  ToInteger,
+  ToBoolean,
+} from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import initializeBuffer from "./buffer.js";
@@ -24,14 +41,20 @@ declare var process: any;
 
 function initializeTimerWrap(realm) {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('timer_wrap')");
-  let constructor = new NativeFunctionValue(realm, "process.binding('timer_wrap').Timer", "Timer", 0, (context, args) => {
-    return realm.intrinsics.undefined;
-  });
+  let constructor = new NativeFunctionValue(
+    realm,
+    "process.binding('timer_wrap').Timer",
+    "Timer",
+    0,
+    (context, args) => {
+      return realm.intrinsics.undefined;
+    }
+  );
   OrdinaryDefineOwnProperty(realm, obj, "Timer", {
     value: constructor,
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
   // TODO: Implement the rest of this protocol as needed.
   return obj;
@@ -42,36 +65,42 @@ function initializeTTYWrap(realm) {
   // let nativeTTY = nativeTTYWrap.TTY;
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('tty_wrap')");
 
-  let constructor = new NativeFunctionValue(realm, "process.binding('tty_wrap').TTY", "TTY", 0, (context, args, argCount, NewTarget) => {
-    invariant(args[0] instanceof ConcreteValue);
-    let fd = ToInteger(realm, args[0]);
-    invariant(args[1] instanceof ConcreteValue);
-    let value = ToBoolean(realm, args[1]);
+  let constructor = new NativeFunctionValue(
+    realm,
+    "process.binding('tty_wrap').TTY",
+    "TTY",
+    0,
+    (context, args, argCount, NewTarget) => {
+      invariant(args[0] instanceof ConcreteValue);
+      let fd = ToInteger(realm, args[0]);
+      invariant(args[1] instanceof ConcreteValue);
+      let value = ToBoolean(realm, args[1]);
 
-    invariant(NewTarget, "TTY must be called as a constructor.");
+      invariant(NewTarget, "TTY must be called as a constructor.");
 
-    let proto = Get(realm, NewTarget, new StringValue(realm, "prototype"));
-    if (!(proto instanceof ObjectValue)) {
-      proto = TTYPrototype;
+      let proto = Get(realm, NewTarget, new StringValue(realm, "prototype"));
+      if (!(proto instanceof ObjectValue)) {
+        proto = TTYPrototype;
+      }
+
+      // TODO: Store nativeTTY in an internal slot so that it can be used if this
+      // object gets passed to another native call.
+
+      return new ObjectValue(realm, proto, `new (process.binding('tty_wrap').TTY)(${fd}, ${value.toString()})`);
     }
-
-    // TODO: Store nativeTTY in an internal slot so that it can be used if this
-    // object gets passed to another native call.
-
-    return new ObjectValue(
-      realm,
-      proto,
-      `new (process.binding('tty_wrap').TTY)(${fd}, ${value.toString()})`
-    );
-  });
+  );
   OrdinaryDefineOwnProperty(realm, obj, "TTY", {
     value: constructor,
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 
-  let TTYPrototype = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('tty_wrap').TTY.prototype");
+  let TTYPrototype = new ObjectValue(
+    realm,
+    realm.intrinsics.ObjectPrototype,
+    "process.binding('tty_wrap').TTY.prototype"
+  );
 
   TTYPrototype.defineNativeMethod("setBlocking", 0, (context, args) => {
     return realm.intrinsics.undefined;
@@ -92,7 +121,7 @@ function initializeTTYWrap(realm) {
     value: TTYPrototype,
     writable: true,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   obj.defineNativeMethod("guessHandleType", 0, (context, args) => {
@@ -112,19 +141,14 @@ function initializeTTYWrap(realm) {
     // ]));
     // let buildNode = buildExpressionTemplate(
     //   `(process.binding('tty_wrap').guessHandleType(${fd}))`
-    // );
+    // )(this.realm.preludeGenerator);
     // return realm.createAbstract(types, values, [], buildNode, undefined, `(process.binding('tty_wrap').guessHandleType(${fd}))`);
   });
   obj.defineNativeMethod("isTTY", 0, (context, args) => {
     let fd = ToInteger(realm, args[0]);
     let types = new TypesDomain(BooleanValue);
-    let values = new ValuesDomain(new Set([
-      realm.intrinsics.true,
-      realm.intrinsics.false
-    ]));
-    let buildNode = buildExpressionTemplate(
-      `(process.binding('tty_wrap').isTTY(${fd}))`
-    );
+    let values = new ValuesDomain(new Set([realm.intrinsics.true, realm.intrinsics.false]));
+    let buildNode = buildExpressionTemplate(`(process.binding('tty_wrap').isTTY(${fd}))`)(realm.preludeGenerator);
     return realm.createAbstract(types, values, [], buildNode, undefined, `(process.binding('tty_wrap').isTTY(${fd}))`);
   });
   // TODO: Implement the rest of this protocol.
@@ -137,17 +161,27 @@ function initializeSignalWrap(realm) {
   // let nativeSignalWrap = process.binding("signal_wrap");
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('signal_wrap')");
 
-  let constructor = new NativeFunctionValue(realm, "process.binding('signal_wrap').Signal", "Signal", 0, (context, args) => {
-    return realm.intrinsics.undefined;
-  });
+  let constructor = new NativeFunctionValue(
+    realm,
+    "process.binding('signal_wrap').Signal",
+    "Signal",
+    0,
+    (context, args) => {
+      return realm.intrinsics.undefined;
+    }
+  );
   OrdinaryDefineOwnProperty(realm, obj, "Signal", {
     value: constructor,
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 
-  let SignalPrototype = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('signal_wrap').Signal.prototype");
+  let SignalPrototype = new ObjectValue(
+    realm,
+    realm.intrinsics.ObjectPrototype,
+    "process.binding('signal_wrap').Signal.prototype"
+  );
   SignalPrototype.defineNativeMethod("unref", 0, (context, args) => {
     // TODO: Track the side-effect of this.
     return realm.intrinsics.undefined;
@@ -165,7 +199,7 @@ function initializeSignalWrap(realm) {
     value: SignalPrototype,
     writable: true,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   // TODO
@@ -176,17 +210,27 @@ function initializeStreamWrap(realm) {
   // let nativeStreamWrap = process.binding("stream_wrap");
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('stream_wrap')");
 
-  let constructor = new NativeFunctionValue(realm, "process.binding('stream_wrap').WriteWrap", "WriteWrap", 0, (context, args) => {
-    return realm.intrinsics.undefined;
-  });
+  let constructor = new NativeFunctionValue(
+    realm,
+    "process.binding('stream_wrap').WriteWrap",
+    "WriteWrap",
+    0,
+    (context, args) => {
+      return realm.intrinsics.undefined;
+    }
+  );
   OrdinaryDefineOwnProperty(realm, obj, "WriteWrap", {
     value: constructor,
     writable: true,
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 
-  let WriteWrapPrototype = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('stream_wrap').WriteWrap.prototype");
+  let WriteWrapPrototype = new ObjectValue(
+    realm,
+    realm.intrinsics.ObjectPrototype,
+    "process.binding('stream_wrap').WriteWrap.prototype"
+  );
   WriteWrapPrototype.defineNativeMethod("unref", 0, (context, args) => {
     // TODO: Track the side-effect of this.
     return realm.intrinsics.undefined;
@@ -196,7 +240,7 @@ function initializeStreamWrap(realm) {
     value: WriteWrapPrototype,
     writable: true,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
 
   let ShutdownWrap = createAbstractValue(realm, FunctionValue, "process.binding('stream_wrap').ShutdownWrap");
@@ -235,12 +279,18 @@ function initializeUtil(realm) {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, 'process.binding("util")');
   obj.defineNativeMethod("isUint8Array", 0, (context, args) => {
     let arr = args[0];
-    if (arr instanceof ObjectValue && arr.$TypedArrayName === 'Uint8Array') {
+    if (arr instanceof ObjectValue && arr.$TypedArrayName === "Uint8Array") {
       return realm.intrinsics.true;
     }
     return realm.intrinsics.false;
   });
-  copyProperty(realm, process.binding("util"), obj, "pushValToArrayMax", new NumberValue(realm, process.binding('util').pushValToArrayMax, 'process.binding("util").pushValToArrayMax'));
+  copyProperty(
+    realm,
+    process.binding("util"),
+    obj,
+    "pushValToArrayMax",
+    new NumberValue(realm, process.binding("util").pushValToArrayMax, 'process.binding("util").pushValToArrayMax')
+  );
   // TODO
   return obj;
 }
@@ -248,7 +298,7 @@ function initializeUtil(realm) {
 function createAbstractValue(realm, type, intrinsicName) {
   let types = new TypesDomain(type);
   let values = type === ObjectValue ? new ValuesDomain(new Set([new ObjectValue(realm)])) : ValuesDomain.topVal;
-  let buildNode = buildExpressionTemplate(intrinsicName);
+  let buildNode = buildExpressionTemplate(intrinsicName)(realm.preludeGenerator);
   return realm.createAbstract(types, values, [], buildNode, undefined, intrinsicName);
 }
 
@@ -260,7 +310,7 @@ function createIntrinsicArrayValue(realm, intrinsicName) {
     value: realm.intrinsics.zero,
     writable: true,
     enumerable: false,
-    configurable: false
+    configurable: false,
   });
   return obj;
 }
@@ -268,12 +318,12 @@ function createIntrinsicArrayValue(realm, intrinsicName) {
 function reverseConfigJSON(config) {
   // Hack to restore the gyp config format
   let json = JSON.stringify(process.config).replace(/"/g, "'");
-  return '\n' + json;
+  return "\n" + json;
 }
 
-export default function (realm: Realm, processArgv: Array<string>): ObjectValue {
+export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
   if (!realm.useAbstractInterpretation) {
-    throw new Error('Realm is not partial');
+    throw new Error("Realm is not partial");
   }
   // TODO: This causes a dependency on the native `process` which doesn't
   // exist in all environments such as the webpack version.
@@ -360,10 +410,7 @@ export default function (realm: Realm, processArgv: Array<string>): ObjectValue 
         return signalWrap;
 
       default:
-        throw realm.createErrorThrowCompletion(
-          realm.intrinsics.TypeError,
-          `No such module: ${module}`
-        );
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, `No such module: ${module}`);
     }
   });
 
@@ -526,9 +573,7 @@ export default function (realm: Realm, processArgv: Array<string>): ObjectValue 
   let env = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.env");
   // TODO: This abstract value doesn't work with a conditional for some reason.
   DefinePropertyOrThrow(realm, env, "NODE_NO_WARNINGS", {
-    value: new StringValue(
-      realm, "0", "process.env.NODE_NO_WARNINGS"
-    ),
+    value: new StringValue(realm, "0", "process.env.NODE_NO_WARNINGS"),
     writable: true,
     configurable: true,
     enumerable: true,
@@ -566,15 +611,21 @@ export default function (realm: Realm, processArgv: Array<string>): ObjectValue 
   // tickCallback as needed.
   obj.defineNativeMethod("_setupNextTick", 1, (self, [tickCallback, runMicrotasks]) => {
     OrdinaryDelete(realm, obj, "_setupNextTick");
-    let runMicrotasksCallback = new NativeFunctionValue(realm, "(function() { throw new Error('TODO runMicrotasks not reachable') })", "runMicrotasks", 0, (context, args) => {
-      // TODO: Implement Promises and micro tasks.
-      return realm.intrinsics.undefined;
-    });
+    let runMicrotasksCallback = new NativeFunctionValue(
+      realm,
+      "(function() { throw new Error('TODO runMicrotasks not reachable') })",
+      "runMicrotasks",
+      0,
+      (context, args) => {
+        // TODO: Implement Promises and micro tasks.
+        return realm.intrinsics.undefined;
+      }
+    );
     OrdinaryDefineOwnProperty(realm, runMicrotasks, "runMicrotasks", {
       value: runMicrotasksCallback,
       writable: true,
       enumerable: true,
-      configurable: true
+      configurable: true,
     });
     let tickInfo = new ObjectValue(
       realm,
@@ -585,13 +636,13 @@ export default function (realm: Realm, processArgv: Array<string>): ObjectValue 
       value: realm.intrinsics.zero,
       writable: true,
       enumerable: true,
-      configurable: true
+      configurable: true,
     });
     OrdinaryDefineOwnProperty(realm, tickInfo, "1", {
       value: realm.intrinsics.zero,
       writable: true,
       enumerable: true,
-      configurable: true
+      configurable: true,
     });
     return tickInfo;
   });

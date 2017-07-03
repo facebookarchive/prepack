@@ -16,9 +16,19 @@ import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
 import { GetValue, ToPropertyKeyPartial, RequireObjectCoercible } from "../methods/index.js";
 import type { BabelNodeMemberExpression } from "babel-types";
+import SuperProperty from "./SuperProperty";
 
 // ECMA262 12.3.2.1
-export default function (ast: BabelNodeMemberExpression, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeMemberExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
+  if (ast.object.type === "Super") {
+    return SuperProperty(ast, strictCode, env, realm);
+  }
+
   // 1. Let baseReference be the result of evaluating MemberExpression.
   let baseReference = env.evaluate(ast.object, strictCode);
 

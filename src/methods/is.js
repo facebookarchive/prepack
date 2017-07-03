@@ -14,7 +14,18 @@ import type { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
 import { ToBooleanPartial, ToUint32, ToString } from "./to.js";
 import { Get } from "./get.js";
-import { FunctionValue, NullValue, ProxyValue, ArrayValue, StringValue,  SymbolValue, ObjectValue, NumberValue, AbstractValue, AbstractObjectValue } from "../values/index.js";
+import {
+  FunctionValue,
+  NullValue,
+  ProxyValue,
+  ArrayValue,
+  StringValue,
+  SymbolValue,
+  ObjectValue,
+  NumberValue,
+  AbstractValue,
+  AbstractObjectValue,
+} from "../values/index.js";
 import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
@@ -202,7 +213,7 @@ export function IsRegExp(realm: Realm, argument: Value): boolean {
 // ECMA262 12.2.1.4 Static Semantics: IsIdentifierRef
 // ECMA262 12.3.1.4 Static Semantics: IsIdentifierRef
 export function IsIdentifierRef(realm: Realm, node: BabelNodeLVal): boolean {
-  switch (node.type){
+  switch (node.type) {
     // ECMA262 12.2.1.4 Static Semantics: IsIdentifierRef
     case "Identifier":
       return true;
@@ -212,7 +223,7 @@ export function IsIdentifierRef(realm: Realm, node: BabelNodeLVal): boolean {
     case "NewExpression":
       return false;
     default:
-     throw Error("Unexpected AST form : " + node.type);
+      throw Error("Unexpected AST form : " + node.type);
   }
 }
 
@@ -222,7 +233,7 @@ export function IsIdentifierRef(realm: Realm, node: BabelNodeLVal): boolean {
 // 12.3.1.2 Static Semantics: IsFunctionDefinition
 // 12.15.2 Static Semantics: IsFunctionDefinition
 export function IsFunctionDefinition(realm: Realm, node: BabelNodeExpression): boolean {
-  switch (node.type){
+  switch (node.type) {
     // 12.2.1.3 Static Semantics: IsFunctionDefinition
     case "ThisExpression":
     case "Identifier":
@@ -264,8 +275,8 @@ export function IsFunctionDefinition(realm: Realm, node: BabelNodeExpression): b
     case "FunctionExpression":
       return true;
     // 14.5.8 Static Semantics: IsFunctionDefinition
-    case 'ClassExpression':
-        return true;
+    case "ClassExpression":
+      return true;
     default:
       throw Error("Unexpected AST form : " + node.type);
   }
@@ -274,8 +285,7 @@ export function IsFunctionDefinition(realm: Realm, node: BabelNodeExpression): b
 // ECMA262 14.1.10
 export function IsAnonymousFunctionDefinition(realm: Realm, node: BabelNodeExpression): boolean {
   // 1. If IsFunctionDefinition of production is false, return false.
-  if (!IsFunctionDefinition(realm, node))
-    return false;
+  if (!IsFunctionDefinition(realm, node)) return false;
 
   // 2. Let hasName be the result of HasName of production.
   let hasName = HasName(realm, node);
@@ -318,7 +328,7 @@ export function IsPromise(realm: Realm, x: Value): boolean {
 // ECMA262 24.1.1.2
 export function IsDetachedBuffer(realm: Realm, arrayBuffer: ObjectValue): boolean {
   // 1. Assert: Type(arrayBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
-  invariant(arrayBuffer instanceof ObjectValue && '$ArrayBufferData' in arrayBuffer);
+  invariant(arrayBuffer instanceof ObjectValue && "$ArrayBufferData" in arrayBuffer);
 
   // 2. If arrayBuffer's [[ArrayBufferData]] internal slot is null, return true.
   if (arrayBuffer.$ArrayBufferData === null) return true;

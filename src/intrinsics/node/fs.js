@@ -19,9 +19,9 @@ import { getNodeBufferFromTypedArray } from "./utils.js";
 
 declare var process: any;
 
-export default function (realm: Realm): ObjectValue {
+export default function(realm: Realm): ObjectValue {
   let intrinsicName = 'process.binding("fs")';
-  let nativeFS = process.binding('fs');
+  let nativeFS = process.binding("fs");
 
   // fs
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, intrinsicName);
@@ -82,7 +82,7 @@ export default function (realm: Realm): ObjectValue {
 
   let types = new TypesDomain(ObjectValue);
   let values = new ValuesDomain(new Set([new ObjectValue(realm)]));
-  let buildNode = buildExpressionTemplate(`${intrinsicName}.FSReqWrap`);
+  let buildNode = buildExpressionTemplate(`${intrinsicName}.FSReqWrap`)(realm.preludeGenerator);
   let FSReqWrap = realm.createAbstract(types, values, [], buildNode, undefined, `${intrinsicName}.FSReqWrap`);
   DefinePropertyOrThrow(realm, obj, "FSReqWrap", {
     value: FSReqWrap,

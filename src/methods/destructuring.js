@@ -34,14 +34,16 @@ import {
   CreateDataProperty,
   GetV,
 } from "./index.js";
-import type {
-  BabelNodeLVal,
-  BabelNodeArrayPattern,
-  BabelNodeObjectPattern,
-} from "babel-types";
+import type { BabelNodeLVal, BabelNodeArrayPattern, BabelNodeObjectPattern } from "babel-types";
 
 // ECMA262 12.15.5.2
-export function DestructuringAssignmentEvaluation(realm: Realm, pattern: BabelNodeArrayPattern | BabelNodeObjectPattern, value: Value, strictCode: boolean, env: LexicalEnvironment) {
+export function DestructuringAssignmentEvaluation(
+  realm: Realm,
+  pattern: BabelNodeArrayPattern | BabelNodeObjectPattern,
+  value: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment
+) {
   if (pattern.type === "ObjectPattern") {
     // 1. Perform ? RequireObjectCoercible(value).
     RequireObjectCoercible(realm, value);
@@ -93,7 +95,13 @@ export function DestructuringAssignmentEvaluation(realm: Realm, pattern: BabelNo
 }
 
 // ECMA262 12.15.5.3
-export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements: $ReadOnlyArray<BabelNodeLVal | null>, iteratorRecord: {$Iterator: ObjectValue, $Done: boolean}, strictCode: boolean, env: LexicalEnvironment) {
+export function IteratorDestructuringAssignmentEvaluation(
+  realm: Realm,
+  elements: $ReadOnlyArray<BabelNodeLVal | null>,
+  iteratorRecord: { $Iterator: ObjectValue, $Done: boolean },
+  strictCode: boolean,
+  env: LexicalEnvironment
+) {
   // Check if the last element is a rest element. If so then we want to save the
   // element and handle it separately after we iterate through the other
   // formals. This also enforces that a rest element may only ever be in the
@@ -153,8 +161,10 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
     // The spec assumes we haven't yet distinguished between literals and
     // patterns, but our parser does that work for us. That means we check for
     // "*Pattern" instead of "*Literal" like the spec text suggests.
-    if (DestructuringAssignmentTarget.type !== "ObjectPattern" &&
-        DestructuringAssignmentTarget.type !== "ArrayPattern") {
+    if (
+      DestructuringAssignmentTarget.type !== "ObjectPattern" &&
+      DestructuringAssignmentTarget.type !== "ArrayPattern"
+    ) {
       // a. Let lref be the result of evaluating DestructuringAssignmentTarget.
       lref = env.evaluate(DestructuringAssignmentTarget, strictCode);
 
@@ -184,7 +194,8 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
         // Normally this assignment would be done in step 3, but we do it
         // here so that Flow knows `value` will always be initialized by step 4.
         value = realm.intrinsics.undefined;
-      } else { // e. Else,
+      } else {
+        // e. Else,
         // i. Let value be IteratorValue(next).
         try {
           value = IteratorValue(realm, next);
@@ -197,7 +208,8 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
           throw e;
         }
       }
-    } else { // 3. If iteratorRecord.[[Done]] is true, let value be undefined.
+    } else {
+      // 3. If iteratorRecord.[[Done]] is true, let value be undefined.
       value = realm.intrinsics.undefined;
     }
 
@@ -210,7 +222,8 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
 
       // b. Let v be ? GetValue(defaultValue).
       v = GetValue(realm, defaultValue);
-    } else { // 5. Else, let v be value.
+    } else {
+      // 5. Else, let v be value.
       v = value;
     }
 
@@ -219,8 +232,10 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
     // The spec assumes we haven't yet distinguished between literals and
     // patterns, but our parser does that work for us. That means we check for
     // "*Pattern" instead of "*Literal" like the spec text suggests.
-    if (DestructuringAssignmentTarget.type === "ObjectPattern" ||
-        DestructuringAssignmentTarget.type === "ArrayPattern") {
+    if (
+      DestructuringAssignmentTarget.type === "ObjectPattern" ||
+      DestructuringAssignmentTarget.type === "ArrayPattern"
+    ) {
       // a. Let nestedAssignmentPattern be the parse of the source text corresponding to DestructuringAssignmentTarget using either AssignmentPattern or AssignmentPattern[Yield] as the goal symbol depending upon whether this AssignmentElement has the [Yield] parameter.
       let nestedAssignmentPattern = DestructuringAssignmentTarget;
 
@@ -234,11 +249,13 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
     invariant(lref);
 
     // 7. If Initializer is present and value is undefined and IsAnonymousFunctionDefinition(Initializer) and IsIdentifierRef of DestructuringAssignmentTarget are both true, then
-    if (Initializer &&
-        value instanceof UndefinedValue &&
-        IsAnonymousFunctionDefinition(realm, Initializer) &&
-        IsIdentifierRef(realm, DestructuringAssignmentTarget) &&
-        v instanceof ObjectValue) {
+    if (
+      Initializer &&
+      value instanceof UndefinedValue &&
+      IsAnonymousFunctionDefinition(realm, Initializer) &&
+      IsIdentifierRef(realm, DestructuringAssignmentTarget) &&
+      v instanceof ObjectValue
+    ) {
       // a. Let hasNameProperty be ? HasOwnProperty(v, "name").
       let hasNameProperty = HasOwnProperty(realm, v, "name");
 
@@ -270,8 +287,10 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
     // The spec assumes we haven't yet distinguished between literals and
     // patterns, but our parser does that work for us. That means we check for
     // "*Pattern" instead of "*Literal" like the spec text suggests.
-    if (DestructuringAssignmentTarget.type !== "ObjectPattern" &&
-        DestructuringAssignmentTarget.type !== "ArrayPattern") {
+    if (
+      DestructuringAssignmentTarget.type !== "ObjectPattern" &&
+      DestructuringAssignmentTarget.type !== "ArrayPattern"
+    ) {
       // a. Let lref be the result of evaluating DestructuringAssignmentTarget.
       lref = env.evaluate(DestructuringAssignmentTarget, strictCode);
 
@@ -302,7 +321,8 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
       // d. If next is false, set iteratorRecord.[[Done]] to true.
       if (next === false) {
         iteratorRecord.$Done = true;
-      } else { // e. Else,
+      } else {
+        // e. Else,
         // i. Let nextValue be IteratorValue(next).
         let nextValue;
         try {
@@ -328,8 +348,10 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
     }
 
     // 5. If DestructuringAssignmentTarget is neither an ObjectLiteral nor an ArrayLiteral, then
-    if (DestructuringAssignmentTarget.type !== "ObjectPattern" &&
-        DestructuringAssignmentTarget.type !== "ArrayPattern") {
+    if (
+      DestructuringAssignmentTarget.type !== "ObjectPattern" &&
+      DestructuringAssignmentTarget.type !== "ArrayPattern"
+    ) {
       // `lref` will always be defined at this point. Let Flow know with an
       // invariant.
       invariant(lref);
@@ -347,7 +369,14 @@ export function IteratorDestructuringAssignmentEvaluation(realm: Realm, elements
 }
 
 // ECMA262 12.15.5.4
-export function KeyedDestructuringAssignmentEvaluation(realm: Realm, node: BabelNodeLVal, value: Value, propertyName: PropertyKeyValue, strictCode: boolean, env: LexicalEnvironment) {
+export function KeyedDestructuringAssignmentEvaluation(
+  realm: Realm,
+  node: BabelNodeLVal,
+  value: Value,
+  propertyName: PropertyKeyValue,
+  strictCode: boolean,
+  env: LexicalEnvironment
+) {
   let DestructuringAssignmentTarget;
   let Initializer;
 
@@ -365,8 +394,7 @@ export function KeyedDestructuringAssignmentEvaluation(realm: Realm, node: Babel
   // The spec assumes we haven't yet distinguished between literals and
   // patterns, but our parser does that work for us. That means we check for
   // "*Pattern" instead of "*Literal" like the spec text suggests.
-  if (DestructuringAssignmentTarget.type !== "ObjectPattern" &&
-      DestructuringAssignmentTarget.type !== "ArrayPattern") {
+  if (DestructuringAssignmentTarget.type !== "ObjectPattern" && DestructuringAssignmentTarget.type !== "ArrayPattern") {
     // a. Let lref be the result of evaluating DestructuringAssignmentTarget.
     lref = env.evaluate(DestructuringAssignmentTarget, strictCode);
 
@@ -385,7 +413,8 @@ export function KeyedDestructuringAssignmentEvaluation(realm: Realm, node: Babel
 
     // b. Let rhsValue be ? GetValue(defaultValue).
     rhsValue = GetValue(realm, defaultValue);
-  } else { // 4. Else, let rhsValue be v.
+  } else {
+    // 4. Else, let rhsValue be v.
     rhsValue = v;
   }
 
@@ -394,8 +423,7 @@ export function KeyedDestructuringAssignmentEvaluation(realm: Realm, node: Babel
   // The spec assumes we haven't yet distinguished between literals and
   // patterns, but our parser does that work for us. That means we check for
   // "*Pattern" instead of "*Literal" like the spec text suggests.
-  if (DestructuringAssignmentTarget.type === "ObjectPattern" ||
-      DestructuringAssignmentTarget.type === "ArrayPattern") {
+  if (DestructuringAssignmentTarget.type === "ObjectPattern" || DestructuringAssignmentTarget.type === "ArrayPattern") {
     // a. Let assignmentPattern be the parse of the source text corresponding to DestructuringAssignmentTarget using either AssignmentPattern or AssignmentPattern[Yield] as the goal symbol depending upon whether this AssignmentElement has the [Yield] parameter.
     let assignmentPattern = DestructuringAssignmentTarget;
 
@@ -408,11 +436,13 @@ export function KeyedDestructuringAssignmentEvaluation(realm: Realm, node: Babel
   invariant(lref);
 
   // 6. If Initializer is present and v is undefined and IsAnonymousFunctionDefinition(Initializer) and IsIdentifierRef of DestructuringAssignmentTarget are both true, then
-  if (Initializer &&
-      v instanceof UndefinedValue &&
-      IsAnonymousFunctionDefinition(realm, Initializer) &&
-      IsIdentifierRef(realm, DestructuringAssignmentTarget) &&
-      rhsValue instanceof ObjectValue) {
+  if (
+    Initializer &&
+    v instanceof UndefinedValue &&
+    IsAnonymousFunctionDefinition(realm, Initializer) &&
+    IsIdentifierRef(realm, DestructuringAssignmentTarget) &&
+    rhsValue instanceof ObjectValue
+  ) {
     // a. Let hasNameProperty be ? HasOwnProperty(rhsValue, "name").
     let hasNameProperty = HasOwnProperty(realm, rhsValue, "name");
 

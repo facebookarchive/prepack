@@ -18,8 +18,11 @@ import { Value } from "../values/index.js";
 import * as t from "babel-types";
 
 // ECMA262 13.5.1
-export default function (
-  ast: BabelNodeExpressionStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
+export default function(
+  ast: BabelNodeExpressionStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
 ): [Completion | Value, BabelNodeExpressionStatement, Array<BabelNodeStatement>] {
   let [result, partial_expression_ast, io] = env.partiallyEvaluateCompletionDeref(ast.expression, strictCode);
   let partial_ast = t.expressionStatement((partial_expression_ast: any));

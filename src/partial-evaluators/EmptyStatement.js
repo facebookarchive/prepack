@@ -15,8 +15,11 @@ import type { Realm } from "../realm.js";
 
 import { EmptyValue } from "../values/index.js";
 
-export default function (
-  ast: BabelNodeEmptyStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm
-): [EmptyValue,  BabelNodeEmptyStatement, Array<BabelNodeStatement>] {
+export default function(
+  ast: BabelNodeEmptyStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): [EmptyValue, BabelNodeEmptyStatement, Array<BabelNodeStatement>] {
   return [realm.intrinsics.empty, ast, []];
 }

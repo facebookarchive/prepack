@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment, Reference } from "../environment.js";
 import { AbstractValue, Value } from "../values/index.js";
 import { CompilerDiagnostics, FatalError } from "../errors.js";
-import { NullValue, EmptyValue, ObjectValue } from '../values/index.js';
+import { NullValue, EmptyValue, ObjectValue } from "../values/index.js";
 import type {
   BabelNodeClassDeclaration,
   BabelNodeClassExpression,
@@ -41,13 +41,16 @@ import {
 } from "../methods/index.js";
 import invariant from "../invariant.js";
 
-function EvaluateClassHeritage(realm: Realm, ClassHeritage: BabelNodeExpression, strictCode: boolean): ObjectValue | null {
+function EvaluateClassHeritage(
+  realm: Realm,
+  ClassHeritage: BabelNodeExpression,
+  strictCode: boolean
+): ObjectValue | null {
   let ref = realm.getRunningContext().lexicalEnvironment.evaluate(ClassHeritage, strictCode);
   let val = GetValue(realm, ref);
   if (val instanceof AbstractValue) {
-    let error = new CompilerDiagnostics(
-      "unknown super class", ClassHeritage.loc, 'PP0009', 'RecoverableError');
-    if (realm.handleError(error) === 'Fail') throw new FatalError();
+    let error = new CompilerDiagnostics("unknown super class", ClassHeritage.loc, "PP0009", "RecoverableError");
+    if (realm.handleError(error) === "Fail") throw new FatalError();
   }
   if (!(val instanceof ObjectValue)) {
     return null;
@@ -56,7 +59,13 @@ function EvaluateClassHeritage(realm: Realm, ClassHeritage: BabelNodeExpression,
 }
 
 // ECMA262 14.5.14
-export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDeclaration | BabelNodeClassExpression, className: string | void, strictCode: boolean, env: LexicalEnvironment) {
+export function ClassDefinitionEvaluation(
+  realm: Realm,
+  ast: BabelNodeClassDeclaration | BabelNodeClassExpression,
+  className: string | void,
+  strictCode: boolean,
+  env: LexicalEnvironment
+) {
   // 1. Let lex be the LexicalEnvironment of the running execution context.
   let lex = env;
 
@@ -82,7 +91,8 @@ export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDecla
 
     // b. Let constructorParent be the intrinsic object %FunctionPrototype%.
     constructorParent = realm.intrinsics.FunctionPrototype;
-  } else { // 6. Else
+  } else {
+    // 6. Else
     // a. Set the running execution context’s LexicalEnvironment to classScope.
     realm.getRunningContext().lexicalEnvironment = classScope;
     let superclass = null;
@@ -103,12 +113,14 @@ export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDecla
 
       // ii. Let constructorParent be the intrinsic object %FunctionPrototype%.
       constructorParent = realm.intrinsics.FunctionPrototype;
-    } else if (!IsConstructor(realm, superclass)) { // f. Else if IsConstructor(superclass) is false, throw a TypeError exception.
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, 'superclass must be a constructor');
-    } else { // g. Else
+    } else if (!IsConstructor(realm, superclass)) {
+      // f. Else if IsConstructor(superclass) is false, throw a TypeError exception.
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "superclass must be a constructor");
+    } else {
+      // g. Else
       // i. If superclass has a [[FunctionKind]] internal slot whose value is "generator", throw a TypeError exception.
-      if (superclass.$FunctionKind === 'generator') {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, 'superclass cannot be a generator');
+      if (superclass.$FunctionKind === "generator") {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "superclass cannot be a generator");
       }
 
       // ii. Let protoParent be Get(superclass, "prototype").
@@ -120,11 +132,18 @@ export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDecla
       if (!(protoParent instanceof ObjectValue || protoParent instanceof NullValue)) {
         if (protoParent instanceof AbstractValue) {
           let error = new CompilerDiagnostics(
-            "unknown super class prototype", ClassHeritage.loc, 'PP0010', 'RecoverableError');
-          if (realm.handleError(error) === 'Fail') throw new FatalError();
+            "unknown super class prototype",
+            ClassHeritage.loc,
+            "PP0010",
+            "RecoverableError"
+          );
+          if (realm.handleError(error) === "Fail") throw new FatalError();
           protoParent = realm.intrinsics.ObjectPrototype;
         } else {
-          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, 'protoParent must be an instance of Object or Null');
+          throw realm.createErrorThrowCompletion(
+            realm.intrinsics.TypeError,
+            "protoParent must be an instance of Object or Null"
+          );
         }
       }
 
@@ -137,16 +156,17 @@ export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDecla
   let proto = ObjectCreate(realm, protoParent);
 
   let constructor;
-  let ClassBody : Array<BabelNodeClassMethod> = [];
+  let ClassBody: Array<BabelNodeClassMethod> = [];
   for (let elem of ast.body.body) {
-    if (elem.type === 'ClassMethod') {
+    if (elem.type === "ClassMethod") {
       ClassBody.push(elem);
     }
   }
   // 8. If ClassBody opt is not present, let constructor be empty.
   if (ClassBody.length === 0) {
     constructor = realm.intrinsics.empty;
-  } else { // 9. Else, let constructor be ConstructorMethod of ClassBody.
+  } else {
+    // 9. Else, let constructor be ConstructorMethod of ClassBody.
     constructor = ConstructorMethod(realm, ClassBody);
   }
 
@@ -158,18 +178,19 @@ export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDecla
       // i. Let constructor be the result of parsing the source text
       //     constructor(... args){ super (...args);}
       // using the syntactic grammar with the goal symbol MethodDefinition.
-      constructorFile = parse(realm, 'class NeedClassForParsing { constructor(... args){ super (...args);} }', '');
-    } else { // b. Else,
+      constructorFile = parse(realm, "class NeedClassForParsing { constructor(... args){ super (...args);} }", "");
+    } else {
+      // b. Else,
       // i. Let constructor be the result of parsing the source text
       //     constructor( ){ }
       // using the syntactic grammar with the goal symbol MethodDefinition.
-      constructorFile = parse(realm, 'class NeedClassForParsing { constructor( ){ } }', '');
+      constructorFile = parse(realm, "class NeedClassForParsing { constructor( ){ } }", "");
     }
 
     let { program: { body: [classDeclaration] } } = constructorFile;
     invariant(classDeclaration.type === "ClassDeclaration");
     let { body } = ((classDeclaration: any): BabelNodeClassDeclaration);
-    invariant(body.body[0].type === 'ClassMethod');
+    invariant(body.body[0].type === "ClassMethod");
     constructor = ((body.body[0]: any): BabelNodeClassMethod);
   }
 
@@ -204,7 +225,8 @@ export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDecla
     // 19. If ClassBody opt is not present, let methods be a new empty List.
     if (ClassBody.length === 0) {
       methods = [];
-    } else { // 20. Else, let methods be NonConstructorMethodDefinitions of ClassBody.
+    } else {
+      // 20. Else, let methods be NonConstructorMethodDefinitions of ClassBody.
       methods = NonConstructorMethodDefinitions(realm, ClassBody);
     }
 
@@ -214,13 +236,14 @@ export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDecla
       if (!IsStatic(m)) {
         // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments proto and false.
         PropertyDefinitionEvaluation(realm, m, proto, env, strictCode, false);
-      } else { // Else,
+      } else {
+        // Else,
         // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments F and false.
         PropertyDefinitionEvaluation(realm, m, F, env, strictCode, false);
       }
       // c. If status is an abrupt completion, then
-        // i. Set the running execution context's LexicalEnvironment to lex.
-        // ii. Return Completion(status).
+      // i. Set the running execution context's LexicalEnvironment to lex.
+      // ii. Return Completion(status).
     }
   } finally {
     // 22. Set the running execution context’s LexicalEnvironment to lex.
@@ -237,7 +260,12 @@ export function ClassDefinitionEvaluation(realm: Realm, ast: BabelNodeClassDecla
 }
 
 // ECMA2 14.5.15
-function BindingClassDeclarationEvaluation(realm: Realm, ast: BabelNodeClassDeclaration, strictCode: boolean, env: LexicalEnvironment) {
+function BindingClassDeclarationEvaluation(
+  realm: Realm,
+  ast: BabelNodeClassDeclaration,
+  strictCode: boolean,
+  env: LexicalEnvironment
+) {
   // ClassDeclaration : class BindingIdentifier ClassTail
   if (ast.id) {
     // 1. Let className be StringValue of BindingIdentifier.
@@ -267,14 +295,20 @@ function BindingClassDeclarationEvaluation(realm: Realm, ast: BabelNodeClassDecl
 
     // 10. Return value.
     return value;
-  } else { // ClassDeclaration : class ClassTail
+  } else {
+    // ClassDeclaration : class ClassTail
     // 1. Return the result of ClassDefinitionEvaluation of ClassTail with argument undefined.
     return ClassDefinitionEvaluation(realm, ast, undefined, strictCode, env);
   }
 }
 
 // ECMA262 14.5.16
-export default function (ast: BabelNodeClassDeclaration, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value | Reference {
+export default function(
+  ast: BabelNodeClassDeclaration,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value | Reference {
   // 1. Let status be the result of BindingClassDeclarationEvaluation of this ClassDeclaration.
   BindingClassDeclarationEvaluation(realm, ast, strictCode, env);
 
