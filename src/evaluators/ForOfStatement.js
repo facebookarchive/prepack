@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
 import { BreakCompletion, AbruptCompletion, ContinueCompletion } from "../completions.js";
-import { AbstractObjectValue, EmptyValue, ObjectValue, Value, NullValue, UndefinedValue } from "../values/index.js";
+import { AbstractValue, EmptyValue, NullValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import {
   InitializeReferencedBinding,
@@ -163,13 +163,8 @@ export function ForInOfHeadEvaluation(
     let obj = ToObjectPartial(realm, exprValue);
 
     // c. Return ? EnumerateObjectProperties(obj).
-    if (obj instanceof AbstractObjectValue) {
-      if (obj.isSimple()) {
-        return obj;
-      } else {
-        obj.throwIfNotConcrete();
-      }
-      invariant(false);
+    if (obj instanceof AbstractValue) {
+      return obj;
     } else {
       return EnumerateObjectProperties(realm, obj);
     }
