@@ -44,7 +44,7 @@ import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
 import type { SerializedBinding, VisitedBinding, FunctionInfo, FunctionInstance } from "./types.js";
-import { BodyReference, SerializerStatistics, type VisitedBindings } from "./types.js";
+import { BodyReference, TimingStatistics, SerializerStatistics, type VisitedBindings } from "./types.js";
 import { IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -64,7 +64,7 @@ type AbstractSyntaxTree = {
 };
 
 export class Serializer {
-  constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
+  constructor(realm: Realm, serializerOptions: SerializerOptions = {}, fs ?: any) {
     invariant(realm.useAbstractInterpretation);
     // Start tracking mutations
     realm.generator = new Generator(realm);
@@ -86,7 +86,9 @@ export class Serializer {
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
 
+    this.timingStats = new TimingStatistics();
     this.options = serializerOptions;
+    this.fs = fs;
   }
 
   _init(collectValToRefCountOnly: boolean) {
@@ -166,12 +168,14 @@ export class Serializer {
   requireReturns: Map<number | string, BabelNodeExpression>;
   options: SerializerOptions;
   statistics: SerializerStatistics;
+  timingStats: TimingStatistics;
   ignoredProperties: Map<ObjectValue, Set<string>>;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
+  fs: any;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -1445,26 +1449,26 @@ export class Serializer {
     statistics?: SerializerStatistics,
   } {
     // Phase 1: Let's interpret.
-    if (this.options.profile) console.time("[Profiling] Interpreting Global Code");
+    if (this.options.profile) this.timingStats.globalCodeTime = Date.now();
     let code = {};
     for (let source of sources) {
       this.execute(source.filePath, source.fileContents, source.sourceMapContents || "", onError);
       code[source.filePath] = source.fileContents;
     }
-    if (this.options.profile) console.timeEnd("[Profiling] Interpreting Global Code");
+    if (this.options.profile) this.timingStats.globalCodeTime = Date.now() - this.timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
-    if (this.options.profile) console.time("[Profiling] Resolving Initial Modules");
+    if (this.options.profile) this.timingStats.initModulesTime = Date.now();
     this.modules.resolveInitializedModules();
-    if (this.options.profile) console.timeEnd("[Profiling] Resolving Initial Modules");
+    if (this.options.profile) this.timingStats.initModulesTime = Date.now() - this.timingStats.initModulesTime;
     if (this.options.initializeMoreModules) {
-      if (this.options.profile) console.time("[Profiling] Speculative Initialization");
+      if (this.options.profile) this.timingStats.initMoreModTime = Date.now();
       this.modules.initializeMoreModules();
       if (this.logger.hasErrors()) return undefined;
-      if (this.options.profile) console.timeEnd("[Profiling] Speculative Initialization");
+      if (this.options.profile) this.timingStats.initMoreModTime = Date.now() - this.timingStats.initMoreModTime;
     }
 
     //Deep traversal of the heap to identify the necessary scope of residual functions
-    if (this.options.profile) console.time("[Profiling] Deep Traversal of Heap");
+    if (this.options.profile) this.timingStats.deepTraversalTime = Date.now();
     let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules, this.requireReturns);
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
@@ -1472,25 +1476,27 @@ export class Serializer {
     this.residualValues = residualHeapVisitor.values;
     this.residualFunctionBindings = residualHeapVisitor.functionBindings;
     this.residualFunctionInfos = residualHeapVisitor.functionInfos;
-    if (this.options.profile) console.timeEnd("[Profiling] Deep Traversal of Heap");
+    if (this.options.profile) this.timingStats.deepTraversalTime = Date.now() - this.timingStats.deepTraversalTime;
 
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
     if (!this.options.singlePass) {
-      if (this.options.profile) console.time("[Profiling] Reference Counts Pass");
+      if (this.options.profile) this.timingStats.refCountsTime = Date.now();
       this._init(/*collectValToRefCountOnly*/ true);
       this.serialize();
       if (this.logger.hasErrors()) return undefined;
-      if (this.options.profile) console.timeEnd("[Profiling] Reference Counts Pass");
+      if (this.options.profile) this.timingStats.refCountsTime = Date.now() - this.timingStats.refCountsTime;
     }
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
-    if (this.options.profile) console.time("[Profiling] Serialize Pass");
+    if (this.options.profile) this.timingStats.serializePassTime = Date.now();
+
     this._init(/*collectValToRefCountOnly*/ false);
     let ast = this.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
-    if (this.options.profile) console.timeEnd("[Profiling] Serialize Pass");
+    if (this.options.profile) this.timingStats.serializePassTime = Date.now() - this.timingStats.serializePassTime;
     invariant(!this.logger.hasErrors());
+    if (this.options.profile) this.fs.writeFileSync("prepack-stats.txt", JSON.stringify(this.timingStats));
     if (this.options.logStatistics) this.statistics.log();
     return {
       code: generated.code,

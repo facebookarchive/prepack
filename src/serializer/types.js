@@ -80,6 +80,24 @@ export class BodyReference {
   index: number;
 }
 
+export class TimingStatistics {
+  constructor() {
+    this.globalCodeTime = 0;
+    this.initMoreModTime = 0;
+    this.initModulesTime = 0;
+    this.deepTraversalTime = 0;
+    this.refCountsTime = 0;
+    this.serializePassTime = 0;
+  }
+  globalCodeTime: number;
+  initModulesTime: number;
+  initMoreModTime: number;
+  deepTraversalTime: number;
+  refCountsTime: number;
+  serializePassTime: number;
+
+}
+
 export class SerializerStatistics {
   constructor() {
     this.objects = 0;
@@ -90,6 +108,7 @@ export class SerializerStatistics {
     this.valueIds = 0;
     this.valuesInlined = 0;
     this.delayedValues = 0;
+
   }
   objects: number;
   objectProperties: number;
@@ -99,6 +118,7 @@ export class SerializerStatistics {
   valueIds: number;
   valuesInlined: number;
   delayedValues: number;
+
   log() {
     console.log(`=== serialization statistics`);
     console.log(`${this.objects} objects with ${this.objectProperties} properties`);
