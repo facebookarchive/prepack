@@ -142,7 +142,7 @@ function run(
       return;
     }
     let serialized = prepackFileSync(inputFilename, resolvedOptions);
-    processSerializedCode(serialized);
+    processSerializedCode(null, serialized);
   } catch (x) {
     console.log(x.message);
     console.log(x.stack);
@@ -159,7 +159,11 @@ function run(
     }
   }
 
-  function processSerializedCode(serialized) {
+  function processSerializedCode(err, serialized) {
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
     if (errors.size > 0) {
       console.log("Errors found while prepacking");
       for (let [loc, error] of errors) {
@@ -170,14 +174,20 @@ function run(
       }
       process.exit(1);
     }
-    if (outputFilename) {
-      console.log(`Prepacked source code written to ${outputFilename}.`);
-      fs.writeFileSync(outputFilename, serialized.code);
-    } else {
-      console.log(serialized.code);
-    }
-    if (outputSourceMap) {
-      fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
+    if (serialized) {
+      if (serialized.code === "") {
+        console.log("No source code to prepack.");
+        return;
+      }
+      if (outputFilename) {
+        console.log(`Prepacked source code written to ${outputFilename}.`);
+        fs.writeFileSync(outputFilename, serialized.code);
+      } else {
+        console.log(serialized.code);
+      }
+      if (outputSourceMap) {
+        fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
+      }
     }
   }
 

@@ -14,7 +14,13 @@ import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, ToStringPartial, Get } from "../methods/index.js";
-import { Completion, AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  Completion,
+  IntrospectionThrowCompletion,
+  PossiblyNormalCompletion,
+  ThrowCompletion,
+} from "../completions.js";
 import { Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
@@ -152,7 +158,7 @@ class ModuleTracer extends Tracer {
           } else {
             [result] = effects;
             invariant(result instanceof Value || result instanceof Completion);
-            if (result instanceof IntrospectionThrowCompletion) {
+            if (result instanceof IntrospectionThrowCompletion || result instanceof PossiblyNormalCompletion) {
               let [message, stack] = this.modules.getMessageAndStack(effects);
               console.log(`delaying require(${moduleIdValue}): ${message} ${stack}`);
               effects = undefined;
@@ -196,7 +202,7 @@ class ModuleTracer extends Tracer {
           invariant(popped === moduleIdValue);
           let message = "";
           invariant(!(result instanceof IntrospectionThrowCompletion));
-          if (result instanceof ThrowCompletion) (" threw an error");
+          if (result instanceof ThrowCompletion) message = " threw an error";
           this.log(`<require(${moduleIdValue})${message}`);
           realm.errorHandler = oldErrorHandler;
         }

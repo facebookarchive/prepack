@@ -38,7 +38,7 @@ export function prepackStdin(
       let filename = "no-filename-specified";
       let serialized;
       try {
-        serialized = prepackString(filename, code, sourceMap, options);
+        serialized = prepackString(filename, code, sourceMap, options, fs);
       } catch (err) {
         callback(err, null);
         return;
@@ -71,7 +71,7 @@ export function prepackFile(
       }
       let serialized;
       try {
-        serialized = prepackString(filename, code, sourceMap, options);
+        serialized = prepackString(filename, code, sourceMap, options, fs);
       } catch (err) {
         callback(err, null);
         return;
@@ -93,5 +93,5 @@ export function prepackFileSync(filename: string, options: Options = defaultOpti
   } catch (_e) {
     if (options.inputSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
   }
-  return prepackString(filename, code, sourceMap, options);
+  return prepackString(filename, code, sourceMap, options, fs);
 }
