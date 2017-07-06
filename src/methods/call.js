@@ -35,7 +35,9 @@ import {
   IteratorStep,
   IteratorValue,
   HasSomeCompatibleType,
+  composePossiblyNormalCompletions,
   joinEffectsAndRemoveNestedReturnCompletions,
+  unbundleReturnCompletion,
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
@@ -338,7 +340,8 @@ export function OrdinaryCallEvaluateBody(
     //    [[ECMAScriptCode]] internal slot passing F as the argument.
     let code = F.$ECMAScriptCode;
     invariant(code !== undefined);
-    let c = realm.getRunningContext().lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
+    let context = realm.getRunningContext();
+    let c = context.lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
     let e = realm.getCapturedEffects();
     if (e !== undefined) {
       realm.stopEffectCaptureAndUndoEffects();
@@ -353,9 +356,27 @@ export function OrdinaryCallEvaluateBody(
       // in the realm.
       invariant(e !== undefined);
       let joinedEffects = joinEffectsAndRemoveNestedReturnCompletions(realm, c, e);
+      let result = joinedEffects[0];
+      if (result instanceof JoinedAbruptCompletions) {
+        // There are throw completions that conditionally escape from the the call.
+        // We need to carry on in normal mode (after arranging to capturing effects)
+        // while stashing away the throw completions so that the next completion we return
+        // incorporates them.
+        let possiblyNormalCompletion;
+        [joinedEffects, possiblyNormalCompletion] = unbundleReturnCompletion(realm, result);
+        if (context.savedCompletion !== undefined)
+          context.savedCompletion = composePossiblyNormalCompletions(
+            realm,
+            context.savedCompletion,
+            possiblyNormalCompletion
+          );
+        else context.savedCompletion = possiblyNormalCompletion;
+        realm.captureEffects();
+        result = joinedEffects[0];
+      }
+      invariant(result instanceof ReturnCompletion);
       realm.applyEffects(joinedEffects);
-      invariant(joinedEffects[0] instanceof ReturnCompletion);
-      return joinedEffects[0];
+      return result;
     } else {
       invariant(c instanceof Value || c instanceof AbruptCompletion);
       if (e !== undefined) realm.applyEffects(e);

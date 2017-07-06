@@ -47,6 +47,7 @@ import {
   joinAndRemoveNestedReturnCompletions,
   joinPossiblyNormalCompletionWithAbruptCompletion,
   stopEffectCaptureAndJoinCompletions,
+  updatePossiblyNormalCompletionWithValue,
   BoundNames,
   ContainsExpression,
   GetActiveScriptOrModule,
@@ -687,6 +688,16 @@ function InternalCall(
     // 8. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
     realm.popContext(calleeContext);
     invariant(realm.getRunningContext() === callerContext);
+    if (calleeContext.savedCompletion !== undefined) {
+      if (callerContext.savedCompletion !== undefined)
+        callerContext.savedCompletion = composePossiblyNormalCompletions(
+          realm,
+          callerContext.savedCompletion,
+          calleeContext.savedCompletion
+        );
+      else callerContext.savedCompletion = calleeContext.savedCompletion;
+      realm.captureEffects();
+    }
 
     for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argsList, undefined, (result: any));
   }
@@ -1123,6 +1134,31 @@ export function EvaluateStatements(
   for (let node of body) {
     if (node.type !== "FunctionDeclaration") {
       let res = blockEnv.evaluateAbstractCompletion(node, strictCode);
+      let context = realm.getRunningContext();
+      let savedCompletion = context.savedCompletion;
+      if (savedCompletion !== undefined) {
+        context.savedCompletion = undefined;
+        if (res instanceof Value) res = updatePossiblyNormalCompletionWithValue(realm, savedCompletion, res);
+        else if (res instanceof PossiblyNormalCompletion)
+          res = composePossiblyNormalCompletions(realm, savedCompletion, res);
+        else {
+          invariant(res instanceof AbruptCompletion);
+          let e = realm.getCapturedEffects();
+          invariant(e !== undefined);
+          realm.stopEffectCaptureAndUndoEffects();
+          if (res instanceof IntrospectionThrowCompletion) {
+            realm.applyEffects(e);
+            throw res;
+          }
+          invariant(context.savedCompletion !== undefined);
+          e[0] = res;
+          let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, res, e);
+          realm.applyEffects(joined_effects);
+          res = joined_effects[0];
+          invariant(res instanceof AbruptCompletion);
+          throw res;
+        }
+      }
       invariant(!(res instanceof Reference));
       if (!(res instanceof EmptyValue)) {
         if (blockValue === undefined || blockValue instanceof Value) {
