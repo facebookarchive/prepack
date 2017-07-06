@@ -174,15 +174,20 @@ function run(
       }
       process.exit(1);
     }
-    if (serialized == null) serialized = {};
-    if (outputFilename) {
-      console.log(`Prepacked source code written to ${outputFilename}.`);
-      fs.writeFileSync(outputFilename, serialized.code);
-    } else {
-      console.log(serialized.code);
-    }
-    if (outputSourceMap) {
-      fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
+    if (serialized) {
+      if (serialized.code === '') {
+        console.log('No source code to prepack.');
+        return;
+      }
+      if (outputFilename) {
+        console.log(`Prepacked source code written to ${outputFilename}.`);
+        fs.writeFileSync(outputFilename, serialized.code);
+      } else {
+        console.log(serialized.code);
+      }
+      if (outputSourceMap) {
+        fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
+      }
     }
   }
 

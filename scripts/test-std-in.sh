@@ -7,6 +7,12 @@ if [[ $? -ne 0 ]]; then
 fi
 rm ./StdIn-test.js
 
+# Prepack test empty input and check if it logs correct msg
+echo "" | node ./bin/prepack.js --out StdIn-test.js | grep "No source code to prepack" > /dev/null
+if [[ $? -ne 0 ]]; then
+    exit 1
+fi
+
 # Prepack test input and check if it exits with signal 1 
 cat ./test/std-in/StdInError.js | node ./bin/prepack.js --out StdInError-test.js > /dev/null
 if [[ $? -ne 1 ]]; then
