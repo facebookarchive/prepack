@@ -630,8 +630,9 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let lengthA = 0;
 
     // 6. If limit is undefined, let lim be 232-1; else let lim be ? ToUint32(limit).
-    let lim =
-      !limit || limit instanceof UndefinedValue ? Math.pow(2, 32) - 1 : ToUint32(realm, limit.throwIfNotConcrete());
+    let lim = !limit || limit instanceof UndefinedValue
+      ? Math.pow(2, 32) - 1
+      : ToUint32(realm, limit.throwIfNotConcrete());
 
     // 7. Let s be the number of elements in S.
     let s = S.length;

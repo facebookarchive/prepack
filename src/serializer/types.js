@@ -95,7 +95,6 @@ export class TimingStatistics {
   deepTraversalTime: number;
   refCountsTime: number;
   serializePassTime: number;
-
 }
 
 export class SerializerStatistics {
@@ -108,7 +107,6 @@ export class SerializerStatistics {
     this.valueIds = 0;
     this.valuesInlined = 0;
     this.delayedValues = 0;
-
   }
   objects: number;
   objectProperties: number;

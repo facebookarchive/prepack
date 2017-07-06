@@ -175,8 +175,8 @@ function run(
       process.exit(1);
     }
     if (serialized) {
-      if (serialized.code === '') {
-        console.log('No source code to prepack.');
+      if (serialized.code === "") {
+        console.log("No source code to prepack.");
         return;
       }
       if (outputFilename) {

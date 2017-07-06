@@ -64,7 +64,7 @@ type AbstractSyntaxTree = {
 };
 
 export class Serializer {
-  constructor(realm: Realm, serializerOptions: SerializerOptions = {}, fs ?: any) {
+  constructor(realm: Realm, serializerOptions: SerializerOptions = {}, fs?: any) {
     invariant(realm.useAbstractInterpretation);
     // Start tracking mutations
     realm.generator = new Generator(realm);
