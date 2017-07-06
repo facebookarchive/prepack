@@ -84,6 +84,7 @@ export class ExecutionContext {
   lexicalEnvironment: LexicalEnvironment;
   isReadOnly: boolean;
   savedEffects: void | Effects;
+  savedCompletion: void | PossiblyNormalCompletion;
 
   setCaller(context: ExecutionContext): void {
     this.caller = context;
