@@ -51,6 +51,8 @@ import {
   HasOwnProperty,
   IsDataDescriptor,
   ThrowIfMightHaveBeenDeleted,
+  composePossiblyNormalCompletions,
+  updatePossiblyNormalCompletionWithValue,
 } from "./methods/index.js";
 import * as t from "babel-types";
 
@@ -1169,7 +1171,21 @@ export class LexicalEnvironment {
 
     let evaluator = this.realm.evaluators[(ast.type: string)];
     if (evaluator) {
-      return evaluator(ast, strictCode, this, this.realm, metadata);
+      let result = evaluator(ast, strictCode, this, this.realm, metadata);
+      let context = this.realm.getRunningContext();
+      let savedCompletion = context.savedCompletion;
+      if (savedCompletion !== undefined) {
+        if (result instanceof Value) {
+          updatePossiblyNormalCompletionWithValue(this.realm, savedCompletion, result);
+          result = savedCompletion;
+        } else if (result instanceof PossiblyNormalCompletion) {
+          result = composePossiblyNormalCompletions(this.realm, savedCompletion, result);
+        } else {
+          throw AbstractValue.createIntrospectionErrorThrowCompletion(savedCompletion.joinCondition);
+        }
+        context.savedCompletion = undefined;
+      }
+      return result;
     }
 
     throw new TypeError(`Unsupported node type ${ast.type}`);

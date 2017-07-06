@@ -18,6 +18,7 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { EnvironmentRecord, Reference } from "../environment.js";
 import {
   composeNormalCompletions,
+  composePossiblyNormalCompletions,
   EvaluateDirectCallWithArgList,
   GetBase,
   GetReferencedName,
@@ -30,6 +31,7 @@ import {
   SameValue,
   stopEffectCaptureAndJoinCompletions,
   unbundleNormalCompletion,
+  updatePossiblyNormalCompletionWithValue,
 } from "../methods/index.js";
 import { AbstractValue, BooleanValue, FunctionValue, Value } from "../values/index.js";
 
@@ -84,6 +86,20 @@ export default function(
   }
 
   let callResult = EvaluateCall(ref, func, ast, argVals, strictCode, env, realm);
+  let context = realm.getRunningContext();
+  let savedCompletion = context.savedCompletion;
+  if (savedCompletion !== undefined) {
+    if (completion instanceof Value) {
+      updatePossiblyNormalCompletionWithValue(realm, savedCompletion, completion);
+      completion = savedCompletion;
+    } else if (completion instanceof PossiblyNormalCompletion) {
+      completion = composePossiblyNormalCompletions(realm, savedCompletion, completion);
+    } else {
+      invariant(completion === undefined);
+      completion = savedCompletion;
+    }
+    context.savedCompletion = undefined;
+  }
   if (callResult instanceof AbruptCompletion) {
     if (completion instanceof PossiblyNormalCompletion)
       completion = stopEffectCaptureAndJoinCompletions(completion, callResult, realm);
