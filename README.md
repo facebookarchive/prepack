@@ -10,9 +10,14 @@ See the official [prepack.io](http://prepack.io) website for an introduction and
 Install the CLI via npm,
 
 ```bash
+$ npm install -g prepack
+```
+
+Or if you prefer yarn, make sure you get yarn first,
+```bash
 $ npm install -g yarn
 ```
-Or if you prefer yarn,
+and then install the Prepack CLI via yarn:
 
 ```bash
 $ yarn global add prepack
@@ -48,6 +53,8 @@ Detailed instructions and the API can be found at [Prepack CLI: Getting Started]
 2. `git submodule update --init`
 3. Get yarn and node, then do
    `yarn`
+
+Note: For development work you really need `yarn`, as many scripts require it.
 
 ### How to build, lint, type check
 
