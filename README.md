@@ -7,10 +7,10 @@ See the official [prepack.io](http://prepack.io) website for an introduction and
 
 ## How to use Prepack
 
-Install the CLI via yarn,
+Install the CLI via npm,
 
 ```bash
-$ yarn global add prepack
+$ npm install -g yarn
 ```
 Or if you prefer yarn,
 
