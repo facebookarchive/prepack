@@ -37,9 +37,8 @@ const config = {
   },
 };
 
-function exec(command, args) {
+function exec(command, args, options = {}) {
   console.log("> " + [command].concat(args).join(" "));
-  const options = {};
   return execFileSync(command, args, options).toString();
 }
 
@@ -63,8 +62,9 @@ Object.keys(config).forEach(key => {
   const args = Object.keys(defaultOptions).map(k => `--${k}=${(options && options[k]) || defaultOptions[k]}`);
   args.push(`--${shouldWrite ? "write" : "l"}`);
 
+  let result;
   try {
-    exec(prettierCmd, [...args, ...files]);
+    result = exec(prettierCmd, [...args, ...files]);
   } catch (e) {
     if (!shouldWrite) {
       console.log(
@@ -81,4 +81,5 @@ Object.keys(config).forEach(key => {
     }
     throw e;
   }
+  console.log("\n" + result);
 });
