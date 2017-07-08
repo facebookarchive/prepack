@@ -90,10 +90,10 @@ export class TimingStatistics {
     this.serializePassTime = 0;
   }
   globalCodeTime: number;
-  initModulesTime: number;
-  initMoreModTime: number;
+  initializeModulesTime: number;
+  initializeMoreModulesTime: number;
   deepTraversalTime: number;
-  refCountsTime: number;
+  referenceCountsTime: number;
   serializePassTime: number;
 }
 

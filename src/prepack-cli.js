@@ -48,6 +48,7 @@ function run(
     --serialize    Serializes the partially evaluated global environment as a program that recreates it. (default = true)
     --residual    Produces the residual program that results after constant folding.
     --profile    Enables console logging of profile information of different phases of prepack.
+    --statsFile  name of the output file where stats will be written to
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -57,6 +58,7 @@ function run(
   let mathRandomSeed;
   let inputSourceMap;
   let outputSourceMap;
+  let statsFileName;
   let flags = {
     speculate: false,
     trace: false,
@@ -98,6 +100,9 @@ function run(
           break;
         case "srcmapOut":
           outputSourceMap = args.shift();
+          break;
+        case "statsFile":
+          statsFileName = args.shift();
           break;
         case "help":
           console.log(
@@ -184,6 +189,13 @@ function run(
         fs.writeFileSync(outputFilename, serialized.code);
       } else {
         console.log(serialized.code);
+      }
+      if (statsFileName) {
+        let stats = {
+          "SerializerStatistics": serialized.statistics,
+          "TimingStatistics": serialized.timingStats
+        };
+        fs.writeFileSync(statsFileName, JSON.stringify(stats));
       }
       if (outputSourceMap) {
         fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
