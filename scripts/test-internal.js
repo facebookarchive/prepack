@@ -11,7 +11,7 @@
 
 import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
 import type { BabelNodeSourceLocation } from "babel-types";
-import { prepackFileSync } from "../lib/prepack-node.js";
+import { prepackSources } from "../lib/prepack-standalone.js";
 
 let chalk = require("chalk");
 let path = require("path");
@@ -50,14 +50,27 @@ function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
-    let serialized = prepackFileSync(name, {
+    let modelName = name + ".model";
+    let sourceMapName = name + ".map";
+    let sourceCode = fs.readFileSync(name, "utf8");
+    let modelCode = fs.existsSync(modelName) ? fs.readFileSync(modelName, "utf8") : undefined;
+    let sourceMap = fs.existsSync(sourceMapName) ? fs.readFileSync(sourceMapName, "utf8") : undefined;
+    let sources = [];
+    if (modelCode) sources.push({ filePath: modelName, fileContents: modelCode });
+    sources.push({ filePath: name, fileContents: sourceCode, sourceMapContents: sourceMap });
+
+    let serialized = prepackSources(sources, {
       internalDebug: true,
       compatibility: "jsc-600-1-4-17",
+      delayUnsupportedRequires: true,
       mathRandomSeed: "0",
       onError: errorHandler,
       serialize: true,
-      speculate: true,
+      speculate: !modelCode,
+      sourceMaps: !!sourceMap,
     });
+    let new_map = serialized.map; // force source maps to get computed
+    if (!new_map) console.log(chalk.red("No source map"));
     if (!serialized) {
       console.log(chalk.red("Error during serialization"));
       return false;
@@ -80,9 +93,7 @@ function run() {
   let total = 0;
 
   for (let test of tests) {
-    // filter hidden files
-    if (path.basename(test.name)[0] === ".") continue;
-    if (test.name.endsWith("~")) continue;
+    if (!test.name.endsWith(".js")) continue;
 
     total++;
     if (runTest(test.name, test.file)) passed++;
