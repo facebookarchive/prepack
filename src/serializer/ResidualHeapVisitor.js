@@ -29,7 +29,7 @@ import {
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeBlockStatement } from "babel-types";
 import { Generator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
