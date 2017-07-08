@@ -47,11 +47,7 @@ export type Scope = FunctionValue | Generator;
    TODO #492: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
 */
 export class ResidualHeapVisitor {
-  constructor(
-    realm: Realm,
-    logger: Logger,
-    modules: Modules
-  ) {
+  constructor(realm: Realm, logger: Logger, modules: Modules) {
     invariant(realm.useAbstractInterpretation);
     this.realm = realm;
     this.logger = logger;
