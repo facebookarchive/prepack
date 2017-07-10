@@ -15,15 +15,15 @@ export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps" | 
 export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"];
 
 export type RealmOptions = {
-  residual?: boolean,
-  serialize?: boolean,
+  compatibility?: Compatibility,
+  errorHandler?: ErrorHandler,
+  mathRandomSeed?: string,
   debugNames?: boolean,
   uniqueSuffix?: string,
   timeout?: number,
-  compatibility?: Compatibility,
-  mathRandomSeed?: string,
+  residual?: boolean,
+  serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
-  errorHandler?: ErrorHandler,
 };
 
 export type SerializerOptions = {
@@ -34,14 +34,15 @@ export type SerializerOptions = {
   logStatistics?: boolean,
   logModules?: boolean,
   delayUnsupportedRequires?: boolean,
+  profile?: boolean,
 };
 
 export type Options = {|
+  compatibility?: Compatibility,
   onError?: ErrorHandler,
   outputFilename?: string,
   inputSourceMapFilename?: string,
   sourceMaps?: boolean,
-  compatibility?: Compatibility,
   mathRandomSeed?: string,
   speculate?: boolean,
   trace?: boolean,
@@ -98,12 +99,12 @@ export function getSerializerOptions({
 }: Options): SerializerOptions {
   return {
     initializeMoreModules: speculate,
+    internalDebug,
     trace,
     singlePass,
     logStatistics,
     logModules,
     delayUnsupportedRequires,
-    internalDebug,
     profile,
   };
 }
