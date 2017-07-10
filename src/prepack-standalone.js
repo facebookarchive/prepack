@@ -17,7 +17,7 @@ import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./options";
 import { FatalError } from "./errors.js";
-import { SerializerStatistics } from "./serializer/types.js";
+import { SerializerStatistics, TimingStatistics } from "./serializer/types.js";
 import type { SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
 import type { Options } from "./options";
@@ -39,7 +39,7 @@ Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
 export function prepackSources(
   sources: Array<SourceFile>,
   options: Options = defaultOptions
-): { code: string, map?: SourceMap, statistics?: SerializerStatistics } {
+): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.onError;
   let realm = construct_realm(realmOptions);
@@ -78,7 +78,7 @@ export function prepackString(
   sourceMap: string,
   options: Options = defaultOptions,
   fs: any
-): { code: string, map?: SourceMap, statistics?: SerializerStatistics } {
+): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
   let sources = [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }];
   let realmOptions = getRealmOptions(options);
   let realm = construct_realm(realmOptions);
