@@ -48,7 +48,7 @@ function run(
     --serialize    Serializes the partially evaluated global environment as a program that recreates it. (default = true)
     --residual    Produces the residual program that results after constant folding.
     --profile    Enables console logging of profile information of different phases of prepack.
-    --statsFile  name of the output file where stats will be written to
+    --statsFile  The name of the output file where statistics will be written to.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
