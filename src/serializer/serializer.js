@@ -1463,8 +1463,9 @@ export class Serializer {
     }
 
     //Deep traversal of the heap to identify the necessary scope of residual functions
-    if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
-    let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules, this.requireReturns);
+
+    if (this.options.profile) this.timingStats.deepTraversalTime = Date.now();
+    let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     this.ignoredProperties = residualHeapVisitor.ignoredProperties;

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeFile, BabelNodeStatement } from "babel-types";
+import type { BabelNode, BabelNodeComment, BabelNodeFile, BabelNodeStatement } from "babel-types";
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
 
@@ -1149,8 +1149,29 @@ export class LexicalEnvironment {
   fixup_filenames(ast: BabelNode) {
     traverse(ast, function(node) {
       let loc = node.loc;
-      if (!!loc && !!loc.source) (loc: any).filename = loc.source;
+      if (!loc || !loc.source) {
+        node.leadingComments = null;
+        node.innerComments = null;
+        node.trailingComments = null;
+        node.loc = null;
+      } else {
+        let filename = loc.source;
+        (loc: any).filename = filename;
+        fixup_comments(node.leadingComments, filename);
+        fixup_comments(node.innerComments, filename);
+        fixup_comments(node.trailingComments, filename);
+      }
       return false;
+
+      function fixup_comments(comments: ?Array<BabelNodeComment>, filename: string) {
+        if (!comments) return;
+        for (let c of comments) {
+          if (c.loc) {
+            (c.loc: any).filename = filename;
+            c.loc.source = filename;
+          }
+        }
+      }
     });
   }
 
