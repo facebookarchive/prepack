@@ -181,12 +181,8 @@ export class Serializer {
 
   execute(filename: string, code: string, map: string, onError: void | ((Realm, Value) => void)) {
     let realm = this.realm;
-    let res = realm.$GlobalEnv.execute(
-      code,
-      filename,
-      map,
-      "script",
-      ast => traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames),
+    let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast =>
+      traverse(ast, IdentifierCollector, null, this.preludeGenerator.nameGenerator.forbiddenNames)
     );
 
     if (res instanceof Completion) {
@@ -1443,7 +1439,7 @@ export class Serializer {
     code: string,
     map: void | SourceMap,
     statistics?: SerializerStatistics,
-    timingStats?: TimingStatistics
+    timingStats?: TimingStatistics,
   } {
     // Phase 1: Let's interpret.
     let timingStats = this.options.profile ? new TimingStatistics() : undefined;
@@ -1455,14 +1451,15 @@ export class Serializer {
     }
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
-    if (timingStats !== undefined) timingStats.initModulesTime = Date.now();
+    if (timingStats !== undefined) timingStats.initializeModulesTime = Date.now();
     this.modules.resolveInitializedModules();
-    if (timingStats !== undefined) timingStats.initModulesTime = Date.now() - timingStats.initModulesTime;
+    if (timingStats !== undefined) timingStats.initializeModulesTime = Date.now() - timingStats.initializeModulesTime;
     if (this.options.initializeMoreModules) {
-      if (timingStats !== undefined) timingStats.initMoreModTime = Date.now();
+      if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
       this.modules.initializeMoreModules();
       if (this.logger.hasErrors()) return undefined;
-      if (timingStats !== undefined) timingStats.initMoreModTime = Date.now() - timingStats.initMoreModTime;
+      if (timingStats !== undefined)
+        timingStats.initializeMoreModulesTime = Date.now() - timingStats.initializeMoreModulesTime;
     }
 
     //Deep traversal of the heap to identify the necessary scope of residual functions
@@ -1479,11 +1476,11 @@ export class Serializer {
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
     if (!this.options.singlePass) {
-      if (timingStats !== undefined) timingStats.refCountsTime = Date.now();
+      if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
       this._init(/*collectValToRefCountOnly*/ true);
       this.serialize();
       if (this.logger.hasErrors()) return undefined;
-      if (timingStats !== undefined) timingStats.refCountsTime = Date.now() - timingStats.refCountsTime;
+      if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
     }
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
@@ -1499,7 +1496,7 @@ export class Serializer {
       code: generated.code,
       map: generated.map,
       statistics: this.statistics,
-      timingStats: timingStats
+      timingStats: timingStats,
     };
   }
 }

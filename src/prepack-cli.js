@@ -191,9 +191,12 @@ function run(
         console.log(serialized.code);
       }
       if (statsFileName) {
+        if (serialized.statistics === undefined || serialized.timingStats === undefined) {
+          return;
+        }
         let stats = {
-          "SerializerStatistics": serialized.statistics,
-          "TimingStatistics": serialized.timingStats
+          SerializerStatistics: serialized.statistics,
+          TimingStatistics: serialized.timingStats,
         };
         fs.writeFileSync(statsFileName, JSON.stringify(stats));
       }

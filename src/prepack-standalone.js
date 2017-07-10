@@ -17,7 +17,7 @@ import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./options";
 import { FatalError } from "./errors.js";
-import { SerializerStatistics } from "./serializer/types.js";
+import { SerializerStatistics, TimingStatistics } from "./serializer/types.js";
 import type { SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
 import type { Options } from "./options";

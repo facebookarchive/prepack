@@ -83,10 +83,10 @@ export class BodyReference {
 export class TimingStatistics {
   constructor() {
     this.globalCodeTime = 0;
-    this.initMoreModTime = 0;
-    this.initModulesTime = 0;
+    this.initializeMoreModulesTime = 0;
+    this.initializeModulesTime = 0;
     this.deepTraversalTime = 0;
-    this.refCountsTime = 0;
+    this.referenceCountsTime = 0;
     this.serializePassTime = 0;
   }
   globalCodeTime: number;
