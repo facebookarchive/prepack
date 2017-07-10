@@ -29,7 +29,7 @@ import {
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeBlockStatement } from "babel-types";
 import { Generator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
@@ -47,17 +47,11 @@ export type Scope = FunctionValue | Generator;
    TODO #492: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
 */
 export class ResidualHeapVisitor {
-  constructor(
-    realm: Realm,
-    logger: Logger,
-    modules: Modules,
-    requireReturns: Map<number | string, BabelNodeExpression>
-  ) {
+  constructor(realm: Realm, logger: Logger, modules: Modules) {
     invariant(realm.useAbstractInterpretation);
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
-    this.requireReturns = requireReturns;
 
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.globalBindings = new Map();
@@ -73,7 +67,6 @@ export class ResidualHeapVisitor {
   realm: Realm;
   logger: Logger;
   modules: Modules;
-  requireReturns: Map<number | string, BabelNodeExpression>;
 
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, VisitedBindings>;
   globalBindings: Map<string, VisitedBinding>;
