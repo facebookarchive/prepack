@@ -14,6 +14,7 @@ import type { LexicalEnvironment, Reference } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
 import { BoundNames, EnumerableOwnProperties, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
 import {
@@ -22,11 +23,16 @@ import {
   ArrayValue,
   ObjectValue,
   StringValue,
-  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import type { BabelNodeForInStatement, BabelNodeStatement, BabelNodeVariableDeclaration } from "babel-types";
+import type {
+  BabelNodeExpression,
+  BabelNodeForInStatement,
+  BabelNodeSourceLocation,
+  BabelNodeStatement,
+  BabelNodeVariableDeclaration,
+} from "babel-types";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
@@ -40,16 +46,31 @@ export default function(
 ): Value | Reference {
   let { left, right, body } = ast;
 
+  // helper func to report error
+  function reportErrorAndThrowIfNotConcrete(val: Value, loc: ?BabelNodeSourceLocation) {
+    if (val instanceof AbstractValue) {
+      let error = new CompilerDiagnostics(
+        "for in loops over unknown collections is not yet supported",
+        loc,
+        "PP0013",
+        "FatalError"
+      );
+      realm.handleError(error);
+      throw new FatalError();
+    }
+  }
+
   try {
     if (left.type === "VariableDeclaration") {
       if (left.kind === "var") {
         // for (var ForBinding in Expression) Statement
         // 1. Let keyResult be ? ForIn/OfHeadEvaluation(« », Expression, enumerate).
         let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "enumerate", strictCode);
-
-        if (keyResult instanceof AbstractObjectValue) {
-          return emitResidualLoopIfSafe(ast, strictCode, env, realm, left, keyResult, body);
+        if (keyResult instanceof AbstractObjectValue && keyResult.isSimple()) {
+          return emitResidualLoopIfSafe(ast, strictCode, env, realm, left, right, keyResult, body);
         }
+        reportErrorAndThrowIfNotConcrete(keyResult, right.loc);
+        invariant(keyResult instanceof ObjectValue);
 
         // 2. Return ? ForIn/OfBodyEvaluation(ForBinding, Statement, keyResult, varBinding, labelSet).
         return ForInOfBodyEvaluation(
@@ -66,7 +87,8 @@ export default function(
         // for (ForDeclaration in Expression) Statement
         // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(BoundNames of ForDeclaration, Expression, enumerate).
         let keyResult = ForInOfHeadEvaluation(realm, env, BoundNames(realm, left), right, "enumerate", strictCode);
-        keyResult = keyResult.throwIfNotConcreteObject();
+        reportErrorAndThrowIfNotConcrete(keyResult, right.loc);
+        invariant(keyResult instanceof ObjectValue);
 
         // 2. Return ? ForIn/OfBodyEvaluation(ForDeclaration, Statement, keyResult, lexicalBinding, labelSet).
         return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "lexicalBinding", labelSet, strictCode);
@@ -75,7 +97,8 @@ export default function(
       // for (LeftHandSideExpression in Expression) Statement
       // 1. Let keyResult be ? ForIn/OfHeadEvaluation(« », Expression, enumerate).
       let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "enumerate", strictCode);
-      keyResult = keyResult.throwIfNotConcreteObject();
+      reportErrorAndThrowIfNotConcrete(keyResult, right.loc);
+      invariant(keyResult instanceof ObjectValue);
 
       // 2. Return ? ForIn/OfBodyEvaluation(LeftHandSideExpression, Statement, keyResult, assignment, labelSet).
       return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "assignment", labelSet, strictCode);
@@ -94,9 +117,11 @@ function emitResidualLoopIfSafe(
   env: LexicalEnvironment,
   realm: Realm,
   lh: BabelNodeVariableDeclaration,
+  obexpr: BabelNodeExpression,
   ob: AbstractObjectValue,
   body: BabelNodeStatement
 ) {
+  invariant(ob.isSimple());
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
   let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
   realm.getRunningContext().lexicalEnvironment = blockEnv;
@@ -160,30 +185,33 @@ function emitResidualLoopIfSafe(
         }
       });
       if (targetObject instanceof ObjectValue && sourceObject !== undefined) {
-        let oe = ob.values.getElements();
-        if (oe.size !== 1) ob.throwIfNotConcreteObject();
         let o;
-        for (let co of oe) o = co;
-        invariant(o !== undefined);
+        let oe = ob.values.getElements();
+        if (oe.size !== 1) {
+          o = ob;
+        } else {
+          for (let co of oe) o = co;
+          invariant(o !== undefined && o.isSimple());
+        }
         let generator = realm.generator;
         invariant(generator !== undefined);
         // make target object simple and partial, so that it returns a fully
         // abstract value for every property it is queried for.
         targetObject.makeSimple();
         targetObject.makePartial();
-        if (sourceObject === o && sourceObject.isSimple()) {
+        if (sourceObject === o) {
           // Known enumerable properties of sourceObject can become known
           // properties of targetObject.
-          let sourceIsPartial = sourceObject.isPartial();
+          invariant(sourceObject.isPartial());
           sourceObject.makeNotPartial();
           // EnumerableOwnProperties is sufficient because sourceObject is simple
           let keyValPairs = EnumerableOwnProperties(realm, sourceObject, "key+value");
-          if (sourceIsPartial) sourceObject.makePartial();
+          sourceObject.makePartial();
           for (let keyVal of keyValPairs) {
             invariant(keyVal instanceof ArrayValue);
             let key = keyVal.$Get("0", keyVal);
             let val = keyVal.$Get("1", keyVal);
-            invariant(key instanceof StringValue || key instanceof SymbolValue);
+            invariant(key instanceof StringValue); // sourceObject is simple
             targetObject.$Set(key, val, targetObject);
           }
         }
@@ -217,6 +245,12 @@ function emitResidualLoopIfSafe(
     realm.getRunningContext().lexicalEnvironment = oldEnv;
   }
 
-  ob.throwIfNotConcreteObject();
-  return realm.intrinsics.undefined;
+  let error = new CompilerDiagnostics(
+    "for in loops over unknown collection is not yet supported",
+    obexpr.loc,
+    "PP0013",
+    "FatalError"
+  );
+  realm.handleError(error);
+  throw new FatalError();
 }
