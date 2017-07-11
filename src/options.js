@@ -57,6 +57,7 @@ export type Options = {|
   serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
   profile?: boolean,
+  statsFile?: string,
 |};
 
 export const defaultOptions = {};
