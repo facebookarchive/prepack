@@ -24,7 +24,7 @@ export function evaluate(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value | Reference {
+): Completion | Value {
   // 1. Let exprRef be the result of evaluating Expression
   let exprRef = env.evaluate(ast.test, strictCode);
   // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
@@ -44,7 +44,8 @@ export function evaluate(
         stmtCompletion = realm.intrinsics.undefined;
     }
     // 5. Return Completion(UpdateEmpty(stmtCompletion, undefined)
-    if (stmtCompletion instanceof Reference) return stmtCompletion;
+    //if (stmtCompletion instanceof Reference) return stmtCompletion;
+    invariant(!(stmtCompletion instanceof Reference));
     stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
     if (stmtCompletion instanceof AbruptCompletion) {
       throw stmtCompletion;
@@ -54,7 +55,13 @@ export function evaluate(
   invariant(exprValue instanceof AbstractValue);
 
   if (!exprValue.mightNotBeObject()) {
-    return env.evaluate(ast.consequent, strictCode);
+    let stmtCompletion = env.evaluate(ast.consequent, strictCode);
+    invariant(!(stmtCompletion instanceof Reference));
+    stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
+    if (stmtCompletion instanceof AbruptCompletion) {
+      throw stmtCompletion;
+    }
+    return stmtCompletion;
   } else {
     return evaluateWithAbstractConditional(exprValue, ast.consequent, ast.alternate, strictCode, env, realm);
   }
@@ -67,7 +74,7 @@ export function evaluateWithAbstractConditional(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): NormalCompletion | Value | Reference {
+): NormalCompletion | Value {
   // Evaluate consequent and alternate in sandboxes and get their effects.
   let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateNodeForEffects(consequent, strictCode, env);
 
@@ -97,6 +104,6 @@ export function evaluateWithAbstractConditional(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof NormalCompletion || completion instanceof Value || completion instanceof Reference);
+  invariant(completion instanceof NormalCompletion || completion instanceof Value);
   return completion;
 }

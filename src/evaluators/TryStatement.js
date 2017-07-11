@@ -11,18 +11,12 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Reference } from "../environment.js";
 import { AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
 
-export default function(
-  ast: BabelNodeTryStatement,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): Value | Reference {
+export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   let completions = [];
 
   let blockRes = env.evaluateCompletion(ast.block, strictCode);

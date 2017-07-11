@@ -1130,7 +1130,7 @@ export function EvaluateStatements(
   strictCode: boolean,
   blockEnv: LexicalEnvironment,
   realm: Realm
-): NormalCompletion | Value | Reference {
+): NormalCompletion | Value {
   for (let node of body) {
     if (node.type !== "FunctionDeclaration") {
       let res = blockEnv.evaluateAbstractCompletion(node, strictCode);

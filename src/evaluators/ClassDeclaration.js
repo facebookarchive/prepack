@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { LexicalEnvironment, Reference } from "../environment.js";
+import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, Value } from "../values/index.js";
 import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { NullValue, EmptyValue, ObjectValue } from "../values/index.js";
@@ -308,7 +308,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // 1. Let status be the result of BindingClassDeclarationEvaluation of this ClassDeclaration.
   BindingClassDeclarationEvaluation(realm, ast, strictCode, env);
 

@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Reference } from "../environment.js";
 import { Value, StringValue } from "../values/index.js";
 import { RegExpCreate } from "../methods/index.js";
 import type { BabelNodeRegExpLiteral } from "babel-types";
@@ -21,7 +20,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   return RegExpCreate(
     realm,
     new StringValue(realm, ast.pattern),

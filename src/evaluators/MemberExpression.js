@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
 import { GetValue, ToPropertyKeyPartial, RequireObjectCoercible } from "../methods/index.js";
@@ -24,7 +23,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Reference {
   if (ast.object.type === "Super") {
     return SuperProperty(ast, strictCode, env, realm);
   }

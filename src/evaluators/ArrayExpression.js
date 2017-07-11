@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { StringValue, NumberValue } from "../values/index.js";
 import { GetIterator, GetValue } from "../methods/index.js";
 import { Set } from "../methods/index.js";
@@ -27,7 +26,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // 1. Let array be ArrayCreate(0).
   let array = ArrayCreate(realm, 0);
 

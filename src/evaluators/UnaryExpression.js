@@ -61,7 +61,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   function reportError() {
     let error = new CompilerDiagnostics(
       "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
