@@ -11,6 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
+import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
 import { BreakCompletion, AbruptCompletion, ContinueCompletion } from "../completions.js";
@@ -33,14 +34,13 @@ import {
   DestructuringAssignmentEvaluation,
   GetIterator,
   IsDestructuring,
-  HasSomeCompatibleType,
 } from "../methods/index.js";
 import type {
-  BabelNodeForOfStatement,
-  BabelNodeVariableDeclaration,
-  BabelNodeLVal,
   BabelNode,
+  BabelNodeForOfStatement,
+  BabelNodeLVal,
   BabelNodeStatement,
+  BabelNodeVariableDeclaration,
 } from "babel-types";
 
 export type IterationKind = "iterate" | "enumerate";
@@ -55,13 +55,9 @@ export function InternalGetResultValue(realm: Realm, result: Value | AbruptCompl
 }
 
 // ECMA262 13.7.1.2
-export function LoopContinues(
-  realm: Realm,
-  completion: Reference | Value | AbruptCompletion,
-  labelSet: ?Array<string>
-): boolean {
+export function LoopContinues(realm: Realm, completion: Value | AbruptCompletion, labelSet: ?Array<string>): boolean {
   // 1. If completion.[[Type]] is normal, return true.
-  if (completion instanceof Value || completion instanceof Reference) return true;
+  if (completion instanceof Value) return true;
   invariant(completion instanceof AbruptCompletion);
 
   // 2. If completion.[[Type]] is not continue, return false.
@@ -88,16 +84,15 @@ function BindingInstantiation(realm: Realm, ast: BabelNodeVariableDeclaration, e
   invariant(envRec instanceof DeclarativeEnvironmentRecord);
 
   // 3. For each element name of the BoundNames of ForBinding do
-  for (let decl of ast.declarations) {
-    if (decl.id.type !== "Identifier") throw new Error("TODO: Patterns aren't supported yet");
+  for (let name of BoundNames(realm, ast)) {
     // a. If IsConstantDeclaration of LetOrConst is true, then
     if (ast.kind === "const") {
       // i. Perform ! envRec.CreateImmutableBinding(name, true).
-      envRec.CreateImmutableBinding(decl.id.name, true);
+      envRec.CreateImmutableBinding(name, true);
     } else {
       // b.
       // i. Perform ! envRec.CreateMutableBinding(name, false).
-      envRec.CreateMutableBinding(decl.id.name, false);
+      envRec.CreateMutableBinding(name, false);
     }
   }
 }
@@ -126,10 +121,8 @@ export function ForInOfHeadEvaluation(
 
     // d. For each string name in TDZnames, do
     for (let name of TDZnames) {
-      if (typeof name === "string") {
-        // i. Perform ! TDZEnvRec.CreateMutableBinding(name, false).
-        TDZEnvRec.CreateMutableBinding(name, false);
-      }
+      // i. Perform ! TDZEnvRec.CreateMutableBinding(name, false).
+      TDZEnvRec.CreateMutableBinding(name, false);
     }
 
     // e. Set the running execution context's LexicalEnvironment to TDZ.
@@ -153,7 +146,7 @@ export function ForInOfHeadEvaluation(
   // 6. If iterationKind is enumerate, then
   if (iterationKind === "enumerate") {
     // a. If exprValue.[[Value]] is null or undefined, then
-    if (HasSomeCompatibleType(exprValue, NullValue, UndefinedValue)) {
+    if (exprValue instanceof NullValue || exprValue instanceof UndefinedValue) {
       // i. Return Completion{[[Type]]: break, [[Value]]: empty, [[Target]]: empty}.
       throw new BreakCompletion(realm.intrinsics.empty, undefined);
     }
@@ -172,6 +165,17 @@ export function ForInOfHeadEvaluation(
     // 1. Assert: iterationKind is iterate.
     invariant(iterationKind === "iterate", "expected iterationKind to be iterate");
 
+    if (exprValue instanceof AbstractValue) {
+      let error = new CompilerDiagnostics(
+        "for of loops over unknown collections are not yet supported",
+        expr.loc,
+        "PP0014",
+        "FatalError"
+      );
+      realm.handleError(error);
+      throw new FatalError();
+    }
+
     // 1. Return ? GetIterator(exprValue).
     return GetIterator(realm, exprValue);
   }
@@ -187,7 +191,7 @@ export function ForInOfBodyEvaluation(
   lhsKind: LhsKind,
   labelSet: ?Array<string>,
   strictCode: boolean
-) {
+): Value {
   // 1. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 
@@ -288,7 +292,6 @@ export function ForInOfBodyEvaluation(
         } else if (lhsKind === "varBinding") {
           // ii. Else if lhsKind is varBinding, then
           // 1. Assert: lhs is a ForBinding.
-          invariant(lhs.type !== "VariableDeclaration");
 
           // 2. Let status be the result of performing BindingInitialization for lhs passing nextValue and undefined as the arguments.
           status = BindingInitialization(realm, lhs, nextValue, strictCode, undefined);
@@ -298,7 +301,6 @@ export function ForInOfBodyEvaluation(
           invariant(lhsKind === "lexicalBinding");
 
           // 2. Assert: lhs is a ForDeclaration.
-          invariant(lhs.type !== "VariableDeclaration");
 
           // 3. Let status be the result of performing BindingInitialization for lhs passing nextValue and iterationEnv as arguments.
           invariant(iterationEnv !== undefined);
@@ -343,7 +345,8 @@ export function ForInOfBodyEvaluation(
     if (!(resultValue instanceof EmptyValue)) V = resultValue;
   }
 
-  invariant(false);
+  /* istanbul ignore next */
+  invariant(false); // can't here here but there is no other way to make Flow happy
 }
 
 // ECMA262 13.7.5.11
@@ -356,40 +359,47 @@ export default function(
 ): Value {
   let { left, right, body } = ast;
 
-  if (left.type === "VariableDeclaration") {
-    if (left.kind === "var") {
-      // for (var ForBinding o fAssignmentExpression) Statement
+  try {
+    if (left.type === "VariableDeclaration") {
+      if (left.kind === "var") {
+        // for (var ForBinding o fAssignmentExpression) Statement
+        // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(« », AssignmentExpression, iterate).
+        let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "iterate", strictCode);
+        invariant(keyResult instanceof ObjectValue);
+
+        // 2. Return ? ForIn/OfBodyEvaluation(ForBinding, Statement, keyResult, varBinding, labelSet).
+        return ForInOfBodyEvaluation(
+          realm,
+          env,
+          left.declarations[0].id,
+          body,
+          keyResult,
+          "varBinding",
+          labelSet,
+          strictCode
+        );
+      } else {
+        // for (ForDeclaration of AssignmentExpression) Statement
+        // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(BoundNames of ForDeclaration, AssignmentExpression, iterate).
+        let keyResult = ForInOfHeadEvaluation(realm, env, BoundNames(realm, left), right, "iterate", strictCode);
+        invariant(keyResult instanceof ObjectValue);
+
+        // 2. Return ? ForIn/OfBodyEvaluation(ForDeclaration, Statement, keyResult, lexicalBinding, labelSet).
+        return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "lexicalBinding", labelSet, strictCode);
+      }
+    } else {
+      // for (LeftHandSideExpression of AssignmentExpression) Statement
       // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(« », AssignmentExpression, iterate).
       let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "iterate", strictCode);
-      keyResult = keyResult.throwIfNotConcreteObject();
+      invariant(keyResult instanceof ObjectValue);
 
-      // 2. Return ? ForIn/OfBodyEvaluation(ForBinding, Statement, keyResult, varBinding, labelSet).
-      return ForInOfBodyEvaluation(
-        realm,
-        env,
-        left.declarations[0].id,
-        body,
-        keyResult,
-        "varBinding",
-        labelSet,
-        strictCode
-      );
-    } else {
-      // for (ForDeclaration of AssignmentExpression) Statement
-      // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(BoundNames of ForDeclaration, AssignmentExpression, iterate).
-      let keyResult = ForInOfHeadEvaluation(realm, env, BoundNames(realm, left), right, "iterate", strictCode);
-      keyResult = keyResult.throwIfNotConcreteObject();
-
-      // 2. Return ? ForIn/OfBodyEvaluation(ForDeclaration, Statement, keyResult, lexicalBinding, labelSet).
-      return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "lexicalBinding", labelSet, strictCode);
+      // 2. Return ? ForIn/OfBodyEvaluation(LeftHandSideExpression, Statement, keyResult, assignment, labelSet).
+      return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "assignment", labelSet, strictCode);
     }
-  } else {
-    // for (LeftHandSideExpression of AssignmentExpression) Statement
-    // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(« », AssignmentExpression, iterate).
-    let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "iterate", strictCode);
-    keyResult = keyResult.throwIfNotConcreteObject();
-
-    // 2. Return ? ForIn/OfBodyEvaluation(LeftHandSideExpression, Statement, keyResult, assignment, labelSet).
-    return ForInOfBodyEvaluation(realm, env, left, body, keyResult, "assignment", labelSet, strictCode);
+  } catch (e) {
+    if (e instanceof BreakCompletion) {
+      if (!e.target) return (UpdateEmpty(realm, e, realm.intrinsics.undefined): any).value;
+    }
+    throw e;
   }
 }
