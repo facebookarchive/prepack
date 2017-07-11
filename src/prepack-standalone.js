@@ -77,7 +77,6 @@ export function prepackString(
   code: string,
   sourceMap: string,
   options: Options = defaultOptions,
-  fs: any
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
   let sources = [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }];
   let realmOptions = getRealmOptions(options);
@@ -85,7 +84,7 @@ export function prepackString(
   initializeGlobals(realm);
 
   if (options.serialize || !options.residual) {
-    let serializer = new Serializer(realm, getSerializerOptions(options), fs);
+    let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sources, options.sourceMaps);
     if (!serialized) {
       throw new FatalError();
