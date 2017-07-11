@@ -490,10 +490,11 @@ export default class ObjectValue extends ConcreteValue {
     let prop = this.unknownProperty;
     if (prop !== undefined) {
       let desc = prop.descriptor;
-      invariant(desc !== undefined);
-      let val = desc.value;
-      invariant(val instanceof AbstractValue);
-      result = this.specializeJoin(val, P);
+      if (desc !== undefined) {
+        let val = desc.value;
+        invariant(val instanceof AbstractValue);
+        result = this.specializeJoin(val, P);
+      }
     }
     // Join in all of the other values that were written to the object with
     // concrete property names.
