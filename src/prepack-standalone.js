@@ -76,7 +76,7 @@ export function prepackString(
   filename: string,
   code: string,
   sourceMap: string,
-  options: Options = defaultOptions,
+  options: Options = defaultOptions
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
   let sources = [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }];
   let realmOptions = getRealmOptions(options);
