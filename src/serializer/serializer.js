@@ -65,7 +65,7 @@ type AbstractSyntaxTree = {
 };
 
 export class Serializer {
-  constructor(realm: Realm, serializerOptions: SerializerOptions = {}, fs?: any) {
+  constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
     invariant(realm.useAbstractInterpretation);
     // Start tracking mutations
     realm.generator = new Generator(realm);
@@ -87,7 +87,6 @@ export class Serializer {
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
     this.options = serializerOptions;
-    this.fs = fs;
   }
 
   _init(collectValToRefCountOnly: boolean) {
@@ -174,7 +173,6 @@ export class Serializer {
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
-  fs: any;
 
   _getBodyReference() {
     return new BodyReference(this.body, this.body.length);
@@ -1463,7 +1461,7 @@ export class Serializer {
 
     //Deep traversal of the heap to identify the necessary scope of residual functions
 
-    if (this.options.profile) this.timingStats.deepTraversalTime = Date.now();
+    if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
     let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
