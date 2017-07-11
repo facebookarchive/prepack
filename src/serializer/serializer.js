@@ -50,6 +50,7 @@ import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
+import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { factorifyObjects } from "./factorify.js";
@@ -167,7 +168,7 @@ export class Serializer {
   options: SerializerOptions;
   statistics: SerializerStatistics;
   timingStats: TimingStatistics;
-  ignoredProperties: Map<ObjectValue, Set<string>>;
+  residualHeapInspector: ResidualHeapInspector;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
@@ -215,12 +216,11 @@ export class Serializer {
     */
 
     // inject properties
-    let ignoredProperties = this.ignoredProperties.get(obj);
     for (let [key, propertyBinding] of alternateProperties || obj.properties) {
       invariant(propertyBinding);
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; //deleted
-      if (ignoredProperties && ignoredProperties.has(key)) continue;
+      if (this.residualHeapInspector.canIgnoreProperty(obj, key)) continue;
       invariant(desc !== undefined);
       this._eagerOrDelay(this._getDescriptorValues(desc).concat(obj), () => {
         invariant(desc !== undefined);
@@ -295,7 +295,7 @@ export class Serializer {
     // If the original prototype object was mutated,
     // request its serialization here as this might be observable by
     // residual code.
-    let prototype = ResidualHeapVisitor.getPropertyValue(func, "prototype");
+    let prototype = ResidualHeapInspector.getPropertyValue(func, "prototype");
     if (prototype instanceof ObjectValue && this.residualValues.has(prototype)) {
       this._eagerOrDelay([func], () => {
         invariant(prototype);
@@ -576,7 +576,7 @@ export class Serializer {
 
     this.serializedValues.add(val);
     reasons = reasons || [];
-    if (!referenceOnly && ResidualHeapVisitor.isLeaf(val)) {
+    if (!referenceOnly && ResidualHeapInspector.isLeaf(val)) {
       let res = this._serializeValue("", val, reasons);
       invariant(res !== undefined);
       return res;
@@ -1099,7 +1099,6 @@ export class Serializer {
 
         let remainingProperties = new Map(val.properties);
         let props = [];
-        let ignoredProperties = this.ignoredProperties.get(val);
         for (let [key, propertyBinding] of val.properties) {
           let descriptor = propertyBinding.descriptor;
           if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
@@ -1107,7 +1106,7 @@ export class Serializer {
             remainingProperties.delete(key);
             let propValue = descriptor.value;
             invariant(propValue instanceof Value);
-            if (ignoredProperties && ignoredProperties.has(key)) continue;
+            if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
             let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
             let delayReason = this._shouldDelayValue(propValue) || mightHaveBeenDeleted;
             if (delayReason) {
@@ -1199,7 +1198,7 @@ export class Serializer {
       return emptyExpression;
     } else if (val instanceof UndefinedValue) {
       return voidExpression;
-    } else if (ResidualHeapVisitor.isLeaf(val)) {
+    } else if (ResidualHeapInspector.isLeaf(val)) {
       return t.valueToNode(val.serialize());
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
@@ -1468,7 +1467,7 @@ export class Serializer {
     let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
-    this.ignoredProperties = residualHeapVisitor.ignoredProperties;
+    this.residualHeapInspector = residualHeapVisitor.inspector;
     this.residualValues = residualHeapVisitor.values;
     this.residualFunctionBindings = residualHeapVisitor.functionBindings;
     this.residualFunctionInfos = residualHeapVisitor.functionInfos;
