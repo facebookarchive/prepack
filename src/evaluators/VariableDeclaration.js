@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { LexicalEnvironment, Reference } from "../environment.js";
+import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 import {
@@ -32,7 +32,7 @@ function letAndConst(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   for (let declar of ast.declarations) {
     if (declar.id.type !== "Identifier") {
       throw new Error("TODO: Patterns aren't supported yet");
@@ -87,7 +87,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   if (ast.kind === "let" || ast.kind === "const") {
     return letAndConst(ast, strictCode, env, realm);
   }

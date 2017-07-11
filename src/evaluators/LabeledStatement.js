@@ -11,10 +11,11 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
+import { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
 import type { BabelNodeLabeledStatement, BabelNode } from "babel-types";
+import invariant from "../invariant.js";
 
 // ECMA262 13.13.14
 function LabelledEvaluation(
@@ -23,7 +24,7 @@ function LabelledEvaluation(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // LabelledStatement:LabelIdentifier:LabelledItem
   switch (ast.type) {
     case "LabeledStatement":
@@ -53,7 +54,9 @@ function LabelledEvaluation(
 
     case "VariableDeclaration":
       if (ast.kind === "var") {
-        return env.evaluate(ast, strictCode);
+        let r = env.evaluate(ast, strictCode);
+        invariant(r instanceof Value);
+        return r;
       }
     // fall through to throw
     case "FunctionDeclaration":
@@ -61,7 +64,9 @@ function LabelledEvaluation(
       throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, ast.type + " may not have a label");
 
     default:
-      return env.evaluate(ast, strictCode, labelSet);
+      let r = env.evaluate(ast, strictCode, labelSet);
+      invariant(r instanceof Value);
+      return r;
   }
 }
 

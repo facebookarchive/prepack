@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { Add, GetValue, ToNumber, PutValue, IsToNumberPure } from "../methods/index.js";
 import { AbstractValue, NumberValue } from "../values/index.js";
@@ -26,7 +25,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // ECMA262 12.4 Update Expressions
 
   // Let expr be the result of evaluating UnaryExpression.

@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
 import type { BabelNodeStringLiteral } from "babel-types";
 
@@ -21,6 +20,6 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   return new StringValue(realm, ast.value);
 }

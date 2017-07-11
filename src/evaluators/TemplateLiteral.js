@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
 import { ToStringPartial } from "../methods/index.js";
 import { GetValue } from "../methods/environment.js";
@@ -24,7 +23,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   let str = "";
 
   for (let i = 0; i < ast.quasis.length; i++) {

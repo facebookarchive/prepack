@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { LexicalEnvironment, Reference } from "../environment.js";
+import type { LexicalEnvironment } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
@@ -43,7 +43,7 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm,
   labelSet: ?Array<string>
-): Value | Reference {
+): Value {
   let { left, right, body } = ast;
 
   // helper func to report error

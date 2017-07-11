@@ -14,7 +14,6 @@ import type { LexicalEnvironment } from "../environment.js";
 import { FunctionEnvironmentRecord } from "../environment.js";
 import { Completion } from "../completions.js";
 import { Value, UndefinedValue, ObjectValue } from "../values/index.js";
-import { Reference } from "../environment.js";
 import {
   GetNewTarget,
   ArgumentListEvaluation,
@@ -55,7 +54,7 @@ export default function SuperCall(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value | Reference {
+): Completion | Value {
   // 1. Let newTarget be GetNewTarget().
   let newTarget = GetNewTarget(realm);
 

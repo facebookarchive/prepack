@@ -12,14 +12,8 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import type { BabelNodeNullLiteral } from "babel-types";
 
-export default function(
-  ast: BabelNodeNullLiteral,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): Value | Reference {
+export default function(ast: BabelNodeNullLiteral, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   return realm.intrinsics.null;
 }

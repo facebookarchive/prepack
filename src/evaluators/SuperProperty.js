@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { FunctionEnvironmentRecord } from "../environment.js";
-import type { Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
 import { GetValue, ToPropertyKeyPartial, RequireObjectCoercible, GetThisEnvironment } from "../methods/index.js";
@@ -52,7 +51,7 @@ export default function SuperProperty(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Reference {
   // SuperProperty : super [ Expression ]
   if (ast.computed) {
     // 1. Let propertyNameReference be the result of evaluating Expression.

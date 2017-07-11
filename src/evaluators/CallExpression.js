@@ -41,7 +41,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value | Reference {
+): Completion | Value {
   if (ast.callee.type === "Super") {
     return SuperCall(ast.arguments, strictCode, env, realm);
   }
@@ -64,7 +64,7 @@ function callBothFunctionsAndJoinTheirEffects(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value | Reference {
+): Completion | Value {
   let [cond, func1, func2] = args;
   invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
   invariant(func1.getType() === FunctionValue);
@@ -110,7 +110,7 @@ function EvaluateCall(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value | Reference {
+): Completion | Value {
   function generateRuntimeCall() {
     let args = [func].concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
     return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, args, nodes => {

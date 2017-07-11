@@ -14,7 +14,6 @@ import { LexicalEnvironment, ObjectEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { AbruptCompletion } from "../completions.js";
 import { AbstractValue, Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { ToObjectPartial, GetValue, NewObjectEnvironment, UpdateEmpty } from "../methods/index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeWithStatement } from "babel-types";
@@ -25,7 +24,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // 1. Let val be the result of evaluating Expression.
   let val = env.evaluate(ast.object, strictCode);
 

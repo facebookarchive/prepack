@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Reference } from "../environment.js";
 import { AbruptCompletion, BreakCompletion } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
 import { EmptyValue, Value } from "../values/index.js";
@@ -45,8 +44,8 @@ function CaseBlockEvaluation(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Reference | Value {
-  let EvaluateCase = (c: BabelNodeSwitchCase): Reference | Value | AbruptCompletion => {
+): Value {
+  let EvaluateCase = (c: BabelNodeSwitchCase): Value | AbruptCompletion => {
     let r = realm.intrinsics.empty;
     for (let node of c.consequent) {
       let res = env.evaluateCompletion(node, strictCode);
@@ -169,7 +168,7 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm,
   labelSet: Array<string>
-): Value | Reference {
+): Value {
   let expression = ast.discriminant;
   let cases: Array<BabelNodeSwitchCase> = ast.cases;
 
