@@ -11,8 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
+import { Value } from "../values/index.js";
 import { ThrowCompletion } from "../completions.js";
 import invariant from "../invariant.js";
 import { NewDeclarativeEnvironment, BoundNames, BindingInitialization } from "../methods/index.js";
@@ -25,7 +24,7 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm,
   thrownValue: any
-): Value | Reference {
+): Value {
   invariant(thrownValue instanceof ThrowCompletion, "Metadata isn't a throw completion");
 
   // 1. Let oldEnv be the running execution context's LexicalEnvironment.
@@ -56,6 +55,7 @@ export default function(
 
     // 8. Let B be the result of evaluating Block.
     let B = catchEnv.evaluate(ast.body, strictCode);
+    invariant(B instanceof Value);
 
     // 10. Return Completion(B).
     return B;

@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { GetValue } from "../methods/index.js";
 import type { BabelNodeExpressionStatement } from "babel-types";
 
@@ -21,7 +20,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // ECMA262 13.5.1
   // 1. Let exprRef be the result of evaluating Expression.
   let exprRef = env.evaluate(ast.expression, strictCode);

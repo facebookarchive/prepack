@@ -11,9 +11,9 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
+import { Value } from "../values/index.js";
 import type { BabelNodeWhileStatement, BabelNode } from "babel-types";
+import invariant from "../invariant.js";
 
 export default function(
   ast: BabelNodeWhileStatement,
@@ -21,8 +21,8 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm,
   labelSet: ?Array<string>
-): Value | Reference {
-  return env.evaluate(
+): Value {
+  let r = env.evaluate(
     (({
       type: "ForStatement",
       init: null,
@@ -33,4 +33,6 @@ export default function(
     strictCode,
     labelSet
   );
+  invariant(r instanceof Value);
+  return r;
 }

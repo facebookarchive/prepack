@@ -11,15 +11,12 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
+import { Value } from "../values/index.js";
 import type { BabelNodeFile } from "babel-types";
+import invariant from "../invariant.js";
 
-export default function(
-  ast: BabelNodeFile,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): Value | Reference {
-  return env.evaluate(ast.program, strictCode);
+export default function(ast: BabelNodeFile, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
+  let r = env.evaluate(ast.program, strictCode);
+  invariant(r instanceof Value);
+  return r;
 }

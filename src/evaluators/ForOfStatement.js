@@ -46,13 +46,12 @@ import type {
 export type IterationKind = "iterate" | "enumerate";
 export type LhsKind = "lexicalBinding" | "varBinding" | "assignment";
 
-export function InternalGetResultValue(realm: Realm, result: Reference | Value | AbruptCompletion): Value {
+export function InternalGetResultValue(realm: Realm, result: Value | AbruptCompletion): Value {
   if (result instanceof AbruptCompletion) {
-    return result.value || realm.intrinsics.empty;
-  } else if (result instanceof Value) {
+    return result.value;
+  } else {
     return result;
   }
-  invariant(false);
 }
 
 // ECMA262 13.7.1.2
@@ -325,6 +324,7 @@ export function ForInOfBodyEvaluation(
 
     // i. Let result be the result of evaluating stmt.
     let result = env.evaluateCompletion(stmt, strictCode);
+    invariant(result instanceof Value || result instanceof AbruptCompletion);
 
     // j. Set the running execution context's LexicalEnvironment to oldEnv.
     realm.getRunningContext().lexicalEnvironment = oldEnv;
@@ -353,7 +353,7 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm,
   labelSet: ?Array<string>
-): Value | Reference {
+): Value {
   let { left, right, body } = ast;
 
   if (left.type === "VariableDeclaration") {

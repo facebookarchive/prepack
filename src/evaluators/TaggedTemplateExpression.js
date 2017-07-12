@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { EvaluateCall } from "../methods/call.js";
 import type { BabelNodeTaggedTemplateExpression } from "babel-types";
 
@@ -22,7 +21,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // 1. Let tagRef be the result of evaluating MemberExpression.
   let tagRef = env.evaluate(ast.tag, strictCode);
 

@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import { ResolveBinding } from "../methods/index.js";
 import type { BabelNodeIdentifier } from "babel-types";
@@ -22,7 +21,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Reference {
   // 1. Return ? ResolveBinding(StringValue of Identifier).
   return ResolveBinding(realm, ast.name, strictCode, env);
 }

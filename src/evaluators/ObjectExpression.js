@@ -12,8 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
-import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { CompilerDiagnostics, FatalError } from "../errors.js";
 import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
 import {
@@ -75,7 +73,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): ObjectValue {
   // 1. Let obj be ObjectCreate(%ObjectPrototype%).
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 

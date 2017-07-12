@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Reference } from "../environment.js";
 import { Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { FindVarScopedDeclarations } from "../methods/function.js";
@@ -216,12 +215,7 @@ export function GlobalDeclarationInstantiation(
   return realm.intrinsics.empty;
 }
 
-export default function(
-  ast: BabelNodeProgram,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): Value | Reference {
+export default function(ast: BabelNodeProgram, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   strictCode = IsStrict(ast);
 
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);
@@ -241,5 +235,6 @@ export default function(
     val = env.evaluate(directive, strictCode);
   }
 
+  invariant(val === undefined || val instanceof Value);
   return val || realm.intrinsics.empty;
 }

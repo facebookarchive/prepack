@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { SetFunctionName, FunctionCreate, GeneratorFunctionCreate } from "../methods/function.js";
 import { MakeConstructor } from "../methods/construct.js";
 import { ObjectCreate } from "../methods/create.js";
@@ -27,7 +26,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   if (ast.generator) {
     // 1. If the function code for GeneratorDeclaration is strict mode code, let strict be true. Otherwise let strict be false.
     let strict = strictCode || IsStrict(ast.body);

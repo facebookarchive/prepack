@@ -33,7 +33,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   if (!ast.hasOwnProperty("operator") || ast.operator === null) throw Error("Unexpected AST form");
 
   let LeftHandSideExpression = ast.left;
