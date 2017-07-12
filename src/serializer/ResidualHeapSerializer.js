@@ -47,6 +47,7 @@ import type { Scope } from "./ResidualHeapVisitor.js";
 import { factorifyObjects } from "./factorify.js";
 import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/internalizer.js";
 import { Emitter } from "./Emitter.js";
+import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 
 type AbstractSyntaxTree = {
   type: string,
@@ -61,8 +62,7 @@ export class ResidualHeapSerializer {
     realm: Realm,
     logger: Logger,
     modules: Modules,
-    collectValToRefCountOnly: boolean,
-    valToRefCount: void | Map<Value, number>,
+    residualHeapValueIdentifiers: ResidualHeapValueIdentifiers,
     residualHeapInspector: ResidualHeapInspector,
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
@@ -71,6 +71,7 @@ export class ResidualHeapSerializer {
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
+    this.residualHeapValueIdentifiers = residualHeapValueIdentifiers;
 
     let realmGenerator = this.realm.generator;
     invariant(realmGenerator);
@@ -81,7 +82,6 @@ export class ResidualHeapSerializer {
 
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.prelude = [];
-    this.refs = new Map();
     this.descriptors = new Map();
     this.needsEmptyVar = false;
     this.needsAuxiliaryConstructor = false;
@@ -97,7 +97,7 @@ export class ResidualHeapSerializer {
       this.modules,
       this.requireReturns,
       {
-        getLocation: value => this._getValIdForReferenceOptional(value),
+        getLocation: value => this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCountOptional(value),
         createLocation: () => {
           let location = t.identifier(this.valueNameGenerator.generate("initialized"));
           this.mainBody.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
@@ -116,19 +116,12 @@ export class ResidualHeapSerializer {
     this.residualValues = residualValues;
     this.residualFunctionBindings = residualFunctionBindings;
     this.residualFunctionInfos = residualFunctionInfos;
-
-    this.collectValToRefCountOnly = collectValToRefCountOnly;
-    this.valToRefCount = valToRefCount;
   }
 
   emitter: Emitter;
   declarativeEnvironmentRecordsBindings: Map<VisitedBinding, SerializedBinding>;
   functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
   functionInstances: Array<FunctionInstance>;
-  //value to intermediate references generated like $0, $1, $2,...
-  refs: Map<Value, BabelNodeIdentifier>;
-  collectValToRefCountOnly: boolean;
-  valToRefCount: void | Map<Value, number>;
   prelude: Array<BabelNodeStatement>;
   body: Array<BabelNodeStatement>;
   mainBody: Array<BabelNodeStatement>;
@@ -143,6 +136,7 @@ export class ResidualHeapSerializer {
   factoryNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
+  residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
   requireReturns: Map<number | string, BabelNodeExpression>;
   statistics: SerializerStatistics;
   timingStats: TimingStatistics;
@@ -210,7 +204,7 @@ export class ResidualHeapSerializer {
       this.emitter.emitNowOrAfterWaitingForDependencies([proto, obj], () => {
         invariant(proto);
         let serializedProto = this.serializeValue(proto);
-        let uid = this._getValIdForReference(obj);
+        let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(obj);
         let condition = t.binaryExpression("!==", t.memberExpression(uid, protoExpression), serializedProto);
         let throwblock = t.blockStatement([
           t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("unexpected prototype")])),
@@ -224,7 +218,7 @@ export class ResidualHeapSerializer {
     this.emitter.emitNowOrAfterWaitingForDependencies([proto, obj], () => {
       invariant(proto);
       let serializedProto = this.serializeValue(proto);
-      let uid = this._getValIdForReference(obj);
+      let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(obj);
       if (!this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION))
         this.emitter.emit(
           t.expressionStatement(
@@ -287,7 +281,7 @@ export class ResidualHeapSerializer {
       let V = absVal.args[1];
       let earlier_props = absVal.args[2];
       if (earlier_props instanceof AbstractValue) this._emitPropertiesWithComputedNames(obj, earlier_props);
-      let uid = this._getValIdForReference(obj);
+      let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(obj);
       let serializedP = this.serializeValue(P);
       let serializedV = this.serializeValue(V);
       this.emitter.emit(
@@ -321,7 +315,11 @@ export class ResidualHeapSerializer {
         this._assignProperty(
           () => {
             let serializedKey = this.generator.getAsPropertyNameExpression(key);
-            return t.memberExpression(this._getValIdForReference(val), serializedKey, !t.isIdentifier(serializedKey));
+            return t.memberExpression(
+              this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
+              serializedKey,
+              !t.isIdentifier(serializedKey)
+            );
           },
           () => {
             invariant(descValue instanceof Value);
@@ -393,7 +391,7 @@ export class ResidualHeapSerializer {
 
       let serializedKey = this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
       invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
-      let uid = this._getValIdForReference(val);
+      let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
       this.emitter.emit(
         t.expressionStatement(
           t.callExpression(this.preludeGenerator.memoizeReference("Object.defineProperty"), [
@@ -406,9 +404,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeDeclarativeEnvironmentRecordBinding(
-    visitedBinding: VisitedBinding,
-  ): SerializedBinding {
+  _serializeDeclarativeEnvironmentRecordBinding(visitedBinding: VisitedBinding): SerializedBinding {
     let serializedBinding = this.declarativeEnvironmentRecordsBindings.get(visitedBinding);
     if (!serializedBinding) {
       let value = visitedBinding.value;
@@ -429,38 +425,10 @@ export class ResidualHeapSerializer {
       if (value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
-        this._incrementValToRefCount(value);
+        this.residualHeapValueIdentifiers.incrementReferenceCount(value);
       }
     }
     return serializedBinding;
-  }
-
-  _getValIdForReference(val: Value): BabelNodeIdentifier {
-    let id = this._getValIdForReferenceOptional(val);
-    invariant(id !== undefined, "Value Id cannot be null or undefined");
-    return id;
-  }
-
-  _getValIdForReferenceOptional(val: Value): void | BabelNodeIdentifier {
-    let id = this.refs.get(val);
-    if (id !== undefined) {
-      this._incrementValToRefCount(val);
-    }
-    return id;
-  }
-
-  _incrementValToRefCount(val: Value) {
-    if (this.collectValToRefCountOnly) {
-      let valToRefCount = this.valToRefCount;
-      invariant(valToRefCount !== undefined);
-      let refCount = valToRefCount.get(val);
-      if (refCount) {
-        refCount++;
-      } else {
-        refCount = 1;
-      }
-      valToRefCount.set(val, refCount);
-    }
   }
 
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
@@ -502,7 +470,7 @@ export class ResidualHeapSerializer {
     let scopes = this.residualValues.get(val);
     invariant(scopes !== undefined);
 
-    let ref = this._getValIdForReferenceOptional(val);
+    let ref = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCountOptional(val);
     if (ref) {
       return ref;
     }
@@ -518,17 +486,13 @@ export class ResidualHeapSerializer {
 
     let name = this.valueNameGenerator.generate(val.__originalName || "");
     let id = t.identifier(name);
-    this.refs.set(val, id);
+    this.residualHeapValueIdentifiers.setIdentifier(val, id);
     let oldBody = this.emitter.beginEmitting(val, target.body);
-    let init = this._serializeValue(name, val);
+    let init = this._serializeValue(val);
     let result = id;
-    this._incrementValToRefCount(val);
+    this.residualHeapValueIdentifiers.incrementReferenceCount(val);
 
-    // default to 2 because we don't want the serializer to assume there's
-    // one reference and inline the value
-    let refCount = this.valToRefCount === undefined ? 2 : this.valToRefCount.get(val);
-    invariant(refCount !== undefined && refCount > 0);
-    if (this.collectValToRefCountOnly || refCount !== 1) {
+    if (this.residualHeapValueIdentifiers.needsIdentifier(val)) {
       if (init) {
         if (init !== id) {
           if (target.usedOnlyByResidualFunctions) {
@@ -546,7 +510,7 @@ export class ResidualHeapSerializer {
       }
     } else {
       if (init) {
-        this.refs.delete(val);
+        this.residualHeapValueIdentifiers.deleteIdentifier(val);
         result = init;
         this.statistics.valuesInlined++;
       }
@@ -589,7 +553,11 @@ export class ResidualHeapSerializer {
     if (lenProperty instanceof AbstractValue) {
       this.emitter.emitNowOrAfterWaitingForDependencies([val], () => {
         this._assignProperty(
-          () => t.memberExpression(this._getValIdForReference(val), t.identifier("length")),
+          () =>
+            t.memberExpression(
+              this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
+              t.identifier("length")
+            ),
           () => {
             return this.serializeValue(lenProperty);
           },
@@ -618,7 +586,12 @@ export class ResidualHeapSerializer {
                 // handle self recursion
                 this.emitter.emitAfterWaiting(delayReason, [elemVal, val], () => {
                   this._assignProperty(
-                    () => t.memberExpression(this._getValIdForReference(val), t.numericLiteral(i), true),
+                    () =>
+                      t.memberExpression(
+                        this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
+                        t.numericLiteral(i),
+                        true
+                      ),
                     () => {
                       invariant(elemVal !== undefined);
                       return this.serializeValue(elemVal);
@@ -673,10 +646,13 @@ export class ResidualHeapSerializer {
           invariant(value !== undefined);
           this.emitter.emit(
             t.expressionStatement(
-              t.callExpression(t.memberExpression(this._getValIdForReference(val), t.identifier("set")), [
-                this.serializeValue(key),
-                this.serializeValue(value),
-              ])
+              t.callExpression(
+                t.memberExpression(
+                  this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
+                  t.identifier("set")
+                ),
+                [this.serializeValue(key), this.serializeValue(value)]
+              )
             )
           );
         });
@@ -720,9 +696,13 @@ export class ResidualHeapSerializer {
           invariant(entry !== undefined);
           this.emitter.emit(
             t.expressionStatement(
-              t.callExpression(t.memberExpression(this._getValIdForReference(val), t.identifier("add")), [
-                this.serializeValue(entry),
-              ])
+              t.callExpression(
+                t.memberExpression(
+                  this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
+                  t.identifier("add")
+                ),
+                [this.serializeValue(entry)]
+              )
             )
           );
         });
@@ -852,8 +832,7 @@ export class ResidualHeapSerializer {
     // in a special way that's handled alongside function serialization.
     let constructor = val.originalConstructor;
     if (constructor !== undefined) {
-      let prototypeId = this.refs.get(val);
-      invariant(prototypeId !== undefined);
+      let prototypeId = this.residualHeapValueIdentifiers.getIdentifier(val);
       this.emitter.emitNowOrAfterWaitingForDependencies([constructor], () => {
         invariant(constructor !== undefined);
         invariant(prototypeId !== undefined);
@@ -946,7 +925,7 @@ export class ResidualHeapSerializer {
                   () => {
                     let serializedKey = this.generator.getAsPropertyNameExpression(key);
                     return t.memberExpression(
-                      this._getValIdForReference(val),
+                      this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
                       serializedKey,
                       !t.isIdentifier(serializedKey)
                     );
@@ -1050,7 +1029,7 @@ export class ResidualHeapSerializer {
       let id = this.serializeValue(value, true, "let");
       // increment ref count one more time as the value has been
       // referentialized (stored in a variable) by serializeValue
-      this._incrementValToRefCount(value);
+      this.residualHeapValueIdentifiers.incrementReferenceCount(value);
       return { serializedValue: id, value: undefined, modified: true, referentialized: true };
     } else {
       return {
@@ -1133,7 +1112,7 @@ export class ResidualHeapSerializer {
       strictFunctionBodies,
       requireStatistics,
     } = this.residualFunctions.spliceFunctions();
-    if (requireStatistics.replaced > 0 && !this.collectValToRefCountOnly) {
+    if (requireStatistics.replaced > 0 && !this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
       console.log(
         `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
           .size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`
