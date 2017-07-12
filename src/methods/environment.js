@@ -36,7 +36,7 @@ import {
   LexicalEnvironment,
 } from "../environment.js";
 import { NormalCompletion, AbruptCompletion, ThrowCompletion } from "../completions.js";
-import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression.js";
+import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   GetV,
   GetThisValue,
@@ -565,7 +565,7 @@ export function BindingInitialization(
       let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
       // 1. Let P be the result of evaluating PropertyName.
-      let P = EvalPropertyNamePartial(property, env, realm, strictCode);
+      let P = EvalPropertyName(property, env, realm, strictCode);
 
       // 2. ReturnIfAbrupt(P).
 
