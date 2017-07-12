@@ -514,7 +514,7 @@ export function ResolveThisBinding(realm: Realm): NullValue | ObjectValue | Abst
 
 export function BindingInitialization(
   realm: Realm,
-  node: BabelNodeLVal,
+  node: BabelNodeLVal | BabelNodeVariableDeclaration,
   value: Value,
   strictCode: boolean,
   environment: void | LexicalEnvironment
