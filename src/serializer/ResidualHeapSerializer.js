@@ -56,7 +56,8 @@ type AbstractSyntaxTree = {
 };
 
 export class ResidualHeapSerializer {
-  constructor(realm: Realm,
+  constructor(
+    realm: Realm,
     logger: Logger,
     modules: Modules,
     collectValToRefCountOnly: boolean,

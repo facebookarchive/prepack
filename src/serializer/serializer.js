@@ -12,9 +12,7 @@
 import { Realm, ExecutionContext } from "../realm.js";
 import type { SourceFile } from "../types.js";
 import { Completion } from "../completions.js";
-import {
-  Value,
-} from "../values/index.js";
+import { Value } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
 import generate from "babel-generator";
 import type SourceMap from "babel-generator";
@@ -122,7 +120,9 @@ export class Serializer {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
       valToRefCount = new Map();
       new ResidualHeapSerializer(
-        this.realm, this.logger, this.modules,
+        this.realm,
+        this.logger,
+        this.modules,
         /*collectValToRefCountOnly*/ true,
         valToRefCount,
         residualHeapVisitor.inspector,
@@ -138,7 +138,9 @@ export class Serializer {
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
 
     let residualHeapSerializer = new ResidualHeapSerializer(
-      this.realm, this.logger, this.modules,
+      this.realm,
+      this.logger,
+      this.modules,
       /*collectValToRefCountOnly*/ false,
       valToRefCount,
       residualHeapVisitor.inspector,
