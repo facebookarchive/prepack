@@ -455,6 +455,8 @@ export class ResidualFunctions {
       if (functionBody !== undefined) {
         let insertionPoint = instance.insertionPoint;
         invariant(insertionPoint instanceof BodyReference);
+        // TODO: Measure if splicing here is a perf issure. Does v8 do something clever?
+        // Consider always inserting a dummy statement instead, and just overriding that here.
         Array.prototype.splice.apply(
           insertionPoint.body,
           ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>))

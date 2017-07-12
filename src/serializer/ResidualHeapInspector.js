@@ -52,6 +52,7 @@ export class ResidualHeapInspector {
     return val instanceof PrimitiveValue;
   }
 
+  // Object properties which have the default value can be ignored by the serializer.
   canIgnoreProperty(val: ObjectValue, key: string) {
     let set = this.ignoredProperties.get(val);
     if (!set) {
