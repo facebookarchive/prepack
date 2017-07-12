@@ -346,7 +346,7 @@ export function ForInOfBodyEvaluation(
   }
 
   /* istanbul ignore next */
-  invariant(false); // can't here here but there is no other way to make Flow happy
+  invariant(false); // can't get here but there is no other way to make Flow happy
 }
 
 // ECMA262 13.7.5.11
