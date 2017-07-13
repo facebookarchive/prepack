@@ -13,8 +13,10 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-# Prepack test input and check if it exits with signal 1 
-cat ./test/std-in/StdInError.js | node ./bin/prepack.js --out StdInError-test.js > /dev/null
+# Prepack test input and check if it exits with signal 1
+cat ./test/std-in/StdInError.js | node ./bin/prepack.js --out StdInError-test.js 2> /dev/null
 if [[ $? -ne 1 ]]; then
+    # If the test failed, rerun and show the output
+    cat ./test/std-in/StdInError.js | node ./bin/prepack.js --out StdInError-test.js
     exit 1
 fi
