@@ -1448,9 +1448,6 @@ export class Serializer {
     }
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
-    if (timingStats !== undefined) timingStats.initializeModulesTime = Date.now();
-    this.modules.resolveInitializedModules();
-    if (timingStats !== undefined) timingStats.initializeModulesTime = Date.now() - timingStats.initializeModulesTime;
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
       this.modules.initializeMoreModules();
