@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import { CompilerDiagnostics } from "../errors.js";
+import { CompilerDiagnostic } from "../errors.js";
 import {
   BoundFunctionValue,
   EmptyValue,
@@ -76,7 +76,7 @@ export function RequireObjectCoercible(
 ): AbstractValue | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue {
   if (arg instanceof AbstractValue && (arg.mightBeNull() || arg.mightBeUndefined())) {
     if (argLoc) {
-      let error = new CompilerDiagnostics("member expression object is unknown", argLoc, "PP0012", "FatalError");
+      let error = new CompilerDiagnostic("member expression object is unknown", argLoc, "PP0012", "FatalError");
       realm.handleError(error);
       // can't throw a FatalError here, yet, because there is some code that depends on seeing an
       // introspection error in this situation. See tests/serializer/optimizations/require_unsupported.js

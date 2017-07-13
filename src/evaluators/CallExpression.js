@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -122,7 +122,7 @@ function EvaluateCall(
   if (func instanceof AbstractValue) {
     if (func.getType() !== FunctionValue) {
       let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
-      let error = new CompilerDiagnostics("might not be a function", loc, "PP0005", "RecoverableError");
+      let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
       if (realm.handleError(error) === "Fail") throw new FatalError();
     } else if (func.kind === "conditional") {
       return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
@@ -150,7 +150,7 @@ function EvaluateCall(
       // vi. Return ? PerformEval(evalText, evalRealm, strictCaller, true).
       if (evalText instanceof AbstractValue) {
         let loc = ast.arguments[0].loc;
-        let error = new CompilerDiagnostics("eval argument must be a known value", loc, "PP0006", "RecoverableError");
+        let error = new CompilerDiagnostic("eval argument must be a known value", loc, "PP0006", "RecoverableError");
         if (realm.handleError(error) === "Fail") throw new FatalError();
         // Assume that it is a safe eval with no visible heap changes or abrupt control flow.
         return generateRuntimeCall();

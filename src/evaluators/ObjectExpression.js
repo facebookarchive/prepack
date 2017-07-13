@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
 import {
   ObjectCreate,
@@ -42,7 +42,7 @@ export function EvalPropertyName(
 ): PropertyKeyValue {
   let result = EvalPropertyNamePartial(prop, env, realm, strictCode);
   if (result instanceof AbstractValue) {
-    let error = new CompilerDiagnostics("unknown computed property name", prop.loc, "PP0014", "FatalError");
+    let error = new CompilerDiagnostic("unknown computed property name", prop.loc, "PP0014", "FatalError");
     realm.handleError(error);
     throw new FatalError();
   }
@@ -113,7 +113,7 @@ export default function(
       // 7. Return CreateDataPropertyOrThrow(object, propKey, propValue).
       if (propKey instanceof AbstractValue) {
         if (propKey.mightNotBeString()) {
-          let error = new CompilerDiagnostics("property key value is unknown", prop.loc, "PP0011", "FatalError");
+          let error = new CompilerDiagnostic("property key value is unknown", prop.loc, "PP0011", "FatalError");
           if (realm.handleError(error) === "Fail") throw new FatalError();
           continue; // recover by ignoring the property, which is only ever safe to do if the property is dead,
           // which is assuming a bit much, hence the designation as a FatalError.

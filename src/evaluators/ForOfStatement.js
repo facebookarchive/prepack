@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
 import { BreakCompletion, AbruptCompletion, ContinueCompletion } from "../completions.js";
@@ -166,7 +166,7 @@ export function ForInOfHeadEvaluation(
     invariant(iterationKind === "iterate", "expected iterationKind to be iterate");
 
     if (exprValue instanceof AbstractValue) {
-      let error = new CompilerDiagnostics(
+      let error = new CompilerDiagnostic(
         "for of loops over unknown collections are not yet supported",
         expr.loc,
         "PP0014",

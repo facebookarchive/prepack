@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
+import type { CompilerDiagnostic, ErrorHandlerResult } from "../lib/errors.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import { prepackSources } from "../lib/prepack-standalone.js";
 
@@ -41,8 +41,8 @@ function search(dir, relative) {
 
 let tests = search(`${__dirname}/../facebook/test`, "facebook/test");
 
-let errors: Map<BabelNodeSourceLocation, CompilerDiagnostics> = new Map();
-function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
+let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
   if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
   return "Fail";
 }

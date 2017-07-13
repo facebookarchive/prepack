@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Intrinsics, PropertyBinding, Descriptor } from "./types.js";
-import { CompilerDiagnostics, type ErrorHandlerResult, type ErrorHandler } from "./errors.js";
+import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import {
   Value,
@@ -729,7 +729,7 @@ export class Realm {
   // Pass the error to the realm's error-handler
   // Return value indicates whether the caller should try to recover from the
   // error or not ('true' means recover if possible).
-  handleError(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
+  handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
     if (!errorHandler) {

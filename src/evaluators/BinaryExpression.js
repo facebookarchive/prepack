@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
   Value,
   AbstractValue,
@@ -75,7 +75,7 @@ export function getPureBinaryOperationResultType(
     let rightPure = purityTest(realm, rval);
     if (leftPure && rightPure) return typeIfPure;
     let loc = !leftPure ? lloc : rloc;
-    let error = new CompilerDiagnostics(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
+    let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
     if (realm.handleError(error) === "Recover") {
       // Assume that an unknown value is actually a primitive or otherwise a well behaved object.
       return typeIfPure;
@@ -87,7 +87,7 @@ export function getPureBinaryOperationResultType(
     let rtype = GetToPrimitivePureResultType(realm, rval);
     if (ltype === undefined || rtype === undefined) {
       let loc = ltype === undefined ? lloc : rloc;
-      let error = new CompilerDiagnostics(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
+      let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
       if (realm.handleError(error) === "Recover") {
         // Assume that the unknown value is actually a primitive or otherwise a well behaved object.
         ltype = lval.getType();
@@ -120,7 +120,7 @@ export function getPureBinaryOperationResultType(
     return reportErrorIfNotPure(IsToNumberPure, NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
-      let error = new CompilerDiagnostics(
+      let error = new CompilerDiagnostic(
         `might not be an object, hence the ${op} operator might throw a TypeError`,
         rloc,
         "PP0003",
@@ -136,7 +136,7 @@ export function getPureBinaryOperationResultType(
       // Simple object won't throw here, aren't proxy objects or typed arrays and do not have @@hasInstance properties.
       if (rval.isSimple()) return BooleanValue;
     }
-    let error = new CompilerDiagnostics(
+    let error = new CompilerDiagnostic(
       `might be an object that behaves badly for the ${op} operator`,
       rloc,
       "PP0004",
