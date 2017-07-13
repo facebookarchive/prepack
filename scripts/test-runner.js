@@ -15,7 +15,6 @@ let prepackString = require("../lib/prepack-node.js").prepackString;
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
-let IsIntrospectionError = require("../lib/methods/index.js").IsIntrospectionError;
 
 let chalk = require("chalk");
 let path = require("path");
@@ -84,8 +83,6 @@ report(inspect());`,
   return result + logOutput;
 }
 
-class Success {}
-
 function runTest(name, code, args) {
   console.log(chalk.inverse(name));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
@@ -101,9 +98,6 @@ function runTest(name, code, args) {
     uniqueSuffix: "",
   };
   if (code.includes("// throws introspection error")) {
-    let onError = (realm, e) => {
-      if (IsIntrospectionError(realm, e)) throw new Success();
-    };
     try {
       let realmOptions = { serialize: true, compatibility, uniqueSuffix: "" };
       let realm = construct_realm(realmOptions);
@@ -111,14 +105,14 @@ function runTest(name, code, args) {
       let serializerOptions = { initializeMoreModules: speculate, delayUnsupportedRequires, internalDebug: true };
       let serializer = new Serializer(realm, serializerOptions);
       let sources = [{ filePath: name, fileContents: code }];
-      let serialized = serializer.init(sources, false, onError);
+      let serialized = serializer.init(sources, false);
       if (!serialized) {
         console.log(chalk.red("Error during serialization"));
       } else {
         console.log(chalk.red("Test should have caused introspection error!"));
       }
     } catch (err) {
-      if (err instanceof Success || err instanceof FatalError) return true;
+      if (err instanceof FatalError) return true;
       console.log("Test should have caused introspection error, but instead caused a different internal error!");
       console.log(err);
     }

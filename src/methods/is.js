@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { FatalError } from "../errors.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
@@ -152,7 +153,10 @@ export function IsPropertyKey(realm: Realm, arg: string | Value): boolean {
   // 2. If Type(argument) is Symbol, return true.
   if (arg instanceof SymbolValue) return true;
 
-  if (arg instanceof AbstractValue) throw AbstractValue.createIntrospectionErrorThrowCompletion(arg);
+  if (arg instanceof AbstractValue) {
+    AbstractValue.reportIntrospectionError(arg);
+    throw new FatalError();
+  }
 
   // 3. Return false.
   return false;

@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, IntrospectionThrowCompletion, ThrowCompletion } from "../completions.js";
+import { AbruptCompletion, ThrowCompletion } from "../completions.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
@@ -20,9 +20,6 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
   let completions = [];
 
   let blockRes = env.evaluateCompletion(ast.block, strictCode);
-
-  // can't catch or run finally clauses on introspection errors
-  if (blockRes instanceof IntrospectionThrowCompletion) throw blockRes;
 
   if (blockRes instanceof ThrowCompletion && ast.handler) {
     completions.unshift(env.evaluateCompletion(ast.handler, strictCode, blockRes));

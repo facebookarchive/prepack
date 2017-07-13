@@ -21,6 +21,7 @@ import {
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
+import { FatalError } from "./errors.js";
 import { defaultOptions, type Options } from "./options";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
@@ -1033,8 +1034,10 @@ export class LexicalEnvironment {
     try {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion)
-        return AbstractValue.createIntrospectionErrorThrowCompletion(err.joinCondition);
+      if (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion) {
+        AbstractValue.reportIntrospectionError(err.joinCondition);
+        throw new FatalError();
+      }
       if (err instanceof AbruptCompletion) return err;
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
@@ -1177,8 +1180,10 @@ export class LexicalEnvironment {
 
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
     let res = this.evaluateAbstract(ast, strictCode, metadata);
-    if (res instanceof PossiblyNormalCompletion)
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(res.joinCondition);
+    if (res instanceof PossiblyNormalCompletion) {
+      AbstractValue.reportIntrospectionError(res.joinCondition);
+      throw new FatalError();
+    }
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;
   }
@@ -1199,7 +1204,8 @@ export class LexicalEnvironment {
         } else if (result instanceof PossiblyNormalCompletion) {
           result = composePossiblyNormalCompletions(this.realm, savedCompletion, result);
         } else {
-          throw AbstractValue.createIntrospectionErrorThrowCompletion(savedCompletion.joinCondition);
+          AbstractValue.reportIntrospectionError(savedCompletion.joinCondition);
+          throw new FatalError();
         }
         context.savedCompletion = undefined;
       }

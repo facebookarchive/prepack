@@ -15,6 +15,7 @@ import type { Realm } from "../realm.js";
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import { FatalError } from "../errors.js";
 import {
   ArrayCreate,
   CreateDataProperty,
@@ -61,7 +62,8 @@ export default function(
       return [elemValue, ast, io]; //todo: log an error message
     } else if (elemValue instanceof PossiblyNormalCompletion) {
       // TODO: there was a conditional abrupt completion while evaluating elem, so join states somehow
-      return [AbstractValue.createIntrospectionErrorThrowCompletion(elemValue.value), ast, io];
+      AbstractValue.reportIntrospectionError(elemValue.value);
+      throw new FatalError();
     }
     invariant(elemValue instanceof Value);
     partial_elements[nextIndex] = (elemAst: any);
@@ -119,7 +121,8 @@ export default function(
         // expressions will be evaluated at runtime. As a consequence their effects
         // have be provisional.
         // TODO: join states somehow
-        return [AbstractValue.createIntrospectionErrorThrowCompletion(spreadObj), ast, io];
+        AbstractValue.reportIntrospectionError(spreadObj);
+        throw new FatalError();
       }
     } else if (array.isPartial()) {
       // Dealing with an array element that follows on a spread object that

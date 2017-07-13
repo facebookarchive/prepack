@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import { CompilerDiagnostic } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
   BoundFunctionValue,
   EmptyValue,
@@ -78,8 +78,7 @@ export function RequireObjectCoercible(
     if (argLoc) {
       let error = new CompilerDiagnostic("member expression object is unknown", argLoc, "PP0012", "FatalError");
       realm.handleError(error);
-      // can't throw a FatalError here, yet, because there is some code that depends on seeing an
-      // introspection error in this situation. See tests/serializer/optimizations/require_unsupported.js
+      throw new FatalError();
     }
     arg.throwIfNotConcrete();
   }
@@ -499,7 +498,8 @@ export function Type(realm: Realm, val: Value): string {
     return "Object";
   } else {
     invariant(val instanceof AbstractValue);
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(val);
+    AbstractValue.reportIntrospectionError(val);
+    throw new FatalError();
   }
 }
 

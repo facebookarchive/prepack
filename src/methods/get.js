@@ -26,6 +26,7 @@ import {
   AbstractObjectValue,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
+import { FatalError } from "../errors.js";
 import { ArrayCreate } from "./create.js";
 import { SetIntegrityLevel } from "./integrity.js";
 import { ToString } from "./to.js";
@@ -143,7 +144,8 @@ export function OrdinaryGet(
   if (IsDataDescriptor(realm, desc)) return descValue;
   if (dataOnly) {
     invariant(descValue instanceof AbstractValue);
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(descValue);
+    AbstractValue.reportIntrospectionError(descValue);
+    throw new FatalError();
   }
 
   // 5. Assert: IsAccessorDescriptor(desc) is true.

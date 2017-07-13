@@ -27,6 +27,7 @@ import {
 } from "../values/index.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
+import { FatalError } from "../errors.js";
 import { CreateIterResultObject } from "../methods/create.js";
 import invariant from "../invariant.js";
 import {
@@ -196,7 +197,8 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
       // actually have a say. Give up, unless the parent would be OK with it.
       if (!parentPermitsChildPropertyCreation(realm, parent, P)) {
         invariant(ownDescValue instanceof AbstractValue);
-        throw AbstractValue.createIntrospectionErrorThrowCompletion(ownDescValue);
+        AbstractValue.reportIntrospectionError(ownDescValue);
+        throw new FatalError();
       }
       // Since the parent is OK with us creating a local property for O
       // we can carry on as if there were no parent.
@@ -221,7 +223,8 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
         // But maybe it does not and thus would succeed.
         // Since we don't know what will happen, give up for now.
         invariant(ownDescValue instanceof AbstractValue);
-        throw AbstractValue.createIntrospectionErrorThrowCompletion(ownDescValue);
+        AbstractValue.reportIntrospectionError(ownDescValue);
+        throw new FatalError();
       }
       return false;
     }
@@ -252,7 +255,8 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
         // If we are not sure the receiver actually has a property P we can't just return false here.
         if (existingDescValue.mightHaveBeenDeleted()) {
           invariant(existingDescValue instanceof AbstractValue);
-          throw AbstractValue.createIntrospectionErrorThrowCompletion(existingDescValue);
+          AbstractValue.reportIntrospectionError(existingDescValue);
+          throw new FatalError();
         }
         return false;
       }
@@ -976,7 +980,8 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
   let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
   if (!existingBinding) {
     if (O.isPartial() && !O.isSimple()) {
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(O, P);
+      AbstractValue.reportIntrospectionError(O, P);
+      throw new FatalError();
     }
     return undefined;
   }
@@ -1133,11 +1138,15 @@ export function ThrowIfMightHaveBeenDeleted(value: void | Value): void {
   if (value === undefined) return;
   if (!value.mightHaveBeenDeleted()) return;
   invariant(value instanceof AbstractValue); // real empty values should never get here
-  throw AbstractValue.createIntrospectionErrorThrowCompletion(value);
+  AbstractValue.reportIntrospectionError(value);
+  throw new FatalError();
 }
 
 export function ThrowIfInternalSlotNotWritable<T: ObjectValue>(realm: Realm, object: T, key: string): T {
-  if (!realm.isNewObject(object)) throw AbstractValue.createIntrospectionErrorThrowCompletion(object, key);
+  if (!realm.isNewObject(object)) {
+    AbstractValue.reportIntrospectionError(object, key);
+    throw new FatalError();
+  }
   return object;
 }
 
