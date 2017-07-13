@@ -16,6 +16,7 @@ import { type Compatibility, CompatibilityValues } from "./options.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import fs from "fs";
+import v8 from "v8";
 
 // Prepack helper
 declare var __residual: any;
@@ -197,6 +198,7 @@ function run(
         let stats = {
           SerializerStatistics: serialized.statistics,
           TimingStatistics: serialized.timingStats,
+          MemoryStatistics: v8.getHeapStatistics(),
         };
         fs.writeFileSync(statsFileName, JSON.stringify(stats));
       }
