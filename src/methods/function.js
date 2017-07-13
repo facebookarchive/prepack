@@ -54,7 +54,7 @@ import {
   UpdateEmpty,
 } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
-import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression.js";
+import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import traverse from "../traverse.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -1537,7 +1537,7 @@ export function DefineMethod(
   functionPrototype?: ObjectValue
 ) {
   // 1. Let propKey be the result of evaluating PropertyName.
-  let propKey = EvalPropertyNamePartial(prop, env, realm, strictCode);
+  let propKey = EvalPropertyName(prop, env, realm, strictCode);
 
   // 2. ReturnIfAbrupt(propKey).
 
