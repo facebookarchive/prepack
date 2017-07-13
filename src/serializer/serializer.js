@@ -86,7 +86,10 @@ export class Serializer {
   } {
     // Phase 1: Let's interpret.
     let timingStats = this.options.profile ? new TimingStatistics() : undefined;
-    if (timingStats !== undefined) timingStats.globalCodeTime = Date.now();
+    if (timingStats !== undefined) {
+      timingStats.totalTime = Date.now();
+      timingStats.globalCodeTime = Date.now();
+    }
     let code = {};
     for (let source of sources) {
       this._execute(source.filePath, source.fileContents, source.sourceMapContents || "", onError);
@@ -150,7 +153,10 @@ export class Serializer {
     );
     let ast = residualHeapSerializer.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
-    if (timingStats !== undefined) timingStats.serializePassTime = Date.now() - timingStats.serializePassTime;
+    if (timingStats !== undefined) {
+      timingStats.serializePassTime = Date.now() - timingStats.serializePassTime;
+      timingStats.totalTime = Date.now() - timingStats.totalTime;
+    }
     invariant(!this.logger.hasErrors());
     if (this.options.logStatistics) residualHeapSerializer.statistics.log();
     return {
