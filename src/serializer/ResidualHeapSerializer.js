@@ -1101,6 +1101,13 @@ export class ResidualHeapSerializer {
                   mightHaveBeenDeleted
                 );
               });
+
+              // Although the property needs to be delayed, we still want to emit "undefined"
+              // as part of the object literal to ensure a consistent property ordering.
+              if (!mightHaveBeenDeleted) {
+                let serializedKey = this.generator.getAsPropertyNameExpression(key);
+                props.push(t.objectProperty(serializedKey, voidExpression));
+              }
             } else {
               let serializedKey = this.generator.getAsPropertyNameExpression(key);
               props.push(
