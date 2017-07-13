@@ -12,7 +12,7 @@
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
-import { CompilerDiagnostics } from "../../errors.js";
+import { CompilerDiagnostic } from "../../errors.js";
 import {
   AbstractValue,
   BooleanValue,
@@ -97,7 +97,7 @@ export default function(realm: Realm): NativeFunctionValue {
           value = ((value: any): ObjectValue);
 
           realm.handleError(
-            new CompilerDiagnostics(
+            new CompilerDiagnostic(
               ToStringPartial(realm, Get(realm, value, "message")),
               realm.currentLocation,
               "PP0001",
