@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, Value } from "../values/index.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { NullValue, EmptyValue, ObjectValue } from "../values/index.js";
 import type {
   BabelNodeClassDeclaration,
@@ -49,7 +49,7 @@ function EvaluateClassHeritage(
   let ref = realm.getRunningContext().lexicalEnvironment.evaluate(ClassHeritage, strictCode);
   let val = GetValue(realm, ref);
   if (val instanceof AbstractValue) {
-    let error = new CompilerDiagnostics("unknown super class", ClassHeritage.loc, "PP0009", "RecoverableError");
+    let error = new CompilerDiagnostic("unknown super class", ClassHeritage.loc, "PP0009", "RecoverableError");
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
   if (!(val instanceof ObjectValue)) {
@@ -131,7 +131,7 @@ export function ClassDefinitionEvaluation(
       // iv. If Type(protoParent) is neither Object nor Null, throw a TypeError exception.
       if (!(protoParent instanceof ObjectValue || protoParent instanceof NullValue)) {
         if (protoParent instanceof AbstractValue) {
-          let error = new CompilerDiagnostics(
+          let error = new CompilerDiagnostic(
             "unknown super class prototype",
             ClassHeritage.loc,
             "PP0010",

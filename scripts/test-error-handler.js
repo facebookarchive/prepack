@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
+import type { CompilerDiagnostic, ErrorHandlerResult } from "../lib/errors.js";
 import { prepackFileSync } from "../lib/prepack-node.js";
 import invariant from "../lib/invariant.js";
 
@@ -43,8 +43,8 @@ let tests = search(`${__dirname}/../test/error-handler`, "test/error-handler");
 
 function errorHandler(
   retval: ErrorHandlerResult,
-  errors: Array<CompilerDiagnostics>,
-  error: CompilerDiagnostics
+  errors: Array<CompilerDiagnostic>,
+  error: CompilerDiagnostic
 ): ErrorHandlerResult {
   errors.push(error);
   return retval;

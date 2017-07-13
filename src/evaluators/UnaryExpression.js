@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
   AbstractObjectValue,
   Value,
@@ -63,7 +63,7 @@ export default function(
   realm: Realm
 ): Value {
   function reportError() {
-    let error = new CompilerDiagnostics(
+    let error = new CompilerDiagnostic(
       "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
       ast.argument.loc,
       "PP0008",

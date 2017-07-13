@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
 import { BoundNames, EnumerableOwnProperties, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
 import {
@@ -38,7 +38,7 @@ import * as t from "babel-types";
 
 // helper func to report error
 function reportError(realm: Realm, loc: ?BabelNodeSourceLocation) {
-  let error = new CompilerDiagnostics(
+  let error = new CompilerDiagnostic(
     "for in loops over unknown objects are not yet supported",
     loc,
     "PP0013",

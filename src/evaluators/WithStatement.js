@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import { LexicalEnvironment, ObjectEnvironmentRecord } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion } from "../completions.js";
 import { AbstractValue, Value } from "../values/index.js";
 import { ToObjectPartial, GetValue, NewObjectEnvironment, UpdateEmpty } from "../methods/index.js";
@@ -32,7 +32,7 @@ export default function(
   val = GetValue(realm, val);
   if (val instanceof AbstractValue) {
     let loc = ast.object.loc;
-    let error = new CompilerDiagnostics("with object must be a known value", loc, "PP0007", "RecoverableError");
+    let error = new CompilerDiagnostic("with object must be a known value", loc, "PP0007", "RecoverableError");
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
   let obj = ToObjectPartial(realm, val);
