@@ -149,7 +149,8 @@ export class ResidualHeapSerializer {
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
-  // All creation object should invoke this function once.
+  // For every created object that corresponds to a value,
+  // this function should be invoked once.
   // Thus, as a side effects, we gather statistics here on all emitted objects.
   _emitObjectProperties(
     obj: ObjectValue,

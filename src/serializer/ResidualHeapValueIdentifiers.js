@@ -13,11 +13,11 @@ import { Value } from "../values/index.js";
 import type { BabelNodeIdentifier } from "babel-types";
 import invariant from "../invariant.js";
 
-// This class maintains a map of values to babel identifiers,
-// and when running two passes,
-// this class can optionally track how often such value identifiers are referenced.
-// If an identifier is only ever referenced once, then the identifier
-// is not actually needed, as the defining expression can be inlined.
+// This class maintains a map of values to babel identifiers.
+// This class can optionally track how often such value identifiers are referenced
+// when pass 1 is activated, which is usually followed by pass 2 in which
+// unneeded identifiers (those which were only ever referenced once) are
+// eliminated as  the defining expression can be inlined.
 export class ResidualHeapValueIdentifiers {
   constructor() {
     this.collectValToRefCountOnly = false;
