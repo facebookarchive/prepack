@@ -195,12 +195,10 @@ function run(
         if (serialized.statistics === undefined || serialized.timingStats === undefined) {
           return;
         }
-        let memoryStats = v8.getHeapStatistics();
-        console.log(memoryStats);
         let stats = {
           SerializerStatistics: serialized.statistics,
           TimingStatistics: serialized.timingStats,
-          MemroryStatistics: memoryStats
+          MemroryStatistics: v8.getHeapStatistics(),
         };
         fs.writeFileSync(statsFileName, JSON.stringify(stats));
       }
