@@ -82,6 +82,7 @@ export class BodyReference {
 
 export class TimingStatistics {
   constructor() {
+    this.totalTime = 0;
     this.globalCodeTime = 0;
     this.initializeMoreModulesTime = 0;
     this.initializeModulesTime = 0;
@@ -89,6 +90,7 @@ export class TimingStatistics {
     this.referenceCountsTime = 0;
     this.serializePassTime = 0;
   }
+  totalTime: number;
   globalCodeTime: number;
   initializeModulesTime: number;
   initializeMoreModulesTime: number;
