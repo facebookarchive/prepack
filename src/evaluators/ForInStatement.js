@@ -36,6 +36,18 @@ import type {
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
+// helper func to report error
+function reportError(realm: Realm, loc: ?BabelNodeSourceLocation) {
+  let error = new CompilerDiagnostics(
+    "for in loops over unknown objects are not yet supported",
+    loc,
+    "PP0013",
+    "FatalError"
+  );
+  realm.handleError(error);
+  throw new FatalError();
+}
+
 // ECMA262 13.7.5.11
 export default function(
   ast: BabelNodeForInStatement,
@@ -46,18 +58,8 @@ export default function(
 ): Value {
   let { left, right, body } = ast;
 
-  // helper func to report error
   function reportErrorAndThrowIfNotConcrete(val: Value, loc: ?BabelNodeSourceLocation) {
-    if (val instanceof AbstractValue) {
-      let error = new CompilerDiagnostics(
-        "for in loops over unknown collections is not yet supported",
-        loc,
-        "PP0013",
-        "FatalError"
-      );
-      realm.handleError(error);
-      throw new FatalError();
-    }
+    if (val instanceof AbstractValue) reportError(realm, loc);
   }
 
   try {
@@ -245,12 +247,6 @@ function emitResidualLoopIfSafe(
     realm.getRunningContext().lexicalEnvironment = oldEnv;
   }
 
-  let error = new CompilerDiagnostics(
-    "for in loops over unknown collection is not yet supported",
-    obexpr.loc,
-    "PP0013",
-    "FatalError"
-  );
-  realm.handleError(error);
-  throw new FatalError();
+  reportError(realm, obexpr.loc);
+  invariant(false);
 }

@@ -171,14 +171,14 @@ class ModuleTracer extends Tracer {
             // know this delayed require call will require.
             // This way, we ensure that those modules will be fully initialized
             // before the require call executes.
-            // TODO: More needs to be done to make the delayUnsupportedRequires
+            // TODO #690: More needs to be done to make the delayUnsupportedRequires
             // feature completely safe. Open issues are:
             // 1) Side-effects on the heap of delayed factory functions are not discovered or rejected.
             // 2) While we do process an appropriate list of transitively required modules here,
             //    it's likely just a subset / prefix of all transivitely required modules, as
             //    more modules would have been required if the Introspection exception had not been thrown.
             //    To be correct, those modules would have to be prepacked here as well.
-            //    Watch out for an upcoming change to the __d module declaration where the statically known
+            //    TODO #798: Watch out for an upcoming change to the __d module declaration where the statically known
             //    list of dependencies will be announced, so we'll no longer have to guess.
             let nestedModulesIds = new Set();
             for (let i = requireSequenceStart; i < this.requireSequence.length; i++) {
