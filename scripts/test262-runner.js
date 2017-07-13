@@ -597,7 +597,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22898 || numPassedES6 < 10066 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 22916 || numPassedES6 < 10336 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -955,12 +955,9 @@ function runTest(
     return new TestResult(true, strict);
   } catch (err) {
     switch (err.message) {
-      case "Unsupported node type ArrayPattern":
       case "TODO: Patterns aren't supported yet":
       case "TODO: AwaitExpression":
       case "TODO: YieldExpression":
-      case "Unknown node ArrayPattern":
-      case "expected single name":
         return null;
       default:
         if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
@@ -1044,7 +1041,7 @@ function testFilterByMetadata(test: TestFileInfo, filterString: string): boolean
   if (test.location.includes("Simd")) return false;
 
   // temporarily disable intl402 tests (ES5)
-  if (test.location.includes("intl402") && !test.location.includes("/Date/")) {
+  if (test.location.includes("intl402") && !test.location.includes("/Date/prototype/to")) {
     return false;
   }
 
