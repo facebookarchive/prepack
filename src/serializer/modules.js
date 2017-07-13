@@ -47,7 +47,7 @@ class ModuleTracer extends Tracer {
   uninitializedModuleIdsRequiredInEvaluateForEffects: Set<number | string>;
   // We can't say that a module has been initialized if it was initialized in a
   // evaluate for effects context until we know the effects are applied.
-  nestedRequiredModulesAndValues: Array<{| id: number | string, value: Value |}> = [];
+  nestedRequiredModulesAndValues: Array<{| id: number | string, value: Value |}>;
   logModules: boolean;
 
   log(message: string) {
@@ -98,21 +98,20 @@ class ModuleTracer extends Tracer {
         return undefined;
       }
 
-      // Even if we're not delaying unsupported requires, we want to record what
+      // If we're not delaying unsupported requires, we still want to record what
       // modules have been initialized
       if (!this.modules.delayUnsupportedRequires) {
         if (
           (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) &&
-          !this.modules.initializedModules.has(moduleIdValue) &&
           this.modules.moduleIds.has(moduleIdValue)
         ) {
           this.requireStack.push(moduleIdValue);
           try {
             let value = performCall();
             this.modules.initializedModules.set(moduleIdValue, value);
+            if (this.modules.initializedModules.has(moduleIdValue))
+              invariant(this.modules.initializedModules.get(moduleIdValue) === value);
             return value;
-          } catch (e) {
-            throw e;
           } finally {
             invariant(this.requireStack.pop() === moduleIdValue);
           }
