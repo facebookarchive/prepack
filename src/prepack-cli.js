@@ -198,7 +198,7 @@ function run(
         let stats = {
           SerializerStatistics: serialized.statistics,
           TimingStatistics: serialized.timingStats,
-          MemroryStatistics: v8.getHeapStatistics(),
+          MemoryStatistics: v8.getHeapStatistics(),
         };
         fs.writeFileSync(statsFileName, JSON.stringify(stats));
       }
