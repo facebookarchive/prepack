@@ -16,7 +16,7 @@ import { Reference } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
 import { NormalCompletion, AbruptCompletion } from "../completions.js";
-import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression.js";
+import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   RequireObjectCoercible,
   GetIterator,
@@ -52,7 +52,7 @@ export function DestructuringAssignmentEvaluation(
 
     for (let property of pattern.properties) {
       // 1. Let name be the result of evaluating PropertyName.
-      let name = EvalPropertyNamePartial(property, env, realm, strictCode);
+      let name = EvalPropertyName(property, env, realm, strictCode);
 
       // 2. ReturnIfAbrupt(name).
 

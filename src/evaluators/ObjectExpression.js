@@ -34,18 +34,22 @@ import type {
 } from "babel-types";
 
 // Returns the result of evaluating PropertyName.
-export function EvalPropertyNamePartial(
+export function EvalPropertyName(
   prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod,
   env: LexicalEnvironment,
   realm: Realm,
   strictCode: boolean
 ): PropertyKeyValue {
-  let result = EvalPropertyName(prop, env, realm, strictCode);
-  if (result instanceof AbstractValue) result.throwIfNotConcrete();
+  let result = EvalPropertyNamePartial(prop, env, realm, strictCode);
+  if (result instanceof AbstractValue) {
+    let error = new CompilerDiagnostics("unknown computed property name", prop.loc, "PP0014", "FatalError");
+    realm.handleError(error);
+    throw new FatalError();
+  }
   return (result: any);
 }
 
-function EvalPropertyName(
+function EvalPropertyNamePartial(
   prop: BabelNodeObjectProperty | BabelNodeObjectMethod | BabelNodeClassMethod,
   env: LexicalEnvironment,
   realm: Realm,
@@ -80,8 +84,9 @@ export default function(
   // 2. Let status be the result of performing PropertyDefinitionEvaluation of PropertyDefinitionList with arguments obj and true.
   for (let prop of ast.properties) {
     if (prop.type === "ObjectProperty") {
+      // 12.2.6.9 case 3
       // 1. Let propKey be the result of evaluating PropertyName.
-      let propKey = EvalPropertyName(prop, env, realm, strictCode);
+      let propKey = EvalPropertyNamePartial(prop, env, realm, strictCode);
 
       // 2. ReturnIfAbrupt(propKey).
 
@@ -99,9 +104,8 @@ export default function(
         let hasNameProperty = HasOwnProperty(realm, propValue, "name");
 
         // b. If hasNameProperty is false, perform SetFunctionName(propValue, propKey).
-        if (!hasNameProperty) {
-          SetFunctionName(realm, propValue, propKey);
-        }
+        invariant(!hasNameProperty); // No expression that passes through IsAnonymousFunctionDefinition can have it here
+        SetFunctionName(realm, propValue, propKey);
       }
 
       // 6. Assert: enumerable is true.
@@ -118,10 +122,9 @@ export default function(
       } else {
         CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
       }
-    } else if (prop.type === "ObjectMethod") {
-      PropertyDefinitionEvaluation(realm, prop, obj, env, strictCode, true);
     } else {
-      throw new Error("unknown property node");
+      invariant(prop.type === "ObjectMethod");
+      PropertyDefinitionEvaluation(realm, prop, obj, env, strictCode, true);
     }
   }
 
