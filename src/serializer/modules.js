@@ -37,6 +37,7 @@ class ModuleTracer extends Tracer {
     this.requireSequence = [];
     this.logModules = logModules;
     this.uninitializedModuleIdsRequiredInEvaluateForEffects = new Set();
+    this.nestedRequiredModulesAndValues = [];
   }
 
   modules: Modules;
@@ -44,6 +45,9 @@ class ModuleTracer extends Tracer {
   requireStack: Array<number | string | void>;
   requireSequence: Array<number | string>;
   uninitializedModuleIdsRequiredInEvaluateForEffects: Set<number | string>;
+  // We can't say that a module has been initialized if it was initialized in a
+  // evaluate for effects context until we know the effects are applied.
+  nestedRequiredModulesAndValues: Array<{| id: number | string, value: Value |}>;
   logModules: boolean;
 
   log(message: string) {
@@ -75,18 +79,48 @@ class ModuleTracer extends Tracer {
     performCall: () => Value
   ): void | Value {
     let realm = this.modules.realm;
-    if (F === this.modules.getRequire() && this.modules.delayUnsupportedRequires && argumentsList.length === 1) {
+    if (
+      F === this.modules.getRequire() &&
+      !this.modules.disallowDelayingRequiresOverride &&
+      argumentsList.length === 1
+    ) {
       let moduleId = argumentsList[0];
       let moduleIdValue;
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
         moduleIdValue = moduleId.value;
-        if (!this.modules.moduleIds.has(moduleIdValue)) {
+        if (!this.modules.moduleIds.has(moduleIdValue) && this.modules.delayUnsupportedRequires) {
           this.modules.logger.logError(moduleId, "Module referenced by require call has not been defined.");
         }
       } else {
-        this.modules.logger.logError(moduleId, "First argument to require function is not a number or string value.");
+        if (this.modules.delayUnsupportedRequires) {
+          this.modules.logger.logError(moduleId, "First argument to require function is not a number or string value.");
+        }
         return undefined;
       }
+
+      // If we're not delaying unsupported requires, we still want to record what
+      // modules have been initialized
+      if (!this.modules.delayUnsupportedRequires) {
+        if (
+          (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) &&
+          this.modules.moduleIds.has(moduleIdValue)
+        ) {
+          this.requireStack.push(moduleIdValue);
+          try {
+            let value = performCall();
+            if (this.modules.initializedModules.has(moduleIdValue)) {
+              invariant(this.modules.initializedModules.get(moduleIdValue) === value);
+            } else {
+              this.modules.initializedModules.set(moduleIdValue, value);
+            }
+            return value;
+          } finally {
+            invariant(this.requireStack.pop() === moduleIdValue);
+          }
+        }
+        return undefined;
+      }
+
       this.log(`>require(${moduleIdValue})`);
       let isTopLevelRequire = this.requireStack.length === 0;
       if (this.evaluateForEffectsNesting > 0) {
@@ -139,6 +173,7 @@ class ModuleTracer extends Tracer {
                   nestedEffects[0] instanceof Value &&
                   this.modules.isModuleInitialized(nestedModuleId)
                 ) {
+                  this.nestedRequiredModulesAndValues.push({ id: nestedModuleId, value: nestedEffects[0] });
                   acceleratedModuleIds.push(nestedModuleId);
                 }
               }
@@ -195,6 +230,16 @@ class ModuleTracer extends Tracer {
               t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
             );
           } else {
+            invariant(result);
+            if (!(result instanceof Completion)) {
+              this.nestedRequiredModulesAndValues.push({ id: moduleIdValue, value: result });
+            }
+            if (isTopLevelRequire) {
+              for (let { id, value } of this.nestedRequiredModulesAndValues) {
+                this.modules.initializedModules.set(id, value);
+              }
+              this.nestedRequiredModulesAndValues = [];
+            }
             realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
           }
         } finally {
@@ -236,6 +281,7 @@ export class Modules {
     this.initializedModules = new Map();
     realm.tracers.push(new ModuleTracer(this, logModules));
     this.delayUnsupportedRequires = delayUnsupportedRequires;
+    this.disallowDelayingRequiresOverride = false;
   }
 
   realm: Realm;
@@ -247,6 +293,7 @@ export class Modules {
   initializedModules: Map<number | string, Value>;
   active: boolean;
   delayUnsupportedRequires: boolean;
+  disallowDelayingRequiresOverride: boolean;
 
   _getGlobalProperty(name: string) {
     if (this.active) return this.realm.intrinsics.undefined;
@@ -366,8 +413,8 @@ export class Modules {
     context.lexicalEnvironment = env;
     context.variableEnvironment = env;
     context.realm = realm;
-    let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
-    this.delayUnsupportedRequires = false;
+    let previousDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
+    this.disallowDelayingRequiresOverride = true;
     realm.pushContext(context);
     let oldErrorHandler = realm.errorHandler;
     realm.errorHandler = () => "Fail";
@@ -391,7 +438,7 @@ export class Modules {
       else throw err;
     } finally {
       realm.popContext(context);
-      this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
+      this.disallowDelayingRequiresOverride = previousDisallowDelayingRequiresOverride;
       realm.errorHandler = oldErrorHandler;
     }
   }
@@ -465,13 +512,6 @@ export class Modules {
       realm.popContext(context);
       realm.setReadOnly(oldReadOnly);
       this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
-    }
-  }
-
-  resolveInitializedModules(): void {
-    for (let moduleId of this.moduleIds) {
-      let result = this.isModuleInitialized(moduleId);
-      if (result !== undefined) this.initializedModules.set(moduleId, result);
     }
   }
 }
