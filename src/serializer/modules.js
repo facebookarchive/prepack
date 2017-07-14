@@ -92,8 +92,6 @@ class ModuleTracer extends Tracer {
         return undefined;
       }
 
-      // If we're not delaying unsupported requires, we still want to record what
-      // modules have been initialized
       if (!this.modules.delayUnsupportedRequires) {
         if (
           (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) &&
@@ -115,6 +113,7 @@ class ModuleTracer extends Tracer {
         return undefined;
       }
 
+      // If a require fails, recover from it and delay the factory call until runtime
       this.log(`>require(${moduleIdValue})`);
       let isTopLevelRequire = this.requireStack.length === 0;
       if (this.evaluateForEffectsNesting > 0) {
@@ -131,6 +130,17 @@ class ModuleTracer extends Tracer {
           this.uninitializedModuleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
         return undefined;
       } else {
+        let savedHandler = realm.errorHandler;
+        function handler(e) {
+          e.severity = "Warning";
+          realm.errorHandler = savedHandler;
+          try {
+            return realm.handleError(e);
+          } finally {
+            realm.errorHandler = handler;
+          }
+        }
+        realm.errorHandler = handler;
         let result;
         try {
           this.requireStack.push(moduleIdValue);
@@ -238,6 +248,7 @@ class ModuleTracer extends Tracer {
             realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
           }
         } finally {
+          realm.errorHandler = savedHandler;
           let popped = this.requireStack.pop();
           invariant(popped === moduleIdValue);
           let message = "";
