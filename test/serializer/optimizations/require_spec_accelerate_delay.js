@@ -1,16 +1,15 @@
+// delay unsupported requires
+// initialize more modules
+
 var modules = Object.create(null);
 
-var require_count = 0;
-
+__d = define;
 function require(moduleId) {
-  // we should no longer optimize require calls because of this modification
-  require_count += 1;
   var moduleIdReallyIsNumber = moduleId;
   var module = modules[moduleIdReallyIsNumber];
   return module && module.isInitialized ? module.exports : guardedLoadModule(moduleIdReallyIsNumber, module);
 }
 
-__d = define;
 function define(factory, moduleId, dependencyMap) {
   if (moduleId in modules) {
     return;
@@ -96,33 +95,30 @@ function moduleThrewError(id) {
 // === End require code ===
 
 define(function(global, require, module, exports) {
-  module.exports = { foo: " hello " };
+  var nondet = global.__abstract ? __abstract("boolean", "true") : true;
+  if (nondet) {
+    require(1);
+  }
+  module.exports = 1;
 }, 0, null);
 
 define(function(global, require, module, exports) {
-  var x = require(0);
-  var y = require(2);
-  module.exports = {
-    bar: " goodbye",
-    foo2: x.foo,
-    baz: y.baz
-  };
+  module.exports = 2;
 }, 1, null);
 
+
 define(function(global, require, module, exports) {
-  module.exports = { baz: " foo " };
+  module.exports = require(3) + 3;
 }, 2, null);
 
-var x = require(0);
+define(function(global, require, module, exports) {
+  module.exports = require(4) + require(0) + 4;
+}, 3, null);
 
-function f() {
-  var res = x.foo === " hello " && modules[1].exports === undefined &&
-    require(1).bar === " goodbye" && require_count === 4;
-  return res;
-}
+define(function(global, require, module, exports) {
+  module.exports = 5;
+}, 4, null);
 
-inspect = function() {
-  // the require( 0) should be entirely eliminated from 1's factory function
-  // but the require(2) will remain
-  return f();
-}
+var x = require(2);
+
+inspect = function() { return x; }
