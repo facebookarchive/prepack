@@ -10,6 +10,7 @@
 /* @flow */
 
 import { Realm } from "../../realm.js";
+import { FatalError } from "../../errors.js";
 import { AbstractValue, UndefinedValue, NumberValue, ObjectValue, StringValue, NullValue } from "../../values/index.js";
 import { IsCallable, IsRegExp } from "../../methods/is.js";
 import { GetMethod, GetSubstitution } from "../../methods/get.js";
@@ -809,7 +810,8 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
 
     if (realm.useAbstractInterpretation && (type === "LocaleUpper" || type === "LocaleLower")) {
       // The locale is environment-dependent
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(O);
+      AbstractValue.reportIntrospectionError(O);
+      throw new FatalError();
     }
 
     // Omit the rest of the arguments. Just use the native impl.

@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Intrinsics, PropertyBinding, Descriptor } from "./types.js";
-import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler } from "./errors.js";
+import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
 import {
   Value,
@@ -26,13 +26,7 @@ import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./enviro
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
-import {
-  Completion,
-  IntrospectionThrowCompletion,
-  ThrowCompletion,
-  AbruptCompletion,
-  PossiblyNormalCompletion,
-} from "./completions.js";
+import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
@@ -500,14 +494,11 @@ export class Realm {
     }
   }
 
-  createReadOnlyError(msg: string): IntrospectionThrowCompletion {
-    let completion = this.createIntrospectionErrorThrowCompletion(msg);
-    completion.reason = "readonly";
-    return completion;
-  }
-
   outputToConsole(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>): void {
-    if (this.isReadOnly) throw this.createReadOnlyError("Trying to create console output in read-only realm");
+    if (this.isReadOnly) {
+      // This only happens during speculative execution and is reported elsewhere
+      throw new FatalError("Trying to create console output in read-only realm");
+    }
     if (this.useAbstractInterpretation) {
       invariant(this.generator !== undefined);
       this.generator.emitConsoleLog(method, args);
@@ -529,7 +520,10 @@ export class Realm {
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
   recordModifiedBinding(binding: Binding, env: EnvironmentRecord): Binding {
-    if (env.isReadOnly) throw this.createReadOnlyError("Trying to modify a binding in read-only realm");
+    if (env.isReadOnly) {
+      // This only happens during speculative execution and is reported elsewhere
+      throw new FatalError("Trying to modify a binding in read-only realm");
+    }
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
       this.modifiedBindings.set(binding, binding.value);
     return binding;
@@ -539,7 +533,8 @@ export class Realm {
   // there is already an entry for binding.
   recordModifiedProperty(binding: PropertyBinding): void {
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
-      throw this.createReadOnlyError("Trying to modify a property in read-only realm");
+      // This only happens during speculative execution and is reported elsewhere
+      throw new FatalError("Trying to modify a property in read-only realm");
     }
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
       this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
@@ -635,7 +630,10 @@ export class Realm {
       invariant(binding.descriptor !== undefined);
       let value = binding.descriptor.value;
       ThrowIfMightHaveBeenDeleted(value);
-      if (value === undefined) throw AbstractValue.createIntrospectionErrorThrowCompletion(abstractValue, key);
+      if (value === undefined) {
+        AbstractValue.reportIntrospectionError(abstractValue, key);
+        throw new FatalError();
+      }
       this.rebuildObjectProperty(abstractValue, key, value, path);
     }
   }
@@ -684,12 +682,13 @@ export class Realm {
     //}
   }
 
-  createIntrospectionErrorThrowCompletion(message?: void | string | StringValue): IntrospectionThrowCompletion {
+  reportIntrospectionError(message?: void | string | StringValue) {
     if (message === undefined) message = "TODO";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
-    return new IntrospectionThrowCompletion(Construct(this, this.intrinsics.__IntrospectionError, [message]));
+    let error = new CompilerDiagnostic(message.value, this.currentLocation, "PP0001", "FatalError");
+    this.handleError(error);
   }
 
   createErrorThrowCompletion(type: NativeFunctionValue, message?: void | string | StringValue): ThrowCompletion {
