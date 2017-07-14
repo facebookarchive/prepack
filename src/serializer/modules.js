@@ -108,9 +108,11 @@ class ModuleTracer extends Tracer {
           this.requireStack.push(moduleIdValue);
           try {
             let value = performCall();
-            this.modules.initializedModules.set(moduleIdValue, value);
-            if (this.modules.initializedModules.has(moduleIdValue))
+            if (this.modules.initializedModules.has(moduleIdValue)) {
               invariant(this.modules.initializedModules.get(moduleIdValue) === value);
+            } else {
+              this.modules.initializedModules.set(moduleIdValue, value);
+            }
             return value;
           } finally {
             invariant(this.requireStack.pop() === moduleIdValue);
