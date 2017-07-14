@@ -12,8 +12,8 @@
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
 let AbruptCompletion = require("../lib/completions.js").AbruptCompletion;
-let IntrospectionThrowCompletion = require("../lib/completions.js").IntrospectionThrowCompletion;
 let ThrowCompletion = require("../lib/completions.js").ThrowCompletion;
+let FatalError = require("../lib/errors.js").FatalError;
 
 let chalk = require("chalk");
 let path = require("path");
@@ -88,9 +88,9 @@ function runTest(name, code) {
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
       let result = realm.$GlobalEnv.executePartialEvaluator(sources);
-      if (result instanceof IntrospectionThrowCompletion) return true;
       if (result instanceof ThrowCompletion) throw result.value;
     } catch (err) {
+      if (err instanceof FatalError) return true;
       console.log(err);
     }
     return false;

@@ -15,6 +15,7 @@ import { GetMethod, Get } from "./get.js";
 import { StringCreate } from "./create.js";
 import { HasProperty } from "./has.js";
 import { Call } from "./call.js";
+import { FatalError } from "../errors.js";
 import { IsCallable } from "./is.js";
 import { SameValue, SameValueZero } from "./abstract.js";
 import {
@@ -456,7 +457,8 @@ export function ToNumber(realm: Realm, val: numberOrValue): number {
   if (typeof val === "number") {
     return val;
   } else if (val instanceof AbstractValue) {
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(val);
+    AbstractValue.reportIntrospectionError(val);
+    throw new FatalError();
   } else if (val instanceof UndefinedValue) {
     return NaN;
   } else if (val instanceof NullValue) {

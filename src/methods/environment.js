@@ -36,6 +36,7 @@ import {
   LexicalEnvironment,
 } from "../environment.js";
 import { NormalCompletion, AbruptCompletion, ThrowCompletion } from "../completions.js";
+import { FatalError } from "../errors.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   GetV,
@@ -86,8 +87,10 @@ export function HasPrimitiveBase(realm: Realm, V: Reference): boolean {
 // ECMA262 6.2.3
 // GetReferencedName(V). Returns the referenced name component of the reference V.
 export function GetReferencedName(realm: Realm, V: Reference): string | SymbolValue {
-  if (V.referencedName instanceof AbstractValue)
-    throw realm.createIntrospectionErrorThrowCompletion("abstract reference");
+  if (V.referencedName instanceof AbstractValue) {
+    AbstractValue.reportIntrospectionError(V.referencedName);
+    throw new FatalError();
+  }
   return V.referencedName;
 }
 

@@ -20,7 +20,6 @@ import {
   JoinedAbruptCompletions,
   NormalCompletion,
   PossiblyNormalCompletion,
-  IntrospectionThrowCompletion,
 } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ExecutionContext } from "../realm.js";
@@ -1146,10 +1145,6 @@ export function EvaluateStatements(
           let e = realm.getCapturedEffects();
           invariant(e !== undefined);
           realm.stopEffectCaptureAndUndoEffects();
-          if (res instanceof IntrospectionThrowCompletion) {
-            realm.applyEffects(e);
-            throw res;
-          }
           invariant(context.savedCompletion !== undefined);
           e[0] = res;
           let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, res, e);
@@ -1211,10 +1206,6 @@ export function PartiallyEvaluateStatements(
             let e = realm.getCapturedEffects();
             invariant(e !== undefined);
             realm.stopEffectCaptureAndUndoEffects();
-            if (res instanceof IntrospectionThrowCompletion) {
-              realm.applyEffects(e);
-              throw res;
-            }
             invariant(blockValue instanceof PossiblyNormalCompletion);
             e[0] = res;
             let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, blockValue, res, e);
