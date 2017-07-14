@@ -11,6 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
+import { FatalError } from "../errors.js";
 import type { Value } from "../values/index.js";
 import type { BabelNodeYieldExpression } from "babel-types";
 
@@ -20,5 +21,5 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  throw new Error("TODO: YieldExpression");
+  throw new FatalError("TODO: YieldExpression");
 }

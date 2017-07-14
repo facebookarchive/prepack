@@ -15,6 +15,7 @@ import { AbruptCompletion, ThrowCompletion } from "../completions.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
+import invariant from "../invariant.js";
 
 export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   let completions = [];
@@ -46,5 +47,5 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       return (UpdateEmpty(realm, completion, realm.intrinsics.undefined): any);
   }
 
-  throw new Error("shouldn't meet this condition");
+  invariant(false);
 }

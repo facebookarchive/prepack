@@ -252,7 +252,7 @@ export class Realm {
       this.timeoutCounter = this.timeoutCounterThreshold;
       let total = Date.now() - this.start;
       if (total > timeout) {
-        throw new Error("Timed out");
+        throw new FatalError("Timed out");
       }
     }
   }

@@ -323,7 +323,7 @@ function reverseConfigJSON(config) {
 
 export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
   if (!realm.useAbstractInterpretation) {
-    throw new Error("Realm is not partial");
+    invariant(false, "Realm is not enabled for Abstract Interpretation");
   }
   // TODO: This causes a dependency on the native `process` which doesn't
   // exist in all environments such as the webpack version.

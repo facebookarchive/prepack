@@ -10,7 +10,7 @@
 /* @flow */
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, ExecutionContext, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
@@ -84,9 +84,16 @@ class ModuleTracer extends Tracer {
       this.log(`>require(${moduleIdValue})`);
       let isTopLevelRequire = this.requireStack.length === 0;
       if (this.evaluateForEffectsNesting > 0) {
-        if (isTopLevelRequire)
-          throw new Error("TODO: Non-deterministically conditional top-level require not currently supported");
-        else if (!this.modules.isModuleInitialized(moduleIdValue))
+        if (isTopLevelRequire) {
+          let diagnostic = new CompilerDiagnostic(
+            "Non-deterministically conditional top-level require not currently supported",
+            realm.currentLocation,
+            "PP0017",
+            "FatalError"
+          );
+          realm.handleError(diagnostic);
+          throw new FatalError();
+        } else if (!this.modules.isModuleInitialized(moduleIdValue))
           this.uninitializedModuleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
         return undefined;
       } else {
