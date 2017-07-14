@@ -582,13 +582,12 @@ export function BindingInitialization(
 
     // 2. Return ? InitializeBoundName(name, value, environment).
     return InitializeBoundName(realm, name, value, environment);
-  } else if (node.type === "VariableDeclaration") {
+  } else {
+    invariant(node.type === "VariableDeclaration");
     // ECMA262 13.7.5.9
     for (let decl of ((node: any): BabelNodeVariableDeclaration).declarations) {
       BindingInitialization(realm, decl.id, value, strictCode, environment);
     }
-  } else {
-    throw new Error("Unknown node " + node.type);
   }
 }
 

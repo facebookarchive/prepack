@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
+import { FatalError } from "../errors.js";
 import { Value, StringValue, NumberValue, ObjectValue } from "../values/index.js";
 import { CreateArrayFromList } from "../methods/index.js";
 
@@ -42,6 +43,6 @@ export default function convert(realm: Realm, val: any): Value {
 
     return obj;
   } else {
-    throw new Error("dunno how to convert this");
+    throw new FatalError("TODO: need to convert value of type " + typeof val);
   }
 }

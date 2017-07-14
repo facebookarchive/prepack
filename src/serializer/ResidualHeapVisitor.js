@@ -10,6 +10,7 @@
 /* @flow */
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
+import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
 import { IsUnresolvableReference, ResolveBinding, IsArray, Get } from "../methods/index.js";
@@ -315,7 +316,7 @@ export class ResidualHeapVisitor {
           let referencedBase = reference.base;
           let referencedName: string = (reference.referencedName: any);
           if (typeof referencedName !== "string") {
-            throw new Error("TODO: do not know how to visit reference with symbol");
+            throw new FatalError("TODO: do not know how to visit reference with symbol");
           }
           if (reference.base instanceof GlobalEnvironmentRecord) {
             visitedBinding = this.visitGlobalBinding(referencedName);

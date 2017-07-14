@@ -549,7 +549,7 @@ export function joinDescriptors(
   getAbstractValue: (void | Value, void | Value) => AbstractValue
 ): void | Descriptor {
   function clone_with_abstract_value(d: Descriptor) {
-    if (!IsDataDescriptor(realm, d)) throw new Error("TODO: join computed properties");
+    if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO: join computed properties");
     let dc = cloneDescriptor(d);
     invariant(dc !== undefined);
     dc.value = getAbstractValue(d.value, realm.intrinsics.empty);

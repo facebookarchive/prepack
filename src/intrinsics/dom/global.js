@@ -14,6 +14,7 @@ import type { Realm } from "../../realm.js";
 import { FunctionValue, NativeFunctionValue } from "../../values/index.js";
 import initializeDocument from "./document.js";
 import initializeConsole from "../common/console.js";
+import { FatalError } from "../../errors.js";
 import invariant from "../../invariant.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 
@@ -53,7 +54,7 @@ export default function(realm: Realm): void {
       let callback = args[0].throwIfNotConcrete();
       if (!(callback instanceof FunctionValue))
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "callback arguments must be function");
-      if (!realm.useAbstractInterpretation) throw new Error("TODO: implement global.setTimeout");
+      if (!realm.useAbstractInterpretation) throw new FatalError("TODO: implement global.setTimeout");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
       return generator.emitCallAndCaptureResult(
@@ -70,7 +71,7 @@ export default function(realm: Realm): void {
 
   global.$DefineOwnProperty("clearTimeout", {
     value: new NativeFunctionValue(realm, "global.clearTimeout", "", 2, (context, args) => {
-      if (!realm.useAbstractInterpretation) throw new Error("TODO: implement global.clearTimeout");
+      if (!realm.useAbstractInterpretation) throw new FatalError("TODO: implement global.clearTimeout");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
       generator.emitCall(() => generator.preludeGenerator.memoizeReference("global.clearTimeout"), args);
@@ -83,7 +84,7 @@ export default function(realm: Realm): void {
 
   global.$DefineOwnProperty("setInterval", {
     value: new NativeFunctionValue(realm, "global.setInterval", "", 2, (context, args) => {
-      if (!realm.useAbstractInterpretation) throw new Error("TODO: implement global.setInterval");
+      if (!realm.useAbstractInterpretation) throw new FatalError("TODO: implement global.setInterval");
       let callback = args[0].throwIfNotConcrete();
       if (!(callback instanceof FunctionValue))
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "callback arguments must be function");
@@ -103,7 +104,7 @@ export default function(realm: Realm): void {
 
   global.$DefineOwnProperty("clearInterval", {
     value: new NativeFunctionValue(realm, "global.clearInterval", "", 2, (context, args) => {
-      if (!realm.useAbstractInterpretation) throw new Error("TODO: implement global.clearInterval");
+      if (!realm.useAbstractInterpretation) throw new FatalError("TODO: implement global.clearInterval");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
       generator.emitCall(() => generator.preludeGenerator.memoizeReference("global.clearInterval"), args);

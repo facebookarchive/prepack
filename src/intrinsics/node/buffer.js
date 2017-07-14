@@ -10,6 +10,7 @@
 /* @flow */
 
 import invariant from "../../invariant.js";
+import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NumberValue, NativeFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
 import { Set, ToInteger } from "../../methods/index.js";
@@ -55,7 +56,7 @@ export default function(realm: Realm): ObjectValue {
 
       for (let name of simpleWrapperNames) {
         let wrapper = new NativeFunctionValue(realm, "Buffer.prototype." + name, name, 0, (context, args) => {
-          throw new Error("TODO: " + name);
+          throw new FatalError("TODO: " + name);
         });
         Set(realm, proto, name, wrapper, true);
       }
@@ -99,7 +100,7 @@ export default function(realm: Realm): ObjectValue {
     "createFromString",
     0,
     (context, args) => {
-      throw new Error("TODO");
+      throw new FatalError("TODO");
     }
   );
   Set(realm, obj, "createFromString", createFromString, true);
@@ -131,7 +132,7 @@ export default function(realm: Realm): ObjectValue {
 
   for (let name of simpleWrapperNames) {
     let wrapper = new NativeFunctionValue(realm, intrinsicName + "." + name, name, 0, (context, args) => {
-      throw new Error("TODO");
+      throw new FatalError("TODO");
     });
     Set(realm, obj, name, wrapper, true);
   }

@@ -76,7 +76,7 @@ export function prepackNodeCLISync(filename: string, options: Options = defaultO
     } else if (err instanceof Error) {
       throw err;
     } else {
-      throw new Error(err);
+      throw new FatalError(err);
     }
   } finally {
     realm.popContext(context);

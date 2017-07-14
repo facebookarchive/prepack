@@ -10,6 +10,7 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
+import { FatalError } from "../errors.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { ToLength, IsArray, Get } from "../methods/index.js";
 import {
@@ -928,7 +929,7 @@ export class ResidualHeapSerializer {
     }
 
     if (val instanceof NativeFunctionValue) {
-      throw new Error("TODO: do not know how to serialize non-intrinsic native function value");
+      throw new FatalError("TODO: do not know how to serialize non-intrinsic native function value");
     }
 
     let residualBindings = this.residualFunctionBindings.get(val);
