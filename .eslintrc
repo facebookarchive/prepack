@@ -8,7 +8,6 @@
     "flowtype",
     "header",
     "flow-header",
-    "prettier"
   ],
 
   "ecmaFeatures": {
@@ -215,11 +214,5 @@
       " ",
       ]
     ],
-
-  // Prettier
-    "prettier/prettier": ["error", {
-      "trailingComma": "es5",
-      "printWidth": 120,
-    }]
   }
 }

@@ -10,8 +10,10 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, StringValue } from "../../values/index.js";
+import { ObjectValue, StringValue, AbstractValue, BooleanValue } from "../../values/index.js";
 import { thisBooleanValue } from "../../methods/to.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import buildExpressionTemplate from "../../utils/builder.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.3.1
@@ -19,11 +21,18 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 19.3.3.3
   obj.defineNativeMethod("toString", 0, context => {
-    // 1. Let b be ? thisBooleanValue(this value).
-    let b = thisBooleanValue(realm, context);
+    if (context instanceof AbstractValue && context.getType() === BooleanValue) {
+      const codeTemplate = "(A).toString()";
+      return realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [context], ([a]) =>
+        buildExpressionTemplate(codeTemplate)(realm.preludeGenerator)({ A: a })
+      );
+    } else {
+      // 1. Let b be ? thisBooleanValue(this value).
+      let b = thisBooleanValue(realm, context);
 
-    // 2. If b is true, return "true"; else return "false".
-    return new StringValue(realm, b.value ? "true" : "false");
+      // 2. If b is true, return "true"; else return "false".
+      return new StringValue(realm, b.value ? "true" : "false");
+    }
   });
 
   // ECMA262 19.3.3.4

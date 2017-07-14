@@ -10,37 +10,48 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, StringValue, SymbolValue } from "../../values/index.js";
+import { ObjectValue, StringValue, SymbolValue, AbstractValue } from "../../values/index.js";
 import { SymbolDescriptiveString } from "../../methods/index.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import buildExpressionTemplate from "../../utils/builder.js";
+import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.4.3.2
   obj.defineNativeMethod("toString", 0, context => {
-    // 1. Let s be the this value.
-    let s = context.throwIfNotConcrete();
-
-    // 2. If Type(s) is Symbol, let sym be s.
-    let sym;
-    if (s instanceof SymbolValue) {
-      sym = s;
+    if (context instanceof AbstractValue && context.getType() === SymbolValue) {
+      const codeTemplate = "(A).toString()";
+      return realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [context], ([a]) =>
+        buildExpressionTemplate(codeTemplate)(realm.preludeGenerator)({ A: a })
+      );
     } else {
-      // 3. Else,
-      // a. If Type(s) is not Object, throw a TypeError exception.
-      if (!(s instanceof ObjectValue)) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      // 1. Let s be the this value.
+      let s = context.throwIfNotConcrete();
+      invariant(s instanceof SymbolValue, "expected symbol data internal slot to be a symbol value");
+
+      // 2. If Type(s) is Symbol, let sym be s.
+      let sym;
+      if (s instanceof SymbolValue) {
+        sym = s;
+      } else {
+        // 3. Else,
+        // a. If Type(s) is not Object, throw a TypeError exception.
+        if (!(s instanceof ObjectValue)) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+        }
+
+        // b. If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
+        if (!s.$SymbolData) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+        }
+
+        // c. Let sym be the value of s's [[SymbolData]] internal slot.
+        sym = s.$SymbolData;
       }
 
-      // b. If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
-      if (!s.$SymbolData) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-      }
-
-      // c. Let sym be the value of s's [[SymbolData]] internal slot.
-      sym = s.$SymbolData;
+      // 4. Return SymbolDescriptiveString(sym).
+      return new StringValue(realm, SymbolDescriptiveString(realm, sym));
     }
-
-    // 4. Return SymbolDescriptiveString(sym).
-    return new StringValue(realm, SymbolDescriptiveString(realm, sym));
   });
 
   // ECMA262 19.4.3.3

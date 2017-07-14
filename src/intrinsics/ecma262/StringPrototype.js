@@ -837,8 +837,12 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
 
   // ECMA262 21.1.3.23
   obj.defineNativeMethod("toString", 0, context => {
-    // 1. Return ? thisStringValue(this value).
-    return thisStringValue(realm, context);
+    if (context instanceof AbstractValue && context.getType() === StringValue) {
+      return context;
+    } else {
+      // 1. Return ? thisStringValue(this value).
+      return thisStringValue(realm, context);
+    }
   });
 
   // ECMA262 21.1.3.24
