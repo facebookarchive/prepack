@@ -413,9 +413,7 @@ function joinGenerators(
 }
 
 function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
-  let statements = context.startBody();
-  generator.serialize(statements, context);
-  context.endBody(statements);
+  let statements = context.serializeGenerator(generator);
   return t.blockStatement(statements);
 }
 
