@@ -10,6 +10,7 @@
 /* @flow */
 
 import { Realm, ExecutionContext } from "./realm.js";
+import { FatalError } from "./errors.js";
 import { Get } from "./methods/index.js";
 import { ToStringPartial, InstanceofOperator } from "./methods/index.js";
 import { AbruptCompletion, ThrowCompletion } from "./completions.js";
@@ -32,10 +33,10 @@ function serialize(realm: Realm, res: Value | AbruptCompletion): any {
     try {
       let value = res.value;
       if (value instanceof ObjectValue && InstanceofOperator(realm, value, realm.intrinsics.Error)) {
-        err = new Error(ToStringPartial(realm, Get(realm, value, "message")));
+        err = new FatalError(ToStringPartial(realm, Get(realm, value, "message")));
         err.stack = ToStringPartial(realm, Get(realm, value, "stack"));
       } else {
-        err = new Error(ToStringPartial(realm, value));
+        err = new FatalError(ToStringPartial(realm, value));
       }
     } finally {
       realm.popContext(context);

@@ -10,6 +10,7 @@
 /* @flow */
 
 import invariant from "../../invariant.js";
+import { FatalError } from "../../errors.js";
 import type { Realm } from "../../realm.js";
 import { type Value, BooleanValue, ObjectValue, NumberValue, StringValue } from "../../values/index.js";
 import { DefinePropertyOrThrow } from "../../methods/index.js";
@@ -35,19 +36,19 @@ export function createDeepIntrinsic(realm: Realm, value: Value, intrinsicName: s
       return new StringValue(realm, value, intrinsicName);
     // $FlowFixMe flow doesn't understand symbols.
     case "symbol":
-      throw new Error("Symbol cannot be safely cloned.");
+      throw new FatalError("Symbol cannot be safely cloned.");
     case "function":
-      throw new Error("Functions could be supported but are not yet.");
+      throw new FatalError("Functions could be supported but are not yet.");
     case "object": {
       if (value === null) {
         return realm.intrinsics.null;
       }
       if (Array.isArray(value)) {
-        throw new Error("Arrays are not supported yet.");
+        throw new FatalError("Arrays are not supported yet.");
       }
       let prototype = Object.getPrototypeOf(value);
       if (prototype !== Object.prototype) {
-        throw new Error(
+        throw new FatalError(
           "Only simple objects are supported for now. Got: " +
             ((typeof prototype.constructor === "function" && prototype.constructor.name) ||
               Object.prototype.toString.call(prototype))
@@ -68,7 +69,7 @@ export function createDeepIntrinsic(realm: Realm, value: Value, intrinsicName: s
       return obj;
     }
     default:
-      throw new Error("Unknown type.");
+      invariant(false);
   }
 }
 
@@ -79,7 +80,7 @@ export function copyProperty(realm: Realm, originalObject: {}, realmObject: Obje
     return;
   }
   if (desc.get || desc.set) {
-    throw new Error("Getter/setters are not supported because functions are not supported yet.");
+    throw new FatalError("Getter/setters are not supported because functions are not supported yet.");
   }
   let newDesc = {
     value: value,

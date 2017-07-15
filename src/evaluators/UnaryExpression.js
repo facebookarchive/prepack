@@ -198,7 +198,8 @@ export default function(
       invariant(val instanceof AbstractValue);
       return computeAbstractly(realm, StringValue, "typeof", val);
     }
-  } else if (ast.operator === "delete") {
+  } else {
+    invariant(ast.operator === "delete");
     // ECMA262 12.5.3.2
 
     // 1. Let ref be the result of evaluating UnaryExpression.
@@ -253,6 +254,4 @@ export default function(
     invariant(typeof referencedName === "string");
     return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
   }
-
-  throw new Error("unimplemented");
 }

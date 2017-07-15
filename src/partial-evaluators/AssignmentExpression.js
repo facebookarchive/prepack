@@ -22,6 +22,7 @@ import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { createAbstractValueForBinary } from "../partial-evaluators/BinaryExpression.js";
 import { AbruptCompletion, Completion } from "../completions.js";
 import { Reference } from "../environment.js";
+import { FatalError } from "../errors.js";
 import { BooleanValue, ConcreteValue, NullValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
 import {
   GetValue,
@@ -97,7 +98,7 @@ export default function(
       rval = composeNormalCompletions(leftCompletion, rightCompletion, rval, realm);
       return [rval, resultAst, io];
     }
-    throw new Error("Patterns aren't supported yet");
+    throw new FatalError("Patterns aren't supported yet");
     // 2. Let assignmentPattern be the parse of the source text corresponding to LeftHandSideExpression using AssignmentPattern[?Yield] as the goal symbol.
     // 3. Let rref be the result of evaluating AssignmentExpression.
     // 4. Let rval be ? GetValue(rref).

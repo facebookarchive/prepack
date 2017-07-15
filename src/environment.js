@@ -365,7 +365,7 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
   // ECMA262 8.1.1.2.3
   CreateImmutableBinding(N: string, S: boolean): Value {
     // The concrete Environment Record method CreateImmutableBinding is never used within this specification in association with object Environment Records.
-    throw new Error("unreachable");
+    invariant(false);
   }
 
   // ECMA262 8.1.1.2.4
@@ -960,27 +960,27 @@ export class ModuleEnvironmentRecord extends DeclarativeEnvironmentRecord {
   BindThisValue(
     V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
   ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 
   // ECMA262 8.1.1.3.2
   HasThisBinding(): boolean {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 
   // ECMA262 8.1.1.3.3
   HasSuperBinding(): boolean {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 
   // ECMA262 8.1.1.3.4
   GetThisBinding(): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 
   // ECMA262 8.1.1.3.5
   GetSuperBase(): NullValue | ObjectValue | UndefinedValue {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 }
 
@@ -1020,7 +1020,7 @@ export class LexicalEnvironment {
         // rethrowing Error should preserve stack trace
         throw err;
       // let's wrap into a proper Error to create stack trace
-      throw new Error(err);
+      throw new FatalError(err);
     }
   }
 
@@ -1043,7 +1043,7 @@ export class LexicalEnvironment {
         // rethrowing Error should preserve stack trace
         throw err;
       // let's wrap into a proper Error to create stack trace
-      throw new Error(err);
+      throw new FatalError(err);
     }
   }
 
@@ -1056,8 +1056,8 @@ export class LexicalEnvironment {
         // rethrowing Error should preserve stack trace
         throw err;
       // let's wrap into a proper Error to create stack trace
-      if (err instanceof Object) throw new Error(err.constructor.name + ": " + err);
-      throw new Error(err);
+      if (err instanceof Object) throw new FatalError(err.constructor.name + ": " + err);
+      throw new FatalError(err);
     }
   }
 

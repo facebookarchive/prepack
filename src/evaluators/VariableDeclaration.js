@@ -11,6 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
+import { FatalError } from "../errors.js";
 import type { Value } from "../values/index.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 import {
@@ -35,7 +36,7 @@ function letAndConst(
 ): Value {
   for (let declar of ast.declarations) {
     if (declar.id.type !== "Identifier") {
-      throw new Error("TODO: Patterns aren't supported yet");
+      throw new FatalError("TODO: Patterns aren't supported yet");
     }
 
     let Initializer = declar.init;
