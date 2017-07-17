@@ -39,7 +39,6 @@ import type {
 import { nullExpression } from "./internalizer.js";
 
 export type SerializationContext = {
-  reasons: Array<string>,
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
   emit: BabelNodeStatement => void,
