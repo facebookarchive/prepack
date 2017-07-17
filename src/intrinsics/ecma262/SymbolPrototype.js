@@ -27,7 +27,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 1. Let s be the this value.
       let s = context.throwIfNotConcrete();
-      invariant(s instanceof SymbolValue, "expected symbol data internal slot to be a symbol value");
 
       // 2. If Type(s) is Symbol, let sym be s.
       let sym;
@@ -48,7 +47,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // c. Let sym be the value of s's [[SymbolData]] internal slot.
         sym = s.$SymbolData;
       }
-
+      invariant(sym instanceof SymbolValue, "expected symbol data internal slot to be a symbol value");
       // 4. Return SymbolDescriptiveString(sym).
       return new StringValue(realm, SymbolDescriptiveString(realm, sym));
     }
