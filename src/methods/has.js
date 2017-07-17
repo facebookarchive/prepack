@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { ThrowIfMightHaveBeenDeleted, IsPropertyKey } from "./index.js";
@@ -124,7 +125,8 @@ export function HasCompatibleType(value: Value, type: typeof Value): boolean {
   let valueType = value.getType();
   if (valueType === Value) {
     invariant(value instanceof AbstractValue);
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(value);
+    AbstractValue.reportIntrospectionError(value);
+    throw new FatalError();
   }
   return Value.isTypeCompatibleWith(valueType, type);
 }
@@ -133,7 +135,8 @@ export function HasSomeCompatibleType(value: Value, ...manyTypes: Array<typeof V
   let valueType = value.getType();
   if (valueType === Value) {
     invariant(value instanceof AbstractValue);
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(value);
+    AbstractValue.reportIntrospectionError(value);
+    throw new FatalError();
   }
   return manyTypes.some(Value.isTypeCompatibleWith.bind(null, valueType));
 }

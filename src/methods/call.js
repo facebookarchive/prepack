@@ -11,6 +11,7 @@
 
 import type { PropertyKeyValue } from "../types.js";
 import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
+import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
 import {
@@ -312,7 +313,7 @@ export function OrdinaryCallEvaluateBody(
       } else if (err instanceof Error) {
         throw err;
       } else {
-        throw new Error(err);
+        throw new FatalError(err);
       }
     }
   } else if (F.$FunctionKind === "generator") {

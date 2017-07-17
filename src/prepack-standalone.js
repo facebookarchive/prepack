@@ -130,9 +130,8 @@ export function prepack(code: string, options: Options = defaultOptions) {
 export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: string, options: Options = defaultOptions) {
   if (ast && ast.type === "Program") {
     ast = t.file(ast, [], []);
-  } else if (!ast || ast.type !== "File") {
-    throw new Error("Not a valid ast?");
   }
+  invariant(ast && ast.type === "File");
   let filename = options.filename || (ast.loc && ast.loc.source) || "unknown";
   let sources = [{ filePath: filename, fileContents: code }];
 

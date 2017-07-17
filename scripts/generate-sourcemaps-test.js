@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { CompilerDiagnostics, ErrorHandlerResult } from "../lib/errors.js";
+import type { CompilerDiagnostic, ErrorHandlerResult } from "../lib/errors.js";
 import { prepackFileSync } from "../lib/prepack-node.js";
 import invariant from "../lib/invariant.js";
 
@@ -40,7 +40,7 @@ function search(dir, relative) {
 
 let tests = search(`${__dirname}/../test/source-maps`, "test/source-maps");
 
-function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
+function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
   let loc = diagnostic.location;
   if (loc) console.log(`${loc.start.line}:${loc.start.column + 1} ${diagnostic.errorCode} ${diagnostic.message}`);
   else console.log(`unknown location: ${diagnostic.errorCode} ${diagnostic.message}`);

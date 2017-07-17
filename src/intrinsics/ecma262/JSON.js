@@ -41,6 +41,7 @@ import {
 } from "../../methods/index.js";
 import { InternalizeJSONProperty } from "../../methods/json.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { FatalError } from "../../errors.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
@@ -313,7 +314,10 @@ function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValu
     invariant(binding.descriptor !== undefined);
     let value = binding.descriptor.value;
     ThrowIfMightHaveBeenDeleted(value);
-    if (value === undefined) throw AbstractValue.createIntrospectionErrorThrowCompletion(val, key); // cannot handle accessors
+    if (value === undefined) {
+      AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
+      throw new FatalError();
+    }
     CreateDataProperty(realm, template, key, InternalJSONClone(realm, value));
   }
   if (valTemplate.isPartial()) template.makePartial();

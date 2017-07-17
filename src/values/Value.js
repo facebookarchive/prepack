@@ -81,35 +81,35 @@ export default class Value {
   }
 
   mightBeFalse(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightNotBeFalse(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightBeNull(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightBeNumber(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightNotBeNumber(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightNotBeObject(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightBeObject(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightNotBeString(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightBeTrue(): boolean {
@@ -121,49 +121,47 @@ export default class Value {
   }
 
   mightBeUndefined(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   mightHaveBeenDeleted(): boolean {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   promoteEmptyToUndefined(): Value {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   throwIfNotConcrete(): ConcreteValue {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   throwIfNotConcreteNumber(): NumberValue {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   throwIfNotConcreteObject(): ObjectValue {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   throwIfNotObject(): ObjectValue | AbstractObjectValue {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 
   serialize(stack: Map<Value, any> = new Map()): any {
     if (stack.has(this)) {
       return stack.get(this);
-    } else if (this._serialize) {
+    } else {
       let set = val => {
         stack.set(this, val);
         return val;
       };
 
       return set(this._serialize(set, stack));
-    } else {
-      throw new Error("can't serialize this type");
     }
   }
 
   _serialize(set: Function, stack: Map<Value, any>): any {
-    throw new Error("abstract method; please override");
+    invariant(false, "abstract method; please override");
   }
 }

@@ -11,6 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { TypedArrayKind } from "../types.js";
+import { FatalError } from "../errors.js";
 import {
   AbstractValue,
   IntegerIndexedExotic,
@@ -339,7 +340,8 @@ export function TypedArrayCreate(realm: Realm, constructor: ObjectValue, argumen
   if (argumentList.length === 1 && argumentList[0].mightBeNumber()) {
     if (argumentList[0].mightNotBeNumber()) {
       invariant(argumentList[0] instanceof AbstractValue);
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(argumentList[0]);
+      AbstractValue.reportIntrospectionError(argumentList[0]);
+      throw new FatalError();
     }
     // a. If newTypedArray.[[ArrayLength]] < argumentList[0], throw a TypeError exception.
     invariant(typeof newTypedArray.$ArrayLength === "number");

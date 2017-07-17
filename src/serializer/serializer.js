@@ -10,13 +10,12 @@
 /* @flow */
 
 import { Realm, ExecutionContext } from "../realm.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { SourceFile } from "../types.js";
-import { Completion } from "../completions.js";
-import { Value } from "../values/index.js";
+import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
 import generate from "babel-generator";
 import type SourceMap from "babel-generator";
-// import { transform } from "babel-core";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
@@ -52,7 +51,7 @@ export class Serializer {
   modules: Modules;
   options: SerializerOptions;
 
-  _execute(filename: string, code: string, map: string, onError: void | ((Realm, Value) => void)) {
+  _execute(filename: string, code: string, map: string) {
     let realm = this.realm;
     let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
@@ -60,24 +59,24 @@ export class Serializer {
       traverse(ast, IdentifierCollector, null, realmPreludeGenerator.nameGenerator.forbiddenNames);
     });
 
-    if (res instanceof Completion) {
+    if (res instanceof AbruptCompletion) {
       let context = new ExecutionContext();
       realm.pushContext(context);
       try {
-        if (onError) {
-          onError(realm, res.value);
-        }
         this.logger.logCompletion(res);
       } finally {
         realm.popContext(context);
       }
+      // TODO: annotate AbruptCompletion instances with the locations of the statements that caused them.
+      let diagnostic = new CompilerDiagnostic("Global code may end abruptly", null, "PP0016", "FatalError");
+      realm.handleError(diagnostic);
+      throw new FatalError();
     }
   }
 
   init(
     sources: Array<SourceFile>,
-    sourceMaps?: boolean = false,
-    onError?: (Realm, Value) => void
+    sourceMaps?: boolean = false
   ): void | {
     code: string,
     map: void | SourceMap,
@@ -92,14 +91,11 @@ export class Serializer {
     }
     let code = {};
     for (let source of sources) {
-      this._execute(source.filePath, source.fileContents, source.sourceMapContents || "", onError);
+      this._execute(source.filePath, source.fileContents, source.sourceMapContents || "");
       code[source.filePath] = source.fileContents;
     }
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
-    if (timingStats !== undefined) timingStats.initializeModulesTime = Date.now();
-    this.modules.resolveInitializedModules();
-    if (timingStats !== undefined) timingStats.initializeModulesTime = Date.now() - timingStats.initializeModulesTime;
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
       this.modules.initializeMoreModules();

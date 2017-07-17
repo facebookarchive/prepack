@@ -10,10 +10,10 @@
 /* @flow */
 
 import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeSourceLocation } from "babel-types";
+import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 
-import { IntrospectionThrowCompletion } from "../completions.js";
 import {
   AbstractObjectValue,
   BooleanValue,
@@ -233,26 +233,27 @@ export default class AbstractValue extends Value {
   }
 
   throwIfNotConcrete(): ConcreteValue {
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
   }
 
   throwIfNotConcreteNumber(): NumberValue {
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
   }
 
   throwIfNotConcreteObject(): ObjectValue {
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
   }
 
   throwIfNotObject(): AbstractObjectValue {
     invariant(!(this instanceof AbstractObjectValue));
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
   }
 
-  static createIntrospectionErrorThrowCompletion(
-    val: Value,
-    propertyName: void | PropertyKeyValue
-  ): IntrospectionThrowCompletion {
+  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
     let realm = val.$Realm;
 
     let identity;
@@ -278,6 +279,6 @@ export default class AbstractValue extends Value {
 
     let message = `This operation is not yet supported on ${identity} ${location}`;
 
-    return realm.createIntrospectionErrorThrowCompletion(message);
+    return realm.reportIntrospectionError(message);
   }
 }

@@ -42,7 +42,7 @@ export function DaysInYear(realm: Realm, y: number): 365 | 366 {
   if (y % 100 === 0 && y % 400 !== 0) return 365;
   if (y % 400 === 0) return 366;
 
-  throw new Error("Invalid condition");
+  invariant(false, "Invalid condition");
 }
 
 // ECMA262 20.3.1.3
@@ -75,7 +75,7 @@ export function InLeapYear(realm: Realm, t: number): number {
   let daysInYear = DaysInYear(realm, YearFromTime(realm, t));
   if (daysInYear === 365) return 0;
   if (daysInYear === 366) return 1;
-  throw new Error("invalid condition");
+  invariant(false, "invalid condition");
 }
 
 // ECMA262 20.3.1.4

@@ -31,16 +31,10 @@ export class NormalCompletion extends Completion {}
 export class ThrowCompletion extends AbruptCompletion {
   constructor(value: Value, nativeStack?: ?string) {
     super(value);
-    invariant(
-      value.getType() !== value.$Realm.intrinsics.__IntrospectionError || this instanceof IntrospectionThrowCompletion
-    );
     this.nativeStack = nativeStack || new Error().stack;
   }
 
   nativeStack: string;
-}
-export class IntrospectionThrowCompletion extends ThrowCompletion {
-  reason: void | "readonly";
 }
 export class ContinueCompletion extends AbruptCompletion {}
 export class BreakCompletion extends AbruptCompletion {}

@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
+import { FatalError } from "../../errors.js";
 import { StringValue, ObjectValue, NumberValue } from "../../values/index.js";
 import {
   ToNumber,
@@ -677,7 +678,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 20.3.4.35
   obj.defineNativeMethod("toDateString", 0, context => {
-    throw new Error("TODO: implement Date.prototype.toDateString");
+    throw new FatalError("TODO: implement Date.prototype.toDateString");
   });
 
   // ECMA262 20.3.4.36
@@ -709,17 +710,17 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 20.3.4.38
   obj.defineNativeMethod("toLocaleDateString", 0, context => {
-    throw new Error("TODO: implement Date.prototype.toLocaleDateString");
+    throw new FatalError("TODO: implement Date.prototype.toLocaleDateString");
   });
 
   // ECMA262 20.3.4.39
   obj.defineNativeMethod("toLocaleString", 0, context => {
-    throw new Error("TODO: implement Date.prototype.toLocaleString");
+    throw new FatalError("TODO: implement Date.prototype.toLocaleString");
   });
 
   // ECMA262 20.3.4.40
   obj.defineNativeMethod("toLocaleTimeString", 0, context => {
-    throw new Error("TODO: implement Date.prototype.toLocaleTimeString");
+    throw new FatalError("TODO: implement Date.prototype.toLocaleTimeString");
   });
 
   // ECMA262 20.3.4.41
@@ -744,12 +745,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 20.3.4.42
   obj.defineNativeMethod("toTimeString", 0, context => {
-    throw new Error("TODO: implement Date.prototype.toTimeString");
+    throw new FatalError("TODO: implement Date.prototype.toTimeString");
   });
 
   // ECMA262 20.3.4.43
   obj.defineNativeMethod("toUTCString", 0, context => {
-    throw new Error("TODO: implement Date.prototype.toUTCString");
+    throw new FatalError("TODO: implement Date.prototype.toUTCString");
   });
 
   // ECMA262 20.3.4.44

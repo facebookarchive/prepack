@@ -11,6 +11,7 @@
 
 import type { BabelNodeClassExpression, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
+import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 
 import { AbruptCompletion } from "../completions.js";
@@ -22,5 +23,5 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): [AbruptCompletion | Value, BabelNodeClassExpression, Array<BabelNodeStatement>] {
-  throw new Error("TODO: ClassExpression");
+  throw new FatalError("TODO: ClassExpression");
 }

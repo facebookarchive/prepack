@@ -10,17 +10,11 @@
 /* @flow */
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, ExecutionContext, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
-import { IsUnresolvableReference, ResolveBinding, ToStringPartial, Get } from "../methods/index.js";
-import {
-  AbruptCompletion,
-  Completion,
-  IntrospectionThrowCompletion,
-  PossiblyNormalCompletion,
-  ThrowCompletion,
-} from "../completions.js";
+import { IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
+import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
 import { Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
@@ -37,6 +31,7 @@ class ModuleTracer extends Tracer {
     this.requireSequence = [];
     this.logModules = logModules;
     this.uninitializedModuleIdsRequiredInEvaluateForEffects = new Set();
+    this.nestedRequiredModulesAndValues = [];
   }
 
   modules: Modules;
@@ -44,6 +39,9 @@ class ModuleTracer extends Tracer {
   requireStack: Array<number | string | void>;
   requireSequence: Array<number | string>;
   uninitializedModuleIdsRequiredInEvaluateForEffects: Set<number | string>;
+  // We can't say that a module has been initialized if it was initialized in a
+  // evaluate for effects context until we know the effects are applied.
+  nestedRequiredModulesAndValues: Array<{| id: number | string, value: Value |}>;
   logModules: boolean;
 
   log(message: string) {
@@ -75,30 +73,65 @@ class ModuleTracer extends Tracer {
     performCall: () => Value
   ): void | Value {
     let realm = this.modules.realm;
-    if (F === this.modules.getRequire() && this.modules.delayUnsupportedRequires && argumentsList.length === 1) {
+    if (
+      F === this.modules.getRequire() &&
+      !this.modules.disallowDelayingRequiresOverride &&
+      argumentsList.length === 1
+    ) {
       let moduleId = argumentsList[0];
       let moduleIdValue;
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
         moduleIdValue = moduleId.value;
-        if (!this.modules.moduleIds.has(moduleIdValue)) {
+        if (!this.modules.moduleIds.has(moduleIdValue) && this.modules.delayUnsupportedRequires) {
           this.modules.logger.logError(moduleId, "Module referenced by require call has not been defined.");
         }
       } else {
-        this.modules.logger.logError(moduleId, "First argument to require function is not a number or string value.");
+        if (this.modules.delayUnsupportedRequires) {
+          this.modules.logger.logError(moduleId, "First argument to require function is not a number or string value.");
+        }
         return undefined;
       }
+
+      // If we're not delaying unsupported requires, we still want to record what
+      // modules have been initialized
+      if (!this.modules.delayUnsupportedRequires) {
+        if (
+          (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) &&
+          this.modules.moduleIds.has(moduleIdValue)
+        ) {
+          this.requireStack.push(moduleIdValue);
+          try {
+            let value = performCall();
+            if (this.modules.initializedModules.has(moduleIdValue)) {
+              invariant(this.modules.initializedModules.get(moduleIdValue) === value);
+            } else {
+              this.modules.initializedModules.set(moduleIdValue, value);
+            }
+            return value;
+          } finally {
+            invariant(this.requireStack.pop() === moduleIdValue);
+          }
+        }
+        return undefined;
+      }
+
       this.log(`>require(${moduleIdValue})`);
       let isTopLevelRequire = this.requireStack.length === 0;
       if (this.evaluateForEffectsNesting > 0) {
-        if (isTopLevelRequire)
-          throw new Error("TODO: Non-deterministically conditional top-level require not currently supported");
-        else if (!this.modules.isModuleInitialized(moduleIdValue))
+        if (isTopLevelRequire) {
+          let diagnostic = new CompilerDiagnostic(
+            "Non-deterministically conditional top-level require not currently supported",
+            realm.currentLocation,
+            "PP0017",
+            "FatalError"
+          );
+          realm.handleError(diagnostic);
+          throw new FatalError();
+        } else if (!this.modules.isModuleInitialized(moduleIdValue))
           this.uninitializedModuleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
         return undefined;
       } else {
         let result;
-        let oldErrorHandler = realm.errorHandler;
-        realm.errorHandler = () => "Fail";
         try {
           this.requireStack.push(moduleIdValue);
           let requireSequenceStart = this.requireSequence.length;
@@ -139,6 +172,7 @@ class ModuleTracer extends Tracer {
                   nestedEffects[0] instanceof Value &&
                   this.modules.isModuleInitialized(nestedModuleId)
                 ) {
+                  this.nestedRequiredModulesAndValues.push({ id: nestedModuleId, value: nestedEffects[0] });
                   acceleratedModuleIds.push(nestedModuleId);
                 }
               }
@@ -152,20 +186,16 @@ class ModuleTracer extends Tracer {
             }
           } while (acceleratedModuleIds.length > 0);
 
-          if (effects === undefined) {
-            // TODO: We got here due to a fatal error. Report the message somehow.
-            console.log(`delaying require(${moduleIdValue})`);
-          } else {
-            [result] = effects;
+          if (effects !== undefined) {
+            result = effects[0];
             invariant(result instanceof Value || result instanceof Completion);
-            if (result instanceof IntrospectionThrowCompletion || result instanceof PossiblyNormalCompletion) {
-              let [message, stack] = this.modules.getMessageAndStack(effects);
-              console.log(`delaying require(${moduleIdValue}): ${message} ${stack}`);
+            if (result instanceof PossiblyNormalCompletion) {
               effects = undefined;
             }
           }
 
           if (effects === undefined) {
+            console.log(`delaying require(${moduleIdValue})`);
             // So we are about to emit a delayed require(...) call.
             // However, before we do that, let's try to require all modules that we
             // know this delayed require call will require.
@@ -195,16 +225,24 @@ class ModuleTracer extends Tracer {
               t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
             );
           } else {
+            invariant(result);
+            if (!(result instanceof Completion)) {
+              this.nestedRequiredModulesAndValues.push({ id: moduleIdValue, value: result });
+            }
+            if (isTopLevelRequire) {
+              for (let { id, value } of this.nestedRequiredModulesAndValues) {
+                this.modules.initializedModules.set(id, value);
+              }
+              this.nestedRequiredModulesAndValues = [];
+            }
             realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
           }
         } finally {
           let popped = this.requireStack.pop();
           invariant(popped === moduleIdValue);
           let message = "";
-          invariant(!(result instanceof IntrospectionThrowCompletion));
           if (result instanceof ThrowCompletion) message = " threw an error";
           this.log(`<require(${moduleIdValue})${message}`);
-          realm.errorHandler = oldErrorHandler;
         }
         if (result instanceof Completion) throw result;
         return result;
@@ -236,6 +274,7 @@ export class Modules {
     this.initializedModules = new Map();
     realm.tracers.push(new ModuleTracer(this, logModules));
     this.delayUnsupportedRequires = delayUnsupportedRequires;
+    this.disallowDelayingRequiresOverride = false;
   }
 
   realm: Realm;
@@ -247,6 +286,7 @@ export class Modules {
   initializedModules: Map<number | string, Value>;
   active: boolean;
   delayUnsupportedRequires: boolean;
+  disallowDelayingRequiresOverride: boolean;
 
   _getGlobalProperty(name: string) {
     if (this.active) return this.realm.intrinsics.undefined;
@@ -325,39 +365,6 @@ export class Modules {
     };
   }
 
-  getMessageAndStack([result, generator, bindings, properties, createdObjects]: Effects): [string, string] {
-    let realm = this.realm;
-    if (!(result instanceof Completion) || !(result.value instanceof ObjectValue))
-      return ["(no message)", "(no stack)"];
-
-    // Temporarily apply state changes in order to retrieve message
-    realm.restoreBindings(bindings);
-    realm.restoreProperties(properties);
-
-    let value = result.value;
-    let message: string = this.logger.tryQuery(
-      () => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "message")),
-      "(cannot get message)",
-      false
-    );
-    let stack: string = this.logger.tryQuery(
-      () => ToStringPartial(realm, Get(realm, ((value: any): ObjectValue), "stack")),
-      "",
-      false
-    );
-
-    // Undo state changes
-    realm.restoreBindings(bindings);
-    realm.restoreProperties(properties);
-
-    if (result instanceof IntrospectionThrowCompletion && result.reason !== undefined)
-      message = `[${result.reason}] ${message}`;
-
-    let i = stack.indexOf("\n");
-    if (i >= 0) stack = stack.slice(i);
-    return [message, stack];
-  }
-
   tryInitializeModule(moduleId: number | string, message: string): void | Effects {
     let realm = this.realm;
     // setup execution environment
@@ -366,19 +373,16 @@ export class Modules {
     context.lexicalEnvironment = env;
     context.variableEnvironment = env;
     context.realm = realm;
-    let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
-    this.delayUnsupportedRequires = false;
+    let previousDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
+    this.disallowDelayingRequiresOverride = true;
     realm.pushContext(context);
     let oldErrorHandler = realm.errorHandler;
-    realm.errorHandler = () => "Fail";
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
       let effects = realm.evaluateNodeForEffects(node, true, env);
-      let result = effects[0];
-      if (result instanceof IntrospectionThrowCompletion) return effects;
-
       realm.applyEffects(effects, message);
+      let result = effects[0];
       if (result instanceof Completion) {
         console.log(`=== UNEXPECTED ERROR during ${message} ===`);
         this.logger.logCompletion(result);
@@ -391,7 +395,7 @@ export class Modules {
       else throw err;
     } finally {
       realm.popContext(context);
-      this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
+      this.disallowDelayingRequiresOverride = previousDisallowDelayingRequiresOverride;
       realm.errorHandler = oldErrorHandler;
     }
   }
@@ -399,35 +403,16 @@ export class Modules {
   initializeMoreModules() {
     // partially evaluate all factory methods by calling require
     let count = 0;
-    let introspectionErrors = Object.create(null);
     for (let moduleId of this.moduleIds) {
       if (this.initializedModules.has(moduleId)) continue;
-
       let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
-
       if (effects === undefined) continue;
       let result = effects[0];
-      if (result instanceof IntrospectionThrowCompletion) {
-        invariant(result instanceof IntrospectionThrowCompletion);
-        let [message, stack] = this.getMessageAndStack(effects);
-        let stacks = (introspectionErrors[message] = introspectionErrors[message] || []);
-        stacks.push(stack);
-        continue;
-      }
-
       invariant(result instanceof Value);
       count++;
       this.initializedModules.set(moduleId, result);
     }
-    // TODO: How do FatalError / Realm.handleError participate in these statistics?
     if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
-    let a = [];
-    for (let key in introspectionErrors) a.push([introspectionErrors[key], key]);
-    a.sort((x, y) => y[0].length - x[0].length);
-    if (a.length) {
-      console.log(`=== speculative module initialization failures ordered by frequency`);
-      for (let [stacks, n] of a) console.log(`${stacks.length}x ${n} ${stacks.join("\nas well as")}]`);
-    }
   }
 
   isModuleInitialized(moduleId: number | string): void | Value {
@@ -461,17 +446,13 @@ export class Modules {
       if (escapes) return undefined;
 
       return compl;
+    } catch (err) {
+      if (err instanceof FatalError) return undefined;
+      throw err;
     } finally {
       realm.popContext(context);
       realm.setReadOnly(oldReadOnly);
       this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
-    }
-  }
-
-  resolveInitializedModules(): void {
-    for (let moduleId of this.moduleIds) {
-      let result = this.isModuleInitialized(moduleId);
-      if (result !== undefined) this.initializedModules.set(moduleId, result);
     }
   }
 }

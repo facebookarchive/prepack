@@ -10,6 +10,7 @@
 /* @flow */
 
 import { Realm, ExecutionContext } from "../realm.js";
+import { FatalError } from "../errors.js";
 import { ToStringPartial, Get, InstanceofOperator } from "../methods/index.js";
 import { Completion, ThrowCompletion } from "../completions.js";
 import { ObjectValue, StringValue, Value } from "../values/index.js";
@@ -71,7 +72,7 @@ export class Logger {
     ) {
       let object = ((value: any): ObjectValue);
       try {
-        let err = new Error(
+        let err = new FatalError(
           this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "message")), "(unknown message)", false)
         );
         err.stack = this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "stack")), "(unknown stack)", false);

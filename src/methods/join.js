@@ -11,6 +11,7 @@
 
 import type { BabelNodeBlockStatement } from "babel-types";
 import type { Binding } from "../environment.js";
+import { FatalError } from "../errors.js";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
@@ -23,7 +24,6 @@ import {
   JoinedAbruptCompletions,
   NormalCompletion,
   ReturnCompletion,
-  IntrospectionThrowCompletion,
   ThrowCompletion,
 } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -45,10 +45,6 @@ export function stopEffectCaptureAndJoinCompletions(
   let e = realm.getCapturedEffects();
   invariant(e !== undefined);
   realm.stopEffectCaptureAndUndoEffects();
-  if (c2 instanceof IntrospectionThrowCompletion) {
-    realm.applyEffects(e);
-    throw c2;
-  }
   e[0] = c2;
   let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, c1, c2, e);
   realm.applyEffects(joined_effects);
@@ -298,8 +294,6 @@ export function joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effe
   let [result1, gen1, bindings1, properties1, createdObj1] = e1;
   let [result2, gen2, bindings2, properties2, createdObj2] = e2;
 
-  if (result1 instanceof IntrospectionThrowCompletion) return e1;
-  if (result2 instanceof IntrospectionThrowCompletion) return e2;
   let result = joinResults(realm, joinCondition, result1, result2, e1, e2);
   if (result1 instanceof AbruptCompletion) {
     if (!(result2 instanceof AbruptCompletion)) {
@@ -338,7 +332,8 @@ function joinResults(
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }
   if (result1 instanceof Reference || result2 instanceof Reference) {
-    throw AbstractValue.createIntrospectionErrorThrowCompletion(joinCondition);
+    AbstractValue.reportIntrospectionError(joinCondition);
+    throw new FatalError();
   }
   if (result1 instanceof BreakCompletion && result2 instanceof BreakCompletion && result1.target === result2.target) {
     return new BreakCompletion(realm.intrinsics.empty, result1.target);
@@ -554,7 +549,7 @@ export function joinDescriptors(
   getAbstractValue: (void | Value, void | Value) => AbstractValue
 ): void | Descriptor {
   function clone_with_abstract_value(d: Descriptor) {
-    if (!IsDataDescriptor(realm, d)) throw new Error("TODO: join computed properties");
+    if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO: join computed properties");
     let dc = cloneDescriptor(d);
     invariant(dc !== undefined);
     dc.value = getAbstractValue(d.value, realm.intrinsics.empty);
