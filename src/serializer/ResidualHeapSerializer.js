@@ -32,6 +32,7 @@ import type {
   BabelNodeIdentifier,
   BabelNodeBlockStatement,
   BabelNodeLVal,
+  BabelNodeMemberExpression,
   BabelVariableKind,
 } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
@@ -539,12 +540,18 @@ export class ResidualHeapSerializer {
     mightHaveBeenDeleted: boolean,
     cleanupDummyProperty: boolean = false
   ) {
-    let assignment = t.expressionStatement(t.assignmentExpression("=", locationFn(), valueFn()));
+    let location = locationFn();
+    let value = valueFn();
+    let assignment = t.expressionStatement(t.assignmentExpression("=", location, value));
     if (mightHaveBeenDeleted) {
-      let condition = t.binaryExpression("!==", valueFn(), this.serializeValue(this.realm.intrinsics.empty));
-      let deletion = cleanupDummyProperty
-        ? t.expressionStatement(t.unaryExpression("delete", locationFn(), true))
-        : null;
+      let condition = t.binaryExpression("!==", value, this.serializeValue(this.realm.intrinsics.empty));
+      let deletion = null;
+      if (cleanupDummyProperty) {
+        invariant(location.type === "MemberExpression");
+        deletion = t.expressionStatement(
+          t.unaryExpression("delete", ((location: any): BabelNodeMemberExpression), true)
+        );
+      }
       this.emitter.emit(t.ifStatement(condition, assignment, deletion));
     } else {
       this.emitter.emit(assignment);
