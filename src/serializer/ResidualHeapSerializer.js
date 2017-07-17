@@ -32,6 +32,7 @@ import type {
   BabelNodeIdentifier,
   BabelNodeBlockStatement,
   BabelNodeLVal,
+  BabelNodeMemberExpression,
   BabelVariableKind,
 } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
@@ -533,11 +534,25 @@ export class ResidualHeapSerializer {
     return [desc.get, desc.set];
   }
 
-  _assignProperty(locationFn: () => BabelNodeLVal, valueFn: () => BabelNodeExpression, mightHaveBeenDeleted: boolean) {
-    let assignment = t.expressionStatement(t.assignmentExpression("=", locationFn(), valueFn()));
+  _assignProperty(
+    locationFn: () => BabelNodeLVal,
+    valueFn: () => BabelNodeExpression,
+    mightHaveBeenDeleted: boolean,
+    cleanupDummyProperty: boolean = false
+  ) {
+    let location = locationFn();
+    let value = valueFn();
+    let assignment = t.expressionStatement(t.assignmentExpression("=", location, value));
     if (mightHaveBeenDeleted) {
-      let condition = t.binaryExpression("!==", valueFn(), this.serializeValue(this.realm.intrinsics.empty));
-      this.emitter.emit(t.ifStatement(condition, assignment));
+      let condition = t.binaryExpression("!==", value, this.serializeValue(this.realm.intrinsics.empty));
+      let deletion = null;
+      if (cleanupDummyProperty) {
+        invariant(location.type === "MemberExpression");
+        deletion = t.expressionStatement(
+          t.unaryExpression("delete", ((location: any): BabelNodeMemberExpression), true)
+        );
+      }
+      this.emitter.emit(t.ifStatement(condition, assignment, deletion));
     } else {
       this.emitter.emit(assignment);
     }
@@ -935,9 +950,15 @@ export class ResidualHeapSerializer {
                     invariant(propValue instanceof Value);
                     return this.serializeValue(propValue);
                   },
-                  mightHaveBeenDeleted
+                  mightHaveBeenDeleted,
+                  true /*cleanupDummyProperty*/
                 );
               });
+
+              // Although the property needs to be delayed, we still want to emit dummy "undefined"
+              // value as part of the object literal to ensure a consistent property ordering.
+              let serializedKey = this.generator.getAsPropertyNameExpression(key);
+              props.push(t.objectProperty(serializedKey, voidExpression));
             } else {
               let serializedKey = this.generator.getAsPropertyNameExpression(key);
               props.push(t.objectProperty(serializedKey, this.serializeValue(propValue)));
