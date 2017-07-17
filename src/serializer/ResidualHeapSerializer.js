@@ -705,11 +705,19 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _assignProperty(locationFn: () => BabelNodeLVal, valueFn: () => BabelNodeExpression, mightHaveBeenDeleted: boolean) {
+  _assignProperty(
+    locationFn: () => BabelNodeLVal,
+    valueFn: () => BabelNodeExpression,
+    mightHaveBeenDeleted: boolean,
+    cleanupDummyProperty: boolean = false
+  ) {
     let assignment = t.expressionStatement(t.assignmentExpression("=", locationFn(), valueFn()));
     if (mightHaveBeenDeleted) {
       let condition = t.binaryExpression("!==", valueFn(), this.serializeValue(this.realm.intrinsics.empty));
-      this.body.push(t.ifStatement(condition, assignment));
+      let deletion = cleanupDummyProperty
+        ? t.expressionStatement(t.unaryExpression("delete", locationFn(), true))
+        : null;
+      this.body.push(t.ifStatement(condition, assignment, deletion));
     } else {
       this.body.push(assignment);
     }
@@ -1098,16 +1106,15 @@ export class ResidualHeapSerializer {
                       reasons.concat(`Referenced in object ${name} with key ${key}`)
                     );
                   },
-                  mightHaveBeenDeleted
+                  mightHaveBeenDeleted,
+                  true /*cleanupDummyProperty*/
                 );
               });
 
-              // Although the property needs to be delayed, we still want to emit "undefined"
-              // as part of the object literal to ensure a consistent property ordering.
-              if (!mightHaveBeenDeleted) {
-                let serializedKey = this.generator.getAsPropertyNameExpression(key);
-                props.push(t.objectProperty(serializedKey, voidExpression));
-              }
+              // Although the property needs to be delayed, we still want to emit dummy "undefined"
+              // value as part of the object literal to ensure a consistent property ordering.
+              let serializedKey = this.generator.getAsPropertyNameExpression(key);
+              props.push(t.objectProperty(serializedKey, voidExpression));
             } else {
               let serializedKey = this.generator.getAsPropertyNameExpression(key);
               props.push(
