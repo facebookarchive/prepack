@@ -41,7 +41,7 @@ function search(dir, relative) {
 
 let tests = search(`${__dirname}/../facebook/test`, "facebook/test");
 
-let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic>;
 function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
   if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
   return "Fail";
@@ -50,6 +50,7 @@ function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
 function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
+    errors = new Map();
     let modelName = name + ".model";
     let sourceMapName = name + ".map";
     let sourceCode = fs.readFileSync(name, "utf8");
@@ -82,7 +83,10 @@ function runTest(name: string, code: string): boolean {
     return false;
   } finally {
     for (let [loc, error] of errors) {
-      console.log(`${loc.start.line}:${loc.start.column + 1} ${error.errorCode} ${error.message}`);
+      console.log(
+        `${error.severity}: ${loc.source || ""} ${loc.start.line}:${loc.start.column +
+          1} ${error.errorCode} ${error.message}`
+      );
     }
   }
 }
