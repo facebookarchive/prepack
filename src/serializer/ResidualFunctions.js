@@ -10,6 +10,7 @@
 /* @flow */
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
+import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
@@ -410,7 +411,7 @@ export class ResidualFunctions {
               for (let flatArg of flatArgs) callArgs.push(flatArg);
               for (let param of params) {
                 if (param.type !== "Identifier") {
-                  throw new Error("TODO: do not know how to deal with non-Identifier parameters");
+                  throw new FatalError("TODO: do not know how to deal with non-Identifier parameters");
                 }
                 callArgs.push(((param: any): BabelNodeIdentifier));
               }

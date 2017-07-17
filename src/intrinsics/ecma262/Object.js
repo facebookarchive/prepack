@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import {
@@ -102,7 +103,10 @@ export default function(realm: Realm): NativeFunctionValue {
         // properties at runtime that will overwrite current properties in to.
         // For now, just throw if this happens.
         let to_keys = to.$OwnPropertyKeys();
-        if (to_keys.length !== 0) throw AbstractValue.createIntrospectionErrorThrowCompletion(nextSource);
+        if (to_keys.length !== 0) {
+          AbstractValue.reportIntrospectionError(nextSource);
+          throw new FatalError();
+        }
       }
 
       invariant(frm, "from required");

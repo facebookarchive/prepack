@@ -12,6 +12,7 @@
 import buildTemplate from "babel-template";
 import type { BabelNodeExpression } from "babel-types";
 import type { PreludeGenerator } from "./generator.js";
+import invariant from "../invariant.js";
 
 export default function buildExpressionTemplate(code: string): (void | PreludeGenerator) => any => BabelNodeExpression {
   let template;
@@ -25,7 +26,7 @@ export default function buildExpressionTemplate(code: string): (void | PreludeGe
         obj
       );
     let result = template(obj).expression;
-    if (result === undefined) throw new Error("Code does not represent an expression: " + code);
+    invariant(result !== undefined, "Code does not represent an expression: " + code);
     return result;
   };
 }

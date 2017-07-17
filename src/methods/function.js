@@ -20,7 +20,6 @@ import {
   JoinedAbruptCompletions,
   NormalCompletion,
   PossiblyNormalCompletion,
-  IntrospectionThrowCompletion,
 } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ExecutionContext } from "../realm.js";
@@ -54,7 +53,7 @@ import {
   UpdateEmpty,
 } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
-import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression.js";
+import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import traverse from "../traverse.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -1130,7 +1129,7 @@ export function EvaluateStatements(
   strictCode: boolean,
   blockEnv: LexicalEnvironment,
   realm: Realm
-): NormalCompletion | Value | Reference {
+): NormalCompletion | Value {
   for (let node of body) {
     if (node.type !== "FunctionDeclaration") {
       let res = blockEnv.evaluateAbstractCompletion(node, strictCode);
@@ -1146,10 +1145,6 @@ export function EvaluateStatements(
           let e = realm.getCapturedEffects();
           invariant(e !== undefined);
           realm.stopEffectCaptureAndUndoEffects();
-          if (res instanceof IntrospectionThrowCompletion) {
-            realm.applyEffects(e);
-            throw res;
-          }
           invariant(context.savedCompletion !== undefined);
           e[0] = res;
           let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, res, e);
@@ -1211,10 +1206,6 @@ export function PartiallyEvaluateStatements(
             let e = realm.getCapturedEffects();
             invariant(e !== undefined);
             realm.stopEffectCaptureAndUndoEffects();
-            if (res instanceof IntrospectionThrowCompletion) {
-              realm.applyEffects(e);
-              throw res;
-            }
             invariant(blockValue instanceof PossiblyNormalCompletion);
             e[0] = res;
             let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, blockValue, res, e);
@@ -1537,7 +1528,7 @@ export function DefineMethod(
   functionPrototype?: ObjectValue
 ) {
   // 1. Let propKey be the result of evaluating PropertyName.
-  let propKey = EvalPropertyNamePartial(prop, env, realm, strictCode);
+  let propKey = EvalPropertyName(prop, env, realm, strictCode);
 
   // 2. ReturnIfAbrupt(propKey).
 

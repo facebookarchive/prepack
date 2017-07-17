@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { ThrowCompletion } from "../completions.js";
 import { GetValue } from "../methods/index.js";
 import type { BabelNodeThrowStatement } from "babel-types";
@@ -22,7 +21,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   let exprRef = env.evaluate(ast.argument, strictCode);
   let exprValue = GetValue(realm, exprRef);
   throw new ThrowCompletion(exprValue);

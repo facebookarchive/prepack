@@ -15,6 +15,7 @@ import { ToInteger, ToNumber, ToPrimitive } from "../../methods/to.js";
 import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
 import { MakeTime, MakeDate, MakeDay, TimeClip, UTC, ToDateString, thisTimeValue } from "../../methods/date.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { FatalError } from "../../errors.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import seedrandom from "seedrandom";
@@ -202,7 +203,8 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 20.3.3.2
   func.defineNativeMethod("parse", 1, (context, [string]) => {
     if (realm.useAbstractInterpretation) {
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(string);
+      AbstractValue.reportIntrospectionError(string);
+      throw new FatalError();
     } else {
       const parsedDate = Date.parse(string.value);
       return new NumberValue(realm, parsedDate);

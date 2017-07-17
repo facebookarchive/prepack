@@ -10,11 +10,11 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { LexicalEnvironment, Reference } from "../environment.js";
+import type { LexicalEnvironment } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
 import { BoundNames, EnumerableOwnProperties, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
 import {
@@ -36,6 +36,18 @@ import type {
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 
+// helper func to report error
+function reportError(realm: Realm, loc: ?BabelNodeSourceLocation) {
+  let error = new CompilerDiagnostic(
+    "for in loops over unknown objects are not yet supported",
+    loc,
+    "PP0013",
+    "FatalError"
+  );
+  realm.handleError(error);
+  throw new FatalError();
+}
+
 // ECMA262 13.7.5.11
 export default function(
   ast: BabelNodeForInStatement,
@@ -43,21 +55,11 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm,
   labelSet: ?Array<string>
-): Value | Reference {
+): Value {
   let { left, right, body } = ast;
 
-  // helper func to report error
   function reportErrorAndThrowIfNotConcrete(val: Value, loc: ?BabelNodeSourceLocation) {
-    if (val instanceof AbstractValue) {
-      let error = new CompilerDiagnostics(
-        "for in loops over unknown collections is not yet supported",
-        loc,
-        "PP0013",
-        "FatalError"
-      );
-      realm.handleError(error);
-      throw new FatalError();
-    }
+    if (val instanceof AbstractValue) reportError(realm, loc);
   }
 
   try {
@@ -245,12 +247,6 @@ function emitResidualLoopIfSafe(
     realm.getRunningContext().lexicalEnvironment = oldEnv;
   }
 
-  let error = new CompilerDiagnostics(
-    "for in loops over unknown collection is not yet supported",
-    obexpr.loc,
-    "PP0013",
-    "FatalError"
-  );
-  realm.handleError(error);
-  throw new FatalError();
+  reportError(realm, obexpr.loc);
+  invariant(false);
 }

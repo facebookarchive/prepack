@@ -36,7 +36,8 @@ import {
   LexicalEnvironment,
 } from "../environment.js";
 import { NormalCompletion, AbruptCompletion, ThrowCompletion } from "../completions.js";
-import { EvalPropertyNamePartial } from "../evaluators/ObjectExpression.js";
+import { FatalError } from "../errors.js";
+import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   GetV,
   GetThisValue,
@@ -86,8 +87,10 @@ export function HasPrimitiveBase(realm: Realm, V: Reference): boolean {
 // ECMA262 6.2.3
 // GetReferencedName(V). Returns the referenced name component of the reference V.
 export function GetReferencedName(realm: Realm, V: Reference): string | SymbolValue {
-  if (V.referencedName instanceof AbstractValue)
-    throw realm.createIntrospectionErrorThrowCompletion("abstract reference");
+  if (V.referencedName instanceof AbstractValue) {
+    AbstractValue.reportIntrospectionError(V.referencedName);
+    throw new FatalError();
+  }
   return V.referencedName;
 }
 
@@ -514,7 +517,7 @@ export function ResolveThisBinding(realm: Realm): NullValue | ObjectValue | Abst
 
 export function BindingInitialization(
   realm: Realm,
-  node: BabelNodeLVal,
+  node: BabelNodeLVal | BabelNodeVariableDeclaration,
   value: Value,
   strictCode: boolean,
   environment: void | LexicalEnvironment
@@ -565,7 +568,7 @@ export function BindingInitialization(
       let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
       // 1. Let P be the result of evaluating PropertyName.
-      let P = EvalPropertyNamePartial(property, env, realm, strictCode);
+      let P = EvalPropertyName(property, env, realm, strictCode);
 
       // 2. ReturnIfAbrupt(P).
 
@@ -579,13 +582,12 @@ export function BindingInitialization(
 
     // 2. Return ? InitializeBoundName(name, value, environment).
     return InitializeBoundName(realm, name, value, environment);
-  } else if (node.type === "VariableDeclaration") {
+  } else {
+    invariant(node.type === "VariableDeclaration");
     // ECMA262 13.7.5.9
     for (let decl of ((node: any): BabelNodeVariableDeclaration).declarations) {
       BindingInitialization(realm, decl.id, value, strictCode, environment);
     }
-  } else {
-    throw new Error("Unknown node " + node.type);
   }
 }
 

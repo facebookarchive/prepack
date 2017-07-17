@@ -11,10 +11,9 @@
 
 import type { Realm } from "../realm.js";
 import { LexicalEnvironment, ObjectEnvironmentRecord } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion } from "../completions.js";
 import { AbstractValue, Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { ToObjectPartial, GetValue, NewObjectEnvironment, UpdateEmpty } from "../methods/index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeWithStatement } from "babel-types";
@@ -25,7 +24,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // 1. Let val be the result of evaluating Expression.
   let val = env.evaluate(ast.object, strictCode);
 
@@ -33,7 +32,7 @@ export default function(
   val = GetValue(realm, val);
   if (val instanceof AbstractValue) {
     let loc = ast.object.loc;
-    let error = new CompilerDiagnostics("with object must be a known value", loc, "PP0007", "RecoverableError");
+    let error = new CompilerDiagnostic("with object must be a known value", loc, "PP0007", "RecoverableError");
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
   let obj = ToObjectPartial(realm, val);

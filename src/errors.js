@@ -17,7 +17,7 @@ export type ErrorCode = "PP0001";
 
 // This is the error format used to report errors to the caller-supplied
 // error-handler
-export class CompilerDiagnostics extends Error {
+export class CompilerDiagnostic extends Error {
   constructor(message: string, location: ?BabelNodeSourceLocation, errorCode: string, severity: Severity) {
     super(message);
 
@@ -42,4 +42,4 @@ export function FatalError(message?: string) {
 Object.setPrototypeOf(FatalError, Error);
 Object.setPrototypeOf(FatalError.prototype, Error.prototype);
 
-export type ErrorHandler = (error: CompilerDiagnostics) => ErrorHandlerResult;
+export type ErrorHandler = (error: CompilerDiagnostic) => ErrorHandlerResult;

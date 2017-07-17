@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
   AbstractObjectValue,
   Value,
@@ -61,9 +61,9 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   function reportError() {
-    let error = new CompilerDiagnostics(
+    let error = new CompilerDiagnostic(
       "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
       ast.argument.loc,
       "PP0008",
@@ -198,7 +198,8 @@ export default function(
       invariant(val instanceof AbstractValue);
       return computeAbstractly(realm, StringValue, "typeof", val);
     }
-  } else if (ast.operator === "delete") {
+  } else {
+    invariant(ast.operator === "delete");
     // ECMA262 12.5.3.2
 
     // 1. Let ref be the result of evaluating UnaryExpression.
@@ -253,6 +254,4 @@ export default function(
     invariant(typeof referencedName === "string");
     return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
   }
-
-  throw new Error("unimplemented");
 }

@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
 import { GetValue } from "../methods/index.js";
 import { ReturnCompletion } from "../completions.js";
 import type { BabelNodeReturnStatement } from "babel-types";
@@ -22,7 +21,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   let arg;
   if (ast.argument) {
     arg = GetValue(realm, env.evaluate(ast.argument, strictCode));

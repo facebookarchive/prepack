@@ -22,6 +22,7 @@ import type { Realm } from "../realm.js";
 import { computeBinary, getPureBinaryOperationResultType } from "../evaluators/BinaryExpression.js";
 import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import { FatalError } from "../errors.js";
 import { composeNormalCompletions, unbundleNormalCompletion } from "../methods/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
 
@@ -112,7 +113,8 @@ export function createAbstractValueForBinary(
       // We choose to do the latter.
       // TODO: report the error and carry on assuming no side effects.
       let val = lval instanceof AbstractValue ? lval : rval;
-      return [AbstractValue.createIntrospectionErrorThrowCompletion((val: any)), ast, io];
+      AbstractValue.reportIntrospectionError((val: any));
+      throw new FatalError();
     }
     resultValue = realm.createAbstract(
       new TypesDomain(resultType),

@@ -12,8 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
-import { CompilerDiagnostics, FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Add, GetValue, ToNumber, PutValue, IsToNumberPure } from "../methods/index.js";
 import { AbstractValue, NumberValue } from "../values/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -26,7 +25,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): Value {
   // ECMA262 12.4 Update Expressions
 
   // Let expr be the result of evaluating UnaryExpression.
@@ -36,7 +35,7 @@ export default function(
   let oldExpr = GetValue(realm, expr);
   if (oldExpr instanceof AbstractValue) {
     if (!IsToNumberPure(realm, oldExpr)) {
-      let error = new CompilerDiagnostics(
+      let error = new CompilerDiagnostic(
         "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
         ast.argument.loc,
         "PP0008",

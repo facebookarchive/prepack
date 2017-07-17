@@ -76,8 +76,7 @@ export function prepackString(
   filename: string,
   code: string,
   sourceMap: string,
-  options: Options = defaultOptions,
-  fs: any
+  options: Options = defaultOptions
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
   let sources = [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }];
   let realmOptions = getRealmOptions(options);
@@ -85,7 +84,7 @@ export function prepackString(
   initializeGlobals(realm);
 
   if (options.serialize || !options.residual) {
-    let serializer = new Serializer(realm, getSerializerOptions(options), fs);
+    let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sources, options.sourceMaps);
     if (!serialized) {
       throw new FatalError();
@@ -131,9 +130,8 @@ export function prepack(code: string, options: Options = defaultOptions) {
 export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: string, options: Options = defaultOptions) {
   if (ast && ast.type === "Program") {
     ast = t.file(ast, [], []);
-  } else if (!ast || ast.type !== "File") {
-    throw new Error("Not a valid ast?");
   }
+  invariant(ast && ast.type === "File");
   let filename = options.filename || (ast.loc && ast.loc.source) || "unknown";
   let sources = [{ filePath: filename, fileContents: code }];
 

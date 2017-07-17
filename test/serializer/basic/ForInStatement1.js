@@ -11,5 +11,11 @@
     tgt2[p2] = p2+p2;
     break xyz;
   }
+  for (var p3 in null) {
+    throw "should not get here";
+  }
+  for (var p4 in undefined) {
+    throw "should not get here";
+  }
 inspect = function() { return tgt.a + tgt2.a; }
 })();

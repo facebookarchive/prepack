@@ -14,7 +14,6 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
 import { NormalCompletion } from "../completions.js";
-import { Reference } from "../environment.js";
 import { StringValue, Value } from "../values/index.js";
 import { EvaluateStatements, NewDeclarativeEnvironment, BlockDeclarationInstantiation } from "../methods/index.js";
 
@@ -24,7 +23,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): NormalCompletion | Value | Reference {
+): NormalCompletion | Value {
   // 1. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 

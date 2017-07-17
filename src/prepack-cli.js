@@ -11,11 +11,12 @@
 
 /* eslint-disable no-shadow */
 
-import { CompilerDiagnostics, type ErrorHandlerResult, FatalError } from "./errors.js";
+import { CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "./errors.js";
 import { type Compatibility, CompatibilityValues } from "./options.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import fs from "fs";
+import v8 from "v8";
 
 // Prepack helper
 declare var __residual: any;
@@ -135,8 +136,8 @@ function run(
     flags
   );
 
-  let errors: Map<BabelNodeSourceLocation, CompilerDiagnostics> = new Map();
-  function errorHandler(diagnostic: CompilerDiagnostics): ErrorHandlerResult {
+  let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+  function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
     return "Recover";
   }
@@ -197,6 +198,7 @@ function run(
         let stats = {
           SerializerStatistics: serialized.statistics,
           TimingStatistics: serialized.timingStats,
+          MemoryStatistics: v8.getHeapStatistics(),
         };
         fs.writeFileSync(statsFileName, JSON.stringify(stats));
       }

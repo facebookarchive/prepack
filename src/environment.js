@@ -9,7 +9,14 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeComment, BabelNodeFile, BabelNodeStatement } from "babel-types";
+import type {
+  BabelNode,
+  BabelNodeComment,
+  BabelNodeFile,
+  BabelNodePosition,
+  BabelNodeStatement,
+  BabelNodeSourceLocation,
+} from "babel-types";
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
 
@@ -21,6 +28,7 @@ import {
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
+import { FatalError } from "./errors.js";
 import { defaultOptions, type Options } from "./options";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
@@ -364,7 +372,7 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
   // ECMA262 8.1.1.2.3
   CreateImmutableBinding(N: string, S: boolean): Value {
     // The concrete Environment Record method CreateImmutableBinding is never used within this specification in association with object Environment Records.
-    throw new Error("unreachable");
+    invariant(false);
   }
 
   // ECMA262 8.1.1.2.4
@@ -959,27 +967,27 @@ export class ModuleEnvironmentRecord extends DeclarativeEnvironmentRecord {
   BindThisValue(
     V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
   ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 
   // ECMA262 8.1.1.3.2
   HasThisBinding(): boolean {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 
   // ECMA262 8.1.1.3.3
   HasSuperBinding(): boolean {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 
   // ECMA262 8.1.1.3.4
   GetThisBinding(): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 
   // ECMA262 8.1.1.3.5
   GetSuperBase(): NullValue | ObjectValue | UndefinedValue {
-    throw new Error("TODO: implement modules");
+    throw new FatalError("TODO: implement modules");
   }
 }
 
@@ -1019,7 +1027,7 @@ export class LexicalEnvironment {
         // rethrowing Error should preserve stack trace
         throw err;
       // let's wrap into a proper Error to create stack trace
-      throw new Error(err);
+      throw new FatalError(err);
     }
   }
 
@@ -1033,14 +1041,16 @@ export class LexicalEnvironment {
     try {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion)
-        return AbstractValue.createIntrospectionErrorThrowCompletion(err.joinCondition);
+      if (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion) {
+        AbstractValue.reportIntrospectionError(err.joinCondition);
+        throw new FatalError();
+      }
       if (err instanceof AbruptCompletion) return err;
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;
       // let's wrap into a proper Error to create stack trace
-      throw new Error(err);
+      throw new FatalError(err);
     }
   }
 
@@ -1053,8 +1063,8 @@ export class LexicalEnvironment {
         // rethrowing Error should preserve stack trace
         throw err;
       // let's wrap into a proper Error to create stack trace
-      if (err instanceof Object) throw new Error(err.constructor.name + ": " + err);
-      throw new Error(err);
+      if (err instanceof Object) throw new FatalError(err.constructor.name + ": " + err);
+      throw new FatalError(err);
     }
   }
 
@@ -1081,9 +1091,9 @@ export class LexicalEnvironment {
         throw e;
       }
       if (onParse) onParse(ast);
-      res = this.evaluateCompletion(ast, false);
       if (map.length > 0) this.fixup_source_locations(ast, map);
       this.fixup_filenames(ast);
+      res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
     }
@@ -1135,14 +1145,31 @@ export class LexicalEnvironment {
     const smc = new sourceMap.SourceMapConsumer(map);
     traverse(ast, function(node) {
       let loc = node.loc;
-      if (loc == null || loc.start == null) return false;
-      let new_pos = loc.start;
-      let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
-      if (old_pos.source == null) return false;
-      new_pos.line = old_pos.line;
-      new_pos.column = old_pos.column;
-      loc.source = old_pos.source;
+      if (!loc) return false;
+      fixup(loc, loc.start);
+      fixup(loc, loc.end);
+      fixup_comments(node.leadingComments);
+      fixup_comments(node.innerComments);
+      fixup_comments(node.trailingComments);
       return false;
+
+      function fixup(new_loc: BabelNodeSourceLocation, new_pos: BabelNodePosition) {
+        let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
+        if (old_pos.source === null) return;
+        new_pos.line = old_pos.line;
+        new_pos.column = old_pos.column;
+        new_loc.source = old_pos.source;
+      }
+
+      function fixup_comments(comments: ?Array<BabelNodeComment>) {
+        if (!comments) return;
+        for (let c of comments) {
+          let cloc = c.loc;
+          if (!cloc) continue;
+          fixup(cloc, cloc.start);
+          fixup(cloc, cloc.end);
+        }
+      }
     });
   }
 
@@ -1177,8 +1204,10 @@ export class LexicalEnvironment {
 
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
     let res = this.evaluateAbstract(ast, strictCode, metadata);
-    if (res instanceof PossiblyNormalCompletion)
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(res.joinCondition);
+    if (res instanceof PossiblyNormalCompletion) {
+      AbstractValue.reportIntrospectionError(res.joinCondition);
+      throw new FatalError();
+    }
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;
   }
@@ -1199,7 +1228,8 @@ export class LexicalEnvironment {
         } else if (result instanceof PossiblyNormalCompletion) {
           result = composePossiblyNormalCompletions(this.realm, savedCompletion, result);
         } else {
-          throw AbstractValue.createIntrospectionErrorThrowCompletion(savedCompletion.joinCondition);
+          AbstractValue.reportIntrospectionError(savedCompletion.joinCondition);
+          throw new FatalError();
         }
         context.savedCompletion = undefined;
       }

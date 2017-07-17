@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm, ExecutionContext } from "../realm.js";
+import { FatalError } from "../errors.js";
 import type {
   IterationKind,
   PromiseCapability,
@@ -358,7 +359,8 @@ export default class ObjectValue extends ConcreteValue {
 
   getOwnPropertyKeysArray(): Array<string> {
     if (this.isPartial() || this.unknownProperty !== undefined) {
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(this);
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
     }
 
     let o = this;
@@ -373,7 +375,8 @@ export default class ObjectValue extends ConcreteValue {
       // We can at best return an abstract keys array.
       // For now just terminate.
       invariant(pv instanceof AbstractValue);
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(pv);
+      AbstractValue.reportIntrospectionError(pv);
+      throw new FatalError();
     });
     return keyArray;
   }
@@ -438,7 +441,8 @@ export default class ObjectValue extends ConcreteValue {
   // ECMA262 9.1.7
   $HasProperty(P: PropertyKeyValue): boolean {
     if (this.unknownProperty !== undefined && this.$GetOwnProperty(P) === undefined) {
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
     }
 
     return OrdinaryHasProperty(this.$Realm, this, P);
@@ -458,7 +462,8 @@ export default class ObjectValue extends ConcreteValue {
       } else if (typeof P === "string") {
         propName = new StringValue(this.$Realm, P);
       } else {
-        throw this.$Realm.createIntrospectionErrorThrowCompletion("abstract computed property name");
+        AbstractValue.reportIntrospectionError(val, "abstract computed property name");
+        throw new FatalError();
       }
       return this.specializeJoin(val, propName);
     }
@@ -470,8 +475,10 @@ export default class ObjectValue extends ConcreteValue {
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     // We assume that simple objects have no getter/setter properties.
-    if (this !== Receiver || !this.isSimple() || P.mightNotBeString())
-      throw this.$Realm.createIntrospectionErrorThrowCompletion("TODO");
+    if (this !== Receiver || !this.isSimple() || P.mightNotBeString()) {
+      AbstractValue.reportIntrospectionError(P, "TODO");
+      throw new FatalError();
+    }
     // If all else fails, use this expression
     let result;
     if (this.isPartial()) {
@@ -543,8 +550,10 @@ export default class ObjectValue extends ConcreteValue {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
     // We assume that simple objects have no getter/setter properties and
     // that all properties are writable.
-    if (this !== Receiver || !this.isSimple() || P.mightNotBeString())
-      throw this.$Realm.createIntrospectionErrorThrowCompletion("TODO");
+    if (this !== Receiver || !this.isSimple() || P.mightNotBeString()) {
+      AbstractValue.reportIntrospectionError(P, "TODO");
+      throw new FatalError();
+    }
 
     let prop;
     if (this.unknownProperty === undefined) {
@@ -618,7 +627,8 @@ export default class ObjectValue extends ConcreteValue {
   $Delete(P: PropertyKeyValue): boolean {
     if (this.unknownProperty !== undefined) {
       // TODO: generate a delete from the object
-      throw AbstractValue.createIntrospectionErrorThrowCompletion(this, P);
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
     }
 
     // 1. Return ? OrdinaryDelete(O, P).

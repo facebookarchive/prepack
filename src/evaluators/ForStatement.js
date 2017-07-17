@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { LexicalEnvironment, Reference } from "../environment.js";
+import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Value, EmptyValue } from "../values/index.js";
 import { AbruptCompletion, BreakCompletion } from "../completions.js";
@@ -83,6 +83,7 @@ function ForBodyEvaluation(
 
     // b. Let result be the result of evaluating stmt.
     let result = env.evaluateCompletion(stmt, strictCode);
+    invariant(result instanceof Value || result instanceof AbruptCompletion);
 
     // c. If LoopContinues(result, labelSet) is false, return Completion(UpdateEmpty(result, V)).
     if (!LoopContinues(realm, result, labelSet)) {
@@ -122,7 +123,7 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm,
   labelSet: ?Array<string>
-): Value | Reference {
+): Value {
   let { init, test, update, body } = ast;
 
   if (init && init.type === "VariableDeclaration") {

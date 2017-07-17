@@ -11,8 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
+import { Value } from "../values/index.js";
 import { EmptyValue } from "../values/index.js";
 import { ToBooleanPartial, GetValue, UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
@@ -26,7 +25,7 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm,
   labelSet: ?Array<string>
-): Value | Reference {
+): Value {
   let { body, test } = ast;
 
   // 1. Let V be undefined.
@@ -36,6 +35,7 @@ export default function(
   while (true) {
     // a. Let stmt be the result of evaluating Statement.
     let stmt = env.evaluateCompletion(body, strictCode);
+    invariant(stmt instanceof Value || stmt instanceof AbruptCompletion);
 
     // b. If LoopContinues(stmt, labelSet) is false, return Completion(UpdateEmpty(stmt, V)).
     if (LoopContinues(realm, stmt, labelSet) === false) {
