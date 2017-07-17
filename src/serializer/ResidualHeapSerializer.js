@@ -33,6 +33,7 @@ import type {
   BabelNodeBlockStatement,
   BabelNodeLVal,
   BabelVariableKind,
+  BabelNodeFile,
 } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
@@ -48,14 +49,6 @@ import { factorifyObjects } from "./factorify.js";
 import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/internalizer.js";
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
-
-type AbstractSyntaxTree = {
-  type: string,
-  program: {
-    type: string,
-    body: Array<BabelNodeStatement>,
-  },
-};
 
 export class ResidualHeapSerializer {
   constructor(
@@ -1095,7 +1088,7 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  serialize(): AbstractSyntaxTree {
+  serialize(): BabelNodeFile {
     this._emitGenerator(this.generator);
     invariant(this.emitter._declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 
@@ -1189,15 +1182,7 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let ast = {
-      type: "File",
-      program: {
-        type: "Program",
-        body: ast_body,
-      },
-    };
-
     invariant(this.serializedValues.size === this.residualValues.size);
-    return ast;
+    return t.file(t.program(ast_body));
   }
 }
