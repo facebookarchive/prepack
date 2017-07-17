@@ -9,7 +9,14 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeComment, BabelNodeFile, BabelNodeStatement } from "babel-types";
+import type {
+  BabelNode,
+  BabelNodeComment,
+  BabelNodeFile,
+  BabelNodePosition,
+  BabelNodeStatement,
+  BabelNodeSourceLocation,
+} from "babel-types";
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
 
@@ -1084,9 +1091,9 @@ export class LexicalEnvironment {
         throw e;
       }
       if (onParse) onParse(ast);
-      res = this.evaluateCompletion(ast, false);
       if (map.length > 0) this.fixup_source_locations(ast, map);
       this.fixup_filenames(ast);
+      res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
     }
@@ -1138,14 +1145,31 @@ export class LexicalEnvironment {
     const smc = new sourceMap.SourceMapConsumer(map);
     traverse(ast, function(node) {
       let loc = node.loc;
-      if (loc == null || loc.start == null) return false;
-      let new_pos = loc.start;
-      let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
-      if (old_pos.source == null) return false;
-      new_pos.line = old_pos.line;
-      new_pos.column = old_pos.column;
-      loc.source = old_pos.source;
+      if (!loc) return false;
+      fixup(loc, loc.start);
+      fixup(loc, loc.end);
+      fixup_comments(node.leadingComments);
+      fixup_comments(node.innerComments);
+      fixup_comments(node.trailingComments);
       return false;
+
+      function fixup(new_loc: BabelNodeSourceLocation, new_pos: BabelNodePosition) {
+        let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
+        if (old_pos.source === null) return;
+        new_pos.line = old_pos.line;
+        new_pos.column = old_pos.column;
+        new_loc.source = old_pos.source;
+      }
+
+      function fixup_comments(comments: ?Array<BabelNodeComment>) {
+        if (!comments) return;
+        for (let c of comments) {
+          let cloc = c.loc;
+          if (!cloc) continue;
+          fixup(cloc, cloc.start);
+          fixup(cloc, cloc.end);
+        }
+      }
     });
   }
 

@@ -26,6 +26,7 @@ import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
+import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -114,16 +115,15 @@ export class Serializer {
 
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
-    let valToRefCount;
+    let residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers();
     if (!this.options.singlePass) {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
-      valToRefCount = new Map();
+      residualHeapValueIdentifiers.initPass1();
       new ResidualHeapSerializer(
         this.realm,
         this.logger,
         this.modules,
-        /*collectValToRefCountOnly*/ true,
-        valToRefCount,
+        residualHeapValueIdentifiers,
         residualHeapVisitor.inspector,
         residualHeapVisitor.values,
         residualHeapVisitor.functionBindings,
@@ -131,6 +131,7 @@ export class Serializer {
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
+      residualHeapValueIdentifiers.initPass2();
     }
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
@@ -140,8 +141,7 @@ export class Serializer {
       this.realm,
       this.logger,
       this.modules,
-      /*collectValToRefCountOnly*/ false,
-      valToRefCount,
+      residualHeapValueIdentifiers,
       residualHeapVisitor.inspector,
       residualHeapVisitor.values,
       residualHeapVisitor.functionBindings,
