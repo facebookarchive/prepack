@@ -41,8 +41,8 @@ import { nullExpression } from "./internalizer.js";
 export type SerializationContext = {
   reasons: Array<string>,
   serializeValue: Value => BabelNodeExpression,
-  startBody: () => Array<BabelNodeStatement>,
-  endBody: (Array<BabelNodeStatement>) => void,
+  serializeGenerator: Generator => Array<BabelNodeStatement>,
+  emit: BabelNodeStatement => void,
   announceDeclaredDerivedId: BabelNodeIdentifier => void,
 };
 
@@ -306,10 +306,10 @@ export class Generator {
     return res;
   }
 
-  serialize(body: Array<BabelNodeStatement>, context: SerializationContext) {
+  serialize(context: SerializationContext) {
     for (let bodyEntry of this.body) {
       let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg));
-      body.push(bodyEntry.buildNode(nodes, context));
+      context.emit(bodyEntry.buildNode(nodes, context));
       let id = bodyEntry.declaresDerivedId;
       if (id !== undefined) context.announceDeclaredDerivedId(id);
     }
