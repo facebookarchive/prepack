@@ -564,9 +564,11 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
       if (errmsg) {
         console.log(errmsg);
       }
-    } else if (group_es5_failed + group_es6_failed > 0) {
+    }
+    if (group_es5_failed + group_es6_failed > 0) {
       failed_groups.push(msg);
     }
+
     numPassedES5 += group_es5_passed;
     numPassedES6 += group_es6_passed;
     numFailedES5 += group_es5_failed;
@@ -597,7 +599,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22916 || numPassedES6 < 10336 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 22916 || numPassedES6 < 10340 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
