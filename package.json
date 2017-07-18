@@ -24,7 +24,7 @@
   "browser": "lib/prepack-standalone.js",
   "scripts": {
     "build": "babel src --out-dir lib --source-maps && yarn build-bundle",
-    "build-scripts": "babel scripts --out-dir lib",
+    "build-scripts": "babel scripts --out-dir lib --source-maps",
     "build-bundle": "webpack",
     "watch": "babel src scripts --out-dir lib --watch --source-maps",
     "lint": "eslint src scripts",
