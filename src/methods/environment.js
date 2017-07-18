@@ -20,6 +20,7 @@ import {
   NumberValue,
   BooleanValue,
   SymbolValue,
+  ECMAScriptFunctionValue,
   FunctionValue,
   ObjectValue,
   StringValue,
@@ -427,7 +428,7 @@ export function NewFunctionEnvironment(realm: Realm, F: FunctionValue, newTarget
   envRec.$FunctionObject = F;
 
   // 6. If F's [[ThisMode]] internal slot is lexical, set envRec.[[ThisBindingStatus]] to "lexical".
-  if (F.$ThisMode === "lexical") {
+  if (F instanceof ECMAScriptFunctionValue && F.$ThisMode === "lexical") {
     envRec.$ThisBindingStatus = "lexical";
   } else {
     // 7. Else, set envRec.[[ThisBindingStatus]] to "uninitialized".
@@ -435,7 +436,7 @@ export function NewFunctionEnvironment(realm: Realm, F: FunctionValue, newTarget
   }
 
   // 8. Let home be the value of F's [[HomeObject]] internal slot.
-  let home = F.$HomeObject;
+  let home = F instanceof ECMAScriptFunctionValue ? F.$HomeObject : undefined;
 
   // 9. Set envRec.[[HomeObject]] to home.
   envRec.$HomeObject = home;

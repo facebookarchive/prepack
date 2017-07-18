@@ -20,6 +20,7 @@ import {
   SymbolValue,
   AbstractValue,
   EmptyValue,
+  ECMAScriptFunctionValue,
   FunctionValue,
   Value,
   ObjectValue,
@@ -253,7 +254,8 @@ export class ResidualHeapVisitor {
       return;
     }
 
-    invariant(val.constructor === FunctionValue);
+    invariant(val instanceof ECMAScriptFunctionValue);
+    invariant(val.constructor === ECMAScriptFunctionValue);
     let formalParameters = val.$FormalParameters;
     invariant(formalParameters != null);
     let code = val.$ECMAScriptCode;

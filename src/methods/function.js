@@ -30,6 +30,7 @@ import {
   BoundFunctionValue,
   EmptyValue,
   FunctionValue,
+  ECMAScriptFunctionValue,
   ObjectValue,
   StringValue,
   SymbolValue,
@@ -164,6 +165,7 @@ export function FunctionDeclarationInstantiation(
   let envRec = env.environmentRecord;
 
   // 4. Let code be the value of the [[ECMAScriptCode]] internal slot of func.
+  invariant(func instanceof ECMAScriptFunctionValue);
   let code = func.$ECMAScriptCode;
   invariant(code !== undefined);
 
@@ -570,6 +572,7 @@ export function FunctionInitialize(
     configurable: true,
   });
 
+  invariant(F instanceof ECMAScriptFunctionValue);
   // 4. Let Strict be the value of the [[Strict]] internal slot of F.
   let Strict = F.$Strict;
 
@@ -662,7 +665,7 @@ function InternalCall(
   }
 
   // 2. If F's [[FunctionKind]] internal slot is "classConstructor", throw a TypeError exception.
-  if (F.$FunctionKind === "classConstructor")
+  if (F instanceof ECMAScriptFunctionValue && F.$FunctionKind === "classConstructor")
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
 
   // 3. Let callerContext be the running execution context.
@@ -856,7 +859,7 @@ export function FunctionAllocate(
   }
 
   // 6. Let F be a newly created ECMAScript function object with the internal slots listed in Table 27. All of those internal slots are initialized to undefined.
-  let F = new FunctionValue(realm);
+  let F = new ECMAScriptFunctionValue(realm);
 
   // 7. Set F's essential internal methods to the default ordinary object definitions specified in 9.1.
 
@@ -1506,7 +1509,7 @@ export function MakeMethod(realm: Realm, F: FunctionValue, homeObject: ObjectVal
   invariant(realm.isNewObject(F));
 
   // 1. Assert: F is an ECMAScript function object.
-  invariant(F instanceof FunctionValue, "F is an ECMAScript function object.");
+  invariant(F instanceof ECMAScriptFunctionValue, "F is an ECMAScript function object.");
 
   // 2. Assert: Type(homeObject) is Object.
   invariant(homeObject instanceof ObjectValue, "Type(homeObject) is Object.");
