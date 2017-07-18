@@ -12,7 +12,7 @@
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import { FunctionValue } from "../values/index.js";
+import { ECMAScriptFunctionValue, FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -99,6 +99,7 @@ export class ResidualFunctions {
 
   addFunctionInstance(instance: FunctionInstance) {
     this.functionInstances.push(instance);
+    invariant(instance.functionValue instanceof ECMAScriptFunctionValue);
     let code = instance.functionValue.$ECMAScriptCode;
     invariant(code != null);
     let functionInstances = this.functions.get(code);
@@ -223,6 +224,7 @@ export class ResidualFunctions {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
       let { names, modified, usesThis, usesArguments } = functionInfo;
+      invariant(instances[0].functionValue instanceof ECMAScriptFunctionValue);
       let params = instances[0].functionValue.$FormalParameters;
       invariant(params !== undefined);
 
@@ -275,6 +277,7 @@ export class ResidualFunctions {
             isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
           });
 
+          invariant(functionValue instanceof ECMAScriptFunctionValue);
           if (functionValue.$Strict) {
             strictFunctionBodies.push(funcNode);
           } else {

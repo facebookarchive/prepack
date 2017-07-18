@@ -16,7 +16,7 @@ import { NewDeclarativeEnvironment, SetFunctionName, FunctionCreate, MakeConstru
 import { ObjectCreate } from "../methods/create.js";
 import { GeneratorFunctionCreate } from "../methods/function.js";
 import { DefinePropertyOrThrow } from "../methods/properties.js";
-import { StringValue } from "../values/index.js";
+import { StringValue, ECMAScriptFunctionValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionExpression } from "babel-types";
 import invariant from "../invariant.js";
@@ -52,6 +52,7 @@ export default function(
 
       // 7. Let closure be GeneratorFunctionCreate(Normal, FormalParameters, GeneratorBody, funcEnv, strict).
       let closure = GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, funcEnv, strict);
+      invariant(closure instanceof ECMAScriptFunctionValue);
       closure.loc = ast.loc;
 
       // 8. Let prototype be ObjectCreate(%GeneratorPrototype%).
@@ -96,6 +97,7 @@ export default function(
 
       // 7. Let closure be FunctionCreate(Normal, FormalParameters, FunctionBody, funcEnv, strict).
       let closure = FunctionCreate(realm, "normal", ast.params, ast.body, funcEnv, strict);
+      invariant(closure instanceof ECMAScriptFunctionValue);
       closure.loc = ast.loc;
 
       // 8. Perform MakeConstructor(closure).

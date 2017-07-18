@@ -58,7 +58,6 @@ export default class NativeFunctionValue extends FunctionValue {
     }
 
     this.$Environment = realm.$GlobalEnv;
-    this.$Strict = true;
 
     this.callback = callback;
     this.length = length;

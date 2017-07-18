@@ -268,7 +268,7 @@ export class Generator {
     let type = types.getType();
     res.intrinsicName = id.name;
     let typeofString;
-    if (type === FunctionValue) typeofString = "function";
+    if (type instanceof FunctionValue) typeofString = "function";
     else if (type === UndefinedValue) invariant(false);
     else if (type === NullValue) invariant(false);
     else if (type === StringValue) typeofString = "string";
