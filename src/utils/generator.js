@@ -42,7 +42,10 @@ export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
   emit: BabelNodeStatement => void,
+  canOmit: BabelNodeIdentifier => boolean,
   announceDeclaredDerivedId: BabelNodeIdentifier => void,
+  startInvariant: void => boolean,
+  endInvariant: boolean => void,
 };
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
@@ -52,6 +55,8 @@ export type BodyEntry = {
   args: Array<Value>,
   buildNode: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
+  isPure?: boolean,
+  invariantFor?: BabelNodeIdentifier | void,
 };
 
 export class Generator {
@@ -192,12 +197,17 @@ export class Generator {
   emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
-    appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression
+    optionalArgs?: {|
+      appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression,
+      referent?: BabelNodeIdentifier,
+    |}
   ): void {
     this.body.push({
+      invariantFor: optionalArgs ? optionalArgs.referent : undefined,
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
         let throwString = t.stringLiteral("Prepack model invariant violation");
+        let appendLastToInvariantFn = optionalArgs && optionalArgs.appendLastToInvariantFn;
         if (appendLastToInvariantFn) {
           let last = nodes.pop();
           throwString = t.binaryExpression(
@@ -246,12 +256,13 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    kind?: string
+    optionalArgs?: {| kind?: string, isPure?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
     this.body.push({
+      isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declaresDerivedId: id,
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) =>
@@ -264,7 +275,7 @@ export class Generator {
           ),
         ]),
     });
-    let res = this.realm.createAbstract(types, values, args, id, kind);
+    let res = this.realm.createAbstract(types, values, args, id, optionalArgs ? optionalArgs.kind : undefined);
     let type = types.getType();
     res.intrinsicName = id.name;
     let typeofString;
@@ -298,7 +309,7 @@ export class Generator {
           }
           return condition;
         },
-        node => node
+        { appendLastToInvariantFn: node => node, referent: id }
       );
     }
 
@@ -307,10 +318,20 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     for (let bodyEntry of this.body) {
-      let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg));
-      context.emit(bodyEntry.buildNode(nodes, context));
-      let id = bodyEntry.declaresDerivedId;
-      if (id !== undefined) context.announceDeclaredDerivedId(id);
+      let previousInvariantValue = false;
+      if (bodyEntry.invariantFor || bodyEntry.isPure) previousInvariantValue = context.startInvariant();
+      if (
+        !(
+          (bodyEntry.isPure && bodyEntry.declaresDerivedId && context.canOmit(bodyEntry.declaresDerivedId)) ||
+          (bodyEntry.invariantFor && context.canOmit(bodyEntry.invariantFor))
+        )
+      ) {
+        let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg));
+        context.emit(bodyEntry.buildNode(nodes, context));
+        let id = bodyEntry.declaresDerivedId;
+        if (id !== undefined) context.announceDeclaredDerivedId(id);
+      }
+      if (bodyEntry.invariantFor || bodyEntry.isPure) context.endInvariant(previousInvariantValue);
     }
   }
 

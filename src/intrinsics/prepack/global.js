@@ -261,7 +261,7 @@ export default function(realm: Realm): void {
               [object, value, object],
               ([objectNode, valueNode]) =>
                 t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode),
-              objnode => t.memberExpression(objnode, t.identifier(key))
+              { appendLastToInvariantFn: objnode => t.memberExpression(objnode, t.identifier(key)) }
             );
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above

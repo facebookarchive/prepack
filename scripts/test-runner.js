@@ -146,6 +146,31 @@ function runTest(name, code, args) {
       console.log(err);
     }
     return false;
+  } else if (code.includes("// Copies of ")) {
+    let marker = "// Copies of ";
+    let searchStart = code.indexOf(marker);
+    let searchEnd = code.indexOf(":", searchStart);
+    let value = code.substring(searchStart + marker.length, searchEnd);
+    let count = parseInt(code.substring(searchEnd + 1, code.indexOf("\n", searchStart)), 10);
+    try {
+      let serialized = prepackString(name, code, "", options);
+      if (!serialized) {
+        console.log(chalk.red("Error during serialization!"));
+        return false;
+      }
+      let regex = new RegExp(value, "gi");
+      let matches = serialized.code.match(regex);
+      if (!matches || matches.length !== count) {
+        console.log(
+          chalk.red(`Wrong number of occurrances of ${value} got ${matches ? matches.length : 0} instead of ${count}`)
+        );
+        return false;
+      }
+    } catch (err) {
+      console.log(chalk.red("Test caused an error"));
+      return false;
+    }
+    return true;
   } else {
     let expected, actual;
     let codeIterations = [];

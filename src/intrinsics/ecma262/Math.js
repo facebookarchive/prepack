@@ -204,7 +204,8 @@ export default function(realm: Realm): ObjectValue {
         new TypesDomain(NumberValue),
         ValuesDomain.topVal,
         [],
-        buildMathRandom(realm.preludeGenerator)
+        buildMathRandom(realm.preludeGenerator),
+        { isPure: true }
       );
     } else {
       return new NumberValue(realm, Math.random());

@@ -27,6 +27,8 @@ export class ResidualHeapValueIdentifiers {
   initPass1() {
     this.collectValToRefCountOnly = true;
     this.valToRefCount = new Map();
+    this.referencedDerivedIds = new Set();
+    this.inInvariantSection = false;
   }
 
   initPass2() {
@@ -36,8 +38,40 @@ export class ResidualHeapValueIdentifiers {
 
   collectValToRefCountOnly: boolean;
   valToRefCount: void | Map<Value, number>;
+  // If the corresponding AbstractValue for a derivedId is never requested,
+  // we can eliminate it if it is also pure.
+  referencedDerivedIds: Set<BabelNodeIdentifier>;
+  inInvariantSection: boolean;
   //value to intermediate references generated like $0, $1, $2,...
   refs: Map<Value, BabelNodeIdentifier>;
+
+  startInvariant(): boolean {
+    let previous = this.inInvariantSection;
+    this.inInvariantSection = true;
+    return previous;
+  }
+
+  endInvariant(previousValue: boolean) {
+    this.inInvariantSection = previousValue;
+  }
+
+  // Should only be done if this is an actual reference and not an invariant
+  recordDerivedIdReference(derivedId: BabelNodeIdentifier) {
+    if (this.collectValToRefCountOnly) {
+      let referencedDerivedIds = this.referencedDerivedIds;
+      invariant(referencedDerivedIds);
+      if (!this.inInvariantSection) {
+        referencedDerivedIds.add(derivedId);
+      }
+    }
+  }
+
+  canOmitDerivedId(derivedId: BabelNodeIdentifier) {
+    let referencedDerivedIds = this.referencedDerivedIds;
+    if (this.collectValToRefCountOnly || !referencedDerivedIds) return false;
+    invariant(referencedDerivedIds);
+    return !referencedDerivedIds.has(derivedId);
+  }
 
   setIdentifier(val: Value, id: BabelNodeIdentifier) {
     invariant(!this.refs.has(val));

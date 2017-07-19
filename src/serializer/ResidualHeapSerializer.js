@@ -997,6 +997,7 @@ export class ResidualHeapSerializer {
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
+      this.residualHeapValueIdentifiers.recordDerivedIdReference(id);
       invariant(!this.preludeGenerator.derivedIds.has(id.name) || this.emitter.hasDeclaredDerivedIdBeenAnnounced(id));
     }
     return serializedValue;
@@ -1070,8 +1071,18 @@ export class ResidualHeapSerializer {
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
+      canOmit: (derivedId: BabelNodeIdentifier) => {
+        return this.residualHeapValueIdentifiers.canOmitDerivedId(derivedId);
+      },
       announceDeclaredDerivedId: (id: BabelNodeIdentifier) => {
         this.emitter.announceDeclaredDerivedId(id);
+      },
+      // Arrow functions necessary to bind 'this' correctly
+      startInvariant: () => {
+        return this.residualHeapValueIdentifiers.startInvariant();
+      },
+      endInvariant: (previous: boolean) => {
+        this.residualHeapValueIdentifiers.endInvariant(previous);
       },
     };
     return context;
@@ -1203,7 +1214,6 @@ export class ResidualHeapSerializer {
       }
     }
 
-    invariant(this.serializedValues.size === this.residualValues.size);
     return t.file(t.program(ast_body));
   }
 }

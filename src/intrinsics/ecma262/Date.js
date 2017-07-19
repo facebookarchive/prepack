@@ -32,7 +32,8 @@ export default function(realm: Realm): NativeFunctionValue {
         new TypesDomain(NumberValue),
         ValuesDomain.topVal,
         [dummyArg],
-        buildDateNow(realm.preludeGenerator)
+        buildDateNow(realm.preludeGenerator),
+        { isPure: true }
       );
       invariant(tmp instanceof AbstractValue, "getCurrentTime() should always return and abstract value");
       return tmp;
