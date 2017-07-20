@@ -15,6 +15,7 @@ import type { Realm } from "../realm.js";
 import { ObjectValue, NumberValue } from "./index.js";
 import invariant from "../invariant.js";
 
+/* Abstract base class for all function objects */
 export default class FunctionValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, realm.intrinsics.FunctionPrototype, intrinsicName);
@@ -47,6 +48,6 @@ export default class FunctionValue extends ObjectValue {
   }
 
   hasDefaultLength(): boolean {
-    return false;
+    invariant(false, "abstract method; please override");
   }
 }

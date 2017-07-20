@@ -13,6 +13,7 @@ import type { Realm } from "../realm.js";
 import { Value, FunctionValue, ObjectValue } from "./index.js";
 import invariant from "../invariant.js";
 
+/* Exotic bound function object */
 export default class BoundFunctionValue extends FunctionValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, intrinsicName);

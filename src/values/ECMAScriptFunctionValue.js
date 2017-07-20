@@ -14,6 +14,7 @@ import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } 
 import { FunctionValue, ObjectValue } from "./index.js";
 import * as t from "babel-types";
 
+/* ECMAScript Function Objects */
 export default class ECMAScriptFunctionValue extends FunctionValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, intrinsicName);
