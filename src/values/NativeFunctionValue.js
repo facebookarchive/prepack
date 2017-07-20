@@ -32,6 +32,7 @@ export type NativeFunctionCallback = (
   newTarget?: void | ObjectValue
 ) => Value;
 
+/* Built-in Function Objects */
 export default class NativeFunctionValue extends FunctionValue {
   constructor(
     realm: Realm,
@@ -80,6 +81,10 @@ export default class NativeFunctionValue extends FunctionValue {
     } else {
       this.name = "native";
     }
+  }
+
+  hasDefaultLength(): boolean {
+    return true;
   }
 
   name: string;
