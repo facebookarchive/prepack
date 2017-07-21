@@ -15,7 +15,7 @@ import type { Realm } from "../realm.js";
 import { ThrowCompletion } from "../completions.js";
 import { StringValue } from "../values/index.js";
 import { Construct } from "../methods/construct.js";
-import traverse from "babel-traverse";
+import traverseFast from "../utils/traverse-fast.js";
 import { parse } from "babylon";
 import type { BabelNodeFile } from "babel-types";
 
@@ -28,8 +28,10 @@ export default function(
 ): BabelNodeFile {
   try {
     let ast = parse(code, { filename, sourceType, startLine });
-    traverse.cheap(ast, node => {
+    traverseFast(ast, node => {
+      invariant(node.loc);
       node.loc.source = filename;
+      return false;
     });
     return ast;
   } catch (e) {

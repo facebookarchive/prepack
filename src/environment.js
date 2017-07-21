@@ -47,7 +47,7 @@ import {
 import generate from "babel-generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
-import traverse from "./traverse.js";
+import traverseFast from "./utils/traverse-fast.js";
 import {
   ToBooleanPartial,
   HasProperty,
@@ -1143,7 +1143,7 @@ export class LexicalEnvironment {
 
   fixup_source_locations(ast: BabelNode, map: string) {
     const smc = new sourceMap.SourceMapConsumer(map);
-    traverse(ast, function(node) {
+    traverseFast(ast, node => {
       let loc = node.loc;
       if (!loc) return false;
       fixup(loc, loc.start);
@@ -1174,7 +1174,7 @@ export class LexicalEnvironment {
   }
 
   fixup_filenames(ast: BabelNode) {
-    traverse(ast, function(node) {
+    traverseFast(ast, node => {
       let loc = node.loc;
       if (!loc || !loc.source) {
         node.leadingComments = null;
