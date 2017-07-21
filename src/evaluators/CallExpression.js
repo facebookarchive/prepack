@@ -120,7 +120,7 @@ function EvaluateCall(
   }
 
   if (func instanceof AbstractValue) {
-    if (!(Value.isTypeCompatibleWith(func.getType(), FunctionValue))) {
+    if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
       let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
       let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
       if (realm.handleError(error) === "Fail") throw new FatalError();
