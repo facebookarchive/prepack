@@ -12,6 +12,11 @@
 import { BabelNode } from "babel-types";
 import * as t from "babel-types";
 
+// This is a variation of traverseFast from
+// https://github.com/babel/babel/blob/28ae47a174f67a8ae6f4527e0a66e88896814170/packages/babel-types/src/index.js
+// This version...
+// - takes a callback function that returns a boolean to indicate whether to short-circuit the traversal
+// - doesn't pass around or allocate an optional parameter value to the callback.
 export default function traverse(node: BabelNode, enter: BabelNode => boolean) {
   if (!node) return;
 

@@ -38,7 +38,7 @@ import { FunctionAllocate, FunctionInitialize, SetFunctionName } from "./functio
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
-import traverse from "../traverse.js";
+import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "babel-types";
 
 // ECMA262 9.4.3.3
@@ -807,7 +807,7 @@ export function CreateDynamicFunction(
     // a. If parameters Contains YieldExpression is true, throw a SyntaxError exception.
     let containsYield = false;
     for (let param of params) {
-      traverse(param, node => {
+      traverseFast(param, node => {
         if (node.type === "YieldExpression") {
           containsYield = true;
           return true;
