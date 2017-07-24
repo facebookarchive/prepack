@@ -11,7 +11,7 @@
 
 import * as t from "babel-types";
 import generate from "babel-generator";
-import traverse from "../lib/traverse.js";
+import traverseFast from "../lib/utils/traverse-fast.js";
 import { parse } from "babylon";
 let fs = require("fs");
 import type { BabelNodeSourceLocation, BabelNodeBlockStatement } from "babel-types";
@@ -27,7 +27,7 @@ function createLogStatement(loc: BabelNodeSourceLocation) {
 function instrument(inputFilename: string, outputFilename: string) {
   let code = fs.readFileSync(inputFilename, "utf8");
   let ast = parse(code, { inputFilename, sourceType: "script" });
-  traverse(ast, function(node) {
+  traverseFast(ast, function(node) {
     if (node.type === "BlockStatement") {
       if (node.loc) ((node: any): BabelNodeBlockStatement).body.unshift(createLogStatement(node.loc));
     }
