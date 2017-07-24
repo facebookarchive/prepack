@@ -134,7 +134,7 @@ export function SpeciesConstructor(realm: Realm, O: ObjectValue, defaultConstruc
 }
 
 // ECMA 9.2.9
-export function MakeClassConstructor(realm: Realm, F: FunctionValue) {
+export function MakeClassConstructor(realm: Realm, F: ECMAScriptFunctionValue) {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof ECMAScriptFunctionValue, "expected function value");
 

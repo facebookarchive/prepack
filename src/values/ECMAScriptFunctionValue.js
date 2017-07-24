@@ -20,9 +20,9 @@ export default class ECMAScriptFunctionValue extends FunctionValue {
     super(realm, intrinsicName);
   }
 
-  $ThisMode: string;
+  $ThisMode: "lexical" | "strict" | "global";
   $Strict: boolean;
-  $FunctionKind: string;
+  $FunctionKind: "normal" | "classConstructor" | "generator";
   $HomeObject: void | ObjectValue;
   $FormalParameters: Array<BabelNodeLVal>;
   $ECMAScriptCode: BabelNodeBlockStatement;

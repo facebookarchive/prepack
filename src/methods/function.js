@@ -152,7 +152,7 @@ export function FindVarScopedDeclarations(ast_node: BabelNode): Array<BabelNode>
 // ECMA262 9.2.12
 export function FunctionDeclarationInstantiation(
   realm: Realm,
-  func: FunctionValue,
+  func: ECMAScriptFunctionValue,
   argumentsList: Array<Value>
 ): EmptyValue {
   // 1. Let calleeContext be the running execution context.
@@ -165,7 +165,6 @@ export function FunctionDeclarationInstantiation(
   let envRec = env.environmentRecord;
 
   // 4. Let code be the value of the [[ECMAScriptCode]] internal slot of func.
-  invariant(func instanceof ECMAScriptFunctionValue);
   let code = func.$ECMAScriptCode;
   invariant(code !== undefined);
 
@@ -543,12 +542,12 @@ export function SetFunctionName(
 // ECMA262 9.2.3
 export function FunctionInitialize(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptFunctionValue,
   kind: "normal" | "method" | "arrow",
   ParameterList: Array<BabelNodeLVal>,
   Body: BabelNodeBlockStatement,
   Scope: LexicalEnvironment
-): FunctionValue {
+): ECMAScriptFunctionValue {
   // Note that F is a new object, and we can thus write to internal slots
   invariant(realm.isNewObject(F));
 
@@ -572,7 +571,6 @@ export function FunctionInitialize(
     configurable: true,
   });
 
-  invariant(F instanceof ECMAScriptFunctionValue);
   // 4. Let Strict be the value of the [[Strict]] internal slot of F.
   let Strict = F.$Strict;
 
@@ -611,7 +609,7 @@ export function GeneratorFunctionCreate(
   Body: BabelNodeBlockStatement,
   Scope: LexicalEnvironment,
   Strict: boolean
-): FunctionValue {
+): ECMAScriptFunctionValue {
   // 1. Let functionPrototype be the intrinsic object %Generator%.
   let functionPrototype = realm.intrinsics.Generator;
 
@@ -834,7 +832,7 @@ export function FunctionAllocate(
   functionPrototype: ObjectValue,
   strict: boolean,
   functionKind: "normal" | "non-constructor" | "generator"
-): FunctionValue {
+): ECMAScriptFunctionValue {
   // 1. Assert: Type(functionPrototype) is Object.
   invariant(functionPrototype instanceof ObjectValue, "expected functionPrototype to be an object");
 
@@ -1242,7 +1240,7 @@ export function FunctionCreate(
   Scope: LexicalEnvironment,
   Strict: boolean,
   prototype?: ObjectValue
-) {
+): ECMAScriptFunctionValue {
   // 1. If the prototype argument was not passed, then
   if (!prototype) {
     // a. Let prototype be the intrinsic object %FunctionPrototype%.
@@ -1504,7 +1502,7 @@ export function EvalDeclarationInstantiation(
 }
 
 // ECMA 9.2.10
-export function MakeMethod(realm: Realm, F: FunctionValue, homeObject: ObjectValue) {
+export function MakeMethod(realm: Realm, F: ECMAScriptFunctionValue, homeObject: ObjectValue) {
   // Note that F is a new object, and we can thus write to internal slots
   invariant(realm.isNewObject(F));
 
