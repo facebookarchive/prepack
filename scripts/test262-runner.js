@@ -397,11 +397,10 @@ function workerArgsParse(): WorkerProgramArgs {
 function masterRun(args: MasterProgramArgs) {
   let testPath = `${__dirname}` + args.relativeTestPath + "/test";
   let tests = getFilesSync(testPath);
-  // remove tests that don't need to be ran
+  // remove tests that don't need to be run
+  if (args.filterString) tests = tests.filter(test => test.location.includes(args.filterString));
   const originalTestLength = tests.length;
-  tests = tests.filter(test => {
-    return testFilterByMetadata(test, args.filterString);
-  });
+  tests = tests.filter(test => testFilterByMetadata(test));
   let groups: GroupsMap = {};
 
   // Now that all the tasks are ready, start up workers to begin processing
@@ -419,7 +418,7 @@ function masterRunSingleProcess(
   tests: TestFileInfo[],
   numFiltered: number
 ): void {
-  console.log("Running the tests as a single process");
+  console.log(`Running ${tests.length} tests as a single process`);
   // print out every 5 percent (more granularity than multi-process because multi-process
   // runs a lot faster)
   const granularity = Math.floor(tests.length / 20);
@@ -434,8 +433,7 @@ function masterRunSingleProcess(
       } else {
         let ok = handleTestResults(groups, t, results);
         if (!ok) {
-          // handleTestResults returns false if a failure threshold was
-          // exceeded
+          // handleTestResults returns false if a failure threshold was exceeded
           throw new Error("Too many test failures");
         }
         let progress = getProgressBar(numLeft, tests.length, granularity);
@@ -525,8 +523,10 @@ function masterRunMultiProcess(
 }
 
 function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSkipped: number): number {
+  let numPassed = 0;
   let numPassedES5 = 0;
   let numPassedES6 = 0;
+  let numFailed = 0;
   let numFailedES5 = 0;
   let numFailedES6 = 0;
   let numSkipped = earlierNumSkipped;
@@ -534,6 +534,8 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   let failed_groups = [];
   for (let group in groups) {
     // count some totals
+    let group_passed = 0;
+    let group_failed = 0;
     let group_es5_passed = 0;
     let group_es5_failed = 0;
     let group_es6_passed = 0;
@@ -544,31 +546,45 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
     msg += `${groupName}: `;
     for (let t of groups[group]) {
       let testName = path.relative(group, t.test.location);
-      numSkipped += 2 - t.result.length;
+      let all_passed = true;
+      let was_skipped = true;
       for (let testResult of t.result) {
-        if (testResult.passed) {
-          if (t.test.isES6) {
-            group_es6_passed++;
-          } else {
-            group_es5_passed++;
-          }
-        } else {
+        was_skipped = false;
+        if (!testResult.passed) {
+          all_passed = false;
           if (args.verbose) {
             errmsg +=
               create_test_message(testName, testResult.passed, testResult.err, t.test.isES6, testResult.strict) + EOL;
           }
           if (testResult.err && testResult.err.message === "Timed out") {
             numTimeouts++;
-          } else if (t.test.isES6) {
-            group_es6_failed++;
-          } else {
-            group_es5_failed++;
           }
+        }
+      }
+      if (was_skipped) {
+        numSkipped++;
+      } else if (all_passed) {
+        group_passed++;
+        if (t.test.isES6) {
+          group_es6_passed++;
+        } else {
+          group_es5_passed++;
+        }
+      } else {
+        group_failed++;
+        if (t.test.isES6) {
+          group_es6_failed++;
+        } else {
+          group_es5_failed++;
         }
       }
     }
     msg +=
-      `Passed: ${group_es5_passed} / ${group_es5_passed + group_es5_failed} ` +
+      `Passed: ${group_passed} / ${group_passed + group_failed} ` +
+      `(${toPercentage(group_passed, group_passed + group_failed)}%) ` +
+      chalk.yellow("(es5)") +
+      `: ${group_es5_passed} / ` +
+      `${group_es5_passed + group_es5_failed} ` +
       `(${toPercentage(group_es5_passed, group_es5_passed + group_es5_failed)}%) ` +
       chalk.yellow("(es6)") +
       `: ${group_es6_passed} / ` +
@@ -584,16 +600,21 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
       failed_groups.push(msg);
     }
 
+    numPassed += group_passed;
     numPassedES5 += group_es5_passed;
     numPassedES6 += group_es6_passed;
+    numFailed += group_failed;
     numFailedES5 += group_es5_failed;
     numFailedES6 += group_es6_failed;
   }
   let status =
     `=== RESULTS ===` +
     EOL +
-    `Passes: ${numPassedES5} / ${numPassedES5 + numFailedES5} ` +
-    `(${toPercentage(numPassedES5, numPassedES5 + numFailedES5)}%)` +
+    `Passes: ${numPassed} / ${numPassed + numFailed} ` +
+    `(${toPercentage(numPassed, numPassed + numFailed)}%)` +
+    EOL +
+    `ES5 passes: ${numPassedES5} / ${numPassedES5 + numFailedES5} ` +
+    `(${toPercentage(numPassedES5, numPassedES5 + numFailedES5)}%) ` +
     EOL +
     `ES6 passes: ${numPassedES6} / ${numPassedES6 + numFailedES6} ` +
     `(${toPercentage(numPassedES6, numPassedES6 + numFailedES6)}%)` +
@@ -614,7 +635,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22916 || numPassedES6 < 10336 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 11798 || numPassedES6 < 5244 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -634,13 +655,11 @@ function getProgressBar(currentTestLength: number, originalTestLength: number, g
 
 // Returns false if test processing should stop.
 function handleTestResults(groups: GroupsMap, test: TestFileInfo, testResults: TestResult[]): boolean {
-  if (testResults.length !== 0) {
-    // test results are in, add it to its corresponding group
-    if (!(test.groupName in groups)) {
-      groups[test.groupName] = [];
-    }
-    groups[test.groupName].push({ test: test, result: testResults });
+  // test results are in, add it to its corresponding group
+  if (!(test.groupName in groups)) {
+    groups[test.groupName] = [];
   }
+  groups[test.groupName].push({ test: test, result: testResults });
   return true;
 }
 
@@ -1044,16 +1063,12 @@ function runTest(
 /**
  * Returns true if ${test} should be run, false otherwise
  */
-function testFilterByMetadata(test: TestFileInfo, filterString: string): boolean {
+function testFilterByMetadata(test: TestFileInfo): boolean {
   // filter hidden files
   if (path.basename(test.location)[0] === ".") return false;
 
   // emacs!
   if (test.location.includes("~")) return false;
-
-  // command line filter
-  // if the filter is specified, only include tests which match the string
-  if (filterString && !test.location.includes(filterString)) return false;
 
   // SIMD isn't in JS yet
   if (test.location.includes("Simd")) return false;
