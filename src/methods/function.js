@@ -30,6 +30,7 @@ import {
   BoundFunctionValue,
   EmptyValue,
   FunctionValue,
+  NativeFunctionValue,
   ECMAScriptFunctionValue,
   ObjectValue,
   StringValue,
@@ -638,13 +639,18 @@ export function AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm) 
 }
 
 // ECMA262 9.2.1
-export function $Call(realm: Realm, F: FunctionValue, thisArgument: Value, argsList: Array<Value>): Value {
+export function $Call(
+  realm: Realm,
+  F: NativeFunctionValue | ECMAScriptFunctionValue,
+  thisArgument: Value,
+  argsList: Array<Value>
+): Value {
   return InternalCall(realm, F, thisArgument, argsList, 0);
 }
 
 function InternalCall(
   realm: Realm,
-  F: FunctionValue,
+  F: NativeFunctionValue | ECMAScriptFunctionValue,
   thisArgument: Value,
   argsList: Array<Value>,
   tracerIndex: number
@@ -722,7 +728,7 @@ function InternalCall(
 // ECMA262 9.2.2
 export function $Construct(
   realm: Realm,
-  F: FunctionValue,
+  F: NativeFunctionValue | ECMAScriptFunctionValue,
   argumentsList: Array<Value>,
   newTarget: ObjectValue
 ): ObjectValue {
@@ -731,7 +737,7 @@ export function $Construct(
 
 function InternalConstruct(
   realm: Realm,
-  F: FunctionValue,
+  F: NativeFunctionValue | ECMAScriptFunctionValue,
   argumentsList: Array<Value>,
   newTarget: ObjectValue,
   thisArgument: void | ObjectValue,

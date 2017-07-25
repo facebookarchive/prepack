@@ -83,6 +83,10 @@ export default class NativeFunctionValue extends FunctionValue {
     }
   }
 
+  hasDefaultLength(): boolean {
+    return this.getLength() === this.length;
+  }
+
   name: string;
   callback: NativeFunctionCallback;
   length: number;

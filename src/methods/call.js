@@ -251,7 +251,7 @@ export function OrdinaryCallBindThis(
   thisArgument: Value
 ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
   // 1. Let thisMode be the value of F's [[ThisMode]] internal slot.
-  let thisMode = F instanceof ECMAScriptFunctionValue ? F.$ThisMode : undefined;
+  let thisMode = F instanceof ECMAScriptFunctionValue ? F.$ThisMode : "strict";
 
   // 2. If thisMode is lexical, return NormalCompletion(undefined).
   if (thisMode === "lexical") return realm.intrinsics.undefined;
@@ -264,7 +264,7 @@ export function OrdinaryCallBindThis(
 
   let thisValue;
   // 5. If thisMode is strict, let thisValue be thisArgument.
-  if (thisMode === "strict" || F instanceof NativeFunctionValue) {
+  if (thisMode === "strict") {
     thisValue = (thisArgument: any);
   } else {
     // 6. Else,
@@ -301,7 +301,7 @@ export function OrdinaryCallBindThis(
 // ECMA262 9.2.1.3
 export function OrdinaryCallEvaluateBody(
   realm: Realm,
-  F: FunctionValue,
+  F: NativeFunctionValue | ECMAScriptFunctionValue,
   argumentsList: Array<Value>
 ): Reference | Value | AbruptCompletion {
   if (F instanceof NativeFunctionValue) {
@@ -318,7 +318,6 @@ export function OrdinaryCallEvaluateBody(
       }
     }
   } else {
-    invariant(F instanceof ECMAScriptFunctionValue);
     if (F.$FunctionKind === "generator") {
       // 1. Perform ? FunctionDeclarationInstantiation(functionObject, argumentsList).
       FunctionDeclarationInstantiation(realm, F, argumentsList);
