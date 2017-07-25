@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import {
-  FunctionValue,
   ECMAScriptFunctionValue,
   ObjectValue,
   UndefinedValue,
@@ -31,12 +30,12 @@ import type { BabelNodeClassMethod } from "babel-types";
 // ECMA262 9.2.8
 export function MakeConstructor(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptFunctionValue,
   writablePrototype?: boolean,
   prototype?: ObjectValue
 ): UndefinedValue {
   // 1. Assert: F is an ECMAScript function object.
-  invariant(F instanceof FunctionValue, "expected function value");
+  invariant(F instanceof ECMAScriptFunctionValue, "expected function value");
 
   // 2. Assert: F has a [[Construct]] internal method.
   invariant(F.$Construct !== undefined, "expected construct internal method");

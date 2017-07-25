@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { PropertyKeyValue } from "../types.js";
+import type { OrdinaryFunctionValue } from "../values/index.js";
 import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
@@ -301,7 +302,7 @@ export function OrdinaryCallBindThis(
 // ECMA262 9.2.1.3
 export function OrdinaryCallEvaluateBody(
   realm: Realm,
-  F: NativeFunctionValue | ECMAScriptFunctionValue,
+  F: OrdinaryFunctionValue,
   argumentsList: Array<Value>
 ): Reference | Value | AbruptCompletion {
   if (F instanceof NativeFunctionValue) {
@@ -318,6 +319,7 @@ export function OrdinaryCallEvaluateBody(
       }
     }
   } else {
+    invariant(F instanceof ECMAScriptFunctionValue);
     if (F.$FunctionKind === "generator") {
       // 1. Perform ? FunctionDeclarationInstantiation(functionObject, argumentsList).
       FunctionDeclarationInstantiation(realm, F, argumentsList);

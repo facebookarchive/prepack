@@ -15,7 +15,7 @@ import { SymbolValue } from "./index.js";
 import {
   NumberValue,
   StringValue,
-  FunctionValue,
+  OrdinaryFunctionValue,
   ObjectValue,
   NullValue,
   ProxyValue,
@@ -33,7 +33,7 @@ export type NativeFunctionCallback = (
 ) => Value;
 
 /* Built-in Function Objects */
-export default class NativeFunctionValue extends FunctionValue {
+export default class NativeFunctionValue extends OrdinaryFunctionValue {
   constructor(
     realm: Realm,
     intrinsicName: void | string,

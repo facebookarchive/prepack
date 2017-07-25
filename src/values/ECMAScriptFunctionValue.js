@@ -11,11 +11,12 @@
 
 import type { Realm } from "../realm.js";
 import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } from "babel-types";
-import { FunctionValue, ObjectValue } from "./index.js";
+import type { ObjectValue } from "./index.js";
+import { OrdinaryFunctionValue } from "./index.js";
 import * as t from "babel-types";
 
 /* ECMAScript Function Objects */
-export default class ECMAScriptFunctionValue extends FunctionValue {
+export default class ECMAScriptFunctionValue extends OrdinaryFunctionValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, intrinsicName);
   }
