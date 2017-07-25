@@ -13,7 +13,7 @@ import { FunctionValue, Value } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
-import traverse from "babel-traverse";
+import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import { voidExpression, nullExpression } from "../utils/internalizer.js";
 import type { LocationService } from "./types.js";
@@ -154,16 +154,10 @@ export class ResidualFunctionInitializers {
           // TODO: Study in more detail which threshold is the best compromise in terms of
           // code size and performance.
           let count = 0;
-          traverse(
-            t.file(t.program([ast])),
-            {
-              enter(path) {
-                count++;
-              },
-            },
-            null,
-            {}
-          );
+          traverseFast(t.file(t.program([ast])), node => {
+            count++;
+            return false;
+          });
           if (count > 24) {
             let id = t.identifier(this.initializerNameGenerator.generate());
             this.prelude.push(t.functionDeclaration(id, [], t.blockStatement([ast])));
