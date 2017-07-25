@@ -58,7 +58,7 @@
     "babel-template": "^6.9.0",
     "babel-traverse": "^6.9.0",
     "babel-types": "^6.9.0",
-    "babylon": "^6.5.2",
+    "babylon": "^6.17.4",
     "base62": "^1.1.2",
     "seedrandom": "^2.4.2",
     "source-map": "^0.5.6"
