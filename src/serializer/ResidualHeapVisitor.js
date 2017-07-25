@@ -85,14 +85,6 @@ export class ResidualHeapVisitor {
 
   visitObjectProperties(obj: ObjectValue): void {
     for (let [symbol, propertyBinding] of obj.symbols) {
-      // TODO #22: visit symbols
-      // invariant(symbol);
-      // invariant(propertyBinding);
-      // let desc = propertyBinding.descriptor;
-      // if (desc === undefined) continue; //deleted
-      // if (!this.inspector.canIgnoreProperty(obj, symbol)) {
-      //   this.visitDescriptor(desc);
-      // }
       this.visitValue(symbol);
       invariant(propertyBinding);
       let desc = propertyBinding.descriptor;
