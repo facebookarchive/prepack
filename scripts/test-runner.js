@@ -217,7 +217,7 @@ function runTest(name, code, args) {
         oldCode = newCode;
         oldUniqueSuffix = newUniqueSuffix;
       }
-      if (anyDelayedValues) {
+      if (i === max && anyDelayedValues) {
         // TODO: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
         return true;
       } else if (i === max) {
