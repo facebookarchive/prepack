@@ -157,11 +157,35 @@ export class ResidualHeapSerializer {
     properties: Map<string, PropertyBinding> = obj.properties,
     objectPrototypeAlreadyEstablished: boolean = false
   ) {
-    /*
-    for (let symbol of obj.symbols.keys()) {
+    for (let [symbol, propertyBinding] of obj.symbols) {
       // TODO #22: serialize symbols
+      invariant(symbol instanceof SymbolValue);
+      invariant(propertyBinding.descriptor);
+      let propValue = propertyBinding.descriptor.value;
+      this.serializeValue(symbol);
+      let mightHaveBeenDeleted = symbol.mightHaveBeenDeleted();
+      invariant(
+        mightHaveBeenDeleted === false,
+        "Conditionally deleting a symbol property of an object is not supported yet"
+      );
+      this.emitter.emitNowOrAfterWaitingForDependencies([symbol, obj], () => {
+        this._assignProperty(
+          () => {
+            let serializedSymbol = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(symbol);
+            return t.memberExpression(
+              this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(obj),
+              serializedSymbol,
+              true
+            ); //should simplify to myObj[sym]
+          },
+          () => {
+            invariant(propValue instanceof Value);
+            return this.serializeValue(propValue);
+          }, //this is the value
+          mightHaveBeenDeleted //in the simplified version this is not necessary (should always be false)
+        );
+      });
     }
-    */
 
     // inject properties
     for (let [key, propertyBinding] of properties) {

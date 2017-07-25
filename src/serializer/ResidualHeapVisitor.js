@@ -84,11 +84,21 @@ export class ResidualHeapVisitor {
   }
 
   visitObjectProperties(obj: ObjectValue): void {
-    /*
-    for (let symbol of obj.symbols.keys()) {
+    for (let [symbol, propertyBinding] of obj.symbols) {
       // TODO #22: visit symbols
+      // invariant(symbol);
+      // invariant(propertyBinding);
+      // let desc = propertyBinding.descriptor;
+      // if (desc === undefined) continue; //deleted
+      // if (!this.inspector.canIgnoreProperty(obj, symbol)) {
+      //   this.visitDescriptor(desc);
+      // }
+      this.visitValue(symbol);
+      invariant(propertyBinding);
+      let desc = propertyBinding.descriptor;
+      if (desc === undefined) continue; //deleted
+      this.visitDescriptor(desc);
     }
-    */
 
     // visit properties
     for (let [key, propertyBinding] of obj.properties) {
@@ -389,8 +399,6 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitValueSymbol(val: SymbolValue): void {}
-
   visitValueProxy(val: ProxyValue): void {
     this.visitValue(val.$ProxyTarget);
     this.visitValue(val.$ProxyHandler);
@@ -434,7 +442,7 @@ export class ResidualHeapVisitor {
         if (this._mark(val)) this.visitValueFunction(val);
       });
     } else if (val instanceof SymbolValue) {
-      if (this._mark(val)) this.visitValueSymbol(val);
+      this._mark(val);
     } else if (val instanceof ObjectValue) {
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the global code as well.
