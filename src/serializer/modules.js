@@ -444,7 +444,7 @@ export class Modules {
     realm.pushContext(context);
     let oldReadOnly = realm.setReadOnly(true);
     let oldDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
-    this.disallowDelayingRequiresOverride = false;
+    this.disallowDelayingRequiresOverride = true;
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
