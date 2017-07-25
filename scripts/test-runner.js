@@ -219,7 +219,7 @@ function runTest(name, code, args) {
       }
       if (i === max) {
         if (anyDelayedValues) {
-          // TODO: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
+          // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
           return true;
         }
         console.log(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
