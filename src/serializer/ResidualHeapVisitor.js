@@ -84,6 +84,7 @@ export class ResidualHeapVisitor {
   }
 
   visitObjectProperties(obj: ObjectValue): void {
+    // visit properties
     for (let [symbol, propertyBinding] of obj.symbols) {
       this.visitValue(symbol);
       invariant(propertyBinding);
