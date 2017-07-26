@@ -133,7 +133,8 @@ export class Serializer {
         residualHeapVisitor.inspector,
         residualHeapVisitor.values,
         residualHeapVisitor.functionBindings,
-        residualHeapVisitor.functionInfos
+        residualHeapVisitor.functionInfos,
+        !!this.options.delayInitializations
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -151,7 +152,8 @@ export class Serializer {
       residualHeapVisitor.inspector,
       residualHeapVisitor.values,
       residualHeapVisitor.functionBindings,
-      residualHeapVisitor.functionInfos
+      residualHeapVisitor.functionInfos,
+      !!this.options.delayInitializations
     );
     let ast = residualHeapSerializer.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));

@@ -63,7 +63,8 @@ export class ResidualHeapSerializer {
     residualHeapInspector: ResidualHeapInspector,
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
-    residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>
+    residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
+    delayInitializations: boolean
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -113,6 +114,7 @@ export class ResidualHeapSerializer {
     this.residualValues = residualValues;
     this.residualFunctionBindings = residualFunctionBindings;
     this.residualFunctionInfos = residualFunctionInfos;
+    this.delayInitializations = delayInitializations;
   }
 
   emitter: Emitter;
@@ -143,6 +145,7 @@ export class ResidualHeapSerializer {
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
+  delayInitializations: boolean;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -450,7 +453,7 @@ export class ResidualHeapSerializer {
       }
     }
 
-    if (generators.length === 0) {
+    if (this.delayInitializations && generators.length === 0) {
       let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
         functionValues,
         val

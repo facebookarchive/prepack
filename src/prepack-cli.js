@@ -36,20 +36,20 @@ function run(
   fs
 ) {
   let HELP_STR = `
-    input    The name of the file to run Prepack over (for web please provide the single js bundle file)
-    --out    The name of the output file
-    --compatibility    The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(", ")}]
-    --mathRandomSeed    If you want Prepack to evaluate Math.random() calls, please provide a seed.
-    --srcmapIn    The input sourcemap filename. If present, Prepack will output a sourcemap that maps from the original file (pre-input sourcemap) to Prepack's output
-    --srcmapOut    The output sourcemap filename.
-    --debugNames    Changes the output of Prepack so that for named functions and variables that get emitted into Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
-    --singlePass    Perform only one serialization pass. Disables some optimizations on Prepack's output. This will speed up Prepacking but result in code with less inlining.
-    --speculate    Enable speculative initialization of modules (for the module system Prepack has builtin knowledge about). Prepack will try to execute all factory functions it is able to.
-    --trace    Traces the order of module initialization.
-    --serialize    Serializes the partially evaluated global environment as a program that recreates it. (default = true)
-    --residual    Produces the residual program that results after constant folding.
-    --profile    Enables console logging of profile information of different phases of prepack.
-    --statsFile  The name of the output file where statistics will be written to.
+    input            The name of the file to run Prepack over (for web please provide the single js bundle file)
+    --out            The name of the output file
+    --compatibility  The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(", ")}]
+    --mathRandomSeed If you want Prepack to evaluate Math.random() calls, please provide a seed.
+    --srcmapIn       The input sourcemap filename. If present, Prepack will output a sourcemap that maps from the original file (pre-input sourcemap) to Prepack's output
+    --srcmapOut      The output sourcemap filename.
+    --debugNames     Changes the output of Prepack so that for named functions and variables that get emitted into Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
+    --singlePass     Perform only one serialization pass. Disables some optimizations on Prepack's output. This will speed up Prepacking but result in code with less inlining.
+    --speculate      Enable speculative initialization of modules (for the module system Prepack has builtin knowledge about). Prepack will try to execute all factory functions it is able to.
+    --trace          Traces the order of module initialization.
+    --serialize      Serializes the partially evaluated global environment as a program that recreates it. (default = true)
+    --residual       Produces the residual program that results after constant folding.
+    --profile        Enables console logging of profile information of different phases of prepack.
+    --statsFile      The name of the output file where statistics will be written to.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -67,6 +67,7 @@ function run(
     singlePass: false,
     logStatistics: false,
     logModules: false,
+    delayInitializations: false,
     delayUnsupportedRequires: false,
     internalDebug: false,
     serialize: false,
@@ -107,7 +108,8 @@ function run(
           break;
         case "help":
           console.log(
-            "Usage: prepack.js [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ] [ --singlePass ] [ --debugNames ]" +
+            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] " +
+              Object.keys(flags).map(s => "[ --" + s + "]").join(" ") +
               "\n" +
               HELP_STR
           );
