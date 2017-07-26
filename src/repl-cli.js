@@ -17,9 +17,7 @@ import { AbruptCompletion, ThrowCompletion } from "./completions.js";
 import { Value, ObjectValue } from "./values/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
-
-// $FlowFixMe: Why does Flow not know about this Node module?
-let repl = require("repl");
+import repl from "repl";
 
 function serialize(realm: Realm, res: Value | AbruptCompletion): any {
   if (res && res instanceof Value) {
