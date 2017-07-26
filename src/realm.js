@@ -31,7 +31,13 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeStatement, BabelNodeExpression } from "babel-types";
+import type {
+  BabelNode,
+  BabelNodeSourceLocation,
+  BabelNodeLVal,
+  BabelNodeStatement,
+  BabelNodeExpression,
+} from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
@@ -278,6 +284,14 @@ export class Realm {
       if (ctx.savedEffects !== undefined) this.addPriorEffects(ctx.savedEffects, savedEffects);
       ctx.savedEffects = savedEffects;
     }
+  }
+
+  assignToGlobal(name: BabelNodeLVal, value: Value) {
+    this.$GlobalEnv.assignToGlobal(name, value);
+  }
+
+  deleteGlobalBinding(name: string) {
+    this.$GlobalEnv.environmentRecord.DeleteBinding(name);
   }
 
   // Evaluate the given ast in a sandbox and return the evaluation results

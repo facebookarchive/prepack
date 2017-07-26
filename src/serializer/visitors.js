@@ -72,7 +72,7 @@ export let ClosureRefReplacer = {
     state.requireStatistics.count++;
     if (state.modified[path.node.callee.name]) return;
 
-    let moduleId = path.node.arguments[0].value;
+    let moduleId = "" + path.node.arguments[0].value;
     let new_node = requireReturns.get(moduleId);
     if (new_node !== undefined) {
       markVisited(new_node, state.serializedBindings);

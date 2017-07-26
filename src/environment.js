@@ -13,6 +13,7 @@ import type {
   BabelNode,
   BabelNodeComment,
   BabelNodeFile,
+  BabelNodeLVal,
   BabelNodePosition,
   BabelNodeStatement,
   BabelNodeSourceLocation,
@@ -53,6 +54,7 @@ import {
   HasProperty,
   Get,
   GetValue,
+  PutValue,
   DefinePropertyOrThrow,
   Set,
   IsExtensible,
@@ -1001,6 +1003,11 @@ export class LexicalEnvironment {
   environmentRecord: EnvironmentRecord;
   parent: null | LexicalEnvironment;
   realm: Realm;
+
+  assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value) {
+    let globalValue = this.evaluate(globalAst, false);
+    PutValue(this.realm, globalValue, rvalue);
+  }
 
   partiallyEvaluateCompletionDeref(
     ast: BabelNode,
