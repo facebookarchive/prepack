@@ -17,7 +17,7 @@ import { FindVarScopedDeclarations } from "../methods/function.js";
 import { BoundNames } from "../methods/index.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
-import traverse from "../traverse.js";
+import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeProgram } from "babel-types";
 
 // ECMA262 15.1.11
@@ -39,7 +39,7 @@ export function GlobalDeclarationInstantiation(
   // 4. Let varNames be the VarDeclaredNames of script.
   let varNames = [];
 
-  traverse(ast, function(node) {
+  traverseFast(ast, node => {
     if (node.type === "VariableDeclaration") {
       if (node.kind === "var") {
         varNames = varNames.concat(BoundNames(realm, node));

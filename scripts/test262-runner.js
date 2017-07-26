@@ -564,9 +564,11 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
       if (errmsg) {
         console.log(errmsg);
       }
-    } else if (group_es5_failed + group_es6_failed > 0) {
+    }
+    if (group_es5_failed + group_es6_failed > 0) {
       failed_groups.push(msg);
     }
+
     numPassedES5 += group_es5_passed;
     numPassedES6 += group_es6_passed;
     numFailedES5 += group_es5_failed;

@@ -54,7 +54,7 @@ import {
 } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
-import traverse from "../traverse.js";
+import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import IsStrict from "../utils/strict.js";
@@ -213,7 +213,7 @@ export function FunctionDeclarationInstantiation(
 
   // 11. Let varNames be the VarDeclaredNames of code.
   let varNames = [];
-  traverse(code, function(node) {
+  traverseFast(code, node => {
     if (node.type === "VariableDeclaration" && node.kind === "var") {
       varNames = varNames.concat(Object.keys(t.getBindingIdentifiers(node)));
     }
@@ -1287,7 +1287,7 @@ export function EvalDeclarationInstantiation(
 ) {
   // 1. Let varNames be the VarDeclaredNames of body.
   let varNames = [];
-  traverse(body, function(node) {
+  traverseFast(body, node => {
     if (node.type === "VariableDeclaration" && node.kind === "var") {
       varNames = varNames.concat(Object.keys(t.getBindingIdentifiers(node)));
     }

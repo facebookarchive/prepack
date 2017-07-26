@@ -2,3 +2,4 @@ test262
 lib
 underscore-with-tests.js
 flow-typed
+test/**/*.js

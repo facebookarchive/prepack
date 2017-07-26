@@ -217,10 +217,11 @@ function runTest(name, code, args) {
         oldCode = newCode;
         oldUniqueSuffix = newUniqueSuffix;
       }
-      if (anyDelayedValues) {
-        // TODO: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
-        return true;
-      } else if (i === max) {
+      if (i === max) {
+        if (anyDelayedValues) {
+          // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
+          return true;
+        }
         console.log(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
       }
     } catch (err) {

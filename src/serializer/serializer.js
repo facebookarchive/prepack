@@ -16,17 +16,17 @@ import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
 import generate from "babel-generator";
 import type SourceMap from "babel-generator";
-import traverse from "babel-traverse";
+import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics } from "./types.js";
-import { IdentifierCollector } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
+import * as t from "babel-types";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -57,7 +57,13 @@ export class Serializer {
     let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
       invariant(realmPreludeGenerator);
-      traverse(ast, IdentifierCollector, null, realmPreludeGenerator.nameGenerator.forbiddenNames);
+      let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
+      traverseFast(ast, node => {
+        if (!t.isIdentifier(node)) return false;
+
+        forbiddenNames.add(((node: any): BabelNodeIdentifier).name);
+        return true;
+      });
     });
 
     if (res instanceof AbruptCompletion) {
