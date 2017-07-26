@@ -17,6 +17,9 @@ import {
   BoundFunctionValue,
   ProxyValue,
   SymbolValue,
+  NumberValue,
+  StringValue,
+  BooleanValue,
   AbstractValue,
   EmptyValue,
   FunctionValue,
@@ -866,16 +869,22 @@ export class ResidualHeapSerializer {
       case "Number":
         let numberData = val.$NumberData;
         invariant(numberData !== undefined);
+        numberData.throwIfNotConcreteNumber();
+        invariant(numberData instanceof NumberValue, "expected number data internal slot to be a number value");
         this._emitObjectProperties(val);
         return t.newExpression(this.preludeGenerator.memoizeReference("Number"), [t.numericLiteral(numberData.value)]);
       case "String":
         let stringData = val.$StringData;
         invariant(stringData !== undefined);
+        stringData.throwIfNotConcreteString();
+        invariant(stringData instanceof StringValue, "expected string data internal slot to be a string value");
         this._emitObjectProperties(val);
         return t.newExpression(this.preludeGenerator.memoizeReference("String"), [t.stringLiteral(stringData.value)]);
       case "Boolean":
         let booleanData = val.$BooleanData;
         invariant(booleanData !== undefined);
+        booleanData.throwIfNotConcreteBoolean();
+        invariant(booleanData instanceof BooleanValue, "expected boolean data internal slot to be a boolean value");
         this._emitObjectProperties(val);
         return t.newExpression(this.preludeGenerator.memoizeReference("Boolean"), [
           t.booleanLiteral(booleanData.value),

@@ -24,6 +24,10 @@ export default class SymbolValue extends PrimitiveValue {
     return false;
   }
 
+  throwIfNotConcreteSymbol(): SymbolValue {
+    return this;
+  }
+
   _serialize(): Symbol {
     return Symbol(this.$Description);
   }

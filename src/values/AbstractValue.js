@@ -242,6 +242,21 @@ export default class AbstractValue extends Value {
     throw new FatalError();
   }
 
+  throwIfNotConcreteString(): StringValue {
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
+  }
+
+  throwIfNotConcreteBoolean(): BooleanValue {
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
+  }
+
+  throwIfNotConcreteSymbol(): SymbolValue {
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
+  }
+
   throwIfNotConcreteObject(): ObjectValue {
     AbstractValue.reportIntrospectionError(this);
     throw new FatalError();

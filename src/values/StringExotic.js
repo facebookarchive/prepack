@@ -23,8 +23,6 @@ export default class StringExotic extends ObjectValue {
     super(realm, realm.intrinsics.StringPrototype, intrinsicName);
   }
 
-  $StringData: void | StringValue;
-
   // ECMA262 9.4.3.1
   $GetOwnProperty(P: PropertyKeyValue): Descriptor | void {
     // 1. Assert: IsPropertyKey(P) is true.
@@ -56,6 +54,7 @@ export default class StringExotic extends ObjectValue {
     // 9. Let str be the String value of S.[[StringData]].
     let str = this.$StringData;
     invariant(str);
+    str = str.throwIfNotConcreteString();
 
     // 10. Let len be the number of elements in str.
     let len = str.value.length;
@@ -83,6 +82,7 @@ export default class StringExotic extends ObjectValue {
     // 2. Let str be the String value of O.[[StringData]].
     let str = this.$StringData;
     invariant(str);
+    str = str.throwIfNotConcreteString();
 
     // 3. Let len be the number of elements in str.
     let len = str.value.length;
