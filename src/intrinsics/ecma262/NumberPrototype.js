@@ -141,39 +141,41 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 20.1.3.6
   obj.defineNativeMethod("toString", 1, (context, [radix]) => {
-    if (context instanceof AbstractValue && context.getType() === NumberValue && radix instanceof UndefinedValue) {
-      const codeTemplate = "(A).toString()";
-      return realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [context], ([a]) =>
-        buildExpressionTemplate(codeTemplate)(realm.preludeGenerator)({ A: a })
-      );
-    } else {
-      // 1. Let x be ? thisNumberValue(this value).
-      let x = thisNumberValue(realm, context);
-
-      // 2. If radix is not present, let radixNumber be 10.
-      // 3. Else if radix is undefined, let radixNumber be 10.
-      let radixNumber;
-      if (!radix || radix instanceof UndefinedValue) {
-        radixNumber = 10;
-      } else {
-        // 4. Else let radixNumber be ? ToInteger(radix).
-        radixNumber = ToInteger(realm, radix.throwIfNotConcrete());
+    if (radix instanceof UndefinedValue) {
+      const target = context instanceof ObjectValue ? context.$NumberData : context;
+      if (target instanceof AbstractValue && target.getType() === NumberValue) {
+        const codeTemplate = "(A).toString()";
+        return realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [target], ([a]) =>
+          buildExpressionTemplate(codeTemplate)(realm.preludeGenerator)({ A: a })
+        );
       }
-
-      // 5. If radixNumber < 2 or radixNumber > 36, throw a RangeError exception.
-      if (radixNumber < 2 || radixNumber > 36) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-      }
-
-      // 6. If radixNumber = 10, return ! ToString(x).
-      if (radixNumber === 10) return new StringValue(realm, ToString(realm, x));
-
-      // 7. Return the String representation of this Number value using the radix specified by radixNumber.
-      //    Letters a-z are used for digits with values 10 through 35. The precise algorithm is
-      //    implementation-dependent, however the algorithm should be a generalization of that specified in
-      //    7.1.12.1.
-      return new StringValue(realm, x.value.toString(radixNumber));
     }
+    // 1. Let x be ? thisNumberValue(this value).
+    let x = thisNumberValue(realm, context);
+
+    // 2. If radix is not present, let radixNumber be 10.
+    // 3. Else if radix is undefined, let radixNumber be 10.
+    let radixNumber;
+    if (!radix || radix instanceof UndefinedValue) {
+      radixNumber = 10;
+    } else {
+      // 4. Else let radixNumber be ? ToInteger(radix).
+      radixNumber = ToInteger(realm, radix.throwIfNotConcrete());
+    }
+
+    // 5. If radixNumber < 2 or radixNumber > 36, throw a RangeError exception.
+    if (radixNumber < 2 || radixNumber > 36) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
+
+    // 6. If radixNumber = 10, return ! ToString(x).
+    if (radixNumber === 10) return new StringValue(realm, ToString(realm, x));
+
+    // 7. Return the String representation of this Number value using the radix specified by radixNumber.
+    //    Letters a-z are used for digits with values 10 through 35. The precise algorithm is
+    //    implementation-dependent, however the algorithm should be a generalization of that specified in
+    //    7.1.12.1.
+    return new StringValue(realm, x.value.toString(radixNumber));
   });
 
   // ECMA262 20.1.3.7

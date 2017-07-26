@@ -21,18 +21,18 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 19.3.3.3
   obj.defineNativeMethod("toString", 0, context => {
-    if (context instanceof AbstractValue && context.getType() === BooleanValue) {
+    const target = context instanceof ObjectValue ? context.$BooleanData : context;
+    if (target instanceof AbstractValue && target.getType() === BooleanValue) {
       const codeTemplate = "(A).toString()";
-      return realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [context], ([a]) =>
+      return realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [target], ([a]) =>
         buildExpressionTemplate(codeTemplate)(realm.preludeGenerator)({ A: a })
       );
-    } else {
-      // 1. Let b be ? thisBooleanValue(this value).
-      let b = thisBooleanValue(realm, context);
-
-      // 2. If b is true, return "true"; else return "false".
-      return new StringValue(realm, b.value ? "true" : "false");
     }
+    // 1. Let b be ? thisBooleanValue(this value).
+    let b = thisBooleanValue(realm, context);
+
+    // 2. If b is true, return "true"; else return "false".
+    return new StringValue(realm, b.value ? "true" : "false");
   });
 
   // ECMA262 19.3.3.4
