@@ -168,7 +168,7 @@ function runTest(name, code, options, args) {
         return false;
       }
     } catch (err) {
-      console.log(err)
+      console.log(err);
       return false;
     }
     return true;

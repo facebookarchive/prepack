@@ -193,7 +193,7 @@ export class Generator {
   emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
-    appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression,
+    appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression
   ): void {
     this.body.push({
       args,
@@ -312,9 +312,7 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     for (let bodyEntry of this.body) {
-      if (
-          !bodyEntry.isPure || !bodyEntry.declaresDerivedId || !context.canOmit(bodyEntry.declaresDerivedId)
-      ) {
+      if (!bodyEntry.isPure || !bodyEntry.declaresDerivedId || !context.canOmit(bodyEntry.declaresDerivedId)) {
         let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg));
         context.emit(bodyEntry.buildNode(nodes, context));
         let id = bodyEntry.declaresDerivedId;
