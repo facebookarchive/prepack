@@ -15,6 +15,7 @@ let prepackString = require("../lib/prepack-node.js").prepackString;
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
+let util = require("util");
 
 let chalk = require("chalk");
 let path = require("path");
@@ -83,20 +84,20 @@ report(inspect());`,
   return result + logOutput;
 }
 
-function runTest(name, code, args) {
-  console.log(chalk.inverse(name));
+function runTest(name, code, options, args) {
+  console.log(chalk.inverse(name) + " " + util.inspect(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let speculate = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
-  let options = {
+  options = Object.assign({}, options, {
     compatibility,
     speculate,
     delayUnsupportedRequires,
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
-  };
+  });
   if (code.includes("// throws introspection error")) {
     try {
       let realmOptions = { serialize: true, compatibility, uniqueSuffix: "" };
@@ -254,8 +255,11 @@ function run(args) {
     if (!test.name.includes(args.filter)) continue;
 
     total++;
-    if (runTest(test.name, test.file, args)) passed++;
-    else failed++;
+    for (let delayInitializations of [false, true]) {
+      let options = { delayInitializations: delayInitializations };
+      if (runTest(test.name, test.file, options, args)) passed++;
+      else failed++;
+    }
   }
 
   console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
