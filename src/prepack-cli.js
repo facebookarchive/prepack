@@ -157,13 +157,15 @@ function run(
     if (errors.size === 0) process.exit(1);
   } finally {
     if (errors.size > 0) {
+      let foundFatal = false;
       for (let [loc, error] of errors) {
+        foundFatal = foundFatal || error.severity === "FatalError";
         console.log(
           `${loc.source || ""}(${loc.start.line}:${loc.start.column +
             1}) ${error.severity} ${error.errorCode}: ${error.message}`
         );
       }
-      process.exit(1);
+      if (foundFatal) process.exit(1);
     }
   }
 
@@ -174,13 +176,15 @@ function run(
     }
     if (errors.size > 0) {
       console.log("Errors found while prepacking");
+      let foundFatal = false;
       for (let [loc, error] of errors) {
+        foundFatal = foundFatal || error.severity === "FatalError";
         console.log(
           `${loc.source || ""}(${loc.start.line}:${loc.start.column +
             1}) ${error.severity} ${error.errorCode}: ${error.message}`
         );
       }
-      process.exit(1);
+      if (foundFatal) process.exit(1);
     }
     if (serialized) {
       if (serialized.code === "") {
