@@ -329,7 +329,7 @@ export default class ObjectValue extends ConcreteValue {
       funcName = `get ${name}`;
       if (this.intrinsicName) intrinsicName = `${this.intrinsicName}.${name}`;
     } else if (name instanceof SymbolValue) {
-      funcName = `get [${name.$Description || "?"}]`;
+      funcName = name.$Description instanceof AbstractValue ? name.$Description : `get [${name.$Description || "?"}]`;
       if (this.intrinsicName && name.intrinsicName) intrinsicName = `${this.intrinsicName}[${name.intrinsicName}]`;
     } else {
       invariant(false);

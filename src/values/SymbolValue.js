@@ -18,7 +18,7 @@ export default class SymbolValue extends PrimitiveValue {
     this.$Description = desc;
   }
 
-  $Description: ?string;
+  $Description: ?string | AbstractValue;
 
   mightBeFalse(): boolean {
     return false;

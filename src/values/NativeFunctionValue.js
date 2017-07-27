@@ -11,7 +11,7 @@
 
 import type { Value } from "./index.js";
 import type { Realm } from "../realm.js";
-import { SymbolValue } from "./index.js";
+import { AbstractValue, SymbolValue } from "./index.js";
 import {
   NumberValue,
   StringValue,
@@ -24,7 +24,7 @@ import {
 } from "./index.js";
 import { ReturnCompletion } from "../completions.js";
 import { $Call, $Construct } from "../methods/function.js";
-
+import invariant from "../invariant.js";
 export type NativeFunctionCallback = (
   context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
   args: Array<Value>,
@@ -36,7 +36,7 @@ export default class NativeFunctionValue extends FunctionValue {
   constructor(
     realm: Realm,
     intrinsicName: void | string,
-    name: void | string | SymbolValue,
+    name: void | string | SymbolValue | AbstractValue,
     length: number,
     callback: NativeFunctionCallback,
     constructor?: boolean = true
@@ -71,9 +71,20 @@ export default class NativeFunctionValue extends FunctionValue {
     });
 
     if (name) {
-      this.name = name instanceof SymbolValue ? `[${name.$Description || "native"}]` : name;
+      if (name instanceof SymbolValue && name.$Description instanceof AbstractValue) {
+        this.name = name.$Description;
+      } else {
+        if (name instanceof SymbolValue) {
+          invariant(typeof name.$Description === "string");
+          this.name = `[${name.$Description || "native"}]`;
+        } else {
+          this.name = name;
+        }
+        invariant(typeof this.name === "string");
+        this.name = new StringValue(realm, this.name);
+      }
       this.$DefineOwnProperty("name", {
-        value: new StringValue(realm, this.name),
+        value: this.name,
         writable: false,
         configurable: true,
         enumerable: false,
@@ -83,7 +94,7 @@ export default class NativeFunctionValue extends FunctionValue {
     }
   }
 
-  name: string;
+  name: string | AbstractValue;
   callback: NativeFunctionCallback;
   length: number;
 

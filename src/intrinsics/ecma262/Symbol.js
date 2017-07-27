@@ -29,7 +29,7 @@ export default function(realm: Realm): NativeFunctionValue {
     if (!description || description instanceof UndefinedValue) {
       descString = undefined;
     } else if (description instanceof AbstractValue) {
-      return new SymbolValue(realm, description);
+      descString = description;
     } else {
       // 3. Else, let descString be ? ToString(description).
       descString = ToStringPartial(realm, description);

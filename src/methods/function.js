@@ -506,9 +506,13 @@ export function SetFunctionName(
     // b. If description is undefined, let name be the empty String.
     if (description === undefined) {
       name = realm.intrinsics.emptyString;
+    } else if (name instanceof AbstractValue) {
+      name = realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [name], ([lnode, rnode]) =>
+        t.binaryExpression("+", lnode, rnode)
+      );
     } else {
       // c. Else, let name be the concatenation of "[", description, and "]".
-      invariant(description !== null);
+      invariant(description !== null && typeof description === "string");
       name = new StringValue(realm, `[${description}]`);
     }
   }
