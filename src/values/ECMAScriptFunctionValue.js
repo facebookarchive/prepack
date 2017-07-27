@@ -10,35 +10,17 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } from "babel-types";
 import type { ObjectValue } from "./index.js";
-import { OrdinaryFunctionValue } from "./index.js";
-import * as t from "babel-types";
+import { FunctionValue } from "./index.js";
 
-/* ECMAScript Function Objects */
-export default class ECMAScriptFunctionValue extends OrdinaryFunctionValue {
+/* Abstract base class for non-exotic function objects(either with source or built-in) */
+export default class ECMAScriptFunctionValue extends FunctionValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, intrinsicName);
   }
 
+  $ConstructorKind: void | string;
   $ThisMode: "lexical" | "strict" | "global";
-  $Strict: boolean;
-  $FunctionKind: "normal" | "classConstructor" | "generator";
   $HomeObject: void | ObjectValue;
-  $FormalParameters: Array<BabelNodeLVal>;
-  $ECMAScriptCode: BabelNodeBlockStatement;
-  loc: ?BabelNodeSourceLocation;
-
-  hasDefaultLength(): boolean {
-    let params = this.$FormalParameters;
-    let expected = params.length;
-    for (let i = 0; i < params.length; i++) {
-      let param = params[i];
-      if (t.isAssignmentPattern(param) || t.isRestElement(param)) {
-        expected = i;
-        break;
-      }
-    }
-    return expected === this.getLength();
-  }
+  $FunctionKind: "normal" | "classConstructor" | "generator";
 }

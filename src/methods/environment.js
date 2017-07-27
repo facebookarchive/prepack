@@ -21,7 +21,6 @@ import {
   BooleanValue,
   SymbolValue,
   ECMAScriptFunctionValue,
-  FunctionValue,
   ObjectValue,
   StringValue,
   Value,
@@ -408,9 +407,13 @@ export function NewObjectEnvironment(
 }
 
 // ECMA262 8.1.2.4
-export function NewFunctionEnvironment(realm: Realm, F: FunctionValue, newTarget?: ObjectValue): LexicalEnvironment {
+export function NewFunctionEnvironment(
+  realm: Realm,
+  F: ECMAScriptFunctionValue,
+  newTarget?: ObjectValue
+): LexicalEnvironment {
   // 1. Assert: F is an ECMAScript function.
-  invariant(F instanceof FunctionValue, "expected a function");
+  invariant(F instanceof ECMAScriptFunctionValue, "expected a function");
 
   // 2. Assert: Type(newTarget) is Undefined or Object.
   invariant(
@@ -428,7 +431,7 @@ export function NewFunctionEnvironment(realm: Realm, F: FunctionValue, newTarget
   envRec.$FunctionObject = F;
 
   // 6. If F's [[ThisMode]] internal slot is lexical, set envRec.[[ThisBindingStatus]] to "lexical".
-  if (F instanceof ECMAScriptFunctionValue && F.$ThisMode === "lexical") {
+  if (F.$ThisMode === "lexical") {
     envRec.$ThisBindingStatus = "lexical";
   } else {
     // 7. Else, set envRec.[[ThisBindingStatus]] to "uninitialized".
@@ -436,7 +439,7 @@ export function NewFunctionEnvironment(realm: Realm, F: FunctionValue, newTarget
   }
 
   // 8. Let home be the value of F's [[HomeObject]] internal slot.
-  let home = F instanceof ECMAScriptFunctionValue ? F.$HomeObject : undefined;
+  let home = F.$HomeObject;
 
   // 9. Set envRec.[[HomeObject]] to home.
   envRec.$HomeObject = home;

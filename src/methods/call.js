@@ -10,14 +10,14 @@
 /* @flow */
 
 import type { PropertyKeyValue } from "../types.js";
-import type { OrdinaryFunctionValue } from "../values/index.js";
+import type { ECMAScriptFunctionValue } from "../values/index.js";
 import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
 import {
-  ECMAScriptFunctionValue,
   FunctionValue,
+  ECMAScriptSourceFunctionValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
@@ -197,7 +197,11 @@ export function EvaluateCall(
 }
 
 // ECMA262 9.2.1.1
-export function PrepareForOrdinaryCall(realm: Realm, F: FunctionValue, newTarget?: ObjectValue): ExecutionContext {
+export function PrepareForOrdinaryCall(
+  realm: Realm,
+  F: ECMAScriptFunctionValue,
+  newTarget?: ObjectValue
+): ExecutionContext {
   // 1. Assert: Type(newTarget) is Undefined or Object.
   invariant(
     newTarget === undefined || newTarget instanceof ObjectValue,
@@ -247,12 +251,12 @@ export function PrepareForOrdinaryCall(realm: Realm, F: FunctionValue, newTarget
 // ECMA262 9.2.1.2
 export function OrdinaryCallBindThis(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptFunctionValue,
   calleeContext: ExecutionContext,
   thisArgument: Value
 ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
   // 1. Let thisMode be the value of F's [[ThisMode]] internal slot.
-  let thisMode = F instanceof ECMAScriptFunctionValue ? F.$ThisMode : "strict";
+  let thisMode = F.$ThisMode;
 
   // 2. If thisMode is lexical, return NormalCompletion(undefined).
   if (thisMode === "lexical") return realm.intrinsics.undefined;
@@ -302,7 +306,7 @@ export function OrdinaryCallBindThis(
 // ECMA262 9.2.1.3
 export function OrdinaryCallEvaluateBody(
   realm: Realm,
-  F: OrdinaryFunctionValue,
+  F: ECMAScriptFunctionValue,
   argumentsList: Array<Value>
 ): Reference | Value | AbruptCompletion {
   if (F instanceof NativeFunctionValue) {
@@ -319,7 +323,7 @@ export function OrdinaryCallEvaluateBody(
       }
     }
   } else {
-    invariant(F instanceof ECMAScriptFunctionValue);
+    invariant(F instanceof ECMAScriptSourceFunctionValue);
     if (F.$FunctionKind === "generator") {
       // 1. Perform ? FunctionDeclarationInstantiation(functionObject, argumentsList).
       FunctionDeclarationInstantiation(realm, F, argumentsList);

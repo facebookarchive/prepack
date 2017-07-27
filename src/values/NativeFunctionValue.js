@@ -15,7 +15,7 @@ import { SymbolValue } from "./index.js";
 import {
   NumberValue,
   StringValue,
-  OrdinaryFunctionValue,
+  ECMAScriptFunctionValue,
   ObjectValue,
   NullValue,
   ProxyValue,
@@ -33,7 +33,7 @@ export type NativeFunctionCallback = (
 ) => Value;
 
 /* Built-in Function Objects */
-export default class NativeFunctionValue extends OrdinaryFunctionValue {
+export default class NativeFunctionValue extends ECMAScriptFunctionValue {
   constructor(
     realm: Realm,
     intrinsicName: void | string,
@@ -43,6 +43,10 @@ export default class NativeFunctionValue extends OrdinaryFunctionValue {
     constructor?: boolean = true
   ) {
     super(realm, intrinsicName);
+
+    this.$ThisMode = "strict";
+    this.$HomeObject = undefined;
+    this.$FunctionKind = "normal";
 
     this.$Call = (thisArgument, argsList) => {
       return $Call(this.$Realm, this, thisArgument, argsList);

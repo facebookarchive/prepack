@@ -11,7 +11,7 @@
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { ConcreteValue, Value } from "../values/index.js";
-import type { ECMAScriptFunctionValue } from "../values/index.js";
+import type { ECMAScriptSourceFunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm } from "../realm.js";
@@ -22,7 +22,7 @@ export type TryQuery<T> = (f: () => T, onCompletion: T | (Completion => T), logC
 
 export type FunctionInstance = {
   serializedBindings: SerializedBindings,
-  functionValue: ECMAScriptFunctionValue,
+  functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
   scopeInstances: Set<ScopeBinding>,
 };

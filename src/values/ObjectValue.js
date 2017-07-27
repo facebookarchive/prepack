@@ -35,7 +35,7 @@ import {
   NullValue,
   NativeFunctionValue,
 } from "./index.js";
-import type { NativeFunctionCallback, ECMAScriptFunctionValue } from "./index.js";
+import type { NativeFunctionCallback, ECMAScriptSourceFunctionValue } from "./index.js";
 import {
   joinValuesAsConditional,
   IsDataDescriptor,
@@ -208,7 +208,7 @@ export default class ObjectValue extends ConcreteValue {
   $ArrayLength: void | number;
 
   // backpointer to the constructor if this object was created its prototype object
-  originalConstructor: void | ECMAScriptFunctionValue;
+  originalConstructor: void | ECMAScriptSourceFunctionValue;
 
   // partial objects
   _isPartial: BooleanValue;
