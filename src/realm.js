@@ -646,7 +646,7 @@ export class Realm {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode: ((Array<BabelNodeExpression>) => BabelNodeExpression) | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, isPure?: boolean |}
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue | UndefinedValue {
     invariant(this.useAbstractInterpretation);
     let generator = this.generator;

@@ -27,7 +27,7 @@ import {
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
-import type { BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeBlockStatement, BabelNodeIdentifier } from "babel-types";
 import { Generator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
@@ -57,6 +57,7 @@ export class ResidualHeapVisitor {
     this.functionInfos = new Map();
     this.functionBindings = new Map();
     this.values = new Map();
+    this.referencedDerivedIds = new Set();
     let generator = this.realm.generator;
     invariant(generator);
     this.scope = this.realmGenerator = generator;
@@ -71,6 +72,7 @@ export class ResidualHeapVisitor {
   globalBindings: Map<string, VisitedBinding>;
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   functionBindings: Map<FunctionValue, VisitedBindings>;
+  referencedDerivedIds: Set<BabelNodeIdentifier>;
   scope: Scope;
   realmGenerator: Generator;
   values: Map<Value, Set<Scope>>;
@@ -396,10 +398,15 @@ export class ResidualHeapVisitor {
     this.visitValue(val.$ProxyHandler);
   }
 
+  recordDerivedId(val: BabelNodeIdentifier): void {
+    this.referencedDerivedIds.add(val);
+  }
+
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression")
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
     for (let abstractArg of val.args) this.visitValue(abstractArg);
+    if (val.hasIdentifier()) this.recordDerivedId(val.getIdentifier());
   }
 
   _mark(val: Value): boolean {
@@ -464,7 +471,7 @@ export class ResidualHeapVisitor {
 
   visitGenerator(generator: Generator): void {
     this._withScope(generator, () => {
-      generator.visit(this.visitValue.bind(this), this.visitGenerator.bind(this));
+      generator.visit(this.visitValue.bind(this), this.visitGenerator.bind(this), this.recordDerivedId.bind(this));
     });
   }
 

@@ -44,8 +44,6 @@ export type SerializationContext = {
   emit: BabelNodeStatement => void,
   canOmit: BabelNodeIdentifier => boolean,
   announceDeclaredDerivedId: BabelNodeIdentifier => void,
-  startInvariant: void => boolean,
-  endInvariant: boolean => void,
 };
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
@@ -56,7 +54,6 @@ export type BodyEntry = {
   buildNode: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
-  invariantFor?: BabelNodeIdentifier | void,
 };
 
 export class Generator {
@@ -193,21 +190,15 @@ export class Generator {
     );
   }
 
-  // Pushes "if (violationConditionFn()) { throw new Error("invariant violation"); }"
   emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
-    optionalArgs?: {|
-      appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression,
-      referent?: BabelNodeIdentifier,
-    |}
+    appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression,
   ): void {
     this.body.push({
-      invariantFor: optionalArgs ? optionalArgs.referent : undefined,
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
         let throwString = t.stringLiteral("Prepack model invariant violation");
-        let appendLastToInvariantFn = optionalArgs && optionalArgs.appendLastToInvariantFn;
         if (appendLastToInvariantFn) {
           let last = nodes.pop();
           throwString = t.binaryExpression(
@@ -256,9 +247,11 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, isPure?: boolean |}
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
+    // Makes sure identifiers and inlinable expressions aren't wrapped in functions
+    //if (args.length === 0 && buildNode_ instanceof Function) buildNode_ = buildNode_();
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
     this.body.push({
@@ -277,6 +270,7 @@ export class Generator {
     });
     let res = this.realm.createAbstract(types, values, args, id, optionalArgs ? optionalArgs.kind : undefined);
     let type = types.getType();
+    if (optionalArgs && optionalArgs.skipInvariant) return res;
     res.intrinsicName = id.name;
     let typeofString;
     if (type === FunctionValue) typeofString = "function";
@@ -309,7 +303,7 @@ export class Generator {
           }
           return condition;
         },
-        { appendLastToInvariantFn: node => node, referent: id }
+        node => node
       );
     }
 
@@ -318,25 +312,24 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     for (let bodyEntry of this.body) {
-      let previousInvariantValue = false;
-      if (bodyEntry.invariantFor || bodyEntry.isPure) previousInvariantValue = context.startInvariant();
       if (
-        !(
-          (bodyEntry.isPure && bodyEntry.declaresDerivedId && context.canOmit(bodyEntry.declaresDerivedId)) ||
-          (bodyEntry.invariantFor && context.canOmit(bodyEntry.invariantFor))
-        )
+          !bodyEntry.isPure || !bodyEntry.declaresDerivedId || !context.canOmit(bodyEntry.declaresDerivedId)
       ) {
         let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg));
         context.emit(bodyEntry.buildNode(nodes, context));
         let id = bodyEntry.declaresDerivedId;
         if (id !== undefined) context.announceDeclaredDerivedId(id);
       }
-      if (bodyEntry.invariantFor || bodyEntry.isPure) context.endInvariant(previousInvariantValue);
     }
   }
 
-  visit(visitValue: Value => void, visitGenerator: Generator => void) {
+  visit(visitValue: Value => void, visitGenerator: Generator => void, recordDerivedId: BabelNodeIdentifier => void) {
     for (let bodyEntry of this.body) {
+      // skip pure entries so that they don't get serialized if they're
+      // not needed
+      if (bodyEntry.isPure) continue;
+      let derivedId = bodyEntry.declaresDerivedId;
+      if (derivedId) recordDerivedId(derivedId);
       for (let boundArg of bodyEntry.args) visitValue(boundArg);
       if (bodyEntry.dependencies) for (let dependency of bodyEntry.dependencies) visitGenerator(dependency);
     }

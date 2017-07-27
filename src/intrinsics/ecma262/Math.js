@@ -205,7 +205,7 @@ export default function(realm: Realm): ObjectValue {
         ValuesDomain.topVal,
         [],
         buildMathRandom(realm.preludeGenerator),
-        { isPure: true }
+        { isPure: true, skipInvariant: true }
       );
     } else {
       return new NumberValue(realm, Math.random());

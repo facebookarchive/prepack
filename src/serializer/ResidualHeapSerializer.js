@@ -64,7 +64,8 @@ export class ResidualHeapSerializer {
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
-    delayInitializations: boolean
+    delayInitializations: boolean,
+    residualDerivedIds: Set<BabelNodeIdentifier>
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -115,6 +116,7 @@ export class ResidualHeapSerializer {
     this.residualFunctionBindings = residualFunctionBindings;
     this.residualFunctionInfos = residualFunctionInfos;
     this.delayInitializations = delayInitializations;
+    this.residualDerivedIds = residualDerivedIds;
   }
 
   emitter: Emitter;
@@ -146,6 +148,7 @@ export class ResidualHeapSerializer {
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
   delayInitializations: boolean;
+  residualDerivedIds: Set<BabelNodeIdentifier>;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -1009,7 +1012,6 @@ export class ResidualHeapSerializer {
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
-      this.residualHeapValueIdentifiers.recordDerivedIdReference(id);
       invariant(!this.preludeGenerator.derivedIds.has(id.name) || this.emitter.hasDeclaredDerivedIdBeenAnnounced(id));
     }
     return serializedValue;
@@ -1084,17 +1086,10 @@ export class ResidualHeapSerializer {
         this.emitter.emit(statement);
       },
       canOmit: (derivedId: BabelNodeIdentifier) => {
-        return this.residualHeapValueIdentifiers.canOmitDerivedId(derivedId);
+        return !this.residualDerivedIds.has(derivedId);
       },
       announceDeclaredDerivedId: (id: BabelNodeIdentifier) => {
         this.emitter.announceDeclaredDerivedId(id);
-      },
-      // Arrow functions necessary to bind 'this' correctly
-      startInvariant: () => {
-        return this.residualHeapValueIdentifiers.startInvariant();
-      },
-      endInvariant: (previous: boolean) => {
-        this.residualHeapValueIdentifiers.endInvariant(previous);
       },
     };
     return context;

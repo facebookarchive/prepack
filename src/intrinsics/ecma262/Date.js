@@ -27,13 +27,12 @@ export default function(realm: Realm): NativeFunctionValue {
   let offsetGenerator;
   function getCurrentTime(): AbstractValue | NumberValue {
     if (realm.useAbstractInterpretation) {
-      let dummyArg = new StringValue(realm, "__Date.now()");
       let tmp = realm.deriveAbstract(
         new TypesDomain(NumberValue),
         ValuesDomain.topVal,
-        [dummyArg],
+        [],
         buildDateNow(realm.preludeGenerator),
-        { isPure: true }
+        { isPure: true, skipInvariant: true }
       );
       invariant(tmp instanceof AbstractValue, "getCurrentTime() should always return and abstract value");
       return tmp;
