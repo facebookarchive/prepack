@@ -112,10 +112,10 @@ export default class ObjectValue extends ConcreteValue {
   $Extensible: BooleanValue;
 
   $ParameterMap: void | ObjectValue; // undefined when the property is "missing"
-  $SymbolData: void | SymbolValue;
-  $StringData: void | StringValue;
-  $NumberData: void | NumberValue;
-  $BooleanData: void | BooleanValue;
+  $SymbolData: void | SymbolValue | AbstractValue;
+  $StringData: void | StringValue | AbstractValue;
+  $NumberData: void | NumberValue | AbstractValue;
+  $BooleanData: void | BooleanValue | AbstractValue;
 
   // error
   $ErrorData: void | {
