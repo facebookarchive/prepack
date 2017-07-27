@@ -9,11 +9,11 @@
 
 /* @flow */
 
-import { PrimitiveValue } from "./index.js";
+import { PrimitiveValue, AbstractValue } from "./index.js";
 import type { Realm } from "../realm.js";
 
 export default class SymbolValue extends PrimitiveValue {
-  constructor(realm: Realm, desc?: string, intrinsicName?: string) {
+  constructor(realm: Realm, desc?: string | AbstractValue, intrinsicName?: string) {
     super(realm, intrinsicName);
     this.$Description = desc;
   }

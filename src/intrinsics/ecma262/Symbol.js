@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue, StringValue, SymbolValue, UndefinedValue } from "../../values/index.js";
+import { AbstractValue, NativeFunctionValue, StringValue, SymbolValue, UndefinedValue } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { SameValue } from "../../methods/abstract.js";
 
@@ -28,11 +28,12 @@ export default function(realm: Realm): NativeFunctionValue {
     let descString;
     if (!description || description instanceof UndefinedValue) {
       descString = undefined;
+    } else if (description instanceof AbstractValue) {
+      return new SymbolValue(realm, description);
     } else {
       // 3. Else, let descString be ? ToString(description).
       descString = ToStringPartial(realm, description);
     }
-
     // 4. Return a new unique Symbol value whose [[Description]] value is descString.
     return new SymbolValue(realm, descString);
   });
