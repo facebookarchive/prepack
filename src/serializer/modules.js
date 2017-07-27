@@ -102,9 +102,9 @@ class ModuleTracer extends Tracer {
             let value = performCall();
             if (this.modules.initializedModules.has(moduleIdValue)) {
               invariant(this.modules.initializedModules.get(moduleIdValue) === value);
-            } else {
+            } /*else {
               this.modules.initializedModules.set(moduleIdValue, value);
-            }
+            }*/
             return value;
           } finally {
             invariant(this.requireStack.pop() === moduleIdValue);
@@ -240,9 +240,9 @@ class ModuleTracer extends Tracer {
               this.nestedRequiredModulesAndValues.push({ id: moduleIdValue, value: result });
             }
             if (isTopLevelRequire) {
-              for (let { id, value } of this.nestedRequiredModulesAndValues) {
+              /*for (let { id, value } of this.nestedRequiredModulesAndValues) {
                 this.modules.initializedModules.set(id, value);
-              }
+              }*/
               this.nestedRequiredModulesAndValues = [];
             }
             realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
@@ -298,6 +298,13 @@ export class Modules {
   active: boolean;
   delayUnsupportedRequires: boolean;
   disallowDelayingRequiresOverride: boolean;
+
+  resolveInitializedModules(): void {
+    for (let moduleId of this.moduleIds) {
+      let result = this.isModuleInitialized(moduleId);
+      if (result !== undefined) this.initializedModules.set(moduleId, result);
+    }
+  }
 
   _getGlobalProperty(name: string) {
     if (this.active) return this.realm.intrinsics.undefined;
@@ -436,8 +443,8 @@ export class Modules {
     context.realm = realm;
     realm.pushContext(context);
     let oldReadOnly = realm.setReadOnly(true);
-    let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
-    this.delayUnsupportedRequires = false;
+    let oldDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
+    this.disallowDelayingRequiresOverride = true;
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
@@ -463,7 +470,7 @@ export class Modules {
     } finally {
       realm.popContext(context);
       realm.setReadOnly(oldReadOnly);
-      this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
+      this.disallowDelayingRequiresOverride = oldDisallowDelayingRequiresOverride;
     }
   }
 }
