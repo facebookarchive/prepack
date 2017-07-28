@@ -172,7 +172,7 @@ export class Realm {
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
-  reportPropertyModification: void | (PropertyBinding => void);
+  reportPropertyAccess: void | (PropertyBinding => void);
 
   currentLocation: ?BabelNodeSourceLocation;
   nextContextLocation: ?BabelNodeSourceLocation;
@@ -543,6 +543,12 @@ export class Realm {
     return binding;
   }
 
+  callReportPropertyAccess(binding: PropertyBinding): void {
+    if (this.reportPropertyAccess !== undefined) {
+      this.reportPropertyAccess(binding);
+    }
+  }
+
   // Record the current value of binding in this.modifiedProperties unless
   // there is already an entry for binding.
   recordModifiedProperty(binding: PropertyBinding): void {
@@ -550,10 +556,8 @@ export class Realm {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
     }
+    this.callReportPropertyAccess(binding);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
-      if (this.reportPropertyModification !== undefined) {
-        this.reportPropertyModification(binding);
-      }
       this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
     }
   }

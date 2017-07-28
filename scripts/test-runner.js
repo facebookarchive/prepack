@@ -93,6 +93,7 @@ function runTest(name, code, options, args) {
     compatibility,
     speculate,
     delayUnsupportedRequires,
+    onError: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
@@ -100,7 +101,7 @@ function runTest(name, code, options, args) {
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// throws introspection error")) {
     try {
-      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "" };
+      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "", errorHandler: diag => "Fail" };
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
       let serializerOptions = {
@@ -259,8 +260,8 @@ function run(args) {
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
 
-    total++;
     for (let delayInitializations of [false, true]) {
+      total++;
       let options = { delayInitializations: delayInitializations };
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
