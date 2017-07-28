@@ -347,15 +347,6 @@ export class NameGenerator {
     } while (this.forbiddenNames.has(id));
     return id;
   }
-
-  deriveFrom(origin: string): string {
-    let id;
-    while (origin[0] === "_") {
-      origin = origin.substring(1);
-    }
-    id = this.prefix + origin;
-    return id;
-  }
 }
 
 export class PreludeGenerator {

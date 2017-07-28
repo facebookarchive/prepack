@@ -102,7 +102,6 @@ export class ResidualHeapSerializer {
       this.preludeGenerator.createNameGenerator("__init_"),
       this.factoryNameGenerator,
       this.preludeGenerator.createNameGenerator("__scope_"),
-      this.preludeGenerator.createNameGenerator("__captured_"),
       residualFunctionInfos
     );
     this.emitter = new Emitter(this.residualFunctions);
