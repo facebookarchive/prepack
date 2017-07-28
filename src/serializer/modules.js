@@ -11,7 +11,7 @@
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { Realm, ExecutionContext, Tracer } from "../realm.js";
+import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
@@ -385,20 +385,13 @@ export class Modules {
 
   tryInitializeModule(moduleId: number | string, message: string): void | Effects {
     let realm = this.realm;
-    // setup execution environment
-    let context = new ExecutionContext();
-    let env = realm.$GlobalEnv;
-    context.lexicalEnvironment = env;
-    context.variableEnvironment = env;
-    context.realm = realm;
     let previousDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
     this.disallowDelayingRequiresOverride = true;
-    realm.pushContext(context);
     let oldErrorHandler = realm.errorHandler;
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let effects = realm.evaluateNodeForEffects(node, true, env);
+      let effects = realm.evaluateNodeForEffectsInGlobalEnv(node);
       realm.applyEffects(effects, message);
       let result = effects[0];
       if (result instanceof Completion) {
@@ -412,7 +405,6 @@ export class Modules {
       if (err instanceof FatalError) return undefined;
       else throw err;
     } finally {
-      realm.popContext(context);
       this.disallowDelayingRequiresOverride = previousDisallowDelayingRequiresOverride;
       realm.errorHandler = oldErrorHandler;
     }
@@ -435,20 +427,13 @@ export class Modules {
 
   isModuleInitialized(moduleId: number | string): void | Value {
     let realm = this.realm;
-    // setup execution environment
-    let context = new ExecutionContext();
-    let env = realm.$GlobalEnv;
-    context.lexicalEnvironment = env;
-    context.variableEnvironment = env;
-    context.realm = realm;
-    realm.pushContext(context);
     let oldReadOnly = realm.setReadOnly(true);
     let oldDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
     this.disallowDelayingRequiresOverride = true;
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let [compl, generator, bindings, properties, createdObjects] = realm.evaluateNodeForEffects(node, true, env);
+      let [compl, generator, bindings, properties, createdObjects] = realm.evaluateNodeForEffectsInGlobalEnv(node);
       // for lint unused
       invariant(bindings);
 
@@ -468,7 +453,6 @@ export class Modules {
       if (err instanceof FatalError) return undefined;
       throw err;
     } finally {
-      realm.popContext(context);
       realm.setReadOnly(oldReadOnly);
       this.disallowDelayingRequiresOverride = oldDisallowDelayingRequiresOverride;
     }
