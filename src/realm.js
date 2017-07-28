@@ -171,8 +171,8 @@ export class Realm {
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
-
   createdObjects: void | CreatedObjects;
+  reportPropertyModification: void | (PropertyBinding => void);
 
   currentLocation: ?BabelNodeSourceLocation;
   nextContextLocation: ?BabelNodeSourceLocation;
@@ -285,6 +285,20 @@ export class Realm {
   // bindings and a map of changed property bindings.
   evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
     return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode));
+  }
+
+  evaluateNodeForEffectsInGlobalEnv(node: BabelNode) {
+    let context = new ExecutionContext();
+    context.lexicalEnvironment = this.$GlobalEnv;
+    context.variableEnvironment = this.$GlobalEnv;
+    context.realm = this;
+
+    this.pushContext(context);
+    try {
+      return this.evaluateNodeForEffects(node, false, this.$GlobalEnv);
+    } finally {
+      this.popContext(context);
+    }
   }
 
   partiallyEvaluateNodeForEffects(
@@ -537,6 +551,9 @@ export class Realm {
       throw new FatalError("Trying to modify a property in read-only realm");
     }
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
+      if (this.reportPropertyModification !== undefined) {
+        this.reportPropertyModification(binding);
+      }
       this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
     }
   }

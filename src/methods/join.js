@@ -28,11 +28,11 @@ import {
 } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Reference } from "../environment.js";
-import { cloneDescriptor, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
+import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { construct_empty_effects } from "../realm.js";
 import { Generator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
-import { AbstractValue, Value } from "../values/index.js";
+import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -588,4 +588,45 @@ export function joinBooleans(v1: void | boolean, v2: void | boolean): void | boo
   } else {
     return v1 || v2;
   }
+}
+
+// Creates a single map that intersects maps m1 and m2 using the given intersect operator for values.
+export function intersectMaps<K, V>(
+  m1: Map<K, void | V>,
+  m2: Map<K, void | V>,
+  intersect: (K, void | V, void | V) => V
+): Map<K, void | V> {
+  let m3: Map<K, void | V> = new Map();
+  m1.forEach((val1, key, map1) => {
+    if (!m2.has(key)) return;
+    let val2 = m2.get(key);
+    let val3 = intersect(key, val1, val2);
+    m3.set(key, val3);
+  });
+  return m3;
+}
+
+export function intersectBindings(realm: Realm, e1: Effects, e2: Effects): Effects {
+  let [c1, g1, b1, p1, o1] = e1;
+  let [c2, g2, b2, p2, o2] = e2;
+
+  // Neither set of effects is allowed to be forked or abrupt
+  invariant(c1 instanceof Value && c2 instanceof Value);
+
+  // ignore generators
+  g1;
+  g2;
+  // intersect bindings
+  let conflict = realm.intrinsics.empty;
+  let b3 = intersectMaps(b1, b2, (b, v1, v2) => (v1 === v2 ? v1 : conflict));
+  let eqVal = (v1, v2) =>
+    v1 === v2 ||
+    (v1 instanceof ConcreteValue && v2 instanceof ConcreteValue && StrictEqualityComparison(realm, v1, v2));
+  let eqDesc = (d1, d2) => d1 && d2 && equalDescriptors(d1, d2) && eqVal(d1.value, d2.value);
+  let p3 = intersectMaps(p1, p2, (b, d1, d2) => (eqDesc(d1, d2) ? d1 : { value: conflict }));
+  // ignore created objects
+  o1;
+  o2;
+
+  return [realm.intrinsics.empty, new Generator(realm), b3, p3, new Set()];
 }
