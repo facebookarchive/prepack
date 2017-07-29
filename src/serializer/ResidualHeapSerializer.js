@@ -12,7 +12,7 @@
 import { Realm } from "../realm.js";
 import { FatalError } from "../errors.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
-import { ToLength, IsArray, Get } from "../methods/index.js";
+import { IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
   ProxyValue,
@@ -551,14 +551,61 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeValueArray(val: ObjectValue): BabelNodeExpression {
-    let realm = this.realm;
+  _serializeArrayIndexProperties(array: ObjectValue, remainingProperties: Map<string, PropertyBinding>) {
     let elems = [];
+    // An array's length property cannot be redefined, so this won't run user code
+    const allPropertyLength = remainingProperties.size;
+    for (let i = 0; i < allPropertyLength; i++) {
+      let key = i + "";
+      let propertyBinding = remainingProperties.get(key);
+      if (propertyBinding === undefined) {
+        // Array index should be sequencial.
+        // First non-exist key means we have reached the end of the array.
+        break;
+      }
 
+      let elem = null;
+      let descriptor = propertyBinding.descriptor;
+      // "descriptor == undefined" means this array item has been deleted.
+      if (descriptor !== undefined && descriptor.value !== undefined) {
+        remainingProperties.delete(key);
+        if (this._canEmbedProperty(array, key, descriptor)) {
+          let elemVal = descriptor.value;
+          invariant(elemVal instanceof Value);
+          let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
+          let delayReason = this.emitter.getReasonToWaitForDependencies(elemVal) || mightHaveBeenDeleted;
+          if (delayReason) {
+            // handle self recursion
+            this.emitter.emitAfterWaiting(delayReason, [elemVal, array], () => {
+              this._assignProperty(
+                () =>
+                  t.memberExpression(
+                    this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(array),
+                    t.numericLiteral(i),
+                    true
+                  ),
+                () => {
+                  invariant(elemVal !== undefined);
+                  return this.serializeValue(elemVal);
+                },
+                mightHaveBeenDeleted
+              );
+            });
+          } else {
+            elem = this.serializeValue(elemVal);
+          }
+        }
+      }
+      elems.push(elem);
+    }
+    return elems;
+  }
+
+  _serializeValueArray(val: ObjectValue): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
 
     // If array length is abstract set it manually and then all known properties (including numeric indices)
-    let lenProperty = Get(realm, val, "length");
+    let lenProperty = Get(this.realm, val, "length");
     if (lenProperty instanceof AbstractValue) {
       this.emitter.emitNowOrAfterWaitingForDependencies([val], () => {
         this._assignProperty(
@@ -574,52 +621,11 @@ export class ResidualHeapSerializer {
         );
       });
       remainingProperties.delete("length");
-    } else {
-      // An array's length property cannot be redefined, so this won't run user code
-      let len = ToLength(realm, lenProperty);
-      for (let i = 0; i < len; i++) {
-        let key = i + "";
-        let propertyBinding = remainingProperties.get(key);
-        let elem = null;
-        if (propertyBinding !== undefined) {
-          let descriptor = propertyBinding.descriptor;
-          if (descriptor !== undefined && descriptor.value !== undefined) {
-            // deleted
-            remainingProperties.delete(key);
-            if (this._canEmbedProperty(val, key, descriptor)) {
-              let elemVal = descriptor.value;
-              invariant(elemVal instanceof Value);
-              let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-              let delayReason = this.emitter.getReasonToWaitForDependencies(elemVal) || mightHaveBeenDeleted;
-              if (delayReason) {
-                // handle self recursion
-                this.emitter.emitAfterWaiting(delayReason, [elemVal, val], () => {
-                  this._assignProperty(
-                    () =>
-                      t.memberExpression(
-                        this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
-                        t.numericLiteral(i),
-                        true
-                      ),
-                    () => {
-                      invariant(elemVal !== undefined);
-                      return this.serializeValue(elemVal);
-                    },
-                    mightHaveBeenDeleted
-                  );
-                });
-              } else {
-                elem = this.serializeValue(elemVal);
-              }
-            }
-          }
-        }
-        elems.push(elem);
-      }
     }
-
+    // Use the serialized index properties as array initialization list.
+    const initProperties = this._serializeArrayIndexProperties(val, remainingProperties);
     this._emitObjectProperties(val, remainingProperties);
-    return t.arrayExpression(elems);
+    return t.arrayExpression(initProperties);
   }
 
   _serializeValueMap(val: ObjectValue): BabelNodeExpression {
