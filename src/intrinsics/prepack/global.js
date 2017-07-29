@@ -129,6 +129,14 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
+  // Maps from initialized moduleId to exports object
+  global.$DefineOwnProperty("__initializedModules", {
+    value: new ObjectValue(realm),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // Helper function used to instatiate a residual function
   function deriveNativeFunctionValue(unsafe: boolean): NativeFunctionValue {
     return new NativeFunctionValue(
