@@ -15,7 +15,7 @@ import { Realm, ExecutionContext, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
-import { AbstractValue, Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
+import { Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
@@ -294,18 +294,7 @@ export class Modules {
       invariant(property);
       let moduleValue = property.descriptor && property.descriptor.value;
       invariant(moduleValue);
-      if (moduleValue instanceof AbstractValue) {
-        if (moduleValue.values.isTop()) {
-          // Most likely something in the exports object came from the model,
-          // the exports object is abstract.
-          this.initializedModules.set(moduleId, moduleValue);
-        } else {
-          invariant(!moduleValue.mightNotBeObject() && moduleValue.values.getElements().size === 1);
-          this.initializedModules.set(moduleId, moduleValue.values.getElements().values().next().value);
-        }
-      } else {
-        this.initializedModules.set(moduleId, moduleValue);
-      }
+      this.initializedModules.set(moduleId, moduleValue);
     }
   }
 
