@@ -734,7 +734,7 @@ export class Realm {
         return n;
       };
       realmGeneratorBody.push({
-        declaresDerivedId: firstEntry.declaresDerivedId,
+        declared: firstEntry.declared,
         args: firstEntry.args,
         buildNode: buildNode,
       });

@@ -259,7 +259,7 @@ function run(args) {
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
 
-    total++;
+    total += 2;
     for (let delayInitializations of [false, true]) {
       let options = { delayInitializations: delayInitializations };
       if (runTest(test.name, test.file, options, args)) passed++;

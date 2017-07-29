@@ -107,7 +107,7 @@ export default class AbstractValue extends Value {
 
   addSourceNamesTo(names: Array<string>) {
     let gen = this.$Realm.preludeGenerator;
-    function add_instrinsic(name: string) {
+    function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
         if (gen === undefined) return;
         add_args(gen.derivedIds.get(name));
@@ -119,7 +119,7 @@ export default class AbstractValue extends Value {
       if (args === undefined) return;
       for (let val of args) {
         if (val.intrinsicName) {
-          add_instrinsic(val.intrinsicName);
+          add_intrinsic(val.intrinsicName);
         } else if (val instanceof AbstractValue) {
           val.addSourceNamesTo(names);
         } else if (val instanceof StringValue) {
@@ -130,7 +130,7 @@ export default class AbstractValue extends Value {
       }
     }
     if (this.intrinsicName) {
-      add_instrinsic(this.intrinsicName);
+      add_intrinsic(this.intrinsicName);
     }
     add_args(this.args);
   }
