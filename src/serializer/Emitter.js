@@ -24,7 +24,7 @@ export class Emitter {
   constructor(residualFunctions: ResidualFunctions) {
     this._waitingForValues = new Map();
     this._body = [];
-    this._declaredValues = new Set();
+    this._declaredAbstractValues = new Set();
     this._residualFunctions = residualFunctions;
     this._activeStack = [];
     this._activeValues = new Set();
@@ -37,7 +37,7 @@ export class Emitter {
     Value,
     Array<{ body: Array<BabelNodeStatement>, dependencies: Array<Value>, func: () => void }>
   >;
-  _declaredValues: Set<Value>;
+  _declaredAbstractValues: Set<AbstractValue>;
   _body: Array<BabelNodeStatement>;
 
   beginEmitting(dependency: string | Generator | Value, targetBody: Array<BabelNodeStatement>) {
@@ -81,7 +81,7 @@ export class Emitter {
   // the creation of the value's identity requires the availability of either:
   // 1. a time-dependent value that is declared by some generator entry
   //    that has not yet been processed
-  //    (tracked by the `_declaredValues` set), or
+  //    (tracked by the `_declaredAbstractValues` set), or
   // 2. a value that is also currently being serialized
   //    (tracked by the `_activeStack`).
   getReasonToWaitForDependencies(dependencies: Value | Array<Value>): void | Value {
@@ -95,6 +95,8 @@ export class Emitter {
     }
 
     let val = ((dependencies: any): Value);
+    if (this._activeValues.has(val)) return val;
+
     let delayReason;
     if (val instanceof BoundFunctionValue) {
       delayReason = this.getReasonToWaitForDependencies(val.$BoundTargetFunction);
@@ -109,7 +111,7 @@ export class Emitter {
       this._residualFunctions.addFunctionUsage(val, this.getBodyReference());
       return undefined;
     } else if (val instanceof AbstractValue) {
-      if (val.hasIdentifier() && !this._declaredValues.has(val)) return val;
+      if (val.hasIdentifier() && !this._declaredAbstractValues.has(val)) return val;
       for (let arg of val.args) {
         delayReason = this.getReasonToWaitForDependencies(arg);
         if (delayReason) return delayReason;
@@ -139,11 +141,18 @@ export class Emitter {
       }
     }
 
-    if (this._activeValues.has(val)) return val;
     return undefined;
   }
+  // Wait for a known-to-be active value if a condition is met.
+  getReasonToWaitForActiveValue(value: Value, condition: boolean): void | Value {
+    invariant(this._activeValues.has(value));
+    return condition ? value : undefined;
+  }
+
   emitAfterWaiting(reason: Value, dependencies: Array<Value>, func: () => void) {
-    invariant(!this._declaredValues.has(reason) || this._activeValues.has(reason));
+    invariant(
+      !(reason instanceof AbstractValue && this._declaredAbstractValues.has(reason)) || this._activeValues.has(reason)
+    );
     let a = this._waitingForValues.get(reason);
     if (a === undefined) this._waitingForValues.set(reason, (a = []));
     a.push({ body: this._body, dependencies, func });
@@ -159,11 +168,11 @@ export class Emitter {
   declare(value: AbstractValue) {
     invariant(!this._activeValues.has(value));
     invariant(value.hasIdentifier());
-    this._declaredValues.add(value);
+    this._declaredAbstractValues.add(value);
     this._process(value);
   }
   hasBeenDeclared(value: AbstractValue) {
-    return this._declaredValues.has(value);
+    return this._declaredAbstractValues.has(value);
   }
 
   assertIsDrained() {

@@ -591,7 +591,8 @@ export class ResidualHeapSerializer {
               invariant(elemVal instanceof Value);
               let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
               let delayReason =
-                this.emitter.getReasonToWaitForDependencies(elemVal) || mightHaveBeenDeleted ? val : undefined;
+                this.emitter.getReasonToWaitForDependencies(elemVal) ||
+                this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
               if (delayReason) {
                 this.emitter.emitAfterWaiting(delayReason, [elemVal, val], () => {
                   this._assignProperty(
@@ -646,9 +647,7 @@ export class ResidualHeapSerializer {
       let delayReason =
         this.emitter.getReasonToWaitForDependencies(key) ||
         this.emitter.getReasonToWaitForDependencies(value) ||
-        (mightHaveBeenDeleted || mapConstructorDoesntTakeArguments)
-          ? val
-          : undefined;
+        this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted || mapConstructorDoesntTakeArguments);
       if (delayReason) {
         this.emitter.emitAfterWaiting(delayReason, [key, value, val], () => {
           invariant(key !== undefined);
@@ -699,9 +698,7 @@ export class ResidualHeapSerializer {
       let mightHaveBeenDeleted = entry.mightHaveBeenDeleted();
       let delayReason =
         this.emitter.getReasonToWaitForDependencies(entry) ||
-        (mightHaveBeenDeleted || setConstructorDoesntTakeArguments)
-          ? val
-          : undefined;
+        this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted || setConstructorDoesntTakeArguments);
       if (delayReason) {
         this.emitter.emitAfterWaiting(delayReason, [entry, val], () => {
           invariant(entry !== undefined);
@@ -936,7 +933,8 @@ export class ResidualHeapSerializer {
             if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
             let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
             let delayReason =
-              this.emitter.getReasonToWaitForDependencies(propValue) || mightHaveBeenDeleted ? val : undefined;
+              this.emitter.getReasonToWaitForDependencies(propValue) ||
+              this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
             if (delayReason) {
               // self recursion
               this.emitter.emitAfterWaiting(delayReason, [propValue, val], () => {
@@ -1121,7 +1119,7 @@ export class ResidualHeapSerializer {
 
   serialize(): BabelNodeFile {
     this._emitGenerator(this.generator);
-    invariant(this.emitter._declaredValues.size <= this.preludeGenerator.derivedIds.size);
+    invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
