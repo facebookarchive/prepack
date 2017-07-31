@@ -1,5 +1,6 @@
 // additional functions
-// throws introspection error
+// recover-from-errors
+// expected errors: [{"location":null,"severity":"FatalError","errorCode":"PP1002","message":"Additional function additional2 may terminate abruptly"}]
 
 var wildcard = global.__abstract ? global.__abstract("number", 123, "123") : 123;
 global.a = "";
@@ -10,7 +11,6 @@ function additional1() {
 
 function additional2() {
   if (wildcard) throw new Exception();
-  global.a = "foo";
 }
 
 inspect = function() {
