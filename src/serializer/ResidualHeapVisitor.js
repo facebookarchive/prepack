@@ -389,7 +389,9 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitValueSymbol(val: SymbolValue): void {}
+  visitValueSymbol(val: SymbolValue): void {
+    if (val.$Description) this.visitValue(val.$Description);
+  }
 
   visitValueProxy(val: ProxyValue): void {
     this.visitValue(val.$ProxyTarget);

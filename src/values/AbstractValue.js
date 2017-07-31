@@ -277,11 +277,10 @@ export default class AbstractValue extends Value {
     let location;
     if (propertyName instanceof SymbolValue) {
       let desc = propertyName.$Description;
-      if (desc instanceof AbstractValue) {
-        location = this.generateErrorInformationForAbstractVal(desc);
+      if (desc) {
+        location = `at symbol [${desc.throwIfNotConcreteString().value}]`;
       } else {
-        //invariant(typeof desc === "string");
-        location = `at symbol [${desc || "(no description)"}]`;
+        location = `at symbol [${"(no description)"}]`;
       }
     } else if (propertyName instanceof StringValue) location = `at ${propertyName.value}`;
     else if (typeof propertyName === "string") location = `at ${propertyName}`;

@@ -148,6 +148,10 @@ export default class Value {
     invariant(false, "abstract method; please override");
   }
 
+  throwIfNotConcreteString(): StringValue {
+    invariant(false, "abstract method; please override");
+  }
+
   serialize(stack: Map<Value, any> = new Map()): any {
     if (stack.has(this)) {
       return stack.get(this);

@@ -980,13 +980,10 @@ export class ResidualHeapSerializer {
 
   _serializeValueSymbol(val: SymbolValue): BabelNodeExpression {
     let args = [];
-    if (val.$Description instanceof AbstractValue) {
-      let serializedDescription = this._serializeValue(val.$Description);
-      invariant(serializedDescription);
-      args.push(serializedDescription);
-    } else {
-      invariant(typeof val.$Description === "string");
-      args.push(t.stringLiteral(val.$Description));
+    if (val.$Description) {
+      let serializedArg = this.serializeValue(val.$Description);
+      invariant(serializedArg);
+      args.push(serializedArg);
     }
     return t.callExpression(this.preludeGenerator.memoizeReference("Symbol"), args);
   }

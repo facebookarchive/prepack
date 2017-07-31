@@ -11,7 +11,7 @@
 
 import type { Value } from "./index.js";
 import type { Realm } from "../realm.js";
-import { AbstractValue, SymbolValue } from "./index.js";
+import { SymbolValue } from "./index.js";
 import {
   NumberValue,
   StringValue,
@@ -24,7 +24,6 @@ import {
 } from "./index.js";
 import { ReturnCompletion } from "../completions.js";
 import { $Call, $Construct } from "../methods/function.js";
-import invariant from "../invariant.js";
 export type NativeFunctionCallback = (
   context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
   args: Array<Value>,
@@ -36,7 +35,7 @@ export default class NativeFunctionValue extends FunctionValue {
   constructor(
     realm: Realm,
     intrinsicName: void | string,
-    name: void | string | SymbolValue | AbstractValue,
+    name: void | string | SymbolValue,
     length: number,
     callback: NativeFunctionCallback,
     constructor?: boolean = true
@@ -71,20 +70,13 @@ export default class NativeFunctionValue extends FunctionValue {
     });
 
     if (name) {
-      if (name instanceof SymbolValue && name.$Description instanceof AbstractValue) {
-        this.name = name.$Description;
+      if (name instanceof SymbolValue) {
+        this.name = name.$Description ? `[${name.$Description.throwIfNotConcreteString().value}]` : "[native]";
       } else {
-        if (name instanceof SymbolValue) {
-          invariant(typeof name.$Description === "string");
-          this.name = `[${name.$Description || "native"}]`;
-        } else {
-          this.name = name;
-        }
-        invariant(typeof this.name === "string");
-        this.name = new StringValue(realm, this.name);
+        this.name = name;
       }
       this.$DefineOwnProperty("name", {
-        value: this.name,
+        value: new StringValue(realm, this.name),
         writable: false,
         configurable: true,
         enumerable: false,
@@ -94,7 +86,7 @@ export default class NativeFunctionValue extends FunctionValue {
     }
   }
 
-  name: string | AbstractValue;
+  name: string;
   callback: NativeFunctionCallback;
   length: number;
 

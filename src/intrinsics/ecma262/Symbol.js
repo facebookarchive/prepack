@@ -33,6 +33,7 @@ export default function(realm: Realm): NativeFunctionValue {
     } else {
       // 3. Else, let descString be ? ToString(description).
       descString = ToStringPartial(realm, description);
+      descString = new StringValue(realm, descString);
     }
     // 4. Return a new unique Symbol value whose [[Description]] value is descString.
     return new SymbolValue(realm, descString);
@@ -42,6 +43,7 @@ export default function(realm: Realm): NativeFunctionValue {
   func.defineNativeMethod("for", 1, (context, [key]) => {
     // 1. Let stringKey be ? ToString(key).
     let stringKey = ToStringPartial(realm, key);
+    stringKey = new StringValue(realm, stringKey);
 
     // 2. For each element e of the GlobalSymbolRegistry List,
     for (let e of GlobalSymbolRegistry) {
