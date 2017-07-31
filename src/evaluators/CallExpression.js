@@ -67,8 +67,8 @@ function callBothFunctionsAndJoinTheirEffects(
 ): Completion | Value {
   let [cond, func1, func2] = args;
   invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
-  invariant(func1.getType() === FunctionValue);
-  invariant(func2.getType() === FunctionValue);
+  invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
+  invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
 
   let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateForEffects(() =>
     EvaluateCall(func1, func1, ast, strictCode, env, realm)
@@ -120,7 +120,7 @@ function EvaluateCall(
   }
 
   if (func instanceof AbstractValue) {
-    if (func.getType() !== FunctionValue) {
+    if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
       let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
       let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
       if (realm.handleError(error) === "Fail") throw new FatalError();

@@ -23,6 +23,7 @@ import {
   AbstractValue,
   EmptyValue,
   FunctionValue,
+  ECMAScriptSourceFunctionValue,
   Value,
   ObjectValue,
   NativeFunctionValue,
@@ -788,6 +789,7 @@ export class ResidualHeapSerializer {
     let residualBindings = this.residualFunctionBindings.get(val);
     invariant(residualBindings);
 
+    invariant(val instanceof ECMAScriptSourceFunctionValue);
     let serializedBindings = Object.create(null);
     let instance: FunctionInstance = {
       serializedBindings,

@@ -143,7 +143,7 @@ export default function(realm: Realm): void {
 
         let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
 
-        if (f.constructor !== FunctionValue) {
+        if (!Value.isTypeCompatibleWith(f.constructor, FunctionValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cannot determine residual function");
         }
         invariant(f instanceof FunctionValue);
