@@ -33,10 +33,9 @@ import {
   NumberValue,
   UndefinedValue,
   NullValue,
-  FunctionValue,
   NativeFunctionValue,
 } from "./index.js";
-import type { NativeFunctionCallback } from "./index.js";
+import type { NativeFunctionCallback, ECMAScriptSourceFunctionValue } from "./index.js";
 import {
   joinValuesAsConditional,
   IsDataDescriptor,
@@ -209,7 +208,7 @@ export default class ObjectValue extends ConcreteValue {
   $ArrayLength: void | number;
 
   // backpointer to the constructor if this object was created its prototype object
-  originalConstructor: void | FunctionValue;
+  originalConstructor: void | ECMAScriptSourceFunctionValue;
 
   // partial objects
   _isPartial: BooleanValue;
@@ -336,8 +335,6 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     let func = new NativeFunctionValue(this.$Realm, intrinsicName, funcName, 0, callback);
-    func.$Construct = undefined;
-    func.$ConstructorKind = undefined;
     this.$DefineOwnProperty(name, {
       get: func,
       set: this.$Realm.intrinsics.undefined,
