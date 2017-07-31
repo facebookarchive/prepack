@@ -390,8 +390,8 @@ export class ResidualHeapSerializer {
           );
         }
       }
-
-      let serializedKey = this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
+      let serializedKey =
+              key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
       invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
       let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
       this.emitter.emit(
