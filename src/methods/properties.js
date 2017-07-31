@@ -985,6 +985,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
     }
     return undefined;
   }
+  realm.callReportPropertyAccess(existingBinding);
   if (!existingBinding.descriptor) return undefined;
 
   // 3. Let D be a newly created Property Descriptor with no fields.

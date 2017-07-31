@@ -171,8 +171,8 @@ export class Realm {
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
-
   createdObjects: void | CreatedObjects;
+  reportPropertyAccess: void | (PropertyBinding => void);
 
   currentLocation: ?BabelNodeSourceLocation;
   nextContextLocation: ?BabelNodeSourceLocation;
@@ -285,6 +285,20 @@ export class Realm {
   // bindings and a map of changed property bindings.
   evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
     return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode));
+  }
+
+  evaluateNodeForEffectsInGlobalEnv(node: BabelNode) {
+    let context = new ExecutionContext();
+    context.lexicalEnvironment = this.$GlobalEnv;
+    context.variableEnvironment = this.$GlobalEnv;
+    context.realm = this;
+
+    this.pushContext(context);
+    try {
+      return this.evaluateNodeForEffects(node, false, this.$GlobalEnv);
+    } finally {
+      this.popContext(context);
+    }
   }
 
   partiallyEvaluateNodeForEffects(
@@ -529,6 +543,12 @@ export class Realm {
     return binding;
   }
 
+  callReportPropertyAccess(binding: PropertyBinding): void {
+    if (this.reportPropertyAccess !== undefined) {
+      this.reportPropertyAccess(binding);
+    }
+  }
+
   // Record the current value of binding in this.modifiedProperties unless
   // there is already an entry for binding.
   recordModifiedProperty(binding: PropertyBinding): void {
@@ -536,6 +556,7 @@ export class Realm {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
     }
+    this.callReportPropertyAccess(binding);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
       this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
     }
@@ -717,7 +738,7 @@ export class Realm {
         return n;
       };
       realmGeneratorBody.push({
-        declaresDerivedId: firstEntry.declaresDerivedId,
+        declared: firstEntry.declared,
         args: firstEntry.args,
         buildNode: buildNode,
       });

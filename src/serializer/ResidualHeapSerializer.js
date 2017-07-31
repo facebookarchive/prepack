@@ -23,6 +23,7 @@ import {
   AbstractValue,
   EmptyValue,
   FunctionValue,
+  ECMAScriptSourceFunctionValue,
   Value,
   ObjectValue,
   NativeFunctionValue,
@@ -314,30 +315,23 @@ export class ResidualHeapSerializer {
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
-      let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
-      let serializeFunc = () => {
-        this._assignProperty(
-          () => {
-            let serializedKey = this.generator.getAsPropertyNameExpression(key);
-            return t.memberExpression(
-              this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
-              serializedKey,
-              !t.isIdentifier(serializedKey)
-            );
-          },
-          () => {
-            invariant(descValue instanceof Value);
-            return this.serializeValue(descValue);
-          },
-          mightHaveBeenDeleted
-        );
-      };
       invariant(!this.emitter.getReasonToWaitForDependencies([descValue, val]), "precondition of _emitProperty");
-      if (mightHaveBeenDeleted) {
-        this.emitter.emitAfterWaiting(true, [], serializeFunc);
-      } else {
-        serializeFunc();
-      }
+      let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
+      this._assignProperty(
+        () => {
+          let serializedKey = this.generator.getAsPropertyNameExpression(key);
+          return t.memberExpression(
+            this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
+            serializedKey,
+            !t.isIdentifier(serializedKey)
+          );
+        },
+        () => {
+          invariant(descValue instanceof Value);
+          return this.serializeValue(descValue);
+        },
+        mightHaveBeenDeleted
+      );
     } else {
       let descProps = [];
 
@@ -599,9 +593,10 @@ export class ResidualHeapSerializer {
               let elemVal = descriptor.value;
               invariant(elemVal instanceof Value);
               let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-              let delayReason = this.emitter.getReasonToWaitForDependencies(elemVal) || mightHaveBeenDeleted;
+              let delayReason =
+                this.emitter.getReasonToWaitForDependencies(elemVal) ||
+                this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
               if (delayReason) {
-                // handle self recursion
                 this.emitter.emitAfterWaiting(delayReason, [elemVal, val], () => {
                   this._assignProperty(
                     () =>
@@ -655,10 +650,8 @@ export class ResidualHeapSerializer {
       let delayReason =
         this.emitter.getReasonToWaitForDependencies(key) ||
         this.emitter.getReasonToWaitForDependencies(value) ||
-        mightHaveBeenDeleted ||
-        mapConstructorDoesntTakeArguments;
+        this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted || mapConstructorDoesntTakeArguments);
       if (delayReason) {
-        // handle self recursion
         this.emitter.emitAfterWaiting(delayReason, [key, value, val], () => {
           invariant(key !== undefined);
           invariant(value !== undefined);
@@ -707,9 +700,9 @@ export class ResidualHeapSerializer {
       if (entry === undefined) continue;
       let mightHaveBeenDeleted = entry.mightHaveBeenDeleted();
       let delayReason =
-        this.emitter.getReasonToWaitForDependencies(entry) || mightHaveBeenDeleted || setConstructorDoesntTakeArguments;
+        this.emitter.getReasonToWaitForDependencies(entry) ||
+        this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted || setConstructorDoesntTakeArguments);
       if (delayReason) {
-        // handle self recursion
         this.emitter.emitAfterWaiting(delayReason, [entry, val], () => {
           invariant(entry !== undefined);
           this.emitter.emit(
@@ -791,6 +784,7 @@ export class ResidualHeapSerializer {
     let residualBindings = this.residualFunctionBindings.get(val);
     invariant(residualBindings);
 
+    invariant(val instanceof ECMAScriptSourceFunctionValue);
     let serializedBindings = Object.create(null);
     let instance: FunctionInstance = {
       serializedBindings,
@@ -941,7 +935,9 @@ export class ResidualHeapSerializer {
             invariant(propValue instanceof Value);
             if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
             let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
-            let delayReason = this.emitter.getReasonToWaitForDependencies(propValue) || mightHaveBeenDeleted;
+            let delayReason =
+              this.emitter.getReasonToWaitForDependencies(propValue) ||
+              this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
             if (delayReason) {
               // self recursion
               this.emitter.emitAfterWaiting(delayReason, [propValue, val], () => {
@@ -1012,7 +1008,7 @@ export class ResidualHeapSerializer {
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
-      invariant(!this.preludeGenerator.derivedIds.has(id.name) || this.emitter.hasDeclaredDerivedIdBeenAnnounced(id));
+      invariant(!this.preludeGenerator.derivedIds.has(id.name) || this.emitter.hasBeenDeclared(val));
     }
     return serializedValue;
   }
@@ -1091,6 +1087,9 @@ export class ResidualHeapSerializer {
       announceDeclaredDerivedId: (id: BabelNodeIdentifier) => {
         this.emitter.announceDeclaredDerivedId(id);
       },
+      declare: (value: AbstractValue) => {
+        this.emitter.declare(value);
+      },
     };
     return context;
   }
@@ -1129,7 +1128,7 @@ export class ResidualHeapSerializer {
 
   serialize(): BabelNodeFile {
     this._emitGenerator(this.generator);
-    invariant(this.emitter._declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
+    invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 

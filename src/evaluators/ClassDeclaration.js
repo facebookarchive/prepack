@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { NullValue, EmptyValue, ObjectValue } from "../values/index.js";
+import { NullValue, EmptyValue, ObjectValue, ECMAScriptFunctionValue } from "../values/index.js";
 import type {
   BabelNodeClassDeclaration,
   BabelNodeClassExpression,
@@ -119,7 +119,7 @@ export function ClassDefinitionEvaluation(
     } else {
       // g. Else
       // i. If superclass has a [[FunctionKind]] internal slot whose value is "generator", throw a TypeError exception.
-      if (superclass.$FunctionKind === "generator") {
+      if (superclass instanceof ECMAScriptFunctionValue && superclass.$FunctionKind === "generator") {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "superclass cannot be a generator");
       }
 

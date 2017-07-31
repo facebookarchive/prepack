@@ -16,7 +16,6 @@ let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
 let util = require("util");
-
 let chalk = require("chalk");
 let path = require("path");
 let fs = require("fs");
@@ -94,16 +93,23 @@ function runTest(name, code, options, args) {
     compatibility,
     speculate,
     delayUnsupportedRequires,
+    onError: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
   });
+  if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// throws introspection error")) {
     try {
-      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "" };
+      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "", errorHandler: diag => "Fail" };
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
-      let serializerOptions = { initializeMoreModules: speculate, delayUnsupportedRequires, internalDebug: true };
+      let serializerOptions = {
+        initializeMoreModules: speculate,
+        delayUnsupportedRequires,
+        internalDebug: true,
+        additionalFunctions: options.additionalFunctions,
+      };
       let serializer = new Serializer(realm, serializerOptions);
       let sources = [{ filePath: name, fileContents: code }];
       let serialized = serializer.init(sources, false);
@@ -279,8 +285,8 @@ function run(args) {
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
 
-    total++;
     for (let delayInitializations of [false, true]) {
+      total++;
       let options = { delayInitializations: delayInitializations };
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
