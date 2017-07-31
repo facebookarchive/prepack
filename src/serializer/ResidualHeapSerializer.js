@@ -1221,6 +1221,8 @@ export class ResidualHeapSerializer {
       }
     }
 
+    invariant(this.serializedValues.size === this.residualValues.size);
+
     return t.file(t.program(ast_body));
   }
 }

@@ -56,6 +56,13 @@ export type BodyEntry = {
   isPure?: boolean,
 };
 
+export type VisitEntryCallbacks = {|
+  visitValue: Value => void,
+  visitGenerator: Generator => void,
+  recordDerivedId: BabelNodeIdentifier => void,
+  recordDelayedEntry: BodyEntry => void,
+|};
+
 export class Generator {
   constructor(realm: Realm) {
     invariant(realm.useAbstractInterpretation);
@@ -250,8 +257,6 @@ export class Generator {
     optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
-    // Makes sure identifiers and inlinable expressions aren't wrapped in functions
-    //if (args.length === 0 && buildNode_ instanceof Function) buildNode_ = buildNode_();
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
     this.body.push({
@@ -321,16 +326,17 @@ export class Generator {
     }
   }
 
-  visit(visitValue: Value => void, visitGenerator: Generator => void, recordDerivedId: BabelNodeIdentifier => void) {
-    for (let bodyEntry of this.body) {
-      // skip pure entries so that they don't get serialized if they're
-      // not needed
-      if (bodyEntry.isPure) continue;
-      let derivedId = bodyEntry.declaresDerivedId;
-      if (derivedId) recordDerivedId(derivedId);
-      for (let boundArg of bodyEntry.args) visitValue(boundArg);
-      if (bodyEntry.dependencies) for (let dependency of bodyEntry.dependencies) visitGenerator(dependency);
+  visitEntry(entry: BodyEntry, callbacks: VisitEntryCallbacks) {
+    if (!entry.isPure) {
+      let derivedId = entry.declaresDerivedId;
+      if (derivedId) callbacks.recordDerivedId(derivedId);
+      for (let boundArg of entry.args) callbacks.visitValue(boundArg);
+      if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency);
     }
+  }
+
+  visit(callbacks: VisitEntryCallbacks) {
+    for (let bodyEntry of this.body) this.visitEntry(bodyEntry, callbacks);
   }
 }
 

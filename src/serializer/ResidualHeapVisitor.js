@@ -29,6 +29,7 @@ import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNodeBlockStatement, BabelNodeIdentifier } from "babel-types";
 import { Generator } from "../utils/generator.js";
+import type { BodyEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { VisitedBinding, VisitedBindings, FunctionInfo } from "./types.js";
@@ -62,6 +63,7 @@ export class ResidualHeapVisitor {
     invariant(generator);
     this.scope = this.realmGenerator = generator;
     this.inspector = new ResidualHeapInspector(realm, logger);
+    this.delayedVisitGeneratorEntries = [];
   }
 
   realm: Realm;
@@ -77,6 +79,7 @@ export class ResidualHeapVisitor {
   realmGenerator: Generator;
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
+  delayedVisitGeneratorEntries: Array<{| generator: Generator, entry: BodyEntry |}>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -405,8 +408,8 @@ export class ResidualHeapVisitor {
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression")
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
-    for (let abstractArg of val.args) this.visitValue(abstractArg);
     if (val.hasIdentifier()) this.recordDerivedId(val.getIdentifier());
+    else for (let abstractArg of val.args) this.visitValue(abstractArg);
   }
 
   _mark(val: Value): boolean {
@@ -469,14 +472,34 @@ export class ResidualHeapVisitor {
     return binding;
   }
 
+  createGeneratorVisitCallbacks(generator: Generator): VisitEntryCallbacks {
+    return {
+      visitValue: this.visitValue.bind(this),
+      visitGenerator: this.visitGenerator.bind(this),
+      recordDerivedId: this.recordDerivedId.bind(this),
+      recordDelayedEntry: (entry: BodyEntry) => {
+        this.delayedVisitGeneratorEntries.push({ generator, entry });
+      },
+    };
+  }
+
   visitGenerator(generator: Generator): void {
     this._withScope(generator, () => {
-      generator.visit(this.visitValue.bind(this), this.visitGenerator.bind(this), this.recordDerivedId.bind(this));
+      generator.visit(this.createGeneratorVisitCallbacks(generator));
     });
   }
 
   visitRoots(): void {
     this.visitGenerator(this.realmGenerator);
     for (let [, moduleValue] of this.modules.initializedModules) this.visitValue(moduleValue);
+    // Do a fixpoint over all pure generator entries to make sure that we visit
+    // arguments of only BodyEntries that are required by some other residual value
+    let oldDelayedEntries = [];
+    while (oldDelayedEntries.length !== this.delayedVisitGeneratorEntries.length) {
+      oldDelayedEntries = this.delayedVisitGeneratorEntries;
+      this.delayedVisitGeneratorEntries = [];
+      for (let { generator, entry } of oldDelayedEntries)
+        generator.visitEntry(entry, this.createGeneratorVisitCallbacks(generator));
+    }
   }
 }
