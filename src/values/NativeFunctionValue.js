@@ -57,9 +57,6 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
       this.$Construct = (argumentsList, newTarget) => {
         return $Construct(this.$Realm, this, argumentsList, newTarget);
       };
-    } else {
-      this.$ConstructorKind = undefined;
-      this.$Construct = undefined;
     }
 
     this.$Environment = realm.$GlobalEnv;

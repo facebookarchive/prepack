@@ -335,8 +335,6 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     let func = new NativeFunctionValue(this.$Realm, intrinsicName, funcName, 0, callback);
-    func.$Construct = undefined;
-    func.$ConstructorKind = undefined;
     this.$DefineOwnProperty(name, {
       get: func,
       set: this.$Realm.intrinsics.undefined,

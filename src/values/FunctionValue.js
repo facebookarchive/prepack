@@ -21,7 +21,6 @@ export default class FunctionValue extends ObjectValue {
     super(realm, realm.intrinsics.FunctionPrototype, intrinsicName);
   }
 
-  $ConstructorKind: void | string;
   $Environment: LexicalEnvironment;
   $ScriptOrModule: any;
 

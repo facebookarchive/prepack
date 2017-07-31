@@ -19,7 +19,7 @@ export default class ECMAScriptFunctionValue extends FunctionValue {
     super(realm, intrinsicName);
   }
 
-  $ConstructorKind: void | string;
+  $ConstructorKind: "base" | "derived";
   $ThisMode: "lexical" | "strict" | "global";
   $HomeObject: void | ObjectValue;
   $FunctionKind: "normal" | "classConstructor" | "generator";
