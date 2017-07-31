@@ -48,7 +48,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 2. For each element e of the GlobalSymbolRegistry List,
     for (let e of GlobalSymbolRegistry) {
       // a. If SameValue(e.[[Key]], stringKey) is true, return e.[[Symbol]].
-      if (e.$Key === stringKey) {
+      if (e.$Key === stringKey.value) {
         return e.$Symbol;
       }
     }
@@ -59,7 +59,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let newSymbol = new SymbolValue(realm, stringKey);
 
     // 5. Append the Record { [[Key]]: stringKey, [[Symbol]]: newSymbol } to the GlobalSymbolRegistry List.
-    GlobalSymbolRegistry.push({ $Key: stringKey, $Symbol: newSymbol });
+    GlobalSymbolRegistry.push({ $Key: stringKey.value, $Symbol: newSymbol });
 
     // 6. Return newSymbol.
     return newSymbol;
