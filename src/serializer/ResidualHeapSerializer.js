@@ -316,7 +316,7 @@ export class ResidualHeapSerializer {
           () => {
             let serializedKey =
               key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
-            let computed = key instanceof SymbolValue ? false : !t.isIdentifier(serializedKey);
+            let computed = key instanceof SymbolValue ? true : !t.isIdentifier(serializedKey);
             return t.memberExpression(
               this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
               serializedKey,
