@@ -154,28 +154,11 @@ export class ResidualHeapSerializer {
     // inject symbols
     for (let [symbol, propertyBinding] of obj.symbols) {
       invariant(propertyBinding.descriptor);
-      let propValue = propertyBinding.descriptor.value;
-      let mightHaveBeenDeleted = symbol.mightHaveBeenDeleted();
-      if (mightHaveBeenDeleted) {
-        throw new FatalError("TODO: Prepack doesn't support conditionally deleting symbols");
-      }
+      let desc = propertyBinding.descriptor;
       // TODO:#22 move to emit property
-      this.emitter.emitNowOrAfterWaitingForDependencies([symbol, obj, propValue], () => {
-        this._assignProperty(
-          () => {
-            let serializedSymbol = this.serializeValue(symbol);
-            return t.memberExpression(
-              this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(obj),
-              serializedSymbol,
-              true
-            ); //should simplify to myObj[sym]
-          },
-          () => {
-            invariant(propValue instanceof Value);
-            return this.serializeValue(propValue);
-          }, //this is the value
-          mightHaveBeenDeleted //in the simplified version this is not necessary (should always be false)
-        );
+      this.emitter.emitNowOrAfterWaitingForDependencies([symbol, obj], () => {
+        invariant(desc !== undefined);
+        return this._emitProperty(obj, symbol, desc);
       });
     }
 
@@ -331,11 +314,13 @@ export class ResidualHeapSerializer {
       let serializeFunc = () => {
         this._assignProperty(
           () => {
-            let serializedKey = this.generator.getAsPropertyNameExpression(key);
+            let serializedKey =
+              key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
+            let computed = key instanceof SymbolValue ? false : !t.isIdentifier(serializedKey);
             return t.memberExpression(
               this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
               serializedKey,
-              !t.isIdentifier(serializedKey)
+              computed
             );
           },
           () => {
