@@ -508,8 +508,8 @@ export function SetFunctionName(
       name = realm.intrinsics.emptyString;
     } else {
       // c. Else, let name be the concatenation of "[", description, and "]".
-      invariant(description !== null && description instanceof StringValue);
-      name = new StringValue(realm, `[${description.value}]`);
+      invariant(description instanceof Value);
+      name = new StringValue(realm, `[${description.throwIfNotConcreteString().value}]`);
     }
   }
 

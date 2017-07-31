@@ -118,8 +118,8 @@ export class Emitter {
     } else if (val instanceof SymbolValue) {
       if (val.$Description instanceof Value) {
         delayReason = this.getReasonToWaitForDependencies(val.$Description);
+        if (delayReason) return delayReason;
       }
-      if (delayReason) return delayReason;
     } else if (val instanceof ObjectValue) {
       let kind = val.getKind();
       switch (kind) {
