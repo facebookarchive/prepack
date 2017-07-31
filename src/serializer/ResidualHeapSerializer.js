@@ -152,15 +152,15 @@ export class ResidualHeapSerializer {
     objectPrototypeAlreadyEstablished: boolean = false
   ) {
     // inject symbols
-    for (let [symbol, propertyBinding] of obj.symbols) {
-      invariant(propertyBinding.descriptor);
-      let desc = propertyBinding.descriptor;
-      // TODO:#22 move to emit property
-      this.emitter.emitNowOrAfterWaitingForDependencies([symbol, obj], () => {
-        invariant(desc !== undefined);
-        return this._emitProperty(obj, symbol, desc);
-      });
-    }
+    // for (let [symbol, propertyBinding] of obj.symbols) {
+    //   invariant(propertyBinding.descriptor);
+    //   let desc = propertyBinding.descriptor;
+    //   // TODO:#22 move to emit property
+    //   this.emitter.emitNowOrAfterWaitingForDependencies([symbol, obj], () => {
+    //     invariant(desc !== undefined);
+    //     return this._emitProperty(obj, symbol, desc);
+    //   });
+    // }
 
     // inject properties
     for (let [key, propertyBinding] of properties) {
@@ -391,7 +391,9 @@ export class ResidualHeapSerializer {
         }
       }
       let serializedKey =
-              key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
+        key instanceof SymbolValue
+          ? this.serializeValue(key)
+          : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
       invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
       let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
       this.emitter.emit(
