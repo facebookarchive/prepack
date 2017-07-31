@@ -17,9 +17,13 @@ import {
   BoundFunctionValue,
   ProxyValue,
   SymbolValue,
+  NumberValue,
+  StringValue,
+  BooleanValue,
   AbstractValue,
   EmptyValue,
   FunctionValue,
+  ECMAScriptSourceFunctionValue,
   Value,
   ObjectValue,
   NativeFunctionValue,
@@ -60,7 +64,8 @@ export class ResidualHeapSerializer {
     residualHeapInspector: ResidualHeapInspector,
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
-    residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>
+    residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
+    delayInitializations: boolean
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -110,6 +115,7 @@ export class ResidualHeapSerializer {
     this.residualValues = residualValues;
     this.residualFunctionBindings = residualFunctionBindings;
     this.residualFunctionInfos = residualFunctionInfos;
+    this.delayInitializations = delayInitializations;
   }
 
   emitter: Emitter;
@@ -140,6 +146,7 @@ export class ResidualHeapSerializer {
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
+  delayInitializations: boolean;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -447,7 +454,7 @@ export class ResidualHeapSerializer {
       }
     }
 
-    if (generators.length === 0) {
+    if (this.delayInitializations && generators.length === 0) {
       let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
         functionValues,
         val
@@ -788,6 +795,7 @@ export class ResidualHeapSerializer {
     let residualBindings = this.residualFunctionBindings.get(val);
     invariant(residualBindings);
 
+    invariant(val instanceof ECMAScriptSourceFunctionValue);
     let serializedBindings = Object.create(null);
     let instance: FunctionInstance = {
       serializedBindings,
@@ -872,16 +880,22 @@ export class ResidualHeapSerializer {
       case "Number":
         let numberData = val.$NumberData;
         invariant(numberData !== undefined);
+        numberData.throwIfNotConcreteNumber();
+        invariant(numberData instanceof NumberValue, "expected number data internal slot to be a number value");
         this._emitObjectProperties(val);
         return t.newExpression(this.preludeGenerator.memoizeReference("Number"), [t.numericLiteral(numberData.value)]);
       case "String":
         let stringData = val.$StringData;
         invariant(stringData !== undefined);
+        stringData.throwIfNotConcreteString();
+        invariant(stringData instanceof StringValue, "expected string data internal slot to be a string value");
         this._emitObjectProperties(val);
         return t.newExpression(this.preludeGenerator.memoizeReference("String"), [t.stringLiteral(stringData.value)]);
       case "Boolean":
         let booleanData = val.$BooleanData;
         invariant(booleanData !== undefined);
+        booleanData.throwIfNotConcreteBoolean();
+        invariant(booleanData instanceof BooleanValue, "expected boolean data internal slot to be a boolean value");
         this._emitObjectProperties(val);
         return t.newExpression(this.preludeGenerator.memoizeReference("Boolean"), [
           t.booleanLiteral(booleanData.value),

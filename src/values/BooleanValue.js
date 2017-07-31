@@ -27,6 +27,10 @@ export default class BooleanValue extends PrimitiveValue {
     return !this.value;
   }
 
+  throwIfNotConcreteBoolean(): BooleanValue {
+    return this;
+  }
+
   _serialize(): boolean {
     return this.value;
   }
