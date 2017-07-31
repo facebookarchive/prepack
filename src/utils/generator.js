@@ -42,13 +42,13 @@ export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
   emit: BabelNodeStatement => void,
-  announceDeclaredDerivedId: BabelNodeIdentifier => void,
+  declare: AbstractValue => void,
 };
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
-export type BodyEntry = {
-  declaresDerivedId?: BabelNodeIdentifier,
+export type GeneratorEntry = {
+  declared?: AbstractValue,
   args: Array<Value>,
   buildNode: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
@@ -65,7 +65,7 @@ export class Generator {
   }
 
   realm: Realm;
-  body: Array<BodyEntry>;
+  body: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
 
   clone(): Generator {
@@ -251,8 +251,9 @@ export class Generator {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
+    let res = this.realm.createAbstract(types, values, args, id, kind);
     this.body.push({
-      declaresDerivedId: id,
+      declared: res,
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) =>
         t.variableDeclaration("var", [
@@ -264,7 +265,6 @@ export class Generator {
           ),
         ]),
     });
-    let res = this.realm.createAbstract(types, values, args, id, kind);
     let type = types.getType();
     res.intrinsicName = id.name;
     let typeofString;
@@ -306,18 +306,17 @@ export class Generator {
   }
 
   serialize(context: SerializationContext) {
-    for (let bodyEntry of this.body) {
-      let nodes = bodyEntry.args.map((boundArg, i) => context.serializeValue(boundArg));
-      context.emit(bodyEntry.buildNode(nodes, context));
-      let id = bodyEntry.declaresDerivedId;
-      if (id !== undefined) context.announceDeclaredDerivedId(id);
+    for (let entry of this.body) {
+      let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
+      context.emit(entry.buildNode(nodes, context));
+      if (entry.declared !== undefined) context.declare(entry.declared);
     }
   }
 
   visit(visitValue: Value => void, visitGenerator: Generator => void) {
-    for (let bodyEntry of this.body) {
-      for (let boundArg of bodyEntry.args) visitValue(boundArg);
-      if (bodyEntry.dependencies) for (let dependency of bodyEntry.dependencies) visitGenerator(dependency);
+    for (let entry of this.body) {
+      for (let boundArg of entry.args) visitValue(boundArg);
+      if (entry.dependencies) for (let dependency of entry.dependencies) visitGenerator(dependency);
     }
   }
 }
