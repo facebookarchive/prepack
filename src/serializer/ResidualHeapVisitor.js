@@ -28,9 +28,9 @@ import {
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
-import type { BabelNodeBlockStatement, BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeBlockStatement } from "babel-types";
 import { Generator } from "../utils/generator.js";
-import type { BodyEntry, VisitEntryCallbacks } from "../utils/generator.js";
+import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { VisitedBinding, VisitedBindings, FunctionInfo } from "./types.js";
@@ -59,11 +59,11 @@ export class ResidualHeapVisitor {
     this.functionInfos = new Map();
     this.functionBindings = new Map();
     this.values = new Map();
-    this.referencedDerivedIds = new Set();
     let generator = this.realm.generator;
     invariant(generator);
     this.scope = this.realmGenerator = generator;
     this.inspector = new ResidualHeapInspector(realm, logger);
+    this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
   }
 
@@ -75,12 +75,12 @@ export class ResidualHeapVisitor {
   globalBindings: Map<string, VisitedBinding>;
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   functionBindings: Map<FunctionValue, VisitedBindings>;
-  referencedDerivedIds: Set<BabelNodeIdentifier>;
   scope: Scope;
   realmGenerator: Generator;
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
-  delayedVisitGeneratorEntries: Array<{| generator: Generator, entry: BodyEntry |}>;
+  referencedDeclaredValues: Set<AbstractValue>;
+  delayedVisitGeneratorEntries: Array<{| generator: Generator, entry: GeneratorEntry |}>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -403,15 +403,11 @@ export class ResidualHeapVisitor {
     this.visitValue(val.$ProxyHandler);
   }
 
-  recordDerivedId(val: BabelNodeIdentifier): void {
-    this.referencedDerivedIds.add(val);
-  }
-
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression")
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
-    if (val.hasIdentifier()) this.recordDerivedId(val.getIdentifier());
-    else for (let abstractArg of val.args) this.visitValue(abstractArg);
+    //this.referencedDeclaredValues.add(val);
+    for (let abstractArg of val.args) this.visitValue(abstractArg);
   }
 
   _mark(val: Value): boolean {
@@ -478,8 +474,13 @@ export class ResidualHeapVisitor {
     return {
       visitValue: this.visitValue.bind(this),
       visitGenerator: this.visitGenerator.bind(this),
-      recordDerivedId: this.recordDerivedId.bind(this),
-      recordDelayedEntry: (entry: BodyEntry) => {
+      canSkip: (value: AbstractValue): boolean => {
+        return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
+      },
+      recordDeclaration: (value: AbstractValue) => {
+        this.referencedDeclaredValues.add(value);
+      },
+      recordDelayedEntry: (entry: GeneratorEntry) => {
         this.delayedVisitGeneratorEntries.push({ generator, entry });
       },
     };

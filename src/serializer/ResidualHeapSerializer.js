@@ -66,7 +66,7 @@ export class ResidualHeapSerializer {
     residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     delayInitializations: boolean,
-    residualDerivedIds: Set<BabelNodeIdentifier>
+    referencedDeclaredValues: Set<AbstractValue>
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -117,7 +117,7 @@ export class ResidualHeapSerializer {
     this.residualFunctionBindings = residualFunctionBindings;
     this.residualFunctionInfos = residualFunctionInfos;
     this.delayInitializations = delayInitializations;
-    this.residualDerivedIds = residualDerivedIds;
+    this.referencedDeclaredValues = referencedDeclaredValues;
   }
 
   emitter: Emitter;
@@ -149,7 +149,7 @@ export class ResidualHeapSerializer {
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
   delayInitializations: boolean;
-  residualDerivedIds: Set<BabelNodeIdentifier>;
+  referencedDeclaredValues: Set<AbstractValue>;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -1081,11 +1081,8 @@ export class ResidualHeapSerializer {
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
-      canOmit: (derivedId: BabelNodeIdentifier) => {
-        return !this.residualDerivedIds.has(derivedId);
-      },
-      announceDeclaredDerivedId: (id: BabelNodeIdentifier) => {
-        this.emitter.announceDeclaredDerivedId(id);
+      canOmit: (value: AbstractValue) => {
+        return !this.referencedDeclaredValues.has(value);
       },
       declare: (value: AbstractValue) => {
         this.emitter.declare(value);
@@ -1220,7 +1217,10 @@ export class ResidualHeapSerializer {
       }
     }
 
-    invariant(this.serializedValues.size === this.residualValues.size);
+    invariant(
+      this.serializedValues.size === this.residualValues.size,
+      "serialized " + this.serializedValues.size + " of " + this.residualValues.size
+    );
 
     return t.file(t.program(ast_body));
   }

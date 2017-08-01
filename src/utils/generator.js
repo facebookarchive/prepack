@@ -42,8 +42,7 @@ export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
   emit: BabelNodeStatement => void,
-  canOmit: BabelNodeIdentifier => boolean,
-  announceDeclaredDerivedId: BabelNodeIdentifier => void,
+  canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
 };
 
@@ -60,8 +59,9 @@ export type GeneratorEntry = {
 export type VisitEntryCallbacks = {|
   visitValue: Value => void,
   visitGenerator: Generator => void,
-  recordDerivedId: BabelNodeIdentifier => void,
-  recordDelayedEntry: BodyEntry => void,
+  canSkip: AbstractValue => boolean,
+  recordDeclaration: AbstractValue => void,
+  recordDelayedEntry: GeneratorEntry => void,
 |};
 
 export class Generator {
@@ -260,10 +260,9 @@ export class Generator {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
-    let res = this.realm.createAbstract(types, values, args, id, optionalArgs);
+    let res = this.realm.createAbstract(types, values, args, id, optionalArgs ? optionalArgs.kind : undefined);
     this.body.push({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
-      declaresDerivedId: id,
       declared: res,
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) =>
@@ -319,7 +318,7 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     for (let entry of this.body) {
-      if (!bodyEntry.isPure || !bodyEntry.declaresDerivedId || !context.canOmit(bodyEntry.declaresDerivedId)) {
+      if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
         let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
         context.emit(entry.buildNode(nodes, context));
         if (entry.declared !== undefined) context.declare(entry.declared);
@@ -327,9 +326,11 @@ export class Generator {
     }
   }
 
-  visitEntry(entry: BodyEntry, callbacks: VisitEntryCallbacks) {
-    for (let entry of this.body) {
-      if (entry.isPure) continue;
+  visitEntry(entry: GeneratorEntry, callbacks: VisitEntryCallbacks) {
+    if (entry.isPure && entry.declared && callbacks.canSkip(entry.declared)) {
+      callbacks.recordDelayedEntry(entry);
+    } else {
+      if (entry.declared) callbacks.recordDeclaration(entry.declared);
       for (let boundArg of entry.args) callbacks.visitValue(boundArg);
       if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency);
     }
