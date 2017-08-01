@@ -406,7 +406,6 @@ export class ResidualHeapVisitor {
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression")
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
-    //this.referencedDeclaredValues.add(val);
     for (let abstractArg of val.args) this.visitValue(abstractArg);
   }
 
