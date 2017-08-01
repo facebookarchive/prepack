@@ -13,18 +13,17 @@ import type { ObjectValue } from "../values/index.js";
 import type { Realm } from "../realm.js";
 
 import invariant from "../invariant.js";
-import { IsArray } from "../methods/index.js";
+import { IsArray, IsArrayIndex } from "../methods/index.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
  */
-export function getArrayIndexPropertyLength(realm: Realm, val: ObjectValue): number {
+export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): number {
   invariant(IsArray(realm, val));
 
   let length = 0;
   for (const key of val.properties.keys()) {
-    const isArrayIndex = String(Number(key)) === key;
-    if (isArrayIndex && Number(key) >= length) {
+    if (IsArrayIndex(realm, key) && Number(key) >= length) {
       length = Number(key) + 1;
     }
   }

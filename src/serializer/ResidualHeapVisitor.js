@@ -37,7 +37,7 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
-import { getArrayIndexPropertyLength } from "./utils.js";
+import { getSuggestedArrayLiteralLength } from "./utils.js";
 
 export type Scope = FunctionValue | Generator;
 
@@ -198,7 +198,7 @@ export class ResidualHeapVisitor {
     let lenProperty = Get(realm, val, "length");
     if (
       lenProperty instanceof AbstractValue ||
-      ToLength(realm, lenProperty) !== getArrayIndexPropertyLength(realm, val)
+      ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
     ) {
       this.visitValue(lenProperty);
     }
