@@ -31,7 +31,13 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeStatement, BabelNodeExpression } from "babel-types";
+import type {
+  BabelNode,
+  BabelNodeSourceLocation,
+  BabelNodeLVal,
+  BabelNodeStatement,
+  BabelNodeExpression,
+} from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
@@ -281,6 +287,28 @@ export class Realm {
     }
   }
 
+  wrapInGlobalEnv<T>(callback: () => T): T {
+    let context = new ExecutionContext();
+    context.lexicalEnvironment = this.$GlobalEnv;
+    context.variableEnvironment = this.$GlobalEnv;
+    context.realm = this;
+
+    this.pushContext(context);
+    try {
+      return callback();
+    } finally {
+      this.popContext(context);
+    }
+  }
+
+  assignToGlobal(name: BabelNodeLVal, value: Value) {
+    this.wrapInGlobalEnv(() => this.$GlobalEnv.assignToGlobal(name, value));
+  }
+
+  deleteGlobalBinding(name: string) {
+    this.$GlobalEnv.environmentRecord.DeleteBinding(name);
+  }
+
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
@@ -289,17 +317,7 @@ export class Realm {
   }
 
   evaluateNodeForEffectsInGlobalEnv(node: BabelNode) {
-    let context = new ExecutionContext();
-    context.lexicalEnvironment = this.$GlobalEnv;
-    context.variableEnvironment = this.$GlobalEnv;
-    context.realm = this;
-
-    this.pushContext(context);
-    try {
-      return this.evaluateNodeForEffects(node, false, this.$GlobalEnv);
-    } finally {
-      this.popContext(context);
-    }
+    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv));
   }
 
   partiallyEvaluateNodeForEffects(
