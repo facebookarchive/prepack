@@ -9,12 +9,14 @@
 
 /* @flow */
 
-import type { BabelNodeCallExpression, BabelNodeIdentifier, BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
+import { ThrowCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding } from "../types.js";
 import { AbstractObjectValue, FunctionValue, ObjectValue, Value } from "../values/index.js";
+import buildTemplate from "babel-template";
 import * as t from "babel-types";
 
 export class Functions {
@@ -32,12 +34,20 @@ export class Functions {
 
     // lookup functions
     let calls = [];
-    let glob = this.realm.$GlobalObject;
     for (let fname of functions) {
-      let fun = glob.$Get(fname, glob);
+      let fun;
+      let fnameAst = buildTemplate(fname)({}).expression;
+      if (fnameAst) {
+        try {
+          let e = this.realm.evaluateNodeForEffectsInGlobalEnv(fnameAst);
+          fun = e[0];
+        } catch (ex) {
+          if (!(ex instanceof ThrowCompletion)) throw ex;
+        }
+      }
       if (!(fun instanceof FunctionValue)) {
         let error = new CompilerDiagnostic(
-          `Additional function ${fname} not defined in the global object`,
+          `Additional function ${fname} not defined in the global environment`,
           null,
           "PP1001",
           "FatalError"
@@ -45,19 +55,17 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
-      let callee = t.identifier(fname);
-      let call = t.callExpression(callee, []);
-      calls.push(call);
+      let call = t.callExpression(fnameAst, []);
+      calls.push([fname, call]);
     }
 
     // check that functions are independent
     let conflicts: Set<BabelNodeSourceLocation> = new Set();
-    for (let call1 of calls) {
+    for (let [fname1, call1] of calls) {
       let e1 = this.realm.evaluateNodeForEffectsInGlobalEnv(call1);
       if (!(e1[0] instanceof Value)) {
-        let fname = ((call1.callee: any): BabelNodeIdentifier).name;
         let error = new CompilerDiagnostic(
-          `Additional function ${fname} may terminate abruptly`,
+          `Additional function ${fname1} may terminate abruptly`,
           null,
           "PP1002",
           "FatalError"
@@ -65,15 +73,17 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
-      for (let call2 of calls) {
+      for (let [fname2, call2] of calls) {
+        fname2; // not used
         if (call1 === call2) continue;
-        this.reportWriteConflicts(conflicts, e1[3], call1, call2);
+        this.reportWriteConflicts(fname1, conflicts, e1[3], call1, call2);
       }
     }
     if (conflicts.size > 0) throw new FatalError();
   }
 
   reportWriteConflicts(
+    fname: string,
     conflicts: Set<BabelNodeSourceLocation>,
     pbs: PropertyBindings,
     call1: BabelNodeCallExpression,
@@ -93,7 +103,6 @@ export class Functions {
     pbs.forEach((val, key, m) => {
       writtenObjects.add(key.object);
     });
-    let fname = "";
     let oldReportObjectGetOwnProperties = this.realm.reportObjectGetOwnProperties;
     this.realm.reportObjectGetOwnProperties = (ob: ObjectValue) => {
       let location = this.realm.currentLocation;
@@ -107,7 +116,6 @@ export class Functions {
       if (pbs.has(pb) && !conflicts.has(location)) reportConflict(location);
     };
     try {
-      fname = ((call1.callee: any): BabelNodeIdentifier).name;
       this.realm.evaluateNodeForEffectsInGlobalEnv(call2);
     } finally {
       this.realm.reportPropertyAccess = oldReportPropertyAccess;
