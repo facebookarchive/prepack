@@ -306,7 +306,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _emitProperty(val: ObjectValue, key: string, desc: Descriptor): void {
+  _emitProperty(val: ObjectValue, key: string | SymbolValue, desc: Descriptor): void {
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -833,7 +833,7 @@ export class ResidualHeapSerializer {
   }
 
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
-  _canEmbedProperty(obj: ObjectValue, key: string, prop: Descriptor): boolean {
+  _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue, prop: Descriptor): boolean {
     if ((obj instanceof FunctionValue && key === "prototype") || (obj.getKind() === "RegExp" && key === "lastIndex"))
       return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
     else return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;

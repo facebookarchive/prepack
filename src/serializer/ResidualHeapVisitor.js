@@ -397,12 +397,6 @@ export class ResidualHeapVisitor {
     this.visitValue(val.$ProxyHandler);
   }
 
-  visitValueSymbol(val: SymbolValue): void {
-    if (val.$Description instanceof Value) {
-      this.visitValue(val.$Description);
-    }
-  }
-
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression")
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
@@ -441,7 +435,7 @@ export class ResidualHeapVisitor {
         if (this._mark(val)) this.visitValueFunction(val);
       });
     } else if (val instanceof SymbolValue) {
-      if (this._mark(val)) this.visitValueSymbol(val);
+      this._mark(val);
     } else if (val instanceof ObjectValue) {
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the global code as well.
