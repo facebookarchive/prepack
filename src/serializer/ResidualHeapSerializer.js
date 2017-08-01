@@ -10,7 +10,6 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { FatalError } from "../errors.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { ToLength, IsArray, Get } from "../methods/index.js";
 import {
@@ -371,7 +370,7 @@ export class ResidualHeapSerializer {
 
       for (let descKey of valKeys) {
         if (descKey in desc) {
-          let descValue = desc[descKey] || this.realm.intrinsics.undefined;
+          let descValue = desc[descKey];
           invariant(descValue instanceof Value);
           invariant(!this.emitter.getReasonToWaitForDependencies([descValue]), "precondition of _emitProperty");
           this.emitter.emit(
@@ -797,9 +796,7 @@ export class ResidualHeapSerializer {
       );
     }
 
-    if (val instanceof NativeFunctionValue) {
-      throw new FatalError("TODO: do not know how to serialize non-intrinsic native function value");
-    }
+    invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
 
     let residualBindings = this.residualFunctionBindings.get(val);
     invariant(residualBindings);
@@ -1054,10 +1051,9 @@ export class ResidualHeapSerializer {
       return this._serializeValueFunction(val);
     } else if (val instanceof SymbolValue) {
       return this._serializeValueSymbol(val);
-    } else if (val instanceof ObjectValue) {
-      return this._serializeValueObject(val);
     } else {
-      invariant(false);
+      invariant(val instanceof ObjectValue);
+      return this._serializeValueObject(val);
     }
   }
 
