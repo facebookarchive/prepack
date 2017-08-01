@@ -20,7 +20,7 @@ import {
   NumberValue,
   BooleanValue,
   SymbolValue,
-  FunctionValue,
+  ECMAScriptFunctionValue,
   ObjectValue,
   StringValue,
   Value,
@@ -407,9 +407,13 @@ export function NewObjectEnvironment(
 }
 
 // ECMA262 8.1.2.4
-export function NewFunctionEnvironment(realm: Realm, F: FunctionValue, newTarget?: ObjectValue): LexicalEnvironment {
+export function NewFunctionEnvironment(
+  realm: Realm,
+  F: ECMAScriptFunctionValue,
+  newTarget?: ObjectValue
+): LexicalEnvironment {
   // 1. Assert: F is an ECMAScript function.
-  invariant(F instanceof FunctionValue, "expected a function");
+  invariant(F instanceof ECMAScriptFunctionValue, "expected a function");
 
   // 2. Assert: Type(newTarget) is Undefined or Object.
   invariant(

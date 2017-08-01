@@ -15,6 +15,8 @@ export { default as PrimitiveValue } from "./PrimitiveValue.js";
 export { default as ObjectValue } from "./ObjectValue.js";
 
 export { default as FunctionValue } from "./FunctionValue.js";
+export { default as ECMAScriptFunctionValue } from "./ECMAScriptFunctionValue.js";
+export { default as ECMAScriptSourceFunctionValue } from "./ECMAScriptSourceFunctionValue.js";
 export { default as BoundFunctionValue } from "./BoundFunctionValue.js";
 export { default as NativeFunctionValue, NativeFunctionCallback } from "./NativeFunctionValue.js";
 

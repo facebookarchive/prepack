@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import {
-  FunctionValue,
+  ECMAScriptSourceFunctionValue,
   ObjectValue,
   UndefinedValue,
   NullValue,
@@ -30,12 +30,12 @@ import type { BabelNodeClassMethod } from "babel-types";
 // ECMA262 9.2.8
 export function MakeConstructor(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptSourceFunctionValue,
   writablePrototype?: boolean,
   prototype?: ObjectValue
 ): UndefinedValue {
   // 1. Assert: F is an ECMAScript function object.
-  invariant(F instanceof FunctionValue, "expected function value");
+  invariant(F instanceof ECMAScriptSourceFunctionValue, "expected function value");
 
   // 2. Assert: F has a [[Construct]] internal method.
   invariant(F.$Construct !== undefined, "expected construct internal method");
@@ -133,9 +133,9 @@ export function SpeciesConstructor(realm: Realm, O: ObjectValue, defaultConstruc
 }
 
 // ECMA 9.2.9
-export function MakeClassConstructor(realm: Realm, F: FunctionValue) {
+export function MakeClassConstructor(realm: Realm, F: ECMAScriptSourceFunctionValue) {
   // 1. Assert: F is an ECMAScript function object.
-  invariant(F instanceof FunctionValue, "expected function value");
+  invariant(F instanceof ECMAScriptSourceFunctionValue, "expected function value");
 
   // 2. Assert: F’s [[FunctionKind]] internal slot is "normal".
   invariant((F.$FunctionKind = "normal"));

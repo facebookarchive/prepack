@@ -128,8 +128,8 @@ function callBothFunctionsAndJoinTheirEffects(
 ): Completion | Value {
   let [cond, func1, func2] = funcs;
   invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
-  invariant(func1.getType() === FunctionValue);
-  invariant(func2.getType() === FunctionValue);
+  invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
+  invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
 
   let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateForEffects(() =>
     EvaluateCall(func1, func1, ast, argVals, strictCode, env, realm)
@@ -172,7 +172,7 @@ function EvaluateCall(
   env: LexicalEnvironment,
   realm: Realm
 ): Completion | Value {
-  if (func instanceof AbstractValue && func.getType() === FunctionValue) {
+  if (func instanceof AbstractValue && Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
     if (func.kind === "conditional")
       return callBothFunctionsAndJoinTheirEffects(func.args, ast, argList, strictCode, env, realm);
 
