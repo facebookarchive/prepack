@@ -118,6 +118,7 @@ export class ResidualHeapSerializer {
     this.residualFunctionInfos = residualFunctionInfos;
     this.delayInitializations = delayInitializations;
     this.referencedDeclaredValues = referencedDeclaredValues;
+    this.activeGeneratorBodies = new Map();
   }
 
   emitter: Emitter;
@@ -150,6 +151,7 @@ export class ResidualHeapSerializer {
   residualFunctions: ResidualFunctions;
   delayInitializations: boolean;
   referencedDeclaredValues: Set<AbstractValue>;
+  activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -450,18 +452,39 @@ export class ResidualHeapSerializer {
       }
     }
 
-    if (this.delayInitializations && generators.length === 0) {
-      let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
-        functionValues,
-        val
-      );
-      return { body: body, usedOnlyByResidualFunctions: true };
+    if (generators.length === 0) {
+      // This value is only referenced from residual functions.
+      invariant(functionValues.length > 0);
+      if (this.delayInitializations) {
+        // We can delay the initialization, and move it into a conditional code block in the residual functions!
+        let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
+          functionValues,
+          val
+        );
+        return { body, usedOnlyByResidualFunctions: true };
+      } else {
+        // We can just emit it into the main body which will get executed unconditionally.
+        return { body: this.mainBody };
+      }
     }
 
-    // TODO: What does this mean? Where should the code go? Figure this out.
-    // TODO #482: If there's more than one generator involved, We should walk up the generator chain, and find the first common generator, and then choose a body that will be emitted just before that common generator.
-    // For now, stick to historical behavior.
-    return { body: this.emitter.getBody() };
+    if (generators.length === 1 && functionValues.length === 0) {
+      // This value is only referenced from a single generator.
+      // We can emit the initialization of this value into the body associated with that generator.
+      let body = this.activeGeneratorBodies.get(generators[0]);
+      invariant(body !== undefined);
+      invariant(body === this.emitter.getBody());
+      return { body };
+    }
+
+    // TODO #482: If there's more than...
+    // - one generator, or
+    // - one (non-main) generator and some functions
+    // involved, then we need to work a bit harder to figure out where the emit this value.
+    // In the presence of functions, we need to figure out in which generator a function is first exposed.
+    // Then we could walk up the generator chain to find the first common ancestor of all involved generators.
+    this.logger.logError(val, "Value is referenced in an unsupported combination of scopes.");
+    return { body: this.mainBody };
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
@@ -1074,8 +1097,11 @@ export class ResidualHeapSerializer {
     let context = {
       serializeValue: this.serializeValue.bind(this),
       serializeGenerator: (generator: Generator) => {
-        let oldBody = this.emitter.beginEmitting(generator, []);
+        let newBody = [];
+        let oldBody = this.emitter.beginEmitting(generator, newBody);
+        this.activeGeneratorBodies.set(generator, newBody);
         generator.serialize(context);
+        this.activeGeneratorBodies.delete(generator);
         return this.emitter.endEmitting(generator, oldBody);
       },
       emit: (statement: BabelNodeStatement) => {

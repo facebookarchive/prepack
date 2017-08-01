@@ -50,7 +50,6 @@ class ModuleTracer extends Tracer {
     this.requireSequence = [];
     this.logModules = logModules;
     this.uninitializedModuleIdsRequiredInEvaluateForEffects = new Set();
-    this.nestedRequiredModulesAndValues = [];
   }
 
   modules: Modules;
@@ -60,7 +59,6 @@ class ModuleTracer extends Tracer {
   uninitializedModuleIdsRequiredInEvaluateForEffects: Set<number | string>;
   // We can't say that a module has been initialized if it was initialized in a
   // evaluate for effects context until we know the effects are applied.
-  nestedRequiredModulesAndValues: Array<{| id: number | string, value: Value |}>;
   logModules: boolean;
 
   log(message: string) {
@@ -119,11 +117,7 @@ class ModuleTracer extends Tracer {
           this.requireStack.push(moduleIdValue);
           try {
             let value = performCall();
-            if (this.modules.initializedModules.has(moduleIdValue)) {
-              invariant(this.modules.initializedModules.get(moduleIdValue) === value);
-            } /*else {
-              this.modules.initializedModules.set(moduleIdValue, value);
-            }*/
+            this.modules.recordModuleInitialized(moduleIdValue, value);
             return value;
           } finally {
             invariant(this.requireStack.pop() === moduleIdValue);
@@ -191,7 +185,6 @@ class ModuleTracer extends Tracer {
                     nestedEffects[0] instanceof Value &&
                     this.modules.isModuleInitialized(nestedModuleId)
                   ) {
-                    this.nestedRequiredModulesAndValues.push({ id: nestedModuleId, value: nestedEffects[0] });
                     acceleratedModuleIds.push(nestedModuleId);
                   }
                 }
@@ -246,13 +239,7 @@ class ModuleTracer extends Tracer {
             } else {
               invariant(result);
               if (!(result instanceof Completion)) {
-                this.nestedRequiredModulesAndValues.push({ id: moduleIdValue, value: result });
-              }
-              if (isTopLevelRequire) {
-                /*for (let { id, value } of this.nestedRequiredModulesAndValues) {
-                  this.modules.initializedModules.set(id, value);
-                }*/
-                this.nestedRequiredModulesAndValues = [];
+                this.modules.recordModuleInitialized(moduleIdValue, result);
               }
               realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
             }
@@ -309,13 +296,18 @@ export class Modules {
   disallowDelayingRequiresOverride: boolean;
 
   resolveInitializedModules(): void {
-    for (let moduleId of this.moduleIds) {
-      let result = this.isModuleInitialized(moduleId);
-      if (result !== undefined) this.initializedModules.set(moduleId, result);
+    let globalInitializedModulesMap = this._getGlobalProperty("__initializedModules");
+    invariant(globalInitializedModulesMap instanceof ObjectValue);
+    for (let moduleId of globalInitializedModulesMap.getOwnPropertyKeysArray()) {
+      let property = globalInitializedModulesMap.properties.get(moduleId);
+      invariant(property);
+      let moduleValue = property.descriptor && property.descriptor.value;
+      invariant(moduleValue);
+      this.initializedModules.set(moduleId, moduleValue);
     }
   }
 
-  _getGlobalProperty(name: string) {
+  _getGlobalProperty(name: string): Value {
     if (this.active) return this.realm.intrinsics.undefined;
     this.active = true;
     try {
@@ -392,6 +384,16 @@ export class Modules {
     };
   }
 
+  recordModuleInitialized(moduleId: number | string, value: Value) {
+    this.realm.assignToGlobal(
+      t.memberExpression(
+        t.memberExpression(t.identifier("global"), t.identifier("__initializedModules")),
+        t.identifier("" + moduleId)
+      ),
+      value
+    );
+  }
+
   tryInitializeModule(moduleId: number | string, message: string): void | Effects {
     let realm = this.realm;
     let previousDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
@@ -409,6 +411,7 @@ export class Modules {
           return undefined;
         }
 
+        if (result instanceof Value) this.recordModuleInitialized(moduleId, result);
         return effects;
       } catch (err) {
         if (err instanceof FatalError) return undefined;
