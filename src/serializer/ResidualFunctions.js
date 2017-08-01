@@ -176,41 +176,29 @@ export class ResidualFunctions {
     }
   }
 
-  _getReferentializedScopeInitialization(
-    scope: ScopeBinding
-  ): [BabelNodeVariableDeclaration, BabelNodeIfStatement] | [BabelNodeIfStatement] {
+  _getReferentializedScopeInitialization(scope: ScopeBinding): [BabelNodeVariableDeclaration, BabelNodeIfStatement] {
     let properties = [];
     for (let [variableName, value] of scope.initializationValues.entries()) {
       properties.push(t.objectProperty(t.identifier(variableName), value));
     }
     let initExpression = t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true);
-    let capturedScope;
-    let capturedScopeId;
-    if (scope.capturedScope) {
-      capturedScope = scope.capturedScope;
-      capturedScopeId = t.identifier(capturedScope);
+    invariant(scope.capturedScope);
+    let capturedScope = scope.capturedScope;
+    let capturedScopeId = t.identifier(capturedScope);
 
-      return [
-        t.variableDeclaration("var", [t.variableDeclarator(capturedScopeId, initExpression)]),
-        t.ifStatement(
-          t.unaryExpression("!", capturedScopeId),
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              initExpression,
-              t.assignmentExpression("=", capturedScopeId, t.objectExpression(properties))
-            )
+    return [
+      t.variableDeclaration("var", [t.variableDeclarator(capturedScopeId, initExpression)]),
+      t.ifStatement(
+        t.unaryExpression("!", capturedScopeId),
+        t.expressionStatement(
+          t.assignmentExpression(
+            "=",
+            initExpression,
+            t.assignmentExpression("=", capturedScopeId, t.objectExpression(properties))
           )
-        ),
-      ];
-    } else {
-      return [
-        t.ifStatement(
-          t.unaryExpression("!", initExpression),
-          t.expressionStatement(t.assignmentExpression("=", initExpression, t.objectExpression(properties)))
-        ),
-      ];
-    }
+        )
+      ),
+    ];
   }
 
   spliceFunctions(): ResidualFunctionsResult {
