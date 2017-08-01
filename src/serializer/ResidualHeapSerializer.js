@@ -1111,11 +1111,6 @@ export class ResidualHeapSerializer {
     return context;
   }
 
-  _emitGenerator(generator: Generator) {
-    generator.serialize(this._getContext());
-    this.emitter.assertIsDrained();
-  }
-
   _shouldBeWrapped(body: Array<any>) {
     for (let i = 0; i < body.length; i++) {
       let item = body[i];
@@ -1144,7 +1139,7 @@ export class ResidualHeapSerializer {
   }
 
   serialize(): BabelNodeFile {
-    this._emitGenerator(this.generator);
+    this.generator.serialize(this._getContext());
     invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
@@ -1154,6 +1149,8 @@ export class ResidualHeapSerializer {
     // TODO #21: add event listeners
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
       this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
+
+    this.emitter.finalize();
 
     let {
       hoistedBody,
