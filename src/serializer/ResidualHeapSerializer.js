@@ -151,16 +151,16 @@ export class ResidualHeapSerializer {
     properties: Map<string, PropertyBinding> = obj.properties,
     objectPrototypeAlreadyEstablished: boolean = false
   ) {
-    // inject symbols
-    // for (let [symbol, propertyBinding] of obj.symbols) {
-    //   invariant(propertyBinding.descriptor);
-    //   let desc = propertyBinding.descriptor;
-    //   // TODO:#22 move to emit property
-    //   this.emitter.emitNowOrAfterWaitingForDependencies([symbol, obj], () => {
-    //     invariant(desc !== undefined);
-    //     return this._emitProperty(obj, symbol, desc);
-    //   });
-    // }
+    //inject symbols
+    for (let [symbol, propertyBinding] of obj.symbols) {
+      invariant(propertyBinding.descriptor);
+      let desc = propertyBinding.descriptor;
+      // TODO:#22 move to emit property
+      this.emitter.emitNowOrAfterWaitingForDependencies([symbol, obj], () => {
+        invariant(desc !== undefined);
+        return this._emitProperty(obj, symbol, desc);
+      });
+    }
 
     // inject properties
     for (let [key, propertyBinding] of properties) {
