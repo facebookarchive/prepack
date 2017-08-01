@@ -172,6 +172,7 @@ export class Realm {
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
+  reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
 
   currentLocation: ?BabelNodeSourceLocation;
@@ -541,6 +542,12 @@ export class Realm {
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
       this.modifiedBindings.set(binding, binding.value);
     return binding;
+  }
+
+  callReportObjectGetOwnProperties(ob: ObjectValue): void {
+    if (this.reportObjectGetOwnProperties !== undefined) {
+      this.reportObjectGetOwnProperties(ob);
+    }
   }
 
   callReportPropertyAccess(binding: PropertyBinding): void {

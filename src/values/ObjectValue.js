@@ -360,10 +360,9 @@ export default class ObjectValue extends ConcreteValue {
       throw new FatalError();
     }
 
-    let o = this;
-    let keyArray = Array.from(o.properties.keys());
-    keyArray = keyArray.filter(function(x) {
-      let pb = o.properties.get(x);
+    let keyArray = Array.from(this.properties.keys());
+    keyArray = keyArray.filter(x => {
+      let pb = this.properties.get(x);
       if (!pb || pb.descriptor === undefined) return false;
       let pv = pb.descriptor.value;
       if (pv === undefined) return true;
@@ -375,6 +374,7 @@ export default class ObjectValue extends ConcreteValue {
       AbstractValue.reportIntrospectionError(pv);
       throw new FatalError();
     });
+    this.$Realm.callReportObjectGetOwnProperties(this);
     return keyArray;
   }
 
