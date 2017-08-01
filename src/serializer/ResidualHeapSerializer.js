@@ -54,7 +54,7 @@ import { factorifyObjects } from "./factorify.js";
 import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/internalizer.js";
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
-import { getArrayIndexPropertyLength } from "./utils.js";
+import { getSuggestedArrayLiteralLength } from "./utils.js";
 
 export class ResidualHeapSerializer {
   constructor(
@@ -573,33 +573,35 @@ export class ResidualHeapSerializer {
       if (propertyBinding !== undefined) {
         let descriptor = propertyBinding.descriptor;
         // "descriptor === undefined" means this array item has been deleted.
-        if (descriptor !== undefined && descriptor.value !== undefined) {
+        if (
+          descriptor !== undefined &&
+          descriptor.value !== undefined &&
+          this._canEmbedProperty(array, key, descriptor)
+        ) {
           remainingProperties.delete(key);
-          if (this._canEmbedProperty(array, key, descriptor)) {
-            let elemVal = descriptor.value;
-            invariant(elemVal instanceof Value);
-            let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-            let delayReason = this.emitter.getReasonToWaitForDependencies(elemVal) || mightHaveBeenDeleted;
-            if (delayReason) {
-              // handle self recursion
-              this.emitter.emitAfterWaiting(delayReason, [elemVal, array], () => {
-                this._assignProperty(
-                  () =>
-                    t.memberExpression(
-                      this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(array),
-                      t.numericLiteral(i),
-                      true
-                    ),
-                  () => {
-                    invariant(elemVal !== undefined);
-                    return this.serializeValue(elemVal);
-                  },
-                  mightHaveBeenDeleted
-                );
-              });
-            } else {
-              elem = this.serializeValue(elemVal);
-            }
+          let elemVal = descriptor.value;
+          invariant(elemVal instanceof Value);
+          let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
+          let delayReason = this.emitter.getReasonToWaitForDependencies(elemVal) || mightHaveBeenDeleted;
+          if (delayReason) {
+            // handle self recursion
+            this.emitter.emitAfterWaiting(delayReason, [elemVal, array], () => {
+              this._assignProperty(
+                () =>
+                  t.memberExpression(
+                    this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(array),
+                    t.numericLiteral(i),
+                    true
+                  ),
+                () => {
+                  invariant(elemVal !== undefined);
+                  return this.serializeValue(elemVal);
+                },
+                mightHaveBeenDeleted
+              );
+            });
+          } else {
+            elem = this.serializeValue(elemVal);
           }
         }
       }
@@ -615,7 +617,7 @@ export class ResidualHeapSerializer {
   ): void {
     const realm = this.realm;
     let lenProperty = Get(realm, val, "length");
-    // Need to serilize length property if:
+    // Need to serialize length property if:
     // 1. array length is abstract.
     // 2. array length is concrete, but different from number of index properties
     //  we put into initialization list.
@@ -640,7 +642,7 @@ export class ResidualHeapSerializer {
   _serializeValueArray(val: ObjectValue): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
 
-    const indexPropertyLength = getArrayIndexPropertyLength(this.realm, val);
+    const indexPropertyLength = getSuggestedArrayLiteralLength(this.realm, val);
     // Use the serialized index properties as array initialization list.
     const initProperties = this._serializeArrayIndexProperties(val, indexPropertyLength, remainingProperties);
     this._serializeArrayLengthIfNeeded(val, indexPropertyLength, remainingProperties);
