@@ -72,7 +72,7 @@ function runTest(name: string, code: string): boolean {
       serialize: true,
       speculate: true,
     };
-    if (additionalFunctions) (options: any).additionalFunctions = ["additional1", "additional2"];
+    if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
     prepackFileSync(name, options);
     if (!recover) {
       console.log(chalk.red("Serialization succeeded though it should have failed"));
