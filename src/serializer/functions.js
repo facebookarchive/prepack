@@ -14,7 +14,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding } from "../types.js";
-import { FunctionValue, Value } from "../values/index.js";
+import { AbstractObjectValue, FunctionValue, ObjectValue, Value } from "../values/index.js";
 import * as t from "babel-types";
 
 export class Functions {
@@ -79,27 +79,39 @@ export class Functions {
     call1: BabelNodeCallExpression,
     call2: BabelNodeCallExpression
   ) {
+    let reportConflict = (location: BabelNodeSourceLocation) => {
+      let error = new CompilerDiagnostic(
+        `Property access conflicts with write in additional function ${fname}`,
+        location,
+        "PP1003",
+        "FatalError"
+      );
+      this.realm.handleError(error);
+      conflicts.add(location);
+    };
+    let writtenObjects: Set<ObjectValue | AbstractObjectValue> = new Set();
+    pbs.forEach((val, key, m) => {
+      writtenObjects.add(key.object);
+    });
     let fname = "";
-    let oldReporter = this.realm.reportPropertyAccess;
+    let oldReportObjectGetOwnProperties = this.realm.reportObjectGetOwnProperties;
+    this.realm.reportObjectGetOwnProperties = (ob: ObjectValue) => {
+      let location = this.realm.currentLocation;
+      invariant(location);
+      if (writtenObjects.has(ob) && !conflicts.has(location)) reportConflict(location);
+    };
+    let oldReportPropertyAccess = this.realm.reportPropertyAccess;
     this.realm.reportPropertyAccess = (pb: PropertyBinding) => {
       let location = this.realm.currentLocation;
       if (!location) return; // happens only when accessing an additional function property
-      if (pbs.has(pb) && !conflicts.has(location)) {
-        let error = new CompilerDiagnostic(
-          `Property access conflicts with write in additional function ${fname}`,
-          location,
-          "PP1003",
-          "FatalError"
-        );
-        this.realm.handleError(error);
-        conflicts.add(location);
-      }
+      if (pbs.has(pb) && !conflicts.has(location)) reportConflict(location);
     };
     try {
       fname = ((call1.callee: any): BabelNodeIdentifier).name;
       this.realm.evaluateNodeForEffectsInGlobalEnv(call2);
     } finally {
-      this.realm.reportPropertyAccess = oldReporter;
+      this.realm.reportPropertyAccess = oldReportPropertyAccess;
+      this.realm.reportObjectGetOwnProperties = oldReportObjectGetOwnProperties;
     }
   }
 }
