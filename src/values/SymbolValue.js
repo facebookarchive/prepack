@@ -13,12 +13,12 @@ import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
 
 export default class SymbolValue extends PrimitiveValue {
-  constructor(realm: Realm, desc?: Value, intrinsicName?: string) {
+  constructor(realm: Realm, desc: void | Value, intrinsicName?: string) {
     super(realm, intrinsicName);
     this.$Description = desc;
   }
 
-  $Description: ?Value;
+  $Description: void | Value;
 
   mightBeFalse(): boolean {
     return false;
