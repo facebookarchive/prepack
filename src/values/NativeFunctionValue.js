@@ -24,7 +24,6 @@ import {
 } from "./index.js";
 import { ReturnCompletion } from "../completions.js";
 import { $Call, $Construct } from "../methods/function.js";
-
 export type NativeFunctionCallback = (
   context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
   args: Array<Value>,
@@ -72,7 +71,11 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     });
 
     if (name) {
-      this.name = name instanceof SymbolValue ? `[${name.$Description || "native"}]` : name;
+      if (name instanceof SymbolValue) {
+        this.name = name.$Description ? `[${name.$Description.throwIfNotConcreteString().value}]` : "[native]";
+      } else {
+        this.name = name;
+      }
       this.$DefineOwnProperty("name", {
         value: new StringValue(realm, this.name),
         writable: false,
