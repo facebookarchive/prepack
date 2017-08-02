@@ -143,6 +143,7 @@ export class ResidualFunctions {
           // Initialize captured scope at function call instead of globally
           if (!serializedBinding.referentialized) {
             let scope = this._getSerializedBindingScopeInstance(serializedBinding);
+            let capturedScope = "__captured" + scope.name;
             // Save the serialized value for initialization at the top of
             // the factory.
             // This can serialize more variables than are necessary to execute
@@ -152,10 +153,11 @@ export class ResidualFunctions {
             // scopes.
             invariant(serializedBinding.serializedValue);
             scope.initializationValues.set(name, serializedBinding.serializedValue);
+            scope.capturedScope = capturedScope;
 
             // Replace binding usage with scope references
             serializedBinding.serializedValue = t.memberExpression(
-              t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true),
+              t.identifier(capturedScope),
               t.identifier(name),
               false
             );
@@ -174,22 +176,29 @@ export class ResidualFunctions {
     }
   }
 
-  _getReferentializedScopeInitialization(scope: ScopeBinding): BabelNodeIfStatement {
+  _getReferentializedScopeInitialization(scope: ScopeBinding): [BabelNodeVariableDeclaration, BabelNodeIfStatement] {
     let properties = [];
     for (let [variableName, value] of scope.initializationValues.entries()) {
       properties.push(t.objectProperty(t.identifier(variableName), value));
     }
+    let initExpression = t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true);
+    invariant(scope.capturedScope);
+    let capturedScope = scope.capturedScope;
+    let capturedScopeId = t.identifier(capturedScope);
 
-    return t.ifStatement(
-      t.unaryExpression("!", t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true)),
-      t.expressionStatement(
-        t.assignmentExpression(
-          "=",
-          t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true),
-          t.objectExpression(properties)
+    return [
+      t.variableDeclaration("var", [t.variableDeclarator(capturedScopeId, initExpression)]),
+      t.ifStatement(
+        t.unaryExpression("!", capturedScopeId),
+        t.expressionStatement(
+          t.assignmentExpression(
+            "=",
+            initExpression,
+            t.assignmentExpression("=", capturedScopeId, t.objectExpression(properties))
+          )
         )
-      )
-    );
+      ),
+    ];
   }
 
   spliceFunctions(): ResidualFunctionsResult {
@@ -263,7 +272,7 @@ export class ResidualFunctions {
             scopeInitialization.push(
               t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))])
             );
-            scopeInitialization.push(this._getReferentializedScopeInitialization(scope));
+            scopeInitialization = scopeInitialization.concat(this._getReferentializedScopeInitialization(scope));
           }
           funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
 
@@ -361,7 +370,7 @@ export class ResidualFunctions {
           let scopeInitialization = [];
           for (let scope of instances[0].scopeInstances) {
             factoryParams.push(t.identifier(scope.name));
-            scopeInitialization.push(this._getReferentializedScopeInitialization(scope));
+            scopeInitialization = scopeInitialization.concat(this._getReferentializedScopeInitialization(scope));
           }
 
           factoryParams = factoryParams.concat(params).slice();

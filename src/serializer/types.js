@@ -57,6 +57,7 @@ export type ScopeBinding = {
   name: string,
   id: number,
   initializationValues: Map<string, BabelNodeExpression>,
+  capturedScope?: string,
 };
 
 export function AreSameSerializedBindings(realm: Realm, x: SerializedBinding, y: SerializedBinding) {
