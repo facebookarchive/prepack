@@ -54,6 +54,7 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
 
   let recover = code.includes("// recover-from-errors");
+  let additionalFunctions = code.includes("// additional functions");
 
   let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
   invariant(expectedErrors);
@@ -64,13 +65,15 @@ function runTest(name: string, code: string): boolean {
 
   let errors = [];
   try {
-    prepackFileSync(name, {
+    let options = {
       internalDebug: false,
       mathRandomSeed: "0",
       onError: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
       speculate: true,
-    });
+    };
+    if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
+    prepackFileSync(name, options);
     if (!recover) {
       console.log(chalk.red("Serialization succeeded though it should have failed"));
       return false;
@@ -88,7 +91,7 @@ function runTest(name: string, code: string): boolean {
       let expected = expectedErrors[i][prop];
       let actual = (errors[i]: any)[prop];
       if (prop === "location") {
-        delete actual.filename;
+        if (actual) delete actual.filename;
         actual = JSON.stringify(actual);
         expected = JSON.stringify(expected);
       }

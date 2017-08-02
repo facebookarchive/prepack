@@ -13,13 +13,14 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
-import { IsUnresolvableReference, ResolveBinding, IsArray, Get } from "../methods/index.js";
+import { IsUnresolvableReference, ToLength, ResolveBinding, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
   ProxyValue,
   SymbolValue,
   AbstractValue,
   EmptyValue,
+  ECMAScriptSourceFunctionValue,
   FunctionValue,
   Value,
   ObjectValue,
@@ -36,6 +37,7 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { getSuggestedArrayLiteralLength } from "./utils.js";
 
 export type Scope = FunctionValue | Generator;
 
@@ -192,8 +194,14 @@ export class ResidualHeapVisitor {
 
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
-    let lenProperty = Get(this.realm, val, "length");
-    if (lenProperty instanceof AbstractValue) this.visitValue(lenProperty);
+    const realm = this.realm;
+    let lenProperty = Get(realm, val, "length");
+    if (
+      lenProperty instanceof AbstractValue ||
+      ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
+    ) {
+      this.visitValue(lenProperty);
+    }
   }
 
   visitValueMap(val: ObjectValue): void {
@@ -249,11 +257,10 @@ export class ResidualHeapVisitor {
       return;
     }
 
-    if (val instanceof NativeFunctionValue) {
-      return;
-    }
+    invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
 
-    invariant(val.constructor === FunctionValue);
+    invariant(val instanceof ECMAScriptSourceFunctionValue);
+    invariant(val.constructor === ECMAScriptSourceFunctionValue);
     let formalParameters = val.$FormalParameters;
     invariant(formalParameters != null);
     let code = val.$ECMAScriptCode;
@@ -320,10 +327,9 @@ export class ResidualHeapVisitor {
           }
           if (reference.base instanceof GlobalEnvironmentRecord) {
             visitedBinding = this.visitGlobalBinding(referencedName);
-          } else if (referencedBase instanceof DeclarativeEnvironmentRecord) {
-            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
           } else {
-            invariant(false);
+            invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
+            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
           }
         }
         visitedBindings[innerName] = visitedBinding;
@@ -437,7 +443,9 @@ export class ResidualHeapVisitor {
       });
     } else if (val instanceof SymbolValue) {
       if (this._mark(val)) this.visitValueSymbol(val);
-    } else if (val instanceof ObjectValue) {
+    } else {
+      invariant(val instanceof ObjectValue);
+
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the global code as well.
       if (val.originalConstructor !== undefined) {
@@ -448,8 +456,6 @@ export class ResidualHeapVisitor {
       } else {
         if (this._mark(val)) this.visitValueObject(val);
       }
-    } else {
-      invariant(false);
     }
   }
 

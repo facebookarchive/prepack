@@ -232,6 +232,7 @@ class MasterProgramArgs {
   statusFile: string;
   filterString: string;
   singleThreaded: boolean;
+  relativeTestPath: string;
 
   constructor(
     verbose: boolean,
@@ -240,7 +241,8 @@ class MasterProgramArgs {
     cpuScale: number,
     statusFile: string,
     filterString: string,
-    singleThreaded: boolean
+    singleThreaded: boolean,
+    relativeTestPath: string
   ) {
     this.verbose = verbose;
     this.timeout = timeout;
@@ -249,14 +251,17 @@ class MasterProgramArgs {
     this.statusFile = statusFile;
     this.filterString = filterString;
     this.singleThreaded = singleThreaded;
+    this.relativeTestPath = relativeTestPath;
   }
 }
 
 class WorkerProgramArgs {
   timeout: number;
+  relativeTestPath: string;
 
-  constructor(timeout: number) {
+  constructor(timeout: number, relativeTestPath: string) {
     this.timeout = timeout;
+    this.relativeTestPath = relativeTestPath;
   }
 }
 
@@ -316,13 +321,13 @@ function usage(): string {
     EOL +
     `[--verbose] [--timeout <number>] [--bailAfter <number>] ` +
     EOL +
-    `[--cpuScale <number>] [--statusFile <string>] [--singleThreaded]`
+    `[--cpuScale <number>] [--statusFile <string>] [--singleThreaded] [--relativeTestPath <string>]`
   );
 }
 
 function masterArgsParse(): MasterProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
-    string: ["statusFile"],
+    string: ["statusFile", "relativeTestPath"],
     boolean: ["verbose", "singleThreaded"],
     default: {
       verbose: process.stdout instanceof tty.WriteStream ? false : true,
@@ -331,6 +336,7 @@ function masterArgsParse(): MasterProgramArgs {
       cpuScale: 1,
       bailAfter: Infinity,
       singleThreaded: false,
+      relativeTestPath: "/../test/test262",
     },
   });
   let filterString = parsedArgs._[0];
@@ -352,6 +358,9 @@ function masterArgsParse(): MasterProgramArgs {
   if (typeof parsedArgs.singleThreaded !== "boolean") {
     throw new ArgsParseError("singleThreaded must be a boolean (either --singleThreaded or not)");
   }
+  if (typeof parsedArgs.relativeTestPath !== "string") {
+    throw new ArgsParseError("relativeTestPath must be a string (--relativeTestPath /../test/test262)");
+  }
   let programArgs = new MasterProgramArgs(
     parsedArgs.verbose,
     parsedArgs.timeout,
@@ -359,7 +368,8 @@ function masterArgsParse(): MasterProgramArgs {
     parsedArgs.cpuScale,
     parsedArgs.statusFile,
     filterString,
-    parsedArgs.singleThreaded
+    parsedArgs.singleThreaded,
+    parsedArgs.relativeTestPath
   );
   if (programArgs.filterString) {
     // if filterstring is provided, assume that verbosity is desired
@@ -372,16 +382,21 @@ function workerArgsParse(): WorkerProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     default: {
       timeout: 10,
+      relativeTestPath: "/../test/test262",
     },
   });
   if (typeof parsedArgs.timeout !== "number") {
     throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
   }
-  return new WorkerProgramArgs(parsedArgs.timeout);
+  if (typeof parsedArgs.relativeTestPath !== "string") {
+    throw new ArgsParseError("relativeTestPath must be a string (--relativeTestPath /../test/test262)");
+  }
+  return new WorkerProgramArgs(parsedArgs.timeout, parsedArgs.relativeTestPath);
 }
 
 function masterRun(args: MasterProgramArgs) {
-  let tests = getFilesSync(`${__dirname}/../test/test262/test`);
+  let testPath = `${__dirname}` + args.relativeTestPath + "/test";
+  let tests = getFilesSync(testPath);
   // remove tests that don't need to be ran
   const originalTestLength = tests.length;
   tests = tests.filter(test => {
@@ -408,7 +423,7 @@ function masterRunSingleProcess(
   // print out every 5 percent (more granularity than multi-process because multi-process
   // runs a lot faster)
   const granularity = Math.floor(tests.length / 20);
-  let harnesses = getHarnesses();
+  let harnesses = getHarnesses(args.relativeTestPath);
   let numLeft = tests.length;
   for (let t of tests) {
     handleTest(t, harnesses, args.timeout, (err, results) => {
@@ -599,7 +614,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 22916 || numPassedES6 < 10340 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 22916 || numPassedES6 < 10336 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -665,8 +680,9 @@ function create_test_message(name: string, success: boolean, err: ?Error, isES6:
   return msg;
 }
 
-function getHarnesses(): HarnessMap {
-  let harnessesList = getFilesSync(`${__dirname}/../test/test262/harness`);
+function getHarnesses(relativeTestPath: string): HarnessMap {
+  let harnessPath = `${__dirname}` + relativeTestPath + "/harness";
+  let harnessesList = getFilesSync(harnessPath);
   // convert to a mapping from harness name to file contents
   let harnesses: HarnessMap = {};
   for (let harness of harnessesList) {
@@ -683,7 +699,7 @@ function workerRun(args: WorkerProgramArgs) {
   // distributed via IPC or once from each process. This is the
   // "once from each process" approach.
   // get all the harnesses
-  let harnesses = getHarnesses();
+  let harnesses = getHarnesses(args.relativeTestPath);
   // we're a worker, run a portion of the tests
   process.on("message", message => {
     switch (message.type) {

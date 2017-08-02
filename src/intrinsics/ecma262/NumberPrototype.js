@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
+import { ObjectValue, StringValue, UndefinedValue, AbstractValue, NumberValue } from "../../values/index.js";
 import { ToInteger, ToString, thisNumberValue } from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant.js";
@@ -141,6 +141,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 20.1.3.6
   obj.defineNativeMethod("toString", 1, (context, [radix]) => {
+    if (radix instanceof UndefinedValue) {
+      const target = context instanceof ObjectValue ? context.$NumberData : context;
+      if (target instanceof AbstractValue && target.getType() === NumberValue) {
+        const codeTemplate = "(A).toString()";
+        return realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [target], ([a]) =>
+          buildExpressionTemplate(codeTemplate)(realm.preludeGenerator)({ A: a })
+        );
+      }
+    }
     // 1. Let x be ? thisNumberValue(this value).
     let x = thisNumberValue(realm, context);
 

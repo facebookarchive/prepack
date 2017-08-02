@@ -12,6 +12,7 @@
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
+import type { ECMAScriptFunctionValue } from "../values/index.js";
 import {
   Completion,
   ThrowCompletion,
@@ -30,6 +31,7 @@ import {
   BoundFunctionValue,
   EmptyValue,
   FunctionValue,
+  ECMAScriptSourceFunctionValue,
   ObjectValue,
   StringValue,
   SymbolValue,
@@ -151,7 +153,7 @@ export function FindVarScopedDeclarations(ast_node: BabelNode): Array<BabelNode>
 // ECMA262 9.2.12
 export function FunctionDeclarationInstantiation(
   realm: Realm,
-  func: FunctionValue,
+  func: ECMAScriptSourceFunctionValue,
   argumentsList: Array<Value>
 ): EmptyValue {
   // 1. Let calleeContext be the running execution context.
@@ -541,12 +543,12 @@ export function SetFunctionName(
 // ECMA262 9.2.3
 export function FunctionInitialize(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptSourceFunctionValue,
   kind: "normal" | "method" | "arrow",
   ParameterList: Array<BabelNodeLVal>,
   Body: BabelNodeBlockStatement,
   Scope: LexicalEnvironment
-): FunctionValue {
+): ECMAScriptSourceFunctionValue {
   // Note that F is a new object, and we can thus write to internal slots
   invariant(realm.isNewObject(F));
 
@@ -608,7 +610,7 @@ export function GeneratorFunctionCreate(
   Body: BabelNodeBlockStatement,
   Scope: LexicalEnvironment,
   Strict: boolean
-): FunctionValue {
+): ECMAScriptSourceFunctionValue {
   // 1. Let functionPrototype be the intrinsic object %Generator%.
   let functionPrototype = realm.intrinsics.Generator;
 
@@ -637,13 +639,13 @@ export function AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm) 
 }
 
 // ECMA262 9.2.1
-export function $Call(realm: Realm, F: FunctionValue, thisArgument: Value, argsList: Array<Value>): Value {
+export function $Call(realm: Realm, F: ECMAScriptFunctionValue, thisArgument: Value, argsList: Array<Value>): Value {
   return InternalCall(realm, F, thisArgument, argsList, 0);
 }
 
 function InternalCall(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptFunctionValue,
   thisArgument: Value,
   argsList: Array<Value>,
   tracerIndex: number
@@ -721,7 +723,7 @@ function InternalCall(
 // ECMA262 9.2.2
 export function $Construct(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptFunctionValue,
   argumentsList: Array<Value>,
   newTarget: ObjectValue
 ): ObjectValue {
@@ -730,7 +732,7 @@ export function $Construct(
 
 function InternalConstruct(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptFunctionValue,
   argumentsList: Array<Value>,
   newTarget: ObjectValue,
   thisArgument: void | ObjectValue,
@@ -831,7 +833,7 @@ export function FunctionAllocate(
   functionPrototype: ObjectValue,
   strict: boolean,
   functionKind: "normal" | "non-constructor" | "generator"
-): FunctionValue {
+): ECMAScriptSourceFunctionValue {
   // 1. Assert: Type(functionPrototype) is Object.
   invariant(functionPrototype instanceof ObjectValue, "expected functionPrototype to be an object");
 
@@ -856,7 +858,7 @@ export function FunctionAllocate(
   }
 
   // 6. Let F be a newly created ECMAScript function object with the internal slots listed in Table 27. All of those internal slots are initialized to undefined.
-  let F = new FunctionValue(realm);
+  let F = new ECMAScriptSourceFunctionValue(realm);
 
   // 7. Set F's essential internal methods to the default ordinary object definitions specified in 9.1.
 
@@ -1239,7 +1241,7 @@ export function FunctionCreate(
   Scope: LexicalEnvironment,
   Strict: boolean,
   prototype?: ObjectValue
-) {
+): ECMAScriptSourceFunctionValue {
   // 1. If the prototype argument was not passed, then
   if (!prototype) {
     // a. Let prototype be the intrinsic object %FunctionPrototype%.
@@ -1501,12 +1503,12 @@ export function EvalDeclarationInstantiation(
 }
 
 // ECMA 9.2.10
-export function MakeMethod(realm: Realm, F: FunctionValue, homeObject: ObjectValue) {
+export function MakeMethod(realm: Realm, F: ECMAScriptSourceFunctionValue, homeObject: ObjectValue) {
   // Note that F is a new object, and we can thus write to internal slots
   invariant(realm.isNewObject(F));
 
   // 1. Assert: F is an ECMAScript function object.
-  invariant(F instanceof FunctionValue, "F is an ECMAScript function object.");
+  invariant(F instanceof ECMAScriptSourceFunctionValue, "F is an ECMAScript function object.");
 
   // 2. Assert: Type(homeObject) is Object.
   invariant(homeObject instanceof ObjectValue, "Type(homeObject) is Object.");

@@ -140,6 +140,18 @@ export default class Value {
     invariant(false, "abstract method; please override");
   }
 
+  throwIfNotConcreteString(): StringValue {
+    throw new Error("abstract method; please override");
+  }
+
+  throwIfNotConcreteBoolean(): BooleanValue {
+    throw new Error("abstract method; please override");
+  }
+
+  throwIfNotConcreteSymbol(): SymbolValue {
+    throw new Error("abstract method; please override");
+  }
+
   throwIfNotConcreteObject(): ObjectValue {
     invariant(false, "abstract method; please override");
   }

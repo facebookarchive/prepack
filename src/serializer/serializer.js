@@ -20,6 +20,7 @@ import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics } from "./types.js";
+import { Functions } from "./functions.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { LoggingTracer } from "./LoggingTracer.js";
@@ -35,6 +36,7 @@ export class Serializer {
     realm.generator = new Generator(realm);
 
     this.realm = realm;
+    this.functions = new Functions(this.realm, serializerOptions.additionalFunctions);
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
     this.modules = new Modules(
       this.realm,
@@ -48,6 +50,7 @@ export class Serializer {
   }
 
   realm: Realm;
+  functions: Functions;
   logger: Logger;
   modules: Modules;
   options: SerializerOptions;
@@ -103,6 +106,10 @@ export class Serializer {
     }
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
+    this.modules.resolveInitializedModules();
+    if (this.options.additionalFunctions) {
+      this.functions.checkThatFunctionsAreIndependent();
+    }
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
       this.modules.initializeMoreModules();
@@ -133,7 +140,8 @@ export class Serializer {
         residualHeapVisitor.inspector,
         residualHeapVisitor.values,
         residualHeapVisitor.functionBindings,
-        residualHeapVisitor.functionInfos
+        residualHeapVisitor.functionInfos,
+        !!this.options.delayInitializations
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -151,7 +159,8 @@ export class Serializer {
       residualHeapVisitor.inspector,
       residualHeapVisitor.values,
       residualHeapVisitor.functionBindings,
-      residualHeapVisitor.functionInfos
+      residualHeapVisitor.functionInfos,
+      !!this.options.delayInitializations
     );
     let ast = residualHeapSerializer.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
