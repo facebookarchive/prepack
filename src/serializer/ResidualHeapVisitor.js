@@ -13,7 +13,7 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
-import { IsUnresolvableReference, ResolveBinding, IsArray, Get } from "../methods/index.js";
+import { IsUnresolvableReference, ToLength, ResolveBinding, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
   ProxyValue,
@@ -37,6 +37,7 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { getSuggestedArrayLiteralLength } from "./utils.js";
 
 export type Scope = FunctionValue | Generator;
 
@@ -193,8 +194,14 @@ export class ResidualHeapVisitor {
 
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
-    let lenProperty = Get(this.realm, val, "length");
-    if (lenProperty instanceof AbstractValue) this.visitValue(lenProperty);
+    const realm = this.realm;
+    let lenProperty = Get(realm, val, "length");
+    if (
+      lenProperty instanceof AbstractValue ||
+      ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
+    ) {
+      this.visitValue(lenProperty);
+    }
   }
 
   visitValueMap(val: ObjectValue): void {

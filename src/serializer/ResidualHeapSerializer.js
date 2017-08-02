@@ -53,6 +53,7 @@ import { factorifyObjects } from "./factorify.js";
 import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/internalizer.js";
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
+import { getSuggestedArrayLiteralLength } from "./utils.js";
 
 export class ResidualHeapSerializer {
   constructor(
@@ -573,15 +574,70 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeValueArray(val: ObjectValue): BabelNodeExpression {
-    let realm = this.realm;
+  _serializeArrayIndexProperties(
+    array: ObjectValue,
+    indexPropertyLength: number,
+    remainingProperties: Map<string, PropertyBinding>
+  ) {
     let elems = [];
+    for (let i = 0; i < indexPropertyLength; i++) {
+      let key = i + "";
+      let propertyBinding = remainingProperties.get(key);
+      let elem = null;
+      // "propertyBinding === undefined" means array has a hole in the middle.
+      if (propertyBinding !== undefined) {
+        let descriptor = propertyBinding.descriptor;
+        // "descriptor === undefined" means this array item has been deleted.
+        if (
+          descriptor !== undefined &&
+          descriptor.value !== undefined &&
+          this._canEmbedProperty(array, key, descriptor)
+        ) {
+          remainingProperties.delete(key);
+          let elemVal = descriptor.value;
+          invariant(elemVal instanceof Value);
+          let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
+          let delayReason =
+            this.emitter.getReasonToWaitForDependencies(elemVal) ||
+            this.emitter.getReasonToWaitForActiveValue(array, mightHaveBeenDeleted);
+          if (delayReason) {
+            this.emitter.emitAfterWaiting(delayReason, [elemVal, array], () => {
+              this._assignProperty(
+                () =>
+                  t.memberExpression(
+                    this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(array),
+                    t.numericLiteral(i),
+                    true
+                  ),
+                () => {
+                  invariant(elemVal !== undefined);
+                  return this.serializeValue(elemVal);
+                },
+                mightHaveBeenDeleted
+              );
+            });
+          } else {
+            elem = this.serializeValue(elemVal);
+          }
+        }
+      }
+      elems.push(elem);
+    }
+    return elems;
+  }
 
-    let remainingProperties = new Map(val.properties);
-
-    // If array length is abstract set it manually and then all known properties (including numeric indices)
+  _serializeArrayLengthIfNeeded(
+    val: ObjectValue,
+    numberOfIndexProperties: number,
+    remainingProperties: Map<string, PropertyBinding>
+  ): void {
+    const realm = this.realm;
     let lenProperty = Get(realm, val, "length");
-    if (lenProperty instanceof AbstractValue) {
+    // Need to serialize length property if:
+    // 1. array length is abstract.
+    // 2. array length is concrete, but different from number of index properties
+    //  we put into initialization list.
+    if (lenProperty instanceof AbstractValue || ToLength(realm, lenProperty) !== numberOfIndexProperties) {
       this.emitter.emitNowOrAfterWaitingForDependencies([val], () => {
         this._assignProperty(
           () =>
@@ -596,53 +652,18 @@ export class ResidualHeapSerializer {
         );
       });
       remainingProperties.delete("length");
-    } else {
-      // An array's length property cannot be redefined, so this won't run user code
-      let len = ToLength(realm, lenProperty);
-      for (let i = 0; i < len; i++) {
-        let key = i + "";
-        let propertyBinding = remainingProperties.get(key);
-        let elem = null;
-        if (propertyBinding !== undefined) {
-          let descriptor = propertyBinding.descriptor;
-          if (descriptor !== undefined && descriptor.value !== undefined) {
-            // deleted
-            remainingProperties.delete(key);
-            if (this._canEmbedProperty(val, key, descriptor)) {
-              let elemVal = descriptor.value;
-              invariant(elemVal instanceof Value);
-              let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-              let delayReason =
-                this.emitter.getReasonToWaitForDependencies(elemVal) ||
-                this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
-              if (delayReason) {
-                this.emitter.emitAfterWaiting(delayReason, [elemVal, val], () => {
-                  this._assignProperty(
-                    () =>
-                      t.memberExpression(
-                        this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
-                        t.numericLiteral(i),
-                        true
-                      ),
-                    () => {
-                      invariant(elemVal !== undefined);
-                      return this.serializeValue(elemVal);
-                    },
-                    mightHaveBeenDeleted
-                  );
-                });
-              } else {
-                elem = this.serializeValue(elemVal);
-              }
-            }
-          }
-        }
-        elems.push(elem);
-      }
     }
+  }
 
+  _serializeValueArray(val: ObjectValue): BabelNodeExpression {
+    let remainingProperties = new Map(val.properties);
+
+    const indexPropertyLength = getSuggestedArrayLiteralLength(this.realm, val);
+    // Use the serialized index properties as array initialization list.
+    const initProperties = this._serializeArrayIndexProperties(val, indexPropertyLength, remainingProperties);
+    this._serializeArrayLengthIfNeeded(val, indexPropertyLength, remainingProperties);
     this._emitObjectProperties(val, remainingProperties);
-    return t.arrayExpression(elems);
+    return t.arrayExpression(initProperties);
   }
 
   _serializeValueMap(val: ObjectValue): BabelNodeExpression {
