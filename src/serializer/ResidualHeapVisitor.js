@@ -257,9 +257,7 @@ export class ResidualHeapVisitor {
       return;
     }
 
-    if (val instanceof NativeFunctionValue) {
-      return;
-    }
+    invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
 
     invariant(val instanceof ECMAScriptSourceFunctionValue);
     invariant(val.constructor === ECMAScriptSourceFunctionValue);
@@ -329,10 +327,9 @@ export class ResidualHeapVisitor {
           }
           if (reference.base instanceof GlobalEnvironmentRecord) {
             visitedBinding = this.visitGlobalBinding(referencedName);
-          } else if (referencedBase instanceof DeclarativeEnvironmentRecord) {
-            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
           } else {
-            invariant(false);
+            invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
+            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
           }
         }
         visitedBindings[innerName] = visitedBinding;
@@ -444,7 +441,9 @@ export class ResidualHeapVisitor {
       });
     } else if (val instanceof SymbolValue) {
       if (this._mark(val)) this.visitValueSymbol(val);
-    } else if (val instanceof ObjectValue) {
+    } else {
+      invariant(val instanceof ObjectValue);
+
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the global code as well.
       if (val.originalConstructor !== undefined) {
@@ -455,8 +454,6 @@ export class ResidualHeapVisitor {
       } else {
         if (this._mark(val)) this.visitValueObject(val);
       }
-    } else {
-      invariant(false);
     }
   }
 

@@ -9,13 +9,14 @@
 
 /* @flow */
 
-import type { BabelNodeCallExpression, BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
+import { ThrowCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { intersectBindings } from "../methods/join.js";
 import { type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding } from "../types.js";
-import { EmptyValue, FunctionValue, Value } from "../values/index.js";
+import { AbstractObjectValue, FunctionValue, ObjectValue, Value } from "../values/index.js";
+import buildTemplate from "babel-template";
 import * as t from "babel-types";
 
 export class Functions {
@@ -33,12 +34,20 @@ export class Functions {
 
     // lookup functions
     let calls = [];
-    let glob = this.realm.$GlobalObject;
     for (let fname of functions) {
-      let fun = glob.$Get(fname, glob);
+      let fun;
+      let fnameAst = buildTemplate(fname)({}).expression;
+      if (fnameAst) {
+        try {
+          let e = this.realm.evaluateNodeForEffectsInGlobalEnv(fnameAst);
+          fun = e[0];
+        } catch (ex) {
+          if (!(ex instanceof ThrowCompletion)) throw ex;
+        }
+      }
       if (!(fun instanceof FunctionValue)) {
         let error = new CompilerDiagnostic(
-          `Additional function ${fname} not defined in the global object`,
+          `Additional function ${fname} not defined in the global environment`,
           null,
           "PP1001",
           "FatalError"
@@ -46,18 +55,17 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
-      let callee = t.identifier(fname);
-      let call = t.callExpression(callee, []);
-      calls.push(call);
+      let call = t.callExpression(fnameAst, []);
+      calls.push([fname, call]);
     }
 
     // check that functions are independent
-    for (let call1 of calls) {
+    let conflicts: Set<BabelNodeSourceLocation> = new Set();
+    for (let [fname1, call1] of calls) {
       let e1 = this.realm.evaluateNodeForEffectsInGlobalEnv(call1);
       if (!(e1[0] instanceof Value)) {
-        let fname = ((call1.callee: any): BabelNodeIdentifier).name;
         let error = new CompilerDiagnostic(
-          `Additional function ${fname} may terminate abruptly`,
+          `Additional function ${fname1} may terminate abruptly`,
           null,
           "PP1002",
           "FatalError"
@@ -65,46 +73,53 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
-      for (let call2 of calls) {
+      for (let [fname2, call2] of calls) {
+        fname2; // not used
         if (call1 === call2) continue;
-        let e2 = this.realm.evaluateNodeForEffectsInGlobalEnv(call2);
-        if (!(e2[0] instanceof Value)) continue; // will report error in outer loop
-        let e3 = intersectBindings(this.realm, e1, e2);
-        let hasWriteConflicts = false;
-        for (let pb of e3[3].values()) {
-          invariant(pb !== undefined); // guaranteed by intersectBindings
-          if (pb.value instanceof EmptyValue) {
-            hasWriteConflicts = true;
-            break;
-          }
-        }
-        if (hasWriteConflicts) this.reportWriteConflicts(e3[3], call1, call2);
+        this.reportWriteConflicts(fname1, conflicts, e1[3], call1, call2);
       }
     }
+    if (conflicts.size > 0) throw new FatalError();
   }
 
-  reportWriteConflicts(pbs: PropertyBindings, call1: BabelNodeCallExpression, call2: BabelNodeCallExpression) {
-    let fname = "";
-    let oldReporter = this.realm.reportPropertyModification;
-    this.realm.reportPropertyModification = (pb: PropertyBinding) => {
-      if (pbs.has(pb)) {
-        let error = new CompilerDiagnostic(
-          `Property write conflicts with write in additional function ${fname}`,
-          this.realm.currentLocation,
-          "PP1003",
-          "FatalError"
-        );
-        this.realm.handleError(error);
-      }
+  reportWriteConflicts(
+    fname: string,
+    conflicts: Set<BabelNodeSourceLocation>,
+    pbs: PropertyBindings,
+    call1: BabelNodeCallExpression,
+    call2: BabelNodeCallExpression
+  ) {
+    let reportConflict = (location: BabelNodeSourceLocation) => {
+      let error = new CompilerDiagnostic(
+        `Property access conflicts with write in additional function ${fname}`,
+        location,
+        "PP1003",
+        "FatalError"
+      );
+      this.realm.handleError(error);
+      conflicts.add(location);
+    };
+    let writtenObjects: Set<ObjectValue | AbstractObjectValue> = new Set();
+    pbs.forEach((val, key, m) => {
+      writtenObjects.add(key.object);
+    });
+    let oldReportObjectGetOwnProperties = this.realm.reportObjectGetOwnProperties;
+    this.realm.reportObjectGetOwnProperties = (ob: ObjectValue) => {
+      let location = this.realm.currentLocation;
+      invariant(location);
+      if (writtenObjects.has(ob) && !conflicts.has(location)) reportConflict(location);
+    };
+    let oldReportPropertyAccess = this.realm.reportPropertyAccess;
+    this.realm.reportPropertyAccess = (pb: PropertyBinding) => {
+      let location = this.realm.currentLocation;
+      if (!location) return; // happens only when accessing an additional function property
+      if (pbs.has(pb) && !conflicts.has(location)) reportConflict(location);
     };
     try {
-      fname = ((call2.callee: any): BabelNodeIdentifier).name;
-      this.realm.evaluateNodeForEffectsInGlobalEnv(call1);
-      fname = ((call1.callee: any): BabelNodeIdentifier).name;
       this.realm.evaluateNodeForEffectsInGlobalEnv(call2);
     } finally {
-      this.realm.reportPropertyModification = oldReporter;
+      this.realm.reportPropertyAccess = oldReportPropertyAccess;
+      this.realm.reportObjectGetOwnProperties = oldReportObjectGetOwnProperties;
     }
-    throw new FatalError();
   }
 }
