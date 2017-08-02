@@ -101,7 +101,10 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     for (let i = 0; i < this.length; i++) {
       argsList[i] = argsList[i] || this.$Realm.intrinsics.undefined;
     }
-    return new ReturnCompletion(this.callback(context, argsList, originalLength, newTarget));
+    return new ReturnCompletion(
+      this.callback(context, argsList, originalLength, newTarget),
+      this.$Realm.currentLocation
+    );
   }
 
   // for Proxy

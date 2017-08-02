@@ -10,12 +10,12 @@
 /* @flow */
 
 import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
-import { ThrowCompletion } from "../completions.js";
+import { Completion, ThrowCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding } from "../types.js";
-import { AbstractObjectValue, FunctionValue, ObjectValue, Value } from "../values/index.js";
+import { AbstractObjectValue, FunctionValue, ObjectValue } from "../values/index.js";
 import buildTemplate from "babel-template";
 import * as t from "babel-types";
 
@@ -63,10 +63,11 @@ export class Functions {
     let conflicts: Set<BabelNodeSourceLocation> = new Set();
     for (let [fname1, call1] of calls) {
       let e1 = this.realm.evaluateNodeForEffectsInGlobalEnv(call1);
-      if (!(e1[0] instanceof Value)) {
+      let c = e1[0];
+      if (c instanceof Completion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fname1} may terminate abruptly`,
-          null,
+          c.location,
           "PP1002",
           "FatalError"
         );
