@@ -513,6 +513,7 @@ export function SymbolDescriptiveString(realm: Realm, sym: SymbolValue): string 
 
   // 3. If desc is undefined, let desc be the empty string.
   if (!desc) desc = "";
+  else desc = desc.throwIfNotConcreteString().value;
 
   // 4. Assert: Type(desc) is String.
   invariant(typeof desc === "string", "expected string");

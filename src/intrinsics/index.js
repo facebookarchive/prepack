@@ -181,17 +181,21 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.SymbolPrototype = new ObjectValue(realm, i.ObjectPrototype, "Symbol.prototype");
 
   // initialize common symbols
-  i.SymbolIsConcatSpreadable = new SymbolValue(realm, "Symbol.isConcatSpreadable", "Symbol.isConcatSpreadable");
-  i.SymbolSpecies = new SymbolValue(realm, "Symbol.species", "Symbol.species");
-  i.SymbolReplace = new SymbolValue(realm, "Symbol.replace", "Symbol.replace");
-  i.SymbolIterator = new SymbolValue(realm, "Symbol.iterator", "Symbol.iterator");
-  i.SymbolHasInstance = new SymbolValue(realm, "Symbol.hasInstance", "Symbol.hasInstance");
-  i.SymbolToPrimitive = new SymbolValue(realm, "Symbol.toPrimitive", "Symbol.toPrimitive");
-  i.SymbolToStringTag = new SymbolValue(realm, "Symbol.toStringTag", "Symbol.toStringTag");
-  i.SymbolMatch = new SymbolValue(realm, "Symbol.match", "Symbol.match");
-  i.SymbolSplit = new SymbolValue(realm, "Symbol.split", "Symbol.split");
-  i.SymbolSearch = new SymbolValue(realm, "Symbol.search", "Symbol.search");
-  i.SymbolUnscopables = new SymbolValue(realm, "Symbol.unscopables", "Symbol.unscopables");
+  i.SymbolIsConcatSpreadable = new SymbolValue(
+    realm,
+    new StringValue(realm, "Symbol.isConcatSpreadable"),
+    "Symbol.isConcatSpreadable"
+  );
+  i.SymbolSpecies = new SymbolValue(realm, new StringValue(realm, "Symbol.species"), "Symbol.species");
+  i.SymbolReplace = new SymbolValue(realm, new StringValue(realm, "Symbol.replace"), "Symbol.replace");
+  i.SymbolIterator = new SymbolValue(realm, new StringValue(realm, "Symbol.iterator"), "Symbol.iterator");
+  i.SymbolHasInstance = new SymbolValue(realm, new StringValue(realm, "Symbol.hasInstance"), "Symbol.hasInstance");
+  i.SymbolToPrimitive = new SymbolValue(realm, new StringValue(realm, "Symbol.toPrimitive"), "Symbol.toPrimitive");
+  i.SymbolToStringTag = new SymbolValue(realm, new StringValue(realm, "Symbol.toStringTag"), "Symbol.toStringTag");
+  i.SymbolMatch = new SymbolValue(realm, new StringValue(realm, "Symbol.match"), "Symbol.match");
+  i.SymbolSplit = new SymbolValue(realm, new StringValue(realm, "Symbol.split"), "Symbol.split");
+  i.SymbolSearch = new SymbolValue(realm, new StringValue(realm, "Symbol.search"), "Symbol.search");
+  i.SymbolUnscopables = new SymbolValue(realm, new StringValue(realm, "Symbol.unscopables"), "Symbol.unscopables");
 
   //
   i.ArrayProto_values = initializeArrayProto_values(realm);
