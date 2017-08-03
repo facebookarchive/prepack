@@ -72,43 +72,7 @@ export function prepackSources(
   }
 }
 
-export function prepackString(
-  filename: string,
-  code: string,
-  sourceMap: string,
-  options: Options = defaultOptions
-): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
-  let sources = [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }];
-  let realmOptions = getRealmOptions(options);
-  let realm = construct_realm(realmOptions);
-  initializeGlobals(realm);
-
-  if (options.serialize || !options.residual) {
-    let serializer = new Serializer(realm, getSerializerOptions(options));
-    let serialized = serializer.init(sources, options.sourceMaps);
-    if (!serialized) {
-      throw new FatalError();
-    }
-    if (!options.residual) return serialized;
-    let residualSources = [
-      {
-        filePath: options.outputFilename || "unknown",
-        fileContents: serialized.code,
-        sourceMapContents: JSON.stringify(serialized.map),
-      },
-    ];
-    let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
-    if (result instanceof AbruptCompletion) throw result;
-    return (result: any);
-  } else {
-    invariant(options.residual);
-    let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
-    if (result instanceof AbruptCompletion) throw result;
-    return (result: any);
-  }
-}
-
-/* deprecated: please use prepackString instead. */
+/* deprecated: please use prepackSources instead. */
 export function prepack(code: string, options: Options = defaultOptions) {
   let filename = options.filename || "unknown";
   let sources = [{ filePath: filename, fileContents: code }];
@@ -126,7 +90,7 @@ export function prepack(code: string, options: Options = defaultOptions) {
   return serialized;
 }
 
-/* deprecated: please use prepackString instead. */
+/* deprecated: please use prepackSources instead. */
 export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: string, options: Options = defaultOptions) {
   if (ast && ast.type === "Program") {
     ast = t.file(ast, [], []);

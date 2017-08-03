@@ -10,7 +10,7 @@
 /* @flow */
 
 let FatalError = require("../lib/errors.js").FatalError;
-let prepackString = require("../lib/prepack-node.js").prepackString;
+let prepackSources = require("../lib/prepack-node.js").prepackSources;
 
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
@@ -126,7 +126,7 @@ function runTest(name, code, options, args) {
     return false;
   } else if (code.includes("// cannot serialize")) {
     try {
-      prepackString(name, code, "", options);
+      prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
     } catch (err) {
       if (err instanceof FatalError) {
         return true;
@@ -136,7 +136,7 @@ function runTest(name, code, options, args) {
     return false;
   } else if (code.includes("// no effect")) {
     try {
-      let serialized = prepackString(name, code, "", options);
+      let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
       if (!serialized) {
         console.log(chalk.red("Error during serialization!"));
         return false;
@@ -177,7 +177,7 @@ function runTest(name, code, options, args) {
       for (; i < max; i++) {
         let newUniqueSuffix = `_unique${unique++}`;
         options.uniqueSuffix = newUniqueSuffix;
-        let serialized = prepackString(name, oldCode, "", options);
+        let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
         if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
         if (!serialized) {
           console.log(chalk.red("Error during serialization!"));
