@@ -24,5 +24,5 @@ export default function(
 ): Value {
   let exprRef = env.evaluate(ast.argument, strictCode);
   let exprValue = GetValue(realm, exprRef);
-  throw new ThrowCompletion(exprValue);
+  throw new ThrowCompletion(exprValue, ast.loc);
 }

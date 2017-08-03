@@ -260,12 +260,12 @@ export function joinEffectsAndRemoveNestedReturnCompletions(
     if (e1[0] instanceof AbruptCompletion) {
       if (!(e2[0] instanceof ReturnCompletion)) {
         invariant(e2[0] instanceof Value); // otherwise c cannot possibly be normal
-        e2[0] = new ReturnCompletion(realm.intrinsics.undefined);
+        e2[0] = new ReturnCompletion(realm.intrinsics.undefined, realm.currentLocation);
       }
       return joinEffects(realm, c.joinCondition, e1, e2);
     } else if (e2[0] instanceof AbruptCompletion) {
       invariant(e1[0] instanceof Value); // otherwise c cannot possibly be normal
-      e1[0] = new ReturnCompletion(realm.intrinsics.undefined);
+      e1[0] = new ReturnCompletion(realm.intrinsics.undefined, realm.currentLocation);
       return joinEffects(realm, c.joinCondition, e1, e2);
     }
   }
@@ -336,22 +336,22 @@ function joinResults(
     throw new FatalError();
   }
   if (result1 instanceof BreakCompletion && result2 instanceof BreakCompletion && result1.target === result2.target) {
-    return new BreakCompletion(realm.intrinsics.empty, result1.target);
+    return new BreakCompletion(realm.intrinsics.empty, joinCondition.expressionLocation, result1.target);
   }
   if (
     result1 instanceof ContinueCompletion &&
     result2 instanceof ContinueCompletion &&
     result1.target === result2.target
   ) {
-    return new ContinueCompletion(realm.intrinsics.empty, result1.target);
+    return new ContinueCompletion(realm.intrinsics.empty, joinCondition.expressionLocation, result1.target);
   }
   if (result1 instanceof ReturnCompletion && result2 instanceof ReturnCompletion) {
     let val = joinValues(realm, result1.value, result2.value, getAbstractValue);
-    return new ReturnCompletion(val);
+    return new ReturnCompletion(val, joinCondition.expressionLocation);
   }
   if (result1 instanceof ThrowCompletion && result2 instanceof ThrowCompletion) {
     let val = joinValues(realm, result1.value, result2.value, getAbstractValue);
-    return new ThrowCompletion(val);
+    return new ThrowCompletion(val, result1.location);
   }
   if (result1 instanceof AbruptCompletion && result2 instanceof AbruptCompletion) {
     return new JoinedAbruptCompletions(realm, joinCondition, result1, e1, result2, e2);

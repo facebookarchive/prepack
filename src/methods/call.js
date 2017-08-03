@@ -340,7 +340,7 @@ export function OrdinaryCallEvaluateBody(
       GeneratorStart(realm, G, code);
 
       // 4. Return Completion{[[Type]]: return, [[Value]]: G, [[Target]]: empty}.
-      return new ReturnCompletion(G);
+      return new ReturnCompletion(G, realm.currentLocation);
     } else {
       // 1. Perform ? FunctionDeclarationInstantiation(F, argumentsList).
       FunctionDeclarationInstantiation(realm, F, argumentsList);

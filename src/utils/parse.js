@@ -60,7 +60,7 @@ export default function(
         loc: e.loc,
         stackDecorated: false,
       };
-      throw new ThrowCompletion(error);
+      throw new ThrowCompletion(error, undefined);
     } else {
       throw e;
     }

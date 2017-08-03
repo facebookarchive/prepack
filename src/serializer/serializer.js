@@ -77,8 +77,7 @@ export class Serializer {
       } finally {
         realm.popContext(context);
       }
-      // TODO: annotate AbruptCompletion instances with the locations of the statements that caused them.
-      let diagnostic = new CompilerDiagnostic("Global code may end abruptly", null, "PP0016", "FatalError");
+      let diagnostic = new CompilerDiagnostic("Global code may end abruptly", res.location, "PP0016", "FatalError");
       realm.handleError(diagnostic);
       throw new FatalError();
     }
