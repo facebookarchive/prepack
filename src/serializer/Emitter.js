@@ -9,7 +9,15 @@
 
 /* @flow */
 
-import { BoundFunctionValue, ProxyValue, AbstractValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
+import {
+  BoundFunctionValue,
+  ProxyValue,
+  AbstractValue,
+  FunctionValue,
+  Value,
+  ObjectValue,
+  SymbolValue,
+} from "../values/index.js";
 import type { BabelNodeStatement } from "babel-types";
 import { Generator } from "../utils/generator.js";
 import invariant from "../invariant.js";
@@ -177,6 +185,11 @@ export class Emitter {
       if (delayReason) return delayReason;
       delayReason = this.getReasonToWaitForDependencies(val.$ProxyHandler);
       if (delayReason) return delayReason;
+    } else if (val instanceof SymbolValue) {
+      if (val.$Description instanceof Value) {
+        delayReason = this.getReasonToWaitForDependencies(val.$Description);
+        if (delayReason) return delayReason;
+      }
     } else if (val instanceof ObjectValue) {
       let kind = val.getKind();
       switch (kind) {

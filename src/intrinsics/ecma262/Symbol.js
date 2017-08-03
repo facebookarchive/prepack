@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue, StringValue, SymbolValue, UndefinedValue } from "../../values/index.js";
+import { AbstractValue, NativeFunctionValue, StringValue, SymbolValue, UndefinedValue } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { SameValue } from "../../methods/abstract.js";
 
@@ -28,11 +28,13 @@ export default function(realm: Realm): NativeFunctionValue {
     let descString;
     if (!description || description instanceof UndefinedValue) {
       descString = undefined;
+    } else if (description instanceof AbstractValue) {
+      descString = description;
     } else {
       // 3. Else, let descString be ? ToString(description).
       descString = ToStringPartial(realm, description);
+      descString = new StringValue(realm, descString);
     }
-
     // 4. Return a new unique Symbol value whose [[Description]] value is descString.
     return new SymbolValue(realm, descString);
   });
@@ -41,11 +43,12 @@ export default function(realm: Realm): NativeFunctionValue {
   func.defineNativeMethod("for", 1, (context, [key]) => {
     // 1. Let stringKey be ? ToString(key).
     let stringKey = ToStringPartial(realm, key);
+    stringKey = new StringValue(realm, stringKey);
 
     // 2. For each element e of the GlobalSymbolRegistry List,
     for (let e of GlobalSymbolRegistry) {
       // a. If SameValue(e.[[Key]], stringKey) is true, return e.[[Symbol]].
-      if (e.$Key === stringKey) {
+      if (e.$Key === stringKey.value) {
         return e.$Symbol;
       }
     }
@@ -56,7 +59,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let newSymbol = new SymbolValue(realm, stringKey);
 
     // 5. Append the Record { [[Key]]: stringKey, [[Symbol]]: newSymbol } to the GlobalSymbolRegistry List.
-    GlobalSymbolRegistry.push({ $Key: stringKey, $Symbol: newSymbol });
+    GlobalSymbolRegistry.push({ $Key: stringKey.value, $Symbol: newSymbol });
 
     // 6. Return newSymbol.
     return newSymbol;
