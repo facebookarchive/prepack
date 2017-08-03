@@ -15,7 +15,6 @@ import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
 import {
   Completion,
-  ThrowCompletion,
   ReturnCompletion,
   AbruptCompletion,
   JoinedAbruptCompletions,
@@ -1318,10 +1317,9 @@ export function EvalDeclarationInstantiation(
       for (let name of varNames) {
         // 1. If varEnvRec.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
         if (varEnvRec.HasLexicalDeclaration(name)) {
-          throw new ThrowCompletion(
-            Construct(realm, realm.intrinsics.SyntaxError, [
-              new StringValue(realm, name + " global object is restricted"),
-            ])
+          throw realm.createErrorThrowCompletion(
+            realm.intrinsics.SyntaxError,
+            new StringValue(realm, name + " global object is restricted")
           );
         }
         // 2. NOTE: eval will not create a global var declaration that would be shadowed by a global lexical declaration.

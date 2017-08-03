@@ -35,7 +35,7 @@ import {
   Reference,
   LexicalEnvironment,
 } from "../environment.js";
-import { NormalCompletion, AbruptCompletion, ThrowCompletion } from "../completions.js";
+import { NormalCompletion, AbruptCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
@@ -733,7 +733,8 @@ export function IteratorBindingInitialization(
       // 7. Return InitializeReferencedBinding(lhs, v).
       InitializeReferencedBinding(realm, lhs, v);
       continue;
-    } else if (param.type === "ObjectPattern" || param.type === "ArrayPattern") {
+    } else {
+      invariant(param.type === "ObjectPattern" || param.type === "ArrayPattern");
       // BindingElement : BindingPatternInitializer
 
       // Initialized later in the algorithm.
@@ -791,8 +792,6 @@ export function IteratorBindingInitialization(
       // 4. Return the result of performing BindingInitialization of BindingPattern with v and environment as the arguments.
       BindingInitialization(realm, param, v, strictCode, environment);
       continue;
-    } else {
-      throw new ThrowCompletion(new StringValue(realm, "unrecognized element"));
     }
   }
 
@@ -873,7 +872,8 @@ export function IteratorBindingInitialization(
       // h. Increment n by 1.
       n += 1;
     }
-  } else if (restEl && (restEl.argument.type === "ArrayPattern" || restEl.argument.type === "ObjectPattern")) {
+  } else if (restEl) {
+    invariant(restEl.argument.type === "ArrayPattern" || restEl.argument.type === "ObjectPattern");
     // 1. Let A be ArrayCreate(0).
     let A = ArrayCreate(realm, 0);
 
@@ -938,8 +938,6 @@ export function IteratorBindingInitialization(
       // h. Increment n by 1.
       n += 1;
     }
-  } else if (restEl) {
-    throw new ThrowCompletion(new StringValue(realm, "unrecognized rest argument"));
   }
 }
 
