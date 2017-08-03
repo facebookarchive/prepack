@@ -510,7 +510,7 @@ export default function(realm: Realm): ObjectValue {
           buildJSONStringify(realm.preludeGenerator)({
             OBJECT: node,
           }),
-        "JSON.stringify(...)"
+        { kind: "JSON.stringify(...)" }
       );
       if (clonedValue instanceof ObjectValue) {
         let iName = result.intrinsicName;
@@ -560,7 +560,7 @@ export default function(realm: Realm): ObjectValue {
         });
       let types = new TypesDomain(type);
       let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-      unfiltered = realm.deriveAbstract(types, values, [text], buildNode, "JSON.parse(...)");
+      unfiltered = realm.deriveAbstract(types, values, [text], buildNode, { kind: "JSON.parse(...)" });
       if (template) {
         invariant(unfiltered.intrinsicName);
         realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
