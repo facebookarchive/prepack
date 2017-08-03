@@ -653,7 +653,7 @@ export class Realm {
   ) {
     invariant(this.useAbstractInterpretation);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    return new Constructor(this, types, values, args, buildNode, kind, intrinsicName);
+    return new Constructor(this, types, values, args, buildNode, { kind, intrinsicName });
   }
 
   rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
@@ -692,7 +692,7 @@ export class Realm {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode: ((Array<BabelNodeExpression>) => BabelNodeExpression) | BabelNodeExpression,
-    kind?: string
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue | UndefinedValue {
     invariant(this.useAbstractInterpretation);
     let generator = this.generator;
@@ -700,7 +700,7 @@ export class Realm {
     if (types.getType() === UndefinedValue) {
       return generator.emitVoidExpression(types, values, args, buildNode);
     } else {
-      return generator.derive(types, values, args, buildNode, kind);
+      return generator.derive(types, values, args, buildNode, optionalArgs);
     }
   }
 
