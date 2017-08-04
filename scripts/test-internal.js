@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { CompilerDiagnostic, ErrorHandlerResult } from "../lib/errors.js";
+import { CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import { prepackSources } from "../lib/prepack-standalone.js";
 
@@ -42,8 +42,10 @@ function search(dir, relative) {
 let tests = search(`${__dirname}/../facebook/test`, "facebook/test");
 
 let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic>;
+let errorList: Array<CompilerDiagnostic>;
 function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
   if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
+  else errorList.push(diagnostic);
   return "Fail";
 }
 
@@ -51,6 +53,7 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
     errors = new Map();
+    errorList = [];
     let modelName = name + ".model";
     let sourceMapName = name + ".map";
     let sourceCode = fs.readFileSync(name, "utf8");
@@ -79,7 +82,7 @@ function runTest(name: string, code: string): boolean {
       return true;
     }
   } catch (e) {
-    console.log(e);
+    if (!(e instanceof FatalError)) console.log(e);
     return false;
   } finally {
     for (let [loc, error] of errors) {
@@ -87,6 +90,9 @@ function runTest(name: string, code: string): boolean {
         `${error.severity}: ${loc.source || ""} ${loc.start.line}:${loc.start.column +
           1} ${error.errorCode} ${error.message}`
       );
+    }
+    for (let error of errorList) {
+      console.log(`${error.severity}: ${error.errorCode} ${error.message}`);
     }
   }
 }
