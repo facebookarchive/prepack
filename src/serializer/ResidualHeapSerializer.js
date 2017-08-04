@@ -644,7 +644,7 @@ export class ResidualHeapSerializer {
 
   _serializeValueArray(val: ObjectValue): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
-    
+
     const indexPropertyLength = getSuggestedArrayLiteralLength(this.realm, val);
     // Use the serialized index properties as array initialization list.
     const initProperties = this._serializeArrayIndexProperties(val, indexPropertyLength, remainingProperties);
