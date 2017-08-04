@@ -73,6 +73,16 @@ export function prepackSources(
 }
 
 /* deprecated: please use prepackSources instead. */
+export function prepackString(
+  filename: string,
+  code: string,
+  sourceMap: string,
+  options: Options = defaultOptions
+): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
+  return prepackSources([{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }], options);
+}
+
+/* deprecated: please use prepackSources instead. */
 export function prepack(code: string, options: Options = defaultOptions) {
   let filename = options.filename || "unknown";
   let sources = [{ filePath: filename, fileContents: code }];
