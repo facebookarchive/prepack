@@ -11,7 +11,7 @@
 
 import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
-import { ToLength, IsArray, IsArrayIndex, Get } from "../methods/index.js";
+import { ToLength, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
   ProxyValue,
@@ -158,7 +158,8 @@ export class ResidualHeapSerializer {
   _emitObjectProperties(
     obj: ObjectValue,
     properties: Map<string, PropertyBinding> = obj.properties,
-    objectPrototypeAlreadyEstablished: boolean = false
+    objectPrototypeAlreadyEstablished: boolean = false,
+    cleanupDummyProperties: ?Set<string>
   ) {
     /*
     for (let symbol of obj.symbols.keys()) {
@@ -175,7 +176,7 @@ export class ResidualHeapSerializer {
       invariant(desc !== undefined);
       this.emitter.emitNowOrAfterWaitingForDependencies(this._getDescriptorValues(desc).concat(obj), () => {
         invariant(desc !== undefined);
-        return this._emitProperty(obj, key, desc);
+        return this._emitProperty(obj, key, desc, cleanupDummyProperties != null && cleanupDummyProperties.has(key));
       });
     }
 
@@ -310,14 +311,13 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _emitProperty(val: ObjectValue, key: string, desc: Descriptor): void {
+  _emitProperty(val: ObjectValue, key: string, desc: Descriptor, cleanupDummyProperty: boolean): void {
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       invariant(!this.emitter.getReasonToWaitForDependencies([descValue, val]), "precondition of _emitProperty");
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
       // The only case we do not need to remove the dummy property is array index property.
-      const cleanupDummyProperty = !IsArray(this.realm, val) || !IsArrayIndex(this.realm, key);
       this._assignProperty(
         () => {
           let serializedKey = this.generator.getAsPropertyNameExpression(key);
@@ -644,7 +644,7 @@ export class ResidualHeapSerializer {
 
   _serializeValueArray(val: ObjectValue): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
-
+    
     const indexPropertyLength = getSuggestedArrayLiteralLength(this.realm, val);
     // Use the serialized index properties as array initialization list.
     const initProperties = this._serializeArrayIndexProperties(val, indexPropertyLength, remainingProperties);
@@ -950,6 +950,7 @@ export class ResidualHeapSerializer {
           proto instanceof ObjectValue;
 
         let remainingProperties = new Map(val.properties);
+        const dummyProperties = new Set();
         let props = [];
         for (let [key, propertyBinding] of val.properties) {
           let descriptor = propertyBinding.descriptor;
@@ -966,15 +967,17 @@ export class ResidualHeapSerializer {
             // Although the property needs to be delayed, we still want to emit dummy "undefined"
             // value as part of the object literal to ensure a consistent property ordering.
             let serializedValue = voidExpression;
-            if (!delayReason) {
+            if (delayReason) {
+              // May need to be cleaned up later.
+              dummyProperties.add(key);
+            } else {
               remainingProperties.delete(key);
               serializedValue = this.serializeValue(propValue);
             }
             props.push(t.objectProperty(serializedKey, serializedValue));
           }
         }
-
-        this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor);
+        this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties);
 
         if (createViaAuxiliaryConstructor) {
           this.needsAuxiliaryConstructor = true;
