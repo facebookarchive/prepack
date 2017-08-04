@@ -41,7 +41,7 @@ function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   }
 }
 
-class ModuleTracer extends Tracer {
+export class ModuleTracer extends Tracer {
   constructor(modules: Modules, logModules: boolean) {
     super();
     this.modules = modules;
@@ -279,7 +279,7 @@ export class Modules {
     this.factoryFunctions = new Set();
     this.moduleIds = new Set();
     this.initializedModules = new Map();
-    realm.tracers.push(new ModuleTracer(this, logModules));
+    realm.tracers.push((this.moduleTracer = new ModuleTracer(this, logModules)));
     this.delayUnsupportedRequires = delayUnsupportedRequires;
     this.disallowDelayingRequiresOverride = false;
   }
@@ -294,6 +294,7 @@ export class Modules {
   active: boolean;
   delayUnsupportedRequires: boolean;
   disallowDelayingRequiresOverride: boolean;
+  moduleTracer: ModuleTracer;
 
   resolveInitializedModules(): void {
     let globalInitializedModulesMap = this._getGlobalProperty("__initializedModules");
