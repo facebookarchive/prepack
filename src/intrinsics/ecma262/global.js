@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
+import invariant from "../../invariant.js";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
@@ -54,8 +55,8 @@ export default function(realm: Realm): void {
     "Int16Array",
     "Int32Array",
     "Map",
-    "WeakMap",
     "Set",
+    "WeakMap",
     "Uint8Array",
     "Uint8ClampedArray",
     "Uint16Array",
@@ -64,7 +65,7 @@ export default function(realm: Realm): void {
     "JSON",
   ];
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-    typeNames = typeNames.concat("Symbol", "Promise", "WeakSet", "WeakMap", "Proxy", "Reflect");
+    typeNames = typeNames.concat("Symbol", "Promise", "WeakSet", "Proxy", "Reflect");
   for (let name of typeNames) {
     // need to check if the property exists (it may not due to --compatibility)
     if (realm.intrinsics[name]) {
@@ -74,6 +75,11 @@ export default function(realm: Realm): void {
         enumerable: false,
         configurable: true,
       });
+    } else {
+      invariant(
+        name === "Symbol" || name === "Promise" || name === "WeakSet" || name === "Proxy" || name === "Reflect"
+      );
+      invariant(realm.isCompatibleWith(realm.MOBILE_JSC_VERSION));
     }
   }
   for (let name of [
