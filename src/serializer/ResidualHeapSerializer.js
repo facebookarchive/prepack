@@ -324,25 +324,23 @@ export class ResidualHeapSerializer {
       invariant(descValue instanceof Value);
       invariant(!this.emitter.getReasonToWaitForDependencies([descValue, val]), "precondition of _emitProperty");
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
-      let serializeFunc = () => {
-        this._assignProperty(
-          () => {
-            let serializedKey =
-              key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
-            let computed = key instanceof SymbolValue || !t.isIdentifier(serializedKey);
-            return t.memberExpression(
-              this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
-              serializedKey,
-              computed
-            );
-          },
-          () => {
-            invariant(descValue instanceof Value);
-            return this.serializeValue(descValue);
-          },
-          mightHaveBeenDeleted
-        );
-      };
+      this._assignProperty(
+        () => {
+          let serializedKey =
+            key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
+          let computed = key instanceof SymbolValue || !t.isIdentifier(serializedKey);
+          return t.memberExpression(
+            this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
+            serializedKey,
+            computed
+          );
+        },
+        () => {
+          invariant(descValue instanceof Value);
+          return this.serializeValue(descValue);
+        },
+        mightHaveBeenDeleted
+      );
     } else {
       let descProps = [];
 
