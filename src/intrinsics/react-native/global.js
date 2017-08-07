@@ -24,8 +24,6 @@ export default function(realm: Realm): void {
   });
 
   for (let name of [
-    // TODO: I'm not sure if these three document, setTimeout and setInterval
-    // should be here.
     "document",
     "setTimeout",
     "setInterval",
@@ -46,7 +44,6 @@ export default function(realm: Realm): void {
     "Symbol",
     "Promise",
     "WeakSet",
-    "WeakMap",
     "Proxy",
     "WebSocket",
     "Request",
