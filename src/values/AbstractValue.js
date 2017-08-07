@@ -41,11 +41,10 @@ export default class AbstractValue extends Value {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    kind?: string,
-    intrinsicName?: string
+    optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
   ) {
     invariant(realm.useAbstractInterpretation);
-    super(realm, intrinsicName);
+    super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
     invariant(!Value.isTypeCompatibleWith(types.getType(), ObjectValue) || this instanceof AbstractObjectValue);
     invariant(types.getType() !== NullValue && types.getType() !== UndefinedValue);
     this.types = types;
@@ -53,7 +52,7 @@ export default class AbstractValue extends Value {
     this.mightBeEmpty = false;
     this._buildNode = buildNode;
     this.args = args;
-    this.kind = kind;
+    this.kind = optionalArgs ? optionalArgs.kind : undefined;
   }
 
   clone(): AbstractValue {
@@ -107,7 +106,7 @@ export default class AbstractValue extends Value {
 
   addSourceNamesTo(names: Array<string>) {
     let gen = this.$Realm.preludeGenerator;
-    function add_instrinsic(name: string) {
+    function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
         if (gen === undefined) return;
         add_args(gen.derivedIds.get(name));
@@ -119,7 +118,7 @@ export default class AbstractValue extends Value {
       if (args === undefined) return;
       for (let val of args) {
         if (val.intrinsicName) {
-          add_instrinsic(val.intrinsicName);
+          add_intrinsic(val.intrinsicName);
         } else if (val instanceof AbstractValue) {
           val.addSourceNamesTo(names);
         } else if (val instanceof StringValue) {
@@ -130,7 +129,7 @@ export default class AbstractValue extends Value {
       }
     }
     if (this.intrinsicName) {
-      add_instrinsic(this.intrinsicName);
+      add_intrinsic(this.intrinsicName);
     }
     add_args(this.args);
   }
@@ -242,6 +241,21 @@ export default class AbstractValue extends Value {
     throw new FatalError();
   }
 
+  throwIfNotConcreteString(): StringValue {
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
+  }
+
+  throwIfNotConcreteBoolean(): BooleanValue {
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
+  }
+
+  throwIfNotConcreteSymbol(): SymbolValue {
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
+  }
+
   throwIfNotConcreteObject(): ObjectValue {
     AbstractValue.reportIntrospectionError(this);
     throw new FatalError();
@@ -253,27 +267,36 @@ export default class AbstractValue extends Value {
     throw new FatalError();
   }
 
+  static generateErrorInformationForAbstractVal(val: AbstractValue): string {
+    let names = [];
+    val.addSourceNamesTo(names);
+    if (names.length === 0) {
+      val.addSourceNamesTo(names);
+    }
+    return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
+  }
+
   static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
     let realm = val.$Realm;
 
     let identity;
     if (val === realm.$GlobalObject) identity = "global";
     else if (val instanceof AbstractValue) {
-      let names = [];
-      val.addSourceNamesTo(names);
-      if (names.length === 0) {
-        val.addSourceNamesTo(names);
-      }
-      identity = `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
+      identity = this.generateErrorInformationForAbstractVal(val);
     } else identity = val.intrinsicName || "(some value)";
 
     let source_locations = [];
     if (val instanceof AbstractValue) val.addSourceLocationsTo(source_locations);
 
     let location;
-    if (propertyName instanceof SymbolValue)
-      location = `at symbol [${propertyName.$Description || "(no description)"}]`;
-    else if (propertyName instanceof StringValue) location = `at ${propertyName.value}`;
+    if (propertyName instanceof SymbolValue) {
+      let desc = propertyName.$Description;
+      if (desc) {
+        location = `at symbol [${desc.throwIfNotConcreteString().value}]`;
+      } else {
+        location = `at symbol [${"(no description)"}]`;
+      }
+    } else if (propertyName instanceof StringValue) location = `at ${propertyName.value}`;
     else if (typeof propertyName === "string") location = `at ${propertyName}`;
     else location = source_locations.length === 0 ? "" : `at ${source_locations.join("\n")}`;
 

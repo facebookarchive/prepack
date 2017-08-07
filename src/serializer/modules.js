@@ -11,7 +11,7 @@
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { Realm, ExecutionContext, Tracer } from "../realm.js";
+import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
@@ -22,6 +22,25 @@ import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 
+function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
+  let savedHandler = realm.errorHandler;
+  function handler(e) {
+    e.severity = "Warning";
+    realm.errorHandler = savedHandler;
+    try {
+      return realm.handleError(e);
+    } finally {
+      realm.errorHandler = handler;
+    }
+  }
+  realm.errorHandler = handler;
+  try {
+    return f();
+  } finally {
+    realm.errorHandler = savedHandler;
+  }
+}
+
 class ModuleTracer extends Tracer {
   constructor(modules: Modules, logModules: boolean) {
     super();
@@ -31,7 +50,6 @@ class ModuleTracer extends Tracer {
     this.requireSequence = [];
     this.logModules = logModules;
     this.uninitializedModuleIdsRequiredInEvaluateForEffects = new Set();
-    this.nestedRequiredModulesAndValues = [];
   }
 
   modules: Modules;
@@ -41,7 +59,6 @@ class ModuleTracer extends Tracer {
   uninitializedModuleIdsRequiredInEvaluateForEffects: Set<number | string>;
   // We can't say that a module has been initialized if it was initialized in a
   // evaluate for effects context until we know the effects are applied.
-  nestedRequiredModulesAndValues: Array<{| id: number | string, value: Value |}>;
   logModules: boolean;
 
   log(message: string) {
@@ -100,11 +117,7 @@ class ModuleTracer extends Tracer {
           this.requireStack.push(moduleIdValue);
           try {
             let value = performCall();
-            if (this.modules.initializedModules.has(moduleIdValue)) {
-              invariant(this.modules.initializedModules.get(moduleIdValue) === value);
-            } else {
-              this.modules.initializedModules.set(moduleIdValue, value);
-            }
+            this.modules.recordModuleInitialized(moduleIdValue, value);
             return value;
           } finally {
             invariant(this.requireStack.pop() === moduleIdValue);
@@ -130,133 +143,116 @@ class ModuleTracer extends Tracer {
           this.uninitializedModuleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
         return undefined;
       } else {
-        let savedHandler = realm.errorHandler;
-        function handler(e) {
-          e.severity = "Warning";
-          realm.errorHandler = savedHandler;
+        return downgradeErrorsToWarnings(realm, () => {
+          let result;
           try {
-            return realm.handleError(e);
-          } finally {
-            realm.errorHandler = handler;
-          }
-        }
-        realm.errorHandler = handler;
-        let result;
-        try {
-          this.requireStack.push(moduleIdValue);
-          let requireSequenceStart = this.requireSequence.length;
-          this.requireSequence.push(moduleIdValue);
-          let acceleratedModuleIds, effects;
-          do {
-            try {
-              effects = realm.evaluateForEffects(() => {
-                try {
-                  return performCall();
-                } catch (e) {
-                  if (e instanceof Completion) return e;
-                  throw e;
+            this.requireStack.push(moduleIdValue);
+            let requireSequenceStart = this.requireSequence.length;
+            this.requireSequence.push(moduleIdValue);
+            let acceleratedModuleIds, effects;
+            do {
+              try {
+                effects = realm.evaluateForEffects(() => {
+                  try {
+                    return performCall();
+                  } catch (e) {
+                    if (e instanceof Completion) return e;
+                    throw e;
+                  }
+                }, this);
+              } catch (err) {
+                if (err instanceof FatalError) effects = undefined;
+                else throw err;
+              }
+
+              acceleratedModuleIds = [];
+              if (isTopLevelRequire) {
+                // We gathered all effects, but didn't apply them yet.
+                // Let's check if there was any call to `require` in a
+                // evaluate-for-effects context. If so, try to initialize
+                // that module right now. Acceleration module initialization in this
+                // way might not actually be desirable, but it works around
+                // general prepack-limitations around joined abstract values involving
+                // conditionals. Long term, Prepack needs to implement a notion of refinement
+                // of conditional abstract values under the known path condition.
+                for (let nestedModuleId of this.uninitializedModuleIdsRequiredInEvaluateForEffects) {
+                  let nestedEffects = this.modules.tryInitializeModule(
+                    nestedModuleId,
+                    `accelerated initialization of conditional module ${nestedModuleId} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`
+                  );
+                  if (
+                    nestedEffects !== undefined &&
+                    nestedEffects[0] instanceof Value &&
+                    this.modules.isModuleInitialized(nestedModuleId)
+                  ) {
+                    acceleratedModuleIds.push(nestedModuleId);
+                  }
                 }
-              }, this);
-            } catch (err) {
-              if (err instanceof FatalError) effects = undefined;
-              else throw err;
+                this.uninitializedModuleIdsRequiredInEvaluateForEffects.clear();
+                // Keep restarting for as long as we find additional modules to accelerate.
+                if (acceleratedModuleIds.length > 0) {
+                  console.log(
+                    `restarting require(${moduleIdValue}) after accelerating conditional require calls for ${acceleratedModuleIds.join()}`
+                  );
+                }
+              }
+            } while (acceleratedModuleIds.length > 0);
+
+            if (effects !== undefined) {
+              result = effects[0];
+              invariant(result instanceof Value || result instanceof Completion);
+              if (result instanceof PossiblyNormalCompletion) {
+                effects = undefined;
+              }
             }
 
-            acceleratedModuleIds = [];
-            if (isTopLevelRequire) {
-              // We gathered all effects, but didn't apply them yet.
-              // Let's check if there was any call to `require` in a
-              // evaluate-for-effects context. If so, try to initialize
-              // that module right now. Acceleration module initialization in this
-              // way might not actually be desirable, but it works around
-              // general prepack-limitations around joined abstract values involving
-              // conditionals. Long term, Prepack needs to implement a notion of refinement
-              // of conditional abstract values under the known path condition.
-              for (let nestedModuleId of this.uninitializedModuleIdsRequiredInEvaluateForEffects) {
-                let nestedEffects = this.modules.tryInitializeModule(
+            if (effects === undefined) {
+              console.log(`delaying require(${moduleIdValue})`);
+              // So we are about to emit a delayed require(...) call.
+              // However, before we do that, let's try to require all modules that we
+              // know this delayed require call will require.
+              // This way, we ensure that those modules will be fully initialized
+              // before the require call executes.
+              // TODO #690: More needs to be done to make the delayUnsupportedRequires
+              // feature completely safe. Open issues are:
+              // 1) Side-effects on the heap of delayed factory functions are not discovered or rejected.
+              // 2) While we do process an appropriate list of transitively required modules here,
+              //    it's likely just a subset / prefix of all transivitely required modules, as
+              //    more modules would have been required if the Introspection exception had not been thrown.
+              //    To be correct, those modules would have to be prepacked here as well.
+              //    TODO #798: Watch out for an upcoming change to the __d module declaration where the statically known
+              //    list of dependencies will be announced, so we'll no longer have to guess.
+              let nestedModulesIds = new Set();
+              for (let i = requireSequenceStart; i < this.requireSequence.length; i++) {
+                let nestedModuleId = this.requireSequence[i];
+                if (nestedModulesIds.has(nestedModuleId)) continue;
+                nestedModulesIds.add(nestedModuleId);
+                this.modules.tryInitializeModule(
                   nestedModuleId,
-                  `accelerated initialization of conditional module ${nestedModuleId} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`
-                );
-                if (
-                  nestedEffects !== undefined &&
-                  nestedEffects[0] instanceof Value &&
-                  this.modules.isModuleInitialized(nestedModuleId)
-                ) {
-                  this.nestedRequiredModulesAndValues.push({ id: nestedModuleId, value: nestedEffects[0] });
-                  acceleratedModuleIds.push(nestedModuleId);
-                }
-              }
-              this.uninitializedModuleIdsRequiredInEvaluateForEffects.clear();
-              // Keep restarting for as long as we find additional modules to accelerate.
-              if (acceleratedModuleIds.length > 0) {
-                console.log(
-                  `restarting require(${moduleIdValue}) after accelerating conditional require calls for ${acceleratedModuleIds.join()}`
+                  `initialization of module ${nestedModuleId} as it's required by module ${moduleIdValue}`
                 );
               }
-            }
-          } while (acceleratedModuleIds.length > 0);
 
-          if (effects !== undefined) {
-            result = effects[0];
-            invariant(result instanceof Value || result instanceof Completion);
-            if (result instanceof PossiblyNormalCompletion) {
-              effects = undefined;
-            }
-          }
-
-          if (effects === undefined) {
-            console.log(`delaying require(${moduleIdValue})`);
-            // So we are about to emit a delayed require(...) call.
-            // However, before we do that, let's try to require all modules that we
-            // know this delayed require call will require.
-            // This way, we ensure that those modules will be fully initialized
-            // before the require call executes.
-            // TODO #690: More needs to be done to make the delayUnsupportedRequires
-            // feature completely safe. Open issues are:
-            // 1) Side-effects on the heap of delayed factory functions are not discovered or rejected.
-            // 2) While we do process an appropriate list of transitively required modules here,
-            //    it's likely just a subset / prefix of all transivitely required modules, as
-            //    more modules would have been required if the Introspection exception had not been thrown.
-            //    To be correct, those modules would have to be prepacked here as well.
-            //    TODO #798: Watch out for an upcoming change to the __d module declaration where the statically known
-            //    list of dependencies will be announced, so we'll no longer have to guess.
-            let nestedModulesIds = new Set();
-            for (let i = requireSequenceStart; i < this.requireSequence.length; i++) {
-              let nestedModuleId = this.requireSequence[i];
-              if (nestedModulesIds.has(nestedModuleId)) continue;
-              nestedModulesIds.add(nestedModuleId);
-              this.modules.tryInitializeModule(
-                nestedModuleId,
-                `initialization of module ${nestedModuleId} as it's required by module ${moduleIdValue}`
+              result = realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [], ([]) =>
+                t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
               );
-            }
-
-            result = realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [], ([]) =>
-              t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
-            );
-          } else {
-            invariant(result);
-            if (!(result instanceof Completion)) {
-              this.nestedRequiredModulesAndValues.push({ id: moduleIdValue, value: result });
-            }
-            if (isTopLevelRequire) {
-              for (let { id, value } of this.nestedRequiredModulesAndValues) {
-                this.modules.initializedModules.set(id, value);
+            } else {
+              invariant(result);
+              if (!(result instanceof Completion)) {
+                this.modules.recordModuleInitialized(moduleIdValue, result);
               }
-              this.nestedRequiredModulesAndValues = [];
+              realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
             }
-            realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
+          } finally {
+            let popped = this.requireStack.pop();
+            invariant(popped === moduleIdValue);
+            let message = "";
+            if (result instanceof ThrowCompletion) message = " threw an error";
+            this.log(`<require(${moduleIdValue})${message}`);
           }
-        } finally {
-          realm.errorHandler = savedHandler;
-          let popped = this.requireStack.pop();
-          invariant(popped === moduleIdValue);
-          let message = "";
-          if (result instanceof ThrowCompletion) message = " threw an error";
-          this.log(`<require(${moduleIdValue})${message}`);
-        }
-        if (result instanceof Completion) throw result;
-        return result;
+          if (result instanceof Completion) throw result;
+          return result;
+        });
       }
     } else if (F === this.modules.getDefine()) {
       if (this.evaluateForEffectsNesting !== 0)
@@ -299,7 +295,19 @@ export class Modules {
   delayUnsupportedRequires: boolean;
   disallowDelayingRequiresOverride: boolean;
 
-  _getGlobalProperty(name: string) {
+  resolveInitializedModules(): void {
+    let globalInitializedModulesMap = this._getGlobalProperty("__initializedModules");
+    invariant(globalInitializedModulesMap instanceof ObjectValue);
+    for (let moduleId of globalInitializedModulesMap.getOwnPropertyKeysArray()) {
+      let property = globalInitializedModulesMap.properties.get(moduleId);
+      invariant(property);
+      let moduleValue = property.descriptor && property.descriptor.value;
+      invariant(moduleValue);
+      this.initializedModules.set(moduleId, moduleValue);
+    }
+  }
+
+  _getGlobalProperty(name: string): Value {
     if (this.active) return this.realm.intrinsics.undefined;
     this.active = true;
     try {
@@ -376,39 +384,42 @@ export class Modules {
     };
   }
 
+  recordModuleInitialized(moduleId: number | string, value: Value) {
+    this.realm.assignToGlobal(
+      t.memberExpression(
+        t.memberExpression(t.identifier("global"), t.identifier("__initializedModules")),
+        t.identifier("" + moduleId)
+      ),
+      value
+    );
+  }
+
   tryInitializeModule(moduleId: number | string, message: string): void | Effects {
     let realm = this.realm;
-    // setup execution environment
-    let context = new ExecutionContext();
-    let env = realm.$GlobalEnv;
-    context.lexicalEnvironment = env;
-    context.variableEnvironment = env;
-    context.realm = realm;
     let previousDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
     this.disallowDelayingRequiresOverride = true;
-    realm.pushContext(context);
-    let oldErrorHandler = realm.errorHandler;
-    try {
-      let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
+    return downgradeErrorsToWarnings(realm, () => {
+      try {
+        let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let effects = realm.evaluateNodeForEffects(node, true, env);
-      realm.applyEffects(effects, message);
-      let result = effects[0];
-      if (result instanceof Completion) {
-        console.log(`=== UNEXPECTED ERROR during ${message} ===`);
-        this.logger.logCompletion(result);
-        return undefined;
+        let effects = realm.evaluateNodeForEffectsInGlobalEnv(node);
+        realm.applyEffects(effects, message);
+        let result = effects[0];
+        if (result instanceof Completion) {
+          console.log(`=== UNEXPECTED ERROR during ${message} ===`);
+          this.logger.logCompletion(result);
+          return undefined;
+        }
+
+        if (result instanceof Value) this.recordModuleInitialized(moduleId, result);
+        return effects;
+      } catch (err) {
+        if (err instanceof FatalError) return undefined;
+        else throw err;
+      } finally {
+        this.disallowDelayingRequiresOverride = previousDisallowDelayingRequiresOverride;
       }
-
-      return effects;
-    } catch (err) {
-      if (err instanceof FatalError) return undefined;
-      else throw err;
-    } finally {
-      realm.popContext(context);
-      this.disallowDelayingRequiresOverride = previousDisallowDelayingRequiresOverride;
-      realm.errorHandler = oldErrorHandler;
-    }
+    });
   }
 
   initializeMoreModules() {
@@ -428,20 +439,13 @@ export class Modules {
 
   isModuleInitialized(moduleId: number | string): void | Value {
     let realm = this.realm;
-    // setup execution environment
-    let context = new ExecutionContext();
-    let env = realm.$GlobalEnv;
-    context.lexicalEnvironment = env;
-    context.variableEnvironment = env;
-    context.realm = realm;
-    realm.pushContext(context);
     let oldReadOnly = realm.setReadOnly(true);
-    let oldDelayUnsupportedRequires = this.delayUnsupportedRequires;
-    this.delayUnsupportedRequires = false;
+    let oldDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
+    this.disallowDelayingRequiresOverride = true;
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let [compl, generator, bindings, properties, createdObjects] = realm.evaluateNodeForEffects(node, true, env);
+      let [compl, generator, bindings, properties, createdObjects] = realm.evaluateNodeForEffectsInGlobalEnv(node);
       // for lint unused
       invariant(bindings);
 
@@ -461,9 +465,8 @@ export class Modules {
       if (err instanceof FatalError) return undefined;
       throw err;
     } finally {
-      realm.popContext(context);
       realm.setReadOnly(oldReadOnly);
-      this.delayUnsupportedRequires = oldDelayUnsupportedRequires;
+      this.disallowDelayingRequiresOverride = oldDisallowDelayingRequiresOverride;
     }
   }
 }

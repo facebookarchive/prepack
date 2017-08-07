@@ -148,7 +148,7 @@ export function ForInOfHeadEvaluation(
     // a. If exprValue.[[Value]] is null or undefined, then
     if (exprValue instanceof NullValue || exprValue instanceof UndefinedValue) {
       // i. Return Completion{[[Type]]: break, [[Value]]: empty, [[Target]]: empty}.
-      throw new BreakCompletion(realm.intrinsics.empty, undefined);
+      throw new BreakCompletion(realm.intrinsics.empty, expr.loc, undefined);
     }
 
     // b. Let obj be ToObject(exprValue).

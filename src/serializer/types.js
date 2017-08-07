@@ -10,18 +10,18 @@
 /* @flow */
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
-import { ConcreteValue, FunctionValue, Value } from "../values/index.js";
+import { ConcreteValue, Value } from "../values/index.js";
+import type { ECMAScriptSourceFunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm } from "../realm.js";
-import { Completion } from "../completions.js";
 import invariant from "../invariant.js";
 
-export type TryQuery<T> = (f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean) => T;
+export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
 export type FunctionInstance = {
   serializedBindings: SerializedBindings,
-  functionValue: FunctionValue,
+  functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
   scopeInstances: Set<ScopeBinding>,
 };
@@ -56,6 +56,7 @@ export type ScopeBinding = {
   name: string,
   id: number,
   initializationValues: Map<string, BabelNodeExpression>,
+  capturedScope?: string,
 };
 
 export function AreSameSerializedBindings(realm: Realm, x: SerializedBinding, y: SerializedBinding) {

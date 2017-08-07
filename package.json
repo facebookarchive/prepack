@@ -31,7 +31,7 @@
     "flow": "flow check",
     "test-residual": "babel-node scripts/test-residual.js",
     "test-residual-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-residual.js --dir coverage.residual && ./node_modules/.bin/remap-istanbul -i coverage.residual/coverage.json -o coverage-sourcemapped.residual -t html",
-    "test-serializer": "babel-node scripts/test-runner.js",
+    "test-serializer": "babel-node --stack_trace_limit=200 --stack_size=10000 scripts/test-runner.js",
     "test-serializer-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && ./node_modules/.bin/istanbul cover ./lib/test-runner.js && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -i coverage/coverage.json -o coverage-sourcemapped -t html",
     "test-sourcemaps": "babel-node scripts/generate-sourcemaps-test.js && bash < scripts/test-sourcemaps.sh",
     "test-test262": "babel-node scripts/test262-runner.js",
@@ -45,12 +45,11 @@
     "repl": "node lib/repl-cli.js",
     "prepack": "node lib/prepack-cli.js",
     "prepack-prepack": "node --stack_size=10000 --max_old_space_size=8096 ./bin/prepack.js ./lib/prepack-cli.js --out ./lib/prepack-cli.prepacked.js --compatibility node-cli --mathRandomSeed rnd",
-    "validate": "yarn prettier && yarn build && yarn build-scripts && yarn lint && yarn depcheck && yarn flow && yarn test",
+    "validate": "yarn build && yarn build-scripts && yarn lint && yarn depcheck && yarn flow && yarn test",
     "prepublish": "yarn build",
     "depcheck": "babel-node scripts/detect_bad_deps.js",
     "prettier": "node ./scripts/prettier.js write-changed",
-    "prettier-all": "node ./scripts/prettier.js write",
-    "prettier-ci-check": "node ./scripts/prettier.js"
+    "prettier-all": "node ./scripts/prettier.js write"
   },
   "dependencies": {
     "babel-core": "^6.8.0",
@@ -58,7 +57,7 @@
     "babel-template": "^6.9.0",
     "babel-traverse": "^6.9.0",
     "babel-types": "^6.9.0",
-    "babylon": "^6.5.2",
+    "babylon": "^6.17.4",
     "base62": "^1.1.2",
     "seedrandom": "^2.4.2",
     "source-map": "^0.5.6"

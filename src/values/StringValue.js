@@ -24,7 +24,15 @@ export default class StringValue extends PrimitiveValue {
     return this.value.length === 0;
   }
 
+  throwIfNotConcreteString(): StringValue {
+    return this;
+  }
+
   _serialize(): string {
     return this.value;
+  }
+
+  throwIfNotConcreteString(): StringValue {
+    return this;
   }
 }

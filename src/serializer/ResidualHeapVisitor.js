@@ -13,13 +13,14 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
-import { IsUnresolvableReference, ResolveBinding, IsArray, Get } from "../methods/index.js";
+import { IsUnresolvableReference, ToLength, ResolveBinding, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
   ProxyValue,
   SymbolValue,
   AbstractValue,
   EmptyValue,
+  ECMAScriptSourceFunctionValue,
   FunctionValue,
   Value,
   ObjectValue,
@@ -29,6 +30,7 @@ import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNodeBlockStatement } from "babel-types";
 import { Generator } from "../utils/generator.js";
+import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { VisitedBinding, VisitedBindings, FunctionInfo } from "./types.js";
@@ -36,6 +38,7 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { getSuggestedArrayLiteralLength } from "./utils.js";
 
 export type Scope = FunctionValue | Generator;
 
@@ -61,6 +64,8 @@ export class ResidualHeapVisitor {
     invariant(generator);
     this.scope = this.realmGenerator = generator;
     this.inspector = new ResidualHeapInspector(realm, logger);
+    this.referencedDeclaredValues = new Set();
+    this.delayedVisitGeneratorEntries = [];
   }
 
   realm: Realm;
@@ -75,6 +80,8 @@ export class ResidualHeapVisitor {
   realmGenerator: Generator;
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
+  referencedDeclaredValues: Set<AbstractValue>;
+  delayedVisitGeneratorEntries: Array<{| generator: Generator, entry: GeneratorEntry |}>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -195,8 +202,14 @@ export class ResidualHeapVisitor {
 
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
-    let lenProperty = Get(this.realm, val, "length");
-    if (lenProperty instanceof AbstractValue) this.visitValue(lenProperty);
+    const realm = this.realm;
+    let lenProperty = Get(realm, val, "length");
+    if (
+      lenProperty instanceof AbstractValue ||
+      ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
+    ) {
+      this.visitValue(lenProperty);
+    }
   }
 
   visitValueMap(val: ObjectValue): void {
@@ -252,11 +265,10 @@ export class ResidualHeapVisitor {
       return;
     }
 
-    if (val instanceof NativeFunctionValue) {
-      return;
-    }
+    invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
 
-    invariant(val.constructor === FunctionValue);
+    invariant(val instanceof ECMAScriptSourceFunctionValue);
+    invariant(val.constructor === ECMAScriptSourceFunctionValue);
     let formalParameters = val.$FormalParameters;
     invariant(formalParameters != null);
     let code = val.$ECMAScriptCode;
@@ -323,10 +335,9 @@ export class ResidualHeapVisitor {
           }
           if (reference.base instanceof GlobalEnvironmentRecord) {
             visitedBinding = this.visitGlobalBinding(referencedName);
-          } else if (referencedBase instanceof DeclarativeEnvironmentRecord) {
-            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
           } else {
-            invariant(false);
+            invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
+            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
           }
         }
         visitedBindings[innerName] = visitedBinding;
@@ -392,6 +403,10 @@ export class ResidualHeapVisitor {
     }
   }
 
+  visitValueSymbol(val: SymbolValue): void {
+    if (val.$Description) this.visitValue(val.$Description);
+  }
+
   visitValueProxy(val: ProxyValue): void {
     this.visitValue(val.$ProxyTarget);
     this.visitValue(val.$ProxyHandler);
@@ -435,8 +450,10 @@ export class ResidualHeapVisitor {
         if (this._mark(val)) this.visitValueFunction(val);
       });
     } else if (val instanceof SymbolValue) {
-      this._mark(val);
-    } else if (val instanceof ObjectValue) {
+      if (this._mark(val)) this.visitValueSymbol(val);
+    } else {
+      invariant(val instanceof ObjectValue);
+
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the global code as well.
       if (val.originalConstructor !== undefined) {
@@ -447,8 +464,6 @@ export class ResidualHeapVisitor {
       } else {
         if (this._mark(val)) this.visitValueObject(val);
       }
-    } else {
-      invariant(false);
     }
   }
 
@@ -463,14 +478,39 @@ export class ResidualHeapVisitor {
     return binding;
   }
 
+  createGeneratorVisitCallbacks(generator: Generator): VisitEntryCallbacks {
+    return {
+      visitValue: this.visitValue.bind(this),
+      visitGenerator: this.visitGenerator.bind(this),
+      canSkip: (value: AbstractValue): boolean => {
+        return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
+      },
+      recordDeclaration: (value: AbstractValue) => {
+        this.referencedDeclaredValues.add(value);
+      },
+      recordDelayedEntry: (entry: GeneratorEntry) => {
+        this.delayedVisitGeneratorEntries.push({ generator, entry });
+      },
+    };
+  }
+
   visitGenerator(generator: Generator): void {
     this._withScope(generator, () => {
-      generator.visit(this.visitValue.bind(this), this.visitGenerator.bind(this));
+      generator.visit(this.createGeneratorVisitCallbacks(generator));
     });
   }
 
   visitRoots(): void {
     this.visitGenerator(this.realmGenerator);
     for (let [, moduleValue] of this.modules.initializedModules) this.visitValue(moduleValue);
+    // Do a fixpoint over all pure generator entries to make sure that we visit
+    // arguments of only BodyEntries that are required by some other residual value
+    let oldDelayedEntries = [];
+    while (oldDelayedEntries.length !== this.delayedVisitGeneratorEntries.length) {
+      oldDelayedEntries = this.delayedVisitGeneratorEntries;
+      this.delayedVisitGeneratorEntries = [];
+      for (let { generator, entry } of oldDelayedEntries)
+        generator.visitEntry(entry, this.createGeneratorVisitCallbacks(generator));
+    }
   }
 }

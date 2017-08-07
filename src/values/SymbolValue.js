@@ -9,19 +9,23 @@
 
 /* @flow */
 
-import { PrimitiveValue } from "./index.js";
+import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
 
 export default class SymbolValue extends PrimitiveValue {
-  constructor(realm: Realm, desc?: string, intrinsicName?: string) {
+  constructor(realm: Realm, desc: void | Value, intrinsicName?: string) {
     super(realm, intrinsicName);
     this.$Description = desc;
   }
 
-  $Description: ?string;
+  $Description: void | Value;
 
   mightBeFalse(): boolean {
     return false;
+  }
+
+  throwIfNotConcreteSymbol(): SymbolValue {
+    return this;
   }
 
   _serialize(): Symbol {

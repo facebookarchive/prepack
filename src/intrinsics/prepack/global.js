@@ -129,6 +129,14 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
+  // Maps from initialized moduleId to exports object
+  global.$DefineOwnProperty("__initializedModules", {
+    value: new ObjectValue(realm),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // Helper function used to instatiate a residual function
   function deriveNativeFunctionValue(unsafe: boolean): NativeFunctionValue {
     return new NativeFunctionValue(
@@ -143,7 +151,7 @@ export default function(realm: Realm): void {
 
         let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
 
-        if (f.constructor !== FunctionValue) {
+        if (!Value.isTypeCompatibleWith(f.constructor, FunctionValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cannot determine residual function");
         }
         invariant(f instanceof FunctionValue);

@@ -10,12 +10,14 @@
 /* @flow */
 
 import type { PropertyKeyValue } from "../types.js";
+import type { ECMAScriptFunctionValue } from "../values/index.js";
 import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
 import {
   FunctionValue,
+  ECMAScriptSourceFunctionValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
@@ -195,7 +197,11 @@ export function EvaluateCall(
 }
 
 // ECMA262 9.2.1.1
-export function PrepareForOrdinaryCall(realm: Realm, F: FunctionValue, newTarget?: ObjectValue): ExecutionContext {
+export function PrepareForOrdinaryCall(
+  realm: Realm,
+  F: ECMAScriptFunctionValue,
+  newTarget?: ObjectValue
+): ExecutionContext {
   // 1. Assert: Type(newTarget) is Undefined or Object.
   invariant(
     newTarget === undefined || newTarget instanceof ObjectValue,
@@ -245,7 +251,7 @@ export function PrepareForOrdinaryCall(realm: Realm, F: FunctionValue, newTarget
 // ECMA262 9.2.1.2
 export function OrdinaryCallBindThis(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptFunctionValue,
   calleeContext: ExecutionContext,
   thisArgument: Value
 ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
@@ -263,7 +269,7 @@ export function OrdinaryCallBindThis(
 
   let thisValue;
   // 5. If thisMode is strict, let thisValue be thisArgument.
-  if (thisMode === "strict" || F instanceof NativeFunctionValue) {
+  if (thisMode === "strict") {
     thisValue = (thisArgument: any);
   } else {
     // 6. Else,
@@ -300,7 +306,7 @@ export function OrdinaryCallBindThis(
 // ECMA262 9.2.1.3
 export function OrdinaryCallEvaluateBody(
   realm: Realm,
-  F: FunctionValue,
+  F: ECMAScriptFunctionValue,
   argumentsList: Array<Value>
 ): Reference | Value | AbruptCompletion {
   if (F instanceof NativeFunctionValue) {
@@ -316,72 +322,75 @@ export function OrdinaryCallEvaluateBody(
         throw new FatalError(err);
       }
     }
-  } else if (F.$FunctionKind === "generator") {
-    // 1. Perform ? FunctionDeclarationInstantiation(functionObject, argumentsList).
-    FunctionDeclarationInstantiation(realm, F, argumentsList);
-
-    // 2. Let G be ? OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%", « [[GeneratorState]], [[GeneratorContext]] »).
-    let G = OrdinaryCreateFromConstructor(realm, F, "GeneratorPrototype", {
-      $GeneratorState: undefined,
-      $GeneratorContext: undefined,
-    });
-
-    // 3. Perform GeneratorStart(G, FunctionBody).
-    let code = F.$ECMAScriptCode;
-    invariant(code !== undefined);
-    GeneratorStart(realm, G, code);
-
-    // 4. Return Completion{[[Type]]: return, [[Value]]: G, [[Target]]: empty}.
-    return new ReturnCompletion(G);
   } else {
-    // 1. Perform ? FunctionDeclarationInstantiation(F, argumentsList).
-    FunctionDeclarationInstantiation(realm, F, argumentsList);
+    invariant(F instanceof ECMAScriptSourceFunctionValue);
+    if (F.$FunctionKind === "generator") {
+      // 1. Perform ? FunctionDeclarationInstantiation(functionObject, argumentsList).
+      FunctionDeclarationInstantiation(realm, F, argumentsList);
 
-    // 2. Return the result of EvaluateBody of the parsed code that is the value of F's
-    //    [[ECMAScriptCode]] internal slot passing F as the argument.
-    let code = F.$ECMAScriptCode;
-    invariant(code !== undefined);
-    let context = realm.getRunningContext();
-    let c = context.lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
-    let e = realm.getCapturedEffects();
-    if (e !== undefined) {
-      realm.stopEffectCaptureAndUndoEffects();
-    }
-    if (c instanceof JoinedAbruptCompletions) {
-      if (e !== undefined) realm.applyEffects(e);
-      return c;
-    } else if (c instanceof PossiblyNormalCompletion) {
-      // If the abrupt part of the completion is a return completion, then the
-      // effects of its independent control path must be joined with the effects
-      // from the normal path, which is to say the currently tracked effects
-      // in the realm.
-      invariant(e !== undefined);
-      let joinedEffects = joinEffectsAndRemoveNestedReturnCompletions(realm, c, e);
-      let result = joinedEffects[0];
-      if (result instanceof JoinedAbruptCompletions) {
-        // There are throw completions that conditionally escape from the the call.
-        // We need to carry on in normal mode (after arranging to capturing effects)
-        // while stashing away the throw completions so that the next completion we return
-        // incorporates them.
-        let possiblyNormalCompletion;
-        [joinedEffects, possiblyNormalCompletion] = unbundleReturnCompletion(realm, result);
-        if (context.savedCompletion !== undefined)
-          context.savedCompletion = composePossiblyNormalCompletions(
-            realm,
-            context.savedCompletion,
-            possiblyNormalCompletion
-          );
-        else context.savedCompletion = possiblyNormalCompletion;
-        realm.captureEffects();
-        result = joinedEffects[0];
-      }
-      invariant(result instanceof ReturnCompletion);
-      realm.applyEffects(joinedEffects);
-      return result;
+      // 2. Let G be ? OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%", « [[GeneratorState]], [[GeneratorContext]] »).
+      let G = OrdinaryCreateFromConstructor(realm, F, "GeneratorPrototype", {
+        $GeneratorState: undefined,
+        $GeneratorContext: undefined,
+      });
+
+      // 3. Perform GeneratorStart(G, FunctionBody).
+      let code = F.$ECMAScriptCode;
+      invariant(code !== undefined);
+      GeneratorStart(realm, G, code);
+
+      // 4. Return Completion{[[Type]]: return, [[Value]]: G, [[Target]]: empty}.
+      return new ReturnCompletion(G, realm.currentLocation);
     } else {
-      invariant(c instanceof Value || c instanceof AbruptCompletion);
-      if (e !== undefined) realm.applyEffects(e);
-      return c;
+      // 1. Perform ? FunctionDeclarationInstantiation(F, argumentsList).
+      FunctionDeclarationInstantiation(realm, F, argumentsList);
+
+      // 2. Return the result of EvaluateBody of the parsed code that is the value of F's
+      //    [[ECMAScriptCode]] internal slot passing F as the argument.
+      let code = F.$ECMAScriptCode;
+      invariant(code !== undefined);
+      let context = realm.getRunningContext();
+      let c = context.lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
+      let e = realm.getCapturedEffects();
+      if (e !== undefined) {
+        realm.stopEffectCaptureAndUndoEffects();
+      }
+      if (c instanceof JoinedAbruptCompletions) {
+        if (e !== undefined) realm.applyEffects(e);
+        return c;
+      } else if (c instanceof PossiblyNormalCompletion) {
+        // If the abrupt part of the completion is a return completion, then the
+        // effects of its independent control path must be joined with the effects
+        // from the normal path, which is to say the currently tracked effects
+        // in the realm.
+        invariant(e !== undefined);
+        let joinedEffects = joinEffectsAndRemoveNestedReturnCompletions(realm, c, e);
+        let result = joinedEffects[0];
+        if (result instanceof JoinedAbruptCompletions) {
+          // There are throw completions that conditionally escape from the the call.
+          // We need to carry on in normal mode (after arranging to capturing effects)
+          // while stashing away the throw completions so that the next completion we return
+          // incorporates them.
+          let possiblyNormalCompletion;
+          [joinedEffects, possiblyNormalCompletion] = unbundleReturnCompletion(realm, result);
+          if (context.savedCompletion !== undefined)
+            context.savedCompletion = composePossiblyNormalCompletions(
+              realm,
+              context.savedCompletion,
+              possiblyNormalCompletion
+            );
+          else context.savedCompletion = possiblyNormalCompletion;
+          realm.captureEffects();
+          result = joinedEffects[0];
+        }
+        invariant(result instanceof ReturnCompletion);
+        realm.applyEffects(joinedEffects);
+        return result;
+      } else {
+        invariant(c instanceof Value || c instanceof AbruptCompletion);
+        if (e !== undefined) realm.applyEffects(e);
+        return c;
+      }
     }
   }
 }
@@ -413,7 +422,7 @@ export function EvaluateDirectCallWithArgList(
   argList: Array<Value>,
   tailPosition?: boolean
 ): Value {
-  if (func instanceof AbstractValue && func.getType() === FunctionValue) {
+  if (func instanceof AbstractValue && Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
     let fullArgs = [func].concat(argList);
     return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, fullArgs, nodes => {
       let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
@@ -472,7 +481,7 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
   if (IsCallable(realm, F) === false) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
   }
-  if (F instanceof AbstractValue && F.getType() === FunctionValue) {
+  if (F instanceof AbstractValue && Value.isTypeCompatibleWith(F.getType(), FunctionValue)) {
     let fullArgs = [F].concat(argsList);
     return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, fullArgs, nodes => {
       let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);

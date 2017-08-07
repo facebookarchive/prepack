@@ -31,7 +31,13 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeStatement, BabelNodeExpression } from "babel-types";
+import type {
+  BabelNode,
+  BabelNodeSourceLocation,
+  BabelNodeLVal,
+  BabelNodeStatement,
+  BabelNodeExpression,
+} from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
@@ -171,8 +177,9 @@ export class Realm {
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
-
   createdObjects: void | CreatedObjects;
+  reportObjectGetOwnProperties: void | (ObjectValue => void);
+  reportPropertyAccess: void | (PropertyBinding => void);
 
   currentLocation: ?BabelNodeSourceLocation;
   nextContextLocation: ?BabelNodeSourceLocation;
@@ -280,11 +287,37 @@ export class Realm {
     }
   }
 
+  wrapInGlobalEnv<T>(callback: () => T): T {
+    let context = new ExecutionContext();
+    context.lexicalEnvironment = this.$GlobalEnv;
+    context.variableEnvironment = this.$GlobalEnv;
+    context.realm = this;
+
+    this.pushContext(context);
+    try {
+      return callback();
+    } finally {
+      this.popContext(context);
+    }
+  }
+
+  assignToGlobal(name: BabelNodeLVal, value: Value) {
+    this.wrapInGlobalEnv(() => this.$GlobalEnv.assignToGlobal(name, value));
+  }
+
+  deleteGlobalBinding(name: string) {
+    this.$GlobalEnv.environmentRecord.DeleteBinding(name);
+  }
+
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
   evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
     return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode));
+  }
+
+  evaluateNodeForEffectsInGlobalEnv(node: BabelNode) {
+    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv));
   }
 
   partiallyEvaluateNodeForEffects(
@@ -529,6 +562,18 @@ export class Realm {
     return binding;
   }
 
+  callReportObjectGetOwnProperties(ob: ObjectValue): void {
+    if (this.reportObjectGetOwnProperties !== undefined) {
+      this.reportObjectGetOwnProperties(ob);
+    }
+  }
+
+  callReportPropertyAccess(binding: PropertyBinding): void {
+    if (this.reportPropertyAccess !== undefined) {
+      this.reportPropertyAccess(binding);
+    }
+  }
+
   // Record the current value of binding in this.modifiedProperties unless
   // there is already an entry for binding.
   recordModifiedProperty(binding: PropertyBinding): void {
@@ -536,6 +581,7 @@ export class Realm {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
     }
+    this.callReportPropertyAccess(binding);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
       this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
     }
@@ -607,7 +653,7 @@ export class Realm {
   ) {
     invariant(this.useAbstractInterpretation);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    return new Constructor(this, types, values, args, buildNode, kind, intrinsicName);
+    return new Constructor(this, types, values, args, buildNode, { kind, intrinsicName });
   }
 
   rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
@@ -646,7 +692,7 @@ export class Realm {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode: ((Array<BabelNodeExpression>) => BabelNodeExpression) | BabelNodeExpression,
-    kind?: string
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue | UndefinedValue {
     invariant(this.useAbstractInterpretation);
     let generator = this.generator;
@@ -654,7 +700,7 @@ export class Realm {
     if (types.getType() === UndefinedValue) {
       return generator.emitVoidExpression(types, values, args, buildNode);
     } else {
-      return generator.derive(types, values, args, buildNode, kind);
+      return generator.derive(types, values, args, buildNode, optionalArgs);
     }
   }
 
@@ -697,7 +743,7 @@ export class Realm {
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
-    return new ThrowCompletion(Construct(this, type, [message]));
+    return new ThrowCompletion(Construct(this, type, [message]), this.currentLocation);
   }
 
   appendGenerator(generator: Generator, leadingComment: string = ""): void {
@@ -717,7 +763,7 @@ export class Realm {
         return n;
       };
       realmGeneratorBody.push({
-        declaresDerivedId: firstEntry.declaresDerivedId,
+        declared: firstEntry.declared,
         args: firstEntry.args,
         buildNode: buildNode,
       });

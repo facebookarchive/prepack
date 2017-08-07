@@ -15,7 +15,7 @@ let prepackString = require("../lib/prepack-node.js").prepackString;
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
-
+let util = require("util");
 let chalk = require("chalk");
 let path = require("path");
 let fs = require("fs");
@@ -83,26 +83,33 @@ report(inspect());`,
   return result + logOutput;
 }
 
-function runTest(name, code, args) {
-  console.log(chalk.inverse(name));
+function runTest(name, code, options, args) {
+  console.log(chalk.inverse(name) + " " + util.inspect(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let speculate = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
-  let options = {
+  options = Object.assign({}, options, {
     compatibility,
     speculate,
     delayUnsupportedRequires,
+    onError: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
-  };
+  });
+  if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// throws introspection error")) {
     try {
-      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "" };
+      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "", errorHandler: diag => "Fail" };
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
-      let serializerOptions = { initializeMoreModules: speculate, delayUnsupportedRequires, internalDebug: true };
+      let serializerOptions = {
+        initializeMoreModules: speculate,
+        delayUnsupportedRequires,
+        internalDebug: true,
+        additionalFunctions: options.additionalFunctions,
+      };
       let serializer = new Serializer(realm, serializerOptions);
       let sources = [{ filePath: name, fileContents: code }];
       let serialized = serializer.init(sources, false);
@@ -146,6 +153,31 @@ function runTest(name, code, args) {
       console.log(err);
     }
     return false;
+  } else if (code.includes("// Copies of ")) {
+    let marker = "// Copies of ";
+    let searchStart = code.indexOf(marker);
+    let searchEnd = code.indexOf(":", searchStart);
+    let value = code.substring(searchStart + marker.length, searchEnd);
+    let count = parseInt(code.substring(searchEnd + 1, code.indexOf("\n", searchStart)), 10);
+    try {
+      let serialized = prepackString(name, code, "", options);
+      if (!serialized) {
+        console.log(chalk.red("Error during serialization!"));
+        return false;
+      }
+      let regex = new RegExp(value, "gi");
+      let matches = serialized.code.match(regex);
+      if (!matches || matches.length !== count) {
+        console.log(
+          chalk.red(`Wrong number of occurrances of ${value} got ${matches ? matches.length : 0} instead of ${count}`)
+        );
+        return false;
+      }
+    } catch (err) {
+      console.log(err);
+      return false;
+    }
+    return true;
   } else {
     let expected, actual;
     let codeIterations = [];
@@ -217,10 +249,11 @@ function runTest(name, code, args) {
         oldCode = newCode;
         oldUniqueSuffix = newUniqueSuffix;
       }
-      if (anyDelayedValues) {
-        // TODO: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
-        return true;
-      } else if (i === max) {
+      if (i === max) {
+        if (anyDelayedValues) {
+          // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
+          return true;
+        }
         console.log(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
       }
     } catch (err) {
@@ -252,9 +285,12 @@ function run(args) {
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
 
-    total++;
-    if (runTest(test.name, test.file, args)) passed++;
-    else failed++;
+    for (let delayInitializations of [false, true]) {
+      total++;
+      let options = { delayInitializations: delayInitializations };
+      if (runTest(test.name, test.file, options, args)) passed++;
+      else failed++;
+    }
   }
 
   console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");

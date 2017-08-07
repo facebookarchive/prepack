@@ -33,10 +33,9 @@ import {
   NumberValue,
   UndefinedValue,
   NullValue,
-  FunctionValue,
   NativeFunctionValue,
 } from "./index.js";
-import type { NativeFunctionCallback } from "./index.js";
+import type { NativeFunctionCallback, ECMAScriptSourceFunctionValue } from "./index.js";
 import {
   joinValuesAsConditional,
   IsDataDescriptor,
@@ -113,10 +112,10 @@ export default class ObjectValue extends ConcreteValue {
   $Extensible: BooleanValue;
 
   $ParameterMap: void | ObjectValue; // undefined when the property is "missing"
-  $SymbolData: void | SymbolValue;
-  $StringData: void | StringValue;
-  $NumberData: void | NumberValue;
-  $BooleanData: void | BooleanValue;
+  $SymbolData: void | SymbolValue | AbstractValue;
+  $StringData: void | StringValue | AbstractValue;
+  $NumberData: void | NumberValue | AbstractValue;
+  $BooleanData: void | BooleanValue | AbstractValue;
 
   // error
   $ErrorData: void | {
@@ -209,7 +208,7 @@ export default class ObjectValue extends ConcreteValue {
   $ArrayLength: void | number;
 
   // backpointer to the constructor if this object was created its prototype object
-  originalConstructor: void | FunctionValue;
+  originalConstructor: void | ECMAScriptSourceFunctionValue;
 
   // partial objects
   _isPartial: BooleanValue;
@@ -329,15 +328,16 @@ export default class ObjectValue extends ConcreteValue {
       funcName = `get ${name}`;
       if (this.intrinsicName) intrinsicName = `${this.intrinsicName}.${name}`;
     } else if (name instanceof SymbolValue) {
-      funcName = `get [${name.$Description || "?"}]`;
+      funcName =
+        name.$Description instanceof Value
+          ? `get [${name.$Description.throwIfNotConcreteString().value}]`
+          : `get [${"?"}]`;
       if (this.intrinsicName && name.intrinsicName) intrinsicName = `${this.intrinsicName}[${name.intrinsicName}]`;
     } else {
       invariant(false);
     }
 
     let func = new NativeFunctionValue(this.$Realm, intrinsicName, funcName, 0, callback);
-    func.$Construct = undefined;
-    func.$ConstructorKind = undefined;
     this.$DefineOwnProperty(name, {
       get: func,
       set: this.$Realm.intrinsics.undefined,
@@ -363,10 +363,9 @@ export default class ObjectValue extends ConcreteValue {
       throw new FatalError();
     }
 
-    let o = this;
-    let keyArray = Array.from(o.properties.keys());
-    keyArray = keyArray.filter(function(x) {
-      let pb = o.properties.get(x);
+    let keyArray = Array.from(this.properties.keys());
+    keyArray = keyArray.filter(x => {
+      let pb = this.properties.get(x);
       if (!pb || pb.descriptor === undefined) return false;
       let pv = pb.descriptor.value;
       if (pv === undefined) return true;
@@ -378,6 +377,7 @@ export default class ObjectValue extends ConcreteValue {
       AbstractValue.reportIntrospectionError(pv);
       throw new FatalError();
     });
+    this.$Realm.callReportObjectGetOwnProperties(this);
     return keyArray;
   }
 

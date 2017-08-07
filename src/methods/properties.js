@@ -985,6 +985,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
     }
     return undefined;
   }
+  realm.callReportPropertyAccess(existingBinding);
   if (!existingBinding.descriptor) return undefined;
 
   // 3. Let D be a newly created Property Descriptor with no fields.
@@ -1000,7 +1001,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
     if (O.isPartial() && value instanceof AbstractValue && value.kind !== "resolved") {
       let realmGenerator = realm.generator;
       invariant(realmGenerator);
-      value = realmGenerator.derive(value.types, value.values, value.args, value._buildNode, "resolved");
+      value = realmGenerator.derive(value.types, value.values, value.args, value._buildNode, { kind: "resolved" });
       InternalSetProperty(realm, O, P, {
         value: value,
         writable: "writable" in X ? X.writable : false,

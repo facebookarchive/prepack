@@ -195,11 +195,12 @@ export function thisBooleanValue(realm: Realm, value: Value): BooleanValue {
 
   // 2. If Type(value) is Object and value has a [[BooleanData]] internal slot, then
   if (value instanceof ObjectValue && value.$BooleanData) {
+    const booleanData = value.$BooleanData.throwIfNotConcreteBoolean();
     // a. Assert: value's [[BooleanData]] internal slot is a Boolean value.
-    invariant(value.$BooleanData instanceof BooleanValue, "expected boolean data internal slot to be a boolean value");
+    invariant(booleanData instanceof BooleanValue, "expected boolean data internal slot to be a boolean value");
 
     // b. Return the value of value's [[BooleanData]] internal slot.
-    return value.$BooleanData;
+    return booleanData;
   }
 
   value.throwIfNotConcrete();
@@ -215,11 +216,12 @@ export function thisNumberValue(realm: Realm, value: Value): NumberValue {
 
   // 2. If Type(value) is Object and value has a [[NumberData]] internal slot, then
   if (value instanceof ObjectValue && value.$NumberData) {
+    const numberData = value.$NumberData.throwIfNotConcreteNumber();
     // a. Assert: value's [[NumberData]] internal slot is a Number value.
-    invariant(value.$NumberData instanceof NumberValue, "expected number data internal slot to be a number value");
+    invariant(numberData instanceof NumberValue, "expected number data internal slot to be a number value");
 
     // b. Return the value of value's [[NumberData]] internal slot.
-    return value.$NumberData;
+    return numberData;
   }
 
   value = value.throwIfNotConcrete();
@@ -235,11 +237,12 @@ export function thisStringValue(realm: Realm, value: Value): StringValue {
 
   // 2. If Type(value) is Object and value has a [[StringData]] internal slot, then
   if (value instanceof ObjectValue && value.$StringData) {
+    const stringData = value.$StringData.throwIfNotConcreteString();
     // a. Assert: value's [[StringData]] internal slot is a String value.
-    invariant(value.$StringData instanceof StringValue, "expected string data internal slot to be a string value");
+    invariant(stringData instanceof StringValue, "expected string data internal slot to be a string value");
 
     // b. Return the value of value's [[StringData]] internal slot.
-    return value.$StringData;
+    return stringData;
   }
 
   value = value.throwIfNotConcrete();
@@ -383,8 +386,45 @@ export function ToObject(realm: Realm, arg: ConcreteValue): ObjectValue {
   invariant(false);
 }
 
+function WrapAbstractInObject(realm: Realm, arg: AbstractValue): ObjectValue {
+  let obj;
+  switch (arg.types.getType()) {
+    case NumberValue:
+      obj = new ObjectValue(realm, realm.intrinsics.NumberPrototype);
+      obj.$NumberData = arg;
+      break;
+
+    case StringValue:
+      obj = new ObjectValue(realm, realm.intrinsics.StringPrototype);
+      obj.$StringData = arg;
+      break;
+
+    case BooleanValue:
+      obj = new ObjectValue(realm, realm.intrinsics.BooleanPrototype);
+      obj.$BooleanData = arg;
+      break;
+
+    case SymbolValue:
+      obj = new ObjectValue(realm, realm.intrinsics.SymbolPrototype);
+      obj.$SymbolData = arg;
+      break;
+
+    case UndefinedValue:
+    case NullValue:
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+
+    default:
+      obj = arg.throwIfNotConcreteObject();
+      break;
+  }
+  return obj;
+}
+
 export function ToObjectPartial(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue {
   if (arg instanceof AbstractObjectValue) return arg;
+  if (arg instanceof AbstractValue) {
+    return WrapAbstractInObject(realm, arg);
+  }
   arg = arg.throwIfNotConcrete();
   return ToObject(realm, arg);
 }

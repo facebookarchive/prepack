@@ -27,6 +27,8 @@ export type RealmOptions = {
 };
 
 export type SerializerOptions = {
+  additionalFunctions?: Array<string>,
+  delayInitializations?: boolean,
   delayUnsupportedRequires?: boolean,
   initializeMoreModules?: boolean,
   internalDebug?: boolean,
@@ -38,8 +40,10 @@ export type SerializerOptions = {
 };
 
 export type Options = {|
+  additionalFunctions?: Array<string>,
   compatibility?: Compatibility,
   debugNames?: boolean,
+  delayInitializations?: boolean,
   delayUnsupportedRequires?: boolean,
   inputSourceMapFilename?: string,
   internalDebug?: boolean,
@@ -88,6 +92,8 @@ export function getRealmOptions({
 }
 
 export function getSerializerOptions({
+  additionalFunctions,
+  delayInitializations = false,
   delayUnsupportedRequires = false,
   internalDebug = false,
   logStatistics = false,
@@ -97,7 +103,8 @@ export function getSerializerOptions({
   speculate = false,
   trace = false,
 }: Options): SerializerOptions {
-  return {
+  let result: SerializerOptions = {
+    delayInitializations,
     delayUnsupportedRequires,
     initializeMoreModules: speculate,
     internalDebug,
@@ -107,4 +114,6 @@ export function getSerializerOptions({
     singlePass,
     trace,
   };
+  if (additionalFunctions) result.additionalFunctions = additionalFunctions;
+  return result;
 }

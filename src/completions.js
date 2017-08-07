@@ -9,36 +9,55 @@
 
 /* @flow */
 
-import { AbstractValue, Value } from "./values/index.js";
-import type { Effects, Realm } from "./realm.js";
+import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "./invariant.js";
+import type { Effects, Realm } from "./realm.js";
+import { AbstractValue, Value } from "./values/index.js";
 
 export class Completion {
-  constructor(value: Value, target?: ?string) {
+  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
     this.value = value;
     this.target = target;
+    this.location = location;
   }
 
   value: Value;
   target: ?string;
+  location: ?BabelNodeSourceLocation;
 }
-// Abrupt completions are thrown as exeptions, to make it a easier
-// to quickly get to the matching high level construct.
-export class AbruptCompletion extends Completion {}
+
 // Normal completions are returned just like spec completions
 export class NormalCompletion extends Completion {}
 
+// Abrupt completions are thrown as exeptions, to make it a easier
+// to quickly get to the matching high level construct.
+export class AbruptCompletion extends Completion {}
+
 export class ThrowCompletion extends AbruptCompletion {
-  constructor(value: Value, nativeStack?: ?string) {
-    super(value);
+  constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
+    super(value, location);
     this.nativeStack = nativeStack || new Error().stack;
   }
 
   nativeStack: string;
 }
-export class ContinueCompletion extends AbruptCompletion {}
-export class BreakCompletion extends AbruptCompletion {}
-export class ReturnCompletion extends AbruptCompletion {}
+export class ContinueCompletion extends AbruptCompletion {
+  constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
+    super(value, location, target);
+  }
+}
+
+export class BreakCompletion extends AbruptCompletion {
+  constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
+    super(value, location, target);
+  }
+}
+
+export class ReturnCompletion extends AbruptCompletion {
+  constructor(value: Value, location: ?BabelNodeSourceLocation) {
+    super(value, location);
+  }
+}
 
 export class JoinedAbruptCompletions extends AbruptCompletion {
   constructor(
@@ -49,7 +68,7 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
     alternate: AbruptCompletion,
     alternateEffects: Effects
   ) {
-    super(realm.intrinsics.empty, undefined);
+    super(realm.intrinsics.empty, consequent.location);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
     this.consequentEffects = consequentEffects;
@@ -93,7 +112,11 @@ export class PossiblyNormalCompletion extends NormalCompletion {
         alternate instanceof AbruptCompletion ||
         (alternate instanceof NormalCompletion && value === alternate.value)
     );
-    super(value);
+    let loc =
+      consequent instanceof AbruptCompletion
+        ? consequent.location
+        : alternate instanceof Completion ? alternate.location : alternate.expressionLocation;
+    super(value, loc);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
     this.consequentEffects = consequentEffects;

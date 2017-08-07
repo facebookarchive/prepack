@@ -10,7 +10,17 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { EmptyValue, NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "./index.js";
+import {
+  EmptyValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  BooleanValue,
+  SymbolValue,
+  UndefinedValue,
+  Value,
+} from "./index.js";
 import invariant from "../invariant.js";
 
 export default class ConcreteValue extends Value {
@@ -68,8 +78,24 @@ export default class ConcreteValue extends Value {
     invariant(false, "expected this to be a number if concrete");
   }
 
+  throwIfNotConcreteString(): StringValue {
+    invariant(false, "expected this to be a string if concrete");
+  }
+
+  throwIfNotConcreteBoolean(): BooleanValue {
+    invariant(false, "expected this to be a boolean if concrete");
+  }
+
+  throwIfNotConcreteSymbol(): SymbolValue {
+    invariant(false, "expected this to be a symbol if concrete");
+  }
+
   throwIfNotConcreteObject(): ObjectValue {
     return this.throwIfNotObject();
+  }
+
+  throwIfNotConcreteString(): StringValue {
+    invariant(false, "expected this to be a string if concrete");
   }
 
   throwIfNotObject(): ObjectValue {

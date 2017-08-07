@@ -13,6 +13,7 @@ import type { Realm } from "../../realm.js";
 import { BoundFunctionCreate, SetFunctionName } from "../../methods/function.js";
 import { DefinePropertyOrThrow } from "../../methods/properties.js";
 import {
+  AbstractValue,
   BooleanValue,
   NullValue,
   UndefinedValue,
@@ -29,7 +30,6 @@ import { Get } from "../../methods/get.js";
 import { IsCallable } from "../../methods/is.js";
 import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { OrdinaryHasInstance } from "../../methods/abstract.js";
-import { ThrowCompletion } from "../../completions.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -151,7 +151,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return F;
   });
 
-  // 19.2.3.6
+  // ECMA262 19.2.3.6
   obj.defineNativeMethod(
     realm.intrinsics.SymbolHasInstance,
     1,
@@ -165,15 +165,25 @@ export default function(realm: Realm, obj: ObjectValue): void {
     { writable: false, configurable: false }
   );
 
+  // ECMA262 19.2.3.5
   obj.defineNativeMethod("toString", 0, context => {
     context = context.throwIfNotConcrete();
     if (context instanceof NativeFunctionValue) {
-      return new StringValue(realm, `function ${context.name}() { [native code] }`);
+      let name = context.name;
+      if (name instanceof AbstractValue) {
+        return new StringValue(realm, `function () {[native code]}`);
+      } else {
+        invariant(typeof name === "string");
+        return new StringValue(realm, `function ${name}() { [native code] }`);
+      }
     } else if (context instanceof FunctionValue) {
       return new StringValue(realm, "function () { TODO: provide function source code }");
     } else {
-      // Can I use realm.createErrorThrowCompletion here? what `type` error is this?
-      throw new ThrowCompletion(new StringValue(realm, "Function.prototype.toString is not generic"));
+      // 3. Throw a TypeError exception.
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        new StringValue(realm, "Function.prototype.toString is not generic")
+      );
     }
   });
 }
