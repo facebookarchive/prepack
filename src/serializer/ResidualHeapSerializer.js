@@ -163,11 +163,16 @@ export class ResidualHeapSerializer {
     properties: Map<string, PropertyBinding> = obj.properties,
     objectPrototypeAlreadyEstablished: boolean = false
   ) {
-    /*
-    for (let symbol of obj.symbols.keys()) {
-      // TODO #22: serialize symbols
+    //inject symbols
+    for (let [symbol, propertyBinding] of obj.symbols) {
+      invariant(propertyBinding);
+      let desc = propertyBinding.descriptor;
+      if (desc === undefined) continue; //deleted
+      this.emitter.emitNowOrAfterWaitingForDependencies(this._getDescriptorValues(desc).concat([symbol, obj]), () => {
+        invariant(desc !== undefined);
+        return this._emitProperty(obj, symbol, desc);
+      });
     }
-    */
 
     // inject properties
     for (let [key, propertyBinding] of properties) {
@@ -313,7 +318,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _emitProperty(val: ObjectValue, key: string, desc: Descriptor): void {
+  _emitProperty(val: ObjectValue, key: string | SymbolValue, desc: Descriptor): void {
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -321,11 +326,13 @@ export class ResidualHeapSerializer {
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
       this._assignProperty(
         () => {
-          let serializedKey = this.generator.getAsPropertyNameExpression(key);
+          let serializedKey =
+            key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
+          let computed = key instanceof SymbolValue || !t.isIdentifier(serializedKey);
           return t.memberExpression(
             this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
             serializedKey,
-            !t.isIdentifier(serializedKey)
+            computed
           );
         },
         () => {
@@ -388,8 +395,10 @@ export class ResidualHeapSerializer {
           );
         }
       }
-
-      let serializedKey = this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
+      let serializedKey =
+        key instanceof SymbolValue
+          ? this.serializeValue(key)
+          : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
       invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
       let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
       this.emitter.emit(
@@ -868,7 +877,7 @@ export class ResidualHeapSerializer {
   }
 
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
-  _canEmbedProperty(obj: ObjectValue, key: string, prop: Descriptor): boolean {
+  _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue, prop: Descriptor): boolean {
     if ((obj instanceof FunctionValue && key === "prototype") || (obj.getKind() === "RegExp" && key === "lastIndex"))
       return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
     else return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;
