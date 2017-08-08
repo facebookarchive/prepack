@@ -254,7 +254,7 @@ export default function(realm: Realm): void {
       "global.__assumeDataProperty",
       "__assumeDataProperty",
       3,
-      (context, [object, propertyName, value]) => {
+      (context, [object, propertyName, value, skipInvariant]) => {
         if (!realm.useAbstractInterpretation) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
@@ -264,7 +264,7 @@ export default function(realm: Realm): void {
         // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
         if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
           let generator = realm.generator;
-          if (generator)
+          if (!skipInvariant && generator)
             generator.emitInvariant(
               [object, value, object],
               ([objectNode, valueNode]) =>
