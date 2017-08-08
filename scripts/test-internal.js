@@ -63,7 +63,7 @@ function runTest(name: string, code: string): boolean {
     if (modelCode) sources.push({ filePath: modelName, fileContents: modelCode });
     sources.push({ filePath: name, fileContents: sourceCode, sourceMapContents: sourceMap });
 
-    let serialized = prepackSources(sources, {
+    let options = {
       internalDebug: true,
       compatibility: "jsc-600-1-4-17",
       delayUnsupportedRequires: true,
@@ -72,7 +72,13 @@ function runTest(name: string, code: string): boolean {
       serialize: true,
       speculate: !modelCode,
       sourceMaps: !!sourceMap,
-    });
+    };
+    if (name.endsWith("/bundle.js~"))
+      (options: any).additionalFunctions = [
+        "global.WildeBundle.prepareComponentScript",
+        "global.WildeBundle.prepareReact",
+      ];
+    let serialized = prepackSources(sources, options);
     let new_map = serialized.map; // force source maps to get computed
     if (!new_map) console.log(chalk.red("No source map"));
     if (!serialized) {

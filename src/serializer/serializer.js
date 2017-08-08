@@ -36,7 +36,6 @@ export class Serializer {
     realm.generator = new Generator(realm);
 
     this.realm = realm;
-    this.functions = new Functions(this.realm, serializerOptions.additionalFunctions);
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
     this.modules = new Modules(
       this.realm,
@@ -44,6 +43,7 @@ export class Serializer {
       !!serializerOptions.logModules,
       !!serializerOptions.delayUnsupportedRequires
     );
+    this.functions = new Functions(this.realm, serializerOptions.additionalFunctions, this.modules.moduleTracer);
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));
 
     this.options = serializerOptions;

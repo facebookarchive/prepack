@@ -312,12 +312,12 @@ export class Realm {
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
-  evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
-    return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode));
+  evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, state?: any): Effects {
+    return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode), state);
   }
 
-  evaluateNodeForEffectsInGlobalEnv(node: BabelNode) {
-    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv));
+  evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any) {
+    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state));
   }
 
   partiallyEvaluateNodeForEffects(
@@ -775,6 +775,11 @@ export class Realm {
   // Return value indicates whether the caller should try to recover from the
   // error or not ('true' means recover if possible).
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
+    if (!diagnostic.callStack && this.contextStack.length > 0) {
+      let error = Construct(this, this.intrinsics.Error);
+      let stack = error.$Get("stack", error);
+      if (stack instanceof StringValue) diagnostic.callStack = stack.value;
+    }
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
     if (!errorHandler) {

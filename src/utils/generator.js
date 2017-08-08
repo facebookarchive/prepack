@@ -260,7 +260,7 @@ export class Generator {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
-    let res = this.realm.createAbstract(types, values, args, id, optionalArgs ? optionalArgs.kind : undefined);
+    let res = this.realm.createAbstract(types, values, [], id, optionalArgs ? optionalArgs.kind : undefined);
     this.body.push({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
