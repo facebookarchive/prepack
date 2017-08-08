@@ -103,7 +103,7 @@ function visitName(state, name, modified) {
   let ref = state.tryQuery(
     () => ResolveBinding(state.realm, name, doesNotMatter, state.val.$Environment),
     undefined,
-    true
+    false
   );
   if (ref === undefined) return;
   if (IsUnresolvableReference(state.realm, ref)) return;

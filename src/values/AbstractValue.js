@@ -45,6 +45,7 @@ export default class AbstractValue extends Value {
   ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
+    invariant(buildNode instanceof Function || args.length === 0);
     invariant(!Value.isTypeCompatibleWith(types.getType(), ObjectValue) || this instanceof AbstractObjectValue);
     invariant(types.getType() !== NullValue && types.getType() !== UndefinedValue);
     this.types = types;

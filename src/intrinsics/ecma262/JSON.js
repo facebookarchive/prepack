@@ -546,8 +546,13 @@ export default function(realm: Realm): ObjectValue {
     let unfiltered;
     if (text instanceof AbstractValue && text.kind === "JSON.stringify(...)") {
       // Enable cloning via JSON.parse(JSON.stringify(...)).
-      let value = text.args[0];
-      let clonedValue = text.args[1];
+      let gen = realm.preludeGenerator;
+      invariant(gen); // text is abstract, so we are doing abstract interpretation
+      let args = gen.derivedIds.get(text.intrinsicName);
+      invariant(args); // since text.kind === "JSON.stringify(...)" we know this must be true
+      let value = args[0];
+      invariant(value instanceof AbstractValue); // put there by stringify above
+      let clonedValue = args[1];
       let type = value.getType();
       let template;
       if (clonedValue instanceof AbstractObjectValue) {
