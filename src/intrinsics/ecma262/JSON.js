@@ -515,7 +515,8 @@ export default function(realm: Realm): ObjectValue {
       if (clonedValue instanceof ObjectValue) {
         let iName = result.intrinsicName;
         invariant(iName);
-        realm.rebuildNestedProperties(result, iName);
+        invariant(realm.generator);
+        realm.rebuildNestedProperties(realm.generator, result, iName);
       }
       return result;
     }
@@ -568,7 +569,8 @@ export default function(realm: Realm): ObjectValue {
       unfiltered = realm.deriveAbstract(types, values, [text], buildNode, { kind: "JSON.parse(...)" });
       if (template) {
         invariant(unfiltered.intrinsicName);
-        realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
+        invariant(realm.generator);
+        realm.rebuildNestedProperties(realm.generator, unfiltered, unfiltered.intrinsicName);
       }
     } else {
       // 1. Let JText be ? ToString(text).

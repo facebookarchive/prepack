@@ -656,21 +656,22 @@ export class Realm {
     return new Constructor(this, types, values, args, buildNode, { kind, intrinsicName });
   }
 
-  rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
+  rebuildObjectProperty(generator: Generator, object: Value, key: string, propertyValue: Value, path: string) {
     if (!(propertyValue instanceof AbstractValue)) return;
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.args = [object];
       propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
-      this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
+      this.rebuildNestedProperties(generator, propertyValue, propertyValue.intrinsicName);
     }
   }
 
-  rebuildNestedProperties(abstractValue: AbstractValue | UndefinedValue, path: string) {
+  rebuildNestedProperties(generator: Generator, abstractValue: AbstractValue | UndefinedValue, path: string) {
     if (!(abstractValue instanceof AbstractObjectValue)) return;
     let template = abstractValue.getTemplate();
     invariant(!template.intrinsicName || template.intrinsicName === path);
     template.intrinsicName = path;
+    template.generator = generator;
     for (let [key, binding] of template.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
       invariant(binding.descriptor !== undefined);
@@ -680,7 +681,7 @@ export class Realm {
         AbstractValue.reportIntrospectionError(abstractValue, key);
         throw new FatalError();
       }
-      this.rebuildObjectProperty(abstractValue, key, value, path);
+      this.rebuildObjectProperty(generator, abstractValue, key, value, path);
     }
   }
 

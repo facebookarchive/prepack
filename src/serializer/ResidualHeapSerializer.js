@@ -88,6 +88,7 @@ export class ResidualHeapSerializer {
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
+    this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
     this.serializedValues = new Set();
@@ -137,6 +138,7 @@ export class ResidualHeapSerializer {
   valueNameGenerator: NameGenerator;
   descriptorNameGenerator: NameGenerator;
   factoryNameGenerator: NameGenerator;
+  intrinsicNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
@@ -551,8 +553,15 @@ export class ResidualHeapSerializer {
   }
 
   _serializeValueIntrinsic(val: Value): BabelNodeExpression {
-    invariant(val.intrinsicName);
-    return this.preludeGenerator.convertStringToMember(val.intrinsicName);
+    let intrinsicName = val.intrinsicName;
+    invariant(intrinsicName);
+    let intrinsicId = t.identifier(this.valueNameGenerator.generate(intrinsicName));
+    let declar = t.variableDeclaration("var", [
+      t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
+    ]);
+    if (val.generator) this.emitter.emit(declar);
+    else this.prelude.push(declar);
+    return intrinsicId;
   }
 
   _getDescriptorValues(desc: Descriptor): Array<Value> {

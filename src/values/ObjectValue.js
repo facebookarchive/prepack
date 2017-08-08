@@ -52,6 +52,7 @@ import {
   ThrowIfMightHaveBeenDeleted,
 } from "../methods/index.js";
 import * as t from "babel-types";
+import type { Generator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 
 export default class ObjectValue extends ConcreteValue {
@@ -220,6 +221,11 @@ export default class ObjectValue extends ConcreteValue {
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
   unknownProperty: void | PropertyBinding;
+
+  // An object value with an intrinsic name can either exist from the beginning of time,
+  // or it can be associated with a particular point in time by being used as a template
+  // when deriving an abstract value via a generator.
+  generator: void | Generator;
 
   mightBeFalse(): boolean {
     return false;

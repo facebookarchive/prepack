@@ -198,8 +198,6 @@ export class ResidualHeapVisitor {
     return visitedBinding;
   }
 
-  visitValueIntrinsic(val: Value): void {}
-
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
     const realm = this.realm;
@@ -430,9 +428,12 @@ export class ResidualHeapVisitor {
     if (val instanceof AbstractValue) {
       if (this._mark(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // For scoping reasons, we fall back to the main body for intrinsics.
-      this._withScope(this.realmGenerator, () => {
-        if (this._mark(val)) this.visitValueIntrinsic(val);
+      // Some object values marked as "intrinsic" conceptually only came into life at a particular
+      // point in time by being an template for an abstract value that was derived via a generator.
+      // However, all other intrinsics conceptually exist ahead of time,
+      // and we can think of them as coming from the global code.
+      this._withScope((val instanceof ObjectValue && val.generator) || this.realmGenerator, () => {
+        this._mark(val);
       });
     } else if (val instanceof EmptyValue) {
       this._mark(val);
