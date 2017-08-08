@@ -278,7 +278,7 @@ export class ResidualHeapVisitor {
 
     if (!functionInfo) {
       functionInfo = {
-        names: Object.create(null),
+        unbound: Object.create(null),
         modified: Object.create(null),
         usesArguments: false,
         usesThis: false,
@@ -289,7 +289,6 @@ export class ResidualHeapVisitor {
         tryQuery: this.logger.tryQuery.bind(this.logger),
         val,
         functionInfo,
-        map: functionInfo.names,
         realm: this.realm,
       };
 
@@ -300,13 +299,13 @@ export class ResidualHeapVisitor {
         state
       );
 
-      if (val.isResidual && Object.keys(functionInfo.names).length) {
+      if (val.isResidual && Object.keys(functionInfo.unbound).length) {
         if (!val.isUnsafeResidual) {
           this.logger.logError(
             val,
             `residual function ${describeLocation(this.realm, val, undefined, code.loc) ||
               "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(
-              functionInfo.names
+              functionInfo.unbound
             ).join(", ")}`
           );
         }
@@ -316,15 +315,19 @@ export class ResidualHeapVisitor {
     let visitedBindings = Object.create(null);
     this._withScope(val, () => {
       invariant(functionInfo);
-      for (let innerName in functionInfo.names) {
+      for (let innerName in functionInfo.unbound) {
         let visitedBinding;
         let doesNotMatter = true;
         let reference = this.logger.tryQuery(
           () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
           undefined,
-          true
+          false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the global scope. */
         );
-        if (reference === undefined) {
+        if (
+          reference === undefined ||
+          IsUnresolvableReference(this.realm, reference) ||
+          reference.base instanceof GlobalEnvironmentRecord
+        ) {
           visitedBinding = this.visitGlobalBinding(innerName);
         } else {
           invariant(!IsUnresolvableReference(this.realm, reference));
@@ -333,12 +336,8 @@ export class ResidualHeapVisitor {
           if (typeof referencedName !== "string") {
             throw new FatalError("TODO: do not know how to visit reference with symbol");
           }
-          if (reference.base instanceof GlobalEnvironmentRecord) {
-            visitedBinding = this.visitGlobalBinding(referencedName);
-          } else {
-            invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
-            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
-          }
+          invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
+          visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
         }
         visitedBindings[innerName] = visitedBinding;
         if (functionInfo.modified[innerName]) visitedBinding.modified = true;
