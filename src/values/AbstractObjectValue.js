@@ -24,11 +24,12 @@ export default class AbstractObjectValue extends AbstractValue {
     realm: Realm,
     types: TypesDomain,
     values: ValuesDomain,
+    hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
+    optionalArgs?: {| kind?: string, intrinsicName?: string |}
   ) {
-    super(realm, types, values, args, buildNode, optionalArgs);
+    super(realm, types, values, hashValue, args, buildNode, optionalArgs);
   }
 
   getTemplate(): ObjectValue {

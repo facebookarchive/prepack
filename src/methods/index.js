@@ -20,6 +20,7 @@ export * from "./environment.js";
 export * from "./function.js";
 export * from "./get.js";
 export * from "./has.js";
+export * from "./hash.js";
 export * from "./integrity.js";
 export * from "./is.js";
 export * from "./iterator.js";

@@ -58,7 +58,7 @@ export type GeneratorEntry = {
 };
 
 export type VisitEntryCallbacks = {|
-  visitValue: Value => void,
+  visitValues: (Array<Value>) => void,
   visitGenerator: Generator => void,
   canSkip: AbstractValue => boolean,
   recordDeclaration: AbstractValue => void,
@@ -254,7 +254,7 @@ export class Generator {
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let res = new Constructor(this.realm, types, values, [], id, options);
+    let res = new Constructor(this.realm, types, values, 0, [], id, options);
     this.body.push({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
@@ -325,7 +325,7 @@ export class Generator {
       callbacks.recordDelayedEntry(entry);
     } else {
       if (entry.declared) callbacks.recordDeclaration(entry.declared);
-      for (let boundArg of entry.args) callbacks.visitValue(boundArg);
+      callbacks.visitValues(entry.args);
       if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency);
     }
   }

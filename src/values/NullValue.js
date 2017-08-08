@@ -16,6 +16,10 @@ export default class NullValue extends PrimitiveValue {
     return null;
   }
 
+  getHash(): number {
+    return 5613143836447527;
+  }
+
   mightBeFalse(): boolean {
     return true;
   }
