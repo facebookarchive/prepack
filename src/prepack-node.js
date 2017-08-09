@@ -12,7 +12,8 @@
  */
 
 /* @flow */
-import { type Options, defaultOptions } from "./options";
+import { defaultOptions } from "./options";
+import { type Options } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackString } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";

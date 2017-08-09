@@ -15,12 +15,12 @@ import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
-import { getRealmOptions, getSerializerOptions } from "./options";
+import { getRealmOptions, getSerializerOptions } from "./prepack-options";
 import { FatalError } from "./errors.js";
 import { SerializerStatistics, TimingStatistics } from "./serializer/types.js";
 import type { SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
-import type { Options } from "./options";
+import type { Options } from "./prepack-options";
 import { defaultOptions } from "./options";
 import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 import invariant from "./invariant.js";
@@ -41,7 +41,7 @@ export function prepackSources(
   options: Options = defaultOptions
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
   let realmOptions = getRealmOptions(options);
-  realmOptions.errorHandler = options.onError;
+  realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(realmOptions);
   initializeGlobals(realm);
 
@@ -114,7 +114,7 @@ export function prepack(code: string, options: Options = defaultOptions) {
   let sources = [{ filePath: filename, fileContents: code }];
 
   let realmOptions = getRealmOptions(options);
-  realmOptions.errorHandler = options.onError;
+  realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(realmOptions);
   initializeGlobals(realm);
 

@@ -53,7 +53,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
   try {
     let s = prepackFileSync(test_path, {
       internalDebug: true,
-      onError: errorHandler,
+      errorHandler: errorHandler,
       sourceMaps: true,
       serialize: true,
     });
@@ -69,7 +69,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
       compatibility: "node-source-maps",
       inputSourceMapFilename: name + ".new1.js.map",
       internalDebug: true,
-      onError: errorHandler,
+      errorHandler: errorHandler,
       sourceMaps: true,
       serialize: true,
     });

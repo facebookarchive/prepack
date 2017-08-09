@@ -93,7 +93,7 @@ function runTest(name, code, options, args) {
     compatibility,
     speculate,
     delayUnsupportedRequires,
-    onError: diag => "Fail",
+    errorHandler: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
