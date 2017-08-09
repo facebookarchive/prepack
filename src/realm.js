@@ -671,6 +671,7 @@ export class Realm {
     let template = abstractValue.getTemplate();
     invariant(!template.intrinsicName || template.intrinsicName === path);
     template.intrinsicName = path;
+    invariant(template.generator === undefined || template.generator === generator);
     template.generator = generator;
     for (let [key, binding] of template.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted

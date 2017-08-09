@@ -480,7 +480,8 @@ export class ResidualHeapSerializer {
     }
 
     if (generators.length === 1 && functionValues.length === 0) {
-      // This value is only referenced from a single generator.
+      // This value is only referenced from a single generator, and it's not the realm generator.
+      invariant(generators[0] !== this.generator);
       // We can emit the initialization of this value into the body associated with that generator.
       let body = this.activeGeneratorBodies.get(generators[0]);
       invariant(body !== undefined);
@@ -559,8 +560,15 @@ export class ResidualHeapSerializer {
     let declar = t.variableDeclaration("var", [
       t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
     ]);
-    if (val.generator) this.emitter.emit(declar);
-    else this.prelude.push(declar);
+    if (val instanceof ObjectValue && val.generator !== undefined) {
+      invariant(
+        this.activeGeneratorBodies.get(val.generator) === this.emitter.getBody() || val.generator === this.generator
+      );
+      this.emitter.emit(declar);
+    } else {
+      invariant(this.emitter.getBody() === this.mainBody);
+      this.prelude.push(declar);
+    }
     return intrinsicId;
   }
 
