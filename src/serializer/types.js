@@ -28,7 +28,7 @@ export type FunctionInstance = {
 
 export type Names = { [key: string]: true };
 export type FunctionInfo = {
-  names: Names,
+  unbound: Names,
   modified: Names,
   usesArguments: boolean,
   usesThis: boolean,
