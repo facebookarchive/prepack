@@ -70,7 +70,7 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       errorHandler,
       serialize: true,
-      speculate: !modelCode,
+      initializeMoreModules: !modelCode,
       sourceMaps: !!sourceMap,
     };
     if (name.endsWith("/bundle.js~"))

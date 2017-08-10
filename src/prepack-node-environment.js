@@ -23,7 +23,7 @@ import { FatalError } from "./errors.js";
 import initializeBootstrap from "./intrinsics/node/bootstrap.js";
 import initializeProcess from "./intrinsics/node/process.js";
 
-import type { Options } from "./prepack-options";
+import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
 import type { SourceMap } from "./types.js";
 
@@ -31,7 +31,7 @@ declare var process: any;
 
 export function prepackNodeCLI(
   filename: string,
-  options: Options = defaultOptions,
+  options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void
 ) {
   let serialized;
@@ -44,7 +44,7 @@ export function prepackNodeCLI(
   callback(null, serialized);
 }
 
-export function prepackNodeCLISync(filename: string, options: Options = defaultOptions) {
+export function prepackNodeCLISync(filename: string, options: PrepackOptions = defaultOptions) {
   if (process.version !== "v7.9.0") {
     console.warn(
       `Prepack's node-cli mode currently only works on Node v7.9.0.\n` +

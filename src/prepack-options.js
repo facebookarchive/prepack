@@ -10,12 +10,9 @@
 /* @flow */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions } from "./options";
+import type { SerializerOptions, RealmOptions, Compatibility } from "./options";
 
-export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps" | "node-cli";
-export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"];
-
-export type Options = {|
+export type PrepackOptions = {|
   additionalFunctions?: Array<string>,
   compatibility?: Compatibility,
   debugNames?: boolean,
@@ -33,7 +30,7 @@ export type Options = {|
   serialize?: boolean,
   singlePass?: boolean,
   sourceMaps?: boolean,
-  speculate?: boolean,
+  initializeMoreModules?: boolean,
   statsFile?: string,
   strictlyMonotonicDateNow?: boolean,
   timeout?: number,
@@ -51,11 +48,11 @@ export function getRealmOptions({
   serialize = !residual,
   strictlyMonotonicDateNow,
   timeout,
-}: Options): RealmOptions {
+}: PrepackOptions): RealmOptions {
   return {
     compatibility,
     debugNames,
-    errorHandler: errorHandler,
+    errorHandler,
     mathRandomSeed,
     uniqueSuffix,
     residual,
@@ -74,13 +71,13 @@ export function getSerializerOptions({
   logModules = false,
   profile = false,
   singlePass = false,
-  speculate = false,
+  initializeMoreModules = false,
   trace = false,
-}: Options): SerializerOptions {
+}: PrepackOptions): SerializerOptions {
   let result: SerializerOptions = {
     delayInitializations,
     delayUnsupportedRequires,
-    initializeMoreModules: speculate,
+    initializeMoreModules,
     internalDebug,
     logStatistics,
     logModules,

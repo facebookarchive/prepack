@@ -70,7 +70,7 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       errorHandler: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
-      speculate: true,
+      initializeMoreModules: true,
     };
     if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
     prepackFileSync(name, options);

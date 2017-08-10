@@ -13,7 +13,7 @@
 
 /* @flow */
 import { defaultOptions } from "./options";
-import { type Options } from "./prepack-options";
+import { type PrepackOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackString } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
@@ -24,7 +24,7 @@ export * from "./prepack-node-environment";
 export * from "./prepack-standalone";
 
 export function prepackStdin(
-  options: Options = defaultOptions,
+  options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void
 ) {
   let sourceMapFilename = options.inputSourceMapFilename || "";
@@ -51,7 +51,7 @@ export function prepackStdin(
 
 export function prepackFile(
   filename: string,
-  options: Options = defaultOptions,
+  options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void,
   fileErrorHandler?: (err: ?Error) => void
 ) {
@@ -82,7 +82,7 @@ export function prepackFile(
   });
 }
 
-export function prepackFileSync(filename: string, options: Options = defaultOptions) {
+export function prepackFileSync(filename: string, options: PrepackOptions = defaultOptions) {
   if (options.compatibility === "node-cli") {
     return prepackNodeCLISync(filename, options);
   }
