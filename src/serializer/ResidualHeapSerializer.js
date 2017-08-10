@@ -484,9 +484,14 @@ export class ResidualHeapSerializer {
       invariant(generators[0] !== this.generator);
       // We can emit the initialization of this value into the body associated with that generator.
       let body = this.activeGeneratorBodies.get(generators[0]);
-      invariant(body !== undefined);
-      invariant(body === this.emitter.getBody());
-      return { body };
+      if (body === undefined) {
+        // TODO: The generator is no longer active! We missed the right time to emit this value.
+        this.logger.logError(val, "Value is referenced in an unsupported scope.");
+        return { body: this.mainBody };
+      } else {
+        invariant(body === this.emitter.getBody());
+        return { body };
+      }
     }
 
     // TODO #482: If there's more than...
@@ -561,8 +566,14 @@ export class ResidualHeapSerializer {
       t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
     ]);
     if (val instanceof ObjectValue && val.generator !== undefined) {
+      let activeBody = this.activeGeneratorBodies.get(val.generator);
       invariant(
-        this.activeGeneratorBodies.get(val.generator) === this.emitter.getBody() || val.generator === this.generator
+        // Case 1: The generator is the top-level realm generator.
+        val.generator === this.generator ||
+          // Case 2a: The generator is a nested generator.
+          activeBody === this.emitter.getBody() ||
+          // Case 2b: An error was logged by `_getTarget`, and we don't actually have a proper generator
+          activeBody === undefined
       );
       this.emitter.emit(declar);
     } else {
