@@ -30,7 +30,8 @@ import {
   ThrowCompletion,
 } from "./completions.js";
 import { FatalError } from "./errors.js";
-import { defaultOptions, type Options } from "./options";
+import { defaultOptions } from "./options";
+import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
 import {
@@ -1111,7 +1112,7 @@ export class LexicalEnvironment {
 
   executePartialEvaluator(
     sources: Array<SourceFile>,
-    options: Options = defaultOptions,
+    options: PartialEvaluatorOptions = defaultOptions,
     sourceType: SourceType = "script"
   ): AbruptCompletion | { code: string, map?: SourceMap } {
     let body: Array<BabelNodeStatement> = [];
