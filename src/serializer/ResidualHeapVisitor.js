@@ -509,7 +509,9 @@ export class ResidualHeapVisitor {
       oldDelayedEntries = this.delayedVisitGeneratorEntries;
       this.delayedVisitGeneratorEntries = [];
       for (let { generator, entry } of oldDelayedEntries)
-        generator.visitEntry(entry, this.createGeneratorVisitCallbacks(generator));
+        this._withScope(generator, () => {
+          generator.visitEntry(entry, this.createGeneratorVisitCallbacks(generator));
+        });
     }
   }
 }
