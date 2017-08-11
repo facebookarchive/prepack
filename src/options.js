@@ -39,81 +39,8 @@ export type SerializerOptions = {
   trace?: boolean,
 };
 
-export type Options = {|
-  additionalFunctions?: Array<string>,
-  compatibility?: Compatibility,
-  debugNames?: boolean,
-  delayInitializations?: boolean,
-  delayUnsupportedRequires?: boolean,
-  inputSourceMapFilename?: string,
-  internalDebug?: boolean,
-  logStatistics?: boolean,
-  logModules?: boolean,
-  mathRandomSeed?: string,
-  onError?: ErrorHandler,
-  outputFilename?: string,
-  profile?: boolean,
-  residual?: boolean,
-  serialize?: boolean,
-  singlePass?: boolean,
+export type PartialEvaluatorOptions = {
   sourceMaps?: boolean,
-  speculate?: boolean,
-  statsFile?: string,
-  strictlyMonotonicDateNow?: boolean,
-  timeout?: number,
-  trace?: boolean,
-  uniqueSuffix?: string,
-|};
+};
 
 export const defaultOptions = {};
-
-export function getRealmOptions({
-  compatibility = "browser",
-  debugNames = false,
-  onError,
-  mathRandomSeed,
-  uniqueSuffix,
-  residual,
-  serialize = !residual,
-  strictlyMonotonicDateNow,
-  timeout,
-}: Options): RealmOptions {
-  return {
-    compatibility,
-    debugNames,
-    errorHandler: onError,
-    mathRandomSeed,
-    uniqueSuffix,
-    residual,
-    serialize,
-    strictlyMonotonicDateNow,
-    timeout,
-  };
-}
-
-export function getSerializerOptions({
-  additionalFunctions,
-  delayInitializations = false,
-  delayUnsupportedRequires = false,
-  internalDebug = false,
-  logStatistics = false,
-  logModules = false,
-  profile = false,
-  singlePass = false,
-  speculate = false,
-  trace = false,
-}: Options): SerializerOptions {
-  let result: SerializerOptions = {
-    delayInitializations,
-    delayUnsupportedRequires,
-    initializeMoreModules: speculate,
-    internalDebug,
-    logStatistics,
-    logModules,
-    profile,
-    singlePass,
-    trace,
-  };
-  if (additionalFunctions) result.additionalFunctions = additionalFunctions;
-  return result;
-}
