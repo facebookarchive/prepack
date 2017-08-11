@@ -109,6 +109,7 @@ export class Serializer {
     if (this.options.additionalFunctions) {
       this.functions.checkThatFunctionsAreIndependent();
     }
+    // TODO: think about how this interacts with serializing extra functions
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
       this.modules.initializeMoreModules();
@@ -122,6 +123,17 @@ export class Serializer {
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
     let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
     residualHeapVisitor.visitRoots();
+    this.realm.evaluateForEffects(() => {
+      if (this.options.additionalFunctions) {
+        for (let [functionString, effects] of this.functions.writeEffects.entries()) {
+          this.realm.applyEffects(effects, "from " + functionString);
+          let functionValue = this.functions.nameToFunctionValue.get(functionString);
+          invariant(functionValue);
+          residualHeapVisitor.visitRoots(functionValue);
+        }
+      }
+      return this.realm.intrinsics.undefined;
+    });
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
@@ -163,6 +175,15 @@ export class Serializer {
       !!this.options.delayInitializations,
       residualHeapVisitor.referencedDeclaredValues
     );
+    let additionalFunctions = [];
+    if (this.options.additionalFunctions) {
+      for (let [functionString, effects] of this.functions.writeEffects.entries()) {
+        this.realm.applyEffects(effects, "from " + functionString);
+        let functionValue = this.functions.nameToFunctionValue.get(functionString);
+        invariant(functionValue);
+        residualHeapVisitor.visitRoots(functionValue);
+      }
+    }
     let ast = residualHeapSerializer.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
     if (timingStats !== undefined) {

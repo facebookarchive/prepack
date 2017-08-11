@@ -1174,8 +1174,11 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  serialize(): BabelNodeFile {
+  serialize(additionalFunctions: any): BabelNodeFile {
     this.generator.serialize(this._getContext());
+    for (let fun of additionalFunctions) {
+      fun(this._getContext());
+    }
     invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);

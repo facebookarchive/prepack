@@ -316,7 +316,7 @@ export class Realm {
     return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode), state);
   }
 
-  evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any) {
+  evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any): Effects {
     return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state));
   }
 

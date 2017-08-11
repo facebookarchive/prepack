@@ -62,7 +62,7 @@ export class ResidualHeapVisitor {
     this.values = new Map();
     let generator = this.realm.generator;
     invariant(generator);
-    this.scope = this.realmGenerator = generator;
+    this.scope = this.globalScope = generator;
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
@@ -73,11 +73,12 @@ export class ResidualHeapVisitor {
   modules: Modules;
 
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, VisitedBindings>;
+  // Either realmGenerator or the FunctionValue of an additional function to serialize
   globalBindings: Map<string, VisitedBinding>;
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   functionBindings: Map<FunctionValue, VisitedBindings>;
   scope: Scope;
-  realmGenerator: Generator;
+  globalScope: Scope;
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Set<AbstractValue>;
@@ -430,7 +431,7 @@ export class ResidualHeapVisitor {
       if (this._mark(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // For scoping reasons, we fall back to the main body for intrinsics.
-      this._withScope(this.realmGenerator, () => {
+      this._withScope(this.globalScope, () => {
         if (this._mark(val)) this.visitValueIntrinsic(val);
       });
     } else if (val instanceof EmptyValue) {
@@ -444,7 +445,7 @@ export class ResidualHeapVisitor {
       if (this._mark(val)) this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
       // Function declarations should get hoisted in the global code so that instances only get allocated once
-      this._withScope(this.realmGenerator, () => {
+      this._withScope(this.globalScope, () => {
         invariant(val instanceof FunctionValue);
         if (this._mark(val)) this.visitValueFunction(val);
       });
@@ -456,7 +457,7 @@ export class ResidualHeapVisitor {
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the global code as well.
       if (val.originalConstructor !== undefined) {
-        this._withScope(this.realmGenerator, () => {
+        this._withScope(this.globalScope, () => {
           invariant(val instanceof ObjectValue);
           if (this._mark(val)) this.visitValueObject(val);
         });
@@ -499,8 +500,13 @@ export class ResidualHeapVisitor {
     });
   }
 
-  visitRoots(): void {
-    this.visitGenerator(this.realmGenerator);
+  // Use scopeOverride for setting the global generator to a function's scope
+  // instead of the realm generator.
+  visitRoots(scopeOverride?: Scope): void {
+    if (scopeOverride) this.globalScope = scopeOverride;
+    let generator = this.realm.generator;
+    invariant(generator);
+    this.visitGenerator(generator);
     for (let [, moduleValue] of this.modules.initializedModules) this.visitValue(moduleValue);
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value

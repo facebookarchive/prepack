@@ -26,11 +26,15 @@ export class Functions {
     this.realm = realm;
     this.functions = functions;
     this.moduleTracer = moduleTracer;
+    this.writeEffects = new Map();
+    this.nameToFunctionValue = new Map();
   }
 
   realm: Realm;
   functions: ?Array<string>;
   moduleTracer: ModuleTracer;
+  writeEffects: Map<string, Effects>;
+  nameToFunctionValue: Map<string, FunctionValue>;
 
   checkThatFunctionsAreIndependent() {
     let functions = this.functions;
@@ -59,24 +63,24 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
+      this.nameToFunctionValue.set(fname, fun);
       let call = t.callExpression(fnameAst, []);
       calls.push([fname, call]);
     }
 
     // Get write effects of the functions
-    let writeEffects: Map<string, Effects> = new Map();
     for (let [fname, call] of calls) {
       // This may throw a FatalError if there is an unrecoverable error in the called function
       // When that happens we cannot prepack the bundle.
       // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
       let e = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
-      writeEffects.set(fname, e);
+      this.writeEffects.set(fname, e);
     }
 
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
     for (let [fname1, call1] of calls) {
-      let e1 = writeEffects.get(fname1);
+      let e1 = this.writeEffects.get(fname1);
       invariant(e1 !== undefined);
       if (e1[0] instanceof Completion) {
         let error = new CompilerDiagnostic(
