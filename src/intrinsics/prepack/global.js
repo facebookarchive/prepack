@@ -254,7 +254,7 @@ export default function(realm: Realm): void {
       "global.__assumeDataProperty",
       "__assumeDataProperty",
       3,
-      (context, [object, propertyName, value, skipInvariant]) => {
+      (context, [object, propertyName, value, invariantOptions]) => {
         if (!realm.useAbstractInterpretation) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
@@ -264,13 +264,29 @@ export default function(realm: Realm): void {
         // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
         if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
           let generator = realm.generator;
-          if (!skipInvariant && generator)
-            generator.emitInvariant(
-              [object, value, object],
-              ([objectNode, valueNode]) =>
-                t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode),
-              objnode => t.memberExpression(objnode, t.identifier(key))
-            );
+          if (generator) {
+            let condition = ([objectNode, valueNode]) =>
+              t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode);
+            if (invariantOptions && invariantOptions instanceof StringValue) {
+              switch (invariantOptions.value) {
+                case "DEFINED":
+                  condition = ([objectNode, valueNode]) =>
+                    t.unaryExpression("!", t.memberExpression(objectNode, t.identifier(key)));
+                  break;
+                case "SKIP":
+                  condition = null;
+                  break;
+                case "FULL":
+                  break;
+                default:
+                  invariant(false, "Invalid invariantOption " + invariantOptions.value);
+              }
+            }
+            if (condition)
+              generator.emitInvariant([object, value, object], condition,
+                objnode => t.memberExpression(objnode, t.identifier(key))
+              );
+          }
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
           (object: any).$Set(key, value, object);
