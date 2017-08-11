@@ -516,7 +516,7 @@ export default function(realm: Realm): ObjectValue {
         let iName = result.intrinsicName;
         invariant(iName);
         invariant(realm.generator);
-        realm.rebuildNestedProperties(realm.generator, result, iName);
+        realm.rebuildNestedProperties(result, iName);
       }
       return result;
     }
@@ -570,7 +570,7 @@ export default function(realm: Realm): ObjectValue {
       if (template) {
         invariant(unfiltered.intrinsicName);
         invariant(realm.generator);
-        realm.rebuildNestedProperties(realm.generator, unfiltered, unfiltered.intrinsicName);
+        realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
       }
     } else {
       // 1. Let JText be ? ToString(text).

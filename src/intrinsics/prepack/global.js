@@ -120,7 +120,7 @@ export default function(realm: Realm): void {
           // why exclude functions?
           template.makePartial();
           invariant(realm.generator);
-          if (nameString) realm.rebuildNestedProperties(realm.generator, result, nameString);
+          if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
         return result;
       }
@@ -170,7 +170,7 @@ export default function(realm: Realm): void {
           );
           template.makePartial();
           invariant(realm.generator);
-          realm.rebuildNestedProperties(realm.generator, result, ((result._buildNode: any): BabelNodeIdentifier).name);
+          realm.rebuildNestedProperties(result, ((result._buildNode: any): BabelNodeIdentifier).name);
         }
         return result;
       }
@@ -277,7 +277,7 @@ export default function(realm: Realm): void {
           // casting to due to Flow workaround above
           (object: any).$Set(key, value, object);
           realm.generator = generator;
-          if (object.intrinsicName) realm.rebuildObjectProperty(generator, object, key, value, object.intrinsicName);
+          if (object.intrinsicName) realm.rebuildObjectProperty(object, key, value, object.intrinsicName);
           return context.$Realm.intrinsics.undefined;
         }
 

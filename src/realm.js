@@ -656,23 +656,29 @@ export class Realm {
     return new Constructor(this, types, values, args, buildNode, { kind, intrinsicName });
   }
 
-  rebuildObjectProperty(generator: Generator, object: Value, key: string, propertyValue: Value, path: string) {
+  rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
     if (!(propertyValue instanceof AbstractValue)) return;
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.args = [object];
       propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
-      this.rebuildNestedProperties(generator, propertyValue, propertyValue.intrinsicName);
+      this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
     }
   }
 
-  rebuildNestedProperties(generator: Generator, abstractValue: AbstractValue | UndefinedValue, path: string) {
+  rebuildNestedProperties(abstractValue: AbstractValue | UndefinedValue, path: string) {
     if (!(abstractValue instanceof AbstractObjectValue)) return;
     let template = abstractValue.getTemplate();
     invariant(!template.intrinsicName || template.intrinsicName === path);
+    // TODO #882: We are using the concept of "intrinsic values" to mark the template
+    // object as intrinsic, so that we'll never emit code that creates it, as it instead is mapConstructorDoesntTakeArguments
+    // to refer to an unknown but existing object.
+    // However, it's not really an intrinsic object, and it might not exist ahead of time, but only starting
+    // from this point on, which might be tied to some nested generator.
+    // Which we currently don't track, and that needs to get fixed.
+    // For now, we use intrinsicNameGenerated to mark this case.
     template.intrinsicName = path;
-    invariant(template.generator === undefined || template.generator === generator);
-    template.generator = generator;
+    template.intrinsicNameGenerated = true;
     for (let [key, binding] of template.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
       invariant(binding.descriptor !== undefined);
@@ -682,7 +688,7 @@ export class Realm {
         AbstractValue.reportIntrospectionError(abstractValue, key);
         throw new FatalError();
       }
-      this.rebuildObjectProperty(generator, abstractValue, key, value, path);
+      this.rebuildObjectProperty(abstractValue, key, value, path);
     }
   }
 

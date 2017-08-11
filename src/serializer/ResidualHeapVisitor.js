@@ -428,11 +428,9 @@ export class ResidualHeapVisitor {
     if (val instanceof AbstractValue) {
       if (this._mark(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // Some object values marked as "intrinsic" conceptually only came into life at a particular
-      // point in time by being an template for an abstract value that was derived via a generator.
-      // However, all other intrinsics conceptually exist ahead of time,
-      // and we can think of them as coming from the global code.
-      this._withScope((val instanceof ObjectValue && val.generator) || this.realmGenerator, () => {
+      // All intrinsic values exist from the beginning of time...
+      // ...except for a few that come into existance as templates for abstract objects (TODO #882).
+      this._withScope(this.realmGenerator, () => {
         this._mark(val);
       });
     } else if (val instanceof EmptyValue) {

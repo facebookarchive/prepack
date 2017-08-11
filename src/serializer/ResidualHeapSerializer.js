@@ -565,16 +565,10 @@ export class ResidualHeapSerializer {
     let declar = t.variableDeclaration("var", [
       t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
     ]);
-    if (val instanceof ObjectValue && val.generator !== undefined) {
-      let activeBody = this.activeGeneratorBodies.get(val.generator);
-      invariant(
-        // Case 1: The generator is the top-level realm generator.
-        val.generator === this.generator ||
-          // Case 2a: The generator is a nested generator.
-          activeBody === this.emitter.getBody() ||
-          // Case 2b: An error was logged by `_getTarget`, and we don't actually have a proper generator
-          activeBody === undefined
-      );
+    if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
+      // TODO #882: The value came into existance as a template for an abstract object.
+      // Unfortunately, we are not properly tracking which generate it's associated with.
+      // Until this gets fixed, let's stick to the historical behavior: Emit to the current emitter body.
       this.emitter.emit(declar);
     } else {
       invariant(this.emitter.getBody() === this.mainBody);
