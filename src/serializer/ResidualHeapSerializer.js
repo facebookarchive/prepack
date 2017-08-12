@@ -88,6 +88,7 @@ export class ResidualHeapSerializer {
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
+    this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
     this.serializedValues = new Set();
@@ -137,6 +138,7 @@ export class ResidualHeapSerializer {
   valueNameGenerator: NameGenerator;
   descriptorNameGenerator: NameGenerator;
   factoryNameGenerator: NameGenerator;
+  intrinsicNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
@@ -478,12 +480,18 @@ export class ResidualHeapSerializer {
     }
 
     if (generators.length === 1 && functionValues.length === 0) {
-      // This value is only referenced from a single generator.
+      // This value is only referenced from a single generator, and it's not the realm generator.
+      invariant(generators[0] !== this.generator);
       // We can emit the initialization of this value into the body associated with that generator.
       let body = this.activeGeneratorBodies.get(generators[0]);
-      invariant(body !== undefined);
-      invariant(body === this.emitter.getBody());
-      return { body };
+      if (body === undefined) {
+        // TODO: The generator is no longer active! We missed the right time to emit this value.
+        this.logger.logError(val, "Value is referenced in an unsupported scope.");
+        return { body: this.mainBody };
+      } else {
+        invariant(body === this.emitter.getBody());
+        return { body };
+      }
     }
 
     // TODO #482: If there's more than...
@@ -551,8 +559,22 @@ export class ResidualHeapSerializer {
   }
 
   _serializeValueIntrinsic(val: Value): BabelNodeExpression {
-    invariant(val.intrinsicName);
-    return this.preludeGenerator.convertStringToMember(val.intrinsicName);
+    let intrinsicName = val.intrinsicName;
+    invariant(intrinsicName);
+    let intrinsicId = t.identifier(this.valueNameGenerator.generate(intrinsicName));
+    let declar = t.variableDeclaration("var", [
+      t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
+    ]);
+    if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
+      // TODO #882: The value came into existance as a template for an abstract object.
+      // Unfortunately, we are not properly tracking which generate it's associated with.
+      // Until this gets fixed, let's stick to the historical behavior: Emit to the current emitter body.
+      this.emitter.emit(declar);
+    } else {
+      invariant(this.emitter.getBody() === this.mainBody);
+      this.prelude.push(declar);
+    }
+    return intrinsicId;
   }
 
   _getDescriptorValues(desc: Descriptor): Array<Value> {

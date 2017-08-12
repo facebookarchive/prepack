@@ -276,8 +276,8 @@ export class Generator {
         ]),
     });
     let type = types.getType();
-    if (optionalArgs && optionalArgs.skipInvariant) return res;
     res.intrinsicName = id.name;
+    if (optionalArgs && optionalArgs.skipInvariant) return res;
     let typeofString;
     if (type instanceof FunctionValue) typeofString = "function";
     else if (type === UndefinedValue) invariant(false);
