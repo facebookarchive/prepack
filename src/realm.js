@@ -312,12 +312,12 @@ export class Realm {
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
-  evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment): Effects {
-    return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode));
+  evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, state?: any): Effects {
+    return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode), state);
   }
 
-  evaluateNodeForEffectsInGlobalEnv(node: BabelNode) {
-    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv));
+  evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any) {
+    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state));
   }
 
   partiallyEvaluateNodeForEffects(
@@ -653,7 +653,7 @@ export class Realm {
   ) {
     invariant(this.useAbstractInterpretation);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    return new Constructor(this, types, values, args, buildNode, kind, intrinsicName);
+    return new Constructor(this, types, values, args, buildNode, { kind, intrinsicName });
   }
 
   rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
@@ -670,7 +670,15 @@ export class Realm {
     if (!(abstractValue instanceof AbstractObjectValue)) return;
     let template = abstractValue.getTemplate();
     invariant(!template.intrinsicName || template.intrinsicName === path);
+    // TODO #882: We are using the concept of "intrinsic values" to mark the template
+    // object as intrinsic, so that we'll never emit code that creates it, as it instead is mapConstructorDoesntTakeArguments
+    // to refer to an unknown but existing object.
+    // However, it's not really an intrinsic object, and it might not exist ahead of time, but only starting
+    // from this point on, which might be tied to some nested generator.
+    // Which we currently don't track, and that needs to get fixed.
+    // For now, we use intrinsicNameGenerated to mark this case.
     template.intrinsicName = path;
+    template.intrinsicNameGenerated = true;
     for (let [key, binding] of template.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
       invariant(binding.descriptor !== undefined);
@@ -692,7 +700,7 @@ export class Realm {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode: ((Array<BabelNodeExpression>) => BabelNodeExpression) | BabelNodeExpression,
-    kind?: string
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue | UndefinedValue {
     invariant(this.useAbstractInterpretation);
     let generator = this.generator;
@@ -700,7 +708,7 @@ export class Realm {
     if (types.getType() === UndefinedValue) {
       return generator.emitVoidExpression(types, values, args, buildNode);
     } else {
-      return generator.derive(types, values, args, buildNode, kind);
+      return generator.derive(types, values, args, buildNode, optionalArgs);
     }
   }
 
@@ -775,6 +783,11 @@ export class Realm {
   // Return value indicates whether the caller should try to recover from the
   // error or not ('true' means recover if possible).
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
+    if (!diagnostic.callStack && this.contextStack.length > 0) {
+      let error = Construct(this, this.intrinsics.Error);
+      let stack = error.$Get("stack", error);
+      if (stack instanceof StringValue) diagnostic.callStack = stack.value;
+    }
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
     if (!errorHandler) {
