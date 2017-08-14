@@ -66,7 +66,7 @@ function getObjectKeys(obj: BabelNodeObjectExpression): string | false {
 //   function factory(b) { return { a: literal1, b } }
 //   var x = factory(literal2);
 //   var y = factory(literal3);
-// TODO: Right now, the visitor below only looks into top-level variable declaration
+// TODO #884: Right now, the visitor below only looks into top-level variable declaration
 // with a flat object literal initializer.
 // It should also look into conditional control flow, residual functions, and nested object literals.
 export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGenerator: NameGenerator) {

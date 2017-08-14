@@ -46,7 +46,7 @@ export type Scope = FunctionValue | Generator;
    In particular, this "filters out" values that are...
    - captured by a DeclarativeEnvironmentRecord, but not actually used by any closure.
    - Unmodified prototype objects
-   TODO #492: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
+   TODO #680: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
 */
 export class ResidualHeapVisitor {
   constructor(realm: Realm, logger: Logger, modules: Modules) {
