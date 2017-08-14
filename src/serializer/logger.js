@@ -28,7 +28,7 @@ export class Logger {
   internalDebug: boolean;
 
   // Wraps a query that might potentially execute user code.
-  tryQuery<T>(f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean): T {
+  tryQuery<T>(f: () => T, defaultValue: T, logFailures: boolean): T {
     let context = new ExecutionContext();
     let realm = this.realm;
     let env = realm.$GlobalEnv;
@@ -37,6 +37,17 @@ export class Logger {
     context.realm = realm;
     realm.pushContext(context);
     // We use partial evaluation so that we can throw away any state mutations
+    let oldErrorHandler = realm.errorHandler;
+    let newErrorHandler;
+    realm.errorHandler = newErrorHandler = d => {
+      if (d.severity === "Information" || d.severity === "Warning") return "Recover";
+      if (logFailures) {
+        realm.errorHandler = oldErrorHandler;
+        realm.handleError(d);
+        realm.errorHandler = newErrorHandler;
+      }
+      return "Fail";
+    };
     try {
       let result;
       let effects = realm.evaluateForEffects(() => {
@@ -44,8 +55,10 @@ export class Logger {
           result = f();
         } catch (e) {
           if (e instanceof Completion) {
-            if (logCompletion) this.logCompletion(e);
-            result = onCompletion instanceof Function ? onCompletion(e) : onCompletion;
+            if (logFailures) this.logCompletion(e);
+            result = defaultValue;
+          } else if (e instanceof FatalError) {
+            result = defaultValue;
           } else {
             throw e;
           }
@@ -55,6 +68,7 @@ export class Logger {
       invariant(effects[0] === realm.intrinsics.undefined);
       return ((result: any): T);
     } finally {
+      realm.errorHandler = oldErrorHandler;
       realm.popContext(context);
     }
   }
@@ -109,6 +123,8 @@ export class Logger {
       let locString = `${loc.start.line}:${loc.start.column + 1}`;
       if (loc.source) locString = `${loc.source}:${locString}`;
       message = `${message}\nat: ${locString}`;
+    } else if (value.intrinsicName) {
+      message = `${message}\nintrinsic name: ${value.intrinsicName}`;
     }
 
     console.error(message);

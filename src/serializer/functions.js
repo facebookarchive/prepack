@@ -13,20 +13,24 @@ import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-typ
 import { Completion, ThrowCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { type PropertyBindings, Realm } from "../realm.js";
+import { type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding } from "../types.js";
+import { ignoreErrorsIn } from "../utils/errors.js";
 import { AbstractObjectValue, FunctionValue, ObjectValue } from "../values/index.js";
+import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
 import * as t from "babel-types";
 
 export class Functions {
-  constructor(realm: Realm, functions: ?Array<string>) {
+  constructor(realm: Realm, functions: ?Array<string>, moduleTracer: ModuleTracer) {
     this.realm = realm;
     this.functions = functions;
+    this.moduleTracer = moduleTracer;
   }
 
   realm: Realm;
   functions: ?Array<string>;
+  moduleTracer: ModuleTracer;
 
   checkThatFunctionsAreIndependent() {
     let functions = this.functions;
@@ -39,8 +43,8 @@ export class Functions {
       let fnameAst = buildTemplate(fname)({}).expression;
       if (fnameAst) {
         try {
-          let e = this.realm.evaluateNodeForEffectsInGlobalEnv(fnameAst);
-          fun = e[0];
+          let e = ignoreErrorsIn(this.realm, () => this.realm.evaluateNodeForEffectsInGlobalEnv(fnameAst));
+          fun = e ? e[0] : undefined;
         } catch (ex) {
           if (!(ex instanceof ThrowCompletion)) throw ex;
         }
@@ -59,15 +63,25 @@ export class Functions {
       calls.push([fname, call]);
     }
 
+    // Get write effects of the functions
+    let writeEffects: Map<string, Effects> = new Map();
+    for (let [fname, call] of calls) {
+      // This may throw a FatalError if there is an unrecoverable error in the called function
+      // When that happens we cannot prepack the bundle.
+      // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
+      let e = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
+      writeEffects.set(fname, e);
+    }
+
     // check that functions are independent
-    let conflicts: Set<BabelNodeSourceLocation> = new Set();
+    let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
     for (let [fname1, call1] of calls) {
-      let e1 = this.realm.evaluateNodeForEffectsInGlobalEnv(call1);
-      let c = e1[0];
-      if (c instanceof Completion) {
+      let e1 = writeEffects.get(fname1);
+      invariant(e1 !== undefined);
+      if (e1[0] instanceof Completion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fname1} may terminate abruptly`,
-          c.location,
+          e1[0].location,
           "PP1002",
           "FatalError"
         );
@@ -80,12 +94,15 @@ export class Functions {
         this.reportWriteConflicts(fname1, conflicts, e1[3], call1, call2);
       }
     }
-    if (conflicts.size > 0) throw new FatalError();
+    if (conflicts.size > 0) {
+      for (let diagnostic of conflicts.values()) this.realm.handleError(diagnostic);
+      throw new FatalError();
+    }
   }
 
   reportWriteConflicts(
     fname: string,
-    conflicts: Set<BabelNodeSourceLocation>,
+    conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic>,
     pbs: PropertyBindings,
     call1: BabelNodeCallExpression,
     call2: BabelNodeCallExpression
@@ -97,8 +114,7 @@ export class Functions {
         "PP1003",
         "FatalError"
       );
-      this.realm.handleError(error);
-      conflicts.add(location);
+      conflicts.set(location, error);
     };
     let writtenObjects: Set<ObjectValue | AbstractObjectValue> = new Set();
     pbs.forEach((val, key, m) => {
@@ -117,7 +133,7 @@ export class Functions {
       if (pbs.has(pb) && !conflicts.has(location)) reportConflict(location);
     };
     try {
-      this.realm.evaluateNodeForEffectsInGlobalEnv(call2);
+      ignoreErrorsIn(this.realm, () => this.realm.evaluateNodeForEffectsInGlobalEnv(call2, this.moduleTracer));
     } finally {
       this.realm.reportPropertyAccess = oldReportPropertyAccess;
       this.realm.reportObjectGetOwnProperties = oldReportObjectGetOwnProperties;

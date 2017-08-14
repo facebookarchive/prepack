@@ -36,7 +36,6 @@ export class ResidualHeapValueIdentifiers {
 
   collectValToRefCountOnly: boolean;
   valToRefCount: void | Map<Value, number>;
-  //value to intermediate references generated like $0, $1, $2,...
   refs: Map<Value, BabelNodeIdentifier>;
 
   setIdentifier(val: Value, id: BabelNodeIdentifier) {

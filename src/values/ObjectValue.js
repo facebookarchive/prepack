@@ -221,6 +221,11 @@ export default class ObjectValue extends ConcreteValue {
   symbols: Map<SymbolValue, PropertyBinding>;
   unknownProperty: void | PropertyBinding;
 
+  // An object value with an intrinsic name can either exist from the beginning of time,
+  // or it can be associated with a particular point in time by being used as a template
+  // when deriving an abstract value via a generator.
+  intrinsicNameGenerated: void | true;
+
   mightBeFalse(): boolean {
     return false;
   }

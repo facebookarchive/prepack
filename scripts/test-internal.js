@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { CompilerDiagnostic, ErrorHandlerResult } from "../lib/errors.js";
+import { CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import { prepackSources } from "../lib/prepack-standalone.js";
 
@@ -42,8 +42,10 @@ function search(dir, relative) {
 let tests = search(`${__dirname}/../facebook/test`, "facebook/test");
 
 let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic>;
+let errorList: Array<CompilerDiagnostic>;
 function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
   if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
+  else errorList.push(diagnostic);
   return "Fail";
 }
 
@@ -51,6 +53,7 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
   try {
     errors = new Map();
+    errorList = [];
     let modelName = name + ".model";
     let sourceMapName = name + ".map";
     let sourceCode = fs.readFileSync(name, "utf8");
@@ -60,16 +63,22 @@ function runTest(name: string, code: string): boolean {
     if (modelCode) sources.push({ filePath: modelName, fileContents: modelCode });
     sources.push({ filePath: name, fileContents: sourceCode, sourceMapContents: sourceMap });
 
-    let serialized = prepackSources(sources, {
+    let options = {
       internalDebug: true,
       compatibility: "jsc-600-1-4-17",
       delayUnsupportedRequires: true,
       mathRandomSeed: "0",
-      onError: errorHandler,
+      errorHandler,
       serialize: true,
-      speculate: !modelCode,
+      initializeMoreModules: !modelCode,
       sourceMaps: !!sourceMap,
-    });
+    };
+    if (name.endsWith("/bundle.js~"))
+      (options: any).additionalFunctions = [
+        "global.WildeBundle.prepareComponentScript",
+        "global.WildeBundle.prepareReact",
+      ];
+    let serialized = prepackSources(sources, options);
     let new_map = serialized.map; // force source maps to get computed
     if (!new_map) console.log(chalk.red("No source map"));
     if (!serialized) {
@@ -79,7 +88,7 @@ function runTest(name: string, code: string): boolean {
       return true;
     }
   } catch (e) {
-    console.log(e);
+    if (!(e instanceof FatalError)) console.log(e);
     return false;
   } finally {
     for (let [loc, error] of errors) {
@@ -87,6 +96,9 @@ function runTest(name: string, code: string): boolean {
         `${error.severity}: ${loc.source || ""} ${loc.start.line}:${loc.start.column +
           1} ${error.errorCode} ${error.message}`
       );
+    }
+    for (let error of errorList) {
+      console.log(`${error.severity}: ${error.errorCode} ${error.message}`);
     }
   }
 }

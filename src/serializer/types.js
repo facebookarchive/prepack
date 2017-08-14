@@ -15,10 +15,9 @@ import type { ECMAScriptSourceFunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm } from "../realm.js";
-import { Completion } from "../completions.js";
 import invariant from "../invariant.js";
 
-export type TryQuery<T> = (f: () => T, onCompletion: T | (Completion => T), logCompletion: boolean) => T;
+export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
 export type FunctionInstance = {
   serializedBindings: SerializedBindings,
@@ -29,7 +28,7 @@ export type FunctionInstance = {
 
 export type Names = { [key: string]: true };
 export type FunctionInfo = {
-  names: Names,
+  unbound: Names,
   modified: Names,
   usesArguments: boolean,
   usesThis: boolean,

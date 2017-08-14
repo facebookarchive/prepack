@@ -61,7 +61,7 @@ function run(
   let outputSourceMap;
   let statsFileName;
   let flags = {
-    speculate: false,
+    initializeMoreModules: false,
     trace: false,
     debugNames: false,
     singlePass: false,
@@ -132,7 +132,7 @@ function run(
       compatibility,
       mathRandomSeed,
       inputSourceMapFilename: inputSourceMap,
-      onError: errorHandler,
+      errorHandler: errorHandler,
       sourceMaps: !!outputSourceMap,
     },
     flags

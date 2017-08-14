@@ -65,7 +65,8 @@ export class ResidualHeapSerializer {
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
-    delayInitializations: boolean
+    delayInitializations: boolean,
+    referencedDeclaredValues: Set<AbstractValue>
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -87,6 +88,7 @@ export class ResidualHeapSerializer {
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
+    this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
     this.serializedValues = new Set();
@@ -116,6 +118,7 @@ export class ResidualHeapSerializer {
     this.residualFunctionBindings = residualFunctionBindings;
     this.residualFunctionInfos = residualFunctionInfos;
     this.delayInitializations = delayInitializations;
+    this.referencedDeclaredValues = referencedDeclaredValues;
     this.activeGeneratorBodies = new Map();
   }
 
@@ -135,6 +138,7 @@ export class ResidualHeapSerializer {
   valueNameGenerator: NameGenerator;
   descriptorNameGenerator: NameGenerator;
   factoryNameGenerator: NameGenerator;
+  intrinsicNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
@@ -148,6 +152,7 @@ export class ResidualHeapSerializer {
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
   delayInitializations: boolean;
+  referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
 
   // Configures all mutable aspects of an object, in particular:
@@ -160,11 +165,16 @@ export class ResidualHeapSerializer {
     properties: Map<string, PropertyBinding> = obj.properties,
     objectPrototypeAlreadyEstablished: boolean = false
   ) {
-    /*
-    for (let symbol of obj.symbols.keys()) {
-      // TODO #22: serialize symbols
+    //inject symbols
+    for (let [symbol, propertyBinding] of obj.symbols) {
+      invariant(propertyBinding);
+      let desc = propertyBinding.descriptor;
+      if (desc === undefined) continue; //deleted
+      this.emitter.emitNowOrAfterWaitingForDependencies(this._getDescriptorValues(desc).concat([symbol, obj]), () => {
+        invariant(desc !== undefined);
+        return this._emitProperty(obj, symbol, desc);
+      });
     }
-    */
 
     // inject properties
     for (let [key, propertyBinding] of properties) {
@@ -310,7 +320,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _emitProperty(val: ObjectValue, key: string, desc: Descriptor): void {
+  _emitProperty(val: ObjectValue, key: string | SymbolValue, desc: Descriptor): void {
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -318,11 +328,13 @@ export class ResidualHeapSerializer {
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
       this._assignProperty(
         () => {
-          let serializedKey = this.generator.getAsPropertyNameExpression(key);
+          let serializedKey =
+            key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
+          let computed = key instanceof SymbolValue || !t.isIdentifier(serializedKey);
           return t.memberExpression(
             this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
             serializedKey,
-            !t.isIdentifier(serializedKey)
+            computed
           );
         },
         () => {
@@ -385,8 +397,10 @@ export class ResidualHeapSerializer {
           );
         }
       }
-
-      let serializedKey = this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
+      let serializedKey =
+        key instanceof SymbolValue
+          ? this.serializeValue(key)
+          : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
       invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
       let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
       this.emitter.emit(
@@ -466,12 +480,18 @@ export class ResidualHeapSerializer {
     }
 
     if (generators.length === 1 && functionValues.length === 0) {
-      // This value is only referenced from a single generator.
+      // This value is only referenced from a single generator, and it's not the realm generator.
+      invariant(generators[0] !== this.generator);
       // We can emit the initialization of this value into the body associated with that generator.
       let body = this.activeGeneratorBodies.get(generators[0]);
-      invariant(body !== undefined);
-      invariant(body === this.emitter.getBody());
-      return { body };
+      if (body === undefined) {
+        // TODO: The generator is no longer active! We missed the right time to emit this value.
+        this.logger.logError(val, "Value is referenced in an unsupported scope.");
+        return { body: this.mainBody };
+      } else {
+        invariant(body === this.emitter.getBody());
+        return { body };
+      }
     }
 
     // TODO #482: If there's more than...
@@ -539,8 +559,22 @@ export class ResidualHeapSerializer {
   }
 
   _serializeValueIntrinsic(val: Value): BabelNodeExpression {
-    invariant(val.intrinsicName);
-    return this.preludeGenerator.convertStringToMember(val.intrinsicName);
+    let intrinsicName = val.intrinsicName;
+    invariant(intrinsicName);
+    let intrinsicId = t.identifier(this.valueNameGenerator.generate(intrinsicName));
+    let declar = t.variableDeclaration("var", [
+      t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
+    ]);
+    if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
+      // TODO #882: The value came into existance as a template for an abstract object.
+      // Unfortunately, we are not properly tracking which generate it's associated with.
+      // Until this gets fixed, let's stick to the historical behavior: Emit to the current emitter body.
+      this.emitter.emit(declar);
+    } else {
+      invariant(this.emitter.getBody() === this.mainBody);
+      this.prelude.push(declar);
+    }
+    return intrinsicId;
   }
 
   _getDescriptorValues(desc: Descriptor): Array<Value> {
@@ -865,7 +899,7 @@ export class ResidualHeapSerializer {
   }
 
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
-  _canEmbedProperty(obj: ObjectValue, key: string, prop: Descriptor): boolean {
+  _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue, prop: Descriptor): boolean {
     if ((obj instanceof FunctionValue && key === "prototype") || (obj.getKind() === "RegExp" && key === "lastIndex"))
       return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
     else return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;
@@ -1125,6 +1159,9 @@ export class ResidualHeapSerializer {
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
+      canOmit: (value: AbstractValue) => {
+        return !this.referencedDeclaredValues.has(value);
+      },
       declare: (value: AbstractValue) => {
         this.emitter.declare(value);
       },
@@ -1255,7 +1292,11 @@ export class ResidualHeapSerializer {
       }
     }
 
-    invariant(this.serializedValues.size === this.residualValues.size);
+    invariant(
+      this.serializedValues.size === this.residualValues.size,
+      "serialized " + this.serializedValues.size + " of " + this.residualValues.size
+    );
+
     return t.file(t.program(ast_body));
   }
 }
