@@ -41,11 +41,11 @@ export default class AbstractValue extends Value {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    kind?: string,
-    intrinsicName?: string
+    optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
   ) {
     invariant(realm.useAbstractInterpretation);
-    super(realm, intrinsicName);
+    super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
+    invariant(buildNode instanceof Function || args.length === 0);
     invariant(!Value.isTypeCompatibleWith(types.getType(), ObjectValue) || this instanceof AbstractObjectValue);
     invariant(types.getType() !== NullValue && types.getType() !== UndefinedValue);
     this.types = types;
@@ -53,7 +53,7 @@ export default class AbstractValue extends Value {
     this.mightBeEmpty = false;
     this._buildNode = buildNode;
     this.args = args;
-    this.kind = kind;
+    this.kind = optionalArgs ? optionalArgs.kind : undefined;
   }
 
   clone(): AbstractValue {
@@ -66,12 +66,6 @@ export default class AbstractValue extends Value {
 
   getType() {
     return this.types.getType();
-  }
-
-  getGenerator() {
-    let realmGenerator = this.$Realm.generator;
-    invariant(realmGenerator);
-    return realmGenerator;
   }
 
   kind: ?string;

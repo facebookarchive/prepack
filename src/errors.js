@@ -26,6 +26,7 @@ export class CompilerDiagnostic extends Error {
     this.errorCode = errorCode;
   }
 
+  callStack: void | string;
   location: ?BabelNodeSourceLocation;
   severity: Severity;
   errorCode: string;

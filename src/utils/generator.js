@@ -42,6 +42,7 @@ export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
   emit: BabelNodeStatement => void,
+  canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
 };
 
@@ -52,7 +53,16 @@ export type GeneratorEntry = {
   args: Array<Value>,
   buildNode: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
+  isPure?: boolean,
 };
+
+export type VisitEntryCallbacks = {|
+  visitValue: Value => void,
+  visitGenerator: Generator => void,
+  canSkip: AbstractValue => boolean,
+  recordDeclaration: AbstractValue => void,
+  recordDelayedEntry: GeneratorEntry => void,
+|};
 
 export class Generator {
   constructor(realm: Realm) {
@@ -188,7 +198,6 @@ export class Generator {
     );
   }
 
-  // Pushes "if (violationConditionFn()) { throw new Error("invariant violation"); }"
   emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
@@ -246,13 +255,14 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    kind?: string
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
-    let res = this.realm.createAbstract(types, values, args, id, kind);
+    let res = this.realm.createAbstract(types, values, [], id, optionalArgs ? optionalArgs.kind : undefined);
     this.body.push({
+      isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) =>
@@ -267,6 +277,7 @@ export class Generator {
     });
     let type = types.getType();
     res.intrinsicName = id.name;
+    if (optionalArgs && optionalArgs.skipInvariant) return res;
     let typeofString;
     if (type instanceof FunctionValue) typeofString = "function";
     else if (type === UndefinedValue) invariant(false);
@@ -307,17 +318,26 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     for (let entry of this.body) {
-      let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
-      context.emit(entry.buildNode(nodes, context));
-      if (entry.declared !== undefined) context.declare(entry.declared);
+      if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
+        let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
+        context.emit(entry.buildNode(nodes, context));
+        if (entry.declared !== undefined) context.declare(entry.declared);
+      }
     }
   }
 
-  visit(visitValue: Value => void, visitGenerator: Generator => void) {
-    for (let entry of this.body) {
-      for (let boundArg of entry.args) visitValue(boundArg);
-      if (entry.dependencies) for (let dependency of entry.dependencies) visitGenerator(dependency);
+  visitEntry(entry: GeneratorEntry, callbacks: VisitEntryCallbacks) {
+    if (entry.isPure && entry.declared && callbacks.canSkip(entry.declared)) {
+      callbacks.recordDelayedEntry(entry);
+    } else {
+      if (entry.declared) callbacks.recordDeclaration(entry.declared);
+      for (let boundArg of entry.args) callbacks.visitValue(boundArg);
+      if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency);
     }
+  }
+
+  visit(callbacks: VisitEntryCallbacks) {
+    for (let bodyEntry of this.body) this.visitEntry(bodyEntry, callbacks);
   }
 }
 
