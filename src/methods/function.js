@@ -1053,6 +1053,7 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
 
   // 13. Let evalCxt be a new ECMAScript code execution context.
   let evalCxt = new ExecutionContext();
+  evalCxt.isStrict = strictEval;
 
   // 14. Set the evalCxt's Function to null.
   evalCxt.setFunction(null);

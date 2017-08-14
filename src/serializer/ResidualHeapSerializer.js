@@ -1200,7 +1200,7 @@ export class ResidualHeapSerializer {
     // add strict modes
     let strictDirective = t.directive(t.directiveLiteral("use strict"));
     let globalDirectives = [];
-    if (!unstrictFunctionBodies.length && strictFunctionBodies.length) {
+    if (!this.realm.isStrict && !unstrictFunctionBodies.length && strictFunctionBodies.length) {
       // no unstrict functions, only strict ones
       globalDirectives.push(strictDirective);
     } else if (unstrictFunctionBodies.length && strictFunctionBodies.length) {
@@ -1271,6 +1271,8 @@ export class ResidualHeapSerializer {
       "serialized " + this.serializedValues.size + " of " + this.residualValues.size
     );
 
-    return t.file(t.program(ast_body));
+    let program_directives = [];
+    if (this.realm.isStrict) program_directives.push(strictDirective);
+    return t.file(t.program(ast_body, program_directives));
   }
 }
