@@ -160,7 +160,7 @@ function runTest(name, code, options, args) {
     let value = code.substring(searchStart + marker.length, searchEnd);
     let count = parseInt(code.substring(searchEnd + 1, code.indexOf("\n", searchStart)), 10);
     try {
-      let serialized = prepackString(name, code, "", options);
+      let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
       if (!serialized) {
         console.log(chalk.red("Error during serialization!"));
         return false;
