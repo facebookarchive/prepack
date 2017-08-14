@@ -51,7 +51,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
   console.log(chalk.inverse(name));
   let newCode1, newMap1, newCode2, newMap2;
   try {
-    let s = prepackFileSync(test_path, {
+    let s = prepackFileSync([test_path], {
       internalDebug: true,
       errorHandler: errorHandler,
       sourceMaps: true,
@@ -65,7 +65,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
     fs.writeFileSync(name + ".new1.js", newCode1);
     newMap1 = s.map;
     fs.writeFileSync(name + ".new1.js.map", JSON.stringify(newMap1));
-    s = prepackFileSync(name + ".new1.js", {
+    s = prepackFileSync([name + ".new1.js"], {
       compatibility: "node-source-maps",
       inputSourceMapFilename: name + ".new1.js.map",
       internalDebug: true,
