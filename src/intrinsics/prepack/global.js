@@ -119,6 +119,7 @@ export default function(realm: Realm): void {
         if (template && !(template instanceof FunctionValue)) {
           // why exclude functions?
           template.makePartial();
+          invariant(realm.generator);
           if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
         return result;
@@ -168,7 +169,8 @@ export default function(realm: Realm): void {
             "the nested properties should only be rebuilt for an abstract value"
           );
           template.makePartial();
-          realm.rebuildNestedProperties(result, ((result.buildNode: any): BabelNodeIdentifier).name);
+          invariant(realm.generator);
+          realm.rebuildNestedProperties(result, ((result._buildNode: any): BabelNodeIdentifier).name);
         }
         return result;
       }
@@ -264,34 +266,33 @@ export default function(realm: Realm): void {
         // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
         if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
           let generator = realm.generator;
-          if (generator) {
-            let condition = ([objectNode, valueNode]) =>
-              t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode);
-            if (invariantOptions) {
-              let invariantOptionString = ToStringPartial(realm, invariantOptions);
-              switch (invariantOptionString) {
-                case "VALUE_DEFINED_INVARIANT":
-                  condition = ([objectNode, valueNode]) =>
-                    t.binaryExpression(
-                      "===",
-                      t.memberExpression(objectNode, t.identifier(key)),
-                      t.valueToNode(undefined)
-                    );
-                  break;
-                case "SKIP_INVARIANT":
-                  condition = null;
-                  break;
-                case "FULL_INVARIANT":
-                  break;
-                default:
-                  invariant(false, "Invalid invariantOption " + invariantOptionString);
-              }
+          invariant(generator);
+          let condition = ([objectNode, valueNode]) =>
+            t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode);
+          if (invariantOptions) {
+            let invariantOptionString = ToStringPartial(realm, invariantOptions);
+            switch (invariantOptionString) {
+              case "VALUE_DEFINED_INVARIANT":
+                condition = ([objectNode, valueNode]) =>
+                  t.binaryExpression(
+                    "===",
+                    t.memberExpression(objectNode, t.identifier(key)),
+                    t.valueToNode(undefined)
+                  );
+                break;
+              case "SKIP_INVARIANT":
+                condition = null;
+                break;
+              case "FULL_INVARIANT":
+                break;
+              default:
+                invariant(false, "Invalid invariantOption " + invariantOptionString);
             }
-            if (condition)
-              generator.emitInvariant([object, value, object], condition, objnode =>
-                t.memberExpression(objnode, t.identifier(key))
-              );
           }
+          if (condition)
+            generator.emitInvariant([object, value, object], condition, objnode =>
+              t.memberExpression(objnode, t.identifier(key))
+            );
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
           (object: any).$Set(key, value, object);

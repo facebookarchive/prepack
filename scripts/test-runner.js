@@ -86,14 +86,14 @@ report(inspect());`,
 function runTest(name, code, options, args) {
   console.log(chalk.inverse(name) + " " + util.inspect(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
-  let speculate = code.includes("// initialize more modules");
+  let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   options = Object.assign({}, options, {
     compatibility,
-    speculate,
+    initializeMoreModules,
     delayUnsupportedRequires,
-    onError: diag => "Fail",
+    errorHandler: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
@@ -105,7 +105,7 @@ function runTest(name, code, options, args) {
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
       let serializerOptions = {
-        initializeMoreModules: speculate,
+        initializeMoreModules,
         delayUnsupportedRequires,
         internalDebug: true,
         additionalFunctions: options.additionalFunctions,

@@ -68,9 +68,9 @@ function runTest(name: string, code: string): boolean {
       compatibility: "jsc-600-1-4-17",
       delayUnsupportedRequires: true,
       mathRandomSeed: "0",
-      onError: errorHandler,
+      errorHandler,
       serialize: true,
-      speculate: !modelCode,
+      initializeMoreModules: !modelCode,
       sourceMaps: !!sourceMap,
     };
     if (name.endsWith("/bundle.js~"))

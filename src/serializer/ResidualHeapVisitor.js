@@ -198,8 +198,6 @@ export class ResidualHeapVisitor {
     return visitedBinding;
   }
 
-  visitValueIntrinsic(val: Value): void {}
-
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
     const realm = this.realm;
@@ -429,9 +427,10 @@ export class ResidualHeapVisitor {
     if (val instanceof AbstractValue) {
       if (this._mark(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // For scoping reasons, we fall back to the main body for intrinsics.
+      // All intrinsic values exist from the beginning of time...
+      // ...except for a few that come into existance as templates for abstract objects (TODO #882).
       this._withScope(this.realmGenerator, () => {
-        if (this._mark(val)) this.visitValueIntrinsic(val);
+        this._mark(val);
       });
     } else if (val instanceof EmptyValue) {
       this._mark(val);
@@ -509,7 +508,9 @@ export class ResidualHeapVisitor {
       oldDelayedEntries = this.delayedVisitGeneratorEntries;
       this.delayedVisitGeneratorEntries = [];
       for (let { generator, entry } of oldDelayedEntries)
-        generator.visitEntry(entry, this.createGeneratorVisitCallbacks(generator));
+        this._withScope(generator, () => {
+          generator.visitEntry(entry, this.createGeneratorVisitCallbacks(generator));
+        });
     }
   }
 }
