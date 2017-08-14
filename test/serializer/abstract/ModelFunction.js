@@ -7,7 +7,7 @@ if (global.__assumeDataProperty) {
       __residual("void", function(arg1, console) {
         console.log(arg1);
       }, arg1, console);
-    }, "DEFINED");
+    }, "VALUE_DEFINED_INVARIANT");
 }
 
 global.fun("literal");

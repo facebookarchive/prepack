@@ -267,24 +267,29 @@ export default function(realm: Realm): void {
           if (generator) {
             let condition = ([objectNode, valueNode]) =>
               t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode);
-            if (invariantOptions && invariantOptions instanceof StringValue) {
-              switch (invariantOptions.value) {
-                case "DEFINED":
+            if (invariantOptions) {
+              let invariantOptionString = ToStringPartial(realm, invariantOptions);
+              switch (invariantOptionString) {
+                case "VALUE_DEFINED_INVARIANT":
                   condition = ([objectNode, valueNode]) =>
-                    t.unaryExpression("!", t.memberExpression(objectNode, t.identifier(key)));
+                    t.binaryExpression(
+                      "===",
+                      t.memberExpression(objectNode, t.identifier(key)),
+                      t.valueToNode(undefined)
+                    );
                   break;
-                case "SKIP":
+                case "SKIP_INVARIANT":
                   condition = null;
                   break;
-                case "FULL":
+                case "FULL_INVARIANT":
                   break;
                 default:
-                  invariant(false, "Invalid invariantOption " + invariantOptions.value);
+                  invariant(false, "Invalid invariantOption " + invariantOptionString);
               }
             }
             if (condition)
-              generator.emitInvariant([object, value, object], condition,
-                objnode => t.memberExpression(objnode, t.identifier(key))
+              generator.emitInvariant([object, value, object], condition, objnode =>
+                t.memberExpression(objnode, t.identifier(key))
               );
           }
           realm.generator = undefined; // don't emit code during the following $Set call
