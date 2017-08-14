@@ -510,11 +510,12 @@ export default function(realm: Realm): ObjectValue {
           buildJSONStringify(realm.preludeGenerator)({
             OBJECT: node,
           }),
-        "JSON.stringify(...)"
+        { kind: "JSON.stringify(...)" }
       );
       if (clonedValue instanceof ObjectValue) {
         let iName = result.intrinsicName;
         invariant(iName);
+        invariant(realm.generator);
         realm.rebuildNestedProperties(result, iName);
       }
       return result;
@@ -546,8 +547,13 @@ export default function(realm: Realm): ObjectValue {
     let unfiltered;
     if (text instanceof AbstractValue && text.kind === "JSON.stringify(...)") {
       // Enable cloning via JSON.parse(JSON.stringify(...)).
-      let value = text.args[0];
-      let clonedValue = text.args[1];
+      let gen = realm.preludeGenerator;
+      invariant(gen); // text is abstract, so we are doing abstract interpretation
+      let args = gen.derivedIds.get(text.intrinsicName);
+      invariant(args); // since text.kind === "JSON.stringify(...)" we know this must be true
+      let value = args[0];
+      invariant(value instanceof AbstractValue); // put there by stringify above
+      let clonedValue = args[1];
       let type = value.getType();
       let template;
       if (clonedValue instanceof AbstractObjectValue) {
@@ -560,9 +566,10 @@ export default function(realm: Realm): ObjectValue {
         });
       let types = new TypesDomain(type);
       let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-      unfiltered = realm.deriveAbstract(types, values, [text], buildNode, "JSON.parse(...)");
+      unfiltered = realm.deriveAbstract(types, values, [text], buildNode, { kind: "JSON.parse(...)" });
       if (template) {
         invariant(unfiltered.intrinsicName);
+        invariant(realm.generator);
         realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
       }
     } else {

@@ -24,7 +24,6 @@ import {
   AbstractObjectValue,
   FunctionValue,
 } from "./index.js";
-
 import invariant from "../invariant.js";
 
 export default class Value {
@@ -71,7 +70,8 @@ export default class Value {
     return type.prototype instanceof Constructor || type.prototype === Constructor.prototype;
   }
 
-  intrinsicName: ?string;
+  intrinsicName: void | string;
+
   // The source location of the expression that first produced this value.
   expressionLocation: ?BabelNodeSourceLocation;
   $Realm: Realm;

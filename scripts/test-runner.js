@@ -86,14 +86,14 @@ report(inspect());`,
 function runTest(name, code, options, args) {
   console.log(chalk.inverse(name) + " " + util.inspect(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
-  let speculate = code.includes("// initialize more modules");
+  let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   options = Object.assign({}, options, {
     compatibility,
-    speculate,
+    initializeMoreModules,
     delayUnsupportedRequires,
-    onError: diag => "Fail",
+    errorHandler: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
@@ -105,7 +105,7 @@ function runTest(name, code, options, args) {
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
       let serializerOptions = {
-        initializeMoreModules: speculate,
+        initializeMoreModules,
         delayUnsupportedRequires,
         internalDebug: true,
         additionalFunctions: options.additionalFunctions,
@@ -153,6 +153,31 @@ function runTest(name, code, options, args) {
       console.log(err);
     }
     return false;
+  } else if (code.includes("// Copies of ")) {
+    let marker = "// Copies of ";
+    let searchStart = code.indexOf(marker);
+    let searchEnd = code.indexOf(":", searchStart);
+    let value = code.substring(searchStart + marker.length, searchEnd);
+    let count = parseInt(code.substring(searchEnd + 1, code.indexOf("\n", searchStart)), 10);
+    try {
+      let serialized = prepackString(name, code, "", options);
+      if (!serialized) {
+        console.log(chalk.red("Error during serialization!"));
+        return false;
+      }
+      let regex = new RegExp(value, "gi");
+      let matches = serialized.code.match(regex);
+      if (!matches || matches.length !== count) {
+        console.log(
+          chalk.red(`Wrong number of occurrances of ${value} got ${matches ? matches.length : 0} instead of ${count}`)
+        );
+        return false;
+      }
+    } catch (err) {
+      console.log(err);
+      return false;
+    }
+    return true;
   } else {
     let expected, actual;
     let codeIterations = [];

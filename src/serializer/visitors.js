@@ -10,7 +10,6 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { IsUnresolvableReference, ResolveBinding } from "../methods/index.js";
 import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeCallExpression } from "babel-types";
@@ -21,7 +20,6 @@ export type ClosureRefVisitorState = {
   tryQuery: TryQuery<*>,
   val: FunctionValue,
   functionInfo: FunctionInfo,
-  map: Names,
   realm: Realm,
 };
 
@@ -49,19 +47,23 @@ function shouldVisit(node, data) {
 //       they will be visited again and possibly transformed.
 //       If necessary we could implement this by following node.parentPath and checking
 //       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
+function replaceName(path, serializedBinding, name, data) {
+  if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
+
+  if (serializedBinding && shouldVisit(path.node, data)) {
+    markVisited(serializedBinding.serializedValue, data);
+    path.replaceWith(serializedBinding.serializedValue);
+  }
+}
+
 export let ClosureRefReplacer = {
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefReplacerState) {
     if (ignorePath(path)) return;
 
     let serializedBindings = state.serializedBindings;
-    let innerName = path.node.name;
-    if (path.scope.hasBinding(innerName, /*noGlobals*/ true)) return;
-
-    let serializedBinding = serializedBindings[innerName];
-    if (serializedBinding && shouldVisit(path.node, serializedBindings)) {
-      markVisited(serializedBinding.serializedValue, serializedBindings);
-      path.replaceWith(serializedBinding.serializedValue);
-    }
+    let name = path.node.name;
+    let serializedBinding = serializedBindings[name];
+    if (serializedBinding) replaceName(path, serializedBinding, name, serializedBindings);
   },
 
   CallExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
@@ -84,30 +86,22 @@ export let ClosureRefReplacer = {
   "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: ClosureRefReplacerState) {
     let serializedBindings = state.serializedBindings;
     let ids = path.getBindingIdentifierPaths();
-
-    for (let innerName in ids) {
-      let nestedPath = ids[innerName];
-      if (path.scope.hasBinding(innerName, /*noGlobals*/ true)) return;
-
-      let serializedBinding = serializedBindings[innerName];
-      if (serializedBinding && shouldVisit(nestedPath.node, serializedBindings)) {
-        markVisited(serializedBinding.serializedValue, serializedBindings);
-        nestedPath.replaceWith(serializedBinding.serializedValue);
+    for (let name in ids) {
+      let serializedBinding = serializedBindings[name];
+      if (serializedBinding) {
+        let nestedPath = ids[name];
+        replaceName(nestedPath, serializedBinding, name, serializedBindings);
       }
     }
   },
 };
 
-function visitName(state, name, modified) {
-  let doesNotMatter = true;
-  let ref = state.tryQuery(
-    () => ResolveBinding(state.realm, name, doesNotMatter, state.val.$Environment),
-    undefined,
-    true
-  );
-  if (ref === undefined) return;
-  if (IsUnresolvableReference(state.realm, ref)) return;
-  state.map[name] = true;
+function visitName(path, state, name, modified) {
+  // Is the name bound to some local identifier? If so, we don't need to do anything
+  if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
+
+  // Otherwise, let's record that there's an unbound identifier
+  state.functionInfo.unbound[name] = true;
   if (modified) state.functionInfo.modified[name] = true;
 }
 
@@ -126,8 +120,7 @@ export let ClosureRefVisitor = {
       state.functionInfo.usesArguments = true;
       return;
     }
-    if (path.scope.hasBinding(innerName, /*noGlobals*/ true)) return;
-    visitName(state, innerName, false);
+    visitName(path, state, innerName, false);
   },
 
   ThisExpression(path: BabelTraversePath, state: ClosureRefVisitorState) {
@@ -136,8 +129,7 @@ export let ClosureRefVisitor = {
 
   "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: ClosureRefVisitorState) {
     for (let name in path.getBindingIdentifiers()) {
-      if (path.scope.hasBinding(name, /*noGlobals*/ true)) continue;
-      visitName(state, name, true);
+      visitName(path, state, name, true);
     }
   },
 };

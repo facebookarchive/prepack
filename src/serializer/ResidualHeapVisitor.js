@@ -30,6 +30,7 @@ import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNodeBlockStatement } from "babel-types";
 import { Generator } from "../utils/generator.js";
+import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { VisitedBinding, VisitedBindings, FunctionInfo } from "./types.js";
@@ -63,6 +64,8 @@ export class ResidualHeapVisitor {
     invariant(generator);
     this.scope = this.realmGenerator = generator;
     this.inspector = new ResidualHeapInspector(realm, logger);
+    this.referencedDeclaredValues = new Set();
+    this.delayedVisitGeneratorEntries = [];
   }
 
   realm: Realm;
@@ -77,6 +80,8 @@ export class ResidualHeapVisitor {
   realmGenerator: Generator;
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
+  referencedDeclaredValues: Set<AbstractValue>;
+  delayedVisitGeneratorEntries: Array<{| generator: Generator, entry: GeneratorEntry |}>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -86,11 +91,14 @@ export class ResidualHeapVisitor {
   }
 
   visitObjectProperties(obj: ObjectValue): void {
-    /*
-    for (let symbol of obj.symbols.keys()) {
-      // TODO #22: visit symbols
+    // visit properties
+    for (let [symbol, propertyBinding] of obj.symbols) {
+      invariant(propertyBinding);
+      let desc = propertyBinding.descriptor;
+      if (desc === undefined) continue; //deleted
+      this.visitDescriptor(desc);
+      this.visitValue(symbol);
     }
-    */
 
     // visit properties
     for (let [key, propertyBinding] of obj.properties) {
@@ -190,8 +198,6 @@ export class ResidualHeapVisitor {
     return visitedBinding;
   }
 
-  visitValueIntrinsic(val: Value): void {}
-
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
     const realm = this.realm;
@@ -270,7 +276,7 @@ export class ResidualHeapVisitor {
 
     if (!functionInfo) {
       functionInfo = {
-        names: Object.create(null),
+        unbound: Object.create(null),
         modified: Object.create(null),
         usesArguments: false,
         usesThis: false,
@@ -281,7 +287,6 @@ export class ResidualHeapVisitor {
         tryQuery: this.logger.tryQuery.bind(this.logger),
         val,
         functionInfo,
-        map: functionInfo.names,
         realm: this.realm,
       };
 
@@ -292,13 +297,13 @@ export class ResidualHeapVisitor {
         state
       );
 
-      if (val.isResidual && Object.keys(functionInfo.names).length) {
+      if (val.isResidual && Object.keys(functionInfo.unbound).length) {
         if (!val.isUnsafeResidual) {
           this.logger.logError(
             val,
             `residual function ${describeLocation(this.realm, val, undefined, code.loc) ||
               "(unknown)"} refers to the following identifiers defined outside of the local scope: ${Object.keys(
-              functionInfo.names
+              functionInfo.unbound
             ).join(", ")}`
           );
         }
@@ -308,15 +313,19 @@ export class ResidualHeapVisitor {
     let visitedBindings = Object.create(null);
     this._withScope(val, () => {
       invariant(functionInfo);
-      for (let innerName in functionInfo.names) {
+      for (let innerName in functionInfo.unbound) {
         let visitedBinding;
         let doesNotMatter = true;
         let reference = this.logger.tryQuery(
           () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
           undefined,
-          true
+          false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the global scope. */
         );
-        if (reference === undefined) {
+        if (
+          reference === undefined ||
+          IsUnresolvableReference(this.realm, reference) ||
+          reference.base instanceof GlobalEnvironmentRecord
+        ) {
           visitedBinding = this.visitGlobalBinding(innerName);
         } else {
           invariant(!IsUnresolvableReference(this.realm, reference));
@@ -325,12 +334,8 @@ export class ResidualHeapVisitor {
           if (typeof referencedName !== "string") {
             throw new FatalError("TODO: do not know how to visit reference with symbol");
           }
-          if (reference.base instanceof GlobalEnvironmentRecord) {
-            visitedBinding = this.visitGlobalBinding(referencedName);
-          } else {
-            invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
-            visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
-          }
+          invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
+          visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
         }
         visitedBindings[innerName] = visitedBinding;
         if (functionInfo.modified[innerName]) visitedBinding.modified = true;
@@ -422,9 +427,10 @@ export class ResidualHeapVisitor {
     if (val instanceof AbstractValue) {
       if (this._mark(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // For scoping reasons, we fall back to the main body for intrinsics.
+      // All intrinsic values exist from the beginning of time...
+      // ...except for a few that come into existance as templates for abstract objects (TODO #882).
       this._withScope(this.realmGenerator, () => {
-        if (this._mark(val)) this.visitValueIntrinsic(val);
+        this._mark(val);
       });
     } else if (val instanceof EmptyValue) {
       this._mark(val);
@@ -470,14 +476,41 @@ export class ResidualHeapVisitor {
     return binding;
   }
 
+  createGeneratorVisitCallbacks(generator: Generator): VisitEntryCallbacks {
+    return {
+      visitValue: this.visitValue.bind(this),
+      visitGenerator: this.visitGenerator.bind(this),
+      canSkip: (value: AbstractValue): boolean => {
+        return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
+      },
+      recordDeclaration: (value: AbstractValue) => {
+        this.referencedDeclaredValues.add(value);
+      },
+      recordDelayedEntry: (entry: GeneratorEntry) => {
+        this.delayedVisitGeneratorEntries.push({ generator, entry });
+      },
+    };
+  }
+
   visitGenerator(generator: Generator): void {
     this._withScope(generator, () => {
-      generator.visit(this.visitValue.bind(this), this.visitGenerator.bind(this));
+      generator.visit(this.createGeneratorVisitCallbacks(generator));
     });
   }
 
   visitRoots(): void {
     this.visitGenerator(this.realmGenerator);
     for (let [, moduleValue] of this.modules.initializedModules) this.visitValue(moduleValue);
+    // Do a fixpoint over all pure generator entries to make sure that we visit
+    // arguments of only BodyEntries that are required by some other residual value
+    let oldDelayedEntries = [];
+    while (oldDelayedEntries.length !== this.delayedVisitGeneratorEntries.length) {
+      oldDelayedEntries = this.delayedVisitGeneratorEntries;
+      this.delayedVisitGeneratorEntries = [];
+      for (let { generator, entry } of oldDelayedEntries)
+        this._withScope(generator, () => {
+          generator.visitEntry(entry, this.createGeneratorVisitCallbacks(generator));
+        });
+    }
   }
 }

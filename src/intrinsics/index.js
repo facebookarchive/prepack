@@ -231,11 +231,11 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
 
   // collection prototypes
   i.MapPrototype = new ObjectValue(realm, i.ObjectPrototype, "Map.prototype");
+  i.SetPrototype = new ObjectValue(realm, i.ObjectPrototype, "Set.prototype");
+  i.WeakMapPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakMap.prototype");
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     i.WeakSetPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakSet.prototype");
-    i.WeakMapPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakMap.prototype");
   }
-  i.SetPrototype = new ObjectValue(realm, i.ObjectPrototype, "Set.prototype");
 
   // typed array prototypes
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
@@ -276,10 +276,10 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initializeSyntaxErrorPrototype(realm, i.SyntaxErrorPrototype);
   initialize__IntrospectionErrorPrototype(realm, i.__IntrospectionErrorPrototype);
   initializeDataViewPrototype(realm, i.DataViewPrototype);
+  initializeWeakMapPrototype(realm, i.WeakMapPrototype);
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     initializeTypedArrayPrototype(realm, i.TypedArrayPrototype);
     initializeWeakSetPrototype(realm, i.WeakSetPrototype);
-    initializeWeakMapPrototype(realm, i.WeakMapPrototype);
   }
   initializeFloat32ArrayPrototype(realm, i.Float32ArrayPrototype);
   initializeFloat64ArrayPrototype(realm, i.Float64ArrayPrototype);
@@ -322,8 +322,8 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   // collections
   i.Set = initializeSet(realm);
   i.Map = initializeMap(realm);
+  i.WeakMap = initializeWeakMap(realm);
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
-    i.WeakMap = initializeWeakMap(realm);
     i.WeakSet = initializeWeakSet(realm);
   }
   i.ArrayBuffer = initializeArrayBuffer(realm);
@@ -376,6 +376,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     "Int32Array",
     "Map",
     "Set",
+    "WeakMap",
     "Promise",
     "Uint8Array",
     "Uint8ClampedArray",
@@ -384,7 +385,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     "ArrayBuffer",
   ];
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
-    builtins = builtins.concat(["WeakMap", "WeakSet", "TypedArray"]);
+    builtins = builtins.concat(["WeakSet", "TypedArray"]);
   }
 
   for (let name of builtins) {

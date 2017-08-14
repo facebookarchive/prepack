@@ -132,11 +132,11 @@ export class ResidualFunctions {
     return scope;
   }
 
-  _referentialize(names: Names, instances: Array<FunctionInstance>): void {
+  _referentialize(unbound: Names, instances: Array<FunctionInstance>): void {
     for (let instance of instances) {
       let serializedBindings = instance.serializedBindings;
 
-      for (let name in names) {
+      for (let name in unbound) {
         let serializedBinding = serializedBindings[name];
         invariant(serializedBinding !== undefined);
         if (serializedBinding.modified) {
@@ -225,13 +225,13 @@ export class ResidualFunctions {
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
-      this._referentialize(functionInfo.names, instances);
+      this._referentialize(functionInfo.unbound, instances);
     }
 
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
-      let { names, modified, usesThis, usesArguments } = functionInfo;
+      let { unbound, modified, usesThis, usesArguments } = functionInfo;
       let params = instances[0].functionValue.$FormalParameters;
       invariant(params !== undefined);
 
@@ -331,7 +331,7 @@ export class ResidualFunctions {
           // filter included variables to only include those that are different
           let factoryNames: Array<string> = [];
           let sameSerializedBindings = Object.create(null);
-          for (let name in names) {
+          for (let name in unbound) {
             let isDifferent = false;
             let lastBinding;
 
