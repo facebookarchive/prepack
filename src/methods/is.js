@@ -281,6 +281,9 @@ export function IsFunctionDefinition(realm: Realm, node: BabelNodeExpression): b
     // 14.5.8 Static Semantics: IsFunctionDefinition
     case "ClassExpression":
       return true;
+    // JSX Extensions: http://facebook.github.io/jsx/
+    case "JSXElement":
+      return false;
     default:
       throw Error("Unexpected AST form : " + node.type);
   }

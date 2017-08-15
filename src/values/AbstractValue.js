@@ -68,12 +68,6 @@ export default class AbstractValue extends Value {
     return this.types.getType();
   }
 
-  getGenerator() {
-    let realmGenerator = this.$Realm.generator;
-    invariant(realmGenerator);
-    return realmGenerator;
-  }
-
   kind: ?string;
   types: TypesDomain;
   values: ValuesDomain;

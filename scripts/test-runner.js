@@ -10,7 +10,7 @@
 /* @flow */
 
 let FatalError = require("../lib/errors.js").FatalError;
-let prepackString = require("../lib/prepack-node.js").prepackString;
+let prepackSources = require("../lib/prepack-node.js").prepackSources;
 
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
@@ -86,14 +86,14 @@ report(inspect());`,
 function runTest(name, code, options, args) {
   console.log(chalk.inverse(name) + " " + util.inspect(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
-  let speculate = code.includes("// initialize more modules");
+  let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   options = Object.assign({}, options, {
     compatibility,
-    speculate,
+    initializeMoreModules,
     delayUnsupportedRequires,
-    onError: diag => "Fail",
+    errorHandler: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
@@ -105,7 +105,7 @@ function runTest(name, code, options, args) {
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
       let serializerOptions = {
-        initializeMoreModules: speculate,
+        initializeMoreModules,
         delayUnsupportedRequires,
         internalDebug: true,
         additionalFunctions: options.additionalFunctions,
@@ -126,7 +126,7 @@ function runTest(name, code, options, args) {
     return false;
   } else if (code.includes("// cannot serialize")) {
     try {
-      prepackString(name, code, "", options);
+      prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
     } catch (err) {
       if (err instanceof FatalError) {
         return true;
@@ -136,7 +136,7 @@ function runTest(name, code, options, args) {
     return false;
   } else if (code.includes("// no effect")) {
     try {
-      let serialized = prepackString(name, code, "", options);
+      let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
       if (!serialized) {
         console.log(chalk.red("Error during serialization!"));
         return false;
@@ -160,7 +160,7 @@ function runTest(name, code, options, args) {
     let value = code.substring(searchStart + marker.length, searchEnd);
     let count = parseInt(code.substring(searchEnd + 1, code.indexOf("\n", searchStart)), 10);
     try {
-      let serialized = prepackString(name, code, "", options);
+      let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
       if (!serialized) {
         console.log(chalk.red("Error during serialization!"));
         return false;
@@ -202,7 +202,7 @@ function runTest(name, code, options, args) {
       for (; i < max; i++) {
         let newUniqueSuffix = `_unique${unique++}`;
         options.uniqueSuffix = newUniqueSuffix;
-        let serialized = prepackString(name, oldCode, "", options);
+        let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
         if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
         if (!serialized) {
           console.log(chalk.red("Error during serialization!"));

@@ -151,7 +151,7 @@ export class ResidualFunctionInitializers {
           // We inline compact initializers, as calling a function would introduce too much
           // overhead. To determine if an initializer is compact, we count the number of
           // nodes in the AST, and check if it exceeds a certain threshold.
-          // TODO: Study in more detail which threshold is the best compromise in terms of
+          // TODO #885: Study in more detail which threshold is the best compromise in terms of
           // code size and performance.
           let count = 0;
           traverseFast(t.file(t.program([ast])), node => {

@@ -46,7 +46,7 @@ export type Scope = FunctionValue | Generator;
    In particular, this "filters out" values that are...
    - captured by a DeclarativeEnvironmentRecord, but not actually used by any closure.
    - Unmodified prototype objects
-   TODO #492: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
+   TODO #680: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
 */
 export class ResidualHeapVisitor {
   constructor(realm: Realm, logger: Logger, modules: Modules) {
@@ -198,8 +198,6 @@ export class ResidualHeapVisitor {
     this.visitValue(visitedBinding.value);
     return visitedBinding;
   }
-
-  visitValueIntrinsic(val: Value): void {}
 
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
@@ -430,9 +428,10 @@ export class ResidualHeapVisitor {
     if (val instanceof AbstractValue) {
       if (this._mark(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // For scoping reasons, we fall back to the main body for intrinsics.
+      // All intrinsic values exist from the beginning of time...
+      // ...except for a few that come into existance as templates for abstract objects (TODO #882).
       this._withScope(this.globalScope, () => {
-        if (this._mark(val)) this.visitValueIntrinsic(val);
+        this._mark(val);
       });
     } else if (val instanceof EmptyValue) {
       this._mark(val);

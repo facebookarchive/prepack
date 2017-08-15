@@ -15,12 +15,12 @@ import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
-import { getRealmOptions, getSerializerOptions } from "./options";
+import { getRealmOptions, getSerializerOptions } from "./prepack-options";
 import { FatalError } from "./errors.js";
 import { SerializerStatistics, TimingStatistics } from "./serializer/types.js";
 import type { SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
-import type { Options } from "./options";
+import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
 import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 import invariant from "./invariant.js";
@@ -38,10 +38,10 @@ Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
 
 export function prepackSources(
   sources: Array<SourceFile>,
-  options: Options = defaultOptions
+  options: PrepackOptions = defaultOptions
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
   let realmOptions = getRealmOptions(options);
-  realmOptions.errorHandler = options.onError;
+  realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(realmOptions);
   initializeGlobals(realm);
 
@@ -65,56 +65,30 @@ export function prepackSources(
     return result;
   } else {
     invariant(options.residual);
-    let result = realm.$GlobalEnv.executePartialEvaluator(sources);
+    let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
     if (result instanceof AbruptCompletion) throw result;
     // $FlowFixMe This looks like a Flow bug
     return result;
   }
 }
 
+/* deprecated: please use prepackSources instead. */
 export function prepackString(
   filename: string,
   code: string,
   sourceMap: string,
-  options: Options = defaultOptions
+  options: PrepackOptions = defaultOptions
 ): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
-  let sources = [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }];
-  let realmOptions = getRealmOptions(options);
-  let realm = construct_realm(realmOptions);
-  initializeGlobals(realm);
-
-  if (options.serialize || !options.residual) {
-    let serializer = new Serializer(realm, getSerializerOptions(options));
-    let serialized = serializer.init(sources, options.sourceMaps);
-    if (!serialized) {
-      throw new FatalError();
-    }
-    if (!options.residual) return serialized;
-    let residualSources = [
-      {
-        filePath: options.outputFilename || "unknown",
-        fileContents: serialized.code,
-        sourceMapContents: JSON.stringify(serialized.map),
-      },
-    ];
-    let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
-    if (result instanceof AbruptCompletion) throw result;
-    return (result: any);
-  } else {
-    invariant(options.residual);
-    let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
-    if (result instanceof AbruptCompletion) throw result;
-    return (result: any);
-  }
+  return prepackSources([{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }], options);
 }
 
-/* deprecated: please use prepackString instead. */
-export function prepack(code: string, options: Options = defaultOptions) {
+/* deprecated: please use prepackSources instead. */
+export function prepack(code: string, options: PrepackOptions = defaultOptions) {
   let filename = options.filename || "unknown";
   let sources = [{ filePath: filename, fileContents: code }];
 
   let realmOptions = getRealmOptions(options);
-  realmOptions.errorHandler = options.onError;
+  realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(realmOptions);
   initializeGlobals(realm);
 
@@ -126,8 +100,12 @@ export function prepack(code: string, options: Options = defaultOptions) {
   return serialized;
 }
 
-/* deprecated: please use prepackString instead. */
-export function prepackFromAst(ast: BabelNodeFile | BabelNodeProgram, code: string, options: Options = defaultOptions) {
+/* deprecated: please use prepackSources instead. */
+export function prepackFromAst(
+  ast: BabelNodeFile | BabelNodeProgram,
+  code: string,
+  options: PrepackOptions = defaultOptions
+) {
   if (ast && ast.type === "Program") {
     ast = t.file(ast, [], []);
   }

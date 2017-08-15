@@ -88,6 +88,7 @@ export class ResidualHeapSerializer {
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
+    this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
     this.requireReturns = new Map();
     this.statistics = new SerializerStatistics();
     this.serializedValues = new Set();
@@ -137,6 +138,7 @@ export class ResidualHeapSerializer {
   valueNameGenerator: NameGenerator;
   descriptorNameGenerator: NameGenerator;
   factoryNameGenerator: NameGenerator;
+  intrinsicNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
@@ -161,7 +163,8 @@ export class ResidualHeapSerializer {
   _emitObjectProperties(
     obj: ObjectValue,
     properties: Map<string, PropertyBinding> = obj.properties,
-    objectPrototypeAlreadyEstablished: boolean = false
+    objectPrototypeAlreadyEstablished: boolean = false,
+    cleanupDummyProperties: ?Set<string>
   ) {
     //inject symbols
     for (let [symbol, propertyBinding] of obj.symbols) {
@@ -183,7 +186,7 @@ export class ResidualHeapSerializer {
       invariant(desc !== undefined);
       this.emitter.emitNowOrAfterWaitingForDependencies(this._getDescriptorValues(desc).concat(obj), () => {
         invariant(desc !== undefined);
-        return this._emitProperty(obj, key, desc);
+        return this._emitProperty(obj, key, desc, cleanupDummyProperties != null && cleanupDummyProperties.has(key));
       });
     }
 
@@ -318,12 +321,18 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _emitProperty(val: ObjectValue, key: string | SymbolValue, desc: Descriptor): void {
+  _emitProperty(
+    val: ObjectValue,
+    key: string | SymbolValue,
+    desc: Descriptor,
+    cleanupDummyProperty: boolean = false
+  ): void {
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       invariant(!this.emitter.getReasonToWaitForDependencies([descValue, val]), "precondition of _emitProperty");
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
+      // The only case we do not need to remove the dummy property is array index property.
       this._assignProperty(
         () => {
           let serializedKey =
@@ -339,7 +348,8 @@ export class ResidualHeapSerializer {
           invariant(descValue instanceof Value);
           return this.serializeValue(descValue);
         },
-        mightHaveBeenDeleted
+        mightHaveBeenDeleted,
+        cleanupDummyProperty
       );
     } else {
       let descProps = [];
@@ -478,12 +488,18 @@ export class ResidualHeapSerializer {
     }
 
     if (generators.length === 1 && functionValues.length === 0) {
-      // This value is only referenced from a single generator.
+      // This value is only referenced from a single generator, and it's not the realm generator.
+      invariant(generators[0] !== this.generator);
       // We can emit the initialization of this value into the body associated with that generator.
       let body = this.activeGeneratorBodies.get(generators[0]);
-      invariant(body !== undefined);
-      invariant(body === this.emitter.getBody());
-      return { body };
+      if (body === undefined) {
+        // TODO: The generator is no longer active! We missed the right time to emit this value.
+        this.logger.logError(val, "Value is referenced in an unsupported scope.");
+        return { body: this.mainBody };
+      } else {
+        invariant(body === this.emitter.getBody());
+        return { body };
+      }
     }
 
     // TODO #482: If there's more than...
@@ -551,8 +567,22 @@ export class ResidualHeapSerializer {
   }
 
   _serializeValueIntrinsic(val: Value): BabelNodeExpression {
-    invariant(val.intrinsicName);
-    return this.preludeGenerator.convertStringToMember(val.intrinsicName);
+    let intrinsicName = val.intrinsicName;
+    invariant(intrinsicName);
+    let intrinsicId = t.identifier(this.valueNameGenerator.generate(intrinsicName));
+    let declar = t.variableDeclaration("var", [
+      t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
+    ]);
+    if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
+      // TODO #882: The value came into existance as a template for an abstract object.
+      // Unfortunately, we are not properly tracking which generate it's associated with.
+      // Until this gets fixed, let's stick to the historical behavior: Emit to the current emitter body.
+      this.emitter.emit(declar);
+    } else {
+      invariant(this.emitter.getBody() === this.mainBody);
+      this.prelude.push(declar);
+    }
+    return intrinsicId;
   }
 
   _getDescriptorValues(desc: Descriptor): Array<Value> {
@@ -605,31 +635,15 @@ export class ResidualHeapSerializer {
           descriptor.value !== undefined &&
           this._canEmbedProperty(array, key, descriptor)
         ) {
-          remainingProperties.delete(key);
           let elemVal = descriptor.value;
           invariant(elemVal instanceof Value);
           let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
           let delayReason =
             this.emitter.getReasonToWaitForDependencies(elemVal) ||
             this.emitter.getReasonToWaitForActiveValue(array, mightHaveBeenDeleted);
-          if (delayReason) {
-            this.emitter.emitAfterWaiting(delayReason, [elemVal, array], () => {
-              this._assignProperty(
-                () =>
-                  t.memberExpression(
-                    this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(array),
-                    t.numericLiteral(i),
-                    true
-                  ),
-                () => {
-                  invariant(elemVal !== undefined);
-                  return this.serializeValue(elemVal);
-                },
-                mightHaveBeenDeleted
-              );
-            });
-          } else {
+          if (!delayReason) {
             elem = this.serializeValue(elemVal);
+            remainingProperties.delete(key);
           }
         }
       }
@@ -975,52 +989,34 @@ export class ResidualHeapSerializer {
           proto instanceof ObjectValue;
 
         let remainingProperties = new Map(val.properties);
+        const dummyProperties = new Set();
         let props = [];
         for (let [key, propertyBinding] of val.properties) {
           let descriptor = propertyBinding.descriptor;
           if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
           if (!createViaAuxiliaryConstructor && this._canEmbedProperty(val, key, descriptor)) {
-            remainingProperties.delete(key);
             let propValue = descriptor.value;
             invariant(propValue instanceof Value);
             if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
             let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
+            let serializedKey = this.generator.getAsPropertyNameExpression(key);
             let delayReason =
               this.emitter.getReasonToWaitForDependencies(propValue) ||
               this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
+            // Although the property needs to be delayed, we still want to emit dummy "undefined"
+            // value as part of the object literal to ensure a consistent property ordering.
+            let serializedValue = voidExpression;
             if (delayReason) {
-              // self recursion
-              this.emitter.emitAfterWaiting(delayReason, [propValue, val], () => {
-                this._assignProperty(
-                  () => {
-                    let serializedKey = this.generator.getAsPropertyNameExpression(key);
-                    return t.memberExpression(
-                      this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
-                      serializedKey,
-                      !t.isIdentifier(serializedKey)
-                    );
-                  },
-                  () => {
-                    invariant(propValue instanceof Value);
-                    return this.serializeValue(propValue);
-                  },
-                  mightHaveBeenDeleted,
-                  true /*cleanupDummyProperty*/
-                );
-              });
-
-              // Although the property needs to be delayed, we still want to emit dummy "undefined"
-              // value as part of the object literal to ensure a consistent property ordering.
-              let serializedKey = this.generator.getAsPropertyNameExpression(key);
-              props.push(t.objectProperty(serializedKey, voidExpression));
+              // May need to be cleaned up later.
+              dummyProperties.add(key);
             } else {
-              let serializedKey = this.generator.getAsPropertyNameExpression(key);
-              props.push(t.objectProperty(serializedKey, this.serializeValue(propValue)));
+              remainingProperties.delete(key);
+              serializedValue = this.serializeValue(propValue);
             }
+            props.push(t.objectProperty(serializedKey, serializedValue));
           }
         }
-
-        this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor);
+        this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties);
 
         if (createViaAuxiliaryConstructor) {
           this.needsAuxiliaryConstructor = true;

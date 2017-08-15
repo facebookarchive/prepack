@@ -68,12 +68,12 @@ function runTest(name: string, code: string): boolean {
     let options = {
       internalDebug: false,
       mathRandomSeed: "0",
-      onError: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
+      errorHandler: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
-      speculate: true,
+      initializeMoreModules: true,
     };
     if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
-    prepackFileSync(name, options);
+    prepackFileSync([name], options);
     if (!recover) {
       console.log(chalk.red("Serialization succeeded though it should have failed"));
       return false;

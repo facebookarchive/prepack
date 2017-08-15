@@ -12,9 +12,10 @@
  */
 
 /* @flow */
-import { type Options, defaultOptions } from "./options";
+import { defaultOptions } from "./options";
+import { type PrepackOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
-import { prepackString } from "./prepack-standalone.js";
+import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
 
 import fs from "fs";
@@ -23,7 +24,7 @@ export * from "./prepack-node-environment";
 export * from "./prepack-standalone";
 
 export function prepackStdin(
-  options: Options = defaultOptions,
+  options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void
 ) {
   let sourceMapFilename = options.inputSourceMapFilename || "";
@@ -38,7 +39,10 @@ export function prepackStdin(
       let filename = "no-filename-specified";
       let serialized;
       try {
-        serialized = prepackString(filename, code, sourceMap, options);
+        serialized = prepackSources(
+          [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
+          options
+        );
       } catch (err) {
         callback(err, null);
         return;
@@ -50,7 +54,7 @@ export function prepackStdin(
 
 export function prepackFile(
   filename: string,
-  options: Options = defaultOptions,
+  options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void,
   fileErrorHandler?: (err: ?Error) => void
 ) {
@@ -71,7 +75,10 @@ export function prepackFile(
       }
       let serialized;
       try {
-        serialized = prepackString(filename, code, sourceMap, options);
+        serialized = prepackSources(
+          [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
+          options
+        );
       } catch (err) {
         callback(err, null);
         return;
@@ -81,17 +88,27 @@ export function prepackFile(
   });
 }
 
-export function prepackFileSync(filename: string, options: Options = defaultOptions) {
+export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions) {
   if (options.compatibility === "node-cli") {
-    return prepackNodeCLISync(filename, options);
+    // TODO: support multiple file prepack in node-cli mode.
+    if (filenames.length !== 1) {
+      console.error(`Does not support multiple file prepack in node-cli mode.`);
+      process.exit(1);
+    }
+    return prepackNodeCLISync(filenames[0], options);
   }
-  let code = fs.readFileSync(filename, "utf8");
-  let sourceMap = "";
-  let sourceMapFilename = options.inputSourceMapFilename || filename + ".map";
-  try {
-    sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
-  } catch (_e) {
-    if (options.inputSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
-  }
-  return prepackString(filename, code, sourceMap, options);
+  const sourceFiles = filenames.map(filename => {
+    let code = fs.readFileSync(filename, "utf8");
+    let sourceMap = "";
+    // Use the single input source map file for each source file.
+    // TODO: support separate source map file for each source file.
+    let sourceMapFilename = options.inputSourceMapFilename || filename + ".map";
+    try {
+      sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
+    } catch (_e) {
+      if (options.inputSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+    }
+    return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
+  });
+  return prepackSources(sourceFiles, options);
 }

@@ -123,6 +123,8 @@ export class Logger {
       let locString = `${loc.start.line}:${loc.start.column + 1}`;
       if (loc.source) locString = `${loc.source}:${locString}`;
       message = `${message}\nat: ${locString}`;
+    } else if (value.intrinsicName) {
+      message = `${message}\nintrinsic name: ${value.intrinsicName}`;
     }
 
     console.error(message);

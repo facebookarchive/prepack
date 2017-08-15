@@ -30,7 +30,8 @@ import {
   ThrowCompletion,
 } from "./completions.js";
 import { FatalError } from "./errors.js";
-import { defaultOptions, type Options } from "./options";
+import { defaultOptions } from "./options";
+import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
 import { Value } from "./values/index.js";
 import {
@@ -1075,6 +1076,76 @@ export class LexicalEnvironment {
     }
   }
 
+  concatenateAndParse(sources: Array<SourceFile>, sourceType: SourceType = "script"): [BabelNodeFile, any] {
+    let asts = [];
+    let code = {};
+    let directives = [];
+    for (let source of sources) {
+      try {
+        let node = parse(this.realm, source.fileContents, source.filePath, sourceType);
+        if (source.sourceMapContents && source.sourceMapContents.length > 0)
+          this.fixup_source_locations(node, source.sourceMapContents);
+        this.fixup_filenames(node);
+        asts = asts.concat(node.program.body);
+        code[source.filePath] = source.fileContents;
+        directives = directives.concat(node.program.directives);
+      } catch (e) {
+        if (e instanceof ThrowCompletion) return e;
+        throw e;
+      }
+    }
+    return [t.file(t.program(asts, directives)), code];
+  }
+
+  executeSources(
+    sources: Array<SourceFile>,
+    sourceType: SourceType = "script",
+    onParse: void | (BabelNodeFile => void) = undefined
+  ): [AbruptCompletion | Value, any] {
+    let [ast, code] = this.concatenateAndParse(sources, sourceType);
+    let context = new ExecutionContext();
+    context.lexicalEnvironment = this;
+    context.variableEnvironment = this;
+    context.realm = this.realm;
+    this.realm.pushContext(context);
+    let res;
+    try {
+      if (onParse) onParse(ast);
+      res = this.evaluateCompletion(ast, false);
+    } finally {
+      this.realm.popContext(context);
+    }
+    if (res instanceof AbruptCompletion) return [res, code];
+
+    return [GetValue(this.realm, res), code];
+  }
+
+  executePartialEvaluator(
+    sources: Array<SourceFile>,
+    options: PartialEvaluatorOptions = defaultOptions,
+    sourceType: SourceType = "script"
+  ): AbruptCompletion | { code: string, map?: SourceMap } {
+    let [ast, code] = this.concatenateAndParse(sources, sourceType);
+    let context = new ExecutionContext();
+    context.lexicalEnvironment = this;
+    context.variableEnvironment = this;
+    context.realm = this.realm;
+    this.realm.pushContext(context);
+    let partialAST;
+    try {
+      let res;
+      [res, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
+      if (res instanceof AbruptCompletion) return res;
+    } finally {
+      this.realm.popContext(context);
+    }
+    invariant(partialAST.type === "File");
+    let fileAst = ((partialAST: any): BabelNodeFile);
+    let prog = t.program(fileAst.program.body, ast.program.directives);
+    this.fixup_filenames(prog);
+    return generate(prog, { sourceMaps: options.sourceMaps }, (code: any));
+  }
+
   execute(
     code: string,
     filename: string,
@@ -1107,45 +1178,6 @@ export class LexicalEnvironment {
     if (res instanceof AbruptCompletion) return res;
 
     return GetValue(this.realm, res);
-  }
-
-  executePartialEvaluator(
-    sources: Array<SourceFile>,
-    options: Options = defaultOptions,
-    sourceType: SourceType = "script"
-  ): AbruptCompletion | { code: string, map?: SourceMap } {
-    let body: Array<BabelNodeStatement> = [];
-    let code = {};
-    for (let source of sources) {
-      let context = new ExecutionContext();
-      context.lexicalEnvironment = this;
-      context.variableEnvironment = this;
-      context.realm = this.realm;
-
-      this.realm.pushContext(context);
-      try {
-        let ast;
-        try {
-          ast = parse(this.realm, source.fileContents, source.filePath, sourceType);
-        } catch (e) {
-          if (e instanceof ThrowCompletion) return e;
-          throw e;
-        }
-        let [res, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
-        if (res instanceof AbruptCompletion) return res;
-        invariant(partialAST.type === "File");
-        body = body.concat(((partialAST: any): BabelNodeFile).program.body);
-        if (source.sourceMapContents) {
-          this.fixup_source_locations(partialAST, source.sourceMapContents);
-        }
-        code[source.filePath] = source.fileContents;
-      } finally {
-        this.realm.popContext(context);
-      }
-    }
-    let prog = t.program(body);
-    this.fixup_filenames(prog);
-    return generate(prog, { sourceMaps: options.sourceMaps }, (code: any));
   }
 
   fixup_source_locations(ast: BabelNode, map: string) {
