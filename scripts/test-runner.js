@@ -189,14 +189,20 @@ function runTest(name, code, options, args) {
         markersToFind.push({ positive, value, start: i + marker.length });
       }
     }
+    let addedCode = "";
+    let injectAtRuntime = "// add at runtime:";
+    if (code.includes(injectAtRuntime)) {
+      let i = code.indexOf(injectAtRuntime);
+      addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
+    }
     let unique = 27277;
     let oldUniqueSuffix = "";
     try {
-      expected = exec(`(function () {${code} // keep newline here as code may end with comment
+      expected = exec(`${addedCode}\n(function () {${code} // keep newline here as code may end with comment
 }).call(this);`);
 
       let i = 0;
-      let max = 4;
+      let max = addedCode ? 1 : 4;
       let oldCode = code;
       let anyDelayedValues = false;
       for (; i < max; i++) {
@@ -220,7 +226,7 @@ function runTest(name, code, options, args) {
           }
         }
         if (markersIssue) break;
-        actual = exec(newCode);
+        actual = exec(addedCode + newCode);
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
           break;
@@ -249,6 +255,7 @@ function runTest(name, code, options, args) {
         oldCode = newCode;
         oldUniqueSuffix = newUniqueSuffix;
       }
+      if (i === 1) return true;
       if (i === max) {
         if (anyDelayedValues) {
           // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
