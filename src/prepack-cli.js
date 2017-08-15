@@ -43,7 +43,6 @@ function run(
     --srcmapIn       The input sourcemap filename. If present, Prepack will output a sourcemap that maps from the original file (pre-input sourcemap) to Prepack's output
     --srcmapOut      The output sourcemap filename.
     --debugNames     Changes the output of Prepack so that for named functions and variables that get emitted into Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
-    --singlePass     Perform only one serialization pass. Disables some optimizations on Prepack's output. This will speed up Prepacking but result in code with less inlining.
     --speculate      Enable speculative initialization of modules (for the module system Prepack has builtin knowledge about). Prepack will try to execute all factory functions it is able to.
     --trace          Traces the order of module initialization.
     --serialize      Serializes the partially evaluated global environment as a program that recreates it. (default = true)
@@ -64,7 +63,7 @@ function run(
     initializeMoreModules: false,
     trace: false,
     debugNames: false,
-    singlePass: false,
+    inlineExpressions: false,
     logStatistics: false,
     logModules: false,
     delayInitializations: false,
