@@ -55,9 +55,9 @@ export class Serializer {
   modules: Modules;
   options: SerializerOptions;
 
-  _execute(filename: string, code: string, map: string) {
+  _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false) {
     let realm = this.realm;
-    let res = realm.$GlobalEnv.execute(code, filename, map, "script", ast => {
+    let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
       invariant(realmPreludeGenerator);
       let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
@@ -81,6 +81,7 @@ export class Serializer {
       realm.handleError(diagnostic);
       throw new FatalError();
     }
+    return code;
   }
 
   init(
@@ -98,11 +99,7 @@ export class Serializer {
       timingStats.totalTime = Date.now();
       timingStats.globalCodeTime = Date.now();
     }
-    let code = {};
-    for (let source of sources) {
-      this._execute(source.filePath, source.fileContents, source.sourceMapContents || "");
-      code[source.filePath] = source.fileContents;
-    }
+    let code = this._execute(sources);
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
