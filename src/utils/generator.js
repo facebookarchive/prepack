@@ -70,6 +70,7 @@ export class Generator {
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
+    this.parent = realm.generator;
     this.realm = realm;
     this.body = [];
   }
@@ -77,6 +78,7 @@ export class Generator {
   realm: Realm;
   body: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
+  parent: void | Generator;
 
   clone(): Generator {
     let result = new Generator(this.realm);
@@ -98,6 +100,10 @@ export class Generator {
     }
 
     return t.stringLiteral(key);
+  }
+
+  getParent(): void | Generator {
+    return this.parent;
   }
 
   empty() {

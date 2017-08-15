@@ -13,14 +13,17 @@ import type { ObjectKind } from "../types.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { ObjectValue, NumberValue } from "./index.js";
+import { Generator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 
 /* Abstract base class for all function objects */
 export default class FunctionValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, realm.intrinsics.FunctionPrototype, intrinsicName);
+    this.parent = realm.generator;
   }
 
+  parent: void | Generator;
   $Environment: LexicalEnvironment;
   $ScriptOrModule: any;
 
@@ -44,6 +47,10 @@ export default class FunctionValue extends ObjectValue {
     let value = desc.value;
     if (!(value instanceof NumberValue)) return undefined;
     return value.value;
+  }
+
+  getParent(): void | Generator {
+    return this.parent;
   }
 
   hasDefaultLength(): boolean {
