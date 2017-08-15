@@ -21,7 +21,6 @@ import type {
   BabelNodeBlockStatement,
   BabelNodeLVal,
   BabelNodeSpreadElement,
-  BabelNodeFunctionDeclaration,
   BabelNodeFunctionExpression,
   BabelNodeIfStatement,
   BabelNodeVariableDeclaration,
@@ -38,8 +37,8 @@ import { nullExpression } from "../utils/internalizer.js";
 import type { LocationService } from "./types.js";
 
 type ResidualFunctionsResult = {
-  unstrictFunctionBodies: Array<BabelNodeFunctionDeclaration | BabelNodeFunctionExpression>,
-  strictFunctionBodies: Array<BabelNodeFunctionDeclaration | BabelNodeFunctionExpression>,
+  unstrictFunctionBodies: Array<BabelNodeFunctionExpression>,
+  strictFunctionBodies: Array<BabelNodeFunctionExpression>,
   requireStatistics: { replaced: number, count: number },
 };
 
@@ -219,7 +218,7 @@ export class ResidualFunctions {
     this.statistics.functions = functionEntries.length;
     let unstrictFunctionBodies = [];
     let strictFunctionBodies = [];
-    let funcNodes: Map<FunctionValue, BabelNodeFunctionDeclaration | BabelNodeFunctionExpression> = new Map();
+    let funcNodes: Map<FunctionValue, BabelNodeFunctionExpression> = new Map();
 
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
@@ -240,10 +239,18 @@ export class ResidualFunctions {
         shouldInline = bodySize <= 30;
       }
 
-      let define = (scope: "PRELUDE" | "INLINE", instance, functionDeclaration, funcNode) => {
-        let body = scope === "PRELUDE" ? this.prelude : getFunctionBody(instance);
-        body.push(functionDeclaration);
+      let define = (instance, funcId, funcNode) => {
         let { functionValue } = instance;
+        let body;
+        if (t.isFunctionExpression(funcNode)) {
+          funcNodes.set(functionValue, ((funcNode: any): BabelNodeFunctionExpression));
+          body = this.prelude;
+        } else {
+          invariant(t.isCallExpression(funcNode)); // .bind call
+          body = getFunctionBody(instance);
+        }
+        let declaration = t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]);
+        body.push(declaration);
         let prototypeId = this.functionPrototypes.get(functionValue);
         if (prototypeId !== undefined) {
           let id = this.locationService.getLocation(functionValue);
@@ -254,8 +261,6 @@ export class ResidualFunctions {
             ])
           );
         }
-        if (funcNode === undefined) invariant(t.isVariableDeclaration(functionDeclaration));
-        else funcNodes.set(functionValue, funcNode);
       };
 
       if (shouldInline || instances.length === 1 || usesArguments) {
@@ -271,7 +276,6 @@ export class ResidualFunctions {
             funcParams,
             ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
           );
-          let funcDeclaration = t.variableDeclaration("var", [t.variableDeclarator(id, funcNode)]);
           let scopeInitialization = [];
           for (let scope of scopeInstances) {
             scopeInitialization.push(
@@ -281,7 +285,7 @@ export class ResidualFunctions {
           }
           funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
 
-          traverse(t.file(t.program([funcDeclaration])), ClosureRefReplacer, null, {
+          traverse(t.file(t.program([t.expressionStatement(funcNode)])), ClosureRefReplacer, null, {
             serializedBindings,
             modified,
             requireReturns: this.requireReturns,
@@ -295,7 +299,7 @@ export class ResidualFunctions {
             unstrictFunctionBodies.push(funcNode);
           }
 
-          define("PRELUDE", instance, funcDeclaration, funcNode);
+          define(instance, id, funcNode);
         }
       } else {
         // Group instances with modified bindings
@@ -393,7 +397,7 @@ export class ResidualFunctions {
           let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
           this.prelude.push(factoryDeclaration);
 
-          traverse(t.file(t.program([factoryDeclaration])), ClosureRefReplacer, null, {
+          traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, {
             serializedBindings: sameSerializedBindings,
             modified,
             requireReturns: this.requireReturns,
@@ -413,7 +417,7 @@ export class ResidualFunctions {
             for (let { id } of instance.scopeInstances) {
               flatArgs.push(t.numericLiteral(id));
             }
-            let funcNode, functionDeclaration, scope;
+            let funcNode;
             let firstUsage = this.firstFunctionUsages.get(functionValue);
             invariant(insertionPoint !== undefined);
             if (
@@ -435,22 +439,15 @@ export class ResidualFunctions {
 
               let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
 
-              functionDeclaration = funcNode = t.functionDeclaration(functionId, params, childBody);
-              scope = "PRELUDE";
+              funcNode = t.functionExpression(null, params, childBody);
             } else {
-              functionDeclaration = t.variableDeclaration("var", [
-                t.variableDeclarator(
-                  functionId,
-                  t.callExpression(
-                    t.memberExpression(factoryId, t.identifier("bind")),
-                    [nullExpression].concat(flatArgs)
-                  )
-                ),
-              ]);
-              scope = "INLINE";
+              funcNode = t.callExpression(
+                t.memberExpression(factoryId, t.identifier("bind")),
+                [nullExpression].concat(flatArgs)
+              );
             }
 
-            define(scope, instance, functionDeclaration, funcNode);
+            define(instance, functionId, funcNode);
           }
         }
       }
@@ -485,10 +482,8 @@ export class ResidualFunctions {
     for (let [functionValue, funcNode] of funcNodes) {
       let initializerStatement = this.residualFunctionInitializers.getInitializerStatement(functionValue);
       if (initializerStatement !== undefined) {
-        invariant(t.isFunctionDeclaration(funcNode) || t.isFunctionExpression(funcNode));
-        let blockStatement: BabelNodeBlockStatement = ((funcNode: any):
-          | BabelNodeFunctionDeclaration
-          | BabelNodeFunctionExpression).body;
+        invariant(t.isFunctionExpression(funcNode));
+        let blockStatement: BabelNodeBlockStatement = ((funcNode: any): BabelNodeFunctionExpression).body;
         blockStatement.body.unshift(initializerStatement);
       }
     }
