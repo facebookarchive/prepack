@@ -53,7 +53,7 @@ function run(
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
-  let inputFilename;
+  let inputFilenames = [];
   let outputFilename;
   let compatibility: Compatibility;
   let mathRandomSeed;
@@ -78,7 +78,7 @@ function run(
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
-      inputFilename = arg;
+      inputFilenames.push(arg);
     } else {
       arg = arg.slice(2);
       switch (arg) {
@@ -145,11 +145,11 @@ function run(
   }
 
   try {
-    if (!inputFilename) {
+    if (inputFilenames.length === 0) {
       prepackStdin(resolvedOptions, processSerializedCode);
       return;
     }
-    let serialized = prepackFileSync(inputFilename, resolvedOptions);
+    let serialized = prepackFileSync(inputFilenames, resolvedOptions);
     processSerializedCode(null, serialized);
   } catch (x) {
     console.log(x.message);
