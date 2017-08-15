@@ -110,7 +110,7 @@ function ignorePath(path: BabelTraversePath) {
   return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
 }
 
-// TODO doesn't check that `arguments` and `this` is in top function
+// TODO #886: doesn't check that `arguments` and `this` is in top function
 export let ClosureRefVisitor = {
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefVisitorState) {
     if (ignorePath(path)) return;
