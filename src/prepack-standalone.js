@@ -65,7 +65,7 @@ export function prepackSources(
     return result;
   } else {
     invariant(options.residual);
-    let result = realm.$GlobalEnv.executePartialEvaluator(sources);
+    let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
     if (result instanceof AbruptCompletion) throw result;
     // $FlowFixMe This looks like a Flow bug
     return result;
