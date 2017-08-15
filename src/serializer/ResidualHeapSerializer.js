@@ -66,7 +66,8 @@ export class ResidualHeapSerializer {
     residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     delayInitializations: boolean,
-    referencedDeclaredValues: Set<AbstractValue>
+    referencedDeclaredValues: Set<AbstractValue>,
+    additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -120,6 +121,7 @@ export class ResidualHeapSerializer {
     this.delayInitializations = delayInitializations;
     this.referencedDeclaredValues = referencedDeclaredValues;
     this.activeGeneratorBodies = new Map();
+    this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
   }
 
   emitter: Emitter;
@@ -154,6 +156,7 @@ export class ResidualHeapSerializer {
   delayInitializations: boolean;
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
+  additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -844,11 +847,28 @@ export class ResidualHeapSerializer {
     }
 
     invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
+    invariant(val instanceof ECMAScriptSourceFunctionValue);
+
+    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    let effects;
+    // Create the new function body
+    if (additionalFVEffects && (effects = additionalFVEffects.get(val))) {
+      let [r, g, ob, pb, co] = effects;
+      let oldGenerator = this.generator;
+      this.generator = g;
+      // TODO: should we be ignoring the preludegenerator here?
+      // TODO: does the emitter do the right thing here
+      this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
+      // TODO: make sure property modifications of global object get emitted in correct scope
+      let context = this._getContext();
+      let body = context.serializeGenerator(this.generator);
+      val.$ECMAScriptCode = t.blockStatement(body);
+      this.generator = oldGenerator;
+    }
 
     let residualBindings = this.residualFunctionBindings.get(val);
     invariant(residualBindings);
 
-    invariant(val instanceof ECMAScriptSourceFunctionValue);
     let serializedBindings = Object.create(null);
     let instance: FunctionInstance = {
       serializedBindings,
@@ -1122,7 +1142,7 @@ export class ResidualHeapSerializer {
     // or repeated so that they are accessible and defined from all using scopes
     let context = {
       serializeValue: this.serializeValue.bind(this),
-      serializeGenerator: (generator: Generator) => {
+      serializeGenerator: (generator: Generator): Array<BabelNodeStatement> => {
         let newBody = [];
         let oldBody = this.emitter.beginEmitting(generator, newBody);
         this.activeGeneratorBodies.set(generator, newBody);
@@ -1170,11 +1190,8 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  serialize(additionalFunctions: any): BabelNodeFile {
+  serialize(): BabelNodeFile {
     this.generator.serialize(this._getContext());
-    for (let fun of additionalFunctions) {
-      fun(this._getContext());
-    }
     invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);

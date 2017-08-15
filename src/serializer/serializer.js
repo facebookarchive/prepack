@@ -159,6 +159,15 @@ export class Serializer {
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
+    let functionValueToEffects;
+    if (this.additionalFunctions) {
+      functionValueToEffects = new Map();
+      for (let [fstr, effects] of this.functions.writeEffects.entries()) {
+        let funcValue = this.functions.nameToFunctionValue.get(fstr);
+        invariant(funcValue);
+        functionValueToEffects.set(funcValue, effects);
+      }
+    }
 
     let residualHeapSerializer = new ResidualHeapSerializer(
       this.realm,
@@ -170,11 +179,13 @@ export class Serializer {
       residualHeapVisitor.functionBindings,
       residualHeapVisitor.functionInfos,
       !!this.options.delayInitializations,
-      residualHeapVisitor.referencedDeclaredValues
+      residualHeapVisitor.referencedDeclaredValues,
+      functionValueToEffects
     );
     let additionalFunctions = [];
     if (this.options.additionalFunctions) {
       for (let [functionString, effects] of this.functions.writeEffects.entries()) {
+        this.realm.generator =
         this.realm.applyEffects(effects, "from " + functionString);
         let functionValue = this.functions.nameToFunctionValue.get(functionString);
         invariant(functionValue);
