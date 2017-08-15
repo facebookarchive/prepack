@@ -163,7 +163,8 @@ export class ResidualHeapSerializer {
   _emitObjectProperties(
     obj: ObjectValue,
     properties: Map<string, PropertyBinding> = obj.properties,
-    objectPrototypeAlreadyEstablished: boolean = false
+    objectPrototypeAlreadyEstablished: boolean = false,
+    cleanupDummyProperties: ?Set<string>
   ) {
     //inject symbols
     for (let [symbol, propertyBinding] of obj.symbols) {
@@ -185,7 +186,7 @@ export class ResidualHeapSerializer {
       invariant(desc !== undefined);
       this.emitter.emitNowOrAfterWaitingForDependencies(this._getDescriptorValues(desc).concat(obj), () => {
         invariant(desc !== undefined);
-        return this._emitProperty(obj, key, desc);
+        return this._emitProperty(obj, key, desc, cleanupDummyProperties != null && cleanupDummyProperties.has(key));
       });
     }
 
@@ -320,12 +321,18 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _emitProperty(val: ObjectValue, key: string | SymbolValue, desc: Descriptor): void {
+  _emitProperty(
+    val: ObjectValue,
+    key: string | SymbolValue,
+    desc: Descriptor,
+    cleanupDummyProperty: boolean = false
+  ): void {
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       invariant(!this.emitter.getReasonToWaitForDependencies([descValue, val]), "precondition of _emitProperty");
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
+      // The only case we do not need to remove the dummy property is array index property.
       this._assignProperty(
         () => {
           let serializedKey =
@@ -341,7 +348,8 @@ export class ResidualHeapSerializer {
           invariant(descValue instanceof Value);
           return this.serializeValue(descValue);
         },
-        mightHaveBeenDeleted
+        mightHaveBeenDeleted,
+        cleanupDummyProperty
       );
     } else {
       let descProps = [];
@@ -627,31 +635,15 @@ export class ResidualHeapSerializer {
           descriptor.value !== undefined &&
           this._canEmbedProperty(array, key, descriptor)
         ) {
-          remainingProperties.delete(key);
           let elemVal = descriptor.value;
           invariant(elemVal instanceof Value);
           let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
           let delayReason =
             this.emitter.getReasonToWaitForDependencies(elemVal) ||
             this.emitter.getReasonToWaitForActiveValue(array, mightHaveBeenDeleted);
-          if (delayReason) {
-            this.emitter.emitAfterWaiting(delayReason, [elemVal, array], () => {
-              this._assignProperty(
-                () =>
-                  t.memberExpression(
-                    this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(array),
-                    t.numericLiteral(i),
-                    true
-                  ),
-                () => {
-                  invariant(elemVal !== undefined);
-                  return this.serializeValue(elemVal);
-                },
-                mightHaveBeenDeleted
-              );
-            });
-          } else {
+          if (!delayReason) {
             elem = this.serializeValue(elemVal);
+            remainingProperties.delete(key);
           }
         }
       }
@@ -997,52 +989,34 @@ export class ResidualHeapSerializer {
           proto instanceof ObjectValue;
 
         let remainingProperties = new Map(val.properties);
+        const dummyProperties = new Set();
         let props = [];
         for (let [key, propertyBinding] of val.properties) {
           let descriptor = propertyBinding.descriptor;
           if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
           if (!createViaAuxiliaryConstructor && this._canEmbedProperty(val, key, descriptor)) {
-            remainingProperties.delete(key);
             let propValue = descriptor.value;
             invariant(propValue instanceof Value);
             if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
             let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
+            let serializedKey = this.generator.getAsPropertyNameExpression(key);
             let delayReason =
               this.emitter.getReasonToWaitForDependencies(propValue) ||
               this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
+            // Although the property needs to be delayed, we still want to emit dummy "undefined"
+            // value as part of the object literal to ensure a consistent property ordering.
+            let serializedValue = voidExpression;
             if (delayReason) {
-              // self recursion
-              this.emitter.emitAfterWaiting(delayReason, [propValue, val], () => {
-                this._assignProperty(
-                  () => {
-                    let serializedKey = this.generator.getAsPropertyNameExpression(key);
-                    return t.memberExpression(
-                      this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
-                      serializedKey,
-                      !t.isIdentifier(serializedKey)
-                    );
-                  },
-                  () => {
-                    invariant(propValue instanceof Value);
-                    return this.serializeValue(propValue);
-                  },
-                  mightHaveBeenDeleted,
-                  true /*cleanupDummyProperty*/
-                );
-              });
-
-              // Although the property needs to be delayed, we still want to emit dummy "undefined"
-              // value as part of the object literal to ensure a consistent property ordering.
-              let serializedKey = this.generator.getAsPropertyNameExpression(key);
-              props.push(t.objectProperty(serializedKey, voidExpression));
+              // May need to be cleaned up later.
+              dummyProperties.add(key);
             } else {
-              let serializedKey = this.generator.getAsPropertyNameExpression(key);
-              props.push(t.objectProperty(serializedKey, this.serializeValue(propValue)));
+              remainingProperties.delete(key);
+              serializedValue = this.serializeValue(propValue);
             }
+            props.push(t.objectProperty(serializedKey, serializedValue));
           }
         }
-
-        this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor);
+        this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties);
 
         if (createViaAuxiliaryConstructor) {
           this.needsAuxiliaryConstructor = true;
