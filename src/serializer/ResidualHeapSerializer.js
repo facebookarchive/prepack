@@ -1210,12 +1210,7 @@ export class ResidualHeapSerializer {
 
     this.emitter.finalize();
 
-    let {
-      hoistedBody,
-      unstrictFunctionBodies,
-      strictFunctionBodies,
-      requireStatistics,
-    } = this.residualFunctions.spliceFunctions();
+    let { unstrictFunctionBodies, strictFunctionBodies, requireStatistics } = this.residualFunctions.spliceFunctions();
     if (requireStatistics.replaced > 0 && !this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
       console.log(
         `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
@@ -1246,14 +1241,17 @@ export class ResidualHeapSerializer {
     }
 
     // build ast
-    let body = [];
     if (this.needsEmptyVar) {
-      body.push(t.variableDeclaration("var", [t.variableDeclarator(emptyExpression, t.objectExpression([]))]));
+      this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(emptyExpression, t.objectExpression([]))]));
     }
     if (this.needsAuxiliaryConstructor) {
-      body.push(t.functionDeclaration(constructorExpression, [], t.blockStatement([])));
+      this.prelude.push(
+        t.variableDeclaration("var", [
+          t.variableDeclarator(constructorExpression, t.functionExpression(null, [], t.blockStatement([]))),
+        ])
+      );
     }
-    body = body.concat(this.prelude, hoistedBody, this.emitter.getBody());
+    let body = this.prelude.concat(this.emitter.getBody());
     factorifyObjects(body, this.factoryNameGenerator);
 
     let ast_body = [];
