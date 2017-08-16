@@ -113,7 +113,7 @@ function run(
               "\n" +
               HELP_STR
           );
-          break;
+          return;
         default:
           if (arg in flags) {
             flags[arg] = true;
