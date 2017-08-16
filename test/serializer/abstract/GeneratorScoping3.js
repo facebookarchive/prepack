@@ -5,7 +5,7 @@
     if (a) {
         z = y;
     } else {
-        z = y;
+        z = function() { return y; }
     }
-    inspect = function() { return z.toString(); }
+    inspect = function() { return (z instanceof Function ? z() : z).toString(); }
 })();

@@ -29,3 +29,47 @@ export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): 
   }
   return length;
 }
+
+interface HasParent { getParent(): void | HasParent }
+
+export function commonAncestorOf<T: HasParent>(node1: void | T, node2: void | T): void | T {
+  if (node1 === node2) return node1;
+  // First get the path length to the root node for both nodes while also checking if
+  // either node is the parent of the other.
+  let n1 = node1,
+    n2 = node2,
+    count1 = 0,
+    count2 = 0;
+  while (true) {
+    let p1 = n1 && n1.getParent();
+    let p2 = n2 && n2.getParent();
+    if (p1 === node2) return node2;
+    if (p2 === node1) return node1;
+    if (p1) count1++;
+    if (p2) count2++;
+    if (!p1 && !p2) break;
+    n1 = p1;
+    n2 = p2;
+  }
+  // Now shorten the longest path to the same length as the shorter path
+  n1 = node1;
+  while (count1 > count2) {
+    invariant(n1 !== undefined);
+    n1 = n1.getParent();
+    count1--;
+  }
+  n2 = node2;
+  while (count1 < count2) {
+    invariant(n2 !== undefined);
+    n2 = n2.getParent();
+    count2--;
+  }
+  // Now run up both paths in tandem, stopping at the first common entry
+  while (n1 !== n2) {
+    invariant(n1 !== undefined);
+    n1 = n1.getParent();
+    invariant(n2 !== undefined);
+    n2 = n2.getParent();
+  }
+  return n1;
+}
