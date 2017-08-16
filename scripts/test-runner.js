@@ -99,6 +99,7 @@ function runTest(name, code, options, args) {
     serialize: true,
     uniqueSuffix: "",
   });
+  if (code.includes("// inline expression")) options.inlineExpressions = true;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// throws introspection error")) {
     try {
@@ -293,9 +294,9 @@ function run(args) {
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
 
-    for (let delayInitializations of [false, true]) {
+    for (let [delayInitializations, inlineExpressions] of [[false, false], [true, true]]) {
       total++;
-      let options = { delayInitializations: delayInitializations };
+      let options = { delayInitializations, inlineExpressions };
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
     }
