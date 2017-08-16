@@ -91,6 +91,7 @@ function runTest(name, code, options, args) {
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   options = Object.assign({}, options, {
     compatibility,
+    debugNames: args.debugNames,
     initializeMoreModules,
     delayUnsupportedRequires,
     errorHandler: diag => "Fail",
@@ -306,9 +307,11 @@ function run(args) {
 
 // Object to store all command line arguments
 class ProgramArgs {
+  debugNames: boolean;
   verbose: boolean;
   filter: string;
-  constructor(verbose: boolean, filter: string) {
+  constructor(debugNames: boolean, verbose: boolean, filter: string) {
+    this.debugNames = debugNames;
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
   }
@@ -352,21 +355,25 @@ class ArgsParseError {
 function argsParse(): ProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     string: ["filter"],
-    boolean: ["verbose"],
+    boolean: ["debugNames", "verbose"],
     default: {
+      debugNames: false,
       verbose: false,
       filter: "",
     },
   });
+  if (typeof parsedArgs.debugNames !== "boolean") {
+    throw new ArgsParseError("debugNames must be a boolean (either --debugNames or not)");
+  }
   if (typeof parsedArgs.verbose !== "boolean") {
     throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
   }
   if (typeof parsedArgs.filter !== "string") {
     throw new ArgsParseError(
-      "filter must be a string (relative path from serialize dirctory) (--filter abstract/Residual.js)"
+      "filter must be a string (relative path from serialize directory) (--filter abstract/Residual.js)"
     );
   }
-  let programArgs = new ProgramArgs(parsedArgs.verbose, parsedArgs.filter);
+  let programArgs = new ProgramArgs(parsedArgs.debugNames, parsedArgs.verbose, parsedArgs.filter);
   return programArgs;
 }
 
