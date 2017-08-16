@@ -27,6 +27,8 @@ export function GlobalDeclarationInstantiation(
   env: LexicalEnvironment,
   strictCode: boolean
 ) {
+  realm.getRunningContext().isStrict = realm.isStrict = strictCode;
+
   // 1. Let envRec be env's EnvironmentRecord.
   let envRec = env.environmentRecord;
 
