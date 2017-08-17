@@ -117,7 +117,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
   let desc = propertyBinding === undefined ? undefined : propertyBinding.descriptor;
   if (desc === undefined) {
-    if (O === realm.$GlobalObject) {
+    if (O === realm.$GlobalObject && !realm.getRunningContext().isStrict) {
       generator.emitGlobalDelete(P);
     } else {
       generator.emitPropertyDelete(O, P);
@@ -125,7 +125,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   } else if (!desc.configurable && desc.enumerable && O === realm.$GlobalObject && desc.value !== undefined) {
     generator.emitGlobalDeclaration(P, desc.value);
   } else if (desc.configurable && desc.enumerable && desc.value !== undefined) {
-    if (O === realm.$GlobalObject) {
+    if (O === realm.$GlobalObject && !realm.getRunningContext().isStrict) {
       generator.emitGlobalAssignment(P, desc.value);
     } else {
       generator.emitPropertyAssignment(O, P, desc.value);

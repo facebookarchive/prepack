@@ -11,7 +11,7 @@
 
 import type { Intrinsics, PropertyBinding, Descriptor } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
-import type { NativeFunctionValue, FunctionValue } from "./values/index.js";
+import { NativeFunctionValue, ECMAScriptSourceFunctionValue, FunctionValue } from "./values/index.js";
 import {
   Value,
   ObjectValue,
@@ -83,6 +83,7 @@ export class ExecutionContext {
   variableEnvironment: LexicalEnvironment;
   lexicalEnvironment: LexicalEnvironment;
   isReadOnly: boolean;
+  isStrict: boolean;
   savedEffects: void | Effects;
   savedCompletion: void | PossiblyNormalCompletion;
 
@@ -91,6 +92,7 @@ export class ExecutionContext {
   }
 
   setFunction(F: null | FunctionValue) {
+    if (F instanceof ECMAScriptSourceFunctionValue) this.isStrict = F.$Strict;
     this.function = F;
   }
 
@@ -170,6 +172,7 @@ export class Realm {
 
   start: number;
   isReadOnly: boolean;
+  isStrict: boolean;
   useAbstractInterpretation: boolean;
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
@@ -289,6 +292,7 @@ export class Realm {
 
   wrapInGlobalEnv<T>(callback: () => T): T {
     let context = new ExecutionContext();
+    context.isStrict = this.isStrict;
     context.lexicalEnvironment = this.$GlobalEnv;
     context.variableEnvironment = this.$GlobalEnv;
     context.realm = this;

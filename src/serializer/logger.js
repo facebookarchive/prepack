@@ -29,8 +29,9 @@ export class Logger {
 
   // Wraps a query that might potentially execute user code.
   tryQuery<T>(f: () => T, defaultValue: T, logFailures: boolean): T {
-    let context = new ExecutionContext();
     let realm = this.realm;
+    let context = new ExecutionContext();
+    context.isStrict = realm.isStrict;
     let env = realm.$GlobalEnv;
     context.lexicalEnvironment = env;
     context.variableEnvironment = env;

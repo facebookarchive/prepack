@@ -53,7 +53,7 @@ import { factorifyObjects } from "./factorify.js";
 import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/internalizer.js";
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
-import { getSuggestedArrayLiteralLength } from "./utils.js";
+import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
 
 export class ResidualHeapSerializer {
   constructor(
@@ -490,29 +490,13 @@ export class ResidualHeapSerializer {
       }
     }
 
-    if (generators.length === 1 && functionValues.length === 0) {
-      // This value is only referenced from a single generator, and it's not the realm generator.
-      invariant(generators[0] !== this.generator);
-      // We can emit the initialization of this value into the body associated with that generator.
-      let body = this.activeGeneratorBodies.get(generators[0]);
-      if (body === undefined) {
-        // TODO: The generator is no longer active! We missed the right time to emit this value.
-        this.logger.logError(val, "Value is referenced in an unsupported scope.");
-        return { body: this.mainBody };
-      } else {
-        invariant(body === this.emitter.getBody());
-        return { body };
-      }
-    }
-
-    // TODO #482: If there's more than...
-    // - one generator, or
-    // - one (non-main) generator and some functions
-    // involved, then we need to work a bit harder to figure out where the emit this value.
-    // In the presence of functions, we need to figure out in which generator a function is first exposed.
-    // Then we could walk up the generator chain to find the first common ancestor of all involved generators.
-    this.logger.logError(val, "Value is referenced in an unsupported combination of scopes.");
-    return { body: this.mainBody };
+    // This value is referenced from more than one generator or function.
+    // We can emit the initialization of this value into the body associated with their common ancestor.
+    let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), generators[0]);
+    invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
+    let body = commonAncestor === this.generator ? this.mainBody : this.activeGeneratorBodies.get(commonAncestor);
+    invariant(body !== undefined);
+    return { body: body };
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
@@ -1220,7 +1204,7 @@ export class ResidualHeapSerializer {
     // add strict modes
     let strictDirective = t.directive(t.directiveLiteral("use strict"));
     let globalDirectives = [];
-    if (!unstrictFunctionBodies.length && strictFunctionBodies.length) {
+    if (!this.realm.isStrict && !unstrictFunctionBodies.length && strictFunctionBodies.length) {
       // no unstrict functions, only strict ones
       globalDirectives.push(strictDirective);
     } else if (unstrictFunctionBodies.length && strictFunctionBodies.length) {
@@ -1291,6 +1275,8 @@ export class ResidualHeapSerializer {
       "serialized " + this.serializedValues.size + " of " + this.residualValues.size
     );
 
-    return t.file(t.program(ast_body));
+    let program_directives = [];
+    if (this.realm.isStrict) program_directives.push(strictDirective);
+    return t.file(t.program(ast_body, program_directives));
   }
 }

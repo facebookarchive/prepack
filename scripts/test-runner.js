@@ -91,6 +91,7 @@ function runTest(name, code, options, args) {
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   options = Object.assign({}, options, {
     compatibility,
+    debugNames: args.debugNames,
     initializeMoreModules,
     delayUnsupportedRequires,
     errorHandler: diag => "Fail",
@@ -189,14 +190,20 @@ function runTest(name, code, options, args) {
         markersToFind.push({ positive, value, start: i + marker.length });
       }
     }
+    let addedCode = "";
+    let injectAtRuntime = "// add at runtime:";
+    if (code.includes(injectAtRuntime)) {
+      let i = code.indexOf(injectAtRuntime);
+      addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
+    }
     let unique = 27277;
     let oldUniqueSuffix = "";
     try {
-      expected = exec(`(function () {${code} // keep newline here as code may end with comment
+      expected = exec(`${addedCode}\n(function () {${code} // keep newline here as code may end with comment
 }).call(this);`);
 
       let i = 0;
-      let max = 4;
+      let max = addedCode ? 1 : 4;
       let oldCode = code;
       let anyDelayedValues = false;
       for (; i < max; i++) {
@@ -220,7 +227,7 @@ function runTest(name, code, options, args) {
           }
         }
         if (markersIssue) break;
-        actual = exec(newCode);
+        actual = exec(addedCode + newCode);
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
           break;
@@ -249,6 +256,7 @@ function runTest(name, code, options, args) {
         oldCode = newCode;
         oldUniqueSuffix = newUniqueSuffix;
       }
+      if (i === 1) return true;
       if (i === max) {
         if (anyDelayedValues) {
           // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
@@ -299,9 +307,11 @@ function run(args) {
 
 // Object to store all command line arguments
 class ProgramArgs {
+  debugNames: boolean;
   verbose: boolean;
   filter: string;
-  constructor(verbose: boolean, filter: string) {
+  constructor(debugNames: boolean, verbose: boolean, filter: string) {
+    this.debugNames = debugNames;
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
   }
@@ -345,21 +355,25 @@ class ArgsParseError {
 function argsParse(): ProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     string: ["filter"],
-    boolean: ["verbose"],
+    boolean: ["debugNames", "verbose"],
     default: {
+      debugNames: false,
       verbose: false,
       filter: "",
     },
   });
+  if (typeof parsedArgs.debugNames !== "boolean") {
+    throw new ArgsParseError("debugNames must be a boolean (either --debugNames or not)");
+  }
   if (typeof parsedArgs.verbose !== "boolean") {
     throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
   }
   if (typeof parsedArgs.filter !== "string") {
     throw new ArgsParseError(
-      "filter must be a string (relative path from serialize dirctory) (--filter abstract/Residual.js)"
+      "filter must be a string (relative path from serialize directory) (--filter abstract/Residual.js)"
     );
   }
-  let programArgs = new ProgramArgs(parsedArgs.verbose, parsedArgs.filter);
+  let programArgs = new ProgramArgs(parsedArgs.debugNames, parsedArgs.verbose, parsedArgs.filter);
   return programArgs;
 }
 
