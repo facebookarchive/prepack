@@ -490,7 +490,10 @@ export class ResidualHeapSerializer {
       } else if (functionValues.length === 1) {
         // Value is only referenced from one residual function.
         // Use that function's generator as emit target.
-        const body = this._getSerializeBodyForGenerator(functionValues[0].getParent());
+        const functionGenerator = functionValues[0].getParent();
+        // Only ECMAScript function can reference values so it should always have generator.
+        invariant(functionGenerator);
+        const body = this._getSerializeBodyForGenerator(functionGenerator);
         invariant(body !== undefined);
         return { body };
       } else {
