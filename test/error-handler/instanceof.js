@@ -5,7 +5,7 @@ var b = global.__abstract ? __abstract("boolean", true) : true;
 function foo(){};
 Object.defineProperty(foo, Symbol.hasInstance, { value: function() { throw 123; } })
 var f = global.__abstract ? __abstract(foo, "foo") : foo;
-var o = global.__abstract ? __abstract({}, "({})") : {};
+var o = global.__abstract ? __abstract("object", "({})") : {};
 
 try {
   x1 = o instanceof foo;

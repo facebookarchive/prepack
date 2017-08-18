@@ -1,4 +1,5 @@
-var obj = global.__abstract ? __abstract({ p: 41 }, "({ p: 41} )") : { p: 41 };
+// throws introspection error
+var obj = global.__abstract ? __abstract("object", "({ p: 41} )") : { p: 41 };
 delete obj.p;
 z = obj.p;
 
