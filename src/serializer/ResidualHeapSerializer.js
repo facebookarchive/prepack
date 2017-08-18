@@ -450,8 +450,14 @@ export class ResidualHeapSerializer {
     return serializedBinding;
   }
 
+  _getSerializeBodyForGenerator(generator: Generator) {
+    return generator === this.generator ? this.mainBody : this.activeGeneratorBodies.get(generator);
+  }
+
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
-  _getTarget(val: Value, scopes: Set<Scope>): { body: Array<BabelNodeStatement>, usedOnlyByResidualFunctions?: true } {
+  _getTarget(val: Value): { body: Array<BabelNodeStatement>, usedOnlyByResidualFunctions?: true } {
+    const scopes = this.residualValues.get(val);
+    invariant(scopes !== undefined);
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
 
@@ -481,25 +487,30 @@ export class ResidualHeapSerializer {
           val
         );
         return { body, usedOnlyByResidualFunctions: true };
+      } else if (functionValues.length === 1) {
+        // Value is only referenced from one residual function.
+        // Use that function's generator as emit target.
+        const body = this._getSerializeBodyForGenerator(functionValues[0].getParent());
+        invariant(body !== undefined);
+        return { body };
       } else {
-        // We can just emit it into the main body which will get executed unconditionally.
-        return { body: this.mainBody };
+        // Value is referenced from more than one residual functions.
+        // Use the common ancestor code below to find the emit target.
+        invariant(functionValues.length > 1);
       }
     }
 
     // This value is referenced from more than one generator or function.
     // We can emit the initialization of this value into the body associated with their common ancestor.
-    let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), generators[0]);
+    const scopesArray = Array.from(scopes);
+    let commonAncestor = scopesArray.reduce((x, y) => commonAncestorOf(x, y), scopesArray[0]);
     invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
-    let body = commonAncestor === this.generator ? this.mainBody : this.activeGeneratorBodies.get(commonAncestor);
+    let body = this._getSerializeBodyForGenerator(commonAncestor);
     invariant(body !== undefined);
-    return { body: body };
+    return { body };
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
-    let scopes = this.residualValues.get(val);
-    invariant(scopes !== undefined);
-
     let ref = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCountOptional(val);
     if (ref) {
       return ref;
@@ -512,7 +523,7 @@ export class ResidualHeapSerializer {
       return res;
     }
 
-    let target = this._getTarget(val, scopes);
+    let target = this._getTarget(val);
 
     let name = this.valueNameGenerator.generate(val.__originalName || "");
     let id = t.identifier(name);
