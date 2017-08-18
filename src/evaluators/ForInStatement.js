@@ -68,7 +68,7 @@ export default function(
         // for (var ForBinding in Expression) Statement
         // 1. Let keyResult be ? ForIn/OfHeadEvaluation(« », Expression, enumerate).
         let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "enumerate", strictCode);
-        if (keyResult instanceof AbstractObjectValue && keyResult.isSimple()) {
+        if (keyResult instanceof AbstractObjectValue && keyResult.isSimpleObject()) {
           return emitResidualLoopIfSafe(ast, strictCode, env, realm, left, right, keyResult, body);
         }
         reportErrorAndThrowIfNotConcrete(keyResult, right.loc);
@@ -123,7 +123,7 @@ function emitResidualLoopIfSafe(
   ob: AbstractObjectValue,
   body: BabelNodeStatement
 ) {
-  invariant(ob.isSimple());
+  invariant(ob.isSimpleObject());
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
   let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
   realm.getRunningContext().lexicalEnvironment = blockEnv;
@@ -193,7 +193,7 @@ function emitResidualLoopIfSafe(
           o = ob;
         } else {
           for (let co of oe) o = co;
-          invariant(o !== undefined && o.isSimple());
+          invariant(o !== undefined && o.isSimpleObject());
         }
         let generator = realm.generator;
         invariant(generator !== undefined);
@@ -204,7 +204,7 @@ function emitResidualLoopIfSafe(
         if (sourceObject === o) {
           // Known enumerable properties of sourceObject can become known
           // properties of targetObject.
-          invariant(sourceObject.isPartial());
+          invariant(sourceObject.isPartialObject());
           sourceObject.makeNotPartial();
           // EnumerableOwnProperties is sufficient because sourceObject is simple
           let keyValPairs = EnumerableOwnProperties(realm, sourceObject, "key+value");

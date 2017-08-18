@@ -94,7 +94,6 @@ export function OrdinaryIsExtensible(realm: Realm, O: ObjectValue): boolean {
 // ECMA262 7.2.5
 export function IsExtensible(realm: Realm, O: ObjectValue | AbstractObjectValue): boolean {
   // 1. Assert: Type(O) is Object.
-  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "expected object value");
 
   // 2. Return ? O.[[IsExtensible]]().
   return O.$IsExtensible();

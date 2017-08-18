@@ -13,6 +13,7 @@ import type { Realm } from "../realm.js";
 import type { EnvironmentRecord } from "../environment.js";
 import type { PropertyKeyValue, IterationKind } from "../types.js";
 import {
+  AbstractObjectValue,
   NativeFunctionValue,
   NullValue,
   BooleanValue,
@@ -25,7 +26,6 @@ import {
   UndefinedValue,
   StringExotic,
   ArgumentsExotic,
-  AbstractObjectValue,
 } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "./get.js";
 import { DefinePropertyOrThrow, OrdinaryDefineOwnProperty } from "./properties.js";
@@ -216,13 +216,14 @@ export function ArraySpeciesCreate(realm: Realm, originalArray: ObjectValue, len
     }
 
     // c. If Type(C) is Object, then
-    if (C instanceof ObjectValue || C instanceof AbstractObjectValue) {
+    if (C.mightBeObject()) {
+      if (C.mightNotBeObject()) C.throwIfNotConcrete();
+      invariant(C instanceof ObjectValue || C instanceof AbstractObjectValue);
       // i. Let C be ? Get(C, @@species).
       C = Get(realm, C, realm.intrinsics.SymbolSpecies);
 
       // ii. If C is null, let C be undefined.
       if (C instanceof NullValue) C = realm.intrinsics.undefined;
-      C.throwIfNotConcrete();
     }
   }
 
@@ -231,13 +232,11 @@ export function ArraySpeciesCreate(realm: Realm, originalArray: ObjectValue, len
 
   // 7. If IsConstructor(C) is false, throw a TypeError exception.
   if (!IsConstructor(realm, C)) {
-    C.throwIfNotConcrete();
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a constructor");
   }
-  invariant(C instanceof ObjectValue);
 
   // 8. Return ? Construct(C, « length »).
-  return Construct(realm, C, [new NumberValue(realm, length)]);
+  return Construct(realm, C.throwIfNotConcreteObject(), [new NumberValue(realm, length)]);
 }
 
 // ECMA262 7.4.7

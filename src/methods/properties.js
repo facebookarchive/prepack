@@ -711,9 +711,11 @@ export function OrdinaryDefineOwnProperty(
 // ECMA262 19.1.2.3.1
 export function ObjectDefineProperties(realm: Realm, O: Value, Properties: Value): ObjectValue | AbstractObjectValue {
   // 1. If Type(O) is not Object, throw a TypeError exception.
-  if (!(O instanceof ObjectValue || O instanceof AbstractObjectValue)) {
+  if (O.mightNotBeObject()) {
+    if (O.mightBeObject()) O.throwIfNotConcrete();
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
   }
+  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue);
 
   // 2. Let props be ? ToObject(Properties).
   let props = ToObject(realm, Properties.throwIfNotConcrete());
@@ -769,7 +771,6 @@ export function Set(
   Throw: boolean
 ): boolean {
   // 1. Assert: Type(O) is Object.
-  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "expected object value");
 
   // 2. Assert: IsPropertyKey(P) is true.
   invariant(IsPropertyKey(realm, P), "expected property key");
@@ -797,7 +798,6 @@ export function DefinePropertyOrThrow(
   desc: Descriptor
 ): boolean {
   // 1. Assert: Type(O) is Object.
-  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "expected object");
 
   // 2. Assert: IsPropertyKey(P) is true.
   invariant(typeof P === "string" || IsPropertyKey(realm, P), "expected property key");
@@ -1005,7 +1005,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
   // 2. If O does not have an own property with key P, return undefined.
   let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
   if (!existingBinding) {
-    if (O.isPartial() && !O.isSimple()) {
+    if (O.isPartialObject() && !O.isSimpleObject()) {
       AbstractValue.reportIntrospectionError(O, P);
       throw new FatalError();
     }
@@ -1024,7 +1024,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
   // 5. If X is a data property, then
   if (IsDataDescriptor(realm, X)) {
     let value = X.value;
-    if (O.isPartial() && value instanceof AbstractValue && value.kind !== "resolved") {
+    if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
       let realmGenerator = realm.generator;
       invariant(realmGenerator);
       value = realmGenerator.derive(value.types, value.values, value.args, value._buildNode, { kind: "resolved" });
