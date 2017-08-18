@@ -32,7 +32,7 @@ import { cloneDescriptor, IsDataDescriptor, StrictEqualityComparison } from "../
 import { construct_empty_effects } from "../realm.js";
 import { Generator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
-import { AbstractValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -510,7 +510,7 @@ export function joinPropertyBindings(
   function join(b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) {
     // If the PropertyBinding object has been freshly allocated do not join
     if (d1 === undefined) {
-      if (c2.has(b.object)) return d2; // no join
+      if (b.object instanceof ObjectValue && c2.has(b.object)) return d2; // no join
       if (b.descriptor !== undefined && m1.has(b)) {
         // property was deleted
         d1 = cloneDescriptor(b.descriptor);
@@ -522,7 +522,7 @@ export function joinPropertyBindings(
       }
     }
     if (d2 === undefined) {
-      if (c1.has(b.object)) return d1; // no join
+      if (b.object instanceof ObjectValue && c1.has(b.object)) return d1; // no join
       if (b.descriptor !== undefined && m2.has(b)) {
         // property was deleted
         d2 = cloneDescriptor(b.descriptor);

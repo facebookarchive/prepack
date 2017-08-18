@@ -46,7 +46,7 @@ export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
-export type CreatedObjects = Set<ObjectValue | AbstractObjectValue>;
+export type CreatedObjects = Set<ObjectValue>;
 export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
 export class Tracer {
@@ -592,10 +592,7 @@ export class Realm {
   }
 
   isNewObject(object: AbstractObjectValue | ObjectValue): boolean {
-    if (object instanceof AbstractObjectValue) {
-      let realm = this;
-      return object.values.getElements().some(element => realm.isNewObject(element));
-    }
+    if (object instanceof AbstractObjectValue) return false;
     return this.createdObjects === undefined || this.createdObjects.has(object);
   }
 
