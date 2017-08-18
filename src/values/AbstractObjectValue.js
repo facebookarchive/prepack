@@ -53,21 +53,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   isPartialObject(): boolean {
-    let result;
-    for (let element of this.values.getElements()) {
-      invariant(element instanceof ObjectValue);
-      if (result === undefined) {
-        result = element.isPartialObject();
-      } else if (result !== element.isPartialObject()) {
-        AbstractValue.reportIntrospectionError(this);
-        throw new FatalError();
-      }
-    }
-    if (result === undefined) {
-      AbstractValue.reportIntrospectionError(this);
-      throw new FatalError();
-    }
-    return result;
+    // At the very least, the identity of the object is unknown
+    return true;
   }
 
   isSimpleObject(): boolean {
