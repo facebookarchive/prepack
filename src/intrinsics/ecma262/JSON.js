@@ -21,7 +21,6 @@ import {
   AbstractValue,
   UndefinedValue,
   Value,
-  AbstractObjectValue,
 } from "../../values/index.js";
 import {
   Call,
@@ -306,10 +305,9 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
   return undefined;
 }
 
-function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValue {
-  let template = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  let valTemplate = val.getTemplate();
-  for (let [key, binding] of valTemplate.properties) {
+function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
+  let clone = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  for (let [key, binding] of val.properties) {
     if (binding === undefined || binding.descriptor === undefined) continue; // deleted
     invariant(binding.descriptor !== undefined);
     let value = binding.descriptor.value;
@@ -318,28 +316,28 @@ function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValu
       AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
       throw new FatalError();
     }
-    CreateDataProperty(realm, template, key, InternalJSONClone(realm, value));
+    CreateDataProperty(realm, clone, key, InternalJSONClone(realm, value));
   }
-  if (valTemplate.isPartialObject()) template.makePartial();
-  if (valTemplate.isSimpleObject()) template.makeSimple();
-  return template;
+  if (val.isPartialObject()) clone.makePartial();
+  if (val.isSimpleObject()) clone.makeSimple();
+  return clone;
 }
 
 function InternalJSONClone(realm: Realm, val: Value): Value {
+  if (val instanceof ObjectValue && val.isPartialObject()) {
+    return realm.createAbstract(
+      new TypesDomain(ObjectValue),
+      new ValuesDomain(new Set([InternalCloneObject(realm, val)])),
+      [val],
+      ([node]) =>
+        buildJSONParse(realm.preludeGenerator)({
+          STRING: buildJSONStringify(realm.preludeGenerator)({
+            OBJECT: node,
+          }),
+        })
+    );
+  }
   if (val instanceof AbstractValue) {
-    if (val instanceof AbstractObjectValue) {
-      return realm.createAbstract(
-        new TypesDomain(ObjectValue),
-        new ValuesDomain(new Set([InternalGetTemplate(realm, val)])),
-        [val],
-        ([node]) =>
-          buildJSONParse(realm.preludeGenerator)({
-            STRING: buildJSONStringify(realm.preludeGenerator)({
-              OBJECT: node,
-            }),
-          })
-      );
-    }
     // TODO: NaN and Infinity must be mapped to null.
     return val;
   }
@@ -498,26 +496,18 @@ export default function(realm: Realm): ObjectValue {
     // 9. Let wrapper be ObjectCreate(%ObjectPrototype%).
     let wrapper = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-    // TODO: Make result abstract if any nested element is an abstract value.
-    if (value instanceof AbstractValue) {
-      // Return abstract result. This enables cloning via JSON.parse(JSON.stringify(...)).
-      let clonedValue = InternalJSONClone(realm, value);
+    if (value instanceof AbstractValue || (value instanceof ObjectValue && value.isPartialObject())) {
+      // Return abstract result.
       let result = realm.deriveAbstract(
         new TypesDomain(StringValue),
         ValuesDomain.topVal,
-        [value, clonedValue],
+        [value],
         ([node]) =>
           buildJSONStringify(realm.preludeGenerator)({
             OBJECT: node,
           }),
         { kind: "JSON.stringify(...)" }
       );
-      if (clonedValue instanceof ObjectValue) {
-        let iName = result.intrinsicName;
-        invariant(iName);
-        invariant(realm.generator);
-        realm.rebuildNestedProperties(result, iName);
-      }
       return result;
     }
 
@@ -550,27 +540,28 @@ export default function(realm: Realm): ObjectValue {
       let gen = realm.preludeGenerator;
       invariant(gen); // text is abstract, so we are doing abstract interpretation
       let args = gen.derivedIds.get(text.intrinsicName);
-      invariant(args); // since text.kind === "JSON.stringify(...)" we know this must be true
+      invariant(args && args[0] instanceof Value); // since text.kind === "JSON.stringify(...)"
       let value = args[0];
-      invariant(value instanceof AbstractValue); // put there by stringify above
-      let clonedValue = args[1];
-      let type = value.getType();
-      let template;
-      if (clonedValue instanceof AbstractObjectValue) {
-        template = InternalGetTemplate(realm, clonedValue);
-        template._isSimple = realm.intrinsics.true;
+      let clonedValue;
+      if (value instanceof ObjectValue) {
+        clonedValue = InternalCloneObject(realm, value);
+        invariant(clonedValue.isPartialObject()); // text would be concrete if value were not partial
+        clonedValue.makeSimple(); // Objects that result from JSON.parse are always simple
       }
+      let types = new TypesDomain(value.getType());
       let buildNode = ([node]) =>
         buildJSONParse(realm.preludeGenerator)({
           STRING: node,
         });
-      let types = new TypesDomain(type);
-      let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-      unfiltered = realm.deriveAbstract(types, values, [text], buildNode, { kind: "JSON.parse(...)" });
-      if (template) {
-        invariant(unfiltered.intrinsicName);
-        invariant(realm.generator);
-        realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
+      // Force evaluation of the parse call
+      unfiltered = realm.deriveAbstract(types, ValuesDomain.topVal, [text], buildNode, { kind: "JSON.parse(...)" });
+      invariant(unfiltered.intrinsicName);
+      if (clonedValue instanceof ObjectValue) {
+        // Since the code has already been generated for the parse, we can just return the simple partial concrete
+        // object that is the result of the call, but first we have to give the concrete object the
+        // same name as the abstract object.
+        realm.makeIntrinsicObject(clonedValue, unfiltered.intrinsicName);
+        unfiltered = clonedValue;
       }
     } else {
       // 1. Let JText be ? ToString(text).

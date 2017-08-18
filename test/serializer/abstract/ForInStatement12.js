@@ -1,6 +1,5 @@
 let tmp = { w: undefined, nest: { x: 1 } };
-let str = "({ w: undefined, nest: { x: 1 } })";
-let ob = global.__abstract ? __abstract(tmp, str) : tmp;
+let ob = global.__makePartial ? __makePartial(tmp) : tmp;
 
 let tgt = {};
 

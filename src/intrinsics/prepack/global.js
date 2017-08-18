@@ -21,8 +21,7 @@ import {
   AbstractObjectValue,
   UndefinedValue,
 } from "../../values/index.js";
-import { ToStringPartial } from "../../methods/index.js";
-import { ObjectCreate } from "../../methods/index.js";
+import { ObjectCreate, ToStringPartial } from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
@@ -42,6 +41,36 @@ export default function(realm: Realm): void {
       console.log("dump", args.map(arg => arg.serialize()));
       return context;
     }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  // Helper function to model objects that are obtained from the environment.
+  // __makeIntrinsic(name, object) modifies the given object value so that if it gets embedded in the final heap,
+  // it will be referred to by the supplied name in the generated code.
+  // Furthermore, any object that is obtained from a property of an intrinsic object will be referred to
+  // with the supplied name plus property name (and so on, recursively).
+  global.$DefineOwnProperty("__makeIntrinsic", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__makeIntrinsic",
+      "__makeIntrinsic",
+      0,
+      (context, [name, objectValue]) => {
+        if (!realm.useAbstractInterpretation) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
+        }
+        if (!(name instanceof StringValue)) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "second argument is not a string");
+        }
+        if (!(objectValue instanceof ObjectValue)) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "first argument is not an object");
+        }
+
+        return realm.makeIntrinsicObject(objectValue, name.value);
+      }
+    ),
     writable: true,
     enumerable: false,
     configurable: true,
@@ -116,10 +145,8 @@ export default function(realm: Realm): void {
         let types = new TypesDomain(type);
         let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
         let result = realm.createAbstract(types, values, [], buildNode, undefined, nameString);
-        if (template && !(template instanceof FunctionValue)) {
-          // why exclude functions?
+        if (template) {
           template.makePartial();
-          invariant(realm.generator);
           if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
         return result;
