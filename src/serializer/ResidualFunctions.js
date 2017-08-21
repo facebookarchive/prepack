@@ -201,7 +201,61 @@ export class ResidualFunctions {
     ];
   }
 
-  spliceFunctions(): ResidualFunctionsResult {
+  _defineInstanceBatch(instances: Array<FunctionInstance>, factoryNames: Array<string>, usesThis: boolean,
+      params: Array<BabelNodeLVal>, factoryId: BabelNodeIdentifier, define: () => void) {
+    // Actually create the functions
+    for (let instance of instances) {
+      let { functionValue, serializedBindings, insertionPoint } = instance;
+      let functionId = this.locationService.getLocation(functionValue);
+      invariant(functionId !== undefined);
+      let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
+        let serializedValue = serializedBindings[name].serializedValue;
+        invariant(serializedValue);
+        return serializedValue;
+      });
+      for (let { id } of instance.scopeInstances) {
+        flatArgs.push(t.numericLiteral(id));
+      }
+      let node;
+      let firstUsage = this.firstFunctionUsages.get(functionValue);
+      invariant(insertionPoint !== undefined);
+      if (
+        this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
+        usesThis ||
+        (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
+        this.functionPrototypes.get(functionValue) !== undefined
+      ) {
+        let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
+        for (let flatArg of flatArgs) callArgs.push(flatArg);
+        for (let param of params) {
+          if (param.type !== "Identifier") {
+            throw new FatalError("TODO: do not know how to deal with non-Identifier parameters");
+          }
+          callArgs.push(((param: any): BabelNodeIdentifier));
+        }
+
+        let callee = t.memberExpression(factoryId, t.identifier("call"));
+
+        let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
+
+        node = t.functionDeclaration(functionId, params, childBody);
+      } else {
+        node = t.variableDeclaration("var", [
+          t.variableDeclarator(
+            functionId,
+            t.callExpression(
+              t.memberExpression(factoryId, t.identifier("bind")),
+              [nullExpression].concat(flatArgs)
+            )
+          ),
+        ]);
+      }
+
+      define(instance, node);
+    }
+  }
+
+  spliceFunctions(rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>): ResidualFunctionsResult {
     this.residualFunctionInitializers.scrubFunctionInitializers();
 
     let functionBodies = new Map();
@@ -225,7 +279,12 @@ export class ResidualFunctions {
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
-      this._referentialize(functionInfo.unbound, instances);
+      let additionalFunctionInstances = instances.filter((instance) => rewrittenAdditionalFunctions.has(instance.functionValue))
+      if (additionalFunctionInstances && additionalFunctionInstances.length) {
+        invariant(additionalFunctionInstances.length === instances.length, additionalFunctionInstances.length);
+      } else {
+        this._referentialize(functionInfo.unbound, instances);
+      }
     }
 
     for (let [funcBody, instances] of functionEntries) {
@@ -258,6 +317,9 @@ export class ResidualFunctions {
         funcNodes.set(functionValue, funcNode);
       };
 
+      let rewrittenBody = rewrittenAdditionalFunctions.get(instances[0].functionValue);
+      if (rewrittenBody) funcBody = t.blockStatement(rewrittenBody);
+
       if (shouldInline || instances.length === 1 || usesArguments) {
         this.statistics.functionClones += instances.length - 1;
 
@@ -276,13 +338,14 @@ export class ResidualFunctions {
           }
           funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
 
-          traverse(t.file(t.program([funcNode])), ClosureRefReplacer, null, {
-            serializedBindings,
-            modified,
-            requireReturns: this.requireReturns,
-            requireStatistics,
-            isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
-          });
+          if (!rewrittenBody)
+            traverse(t.file(t.program([funcNode])), ClosureRefReplacer, null, {
+              serializedBindings,
+              modified,
+              requireReturns: this.requireReturns,
+              requireStatistics,
+              isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
+            });
 
           if (functionValue.$Strict) {
             strictFunctionBodies.push(funcNode);
@@ -387,6 +450,7 @@ export class ResidualFunctions {
           // factory functions do not depend on any nested generator scope, so they go to the prelude
           this.prelude.push(factoryNode);
 
+          if (!rewrittenBody)
           traverse(t.file(t.program([factoryNode])), ClosureRefReplacer, null, {
             serializedBindings: sameSerializedBindings,
             modified,
@@ -395,55 +459,7 @@ export class ResidualFunctions {
             isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)),
           });
 
-          for (let instance of instances) {
-            let { functionValue, serializedBindings, insertionPoint } = instance;
-            let functionId = this.locationService.getLocation(functionValue);
-            invariant(functionId !== undefined);
-            let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
-              let serializedValue = serializedBindings[name].serializedValue;
-              invariant(serializedValue);
-              return serializedValue;
-            });
-            for (let { id } of instance.scopeInstances) {
-              flatArgs.push(t.numericLiteral(id));
-            }
-            let node;
-            let firstUsage = this.firstFunctionUsages.get(functionValue);
-            invariant(insertionPoint !== undefined);
-            if (
-              this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
-              usesThis ||
-              (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
-              this.functionPrototypes.get(functionValue) !== undefined
-            ) {
-              let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
-              for (let flatArg of flatArgs) callArgs.push(flatArg);
-              for (let param of params) {
-                if (param.type !== "Identifier") {
-                  throw new FatalError("TODO: do not know how to deal with non-Identifier parameters");
-                }
-                callArgs.push(((param: any): BabelNodeIdentifier));
-              }
-
-              let callee = t.memberExpression(factoryId, t.identifier("call"));
-
-              let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
-
-              node = t.functionDeclaration(functionId, params, childBody);
-            } else {
-              node = t.variableDeclaration("var", [
-                t.variableDeclarator(
-                  functionId,
-                  t.callExpression(
-                    t.memberExpression(factoryId, t.identifier("bind")),
-                    [nullExpression].concat(flatArgs)
-                  )
-                ),
-              ]);
-            }
-
-            define(instance, node);
-          }
+          this._defineInstanceBatch(instances, factoryNames, usesThis, params, factoryId, define);
         }
       }
     }

@@ -120,7 +120,7 @@ export class Serializer {
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
     let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
     residualHeapVisitor.visitRoots();
-    this.realm.evaluateForEffects(() => {
+    this.realm.wrapInGlobalEnv(() => this.realm.evaluateForEffects(() => {
       if (this.options.additionalFunctions) {
         for (let [functionString, effects] of this.functions.writeEffects.entries()) {
           this.realm.applyEffects(effects, "from " + functionString);
@@ -130,7 +130,7 @@ export class Serializer {
         }
       }
       return this.realm.intrinsics.undefined;
-    });
+    }));
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
@@ -160,7 +160,7 @@ export class Serializer {
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
     let functionValueToEffects;
-    if (this.additionalFunctions) {
+    if (this.options.additionalFunctions) {
       functionValueToEffects = new Map();
       for (let [fstr, effects] of this.functions.writeEffects.entries()) {
         let funcValue = this.functions.nameToFunctionValue.get(fstr);
@@ -183,15 +183,14 @@ export class Serializer {
       functionValueToEffects
     );
     let additionalFunctions = [];
-    if (this.options.additionalFunctions) {
+    /*if (this.options.additionalFunctions) {
       for (let [functionString, effects] of this.functions.writeEffects.entries()) {
-        this.realm.generator =
         this.realm.applyEffects(effects, "from " + functionString);
         let functionValue = this.functions.nameToFunctionValue.get(functionString);
         invariant(functionValue);
         residualHeapVisitor.visitRoots(functionValue);
       }
-    }
+    }*/
     let ast = residualHeapSerializer.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
     if (timingStats !== undefined) {

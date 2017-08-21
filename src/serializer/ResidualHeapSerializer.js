@@ -54,6 +54,7 @@ import { voidExpression, emptyExpression, constructorExpression, protoExpression
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
+import type { Effects } from "../realm.js";
 
 export class ResidualHeapSerializer {
   constructor(
@@ -833,7 +834,7 @@ export class ResidualHeapSerializer {
     invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
     invariant(val instanceof ECMAScriptSourceFunctionValue);
 
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    /*let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     let effects;
     // Create the new function body
     if (additionalFVEffects && (effects = additionalFVEffects.get(val))) {
@@ -848,7 +849,7 @@ export class ResidualHeapSerializer {
       let body = context.serializeGenerator(this.generator);
       val.$ECMAScriptCode = t.blockStatement(body);
       this.generator = oldGenerator;
-    }
+    }*/
 
     let residualBindings = this.residualFunctionBindings.get(val);
     invariant(residualBindings);
@@ -860,36 +861,41 @@ export class ResidualHeapSerializer {
       scopeInstances: new Set(),
     };
 
-    let delayed = 1;
-    let undelay = () => {
-      if (--delayed === 0) {
-        instance.insertionPoint = this.emitter.getBodyReference();
-        this.residualFunctions.addFunctionInstance(instance);
+    // Don't need to serialize things referenced by this function if its an additional
+    // function
+    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+      let delayed = 1;
+      let undelay = () => {
+        if (--delayed === 0) {
+          instance.insertionPoint = this.emitter.getBodyReference();
+          this.residualFunctions.addFunctionInstance(instance);
+        }
+      };
+    if (!additionalFVEffects || !additionalFVEffects.has(val)) {
+      for (let boundName in residualBindings) {
+        let residualBinding = residualBindings[boundName];
+        let referencedValues = [];
+        let serializeBindingFunc;
+        if (!residualBinding.declarativeEnvironmentRecord) {
+          serializeBindingFunc = () => this._serializeGlobalBinding(boundName, residualBinding);
+        } else {
+          serializeBindingFunc = () => {
+            return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
+          };
+          invariant(residualBinding.value !== undefined);
+          referencedValues.push(residualBinding.value);
+        }
+        delayed++;
+        this.emitter.emitNowOrAfterWaitingForDependencies(referencedValues, () => {
+          let serializedBinding = serializeBindingFunc();
+          invariant(serializedBinding);
+          serializedBindings[boundName] = serializedBinding;
+          undelay();
+        });
       }
-    };
-    for (let boundName in residualBindings) {
-      let residualBinding = residualBindings[boundName];
-      let referencedValues = [];
-      let serializeBindingFunc;
-      if (!residualBinding.declarativeEnvironmentRecord) {
-        serializeBindingFunc = () => this._serializeGlobalBinding(boundName, residualBinding);
-      } else {
-        serializeBindingFunc = () => {
-          return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
-        };
-        invariant(residualBinding.value !== undefined);
-        referencedValues.push(residualBinding.value);
-      }
-      delayed++;
-      this.emitter.emitNowOrAfterWaitingForDependencies(referencedValues, () => {
-        let serializedBinding = serializeBindingFunc();
-        invariant(serializedBinding);
-        serializedBindings[boundName] = serializedBinding;
-        undelay();
-      });
     }
 
-    undelay();
+      undelay();
 
     this._emitObjectProperties(val);
   }
@@ -1183,8 +1189,33 @@ export class ResidualHeapSerializer {
     // TODO #20: add timers
 
     // TODO #21: add event listeners
+
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
       this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
+
+    // Make sure additional functions get serialized.
+    // TODO: make sure those functions get skipped over in all relevant places in serialization/optimization
+    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    let rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
+    if (additionalFVEffects) {
+      for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
+        // Create the new function body
+        let [r, g, ob, pb, co] = effects;
+        let oldGenerator = this.generator;
+        this.generator = g;
+        // TODO: should we be ignoring the preludegenerator here?
+        // TODO: does the emitter do the right thing here
+        this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
+        // TODO: make sure property modifications of global object get emitted in correct scope
+        let context = this._getContext();
+        invariant(this.generator === g);
+        let body = context.serializeGenerator(this.generator);
+        invariant(body.length > 0, body);
+        invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
+        rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
+        this.generator = oldGenerator;
+      }
+    }
 
     this.emitter.finalize();
 
@@ -1193,7 +1224,7 @@ export class ResidualHeapSerializer {
       unstrictFunctionBodies,
       strictFunctionBodies,
       requireStatistics,
-    } = this.residualFunctions.spliceFunctions();
+    } = this.residualFunctions.spliceFunctions(rewrittenAdditionalFunctions);
     if (requireStatistics.replaced > 0 && !this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
       console.log(
         `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
@@ -1270,10 +1301,10 @@ export class ResidualHeapSerializer {
       }
     }
 
-    invariant(
+    /*invariant(
       this.serializedValues.size === this.residualValues.size,
       "serialized " + this.serializedValues.size + " of " + this.residualValues.size
-    );
+    );*/
 
     let program_directives = [];
     if (this.realm.isStrict) program_directives.push(strictDirective);

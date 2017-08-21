@@ -5,10 +5,12 @@ global.b = "";
 
 function additional1() {
   global.a = "foo";
+  var x = 5;
 }
 
 function additional2() {
   global.b = "bar";
+  var y = 10;
 }
 
 inspect = function() {
