@@ -120,6 +120,7 @@ export class ResidualHeapSerializer {
     this.delayInitializations = delayInitializations;
     this.referencedDeclaredValues = referencedDeclaredValues;
     this.activeGeneratorBodies = new Map();
+    this.requireFunction = modules.getRequire();
   }
 
   emitter: Emitter;
@@ -154,6 +155,7 @@ export class ResidualHeapSerializer {
   delayInitializations: boolean;
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
+  requireFunction: Value;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -459,8 +461,14 @@ export class ResidualHeapSerializer {
     let functionValues = [];
     let generators = [];
     for (let scope of scopes) {
-      if (scope instanceof FunctionValue) functionValues.push(scope);
-      else {
+      if (scope instanceof FunctionValue) {
+        if (scope === this.requireFunction) {
+          // This value is used from the `require` function. While we could possibly delay it, it is highly likely
+          // that the `require` function will get called, and thus we keep targetting the main body.
+          return { body: this.mainBody };
+        }
+        functionValues.push(scope);
+      } else {
         invariant(scope instanceof Generator);
         if (scope === this.realm.generator) {
           // This value is used from the main generator scope. This means that we need to emit the value and its
