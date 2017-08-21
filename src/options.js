@@ -35,7 +35,7 @@ export type SerializerOptions = {
   logStatistics?: boolean,
   logModules?: boolean,
   profile?: boolean,
-  singlePass?: boolean,
+  inlineExpressions?: boolean,
   trace?: boolean,
 };
 

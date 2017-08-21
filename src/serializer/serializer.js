@@ -125,7 +125,7 @@ export class Serializer {
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
     let residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers();
-    if (!this.options.singlePass) {
+    if (this.options.inlineExpressions) {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
       residualHeapValueIdentifiers.initPass1();
       new ResidualHeapSerializer(
