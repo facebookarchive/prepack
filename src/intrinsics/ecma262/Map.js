@@ -11,9 +11,9 @@
 
 import type { Realm } from "../../realm.js";
 import {
-  NativeFunctionValue,
-  ObjectValue,
   AbstractObjectValue,
+  ObjectValue,
+  NativeFunctionValue,
   NullValue,
   UndefinedValue,
 } from "../../values/index.js";
@@ -86,13 +86,15 @@ export default function(realm: Realm): NativeFunctionValue {
       let nextItem = IteratorValue(realm, next);
 
       // d. If Type(nextItem) is not Object, then
-      if (!(nextItem instanceof ObjectValue) && !(nextItem instanceof AbstractObjectValue)) {
+      if (nextItem.mightNotBeObject()) {
+        if (nextItem.mightBeObject()) nextItem.throwIfNotConcrete();
         // i. Let error be Completion{[[Type]]: throw, [[Value]]: a newly created TypeError object, [[Target]]: empty}.
         let error = realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
 
         // ii. Return ? IteratorClose(iter, error).
         throw IteratorClose(realm, iter, error);
       }
+      invariant(nextItem instanceof ObjectValue || nextItem instanceof AbstractObjectValue);
 
       // e. Let k be Get(nextItem, "0").
       let k;

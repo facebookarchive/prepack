@@ -11,12 +11,12 @@
 
 import type { Realm } from "../realm.js";
 import {
+  AbstractObjectValue,
   ECMAScriptSourceFunctionValue,
   ObjectValue,
   UndefinedValue,
   NullValue,
   Value,
-  AbstractObjectValue,
   EmptyValue,
 } from "../values/index.js";
 import { IsConstructor, IsStatic } from "./is.js";
@@ -111,10 +111,11 @@ export function SpeciesConstructor(realm: Realm, O: ObjectValue, defaultConstruc
   if (C instanceof UndefinedValue) return defaultConstructor;
 
   // 4. If Type(C) is not Object, throw a TypeError exception.
-  if (!(C instanceof ObjectValue || C instanceof AbstractObjectValue)) {
-    C.throwIfNotConcrete();
+  if (C.mightNotBeObject()) {
+    if (C.mightBeObject()) C.throwIfNotConcrete();
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(C) is not an object");
   }
+  invariant(C instanceof ObjectValue || C instanceof AbstractObjectValue);
 
   // 5. Let S be ? Get(C, @@species).
   let S = Get(realm, C, realm.intrinsics.SymbolSpecies);

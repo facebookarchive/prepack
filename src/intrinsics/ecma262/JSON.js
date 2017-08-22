@@ -320,8 +320,8 @@ function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValu
     }
     CreateDataProperty(realm, template, key, InternalJSONClone(realm, value));
   }
-  if (valTemplate.isPartial()) template.makePartial();
-  if (valTemplate.isSimple()) template.makeSimple();
+  if (valTemplate.isPartialObject()) template.makePartial();
+  if (valTemplate.isSimpleObject()) template.makeSimple();
   return template;
 }
 

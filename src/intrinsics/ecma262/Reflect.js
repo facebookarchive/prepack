@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { AbstractObjectValue, BooleanValue, ObjectValue, NullValue } from "../../values/index.js";
+import { BooleanValue, ObjectValue, NullValue } from "../../values/index.js";
 import {
   CreateArrayFromList,
   FromPropertyDescriptor,
@@ -156,8 +156,8 @@ export default function(realm: Realm): ObjectValue {
   // ECMA262 26.1.8
   obj.defineNativeMethod("has", 2, (context, [target, propertyKey]) => {
     // 1. If Type(target) is not Object, throw a TypeError exception.
-    if (!(target instanceof ObjectValue || target instanceof AbstractObjectValue)) {
-      target.throwIfNotConcrete();
+    if (target.mightNotBeObject()) {
+      if (target.mightBeObject()) target.throwIfNotConcrete();
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 
