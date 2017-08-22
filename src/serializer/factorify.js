@@ -13,6 +13,20 @@ import * as t from "babel-types";
 import type { BabelNodeStatement, BabelNodeObjectExpression, BabelNodeLVal } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 
+function isLiteral(node) {
+  switch (node.type) {
+    case "NullLiteral":
+    case "BooleanLiteral":
+    case "StringLiteral":
+    case "NumericLiteral":
+      return true;
+    case "UnaryExpression":
+      return node.operator === "void" && isLiteral(node.argument);
+    default:
+      return false;
+  }
+}
+
 function isSameNode(left, right) {
   let type = left.type;
 
@@ -30,6 +44,12 @@ function isSameNode(left, right) {
 
   if (type === "BooleanLiteral" || type === "StringLiteral" || type === "NumericLiteral") {
     return left.value === right.value;
+  }
+
+  if (type === "UnaryExpression") {
+    return (
+      left.operator === "void" && right.operator === "void" && isLiteral(left.argument) && isLiteral(right.argument)
+    );
   }
 
   return false;
