@@ -221,11 +221,11 @@ export default function(realm: Realm): void {
 
   // __makePartial(object) marks an (abstract) object as partial.
   global.$DefineOwnProperty("__makePartial", {
-    value: new NativeFunctionValue(realm, "global.__makePartial", "__isPartial", 1, (context, [object]) => {
+    value: new NativeFunctionValue(realm, "global.__makePartial", "__makePartial", 1, (context, [object]) => {
       // casting to any to avoid Flow bug
       if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
         (object: any).makePartial();
-        return context.$Realm.intrinsics.undefined;
+        return object;
       }
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
     }),
@@ -240,7 +240,7 @@ export default function(realm: Realm): void {
       // casting to any to avoid Flow bug
       if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
         (object: any).makeSimple();
-        return context.$Realm.intrinsics.undefined;
+        return object;
       }
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
     }),
