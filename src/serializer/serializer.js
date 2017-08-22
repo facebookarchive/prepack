@@ -123,10 +123,22 @@ export class Serializer {
     this.realm.wrapInGlobalEnv(() => this.realm.evaluateForEffects(() => {
       if (this.options.additionalFunctions) {
         for (let [functionString, effects] of this.functions.writeEffects.entries()) {
-          this.realm.applyEffects(effects, "from " + functionString);
+          let [r, g, ob, pb, co] = effects;
+          // need to switch the application order of generators to ensure consistency
+          // between visitor and serializer (a function should have only one associated
+          // generator).
+          let originalLength = g.length;
+          let originalGenerator = this.realm.generator;
+          this.realm.generator = g;
+          // TODO: should we be ignoring the preludegenerator here?
+          // TODO: does the emitter do the right thing here
+          // TODO: this is an overapproximation of the objects used from the scope of
+          // the additional function, try not to visit the original generator twice
+          this.realm.applyEffects([r, originalGenerator, ob, pb, co]);
           let functionValue = this.functions.nameToFunctionValue.get(functionString);
           invariant(functionValue);
           residualHeapVisitor.visitRoots(functionValue);
+          g.length = originalLength;
         }
       }
       return this.realm.intrinsics.undefined;
@@ -137,6 +149,16 @@ export class Serializer {
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
     let residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers();
+    let functionValueToEffects;
+    if (this.options.additionalFunctions) {
+      functionValueToEffects = new Map();
+      for (let [fstr, effects] of this.functions.writeEffects.entries()) {
+        let funcValue = this.functions.nameToFunctionValue.get(fstr);
+        invariant(funcValue);
+        functionValueToEffects.set(funcValue, effects);
+      }
+    }
+
     if (!this.options.singlePass) {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
       residualHeapValueIdentifiers.initPass1();
@@ -150,7 +172,8 @@ export class Serializer {
         residualHeapVisitor.functionBindings,
         residualHeapVisitor.functionInfos,
         !!this.options.delayInitializations,
-        residualHeapVisitor.referencedDeclaredValues
+        residualHeapVisitor.referencedDeclaredValues,
+        functionValueToEffects
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -159,16 +182,6 @@ export class Serializer {
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
-    let functionValueToEffects;
-    if (this.options.additionalFunctions) {
-      functionValueToEffects = new Map();
-      for (let [fstr, effects] of this.functions.writeEffects.entries()) {
-        let funcValue = this.functions.nameToFunctionValue.get(fstr);
-        invariant(funcValue);
-        functionValueToEffects.set(funcValue, effects);
-      }
-    }
-
     let residualHeapSerializer = new ResidualHeapSerializer(
       this.realm,
       this.logger,
@@ -182,15 +195,7 @@ export class Serializer {
       residualHeapVisitor.referencedDeclaredValues,
       functionValueToEffects
     );
-    let additionalFunctions = [];
-    /*if (this.options.additionalFunctions) {
-      for (let [functionString, effects] of this.functions.writeEffects.entries()) {
-        this.realm.applyEffects(effects, "from " + functionString);
-        let functionValue = this.functions.nameToFunctionValue.get(functionString);
-        invariant(functionValue);
-        residualHeapVisitor.visitRoots(functionValue);
-      }
-    }*/
+
     let ast = residualHeapSerializer.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
     if (timingStats !== undefined) {

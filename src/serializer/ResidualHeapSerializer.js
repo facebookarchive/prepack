@@ -834,23 +834,6 @@ export class ResidualHeapSerializer {
     invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
     invariant(val instanceof ECMAScriptSourceFunctionValue);
 
-    /*let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-    let effects;
-    // Create the new function body
-    if (additionalFVEffects && (effects = additionalFVEffects.get(val))) {
-      let [r, g, ob, pb, co] = effects;
-      let oldGenerator = this.generator;
-      this.generator = g;
-      // TODO: should we be ignoring the preludegenerator here?
-      // TODO: does the emitter do the right thing here
-      this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
-      // TODO: make sure property modifications of global object get emitted in correct scope
-      let context = this._getContext();
-      let body = context.serializeGenerator(this.generator);
-      val.$ECMAScriptCode = t.blockStatement(body);
-      this.generator = oldGenerator;
-    }*/
-
     let residualBindings = this.residualFunctionBindings.get(val);
     invariant(residualBindings);
 
@@ -861,41 +844,42 @@ export class ResidualHeapSerializer {
       scopeInstances: new Set(),
     };
 
-    // Don't need to serialize things referenced by this function if its an additional
-    // function
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-      let delayed = 1;
-      let undelay = () => {
-        if (--delayed === 0) {
-          instance.insertionPoint = this.emitter.getBodyReference();
-          this.residualFunctions.addFunctionInstance(instance);
-        }
-      };
-    if (!additionalFVEffects || !additionalFVEffects.has(val)) {
-      for (let boundName in residualBindings) {
-        let residualBinding = residualBindings[boundName];
-        let referencedValues = [];
-        let serializeBindingFunc;
-        if (!residualBinding.declarativeEnvironmentRecord) {
-          serializeBindingFunc = () => this._serializeGlobalBinding(boundName, residualBinding);
-        } else {
-          serializeBindingFunc = () => {
-            return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
-          };
-          invariant(residualBinding.value !== undefined);
-          referencedValues.push(residualBinding.value);
-        }
-        delayed++;
-        this.emitter.emitNowOrAfterWaitingForDependencies(referencedValues, () => {
-          let serializedBinding = serializeBindingFunc();
-          invariant(serializedBinding);
-          serializedBindings[boundName] = serializedBinding;
-          undelay();
-        });
+    let delayed = 1;
+    let undelay = () => {
+      if (--delayed === 0) {
+        instance.insertionPoint = this.emitter.getBodyReference();
+        this.residualFunctions.addFunctionInstance(instance);
       }
+    };
+    for (let boundName in residualBindings) {
+      let residualBinding = residualBindings[boundName];
+      let referencedValues = [];
+      let serializeBindingFunc;
+      if (!residualBinding.declarativeEnvironmentRecord) {
+        serializeBindingFunc = () => this._serializeGlobalBinding(boundName, residualBinding);
+      } else {
+        serializeBindingFunc = () => {
+          return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
+        };
+        invariant(residualBinding.value !== undefined);
+        referencedValues.push(residualBinding.value);
+      }
+      delayed++;
+      this.emitter.emitNowOrAfterWaitingForDependencies(referencedValues, () => {
+        let serializedBinding = serializeBindingFunc();
+        invariant(serializedBinding);
+        // TODO: revisit this and probably remove the check
+        // For now we serialize anything the original function closes over
+        // because after finishing serialization of the main generator we can't emit
+        // any more code into the main body.
+        if (!additionalFVEffects || !additionalFVEffects.has(val))
+          serializedBindings[boundName] = serializedBinding;
+        undelay();
+      });
     }
 
-      undelay();
+    undelay();
 
     this._emitObjectProperties(val);
   }
@@ -1195,26 +1179,36 @@ export class ResidualHeapSerializer {
 
     // Make sure additional functions get serialized.
     // TODO: make sure those functions get skipped over in all relevant places in serialization/optimization
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    // We have to do this if we're on the first pass so effects get reversed properly
     let rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
-    if (additionalFVEffects) {
-      for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
-        // Create the new function body
-        let [r, g, ob, pb, co] = effects;
-        let oldGenerator = this.generator;
-        this.generator = g;
-        // TODO: should we be ignoring the preludegenerator here?
-        // TODO: does the emitter do the right thing here
-        this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
-        // TODO: make sure property modifications of global object get emitted in correct scope
-        let context = this._getContext();
-        invariant(this.generator === g);
-        let body = context.serializeGenerator(this.generator);
-        invariant(body.length > 0, body);
-        invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
-        rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
-        this.generator = oldGenerator;
+    let processAdditionalFunctionValues = () => {
+      let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+      if (additionalFVEffects) {
+        for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
+          // Create the new function body
+          let [r, g, ob, pb, co] = effects;
+          let oldGenerator = this.generator;
+          let originalLength = g.length;
+          this.generator = g;
+          this.realm.generator = g;
+          // TODO: should we be ignoring the preludegenerator here?
+          // TODO: does the emitter do the right thing here
+          this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
+          // TODO: make sure property modifications of global object get emitted in correct scope
+          let context = this._getContext();
+          let body = context.serializeGenerator(this.generator);
+          invariant(body.length > 0, body);
+          invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
+          rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
+          this.generator = oldGenerator;
+          g.length = originalLength;
+        }
       }
+    };
+    if (this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
+      this.realm.wrapInGlobalEnv(() => this.realm.evaluateForEffects(processAdditionalFunctionValues));
+    } else {
+      processAdditionalFunctionValues();
     }
 
     this.emitter.finalize();
@@ -1301,10 +1295,10 @@ export class ResidualHeapSerializer {
       }
     }
 
-    /*invariant(
+    invariant(
       this.serializedValues.size === this.residualValues.size,
       "serialized " + this.serializedValues.size + " of " + this.residualValues.size
-    );*/
+    );
 
     let program_directives = [];
     if (this.realm.isStrict) program_directives.push(strictDirective);
