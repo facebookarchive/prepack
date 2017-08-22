@@ -2,5 +2,5 @@
 var i = 42;
 i.someProperty = 43;
 
-var obj = __abstract({});
+var obj = __makePartial({});
 obj.someProperty = 42;

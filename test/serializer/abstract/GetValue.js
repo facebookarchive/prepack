@@ -1,4 +1,4 @@
 // throws introspection error
 
-var obj = __abstract({});
+var obj = __makePartial({});
 var x = obj.someProperty;

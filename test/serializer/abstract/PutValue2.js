@@ -1,4 +1,4 @@
-var obj = global.__abstract ? __abstract({ someProperty: 41 }, "({ someProperty: 41} )") : {};
+var obj = global.__makePartial ? __makePartial({ someProperty: 41 }) : {};
 obj.someProperty = 42;
 z = obj.someProperty;
 
