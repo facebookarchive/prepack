@@ -553,20 +553,22 @@ export class ResidualHeapSerializer {
   _serializeValueIntrinsic(val: Value): BabelNodeExpression {
     let intrinsicName = val.intrinsicName;
     invariant(intrinsicName);
-    let intrinsicId = t.identifier(this.valueNameGenerator.generate(intrinsicName));
-    let declar = t.variableDeclaration("var", [
-      t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
-    ]);
     if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
+      // The intrinsic was generated at a particular point in time.
+      let intrinsicId = t.identifier(this.valueNameGenerator.generate(intrinsicName));
+      let declar = t.variableDeclaration("var", [
+        t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
+      ]);
       // TODO #882: The value came into existance as a template for an abstract object.
       // Unfortunately, we are not properly tracking which generate it's associated with.
       // Until this gets fixed, let's stick to the historical behavior: Emit to the current emitter body.
       this.emitter.emit(declar);
+      return intrinsicId;
     } else {
+      // The intrinsic conceptually exists ahead of time.
       invariant(this.emitter.getBody() === this.mainBody);
-      this.prelude.push(declar);
+      return this.preludeGenerator.memoizeReference(intrinsicName);
     }
-    return intrinsicId;
   }
 
   _getDescriptorValues(desc: Descriptor): Array<Value> {
