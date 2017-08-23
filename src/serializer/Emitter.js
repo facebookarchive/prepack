@@ -45,13 +45,14 @@ import { ResidualFunctions } from "./ResidualFunctions.js";
 //    the lower body entry is finished.
 //    To this end, the emitter maintains the `_activeBodies` and `_waitingForBodies` datastructures.
 export class Emitter {
-  constructor(residualFunctions: ResidualFunctions) {
+  constructor(residualFunctions: ResidualFunctions, delayInitializations: boolean) {
     let mainBody = [];
     this._waitingForValues = new Map();
     this._waitingForBodies = new Map();
     this._body = mainBody;
     this._declaredAbstractValues = new Map();
     this._residualFunctions = residualFunctions;
+    this._delayInitializations = delayInitializations;
     this._activeStack = [];
     this._activeValues = new Set();
     this._activeBodies = [mainBody];
@@ -63,9 +64,10 @@ export class Emitter {
   _activeValues: Set<Value>;
   _activeBodies: Array<GeneratorBody>;
   _residualFunctions: ResidualFunctions;
+  _delayInitializations: boolean;
   _waitingForValues: Map<Value, Array<{ body: GeneratorBody, dependencies: Array<Value>, func: () => void }>>;
   _waitingForBodies: Map<GeneratorBody, Array<{ dependencies: Array<Value>, func: () => void }>>;
-  _declaredAbstractValues: Map<AbstractValue, GeneratorBody>;
+  _declaredAbstractValues: Map<AbstractValue, Array<GeneratorBody>>;
   _body: GeneratorBody;
 
   beginEmitting(dependency: string | Generator | Value, targetBody: GeneratorBody) {
@@ -153,6 +155,14 @@ export class Emitter {
     this._waitingForValues.delete(value);
   }
 
+  // Find the first ancestor in input stack that is in current active stack.
+  // It can always find one because the bottom one in the stack is the main generator.
+  _getFirstAncestorGeneratorWithActiveBody(bodyStack: Array<GeneratorBody>): GeneratorBody {
+    const activeBody = bodyStack.slice().reverse().find(body => this._activeBodies.includes(body));
+    invariant(activeBody);
+    return activeBody;
+  }
+
   // Serialization of a statement related to a value MUST be delayed if
   // the creation of the value's identity requires the availability of either:
   // 1. a time-dependent value that is declared by some generator entry
@@ -189,22 +199,23 @@ export class Emitter {
       return undefined;
     } else if (val instanceof AbstractValue) {
       if (val.hasIdentifier()) {
-        const valSerializeBody = this._declaredAbstractValues.get(val);
-        if (!valSerializeBody) {
+        const valSerializeBodyStack = this._declaredAbstractValues.get(val);
+        if (!valSerializeBodyStack) {
           // Hasn't been serialized yet.
           return val;
         } else {
           // The dependency has already been serialized(declared). But we may still have to wait for
           // current generator body to be available, under following conditions:
-          // 1. It is not delay initializations scenario(which this._body points to residual function)
+          // 1. Not delay initialization.
           // 2. Not emitting in current active generator.(otherwise no need to wait)
-          // 3. Dependency's generator body is still active.
-          // 4. and dependency generator body is lower in active generator stack than current body.
-          if (
-            this._activeBodies.includes(this._body) &&
+          // 3. Dependency's active ancestor generator body is lower in generator stack than current body.
+          const valActiveAncestorBody = this._getFirstAncestorGeneratorWithActiveBody(valSerializeBodyStack);
+          invariant(this._activeBodies.includes(valActiveAncestorBody));
+          if (!this._activeBodies.includes(this._body)) {
+            invariant(this._delayInitializations);
+          } else if (
             !this._isEmittingActiveGenerator() &&
-            this._activeBodies.includes(valSerializeBody) &&
-            this._activeBodies.indexOf(valSerializeBody) > this._activeBodies.indexOf(this._body)
+            this._activeBodies.indexOf(valActiveAncestorBody) > this._activeBodies.indexOf(this._body)
           ) {
             return this._body;
           }
@@ -285,11 +296,15 @@ export class Emitter {
     invariant(!this._finalized);
     this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func);
   }
+  _cloneGeneratorStack() {
+    return this._activeBodies.slice();
+  }
   declare(value: AbstractValue) {
     invariant(!this._finalized);
     invariant(!this._activeValues.has(value));
     invariant(value.hasIdentifier());
-    this._declaredAbstractValues.set(value, this._body);
+    invariant(this._isEmittingActiveGenerator());
+    this._declaredAbstractValues.set(value, this._cloneGeneratorStack());
     this._processValue(value);
   }
   hasBeenDeclared(value: AbstractValue) {
