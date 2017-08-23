@@ -29,7 +29,7 @@ import {
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
-import { FatalError } from "./errors.js";
+import { CompilerDiagnostic, FatalError } from "./errors.js";
 import { defaultOptions } from "./options";
 import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
@@ -1091,7 +1091,16 @@ export class LexicalEnvironment {
         code[source.filePath] = source.fileContents;
         directives = directives.concat(node.program.directives);
       } catch (e) {
-        if (e instanceof ThrowCompletion) return e;
+        if (e instanceof ThrowCompletion) {
+          let error = e.value;
+          if (error instanceof ObjectValue) {
+            let message = error.$Get("message", error);
+            e.location.source = source.filePath;
+            let err = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
+            this.realm.handleError(err);
+            throw new FatalError("syntax error");
+          }
+        }
         throw e;
       }
     }
@@ -1103,14 +1112,15 @@ export class LexicalEnvironment {
     sourceType: SourceType = "script",
     onParse: void | (BabelNodeFile => void) = undefined
   ): [AbruptCompletion | Value, any] {
-    let [ast, code] = this.concatenateAndParse(sources, sourceType);
     let context = new ExecutionContext();
     context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
     this.realm.pushContext(context);
-    let res;
+    let res, code;
     try {
+      let ast;
+      [ast, code] = this.concatenateAndParse(sources, sourceType);
       if (onParse) onParse(ast);
       res = this.evaluateCompletion(ast, false);
     } finally {
