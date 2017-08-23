@@ -52,7 +52,10 @@ function terminateWorker() {
 }
 
 function processError(errorOutput, error) {
-  let loc = error.location ? error.location.start.line + '' + error.location.start.column + ' ' : '';
+  let errorWikiLink = document.createElement('a');
+  errorWikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(error.errorCode);
+  errorWikiLink.text = error.errorCode;
+  errorWikiLink.setAttribute('target', '_blank');
   if (error.location) {
     let errorLineLink = document.createElement('a');
     let lineText = error.location.start.line + ':' + error.location.start.column;
@@ -64,17 +67,15 @@ function processError(errorOutput, error) {
     };
     errorLineLink.text = lineText;
     errorLineLink.style.color = 'red';
-    let beforeText = error.severity + ' (';
-    let afterText = '): ' + error.errorCode + ' ' + error.message + '\n';
-    let beforeLineNumber = document.createTextNode(beforeText);
-    let afterLineNumber = document.createTextNode(afterText);
-    errorOutput.appendChild(beforeLineNumber);
+    errorOutput.appendChild(document.createTextNode(error.severity + ' ('));
     errorOutput.appendChild(errorLineLink);
-    errorOutput.appendChild(afterLineNumber);
+    errorOutput.appendChild(document.createTextNode('): '));
+    errorOutput.appendChild(errorWikiLink);
+    errorOutput.appendChild(document.createTextNode(' ' + error.message + '\n'));
   } else {
-    errorOutput.appendChild(
-      document.createTextNode(error.severity + ': ' + error.errorCode + ' ' + error.message + '\n'),
-    );
+    errorOutput.appendChild(document.createTextNode(error.severity + ': '));
+    errorOutput.appendChild(errorWikiLink);
+    errorOutput.appendChild(document.createTextNode(' ' + error.message + '\n'));
   }
 }
 
