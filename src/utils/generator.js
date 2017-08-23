@@ -433,7 +433,7 @@ export class PreludeGenerator {
     } else {
       let i = key.lastIndexOf(".");
       if (i === -1) {
-        init = t.identifier(key);
+        init = t.memberExpression(this.memoizeReference("global"), t.identifier(key));
       } else {
         init = t.memberExpression(this.memoizeReference(key.substr(0, i)), t.identifier(key.substr(i + 1)));
       }
