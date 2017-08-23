@@ -1,39 +1,43 @@
 self.importScripts('prepack.min.js');
 
 onmessage = function(e) {
-  var buffer = '';
-  var originalError = console.error;
-  var originalWarn = console.warn;
+  var buffer = [];
 
-  function redirectOutput() {
-    buffer += Array.from(arguments).join(' ') + '\n';
+  function errorHandler(error) {
+    buffer.push({
+      severity: error.severity,
+      location: error.location,
+      message: error.message,
+      errorCode: error.errorCode,
+    });
+    return error.severity === 'FatalError' ? 'Fail' : 'Recover';
   }
 
   try {
-    console.error = redirectOutput;
-    console.warn = redirectOutput;
-
-    var result = Prepack.prepack(e.data, {
+    var sources = [{ filePath: '', fileContents: e.data }];
+    var result = Prepack.prepackSources(sources, {
       compatibility: 'browser',
       filename: 'repl',
       timeout: 1000,
       serialize: true,
+      errorHandler,
     });
     if (result) {
-      postMessage({type: 'success', data: result.code});
+      postMessage({ type: 'success', data: result.code });
     } else {
       // A well-defined error occurred.
-      postMessage({type: 'error', data: buffer});
+      //postMessage({ type: 'error', data: buffer });
+      postMessage({ type: 'error', data: ['one', 'two'] });
     }
   } catch (err) {
-    // Something went horribly wrong.
-    var message = err.message;
-    if (err instanceof Prepack.InitializationError) {
-      message = '';
+    var data;
+    if (err.message.startsWith('A fatal error occurred')) {
+      data = buffer;
+    } else {
+      // Something went horribly wrong.
+      var message = err.message;
+      data = message;
     }
-    postMessage({type: 'error', data: buffer + message});
-  } finally {
-    console.error = originalError;
-    console.warn = originalWarn;
+    postMessage({ type: 'error', data });
   }
 };

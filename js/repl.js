@@ -20,15 +20,17 @@ function createEditor(elem) {
 
 var demos = [];
 /**generate select */
-function generateSelect(obj,dom){
+function generateSelect(obj, dom) {
   var tmpName;
   // var keys = ['<option value='+-1+'>select demo</option>'];
   var keys = [];
   demos = [];
-  for(var name in obj){
-    if(!tmpName) {tmpName = name}
+  for (var name in obj) {
+    if (!tmpName) {
+      tmpName = name;
+    }
     demos.push(name);
-    keys.push('<option value='+name+'>'+name+'</option>');
+    keys.push('<option value=' + name + '>' + name + '</option>');
   }
   dom.innerHTML = keys.join('');
   return tmpName;
@@ -49,10 +51,39 @@ function terminateWorker() {
   }
 }
 
+function processError(errorOutput, error) {
+  let loc = error.location ? error.location.start.line + '' + error.location.start.column + ' ' : '';
+  console.log(error);
+  if (error.location) {
+    console.log(error.location);
+    let errorLineLink = document.createElement('a');
+    let lineText = error.location.start.line + ':' + error.location.start.column;
+    let lineNumber = error.location.start.line;
+    errorLineLink.href = '';
+    errorLineLink.onclick = function() {
+      input.gotoLine(lineNumber);
+      return false;
+    };
+    errorLineLink.text = lineText;
+    errorLineLink.style.color = 'red';
+    let beforeText = error.severity + ' (';
+    let afterText = '): ' + error.errorCode + ' ' + error.message + '\n';
+    let beforeLineNumber = document.createTextNode(beforeText);
+    let afterLineNumber = document.createTextNode(afterText);
+    errorOutput.appendChild(beforeLineNumber);
+    errorOutput.appendChild(errorLineLink);
+    errorOutput.appendChild(afterLineNumber);
+  } else {
+    errorOutput.appendChild(
+      document.createTextNode(error.severity + ': ' + error.errorCode + ' ' + error.message + '\n'),
+    );
+  }
+}
+
 function compile() {
   clearTimeout(debounce);
   terminateWorker();
-  
+
   errorOutput.innerHTML = '';
   errorOutput.style.display = 'none';
   replOutput.style.display = 'block';
@@ -69,49 +100,28 @@ function compile() {
         var code = result.data;
         if (isEmpty.test(code) && !isEmpty.test(input.getValue())) {
           code =
-            '// Your code was all dead code and thus eliminated.\n' +
-            '// Try storing a property on the global object.';
+            '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
         }
         output.setValue(code, -1);
       } else if (result.type === 'error') {
-          let errorText = result.data;
-          if (!errorText.startsWith('Unexpected')) {
-            errorOutput.style.display = 'block';
-            replOutput.style.display = 'none';
-            errorOutput.textContent = errorText;        
-        } else {
-          let errorLineLink = document.createElement('a');
-          let lineText = getLineText(errorText);
-          let lineNumber = lineText.slice(0, lineText.indexOf(":"));          
+        let errors = result.data;
+        console.log('type' + typeof errors + 'err' + errors);
+        if (typeof errors === 'string') {
           errorOutput.style.display = 'block';
           replOutput.style.display = 'none';
-          errorLineLink.href = '';
-          errorLineLink.onclick = function() {
-          input.gotoLine(lineNumber);
-          return false;
+          errorOutput.textContent = errors;
+        } else {
+          errorOutput.style.display = 'block';
+          replOutput.style.display = 'none';
+          for (var i in errors) {
+            processError(errorOutput, errors[i]);
           }
-          errorLineLink.text = lineText;
-          errorLineLink.style.color = 'red';
-          let beforeLineNumber = document.createTextNode(errorText.slice(0, errorText.indexOf(lineText)));
-          let afterLineNumber = document.createTextNode(errorText.slice(errorText.indexOf(')')));
-          errorOutput.appendChild(beforeLineNumber);
-          errorOutput.appendChild(errorLineLink);
-          errorOutput.appendChild(afterLineNumber);
         }
       }
-
       terminateWorker();
     };
     worker.postMessage(input.getValue());
   }, 500);
-}
-
-let getLineText = function(errorText){
-  // Of the form (7:5);
-  let lineRegEx = /[:\d)]/g;
-  let closingBraceIndex = errorText.indexOf(')');
-  return errorText.slice(lineRegEx.exec(errorText).index, closingBraceIndex);
-
 }
 
 var output = createEditor(replOutput);
@@ -122,7 +132,6 @@ output.setHighlightGutterLine(false);
 var input = createEditor(document.querySelector('.input .repl'));
 input.on('change', compile);
 
-
 /**record **/
 
 var selectRecord = document.querySelector('select.select-record');
@@ -131,8 +140,8 @@ var saveButton = document.querySelector('#saveBtn');
 var deleteButton = document.querySelector('#deleteBtn');
 var storage = window.localStorage;
 
-var selectCache =  getCache();
-var defaultName,defaultVal;
+var selectCache = getCache();
+var defaultName, defaultVal;
 var defaultCode = [
   '(function() {',
   '  function fib(x) {',
@@ -142,18 +151,16 @@ var defaultCode = [
   '  let x = Date.now();',
   '  if (x * 2 > 42) x = fib(10);',
   '  global.result = x;',
-  '})();'
-].join('\n')
-defaultName = generateSelect(selectCache,selectRecord);
+  '})();',
+].join('\n');
+defaultName = generateSelect(selectCache, selectRecord);
 selectInput.value = defaultName || '';
 defaultVal = defaultName ? selectCache[defaultName] : defaultCode;
 input.setValue(defaultVal);
 compile();
 
-
-
-function changeSelect(val){
-  if(!val.value) return;
+function changeSelect(val) {
+  if (!val.value) return;
   selectInput.value = val.value;
   var localCache = getCache();
   var code = localCache[val.value] || '';
@@ -164,55 +171,50 @@ changeSelect(defaultVal);
 
 var demoSelector = new Select({
   el: selectRecord,
-  className: 'select-theme-dark'
+  className: 'select-theme-dark',
 });
-demoSelector.on('change',changeSelect)
+demoSelector.on('change', changeSelect);
 
-
-
-
-
-function getCache(){
+function getCache() {
   return JSON.parse(storage.getItem('prepackDemos') || '{}');
 }
 
-function setCache(data){
-  storage.setItem('prepackDemos',JSON.stringify(data || {}))
+function setCache(data) {
+  storage.setItem('prepackDemos', JSON.stringify(data || {}));
 }
-deleteButton.addEventListener('click',()=>{
+deleteButton.addEventListener('click', () => {
   var name = selectInput.value;
-  if(name == null || name.replace(/\s+/,'') === '') return; 
-  if( demos.length === 0){
+  if (name == null || name.replace(/\s+/, '') === '') return;
+  if (demos.length === 0) {
     selectInput.value = '';
     return;
   }
   var cache = getCache();
   delete cache[name];
   input.setValue('');
-  generateSelect(cache,selectRecord);
+  generateSelect(cache, selectRecord);
   setCache(cache);
-  if( demos.length > 0){
+  if (demos.length > 0) {
     selectInput.value = demos[0];
-    setTimeout(()=>{
+    setTimeout(() => {
       demoSelector.change(demos[0]);
-    })
-  }else{
+    });
+  } else {
     selectInput.value = '';
     input.setValue(defaultCode);
     compile();
   }
-  
 });
 
-saveButton.addEventListener('click',()=>{
+saveButton.addEventListener('click', () => {
   var name = selectInput.value;
-  if(name == null || name.replace(/\s+/,'') === '') return; 
+  if (name == null || name.replace(/\s+/, '') === '') return;
   var code = input.getValue();
   var cache = getCache();
   cache[name] = code;
-  generateSelect(cache,selectRecord);
+  generateSelect(cache, selectRecord);
   setCache(cache);
-  setTimeout(()=>{
+  setTimeout(() => {
     demoSelector.change(name);
-  })
+  });
 });
