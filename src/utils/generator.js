@@ -419,10 +419,12 @@ export class PreludeGenerator {
     if (ref) return ref;
 
     let init;
-    if (key.startsWith("(")) {
+    if (key.includes("(") || key.includes("[")) {
       // Horrible but effective hack:
       // Some internal object have intrinsic names such as
       //    ([][Symbol.iterator]().__proto__.__proto__)
+      // and
+      //    RegExp.prototype[Symbol.match]
       // which get turned into a babel node here.
       // TODO: We should properly parse such a string, and memoize all references in it separately.
       // Instead, we just turn it into a funky identifier, which Babel seems to accept.
