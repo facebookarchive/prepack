@@ -1,4 +1,4 @@
-let ob = global.__abstract ? __abstract("object", "({p: 1})") : {p: 1};
+let ob = global.__makePartial ? __makePartial({p: 1}) : {p: 1};
 if (global.__makeSimple) __makeSimple(ob);
 
 Object.assign = function(target, sources) {

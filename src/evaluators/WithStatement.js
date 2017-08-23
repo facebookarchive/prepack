@@ -30,10 +30,11 @@ export default function(
 
   // 2. Let obj be ? ToObject(? GetValue(val)).
   val = GetValue(realm, val);
-  if (val instanceof AbstractValue) {
+  if (val instanceof AbstractValue || val.isPartialObject()) {
     let loc = ast.object.loc;
-    let error = new CompilerDiagnostic("with object must be a known value", loc, "PP0007", "RecoverableError");
-    if (realm.handleError(error) === "Fail") throw new FatalError();
+    let error = new CompilerDiagnostic("with object must be a known value", loc, "PP0007", "FatalError");
+    realm.handleError(error);
+    throw new FatalError();
   }
   let obj = ToObjectPartial(realm, val);
 
