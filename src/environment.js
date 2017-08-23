@@ -342,6 +342,7 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
       // b. If blocked is true, return false.
       if (blocked) return false;
     }
+    unscopables.throwIfNotConcrete();
 
     // 8. Return true.
     return true;

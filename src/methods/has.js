@@ -61,7 +61,6 @@ export function HasName(realm: Realm, ast: BabelNodeExpression): boolean {
 // ECMA262 7.3.10
 export function HasProperty(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue): boolean {
   // 1. Assert: Type(O) is Object.
-  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "expected object");
 
   // 2. Assert: IsPropertyKey(P) is true.
   invariant(IsPropertyKey(realm, P), "expected property key");
@@ -73,7 +72,6 @@ export function HasProperty(realm: Realm, O: ObjectValue | AbstractObjectValue, 
 // ECMA262 7.3.11
 export function HasOwnProperty(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue): boolean {
   // 1. Assert: Type(O) is Object.
-  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "not an object");
 
   // 2. Assert: IsPropertyKey(P) is true.
   invariant(IsPropertyKey(realm, P), "not a valid property key");

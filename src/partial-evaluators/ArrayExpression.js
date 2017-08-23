@@ -74,7 +74,7 @@ export default function(
       partial_elements[nextIndex] = t.spreadElement((elemAst: any));
 
       // update the abstract state with the contents of spreadObj, if known
-      if (spreadObj instanceof ObjectValue && !spreadObj.isPartial()) {
+      if (spreadObj instanceof ObjectValue && !spreadObj.isPartialObject()) {
         // 3. Let iterator be ? GetIterator(spreadObj).
         let iterator = GetIterator(realm, spreadObj);
 
@@ -124,7 +124,7 @@ export default function(
         AbstractValue.reportIntrospectionError(spreadObj);
         throw new FatalError();
       }
-    } else if (array.isPartial()) {
+    } else if (array.isPartialObject()) {
       // Dealing with an array element that follows on a spread object that
       // could not be iterated at compile time, so the index that this element
       // will have at runtime is not known at this point.
