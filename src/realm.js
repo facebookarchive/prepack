@@ -20,6 +20,7 @@ import {
   StringValue,
   ConcreteValue,
   UndefinedValue,
+  SymbolValue,
 } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
@@ -168,6 +169,8 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.errorHandler = opts.errorHandler;
+
+    this.globalSymbolRegistry = [];
   }
 
   start: number;
@@ -223,6 +226,8 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
+
+  globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {

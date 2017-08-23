@@ -14,8 +14,6 @@ import { AbstractValue, NativeFunctionValue, StringValue, SymbolValue, Undefined
 import { ToStringPartial } from "../../methods/index.js";
 import { SameValue } from "../../methods/abstract.js";
 
-let GlobalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }> = [];
-
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.4.1.1
   let func = new NativeFunctionValue(realm, "Symbol", "Symbol", 0, (context, [description], argCount, NewTarget) => {
@@ -46,7 +44,7 @@ export default function(realm: Realm): NativeFunctionValue {
     stringKey = new StringValue(realm, stringKey);
 
     // 2. For each element e of the GlobalSymbolRegistry List,
-    for (let e of GlobalSymbolRegistry) {
+    for (let e of realm.globalSymbolRegistry) {
       // a. If SameValue(e.[[Key]], stringKey) is true, return e.[[Symbol]].
       if (e.$Key === stringKey.value) {
         return e.$Symbol;
@@ -59,7 +57,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let newSymbol = new SymbolValue(realm, stringKey);
 
     // 5. Append the Record { [[Key]]: stringKey, [[Symbol]]: newSymbol } to the GlobalSymbolRegistry List.
-    GlobalSymbolRegistry.push({ $Key: stringKey.value, $Symbol: newSymbol });
+    realm.globalSymbolRegistry.push({ $Key: stringKey.value, $Symbol: newSymbol });
 
     // 6. Return newSymbol.
     return newSymbol;
@@ -73,7 +71,7 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 2. For each element e of the GlobalSymbolRegistry List (see 19.4.2.1),
-    for (let e of GlobalSymbolRegistry) {
+    for (let e of realm.globalSymbolRegistry) {
       // a. If SameValue(e.[[Symbol]], sym) is true, return e.[[Key]].
       if (SameValue(realm, e.$Symbol, sym) === true) {
         return new StringValue(realm, e.$Key);
