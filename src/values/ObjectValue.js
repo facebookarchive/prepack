@@ -250,13 +250,13 @@ export default class ObjectValue extends ConcreteValue {
     this._isSimple = this.$Realm.intrinsics.true;
   }
 
-  isPartial(): boolean {
+  isPartialObject(): boolean {
     return this._isPartial.value;
   }
 
-  isSimple(): boolean {
+  isSimpleObject(): boolean {
     if (this._isSimple.value) return true;
-    if (this.isPartial()) return false;
+    if (this.isPartialObject()) return false;
     if (this.symbols.size > 0) return false;
     for (let propertyBinding of this.properties.values()) {
       let desc = propertyBinding.descriptor;
@@ -266,7 +266,7 @@ export default class ObjectValue extends ConcreteValue {
     }
     if (this.$Prototype instanceof NullValue) return true;
     if (this.$Prototype === this.$Realm.intrinsics.ObjectPrototype) return true;
-    return this.$Prototype.isSimple();
+    return this.$Prototype.isSimpleObject();
   }
 
   getExtensible(): boolean {
@@ -363,7 +363,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   getOwnPropertyKeysArray(): Array<string> {
-    if (this.isPartial() || this.unknownProperty !== undefined) {
+    if (this.isPartialObject() || this.unknownProperty !== undefined) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }
@@ -480,13 +480,13 @@ export default class ObjectValue extends ConcreteValue {
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     // We assume that simple objects have no getter/setter properties.
-    if (this !== Receiver || !this.isSimple() || P.mightNotBeString()) {
+    if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
       AbstractValue.reportIntrospectionError(P, "TODO");
       throw new FatalError();
     }
     // If all else fails, use this expression
     let result;
-    if (this.isPartial()) {
+    if (this.isPartialObject()) {
       result = this.$Realm.createAbstract(
         TypesDomain.topVal,
         ValuesDomain.topVal,
@@ -555,7 +555,7 @@ export default class ObjectValue extends ConcreteValue {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
     // We assume that simple objects have no getter/setter properties and
     // that all properties are writable.
-    if (this !== Receiver || !this.isSimple() || P.mightNotBeString()) {
+    if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
       AbstractValue.reportIntrospectionError(P, "TODO");
       throw new FatalError();
     }

@@ -49,7 +49,7 @@ export default class ProxyValue extends ObjectValue {
     this.realm = realm;
   }
 
-  isSimple(): boolean {
+  isSimpleObject(): boolean {
     return false;
   }
 

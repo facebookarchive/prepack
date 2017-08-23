@@ -31,7 +31,7 @@ export default class ArrayValue extends ObjectValue {
     return "Array";
   }
 
-  isSimple(): boolean {
+  isSimpleObject(): boolean {
     return this.$TypedArrayName === undefined;
   }
 

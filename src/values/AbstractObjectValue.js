@@ -42,7 +42,7 @@ export default class AbstractObjectValue extends AbstractValue {
   getTemplate(): ObjectValue {
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
-      if (element.isPartial()) {
+      if (element.isPartialObject()) {
         return element;
       } else {
         break;
@@ -52,13 +52,13 @@ export default class AbstractObjectValue extends AbstractValue {
     throw new FatalError();
   }
 
-  isPartial(): boolean {
+  isPartialObject(): boolean {
     let result;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       if (result === undefined) {
-        result = element.isPartial();
-      } else if (result !== element.isPartial()) {
+        result = element.isPartialObject();
+      } else if (result !== element.isPartialObject()) {
         AbstractValue.reportIntrospectionError(this);
         throw new FatalError();
       }
@@ -70,13 +70,13 @@ export default class AbstractObjectValue extends AbstractValue {
     return result;
   }
 
-  isSimple(): boolean {
+  isSimpleObject(): boolean {
     let result;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       if (result === undefined) {
-        result = element.isSimple();
-      } else if (result !== element.isSimple()) {
+        result = element.isSimpleObject();
+      } else if (result !== element.isSimpleObject()) {
         AbstractValue.reportIntrospectionError(this);
         throw new FatalError();
       }
@@ -263,7 +263,7 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        if (cv.isSimple() && typeof P === "string") {
+        if (cv.isSimpleObject() && typeof P === "string") {
           let generator = this.$Realm.generator;
           invariant(generator !== undefined);
           let pname = generator.getAsPropertyNameExpression(P);
