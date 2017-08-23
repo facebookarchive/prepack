@@ -6,5 +6,6 @@ npm-debug.log
 .DS_Store
 build/
 .vscode
+coverage*/
 test/
 

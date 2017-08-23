@@ -53,9 +53,7 @@ function terminateWorker() {
 
 function processError(errorOutput, error) {
   let loc = error.location ? error.location.start.line + '' + error.location.start.column + ' ' : '';
-  console.log(error);
   if (error.location) {
-    console.log(error.location);
     let errorLineLink = document.createElement('a');
     let lineText = error.location.start.line + ':' + error.location.start.column;
     let lineNumber = error.location.start.line;
@@ -105,7 +103,6 @@ function compile() {
         output.setValue(code, -1);
       } else if (result.type === 'error') {
         let errors = result.data;
-        console.log('type' + typeof errors + 'err' + errors);
         if (typeof errors === 'string') {
           errorOutput.style.display = 'block';
           replOutput.style.display = 'none';
