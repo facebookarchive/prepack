@@ -10,7 +10,7 @@ onmessage = function(e) {
       message: error.message,
       errorCode: error.errorCode,
     });
-    return error.severity === 'FatalError' ? 'Fail' : 'Recover';
+    return 'Fail';
   }
 
   try {
