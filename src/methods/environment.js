@@ -79,7 +79,6 @@ export function HasPrimitiveBase(realm: Realm, V: Reference): boolean {
   let base = GetBase(realm, V);
   // void | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue | EnvironmentRecord | AbstractValue;
   if (!base || base instanceof EnvironmentRecord) return false;
-  if (base instanceof ObjectValue || base instanceof AbstractObjectValue) return false;
   let type = base.getType();
   return type === BooleanValue || type === StringValue || type === SymbolValue || type === NumberValue;
 }

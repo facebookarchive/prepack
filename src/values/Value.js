@@ -80,6 +80,14 @@ export default class Value {
     return !!this.intrinsicName;
   }
 
+  isPartialObject(): boolean {
+    return false;
+  }
+
+  isSimpleObject(): boolean {
+    return false;
+  }
+
   mightBeFalse(): boolean {
     invariant(false, "abstract method; please override");
   }

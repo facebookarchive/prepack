@@ -34,6 +34,7 @@ import {
   ObjectCreate,
   CreateDataProperty,
   cloneDescriptor,
+  equalDescriptors,
   IsAccessorDescriptor,
   IsPropertyKey,
   IsUnresolvableReference,
@@ -64,7 +65,7 @@ import {
   MakeConstructor,
   FunctionCreate,
 } from "../methods/index.js";
-import type { BabelNodeObjectMethod, BabelNodeClassMethod } from "babel-types";
+import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import IsStrict from "../utils/strict.js";
 
@@ -108,30 +109,59 @@ function InternalSetProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, 
   propertyBinding.descriptor = desc;
 }
 
-function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue) {
-  if (!O.isIntrinsic()) return;
+function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, oldDesc?: Descriptor) {
   let generator = realm.generator;
   if (!generator) return;
+  if (!O.isIntrinsic()) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
+  invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
-  let desc = propertyBinding === undefined ? undefined : propertyBinding.descriptor;
+  invariant(propertyBinding !== undefined); // The callers ensure this
+  let desc = propertyBinding.descriptor;
   if (desc === undefined) {
-    if (O === realm.$GlobalObject && !realm.getRunningContext().isStrict) {
-      generator.emitGlobalDelete(P);
+    // The property is being deleted
+    if (O === realm.$GlobalObject) {
+      generator.emitGlobalDelete(P, realm.getRunningContext().isStrict);
     } else {
       generator.emitPropertyDelete(O, P);
     }
-  } else if (!desc.configurable && desc.enumerable && O === realm.$GlobalObject && desc.value !== undefined) {
-    generator.emitGlobalDeclaration(P, desc.value);
-  } else if (desc.configurable && desc.enumerable && desc.value !== undefined) {
-    if (O === realm.$GlobalObject && !realm.getRunningContext().isStrict) {
-      generator.emitGlobalAssignment(P, desc.value);
-    } else {
-      generator.emitPropertyAssignment(O, P, desc.value);
-    }
   } else {
-    generator.emitDefineProperty(O, P, desc);
+    let descValue = desc.value || realm.intrinsics.undefined;
+    if (oldDesc === undefined) {
+      // The property is being created
+      if (O === realm.$GlobalObject) {
+        if (IsDataDescriptor(realm, desc)) {
+          if (isValidIdentifier(P) && !desc.configurable && desc.enumerable && desc.writable) {
+            generator.emitGlobalDeclaration(P, descValue);
+          } else if (desc.configurable && desc.enumerable && desc.writable) {
+            generator.emitGlobalAssignment(P, descValue, realm.getRunningContext().isStrict);
+          } else {
+            generator.emitDefineProperty(O, P, desc);
+          }
+        } else {
+          generator.emitDefineProperty(O, P, desc);
+        }
+      } else {
+        if (IsDataDescriptor(realm, desc) && desc.configurable && desc.enumerable && desc.writable) {
+          generator.emitPropertyAssignment(O, P, descValue);
+        } else {
+          generator.emitDefineProperty(O, P, desc);
+        }
+      }
+    } else {
+      // The property is being modified
+      if (equalDescriptors(desc, oldDesc)) {
+        // only the value is being modified
+        if (O === realm.$GlobalObject) {
+          generator.emitGlobalAssignment(P, descValue, realm.getRunningContext().isStrict);
+        } else {
+          generator.emitPropertyAssignment(O, P, descValue);
+        }
+      } else {
+        generator.emitDefineProperty(O, P, desc);
+      }
+    }
   }
 }
 
@@ -383,7 +413,7 @@ export function OrdinaryDelete(realm: Realm, O: ObjectValue, P: PropertyKeyValue
     invariant(propertyBinding !== undefined);
     realm.recordModifiedProperty(propertyBinding);
     propertyBinding.descriptor = undefined;
-    InternalUpdatedProperty(realm, O, P);
+    InternalUpdatedProperty(realm, O, P, desc);
 
     // b. Return true.
     return true;
@@ -499,7 +529,7 @@ export function ValidateAndApplyPropertyDescriptor(
           enumerable: "enumerable" in Desc ? Desc.enumerable : false,
           configurable: "configurable" in Desc ? Desc.configurable : false,
         });
-        InternalUpdatedProperty(realm, O, P);
+        InternalUpdatedProperty(realm, O, P, undefined);
       }
     } else {
       // d. Else Desc must be an accessor Property Descriptor,
@@ -515,7 +545,7 @@ export function ValidateAndApplyPropertyDescriptor(
           enumerable: "enumerable" in Desc ? Desc.enumerable : false,
           configurable: "configurable" in Desc ? Desc.configurable : false,
         });
-        InternalUpdatedProperty(realm, O, P);
+        InternalUpdatedProperty(realm, O, P, undefined);
       }
     }
 
@@ -562,6 +592,10 @@ export function ValidateAndApplyPropertyDescriptor(
     }
   }
 
+  let oldDesc = current;
+  current = cloneDescriptor(current);
+  invariant(current !== undefined);
+
   // 6. If IsGenericDescriptor(Desc) is true, no further validation is required.
   if (IsGenericDescriptor(realm, Desc)) {
   } else if (IsDataDescriptor(realm, current) !== IsDataDescriptor(realm, Desc)) {
@@ -578,8 +612,6 @@ export function ValidateAndApplyPropertyDescriptor(
         let key = InternalGetPropertiesKey(P);
         let propertyBinding = InternalGetPropertiesMap(O, P).get(key);
         invariant(propertyBinding !== undefined);
-        current = cloneDescriptor(current);
-        invariant(current !== undefined);
         delete current.writable;
         delete current.value;
         current.get = realm.intrinsics.undefined;
@@ -593,8 +625,6 @@ export function ValidateAndApplyPropertyDescriptor(
         let key = InternalGetPropertiesKey(P);
         let propertyBinding = InternalGetPropertiesMap(O, P).get(key);
         invariant(propertyBinding !== undefined);
-        current = cloneDescriptor(current);
-        invariant(current !== undefined);
         delete current.get;
         delete current.set;
         current.writable = false;
@@ -618,8 +648,6 @@ export function ValidateAndApplyPropertyDescriptor(
     } else {
       // b. Else the [[Configurable]] field of current is true, so any change is acceptable.
     }
-    current = cloneDescriptor(current);
-    invariant(current !== undefined);
   } else {
     // 9. Else IsAccessorDescriptor(current) and IsAccessorDescriptor(Desc) are both true,
     // a. If the [[Configurable]] field of current is false, then
@@ -630,8 +658,6 @@ export function ValidateAndApplyPropertyDescriptor(
       // ii. Return false, if the [[Get]] field of Desc is present and SameValue(Desc.[[Get]], current.[[Get]]) is false.
       if (Desc.get && !SameValuePartial(realm, Desc.get, current.get || realm.intrinsics.undefined)) return false;
     }
-    current = cloneDescriptor(current);
-    invariant(current !== undefined);
   }
 
   // 10. If O is not undefined, then
@@ -656,7 +682,7 @@ export function ValidateAndApplyPropertyDescriptor(
     // a. For each field of Desc that is present, set the corresponding attribute of the property named P of
     //    object O to the value of the field.
     for (let field in Desc) current[field] = Desc[field];
-    InternalUpdatedProperty(realm, O, P);
+    InternalUpdatedProperty(realm, O, P, oldDesc);
   }
 
   // 11. Return true.
@@ -685,9 +711,11 @@ export function OrdinaryDefineOwnProperty(
 // ECMA262 19.1.2.3.1
 export function ObjectDefineProperties(realm: Realm, O: Value, Properties: Value): ObjectValue | AbstractObjectValue {
   // 1. If Type(O) is not Object, throw a TypeError exception.
-  if (!(O instanceof ObjectValue || O instanceof AbstractObjectValue)) {
+  if (O.mightNotBeObject()) {
+    if (O.mightBeObject()) O.throwIfNotConcrete();
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
   }
+  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue);
 
   // 2. Let props be ? ToObject(Properties).
   let props = ToObject(realm, Properties.throwIfNotConcrete());
@@ -743,7 +771,6 @@ export function Set(
   Throw: boolean
 ): boolean {
   // 1. Assert: Type(O) is Object.
-  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "expected object value");
 
   // 2. Assert: IsPropertyKey(P) is true.
   invariant(IsPropertyKey(realm, P), "expected property key");
@@ -771,7 +798,6 @@ export function DefinePropertyOrThrow(
   desc: Descriptor
 ): boolean {
   // 1. Assert: Type(O) is Object.
-  invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "expected object");
 
   // 2. Assert: IsPropertyKey(P) is true.
   invariant(typeof P === "string" || IsPropertyKey(realm, P), "expected property key");
@@ -979,7 +1005,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
   // 2. If O does not have an own property with key P, return undefined.
   let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
   if (!existingBinding) {
-    if (O.isPartial() && !O.isSimple()) {
+    if (O.isPartialObject() && !O.isSimpleObject()) {
       AbstractValue.reportIntrospectionError(O, P);
       throw new FatalError();
     }
@@ -998,7 +1024,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
   // 5. If X is a data property, then
   if (IsDataDescriptor(realm, X)) {
     let value = X.value;
-    if (O.isPartial() && value instanceof AbstractValue && value.kind !== "resolved") {
+    if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
       let realmGenerator = realm.generator;
       invariant(realmGenerator);
       value = realmGenerator.derive(value.types, value.values, value.args, value._buildNode, { kind: "resolved" });

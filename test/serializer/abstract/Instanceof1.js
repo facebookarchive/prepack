@@ -2,7 +2,7 @@
 
 function foo(){};
 Object.defineProperty(foo, Symbol.hasInstance, { value: function() { throw 123; } })
-var o = global.__abstract ? __abstract({}, "({})") : {};
+var o = global.__abstract ? __abstract("object", "({})") : {};
 
 try {
   x1 = o instanceof foo;

@@ -1,5 +1,4 @@
-let ob = global.__abstract ? __abstract({}, "({a: 1})") : {a: 1};
-if (global.__makeSimple) __makeSimple(ob);
+let ob = global.__makePartial ? __makeSimple(__makePartial({})) : {};
 
 z = ob.a;
 
