@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { CompilerDiagnostic, ErrorHandlerResult } from "../lib/errors.js";
+import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
 import { prepackFileSync } from "../lib/prepack-node.js";
 import invariant from "../lib/invariant.js";
 
@@ -79,7 +79,9 @@ function runTest(name: string, code: string): boolean {
       return false;
     }
   } catch (e) {
-    // We expect serialization to fail, so catch the error and continue
+    if (!(e instanceof FatalError)) {
+      console.log(chalk.red(`Unexpected error: ${e.message}`));
+    }
   }
   if (errors.length !== expectedErrors.length) {
     console.log(chalk.red(`Expected ${expectedErrors.length} errors, but found ${errors.length}`));
