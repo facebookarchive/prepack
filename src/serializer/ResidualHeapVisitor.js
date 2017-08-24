@@ -12,7 +12,8 @@
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import type { Descriptor } from "../types.js";
+import type { Effects } from "../realm.js";
+import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsUnresolvableReference, ToLength, ResolveBinding, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
@@ -24,6 +25,7 @@ import {
   FunctionValue,
   Value,
   ObjectValue,
+  AbstractObjectValue,
   NativeFunctionValue,
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
@@ -82,13 +84,22 @@ export class ResidualHeapVisitor {
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Set<AbstractValue>;
-  delayedVisitGeneratorEntries: Array<{| generator: Generator, entry: GeneratorEntry |}>;
+  delayedVisitGeneratorEntries: Array<{| baseContext: Scope, generator: Generator, entry: GeneratorEntry |}>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
     this.scope = scope;
     f();
     this.scope = oldScope;
+  }
+
+  visitObjectProperty(binding: PropertyBinding) {
+    let desc = binding.descriptor;
+    if (desc === undefined) return; //deleted
+    let obj = binding.object;
+    if (obj instanceof AbstractObjectValue || !this.inspector.canIgnoreProperty(obj, binding.key)) {
+      this.visitDescriptor(desc);
+    }
   }
 
   visitObjectProperties(obj: ObjectValue): void {
@@ -102,13 +113,9 @@ export class ResidualHeapVisitor {
     }
 
     // visit properties
-    for (let [key, propertyBinding] of obj.properties) {
+    for (let [, propertyBinding] of obj.properties) {
       invariant(propertyBinding);
-      let desc = propertyBinding.descriptor;
-      if (desc === undefined) continue; //deleted
-      if (!this.inspector.canIgnoreProperty(obj, key)) {
-        this.visitDescriptor(desc);
-      }
+      this.visitObjectProperty(propertyBinding);
     }
 
     // inject properties with computed names
@@ -477,7 +484,7 @@ export class ResidualHeapVisitor {
     return binding;
   }
 
-  createGeneratorVisitCallbacks(generator: Generator): VisitEntryCallbacks {
+  createGeneratorVisitCallbacks(generator: Generator, baseContext: Scope): VisitEntryCallbacks {
     return {
       visitValue: this.visitValue.bind(this),
       visitGenerator: this.visitGenerator.bind(this),
@@ -488,36 +495,66 @@ export class ResidualHeapVisitor {
         this.referencedDeclaredValues.add(value);
       },
       recordDelayedEntry: (entry: GeneratorEntry) => {
-        this.delayedVisitGeneratorEntries.push({ generator, entry });
+        this.delayedVisitGeneratorEntries.push({ baseContext, generator, entry });
       },
     };
   }
 
-  visitGenerator(generator: Generator): void {
+  visitGenerator(generator: Generator, afterGeneratorVisit?: () => void): void {
     this._withScope(generator, () => {
-      generator.visit(this.createGeneratorVisitCallbacks(generator));
+      generator.visit(this.createGeneratorVisitCallbacks(generator, this.baseContext));
+      if (afterGeneratorVisit) afterGeneratorVisit();
     });
   }
 
-  // Use baseContextOverride for setting the global generator to a function's scope
-  // instead of the realm generator.
-  visitRoots(baseContextOverride?: Scope): void {
-    if (baseContextOverride) this.baseContext = baseContextOverride;
+  visitRoots(additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>): void {
     let generator = this.realm.generator;
     invariant(generator);
     this.visitGenerator(generator);
     for (let [, moduleValue] of this.modules.initializedModules) this.visitValue(moduleValue);
-    // Do a fixpoint over all pure generator entries to make sure that we visit
-    // arguments of only BodyEntries that are required by some other residual value
-    // TODO: make baseContext during fixpoint consistent with original visit pass?
-    let oldDelayedEntries = [];
-    while (oldDelayedEntries.length !== this.delayedVisitGeneratorEntries.length) {
-      oldDelayedEntries = this.delayedVisitGeneratorEntries;
-      this.delayedVisitGeneratorEntries = [];
-      for (let { generator, entry } of oldDelayedEntries)
-        this._withScope(generator, () => {
-          generator.visitEntry(entry, this.createGeneratorVisitCallbacks(generator));
-        });
-    }
+    this.realm.evaluateAndRevertInGlobalEnv(() => {
+      if (additionalFunctionValuesAndEffects.size) {
+        for (let [functionValue, effects] of additionalFunctionValuesAndEffects.entries()) {
+          let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
+          // Need to copy these because applying them is a destructive operation
+          let ob_copy = new Map(ob);
+          let pb_copy = new Map(pb);
+          // result -- ignore TODO: return the result from the function somehow
+          // Generator -- visit all entries
+          // Bindings -- only need to serialize bindings if they're captured by some nested function ??
+          //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
+          //          -- we don't overwrite anything they capture
+          //          -- TODO: deal with these properly
+          // PropertyBindings -- visit any property bindings that aren't to createdobjects
+          // CreatedObjects -- should take care of itself
+          this.realm.applyEffects([r, new Generator(this.realm), ob_copy, pb_copy, co]);
+          // Allows us to emit function declarations etc. inside of this additional
+          // function instead of adding them at global scope
+          this.baseContext = functionValue;
+          let visitProperties = () => {
+            for (let propertyBinding of pb.keys()) {
+              let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
+              if (co.has(binding.object)) continue; // Created Object's binding
+              if (binding.descriptor === undefined) continue; //deleted
+              this.visitObjectProperty(binding);
+            }
+          };
+          this.visitGenerator(g, visitProperties);
+        }
+      }
+      // Do a fixpoint over all pure generator entries to make sure that we visit
+      // arguments of only BodyEntries that are required by some other residual value
+      let oldDelayedEntries = [];
+      while (oldDelayedEntries.length !== this.delayedVisitGeneratorEntries.length) {
+        oldDelayedEntries = this.delayedVisitGeneratorEntries;
+        this.delayedVisitGeneratorEntries = [];
+        for (let { baseContext, generator: entryGenerator, entry } of oldDelayedEntries) {
+          this.baseContext = baseContext;
+          this._withScope(entryGenerator, () => {
+            entryGenerator.visitEntry(entry, this.createGeneratorVisitCallbacks(entryGenerator, baseContext));
+          });
+        }
+      }
+    });
   }
 }

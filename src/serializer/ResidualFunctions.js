@@ -200,7 +200,9 @@ export class ResidualFunctions {
     ];
   }
 
-  spliceFunctions(rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>): ResidualFunctionsResult {
+  spliceFunctions(
+    rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>
+  ): ResidualFunctionsResult {
     this.residualFunctionInitializers.scrubFunctionInitializers();
 
     let functionBodies = new Map();
@@ -224,7 +226,9 @@ export class ResidualFunctions {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
       // TODO: figure out how referentialization works with additional functions
-      let normalFunctionInstances = instances.filter((instance) => !rewrittenAdditionalFunctions.has(instance.functionValue))
+      let normalFunctionInstances = instances.filter(
+        instance => !rewrittenAdditionalFunctions.has(instance.functionValue)
+      );
       this._referentialize(functionInfo.unbound, normalFunctionInstances);
     }
 
@@ -275,10 +279,10 @@ export class ResidualFunctions {
       let rewrittenBody = rewrittenAdditionalFunctions.get(instances[0].functionValue);
 
       // Creates a new function for each instance.
-      let naiveProcessInstances = (instances, funcBody, fixupReferences) => {
-        this.statistics.functionClones += instances.length - 1;
+      let naiveProcessInstances = (funcInstances, functionBody, fixupReferences) => {
+        this.statistics.functionClones += funcInstances.length - 1;
 
-        for (let instance of instances) {
+        for (let instance of funcInstances) {
           let { functionValue, serializedBindings, scopeInstances } = instance;
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
@@ -286,7 +290,7 @@ export class ResidualFunctions {
           let funcNode = t.functionExpression(
             null,
             funcParams,
-            ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+            ((t.cloneDeep(functionBody): any): BabelNodeBlockStatement)
           );
           let scopeInitialization = [];
           for (let scope of scopeInstances) {
@@ -314,7 +318,7 @@ export class ResidualFunctions {
 
           define(instance, id, funcNode);
         }
-      }
+      };
 
       // rewritten functions shouldn't have references fixed up, and for simplicity we
       // emit their instances in a naive way

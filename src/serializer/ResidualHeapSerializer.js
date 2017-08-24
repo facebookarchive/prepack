@@ -328,9 +328,24 @@ export class ResidualHeapSerializer {
   _emitProperty(
     val: ObjectValue,
     key: string | SymbolValue,
-    desc: Descriptor,
+    desc: Descriptor | void,
     cleanupDummyProperty: boolean = false
   ): void {
+    // Location for the property to be assigned to
+    let locationFunction = () => {
+      let serializedKey =
+        key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
+      let computed = key instanceof SymbolValue || !t.isIdentifier(serializedKey);
+      return t.memberExpression(
+        this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
+        serializedKey,
+        computed
+      );
+    };
+    if (!desc) {
+      this._deleteProperty(locationFunction());
+      return;
+    }
     if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -338,16 +353,7 @@ export class ResidualHeapSerializer {
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
       // The only case we do not need to remove the dummy property is array index property.
       this._assignProperty(
-        () => {
-          let serializedKey =
-            key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
-          let computed = key instanceof SymbolValue || !t.isIdentifier(serializedKey);
-          return t.memberExpression(
-            this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val),
-            serializedKey,
-            computed
-          );
-        },
+        locationFunction,
         () => {
           invariant(descValue instanceof Value);
           return this.serializeValue(descValue);
@@ -578,6 +584,13 @@ export class ResidualHeapSerializer {
     invariant(desc.get !== undefined);
     invariant(desc.set !== undefined);
     return [desc.get, desc.set];
+  }
+
+  _deleteProperty(location: BabelNodeLVal) {
+    invariant(location.type === "MemberExpression");
+    this.emitter.emit(
+      t.expressionStatement(t.unaryExpression("delete", ((location: any): BabelNodeMemberExpression), true))
+    );
   }
 
   _assignProperty(
@@ -873,8 +886,7 @@ export class ResidualHeapSerializer {
         // For now we serialize anything the original function closes over
         // because after finishing serialization of the main generator we can't emit
         // any more code into the main body.
-        if (!additionalFVEffects || !additionalFVEffects.has(val))
-          serializedBindings[boundName] = serializedBinding;
+        if (!additionalFVEffects || !additionalFVEffects.has(val)) serializedBindings[boundName] = serializedBinding;
         undelay();
       });
     }
@@ -1110,7 +1122,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _getContext(): SerializationContext {
+  _getContext(postGeneratorCallback?: () => void): SerializationContext {
     // TODO #482: Values serialized by nested generators would currently only get defined
     // along the code of the nested generator; their definitions need to get hoisted
     // or repeated so that they are accessible and defined from all using scopes
@@ -1121,6 +1133,7 @@ export class ResidualHeapSerializer {
         let oldBody = this.emitter.beginEmitting(generator, newBody);
         this.activeGeneratorBodies.set(generator, newBody);
         generator.serialize(context);
+        if (postGeneratorCallback) postGeneratorCallback();
         this.activeGeneratorBodies.delete(generator);
         return this.emitter.endEmitting(generator, oldBody);
       },
@@ -1185,35 +1198,50 @@ export class ResidualHeapSerializer {
       let additionalFVEffects = this.additionalFunctionValuesAndEffects;
       if (additionalFVEffects) {
         for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
-          // Create the new function body
-          let [r, g, ob, pb, co] = effects;
-          let oldGenerator = this.generator;
-          let originalLength = g.length;
-          this.generator = g;
-          this.realm.generator = g;
-          // TODO: should we be ignoring the preludegenerator here?
-          // TODO: does the emitter do the right thing here
-          this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
-          // TODO: make sure property modifications of global object get emitted in correct scope
-          let context = this._getContext();
-          let body = context.serializeGenerator(this.generator);
-          invariant(body.length > 0, body);
+          let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
+          // Need to copy these because applying them is a destructive operation
+          let ob_copy = new Map(ob);
+          let pb_copy = new Map(pb);
+          // result -- ignore TODO: return the result from the function somehow
+          // Generator -- visit all entries
+          // Bindings -- only need to serialize bindings if they're captured by some nested function ??
+          //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
+          //          -- we don't overwrite anything they capture
+          //          -- TODO: deal with these properly
+          // PropertyBindings -- visit any property bindings that aren't to createdobjects
+          // CreatedObjects -- should take care of itself
+          this.realm.applyEffects([r, new Generator(this.realm), ob_copy, pb_copy, co]);
+          // Allows us to emit function declarations etc. inside of this additional
+          // function instead of adding them at global scope
+          // TODO: make sure this generator isn't getting mutated oddly
+          let serializeProperties = () => {
+            for (let [propertyBinding] of pb.entries()) {
+              let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
+              if (co.has(binding.object)) continue; // Created Object's binding
+              let object = binding.object;
+              // These should be in the generator so we can skip them
+              if (object.isPartialObject()) continue;
+              invariant(object instanceof ObjectValue);
+              if (object.intrinsicName === "global") continue;
+              this._emitProperty(object, binding.key, binding.descriptor, true);
+            }
+          };
+          let context = this._getContext(serializeProperties);
+          let body = context.serializeGenerator(g);
+          invariant(body.length > 0, "An additional function has no body");
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
           rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
-          this.generator = oldGenerator;
-          g.length = originalLength;
         }
       }
     };
-    if (this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
-      this.realm.wrapInGlobalEnv(() => this.realm.evaluateForEffects(processAdditionalFunctionValues));
-    } else {
-      processAdditionalFunctionValues();
-    }
+
+    this.realm.evaluateAndRevertInGlobalEnv(processAdditionalFunctionValues);
 
     this.emitter.finalize();
 
-    let { unstrictFunctionBodies, strictFunctionBodies, requireStatistics } = this.residualFunctions.spliceFunctions(rewrittenAdditionalFunctions);
+    let { unstrictFunctionBodies, strictFunctionBodies, requireStatistics } = this.residualFunctions.spliceFunctions(
+      rewrittenAdditionalFunctions
+    );
     if (requireStatistics.replaced > 0 && !this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
       console.log(
         `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds

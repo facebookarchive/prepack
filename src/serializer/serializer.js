@@ -119,28 +119,7 @@ export class Serializer {
     //Deep traversal of the heap to identify the necessary scope of residual functions
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
     let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
-    residualHeapVisitor.visitRoots();
-    this.realm.wrapInGlobalEnv(() => this.realm.evaluateForEffects(() => {
-      if (additionalFunctionValuesAndEffects.size) {
-        for (let [functionValue, effects] of additionalFunctionValuesAndEffects.entries()) {
-          let [r, g, ob, pb, co] = effects;
-          // need to switch the application order of generators to ensure consistency
-          // between visitor and serializer (a function should have only one associated
-          // generator).
-          let originalLength = g.length;
-          let originalGenerator = this.realm.generator;
-          this.realm.generator = g;
-          // TODO: should we be ignoring the preludegenerator here?
-          // TODO: does the emitter do the right thing here
-          // TODO: this is an overapproximation of the objects used from the scope of
-          // the additional function, try not to visit the original generator twice
-          this.realm.applyEffects([r, originalGenerator, ob, pb, co]);
-          residualHeapVisitor.visitRoots(functionValue);
-          g.length = originalLength;
-        }
-      }
-      return this.realm.intrinsics.undefined;
-    }));
+    residualHeapVisitor.visitRoots(additionalFunctionValuesAndEffects);
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 

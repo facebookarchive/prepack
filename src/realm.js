@@ -320,6 +320,10 @@ export class Realm {
     return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode), state);
   }
 
+  evaluateAndRevertInGlobalEnv(func: () => void): void {
+    this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
+  }
+
   evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any): Effects {
     return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state));
   }

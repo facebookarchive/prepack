@@ -2,20 +2,22 @@
 // does not contain:x = 5;
 // does not contain:y = 10;
 
-global.c = {};
+global.a = {};
+global.b = {};
+var z = 42;
 
 function additional1() {
-  global.c.foo = 5;
+  global.a.foo = z + "foo";
   var x = 5;
 }
 
 function additional2() {
-  global.c.bar = 2;
+  global.b.bar = z + "bar";
   var y = 10;
 }
 
 inspect = function() {
   additional2();
   additional1();
-  return global.b + global.c.foo + global.c.bar;
+  return JSON.stringify(global.a) + JSON.stringify(global.b);
 }
