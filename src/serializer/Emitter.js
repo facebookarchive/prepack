@@ -147,7 +147,7 @@ export class Emitter {
     while (a.length > 0) {
       let { body, dependencies, func } = a.shift();
       if (body !== oldBody) {
-        this._emitAfterWaitingGeneratorBody(body, dependencies, func);
+        this._emitAfterWaitingForGeneratorBody(body, dependencies, func);
       } else {
         this.emitNowOrAfterWaitingForDependencies(dependencies, func);
       }
@@ -155,7 +155,7 @@ export class Emitter {
     this._waitingForValues.delete(value);
   }
 
-  // Find the first ancestor in input stack that is in current active stack.
+  // Find the first ancestor in input generator body stack that is in current active stack.
   // It can always find one because the bottom one in the stack is the main generator.
   _getFirstAncestorGeneratorWithActiveBody(bodyStack: Array<GeneratorBody>): GeneratorBody {
     const activeBody = bodyStack.slice().reverse().find(body => this._activeBodies.includes(body));
@@ -167,9 +167,11 @@ export class Emitter {
   // the creation of the value's identity requires the availability of either:
   // 1. a time-dependent value that is declared by some generator entry
   //    that has not yet been processed
-  //    (tracked by the `_declaredAbstractValues` set), or
+  //    (tracked by `_declaredAbstractValues`), or
   // 2. a value that is also currently being serialized
-  //    (tracked by the `_activeStack`).
+  //    (tracked by `_activeValues`).
+  // 3. a generator body that is higher(near top) in generator body stack.
+  //    (tracked by `_activeBodies`)
   getReasonToWaitForDependencies(dependencies: Value | Array<Value>): void | Value | GeneratorBody {
     invariant(!this._finalized);
     if (Array.isArray(dependencies)) {
@@ -208,10 +210,15 @@ export class Emitter {
           // current generator body to be available, under following conditions:
           // 1. Not delay initialization.
           // 2. Not emitting in current active generator.(otherwise no need to wait)
-          // 3. Dependency's active ancestor generator body is lower in generator stack than current body.
+          // 3. Dependency's active ancestor generator body is higher(near top) in generator stack than current body.
           const valActiveAncestorBody = this._getFirstAncestorGeneratorWithActiveBody(valSerializeBodyStack);
           invariant(this._activeBodies.includes(valActiveAncestorBody));
           if (!this._activeBodies.includes(this._body)) {
+            // this._activeBodies does not contain this._body should only happen during delay initialization scenario,
+            // which this._body points to the body of the residual function.
+            // Since residual function body should not have nested generator inside it ,
+            // we do not need to wait depdendencies as long as it is declared.
+            // TODO: check this._body really points to the residual function body.
             invariant(this._delayInitializations);
           } else if (
             !this._isEmittingActiveGenerator() &&
@@ -267,16 +274,16 @@ export class Emitter {
     if (!delayReason) {
       func();
     } else if (delayReason instanceof Value) {
-      this._emitAfterWaitingValue(delayReason, dependencies, func);
+      this._emitAfterWaitingForValue(delayReason, dependencies, func);
     } else if (Array.isArray(delayReason)) {
       // delayReason is GeneratorBody.
-      this._emitAfterWaitingGeneratorBody(delayReason, dependencies, func);
+      this._emitAfterWaitingForGeneratorBody(delayReason, dependencies, func);
     } else {
       // Unknown delay reason.
       invariant(false);
     }
   }
-  _emitAfterWaitingValue(reason: Value, dependencies: Array<Value>, func: () => void) {
+  _emitAfterWaitingForValue(reason: Value, dependencies: Array<Value>, func: () => void) {
     invariant(!this._finalized);
     invariant(
       !(reason instanceof AbstractValue && this._declaredAbstractValues.has(reason)) || this._activeValues.has(reason)
@@ -285,7 +292,7 @@ export class Emitter {
     if (a === undefined) this._waitingForValues.set(reason, (a = []));
     a.push({ body: this._body, dependencies, func });
   }
-  _emitAfterWaitingGeneratorBody(reason: GeneratorBody, dependencies: Array<Value>, func: () => void) {
+  _emitAfterWaitingForGeneratorBody(reason: GeneratorBody, dependencies: Array<Value>, func: () => void) {
     invariant(!this._finalized);
     invariant(this._activeBodies.includes(reason));
     let b = this._waitingForBodies.get(reason);
