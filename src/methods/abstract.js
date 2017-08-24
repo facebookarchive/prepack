@@ -32,7 +32,6 @@ import { IsCallable } from "./is.js";
 import { Completion, ReturnCompletion, ThrowCompletion } from "../completions.js";
 import { GetMethod, Get } from "./get.js";
 import { HasCompatibleType } from "./has.js";
-import { ValuesDomain } from "../domains/index.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -327,11 +326,6 @@ export function SameValue(realm: Realm, x: ConcreteValue, y: ConcreteValue): boo
 }
 
 export function SameValuePartial(realm: Realm, x: Value, y: Value): boolean {
-  if (x instanceof AbstractValue || y instanceof AbstractValue) {
-    let values = ValuesDomain.meetValues(realm, x, y);
-    if (!values.isTop()) return values.getElements().size === 1;
-  }
-
   return SameValue(realm, x.throwIfNotConcrete(), y.throwIfNotConcrete());
 }
 
