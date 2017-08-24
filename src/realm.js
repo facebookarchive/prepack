@@ -653,7 +653,7 @@ export class Realm {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    buildNode: ((Array<BabelNodeExpression>) => BabelNodeExpression) | BabelNodeExpression,
+    buildNode?: ((Array<BabelNodeExpression>) => BabelNodeExpression) | BabelNodeExpression,
     kind?: string,
     intrinsicName?: string
   ) {

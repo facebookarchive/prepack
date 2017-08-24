@@ -26,7 +26,7 @@ import { ObjectCreate } from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { describeLocation } from "../ecma262/Error.js";
 
@@ -170,7 +170,7 @@ export default function(realm: Realm): void {
           );
           template.makePartial();
           invariant(realm.generator);
-          realm.rebuildNestedProperties(result, ((result._buildNode: any): BabelNodeIdentifier).name);
+          realm.rebuildNestedProperties(result, result.getIdentifier().name);
         }
         return result;
       }
