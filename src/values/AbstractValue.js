@@ -9,7 +9,12 @@
 
 /* @flow */
 
-import type { BabelNodeExpression, BabelNodeIdentifier, BabelNodeSourceLocation } from "babel-types";
+import type {
+  BabelBinaryOperator,
+  BabelNodeExpression,
+  BabelNodeIdentifier,
+  BabelNodeSourceLocation,
+} from "babel-types";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
@@ -221,12 +226,7 @@ export default class AbstractValue extends Value {
     let result = this.clone();
     result.mightBeEmpty = false;
     result.values = result.values.promoteEmptyToUndefined();
-    let cond = this.$Realm.createAbstract(
-      new TypesDomain(BooleanValue),
-      ValuesDomain.topVal,
-      [this, this.$Realm.intrinsics.empty],
-      ([x, y]) => t.binaryExpression("===", x, y)
-    );
+    let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, this.$Realm.intrinsics.empty);
     result.args = [cond, this.$Realm.intrinsics.undefined, this];
     result._buildNode = args => t.conditionalExpression(args[0], args[1], args[2]);
     return result;
@@ -266,6 +266,43 @@ export default class AbstractValue extends Value {
     invariant(!(this instanceof AbstractObjectValue));
     AbstractValue.reportIntrospectionError(this);
     throw new FatalError();
+  }
+
+  static createFromBinaryOp(
+    realm: Realm,
+    op: BabelBinaryOperator,
+    left: Value,
+    right: Value,
+    loc?: ?BabelNodeSourceLocation
+  ): AbstractValue {
+    let leftTypes, leftValues;
+    if (left instanceof AbstractValue) {
+      leftTypes = left.types;
+      leftValues = left.values;
+    } else {
+      leftTypes = new TypesDomain(left.getType());
+      invariant(left instanceof ConcreteValue);
+      leftValues = new ValuesDomain(left);
+    }
+
+    let rightTypes, rightValues;
+    if (right instanceof AbstractValue) {
+      rightTypes = right.types;
+      rightValues = right.values;
+    } else {
+      rightTypes = new TypesDomain(right.getType());
+      invariant(right instanceof ConcreteValue);
+      rightValues = new ValuesDomain(right);
+    }
+
+    let resultTypes = TypesDomain.binaryOp(op, leftTypes, rightTypes);
+    let resultValues = ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
+    let C = Value.isTypeCompatibleWith(resultTypes.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let result = new C(realm, resultTypes, resultValues, [left, right], ([x, y]) => t.binaryExpression(op, x, y), {
+      kind: op,
+    });
+    result.expressionLocation = loc;
+    return result;
   }
 
   static generateErrorInformationForAbstractVal(val: AbstractValue): string {
