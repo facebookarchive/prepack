@@ -139,7 +139,7 @@ export function MakeClassConstructor(realm: Realm, F: ECMAScriptSourceFunctionVa
   invariant(F instanceof ECMAScriptSourceFunctionValue, "expected function value");
 
   // 2. Assert: F’s [[FunctionKind]] internal slot is "normal".
-  invariant((F.$FunctionKind = "normal"));
+  invariant(F.$FunctionKind === "normal");
 
   // 3. Set F’s [[FunctionKind]] internal slot to "classConstructor".
   F.$FunctionKind = "classConstructor";
