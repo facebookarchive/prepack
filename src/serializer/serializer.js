@@ -106,7 +106,7 @@ export class Serializer {
     if (this.options.additionalFunctions) {
       this.functions.checkThatFunctionsAreIndependent();
     }
-    // TODO: think about how this interacts with serializing extra functions
+
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
       this.modules.initializeMoreModules();
@@ -115,14 +115,14 @@ export class Serializer {
         timingStats.initializeMoreModulesTime = Date.now() - timingStats.initializeMoreModulesTime;
     }
 
+    let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
     //Deep traversal of the heap to identify the necessary scope of residual functions
-
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
     let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
     residualHeapVisitor.visitRoots();
     this.realm.wrapInGlobalEnv(() => this.realm.evaluateForEffects(() => {
-      if (this.options.additionalFunctions) {
-        for (let [functionString, effects] of this.functions.writeEffects.entries()) {
+      if (additionalFunctionValuesAndEffects.size) {
+        for (let [functionValue, effects] of additionalFunctionValuesAndEffects.entries()) {
           let [r, g, ob, pb, co] = effects;
           // need to switch the application order of generators to ensure consistency
           // between visitor and serializer (a function should have only one associated
@@ -135,8 +135,6 @@ export class Serializer {
           // TODO: this is an overapproximation of the objects used from the scope of
           // the additional function, try not to visit the original generator twice
           this.realm.applyEffects([r, originalGenerator, ob, pb, co]);
-          let functionValue = this.functions.nameToFunctionValue.get(functionString);
-          invariant(functionValue);
           residualHeapVisitor.visitRoots(functionValue);
           g.length = originalLength;
         }
@@ -149,15 +147,6 @@ export class Serializer {
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
     let residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers();
-    let functionValueToEffects;
-    if (this.options.additionalFunctions) {
-      functionValueToEffects = new Map();
-      for (let [fstr, effects] of this.functions.writeEffects.entries()) {
-        let funcValue = this.functions.nameToFunctionValue.get(fstr);
-        invariant(funcValue);
-        functionValueToEffects.set(funcValue, effects);
-      }
-    }
 
     if (this.options.inlineExpressions) {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
@@ -173,7 +162,7 @@ export class Serializer {
         residualHeapVisitor.functionInfos,
         !!this.options.delayInitializations,
         residualHeapVisitor.referencedDeclaredValues,
-        functionValueToEffects
+        additionalFunctionValuesAndEffects
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -193,7 +182,7 @@ export class Serializer {
       residualHeapVisitor.functionInfos,
       !!this.options.delayInitializations,
       residualHeapVisitor.referencedDeclaredValues,
-      functionValueToEffects
+      additionalFunctionValuesAndEffects
     );
 
     let ast = residualHeapSerializer.serialize();

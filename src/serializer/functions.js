@@ -104,6 +104,16 @@ export class Functions {
     }
   }
 
+  getAdditionalFunctionValuesToEffects(): Map<FunctionValue, Effects> {
+    let functionValueToEffects = new Map();
+    for (let [functionString, effects] of this.writeEffects.entries()) {
+      let funcValue = this.nameToFunctionValue.get(functionString);
+      invariant(funcValue);
+      functionValueToEffects.set(funcValue, effects);
+    }
+    return functionValueToEffects;
+  }
+
   reportWriteConflicts(
     fname: string,
     conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic>,
