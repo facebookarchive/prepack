@@ -15,7 +15,6 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
   Value,
   AbstractValue,
-  AbstractObjectValue,
   ConcreteValue,
   UndefinedValue,
   NullValue,
@@ -132,9 +131,9 @@ export function getPureBinaryOperationResultType(
       }
       throw new FatalError();
     }
-    if (rval instanceof ObjectValue || rval instanceof AbstractObjectValue) {
+    if (!rval.mightNotBeObject()) {
       // Simple object won't throw here, aren't proxy objects or typed arrays and do not have @@hasInstance properties.
-      if (rval.isSimple()) return BooleanValue;
+      if (rval.isSimpleObject()) return BooleanValue;
     }
     let error = new CompilerDiagnostic(
       `might be an object that behaves badly for the ${op} operator`,

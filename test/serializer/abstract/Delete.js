@@ -1,4 +1,4 @@
 // throws introspection error
 
-var obj = __abstract("object");
+var obj = __makePartial({});
 delete obj.someProperty;

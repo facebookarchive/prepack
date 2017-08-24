@@ -159,7 +159,7 @@ export class Serializer {
       }
     }
 
-    if (!this.options.singlePass) {
+    if (this.options.inlineExpressions) {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
       residualHeapValueIdentifiers.initPass1();
       new ResidualHeapSerializer(

@@ -88,7 +88,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // b. Else,
         // i. Let from be ToObject(nextSource).
         frm = ToObjectPartial(realm, nextSource);
-        let frm_was_partial = frm.isPartial();
+        let frm_was_partial = frm.isPartialObject();
         if (frm_was_partial) {
           to_must_be_partial = true;
           frm.makeNotPartial();
