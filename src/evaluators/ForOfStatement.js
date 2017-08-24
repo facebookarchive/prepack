@@ -15,7 +15,15 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
 import { BreakCompletion, AbruptCompletion, ContinueCompletion } from "../completions.js";
-import { AbstractValue, EmptyValue, NullValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
+import {
+  AbstractObjectValue,
+  AbstractValue,
+  EmptyValue,
+  NullValue,
+  ObjectValue,
+  UndefinedValue,
+  Value,
+} from "../values/index.js";
 import invariant from "../invariant.js";
 import {
   InitializeReferencedBinding,
@@ -155,7 +163,7 @@ export function ForInOfHeadEvaluation(
     let obj = ToObjectPartial(realm, exprValue);
 
     // c. Return ? EnumerateObjectProperties(obj).
-    if (obj instanceof AbstractValue) {
+    if (obj.isPartialObject() || obj instanceof AbstractObjectValue) {
       return obj;
     } else {
       return EnumerateObjectProperties(realm, obj);
