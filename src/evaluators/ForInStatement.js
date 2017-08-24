@@ -68,7 +68,7 @@ export default function(
         // for (var ForBinding in Expression) Statement
         // 1. Let keyResult be ? ForIn/OfHeadEvaluation(« », Expression, enumerate).
         let keyResult = ForInOfHeadEvaluation(realm, env, [], right, "enumerate", strictCode);
-        if (keyResult instanceof AbstractObjectValue && keyResult.isSimpleObject()) {
+        if (keyResult.isPartialObject() && keyResult.isSimpleObject()) {
           return emitResidualLoopIfSafe(ast, strictCode, env, realm, left, right, keyResult, body);
         }
         reportErrorAndThrowIfNotConcrete(keyResult, right.loc);
@@ -120,7 +120,7 @@ function emitResidualLoopIfSafe(
   realm: Realm,
   lh: BabelNodeVariableDeclaration,
   obexpr: BabelNodeExpression,
-  ob: AbstractObjectValue,
+  ob: ObjectValue | AbstractObjectValue,
   body: BabelNodeStatement
 ) {
   invariant(ob.isSimpleObject());
@@ -187,13 +187,9 @@ function emitResidualLoopIfSafe(
         }
       });
       if (targetObject instanceof ObjectValue && sourceObject !== undefined) {
-        let o;
-        let oe = ob.values.getElements();
-        if (oe.size !== 1) {
-          o = ob;
-        } else {
-          for (let co of oe) o = co;
-          invariant(o !== undefined && o.isSimpleObject());
+        let o = ob;
+        if (ob instanceof AbstractObjectValue && !ob.values.isTop() && ob.values.getElements().size === 1) {
+          for (let oe of ob.values.getElements()) o = oe;
         }
         let generator = realm.generator;
         invariant(generator !== undefined);
