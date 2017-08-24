@@ -1028,7 +1028,14 @@ export class ResidualHeapSerializer {
       invariant(serializedArg);
       args.push(serializedArg);
     }
-    return t.callExpression(this.preludeGenerator.memoizeReference("Symbol"), args);
+    // check if symbol value exists in the global symbol map, in that case we emit an invocation of System.for
+    // to look it up
+    let globalReg = this.realm.globalSymbolRegistry.find(e => e.$Symbol === val) !== undefined;
+    if (globalReg) {
+      return t.callExpression(this.preludeGenerator.memoizeReference("Symbol.for"), args);
+    } else {
+      return t.callExpression(this.preludeGenerator.memoizeReference("Symbol"), args);
+    }
   }
 
   _serializeValueProxy(val: ProxyValue): BabelNodeExpression {
