@@ -225,12 +225,9 @@ export class ResidualFunctions {
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
-      let additionalFunctionInstances = instances.filter((instance) => rewrittenAdditionalFunctions.has(instance.functionValue))
-      if (additionalFunctionInstances && additionalFunctionInstances.length) {
-        invariant(additionalFunctionInstances.length === instances.length, additionalFunctionInstances.length);
-      } else {
-        this._referentialize(functionInfo.unbound, instances);
-      }
+      // TODO: figure out how referentialization works with additional functions
+      let normalFunctionInstances = instances.filter((instance) => !rewrittenAdditionalFunctions.has(instance.functionValue))
+      this._referentialize(functionInfo.unbound, normalFunctionInstances);
     }
 
     for (let [funcBody, instances] of functionEntries) {
@@ -262,11 +259,18 @@ export class ResidualFunctions {
         }
         funcNodes.set(functionValue, funcNode);
       };
+      // Split instances into normal or additional functions (whose bodies have been rewritten)
+      let normalInstances = [];
+      let additionalFunctionInstances = [];
+      for (let instance of instances) {
+        if (rewrittenAdditionalFunctions.has(instance.functionValue)) additionalFunctionInstances.push(instance);
+        else normalInstances.push(instance);
+      }
 
       let rewrittenBody = rewrittenAdditionalFunctions.get(instances[0].functionValue);
-      if (rewrittenBody) funcBody = t.blockStatement(rewrittenBody);
 
-      if (shouldInline || instances.length === 1 || usesArguments) {
+      // Creates a new function for each instance.
+      let naiveProcessInstances = (instances, funcBody, fixupReferences) => {
         this.statistics.functionClones += instances.length - 1;
 
         for (let instance of instances) {
@@ -284,7 +288,7 @@ export class ResidualFunctions {
           }
           funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
 
-          if (!rewrittenBody)
+          if (fixupReferences)
             traverse(t.file(t.program([funcNode])), ClosureRefReplacer, null, {
               serializedBindings,
               modified,
@@ -301,9 +305,17 @@ export class ResidualFunctions {
 
           define(instance, funcNode);
         }
+      }
+
+      // rewritten functions shouldn't have references fixed up, and for simplicity we
+      // emit their instances in a naive way
+      if (rewrittenBody) naiveProcessInstances(additionalFunctionInstances, t.blockStatement(rewrittenBody), false);
+      if (normalInstances.length === 0) continue;
+      if (shouldInline || normalInstances.length === 1 || usesArguments) {
+        naiveProcessInstances(normalInstances, funcBody, true);
       } else {
         // Group instances with modified bindings
-        let instanceBatches = [instances];
+        let instanceBatches = [normalInstances];
         for (let name in modified) {
           let newInstanceBatches = [];
 
@@ -396,7 +408,6 @@ export class ResidualFunctions {
           // factory functions do not depend on any nested generator scope, so they go to the prelude
           this.prelude.push(factoryNode);
 
-          if (!rewrittenBody)
           traverse(t.file(t.program([factoryNode])), ClosureRefReplacer, null, {
             serializedBindings: sameSerializedBindings,
             modified,
