@@ -99,7 +99,8 @@ function runTest(name, code, options, args) {
     serialize: true,
     uniqueSuffix: "",
   });
-  if (code.includes("// inline expression")) options.inlineExpressions = true;
+  if (code.includes("// inline expressions")) options.inlineExpressions = true;
+  if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// throws introspection error")) {
     try {
