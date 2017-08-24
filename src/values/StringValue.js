@@ -31,8 +31,4 @@ export default class StringValue extends PrimitiveValue {
   _serialize(): string {
     return this.value;
   }
-
-  throwIfNotConcreteString(): StringValue {
-    return this;
-  }
 }
