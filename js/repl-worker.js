@@ -14,7 +14,7 @@ onmessage = function(e) {
   }
 
   try {
-    var sources = [{ filePath: '', fileContents: e.data }];
+    var sources = [{ filePath: 'dummy', fileContents: e.data }];
     var result = Prepack.prepackSources(sources, {
       compatibility: 'browser',
       filename: 'repl',
