@@ -310,10 +310,7 @@ export class Generator {
     for (let entry of this.body) {
       if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
         let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
-        const buildNodeResult = entry.buildNode(nodes, context);
-        if (buildNodeResult) {
-          context.emit(buildNodeResult);
-        }
+        context.emit(entry.buildNode(nodes, context));
         if (entry.declared !== undefined) context.declare(entry.declared);
       }
     }
