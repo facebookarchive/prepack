@@ -4,13 +4,18 @@ onmessage = function(e) {
   var buffer = [];
 
   function errorHandler(error) {
+    // Syntax errors contain their location at the end, remove that
+    if (error.errorCode === 'PP1004') {
+      let msg = error.message;
+      error.message = msg.substring(0, msg.lastIndexOf('('));
+    }
     buffer.push({
       severity: error.severity,
       location: error.location,
       message: error.message,
       errorCode: error.errorCode,
     });
-    return 'Fail';
+    return 'Recover';
   }
 
   try {
@@ -22,22 +27,13 @@ onmessage = function(e) {
       serialize: true,
       errorHandler,
     });
-    if (result) {
+    if (result && !buffer.length) {
       postMessage({ type: 'success', data: result.code });
     } else {
       // A well-defined error occurred.
-      //postMessage({ type: 'error', data: buffer });
-      postMessage({ type: 'error', data: ['one', 'two'] });
+      postMessage({ type: 'error', data: buffer });
     }
   } catch (err) {
-    var data;
-    if (err.message.startsWith('A fatal error occurred')) {
-      data = buffer;
-    } else {
-      // Something went horribly wrong.
-      var message = err.message;
-      data = message;
-    }
-    postMessage({ type: 'error', data });
+    postMessage({ type: 'error', data: buffer });
   }
 };

@@ -56,10 +56,14 @@ function processError(errorOutput, error) {
   errorWikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(error.errorCode);
   errorWikiLink.text = error.errorCode;
   errorWikiLink.setAttribute('target', '_blank');
+  //console.log(JSON.stringify(error));
+  // TODO: syntax errors need their location stripped
   if (error.location) {
     let errorLineLink = document.createElement('a');
-    let lineText = error.location.start.line + ':' + error.location.start.column;
-    let lineNumber = error.location.start.line;
+    let lineNumber = error.location.start ? error.location.start.line : error.location.line;
+    let colNumber = error.location.start ? error.location.start.column : error.location.column;
+    colNumber++;
+    let lineText = lineNumber + ':' + colNumber;
     errorLineLink.href = '';
     errorLineLink.onclick = function() {
       input.gotoLine(lineNumber);
@@ -67,15 +71,13 @@ function processError(errorOutput, error) {
     };
     errorLineLink.text = lineText;
     errorLineLink.style.color = 'red';
-    errorOutput.appendChild(document.createTextNode(error.severity + ' ('));
+    errorOutput.appendChild(errorWikiLink);
+    errorOutput.appendChild(document.createTextNode(' ('));
     errorOutput.appendChild(errorLineLink);
-    errorOutput.appendChild(document.createTextNode('): '));
-    errorOutput.appendChild(errorWikiLink);
-    errorOutput.appendChild(document.createTextNode(' ' + error.message + '\n'));
+    errorOutput.appendChild(document.createTextNode('):  ' + error.message + '\n'));
   } else {
-    errorOutput.appendChild(document.createTextNode(error.severity + ': '));
     errorOutput.appendChild(errorWikiLink);
-    errorOutput.appendChild(document.createTextNode(' ' + error.message + '\n'));
+    errorOutput.appendChild(document.createTextNode(': ' + error.message + '\n'));
   }
 }
 
