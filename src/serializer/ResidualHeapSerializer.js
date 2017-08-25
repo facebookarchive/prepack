@@ -82,7 +82,7 @@ export class ResidualHeapSerializer {
 
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.prelude = [];
-    this.descriptors = new Map();
+    this._descriptors = new Map();
     this.needsEmptyVar = false;
     this.needsAuxiliaryConstructor = false;
     this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
@@ -132,7 +132,7 @@ export class ResidualHeapSerializer {
   realm: Realm;
   preludeGenerator: PreludeGenerator;
   generator: Generator;
-  descriptors: Map<string, BabelNodeIdentifier>;
+  _descriptors: Map<string, BabelNodeIdentifier>;
   needsEmptyVar: boolean;
   needsAuxiliaryConstructor: boolean;
   valueNameGenerator: NameGenerator;
@@ -352,75 +352,72 @@ export class ResidualHeapSerializer {
         cleanupDummyProperty
       );
     } else {
-      let descProps = [];
-
-      let boolKeys = ["enumerable", "configurable"];
-      let valKeys = [];
-
-      if (!desc.get && !desc.set) {
-        boolKeys.push("writable");
-        valKeys.push("value");
-      } else {
-        valKeys.push("set", "get");
-      }
-
-      let descriptorsKey = [];
-      for (let boolKey of boolKeys) {
-        if (boolKey in desc) {
-          let b = desc[boolKey];
-          invariant(b !== undefined);
-          descProps.push(t.objectProperty(t.identifier(boolKey), t.booleanLiteral(b)));
-          descriptorsKey.push(`${boolKey}:${b.toString()}`);
-        }
-      }
-
-      for (let descKey of valKeys) {
-        if (descKey in desc) descriptorsKey.push(descKey);
-      }
-
-      descriptorsKey = descriptorsKey.join(",");
-      let descriptorId = this.descriptors.get(descriptorsKey);
-      if (descriptorId === undefined) {
-        descriptorId = t.identifier(this.descriptorNameGenerator.generate(descriptorsKey));
-        let declar = t.variableDeclaration("var", [t.variableDeclarator(descriptorId, t.objectExpression(descProps))]);
-        // The descriptors are used across all scopes, and thus must be declared in the prelude.
-        this.prelude.push(declar);
-        this.descriptors.set(descriptorsKey, descriptorId);
-      }
-      invariant(descriptorId !== undefined);
-
-      for (let descKey of valKeys) {
-        if (descKey in desc) {
-          let descValue = desc[descKey];
-          invariant(descValue instanceof Value);
-          invariant(!this.emitter.getReasonToWaitForDependencies([descValue]), "precondition of _emitProperty");
-          this.emitter.emit(
-            t.expressionStatement(
-              t.assignmentExpression(
-                "=",
-                t.memberExpression(descriptorId, t.identifier(descKey)),
-                this.serializeValue(descValue)
-              )
-            )
-          );
-        }
-      }
-      let serializedKey =
-        key instanceof SymbolValue
-          ? this.serializeValue(key)
-          : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
-      invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
-      let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
-      this.emitter.emit(
-        t.expressionStatement(
-          t.callExpression(this.preludeGenerator.memoizeReference("Object.defineProperty"), [
-            uid,
-            serializedKey,
-            descriptorId,
-          ])
-        )
-      );
+      this.emitter.emit(this.emitDefinePropertyBody(val, key, desc));
     }
+  }
+
+  emitDefinePropertyBody(val: ObjectValue, key: string | SymbolValue, desc: Descriptor): BabelNodeStatement {
+    let body = [];
+    let descProps = [];
+    let boolKeys = ["enumerable", "configurable"];
+    let valKeys = [];
+
+    if (!desc.get && !desc.set) {
+      boolKeys.push("writable");
+      valKeys.push("value");
+    } else {
+      valKeys.push("set", "get");
+    }
+
+    let descriptorsKey = [];
+    for (let boolKey of boolKeys) {
+      if (boolKey in desc) {
+        let b = desc[boolKey];
+        invariant(b !== undefined);
+        descProps.push(t.objectProperty(t.identifier(boolKey), t.booleanLiteral(b)));
+        descriptorsKey.push(`${boolKey}:${b.toString()}`);
+      }
+    }
+
+    descriptorsKey = descriptorsKey.join(",");
+    let descriptorId = this._descriptors.get(descriptorsKey);
+    if (descriptorId === undefined) {
+      descriptorId = t.identifier(this.descriptorNameGenerator.generate(descriptorsKey));
+      let declar = t.variableDeclaration("var", [t.variableDeclarator(descriptorId, t.objectExpression(descProps))]);
+      // The descriptors are used across all scopes, and thus must be declared in the prelude.
+      this.prelude.push(declar);
+      this._descriptors.set(descriptorsKey, descriptorId);
+    }
+    invariant(descriptorId !== undefined);
+
+    for (let descKey of valKeys) {
+      if (descKey in desc) {
+        let descValue = desc[descKey];
+        invariant(descValue instanceof Value);
+        invariant(!this.emitter.getReasonToWaitForDependencies([descValue]), "precondition of _emitProperty");
+        body.push(
+          t.assignmentExpression(
+            "=",
+            t.memberExpression(descriptorId, t.identifier(descKey)),
+            this.serializeValue(descValue)
+          )
+        );
+      }
+    }
+    let serializedKey =
+      key instanceof SymbolValue
+        ? this.serializeValue(key)
+        : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
+    invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
+    let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
+    body.push(
+      t.callExpression(this.preludeGenerator.memoizeReference("Object.defineProperty"), [
+        uid,
+        serializedKey,
+        descriptorId,
+      ])
+    );
+    return t.expressionStatement(t.sequenceExpression(body));
   }
 
   _serializeDeclarativeEnvironmentRecordBinding(visitedBinding: VisitedBinding): SerializedBinding {
@@ -1126,6 +1123,7 @@ export class ResidualHeapSerializer {
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
+      emitDefinePropertyBody: this.emitDefinePropertyBody.bind(this),
       canOmit: (value: AbstractValue) => {
         return !this.referencedDeclaredValues.has(value);
       },
