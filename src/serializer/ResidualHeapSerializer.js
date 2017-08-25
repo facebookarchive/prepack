@@ -111,7 +111,7 @@ export class ResidualHeapSerializer {
       this.preludeGenerator.createNameGenerator("__scope_"),
       residualFunctionInfos
     );
-    this.emitter = new Emitter(this.residualFunctions);
+    this.emitter = new Emitter(this.residualFunctions, delayInitializations);
     this.mainBody = this.emitter.getBody();
     this.residualHeapInspector = residualHeapInspector;
     this.residualValues = residualValues;

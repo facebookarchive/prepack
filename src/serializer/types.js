@@ -59,6 +59,8 @@ export type ScopeBinding = {
   capturedScope?: string,
 };
 
+export type GeneratorBody = Array<BabelNodeStatement>;
+
 export function AreSameSerializedBindings(realm: Realm, x: SerializedBinding, y: SerializedBinding) {
   if (x.serializedValue === y.serializedValue) return true;
   if (x.value && x.value === y.value) return true;
