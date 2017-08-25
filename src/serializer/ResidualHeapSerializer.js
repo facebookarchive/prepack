@@ -356,9 +356,9 @@ export class ResidualHeapSerializer {
     }
   }
 
-  emitDefinePropertyBody(val: ObjectValue, key: string | SymbolValue, desc: Descriptor) {
+  emitDefinePropertyBody(val: ObjectValue, key: string | SymbolValue, desc: Descriptor): BabelNodeStatement {
+    let body = [];
     let descProps = [];
-
     let boolKeys = ["enumerable", "configurable"];
     let valKeys = [];
 
@@ -395,13 +395,11 @@ export class ResidualHeapSerializer {
         let descValue = desc[descKey];
         invariant(descValue instanceof Value);
         invariant(!this.emitter.getReasonToWaitForDependencies([descValue]), "precondition of _emitProperty");
-        this.emitter.emit(
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(descriptorId, t.identifier(descKey)),
-              this.serializeValue(descValue)
-            )
+        body.push(
+          t.assignmentExpression(
+            "=",
+            t.memberExpression(descriptorId, t.identifier(descKey)),
+            this.serializeValue(descValue)
           )
         );
       }
@@ -412,13 +410,14 @@ export class ResidualHeapSerializer {
         : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
     invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
     let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
-    return t.expressionStatement(
+    body.push(
       t.callExpression(this.preludeGenerator.memoizeReference("Object.defineProperty"), [
         uid,
         serializedKey,
         descriptorId,
       ])
     );
+    return t.expressionStatement(t.sequenceExpression(body));
   }
 
   _serializeDeclarativeEnvironmentRecordBinding(visitedBinding: VisitedBinding): SerializedBinding {

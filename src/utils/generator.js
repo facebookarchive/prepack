@@ -40,7 +40,7 @@ import { nullExpression } from "./internalizer.js";
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
-  emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => void,
+  emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
