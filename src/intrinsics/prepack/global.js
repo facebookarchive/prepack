@@ -62,10 +62,10 @@ export default function(realm: Realm): void {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
         if (!(name instanceof StringValue)) {
-          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "second argument is not a string");
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "first argument is not a string");
         }
         if (!(objectValue instanceof ObjectValue)) {
-          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "first argument is not an object");
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "second argument is not an object");
         }
 
         return realm.makeIntrinsicObject(objectValue, name.value);

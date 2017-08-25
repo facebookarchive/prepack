@@ -664,11 +664,11 @@ export class Realm {
 
   makeIntrinsicObject(ob: ObjectValue, intrinsicName: string, visited?: Set<ObjectValue> = new Set()): ObjectValue {
     ob.intrinsicName = intrinsicName;
-    ob.intrinsicNameGenerated = true;
     for (let [key, binding] of ob.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
-      invariant(binding.descriptor !== undefined);
-      let value = binding.descriptor.value;
+      let descriptor = binding.descriptor;
+      invariant(descriptor !== undefined);
+      let value = descriptor.value;
       ThrowIfMightHaveBeenDeleted(value);
       if (value === undefined) {
         AbstractValue.reportIntrospectionError(ob, key);
@@ -678,12 +678,13 @@ export class Realm {
       if (value instanceof ObjectValue) {
         if (!visited.has(value)) {
           visited.add(value);
+          value.intrinsicNameGenerated = ob.intrinsicNameGenerated;
           this.makeIntrinsicObject(value, propertyName, visited);
         }
       } else if (value instanceof AbstractValue && !value.isIntrinsic()) {
-        value.intrinsicName = propertyName;
-        value.args = [ob];
-        value._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
+        descriptor.value = this.deriveAbstract(value.types, value.values, [ob], ([node]) =>
+          t.memberExpression(node, t.identifier(key))
+        );
       }
     }
     return ob;

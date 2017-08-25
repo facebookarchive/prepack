@@ -324,19 +324,6 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
 }
 
 function InternalJSONClone(realm: Realm, val: Value): Value {
-  if (val instanceof ObjectValue && val.isPartialObject()) {
-    return realm.createAbstract(
-      new TypesDomain(ObjectValue),
-      new ValuesDomain(new Set([InternalCloneObject(realm, val)])),
-      [val],
-      ([node]) =>
-        buildJSONParse(realm.preludeGenerator)({
-          STRING: buildJSONStringify(realm.preludeGenerator)({
-            OBJECT: node,
-          }),
-        })
-    );
-  }
   if (val instanceof AbstractValue) {
     // TODO: NaN and Infinity must be mapped to null.
     return val;
@@ -369,7 +356,13 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
       }
     } else {
       clonedObj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      let valIsPartial = false;
+      if (val.isPartialObject()) {
+        valIsPartial = true;
+        val.makeNotPartial();
+      }
       let keys = EnumerableOwnProperties(realm, val, "key");
+      if (valIsPartial) val.makePartial();
       for (let P of keys) {
         invariant(P instanceof StringValue);
         let newElement = Get(realm, val, P);
@@ -496,18 +489,25 @@ export default function(realm: Realm): ObjectValue {
     // 9. Let wrapper be ObjectCreate(%ObjectPrototype%).
     let wrapper = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
+    // TODO: Make result abstract if any nested element is an abstract value.
     if (value instanceof AbstractValue || (value instanceof ObjectValue && value.isPartialObject())) {
+      // clone value so that any modifications made it before calling JSON.parse will not be seen.
+      let clonedValue = InternalCloneObject(realm, value);
       // Return abstract result.
       let result = realm.deriveAbstract(
         new TypesDomain(StringValue),
         ValuesDomain.topVal,
-        [value],
+        [value, clonedValue],
         ([node]) =>
           buildJSONStringify(realm.preludeGenerator)({
             OBJECT: node,
           }),
         { kind: "JSON.stringify(...)" }
       );
+      // stop the serializer from generating a definition for this clone
+      invariant(result.intrinsicName);
+      clonedValue.intrinsicNameGenerated = true;
+      realm.makeIntrinsicObject(clonedValue, result.intrinsicName);
       return result;
     }
 
@@ -540,14 +540,13 @@ export default function(realm: Realm): ObjectValue {
       let gen = realm.preludeGenerator;
       invariant(gen); // text is abstract, so we are doing abstract interpretation
       let args = gen.derivedIds.get(text.intrinsicName);
-      invariant(args && args[0] instanceof Value); // since text.kind === "JSON.stringify(...)"
-      let value = args[0];
-      let clonedValue;
-      if (value instanceof ObjectValue) {
-        clonedValue = InternalCloneObject(realm, value);
-        invariant(clonedValue.isPartialObject()); // text would be concrete if value were not partial
-        clonedValue.makeSimple(); // Objects that result from JSON.parse are always simple
-      }
+      invariant(args && args[1] instanceof ObjectValue); // since text.kind === "JSON.stringify(...)"
+      let value = args[1];
+      invariant(value.isPartialObject()); // text would be concrete if value were not partial
+      // Clone value yet again, in case text is parsed more than once.
+      let clonedValue = InternalCloneObject(realm, value);
+      invariant(clonedValue.isPartialObject());
+      clonedValue.makeSimple(); // Objects that result from JSON.parse are always simple
       let types = new TypesDomain(value.getType());
       let buildNode = ([node]) =>
         buildJSONParse(realm.preludeGenerator)({
@@ -560,6 +559,7 @@ export default function(realm: Realm): ObjectValue {
         // Since the code has already been generated for the parse, we can just return the simple partial concrete
         // object that is the result of the call, but first we have to give the concrete object the
         // same name as the abstract object.
+        clonedValue.intrinsicNameGenerated = true;
         realm.makeIntrinsicObject(clonedValue, unfiltered.intrinsicName);
         unfiltered = clonedValue;
       }
