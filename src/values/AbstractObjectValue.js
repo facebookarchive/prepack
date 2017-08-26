@@ -32,6 +32,8 @@ export default class AbstractObjectValue extends AbstractValue {
     super(realm, types, values, args, buildNode, optionalArgs);
   }
 
+  isSimple: boolean;
+
   clone(): AbstractObjectValue {
     let result = new AbstractObjectValue(this.$Realm, this.types, this.values, this.args, this._buildNode);
     if (this.kind) result.kind = this.kind;
@@ -58,6 +60,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   isSimpleObject(): boolean {
+    if (this.isSimple) return true;
+    if (this.values.isTop()) return false;
     let result;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -68,10 +72,7 @@ export default class AbstractObjectValue extends AbstractValue {
         throw new FatalError();
       }
     }
-    if (result === undefined) {
-      AbstractValue.reportIntrospectionError(this);
-      throw new FatalError();
-    }
+    invariant(result !== undefined);
     return result;
   }
 
@@ -84,6 +85,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeNotPartial(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       element.makeNotPartial();
@@ -91,6 +96,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makePartial(): void {
+    if (this.values.isTop()) return;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       element.makePartial();
@@ -98,6 +104,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeSimple(): void {
+    if (this.values.isTop()) {
+      this.isSimple = true;
+      return;
+    }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       return element.makeSimple();
@@ -117,6 +127,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $GetOwnProperty(P: PropertyKeyValue): Descriptor | void {
     if (P instanceof StringValue) P = P.value;
 
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -167,6 +181,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
     if (P instanceof StringValue) P = P.value;
 
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -219,6 +237,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $HasProperty(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;
 
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -245,17 +267,27 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
+    let generator = this.$Realm.generator;
+    invariant(generator !== undefined);
 
+    if (this.values.isTop()) {
+      if (this.isSimple && typeof P === "string") {
+        let pname = generator.getAsPropertyNameExpression(P);
+        return this.$Realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [this], ([node]) =>
+          t.memberExpression(node, pname, !t.isIdentifier(pname))
+        );
+      }
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
         if (cv.isSimpleObject() && typeof P === "string") {
-          let generator = this.$Realm.generator;
-          invariant(generator !== undefined);
-          let pname = generator.getAsPropertyNameExpression(P);
           let d = cv.$GetOwnProperty(P);
           if (d === undefined) {
+            let pname = generator.getAsPropertyNameExpression(P);
             return this.$Realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [cv], ([node]) =>
               t.memberExpression(node, pname, !t.isIdentifier(pname))
             );
@@ -295,6 +327,10 @@ export default class AbstractObjectValue extends AbstractValue {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     invariant(this === Receiver, "TODO");
 
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -326,6 +362,10 @@ export default class AbstractObjectValue extends AbstractValue {
     if (P instanceof StringValue) P = P.value;
     invariant(this === Receiver, "TODO");
 
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -366,6 +406,10 @@ export default class AbstractObjectValue extends AbstractValue {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
     invariant(this === Receiver, "TODO");
 
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -394,6 +438,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $Delete(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;
 
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -431,6 +479,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   $OwnPropertyKeys(): Array<PropertyKeyValue> {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {

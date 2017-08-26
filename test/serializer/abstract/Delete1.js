@@ -1,5 +1,4 @@
-// throws introspection error
-var obj = global.__abstract ? __abstract("object", "({ p: 41} )") : { p: 41 };
+var obj = global.__makePartial ? __makePartial({ p: 41 }) : { p: 41 };
 delete obj.p;
 z = obj.p;
 

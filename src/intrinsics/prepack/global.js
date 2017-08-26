@@ -22,11 +22,10 @@ import {
   UndefinedValue,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
-import { ObjectCreate } from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { describeLocation } from "../ecma262/Error.js";
 
@@ -47,27 +46,48 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  function parseTypeNameOrTemplate(typeNameOrTemplate): { type: typeof Value, template: void | ObjectValue } {
-    if (typeNameOrTemplate === undefined || typeNameOrTemplate instanceof UndefinedValue) {
-      return { type: Value, template: undefined };
-    } else if (typeNameOrTemplate instanceof StringValue) {
-      let typeNameString = ToStringPartial(realm, typeNameOrTemplate);
+  // Helper function to model objects that are obtained from the environment.
+  // __makeIntrinsic(name, object) modifies the given object value so that if it gets embedded in the final heap,
+  // it will be referred to by the supplied name in the generated code.
+  // Furthermore, any object that is obtained from a property of an intrinsic object will be referred to
+  // with the supplied name plus property name (and so on, recursively).
+  global.$DefineOwnProperty("__makeIntrinsic", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__makeIntrinsic",
+      "__makeIntrinsic",
+      0,
+      (context, [name, objectValue]) => {
+        if (!realm.useAbstractInterpretation) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
+        }
+        if (!(name instanceof StringValue)) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "first argument is not a string");
+        }
+        if (!(objectValue instanceof ObjectValue)) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "second argument is not an object");
+        }
+
+        return realm.makeIntrinsicObject(objectValue, name.value);
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  function parseTypeName(typeName): typeof Value {
+    if (typeName === undefined || typeName instanceof UndefinedValue) {
+      return Value;
+    } else if (typeName instanceof StringValue) {
+      let typeNameString = ToStringPartial(realm, typeName);
       let type = Value.getTypeFromName(typeNameString);
       if (type === undefined) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeName");
       }
-      return {
-        type,
-        template: Value.isTypeCompatibleWith(type, ObjectValue)
-          ? ObjectCreate(realm, realm.intrinsics.ObjectPrototype)
-          : undefined,
-      };
-    } else if (typeNameOrTemplate instanceof FunctionValue) {
-      return { type: FunctionValue, template: typeNameOrTemplate };
-    } else if (typeNameOrTemplate instanceof ObjectValue) {
-      return { type: ObjectValue, template: typeNameOrTemplate };
+      return type;
     } else {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "typeNameOrTemplate has unsupported type");
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "typeName has unsupported type");
     }
   }
 
@@ -88,7 +108,7 @@ export default function(realm: Realm): void {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
 
-        let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
+        let type = parseTypeName(typeNameOrTemplate);
 
         let nameString = name ? ToStringPartial(realm, name) : "";
         let buildNode;
@@ -114,14 +134,7 @@ export default function(realm: Realm): void {
         }
 
         let types = new TypesDomain(type);
-        let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-        let result = realm.createAbstract(types, values, [], buildNode, undefined, nameString);
-        if (template && !(template instanceof FunctionValue)) {
-          // why exclude functions?
-          template.makePartial();
-          invariant(realm.generator);
-          if (nameString) realm.rebuildNestedProperties(result, nameString);
-        }
+        let result = realm.createAbstract(types, ValuesDomain.topVal, [], buildNode, undefined, nameString);
         return result;
       }
     ),
@@ -150,7 +163,7 @@ export default function(realm: Realm): void {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
 
-        let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
+        let type = typeNameOrTemplate instanceof ObjectValue ? ObjectValue : parseTypeName(typeNameOrTemplate);
 
         if (!Value.isTypeCompatibleWith(f.constructor, FunctionValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cannot determine residual function");
@@ -159,18 +172,15 @@ export default function(realm: Realm): void {
         f.isResidual = true;
         if (unsafe) f.isUnsafeResidual = true;
         let types = new TypesDomain(type);
-        let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-        let result = realm.deriveAbstract(types, values, [f].concat(args), nodes =>
+        let result = realm.deriveAbstract(types, ValuesDomain.topVal, [f].concat(args), nodes =>
           t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>))
         );
-        if (template) {
-          invariant(
-            result instanceof AbstractValue,
-            "the nested properties should only be rebuilt for an abstract value"
-          );
-          template.makePartial();
-          invariant(realm.generator);
-          realm.rebuildNestedProperties(result, ((result._buildNode: any): BabelNodeIdentifier).name);
+        if (typeNameOrTemplate instanceof ObjectValue) {
+          invariant(result instanceof AbstractValue);
+          invariant(result.intrinsicName);
+          typeNameOrTemplate.intrinsicNameGenerated = true;
+          realm.makeIntrinsicObject(typeNameOrTemplate, result.intrinsicName);
+          return typeNameOrTemplate;
         }
         return result;
       }
@@ -297,7 +307,8 @@ export default function(realm: Realm): void {
           // casting to due to Flow workaround above
           (object: any).$Set(key, value, object);
           realm.generator = generator;
-          if (object.intrinsicName) realm.rebuildObjectProperty(object, key, value, object.intrinsicName);
+          if (object.intrinsicName && value instanceof ObjectValue)
+            realm.makeIntrinsicObject(value, `${object.intrinsicName}.${key}`);
           return context.$Realm.intrinsics.undefined;
         }
 

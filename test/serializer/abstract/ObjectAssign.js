@@ -1,35 +1,37 @@
-let dims = global.__abstract ? __abstract({
-  window: undefined,
-  screen: undefined,
-  windowPhysicalPixels: __abstract({
-    width: __abstract("number", "1"),
-    height: __abstract("number", "1"),
-    scale: __abstract("number", "2"),
-    fontScale: __abstract("number", "4"),
-  }),
-  screenPhysicalPixels: __abstract({
-    width: __abstract("number", "1"),
-    height: __abstract("number", "1"),
-    scale: __abstract("number", "2"),
-    fontScale: __abstract("number", "4"),
-  }),
-}, `({
-  window: undefined,
-  screen: undefined,
-  windowPhysicalPixels: {
-    width: 1,
-    height: 1,
-    scale: 2,
-    fontScale: 4
-  },
-  screenPhysicalPixels: {
-    width: 1,
-    height: 1,
-    scale: 2,
-    fontScale: 4
-  }
-})`) :
-{
+let dims = global.__makeIntrinsic ? __makeIntrinsic(
+  `({
+    window: undefined,
+    screen: undefined,
+    windowPhysicalPixels: {
+      width: 1,
+      height: 1,
+      scale: 2,
+      fontScale: 4
+    },
+    screenPhysicalPixels: {
+      width: 1,
+      height: 1,
+      scale: 2,
+      fontScale: 4
+    }
+  })`,
+  __makePartial({
+    window: undefined,
+    screen: undefined,
+    windowPhysicalPixels: __makePartial({
+      width: __abstract("number", "1"),
+      height: __abstract("number", "1"),
+      scale: __abstract("number", "2"),
+      fontScale: __abstract("number", "4"),
+    }),
+    screenPhysicalPixels: __makePartial({
+      width: __abstract("number", "1"),
+      height: __abstract("number", "1"),
+      scale: __abstract("number", "2"),
+      fontScale: __abstract("number", "4"),
+    }),
+  })
+) : {
   window: undefined,
   screen: undefined,
   windowPhysicalPixels: {

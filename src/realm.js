@@ -662,40 +662,32 @@ export class Realm {
     return new Constructor(this, types, values, args, buildNode, { kind, intrinsicName });
   }
 
-  rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
-    if (!(propertyValue instanceof AbstractValue)) return;
-    if (!propertyValue.isIntrinsic()) {
-      propertyValue.intrinsicName = `${path}.${key}`;
-      propertyValue.args = [object];
-      propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
-      this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
-    }
-  }
-
-  rebuildNestedProperties(abstractValue: AbstractValue | UndefinedValue, path: string) {
-    if (!(abstractValue instanceof AbstractObjectValue)) return;
-    let template = abstractValue.getTemplate();
-    invariant(!template.intrinsicName || template.intrinsicName === path);
-    // TODO #882: We are using the concept of "intrinsic values" to mark the template
-    // object as intrinsic, so that we'll never emit code that creates it, as it instead is mapConstructorDoesntTakeArguments
-    // to refer to an unknown but existing object.
-    // However, it's not really an intrinsic object, and it might not exist ahead of time, but only starting
-    // from this point on, which might be tied to some nested generator.
-    // Which we currently don't track, and that needs to get fixed.
-    // For now, we use intrinsicNameGenerated to mark this case.
-    template.intrinsicName = path;
-    template.intrinsicNameGenerated = true;
-    for (let [key, binding] of template.properties) {
+  makeIntrinsicObject(ob: ObjectValue, intrinsicName: string, visited?: Set<ObjectValue> = new Set()): ObjectValue {
+    ob.intrinsicName = intrinsicName;
+    for (let [key, binding] of ob.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
-      invariant(binding.descriptor !== undefined);
-      let value = binding.descriptor.value;
+      let descriptor = binding.descriptor;
+      invariant(descriptor !== undefined);
+      let value = descriptor.value;
       ThrowIfMightHaveBeenDeleted(value);
       if (value === undefined) {
-        AbstractValue.reportIntrospectionError(abstractValue, key);
+        AbstractValue.reportIntrospectionError(ob, key);
         throw new FatalError();
       }
-      this.rebuildObjectProperty(abstractValue, key, value, path);
+      let propertyName = `${intrinsicName}.${key}`;
+      if (value instanceof ObjectValue) {
+        if (!visited.has(value)) {
+          visited.add(value);
+          value.intrinsicNameGenerated = ob.intrinsicNameGenerated;
+          this.makeIntrinsicObject(value, propertyName, visited);
+        }
+      } else if (value instanceof AbstractValue && !value.isIntrinsic()) {
+        descriptor.value = this.deriveAbstract(value.types, value.values, [ob], ([node]) =>
+          t.memberExpression(node, t.identifier(key))
+        );
+      }
     }
+    return ob;
   }
 
   // Create a an abstract value in a way that may observe or mutate state.
