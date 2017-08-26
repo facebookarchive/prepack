@@ -40,6 +40,7 @@ import { nullExpression } from "./internalizer.js";
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
+  emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
@@ -143,7 +144,7 @@ export class Generator {
     });
   }
 
-  emitDefineProperty(object: Value, key: string, desc: Descriptor) {
+  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor) {
     if (desc.enumerable && desc.configurable && desc.writable && desc.value) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -157,25 +158,7 @@ export class Generator {
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        buildNode: ([objectNode, valueNode, getNode, setNode]) => {
-          let descProps = [];
-          descProps.push(t.objectProperty(t.identifier("enumerable"), t.booleanLiteral(!!desc.enumerable)));
-          descProps.push(t.objectProperty(t.identifier("configurable"), t.booleanLiteral(!!desc.configurable)));
-          if (!desc.get && !desc.set) {
-            descProps.push(t.objectProperty(t.identifier("writable"), t.booleanLiteral(!!desc.writable)));
-            descProps.push(t.objectProperty(t.identifier("value"), valueNode));
-          } else {
-            descProps.push(t.objectProperty(t.identifier("get"), getNode));
-            descProps.push(t.objectProperty(t.identifier("set"), setNode));
-          }
-          return t.expressionStatement(
-            t.callExpression(this.preludeGenerator.memoizeReference("Object.defineProperty"), [
-              objectNode,
-              t.stringLiteral(key),
-              t.objectExpression(descProps),
-            ])
-          );
-        },
+        buildNode: (_, context: SerializationContext) => context.emitDefinePropertyBody(object, key, desc),
       });
     }
   }
