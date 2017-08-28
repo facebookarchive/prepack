@@ -36,7 +36,7 @@ export default function(
     return ast;
   } catch (e) {
     if (e instanceof SyntaxError) {
-      // Babel reports all errors as syntax errors, even if a SyntaxError should be thrown.
+      // Babel reports all errors as syntax errors, even if a ReferenceError should be thrown.
       // What we do here is a totally robust way to address that issue.
       let referenceErrors = [
         "Invalid left-hand side in postfix operation",
@@ -60,7 +60,7 @@ export default function(
         loc: e.loc,
         stackDecorated: false,
       };
-      throw new ThrowCompletion(error, undefined);
+      throw new ThrowCompletion(error, e.loc);
     } else {
       throw e;
     }

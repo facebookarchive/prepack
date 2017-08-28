@@ -20,6 +20,7 @@ import {
   StringValue,
   ConcreteValue,
   UndefinedValue,
+  SymbolValue,
 } from "./values/index.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
@@ -46,7 +47,7 @@ export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
-export type CreatedObjects = Set<ObjectValue | AbstractObjectValue>;
+export type CreatedObjects = Set<ObjectValue>;
 export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
 export class Tracer {
@@ -168,6 +169,8 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.errorHandler = opts.errorHandler;
+
+    this.globalSymbolRegistry = [];
   }
 
   start: number;
@@ -223,6 +226,8 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
+
+  globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -596,10 +601,7 @@ export class Realm {
   }
 
   isNewObject(object: AbstractObjectValue | ObjectValue): boolean {
-    if (object instanceof AbstractObjectValue) {
-      let realm = this;
-      return object.values.getElements().some(element => realm.isNewObject(element));
-    }
+    if (object instanceof AbstractObjectValue) return false;
     return this.createdObjects === undefined || this.createdObjects.has(object);
   }
 

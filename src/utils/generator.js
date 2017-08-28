@@ -34,13 +34,13 @@ import type {
   BabelNodeIdentifier,
   BabelNodeStatement,
   BabelNodeMemberExpression,
-  BabelNodeThisExpression,
 } from "babel-types";
 import { nullExpression } from "./internalizer.js";
 
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
+  emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
@@ -144,7 +144,7 @@ export class Generator {
     });
   }
 
-  emitDefineProperty(object: Value, key: string, desc: Descriptor) {
+  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor) {
     if (desc.enumerable && desc.configurable && desc.writable && desc.value) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -158,25 +158,7 @@ export class Generator {
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        buildNode: ([objectNode, valueNode, getNode, setNode]) => {
-          let descProps = [];
-          descProps.push(t.objectProperty(t.identifier("enumerable"), t.booleanLiteral(!!desc.enumerable)));
-          descProps.push(t.objectProperty(t.identifier("configurable"), t.booleanLiteral(!!desc.configurable)));
-          if (!desc.get && !desc.set) {
-            descProps.push(t.objectProperty(t.identifier("writable"), t.booleanLiteral(!!desc.writable)));
-            descProps.push(t.objectProperty(t.identifier("value"), valueNode));
-          } else {
-            descProps.push(t.objectProperty(t.identifier("get"), getNode));
-            descProps.push(t.objectProperty(t.identifier("set"), setNode));
-          }
-          return t.expressionStatement(
-            t.callExpression(this.preludeGenerator.memoizeReference("Object.defineProperty"), [
-              objectNode,
-              t.stringLiteral(key),
-              t.objectExpression(descProps),
-            ])
-          );
-        },
+        buildNode: (_, context: SerializationContext) => context.emitDefinePropertyBody(object, key, desc),
       });
     }
   }
@@ -388,7 +370,7 @@ export class PreludeGenerator {
 
   prelude: Array<BabelNodeStatement>;
   derivedIds: Map<string, Array<Value>>;
-  memoizedRefs: Map<string, BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression>;
+  memoizedRefs: Map<string, BabelNodeIdentifier>;
   nameGenerator: NameGenerator;
   usesThis: boolean;
   declaredGlobals: Set<string>;
@@ -402,17 +384,10 @@ export class PreludeGenerator {
     );
   }
 
-  convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression {
+  convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression {
     return str
       .split(".")
-      .map(name => {
-        if (name === "global") {
-          this.usesThis = true;
-          return t.thisExpression();
-        } else {
-          return t.identifier(name);
-        }
-      })
+      .map(name => (name === "global" ? this.memoizeReference(name) : t.identifier(name)))
       .reduce((obj, prop) => t.memberExpression(obj, prop));
   }
 
@@ -422,12 +397,34 @@ export class PreludeGenerator {
     return t.memberExpression(this.memoizeReference("global"), keyNode, !t.isIdentifier(keyNode));
   }
 
-  memoizeReference(key: string): BabelNodeIdentifier | BabelNodeMemberExpression | BabelNodeThisExpression {
+  memoizeReference(key: string): BabelNodeIdentifier {
     let ref = this.memoizedRefs.get(key);
     if (ref) return ref;
 
+    let init;
+    if (key.includes("(") || key.includes("[")) {
+      // Horrible but effective hack:
+      // Some internal object have intrinsic names such as
+      //    ([][Symbol.iterator]().__proto__.__proto__)
+      // and
+      //    RegExp.prototype[Symbol.match]
+      // which get turned into a babel node here.
+      // TODO: We should properly parse such a string, and memoize all references in it separately.
+      // Instead, we just turn it into a funky identifier, which Babel seems to accept.
+      init = t.identifier(key);
+    } else if (key === "global") {
+      this.usesThis = true;
+      init = t.thisExpression();
+    } else {
+      let i = key.lastIndexOf(".");
+      if (i === -1) {
+        init = t.memberExpression(this.memoizeReference("global"), t.identifier(key));
+      } else {
+        init = t.memberExpression(this.memoizeReference(key.substr(0, i)), t.identifier(key.substr(i + 1)));
+      }
+    }
     ref = t.identifier(this.nameGenerator.generate(key));
-    this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(ref, this.convertStringToMember(key))]));
+    this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(ref, init)]));
     this.memoizedRefs.set(key, ref);
     return ref;
   }

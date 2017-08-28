@@ -10,5 +10,5 @@ foo();
 o();
 o.m();
 
-var str = global.__abstract ? __abstract("string", "'xxx'") : "xxx";
+var str = global.__abstract ? __abstract("string", "('xxx')") : "xxx";
 eval(str);

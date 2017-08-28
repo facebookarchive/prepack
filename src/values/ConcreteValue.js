@@ -94,10 +94,6 @@ export default class ConcreteValue extends Value {
     return this.throwIfNotObject();
   }
 
-  throwIfNotConcreteString(): StringValue {
-    invariant(false, "expected this to be a string if concrete");
-  }
-
   throwIfNotObject(): ObjectValue {
     invariant(false, "expected this to be an object if concrete");
   }
