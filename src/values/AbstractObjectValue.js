@@ -26,7 +26,7 @@ export default class AbstractObjectValue extends AbstractValue {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
     optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
   ) {
     super(realm, types, values, args, buildNode, optionalArgs);

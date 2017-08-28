@@ -40,7 +40,7 @@ export default class AbstractValue extends Value {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
     optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
   ) {
     invariant(realm.useAbstractInterpretation);
@@ -73,16 +73,22 @@ export default class AbstractValue extends Value {
   values: ValuesDomain;
   mightBeEmpty: boolean;
   args: Array<Value>;
-  _buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression;
+  _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
+
+  getBuildNode(): AbstractValueBuildNodeFunction | BabelNodeExpression {
+    invariant(this._buildNode);
+    return this._buildNode;
+  }
 
   buildNode(args: Array<BabelNodeExpression>): BabelNodeExpression {
-    return this._buildNode instanceof Function
-      ? ((this._buildNode: any): AbstractValueBuildNodeFunction)(args)
-      : ((this._buildNode: any): BabelNodeExpression);
+    let buildNode = this.getBuildNode();
+    return buildNode instanceof Function
+      ? ((buildNode: any): AbstractValueBuildNodeFunction)(args)
+      : ((buildNode: any): BabelNodeExpression);
   }
 
   hasIdentifier() {
-    return this._buildNode.type === "Identifier";
+    return this._buildNode && this._buildNode.type === "Identifier";
   }
 
   getIdentifier() {
@@ -91,7 +97,7 @@ export default class AbstractValue extends Value {
   }
 
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>) {
-    if (!(this._buildNode instanceof Function)) {
+    if (this._buildNode && !(this._buildNode instanceof Function)) {
       if (this._buildNode.loc) locations.push(this._buildNode.loc);
     }
     for (let val of this.args) {

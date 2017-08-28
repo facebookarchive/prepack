@@ -129,12 +129,7 @@ export default function(
       // could not be iterated at compile time, so the index that this element
       // will have at runtime is not known at this point.
 
-      let abstractIndex = realm.createAbstract(
-        new TypesDomain(NumberValue),
-        ValuesDomain.topVal,
-        [],
-        t.identifier("never used")
-      );
+      let abstractIndex = realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, []);
       array.$SetPartial(abstractIndex, elemValue, array);
     } else {
       // Redundant steps.
