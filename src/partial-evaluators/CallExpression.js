@@ -180,7 +180,7 @@ function EvaluateCall(
     // such functions have no visible side-effects. Hence we can carry on
     // by returning a call node with the arguments updated with their partial counterparts.
     // TODO: obtain the type of the return value from the abstract function.
-    return realm.createAbstract(TypesDomain.topVal, ValuesDomain.topVal, [], t.identifier("never used"));
+    return realm.createAbstract(TypesDomain.topVal, ValuesDomain.topVal, []);
   }
   // If func is abstract and not known to be a safe function, we can't safely continue.
   func = func.throwIfNotConcrete();

@@ -1027,7 +1027,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
     if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
       let realmGenerator = realm.generator;
       invariant(realmGenerator);
-      value = realmGenerator.derive(value.types, value.values, value.args, value._buildNode, { kind: "resolved" });
+      value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), { kind: "resolved" });
       InternalSetProperty(realm, O, P, {
         value: value,
         writable: "writable" in X ? X.writable : false,

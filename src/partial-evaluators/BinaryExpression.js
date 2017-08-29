@@ -116,12 +116,7 @@ export function createAbstractValueForBinary(
       AbstractValue.reportIntrospectionError((val: any));
       throw new FatalError();
     }
-    resultValue = realm.createAbstract(
-      new TypesDomain(resultType),
-      ValuesDomain.topVal,
-      [],
-      t.identifier("never used")
-    );
+    resultValue = realm.createAbstract(new TypesDomain(resultType), ValuesDomain.topVal, []);
   }
   let r = composeNormalCompletions(leftCompletion, rightCompletion, resultValue, realm);
   return [r, ast, io];
