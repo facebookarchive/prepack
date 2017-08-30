@@ -14,6 +14,7 @@ import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
   BabelNodeSourceLocation,
+  BabelUnaryOperator,
 } from "babel-types";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
@@ -297,10 +298,27 @@ export default class AbstractValue extends Value {
 
     let resultTypes = TypesDomain.binaryOp(op, leftTypes, rightTypes);
     let resultValues = ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
-    let C = Value.isTypeCompatibleWith(resultTypes.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new C(realm, resultTypes, resultValues, [left, right], ([x, y]) => t.binaryExpression(op, x, y), {
-      kind: op,
-    });
+    let result = new AbstractValue(realm, resultTypes, resultValues, [left, right], ([x, y]) =>
+      t.binaryExpression(op, x, y)
+    );
+    result.kind = op;
+    result.expressionLocation = loc;
+    return result;
+  }
+
+  static createFromUnaryOp(
+    realm: Realm,
+    op: BabelUnaryOperator,
+    operand: AbstractValue,
+    prefix?: boolean,
+    loc?: ?BabelNodeSourceLocation
+  ): AbstractValue {
+    let resultTypes = TypesDomain.unaryOp(op, operand.types);
+    let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
+    let result = new AbstractValue(realm, resultTypes, resultValues, [operand], ([x]) =>
+      t.unaryExpression(op, x, prefix)
+    );
+    result.kind = op;
     result.expressionLocation = loc;
     return result;
   }
