@@ -457,7 +457,9 @@ export class Modules {
       // Check for escaping property assignments, if none escape, we got an existing object
       let escapes = false;
       for (let [binding] of properties) {
-        if (!createdObjects.has(binding.object)) escapes = true;
+        let object = binding.object;
+        invariant(object instanceof ObjectValue);
+        if (!createdObjects.has(object)) escapes = true;
       }
       if (escapes) return undefined;
 

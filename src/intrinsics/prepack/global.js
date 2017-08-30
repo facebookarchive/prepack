@@ -131,8 +131,9 @@ export default function(realm: Realm): void {
   });
 
   // Maps from initialized moduleId to exports object
+  // NB: Changes to this shouldn't ever be serialized
   global.$DefineOwnProperty("__initializedModules", {
-    value: new ObjectValue(realm),
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__initializedModules", true),
     writable: true,
     enumerable: false,
     configurable: true,

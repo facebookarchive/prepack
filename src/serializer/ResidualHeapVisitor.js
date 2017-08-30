@@ -534,7 +534,12 @@ export class ResidualHeapVisitor {
           let visitProperties = () => {
             for (let propertyBinding of pb.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
-              if (co.has(binding.object)) continue; // Created Object's binding
+              let object = binding.object;
+              // These should be in the generator so we can skip them
+              if (object.isPartialObject()) continue;
+              invariant(object instanceof ObjectValue);
+              if (co.has(object)) continue; // Created Object's binding
+              if (object.refuseSerialization) continue; // modification to internal state
               if (binding.descriptor === undefined) continue; //deleted
               this.visitObjectProperty(binding);
             }

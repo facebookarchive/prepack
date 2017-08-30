@@ -55,7 +55,7 @@ import * as t from "babel-types";
 import invariant from "../invariant.js";
 
 export default class ObjectValue extends ConcreteValue {
-  constructor(realm: Realm, proto?: ObjectValue | NullValue, intrinsicName?: string) {
+  constructor(realm: Realm, proto?: ObjectValue | NullValue, intrinsicName?: string, refuseSerialization?: true) {
     super(realm, intrinsicName);
     realm.recordNewObject(this);
     if (realm.useAbstractInterpretation) this.setupBindings();
@@ -65,6 +65,7 @@ export default class ObjectValue extends ConcreteValue {
     this._isSimple = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
+    this.refuseSerialization = refuseSerialization;
   }
 
   static trackedProperties = [
@@ -225,6 +226,10 @@ export default class ObjectValue extends ConcreteValue {
   // or it can be associated with a particular point in time by being used as a template
   // when deriving an abstract value via a generator.
   intrinsicNameGenerated: void | true;
+
+  // We track some internal state as properties on the global object, these should
+  // never be serialized.
+  refuseSerialization: void | true;
 
   mightBeFalse(): boolean {
     return false;

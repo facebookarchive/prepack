@@ -22,7 +22,9 @@ export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) =>
 export type FunctionInstance = {
   serializedBindings: SerializedBindings,
   functionValue: ECMAScriptSourceFunctionValue,
+  // Optional place to insert the
   insertionPoint?: BodyReference,
+  declarationBodyOverride?: Array<BabelNodeStatement>,
   scopeInstances: Set<ScopeBinding>,
 };
 
