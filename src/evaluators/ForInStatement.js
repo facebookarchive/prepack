@@ -130,12 +130,7 @@ function emitResidualLoopIfSafe(
   try {
     let envRec = blockEnv.environmentRecord;
     invariant(envRec instanceof DeclarativeEnvironmentRecord, "expected declarative environment record");
-    let absStr = realm.createAbstract(
-      new TypesDomain(StringValue),
-      ValuesDomain.topVal,
-      [],
-      t.stringLiteral("never used")
-    );
+    let absStr = realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, []);
     let boundName;
     for (let n of BoundNames(realm, lh)) {
       invariant(boundName === undefined);

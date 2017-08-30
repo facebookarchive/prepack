@@ -21,7 +21,6 @@ import {
   NormalCompletion,
   PossiblyNormalCompletion,
 } from "../completions.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
 import {
@@ -519,12 +518,7 @@ export function SetFunctionName(
     // a. Let name be the concatenation of prefix, code unit 0x0020 (SPACE), and name.
     if (name instanceof AbstractValue) {
       let prefixVal = new StringValue(realm, prefix + " ");
-      name = realm.createAbstract(
-        new TypesDomain(StringValue),
-        ValuesDomain.topVal,
-        [prefixVal, name],
-        ([lnode, rnode]) => t.binaryExpression("+", lnode, rnode)
-      );
+      name = AbstractValue.createFromBinaryOp(realm, "+", prefixVal, name, this.expressionLocation);
     } else {
       name = new StringValue(realm, `${prefix} ${name.value}`);
     }

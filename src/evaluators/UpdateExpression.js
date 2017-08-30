@@ -15,10 +15,8 @@ import type { Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Add, GetValue, ToNumber, PutValue, IsToNumberPure } from "../methods/index.js";
 import { AbstractValue, NumberValue } from "../values/index.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
 
 export default function(
   ast: BabelNodeUpdateExpression,
@@ -45,12 +43,7 @@ export default function(
     }
     invariant(ast.operator === "++" || ast.operator === "--"); // As per BabelNodeUpdateExpression
     let op = ast.operator === "++" ? "+" : "-";
-    let newAbstractValue = realm.createAbstract(
-      new TypesDomain(NumberValue),
-      ValuesDomain.topVal,
-      [oldExpr],
-      ([node]) => t.binaryExpression(op, node, t.numericLiteral(1))
-    );
+    let newAbstractValue = AbstractValue.createFromBinaryOp(realm, op, oldExpr, new NumberValue(realm, 1), ast.loc);
     PutValue(realm, expr, newAbstractValue);
     if (ast.prefix) {
       return newAbstractValue;
