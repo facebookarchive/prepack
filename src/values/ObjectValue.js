@@ -515,13 +515,8 @@ export default class ObjectValue extends ConcreteValue {
       if (desc === undefined) continue; // deleted
       invariant(desc.value !== undefined); // otherwise this is not simple
       let val = desc.value;
-      let cond = this.$Realm.createAbstract(
-        new TypesDomain(BooleanValue),
-        ValuesDomain.topVal,
-        [P],
-        ([x]) => t.binaryExpression("===", x, t.stringLiteral(key)),
-        "check for known property"
-      );
+      let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
+      cond.kind = "check for known property";
       result = joinValuesAsConditional(this.$Realm, cond, val, result);
     }
     return result;
@@ -577,13 +572,8 @@ export default class ObjectValue extends ConcreteValue {
       let newVal = V;
       if (!(V instanceof UndefinedValue)) {
         // join V with undefined, using a property name test as the condition
-        let cond = this.$Realm.createAbstract(
-          new TypesDomain(BooleanValue),
-          ValuesDomain.topVal,
-          [P, new StringValue(this.$Realm, "")],
-          ([x, y]) => t.binaryExpression("===", x, y),
-          "template for property name condition"
-        );
+        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, ""));
+        cond.kind = "template for property name condition";
         newVal = joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
       }
       prop.descriptor = {
@@ -598,13 +588,8 @@ export default class ObjectValue extends ConcreteValue {
       invariant(oldVal !== undefined);
       let newVal = oldVal;
       if (!(V instanceof UndefinedValue)) {
-        let cond = this.$Realm.createAbstract(
-          new TypesDomain(BooleanValue),
-          ValuesDomain.topVal,
-          [P, new StringValue(this.$Realm, "")],
-          ([x, y]) => t.binaryExpression("===", x, y),
-          "template for property name condition"
-        );
+        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, ""));
+        cond.kind = "template for property name condition";
         newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
       }
       desc.value = newVal;
@@ -618,9 +603,7 @@ export default class ObjectValue extends ConcreteValue {
         oldVal = propertyBinding.descriptor.value;
         invariant(oldVal !== undefined); // otherwise this is not simple
       }
-      let cond = this.$Realm.createAbstract(new TypesDomain(BooleanValue), ValuesDomain.topVal, [P], ([x]) =>
-        t.binaryExpression("===", x, t.stringLiteral(key))
-      );
+      let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
       let newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
       OrdinarySet(this.$Realm, this, key, newVal, Receiver);
     }
