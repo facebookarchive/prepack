@@ -313,7 +313,7 @@ export default class AbstractValue extends Value {
     prefix?: boolean,
     loc?: ?BabelNodeSourceLocation
   ): AbstractValue {
-    let resultTypes = TypesDomain.unaryOp(op, operand.types);
+    let resultTypes = TypesDomain.unaryOp(op);
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
     let result = new AbstractValue(realm, resultTypes, resultValues, [operand], ([x]) =>
       t.unaryExpression(op, x, prefix)
