@@ -108,9 +108,8 @@ export default class TypesDomain {
   }
 
   // return the type of the result in the case where there is no exception
-  static unaryOp(op: BabelUnaryOperator, operand: TypesDomain): TypesDomain {
-    let oType = operand._type;
-    if (oType === undefined) return TypesDomain.topVal;
+  // note that the type of the operand has no influence on the type of the non exceptional result
+  static unaryOp(op: BabelUnaryOperator): TypesDomain {
     let resultType = Value;
     switch (op) {
       case "-":
