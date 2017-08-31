@@ -20,7 +20,6 @@ import {
   HasProperty,
   InstanceofOperator,
   IsCallable,
-  IsToNumberPure,
   StrictEqualityComparison,
   ToBoolean,
   ToInt32,
@@ -86,6 +85,7 @@ export default class ValuesDomain {
       return ValuesDomain.topVal;
     let resultSet = new Set();
     let savedHandler = realm.errorHandler;
+    let savedIsReadOnly = realm.isReadOnly;
     try {
       realm.errorHandler = () => {
         throw new FatalError();
@@ -101,10 +101,13 @@ export default class ValuesDomain {
       if (e instanceof AbruptCompletion) return ValuesDomain.topVal;
     } finally {
       realm.errorHandler = savedHandler;
+      realm.isReadOnly = savedIsReadOnly;
     }
     return new ValuesDomain(resultSet);
   }
 
+  // Note that calling this can result in user code running, which can side-effect the heap.
+  // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
   static computeBinary(realm: Realm, op: BabelBinaryOperator, lval: ConcreteValue, rval: ConcreteValue): Value {
     if (op === "+") {
       // ECMA262 12.8.3 The Addition Operator
@@ -256,20 +259,18 @@ export default class ValuesDomain {
     invariant(false, "unimplemented " + op);
   }
 
-  // Computes the result of a pure unary operation on the given value.
-  // Throws a FatalError if ToNumber might get called on an Object.
+  // Note that calling this can result in user code running, which can side-effect the heap.
+  // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
   static computeUnary(realm: Realm, op: BabelUnaryOperator, value: ConcreteValue): Value {
     if (op === "+") {
       // ECMA262 12.5.6.1
       // 1. Let expr be the result of evaluating UnaryExpression.
       // 2. Return ? ToNumber(? GetValue(expr)).
-      if (!IsToNumberPure(realm, value)) throw new FatalError();
       return new NumberValue(realm, ToNumber(realm, value));
     } else if (op === "-") {
       // ECMA262 12.5.7.1
       // 1. Let expr be the result of evaluating UnaryExpression.
       // 2. Let oldValue be ? ToNumber(? GetValue(expr)).
-      if (!IsToNumberPure(realm, value)) throw new FatalError();
       let oldValue = ToNumber(realm, value);
 
       // 3. If oldValue is NaN, return NaN.
@@ -283,7 +284,6 @@ export default class ValuesDomain {
       // ECMA262 12.5.8
       // 1. Let expr be the result of evaluating UnaryExpression.
       // 2. Let oldValue be ? ToInt32(? GetValue(expr)).
-      if (!IsToNumberPure(realm, value)) throw new FatalError();
       let oldValue = ToInt32(realm, value);
 
       // 3. Return the result of applying bitwise complement to oldValue. The result is a signed 32-bit integer.
@@ -350,6 +350,7 @@ export default class ValuesDomain {
     if (operandElements === undefined) return ValuesDomain.topVal;
     let resultSet = new Set();
     let savedHandler = realm.errorHandler;
+    let savedIsReadOnly = realm.isReadOnly;
     try {
       realm.errorHandler = () => {
         throw new FatalError();
@@ -363,6 +364,7 @@ export default class ValuesDomain {
       if (e instanceof AbruptCompletion) return ValuesDomain.topVal;
     } finally {
       realm.errorHandler = savedHandler;
+      realm.isReadOnly = savedIsReadOnly;
     }
     return new ValuesDomain(resultSet);
   }
