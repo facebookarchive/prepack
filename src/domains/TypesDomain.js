@@ -10,7 +10,7 @@
 /* @flow */
 
 import invariant from "../invariant.js";
-import type { BabelBinaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
 import {
   AbstractValue,
   BooleanValue,
@@ -105,5 +105,32 @@ export default class TypesDomain {
       return new TypesDomain(PrimitiveValue);
     }
     return TypesDomain.topVal;
+  }
+
+  // return the type of the result in the case where there is no exception
+  static unaryOp(op: BabelUnaryOperator, operand: TypesDomain): TypesDomain {
+    let oType = operand._type;
+    if (oType === undefined) return TypesDomain.topVal;
+    let resultType = Value;
+    switch (op) {
+      case "-":
+      case "+":
+      case "~":
+        resultType = NumberValue;
+        break;
+      case "!":
+      case "delete":
+        resultType = BooleanValue;
+        break;
+      case "typeof":
+        resultType = StringValue;
+        break;
+      case "void":
+        resultType = UndefinedValue;
+        break;
+      default:
+        invariant(false);
+    }
+    return new TypesDomain(resultType);
   }
 }

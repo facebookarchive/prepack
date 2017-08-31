@@ -26,7 +26,6 @@ import {
   AbstractValue,
 } from "../values/index.js";
 import { Reference, EnvironmentRecord } from "../environment.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import {
   GetReferencedName,
@@ -43,17 +42,10 @@ import {
   IsPropertyReference,
   IsToNumberPure,
 } from "../methods/index.js";
-import * as t from "babel-types";
 import type { BabelNodeUnaryExpression } from "babel-types";
 
 function isInstance(proto, Constructor): boolean {
   return proto instanceof Constructor || proto === Constructor.prototype;
-}
-
-function computeAbstractly(realm, type, op, val) {
-  return realm.createAbstract(new TypesDomain(type), ValuesDomain.topVal, [val], ([node]) =>
-    t.unaryExpression(op, node)
-  );
 }
 
 export default function(
@@ -84,7 +76,7 @@ export default function(
     let value = GetValue(realm, expr);
     if (value instanceof AbstractValue) {
       if (!IsToNumberPure(realm, value)) reportError();
-      return computeAbstractly(realm, NumberValue, "+", value);
+      return AbstractValue.createFromUnaryOp(realm, "+", value);
     }
     invariant(value instanceof ConcreteValue);
 
@@ -99,7 +91,7 @@ export default function(
     let value = GetValue(realm, expr);
     if (value instanceof AbstractValue) {
       if (!IsToNumberPure(realm, value)) reportError();
-      return computeAbstractly(realm, NumberValue, "-", value);
+      return AbstractValue.createFromUnaryOp(realm, "-", value);
     }
     invariant(value instanceof ConcreteValue);
     let oldValue = ToNumber(realm, value);
@@ -121,7 +113,7 @@ export default function(
     let value = GetValue(realm, expr);
     if (value instanceof AbstractValue) {
       if (!IsToNumberPure(realm, value)) reportError();
-      return computeAbstractly(realm, NumberValue, "~", value);
+      return AbstractValue.createFromUnaryOp(realm, "~", value);
     }
     invariant(value instanceof ConcreteValue);
     let oldValue = ToInt32(realm, value);
@@ -139,7 +131,7 @@ export default function(
     if (value instanceof AbstractValue) {
       if (!value.mightNotBeTrue()) return realm.intrinsics.false;
       if (!value.mightNotBeFalse()) return realm.intrinsics.true;
-      return computeAbstractly(realm, BooleanValue, "!", value);
+      return AbstractValue.createFromUnaryOp(realm, "!", value);
     }
     invariant(value instanceof ConcreteValue);
     let oldValue = ToBoolean(realm, value);
@@ -196,7 +188,7 @@ export default function(
       return new StringValue(realm, "object");
     } else {
       invariant(val instanceof AbstractValue);
-      return computeAbstractly(realm, StringValue, "typeof", val);
+      return AbstractValue.createFromUnaryOp(realm, "typeof", val);
     }
   } else {
     invariant(ast.operator === "delete");
