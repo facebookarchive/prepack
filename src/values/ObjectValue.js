@@ -523,7 +523,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   specializeJoin(absVal: AbstractValue, propName: Value): AbstractValue {
-    invariant(absVal.args.length === 3);
+    invariant(absVal.args.length === 3 && absVal.kind === "conditional");
     let generic_cond = absVal.args[0];
     invariant(generic_cond instanceof AbstractValue);
     let cond = this.specializeCond(generic_cond, propName);
@@ -531,12 +531,12 @@ export default class ObjectValue extends ConcreteValue {
     if (arg1 instanceof AbstractValue && arg1.args.length === 3) arg1 = this.specializeJoin(arg1, propName);
     let arg2 = absVal.args[2];
     if (arg2 instanceof AbstractValue && arg2.args.length === 3) arg2 = this.specializeJoin(arg2, propName);
-    return this.$Realm.createAbstract(absVal.types, absVal.values, [cond, arg1, arg2], absVal._buildNode);
+    return AbstractValue.createFromConditionalOp(this.$Realm, cond, arg1, arg2, absVal.expressionLocation);
   }
 
   specializeCond(absVal: AbstractValue, propName: Value): AbstractValue {
     if (absVal.kind === "template for property name condition")
-      return this.$Realm.createAbstract(absVal.types, absVal.values, [absVal.args[0], propName], absVal._buildNode);
+      return AbstractValue.createFromBinaryOp(this.$Realm, "===", absVal.args[0], propName);
     return absVal;
   }
 
