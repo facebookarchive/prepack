@@ -260,16 +260,17 @@ export class ResidualFunctions {
           invariant(t.isCallExpression(funcNode)); // .bind call
           body = getFunctionBody(instance);
         }
+        let pushToBody = (elem) => {
+          if (instance.declarationBodyOverride) instance.declarationBodyOverride.unshift(elem);
+          else body.push(elem);
+        };
         let declaration = t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]);
-        /*if (instance.declarationBodyOverride)
-          instance.declarationBodyOverride.unshift(declaration)
-        else*/
-          body.push(declaration);
+        pushToBody(declaration);
         let prototypeId = this.functionPrototypes.get(functionValue);
         if (prototypeId !== undefined) {
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
-          body.push(
+          pushToBody(
             t.variableDeclaration("var", [
               t.variableDeclarator(prototypeId, t.memberExpression(id, t.identifier("prototype"))),
             ])
@@ -298,7 +299,9 @@ export class ResidualFunctions {
           let funcNode = t.functionExpression(
             null,
             funcParams,
-            ((t.cloneDeep(functionBody): any): BabelNodeBlockStatement)
+            // We can't clone the body of rewritten functions because we may need to
+            // modify it with additional function declarations. 
+            fixupReferences ? ((t.cloneDeep(functionBody): any): BabelNodeBlockStatement) : functionBody
           );
           if (fixupReferences) {
             let scopeInitialization = [];

@@ -4,7 +4,7 @@
 
 function additional1() {
   var x2 = { foo: 5 };
-  global.foo = function() { return x2; }
+  foo = function() { return x2; }
   var y = 5;
 }
 
@@ -14,12 +14,16 @@ function produceObject() {
 
 function additional2() {
   let x1 = produceObject();
-  global.bar = function() { return x1; }
+  bar = function() { return x1; }
 }
 
 inspect = function() {
   additional1();
   additional2();
+  let bar1 = bar;
+  let foo1 = foo;
+  additional1();
+  additional2();
 
-  return ' ' + global.bar() + global.foo().foo;
+  return ' ' + JSON.stringify(bar()) + foo().foo + bar1() + foo1().foo + (bar1 === bar) + (bar1() === bar()) + (foo1() === foo());
 }

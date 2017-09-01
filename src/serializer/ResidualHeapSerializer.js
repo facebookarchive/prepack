@@ -124,6 +124,7 @@ export class ResidualHeapSerializer {
     this.referencedDeclaredValues = referencedDeclaredValues;
     this.activeGeneratorBodies = new Map();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
+    this.nestedFunctionValues = new Set();
   }
 
   emitter: Emitter;
@@ -162,6 +163,9 @@ export class ResidualHeapSerializer {
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
+  // function values we aren't allowed to delay initializations in because they're
+  // nested in additional functions
+  nestedFunctionValues: Set<FunctionValue>;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -488,10 +492,11 @@ export class ResidualHeapSerializer {
       invariant(functionValues.length > 0);
       let additionalFunctionValuesAndEffects = this.additionalFunctionValuesAndEffects;
       let numAdditionalFunctionReferences = 0;
+      // TODO: what about functions nested in additional functions -- need to also not delay
       if (additionalFunctionValuesAndEffects) {
         // flow forces me to do this
         let additionalFuncValuesAndEffects = additionalFunctionValuesAndEffects;
-        numAdditionalFunctionReferences = functionValues.filter((funcValue) => additionalFuncValuesAndEffects.has(funcValue)).length;
+        numAdditionalFunctionReferences = functionValues.filter((funcValue) => additionalFuncValuesAndEffects.has(funcValue) || this.nestedFunctionValues.has(funcValue)).length;
       }
 
       if (numAdditionalFunctionReferences === 1 && functionValues.length === 1) {
@@ -1238,6 +1243,7 @@ export class ResidualHeapSerializer {
       if (additionalFVEffects) {
         for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
           let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
+          let nestedFunctions = new Set([...co].filter((object) => object instanceof FunctionValue));
           // Need to copy these because applying them is a destructive operation
           let ob_copy = new Map(ob);
           let pb_copy = new Map(pb);
@@ -1253,6 +1259,7 @@ export class ResidualHeapSerializer {
           // Allows us to emit function declarations etc. inside of this additional
           // function instead of adding them at global scope
           // TODO: make sure this generator isn't getting mutated oddly
+          this.nestedFunctionValues = nestedFunctions;
           let serializeProperties = () => {
             for (let propertyBinding of pb.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
