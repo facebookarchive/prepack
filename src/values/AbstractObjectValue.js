@@ -31,13 +31,6 @@ export default class AbstractObjectValue extends AbstractValue {
     super(realm, types, values, args, buildNode, optionalArgs);
   }
 
-  clone(): AbstractObjectValue {
-    let result = new AbstractObjectValue(this.$Realm, this.types, this.values, this.args, this._buildNode);
-    if (this.kind) result.kind = this.kind;
-    if (this.intrinsicName) result.intrinsicName = this.intrinsicName;
-    return result;
-  }
-
   getTemplate(): ObjectValue {
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
