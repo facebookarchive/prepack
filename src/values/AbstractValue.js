@@ -62,14 +62,6 @@ export default class AbstractValue extends Value {
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
   }
 
-  clone(): AbstractValue {
-    let result = new AbstractValue(this.$Realm, this.types, this.values, this.args, this._buildNode);
-    if (this.mightBeEmpty) result.mightBeEmpty = true;
-    if (this.args) result.args = this.args;
-    if (this.kind) result.kind = this.kind;
-    return result;
-  }
-
   getType() {
     return this.types.getType();
   }
@@ -224,12 +216,9 @@ export default class AbstractValue extends Value {
   promoteEmptyToUndefined(): Value {
     if (this.values.isTop()) return this;
     if (!this.mightBeEmpty) return this;
-    let result = this.clone();
-    result.mightBeEmpty = false;
-    result.values = result.values.promoteEmptyToUndefined();
     let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, this.$Realm.intrinsics.empty);
-    result.args = [cond, this.$Realm.intrinsics.undefined, this];
-    result._buildNode = args => t.conditionalExpression(args[0], args[1], args[2]);
+    let result = AbstractValue.createFromConditionalOp(this.$Realm, cond, this.$Realm.intrinsics.undefined, this);
+    result.values = this.values.promoteEmptyToUndefined();
     return result;
   }
 
@@ -302,6 +291,28 @@ export default class AbstractValue extends Value {
       t.binaryExpression(op, x, y)
     );
     result.kind = op;
+    result.expressionLocation = loc;
+    return result;
+  }
+
+  static createFromConditionalOp(
+    realm: Realm,
+    condition: Value,
+    left: void | Value,
+    right: void | Value,
+    loc?: ?BabelNodeSourceLocation
+  ): AbstractValue {
+    let types = TypesDomain.joinValues(left, right);
+    let values = ValuesDomain.joinValues(realm, left, right);
+    let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let result = new Constructor(
+      realm,
+      types,
+      values,
+      [condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined],
+      ([c, x, y]) => t.conditionalExpression(c, x, y),
+      { kind: "conditional" }
+    );
     result.expressionLocation = loc;
     return result;
   }
