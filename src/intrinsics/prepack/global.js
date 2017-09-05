@@ -192,7 +192,7 @@ export default function(realm: Realm): void {
   });
 
   // Helper function that identifies a variant of the residual function that has implicit dependencies. This version of residual will infer the dependencies
-  // and rewrite the function body to do the same thing as the orignal residual function.
+  // and rewrite the function body to do the same thing as the original residual function.
   global.$DefineOwnProperty("__residual_unsafe", {
     value: deriveNativeFunctionValue(true),
     writable: true,

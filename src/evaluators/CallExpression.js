@@ -15,20 +15,21 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { Value } from "../values/index.js";
-import { BooleanValue, ConcreteValue, AbstractValue, FunctionValue } from "../values/index.js";
+import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue, ObjectValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { PerformEval } from "../methods/function.js";
 import {
-  SameValue,
-  GetValue,
-  GetThisValue,
+  ArgumentListEvaluation,
+  EvaluateDirectCall,
   GetBase,
+  GetReferencedName,
+  GetThisValue,
+  GetValue,
   IsInTailPosition,
   IsPropertyReference,
   joinEffects,
-  GetReferencedName,
-  EvaluateDirectCall,
-  ArgumentListEvaluation,
+  SameValue,
+  TestIntegrityLevel,
 } from "../methods/index.js";
 import type { BabelNode, BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../invariant.js";
@@ -112,10 +113,37 @@ function EvaluateCall(
   realm: Realm
 ): Completion | Value {
   function generateRuntimeCall() {
-    let args = [func].concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
+    let args = [func];
+    let [thisArg, propName] = ref instanceof Reference ? [ref.base, ref.referencedName] : [];
+    if (thisArg instanceof Value) args = [thisArg];
+    if (propName !== undefined && typeof propName !== "string") args.push(propName);
+    args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
+    for (let arg of args) {
+      if (arg !== func && arg instanceof ObjectValue && !TestIntegrityLevel(realm, arg, "frozen")) {
+        let diag = new CompilerDiagnostic(
+          "Unfrozen object leaked before end of global code",
+          ast.loc,
+          "PP0017",
+          "RecoverableError"
+        );
+        if (realm.handleError(diag) !== "Recover") throw new FatalError();
+      }
+    }
     return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, args, nodes => {
-      let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-      return t.callExpression(nodes[0], fun_args);
+      let callFunc;
+      let argStart = 1;
+      if (thisArg instanceof Value) {
+        if (typeof propName === "string") {
+          callFunc = t.memberExpression(nodes[0], t.identifier(propName), !t.isValidIdentifier(propName));
+        } else {
+          callFunc = t.memberExpression(nodes[0], nodes[1], true);
+          argStart = 2;
+        }
+      } else {
+        callFunc = nodes[0];
+      }
+      let fun_args = ((nodes.slice(argStart): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+      return t.callExpression(callFunc, fun_args);
     });
   }
 
