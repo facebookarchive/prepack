@@ -96,8 +96,6 @@ export class ResidualFunctions {
   residualFunctionInitializers: ResidualFunctionInitializers;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
 
-  rewrittenAF: any;
-
   addFunctionInstance(instance: FunctionInstance) {
     this.functionInstances.push(instance);
     let code = instance.functionValue.$ECMAScriptCode;
@@ -136,7 +134,6 @@ export class ResidualFunctions {
   _referentialize(unbound: Names, instances: Array<FunctionInstance>): void {
     for (let instance of instances) {
       let serializedBindings = instance.serializedBindings;
-      invariant(!this.rewrittenAF.has(instance.functionValue));
 
       for (let name in unbound) {
         let serializedBinding = serializedBindings[name];
@@ -206,7 +203,6 @@ export class ResidualFunctions {
   spliceFunctions(
     rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>
   ): ResidualFunctionsResult {
-    this.rewrittenAF = rewrittenAdditionalFunctions;
     this.residualFunctionInitializers.scrubFunctionInitializers();
 
     let functionBodies = new Map();
@@ -250,7 +246,6 @@ export class ResidualFunctions {
       }
 
       let define = (instance, funcId, funcNode) => {
-        let af = this.rewrittenAF;
         let { functionValue } = instance;
         let body;
         if (t.isFunctionExpression(funcNode)) {
@@ -260,7 +255,7 @@ export class ResidualFunctions {
           invariant(t.isCallExpression(funcNode)); // .bind call
           body = getFunctionBody(instance);
         }
-        let pushToBody = (elem) => {
+        let pushToBody = elem => {
           if (instance.declarationBodyOverride) instance.declarationBodyOverride.unshift(elem);
           else body.push(elem);
         };
@@ -288,7 +283,7 @@ export class ResidualFunctions {
       let rewrittenBody = rewrittenAdditionalFunctions.get(instances[0].functionValue);
 
       // Creates a new function for each instance.
-      let naiveProcessInstances = (funcInstances, functionBody, fixupReferences) => {
+      let naiveProcessInstances = (funcInstances, functionBody, isRewrittenFunction) => {
         this.statistics.functionClones += funcInstances.length - 1;
 
         for (let instance of funcInstances) {
@@ -300,14 +295,16 @@ export class ResidualFunctions {
             null,
             funcParams,
             // We can't clone the body of rewritten functions because we may need to
-            // modify it with additional function declarations. 
-            fixupReferences ? ((t.cloneDeep(functionBody): any): BabelNodeBlockStatement) : functionBody
+            // modify it with additional function declarations.
+            isRewrittenFunction ?  functionBody : ((t.cloneDeep(functionBody): any): BabelNodeBlockStatement);
           );
-          if (fixupReferences) {
+          if (!isRewrittenFunction) {
             let scopeInitialization = [];
             for (let scope of scopeInstances) {
               scopeInitialization.push(
-                t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))])
+                t.variableDeclaration("var", [
+                  t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
+                ])
               );
               scopeInitialization = scopeInitialization.concat(this._getReferentializedScopeInitialization(scope));
             }
@@ -334,10 +331,10 @@ export class ResidualFunctions {
 
       // rewritten functions shouldn't have references fixed up, and for simplicity we
       // emit their instances in a naive way
-      if (rewrittenBody) naiveProcessInstances(additionalFunctionInstances, t.blockStatement(rewrittenBody), false);
+      if (rewrittenBody) naiveProcessInstances(additionalFunctionInstances, t.blockStatement(rewrittenBody), true);
       if (normalInstances.length === 0) continue;
       if (shouldInline || normalInstances.length === 1 || usesArguments) {
-        naiveProcessInstances(normalInstances, funcBody, true);
+        naiveProcessInstances(normalInstances, funcBody, false);
       } else {
         // Group instances with modified bindings
         let instanceBatches = [normalInstances];

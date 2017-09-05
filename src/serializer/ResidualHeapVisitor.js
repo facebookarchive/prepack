@@ -540,6 +540,7 @@ export class ResidualHeapVisitor {
               invariant(object instanceof ObjectValue);
               if (co.has(object)) continue; // Created Object's binding
               if (object.refuseSerialization) continue; // modification to internal state
+              if (object.intrinsicName === "global") continue; // Avoid double-counting
               if (binding.descriptor === undefined) continue; //deleted
               this.visitObjectProperty(binding);
             }
