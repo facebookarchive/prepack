@@ -142,20 +142,9 @@ var storage = window.localStorage;
 
 var selectCache = getCache();
 var defaultName, defaultVal;
-var defaultCode = [
-  '(function() {',
-  '  function fib(x) {',
-  '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
-  '  }',
-  '',
-  '  let x = Date.now();',
-  '  if (x * 2 > 42) x = fib(10);',
-  '  global.result = x;',
-  '})();',
-].join('\n');
 defaultName = generateSelect(selectCache, selectRecord);
 selectInput.value = defaultName || '';
-defaultVal = defaultName ? selectCache[defaultName] : defaultCode;
+defaultVal = defaultName ? selectCache[defaultName] : '';
 input.setValue(defaultVal);
 compile();
 
@@ -182,6 +171,43 @@ function getCache() {
 function setCache(data) {
   storage.setItem('prepackDemos', JSON.stringify(data || {}));
 }
+
+function addDefaultExamples() {
+  var cache = getCache();
+  var code, name;
+  name = 'Fibonacci';
+  code = [
+    '(function() {',
+    '  function fib(x) {',
+    '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
+    '  }',
+    '',
+    '  let x = Date.now();',
+    '  if (x * 2 > 42) x = fib(10);',
+    '  global.result = x;',
+    '})();',
+  ].join('\n');
+  cache[name] = code;
+
+  name = 'HelloWorld';
+  code = [
+    '(function () {',
+    '  function hello() { return \'hello\'; }',
+    '  function world() { return \'world\'; }',
+    '  global.s = hello() + \' \' + world();',
+    '})();',
+  ].join('\n');
+  cache[name] = code;
+
+  generateSelect(cache, selectRecord);
+  setCache(cache);
+  setTimeout(() => {
+    demoSelector.change('Fibonacci');
+  });
+}
+
+addDefaultExamples();
+
 deleteButton.addEventListener('click', () => {
   var name = selectInput.value;
   if (name == null || name.replace(/\s+/, '') === '') return;
