@@ -296,7 +296,7 @@ export class ResidualFunctions {
             funcParams,
             // We can't clone the body of rewritten functions because we may need to
             // modify it with additional function declarations.
-            isRewrittenFunction ?  functionBody : ((t.cloneDeep(functionBody): any): BabelNodeBlockStatement);
+            isRewrittenFunction ? functionBody : ((t.cloneDeep(functionBody): any): BabelNodeBlockStatement)
           );
           if (!isRewrittenFunction) {
             let scopeInitialization = [];

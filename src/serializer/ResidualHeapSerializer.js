@@ -496,7 +496,8 @@ export class ResidualHeapSerializer {
         // flow forces me to do this
         let additionalFuncValuesAndEffects = additionalFunctionValuesAndEffects;
         numAdditionalFunctionReferences = functionValues.filter(
-          funcValue => additionalFuncValuesAndEffects.has(funcValue) || this.additionalFunctionValueNestedFunctions.has(funcValue)
+          funcValue =>
+            additionalFuncValuesAndEffects.has(funcValue) || this.additionalFunctionValueNestedFunctions.has(funcValue)
         ).length;
       }
 
@@ -517,7 +518,8 @@ export class ResidualHeapSerializer {
     // We can emit the initialization of this value into the body associated with their common ancestor.
     let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), generators[0]);
     invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
-    let body = commonAncestor === this.generator ? this.currentFunctionBody : this.activeGeneratorBodies.get(commonAncestor);
+    let body =
+      commonAncestor === this.generator ? this.currentFunctionBody : this.activeGeneratorBodies.get(commonAncestor);
     invariant(body !== undefined);
     return { body: body };
   }
@@ -1242,7 +1244,7 @@ export class ResidualHeapSerializer {
           // Allows us to emit function declarations etc. inside of this additional
           // function instead of adding them at global scope
           // TODO: make sure this generator isn't getting mutated oddly
-          this.additionalFunctionValueNestedFunctions = nestedFunctions;
+          this.additionalFunctionValueNestedFunctions = ((nestedFunctions: any): Set<FunctionValue>);
           let serializeProperties = () => {
             for (let propertyBinding of pb.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
