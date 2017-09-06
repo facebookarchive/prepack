@@ -18,7 +18,6 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, joinValuesAsConditional, cloneDescriptor, equalDescriptors } from "../methods/index.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(
@@ -30,13 +29,6 @@ export default class AbstractObjectValue extends AbstractValue {
     optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
   ) {
     super(realm, types, values, args, buildNode, optionalArgs);
-  }
-
-  clone(): AbstractObjectValue {
-    let result = new AbstractObjectValue(this.$Realm, this.types, this.values, this.args, this._buildNode);
-    if (this.kind) result.kind = this.kind;
-    if (this.intrinsicName) result.intrinsicName = this.intrinsicName;
-    return result;
   }
 
   getTemplate(): ObjectValue {
@@ -240,17 +232,6 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        if (cv.isSimpleObject() && typeof P === "string") {
-          let generator = this.$Realm.generator;
-          invariant(generator !== undefined);
-          let pname = generator.getAsPropertyNameExpression(P);
-          let d = cv.$GetOwnProperty(P);
-          if (d === undefined) {
-            return this.$Realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [cv], ([node]) =>
-              t.memberExpression(node, pname, !t.isIdentifier(pname))
-            );
-          }
-        }
         return cv.$Get(P, Receiver);
       }
       invariant(false);

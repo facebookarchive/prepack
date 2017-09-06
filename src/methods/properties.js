@@ -25,6 +25,7 @@ import {
   AbstractValue,
   AbstractObjectValue,
 } from "../values/index.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
@@ -68,6 +69,7 @@ import {
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import IsStrict from "../utils/strict.js";
+import * as t from "babel-types";
 
 function InternalDescriptorPropertyToValue(realm: Realm, value: void | boolean | Value) {
   if (value === undefined) return realm.intrinsics.undefined;
@@ -1005,7 +1007,24 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
   // 2. If O does not have an own property with key P, return undefined.
   let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
   if (!existingBinding) {
-    if (O.isPartialObject() && !O.isSimpleObject()) {
+    if (O.isPartialObject()) {
+      invariant(realm.useAbstractInterpretation); // __makePartial will already have thrown an error if not
+      if (O.isSimpleObject()) {
+        if (P instanceof StringValue) P = P.value;
+        if (typeof P === "string") {
+          // In this case it is safe to defer the property access to runtime
+          invariant(realm.generator);
+          let pname = realm.generator.getAsPropertyNameExpression(P);
+          let absVal = realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [O], ([node]) =>
+            t.memberExpression(node, pname, !t.isIdentifier(pname))
+          );
+          return { configurabe: true, enumerable: true, value: absVal, writable: true };
+        } else {
+          invariant(P instanceof SymbolValue);
+          // Simple objects don't have symbol properties
+          return undefined;
+        }
+      }
       AbstractValue.reportIntrospectionError(O, P);
       throw new FatalError();
     }

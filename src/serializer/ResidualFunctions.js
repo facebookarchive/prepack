@@ -413,6 +413,12 @@ export class ResidualFunctions {
             ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
           );
 
+          if (instances[0].functionValue.$Strict) {
+            strictFunctionBodies.push(factoryNode);
+          } else {
+            unstrictFunctionBodies.push(factoryNode);
+          }
+
           factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
 
           // factory functions do not depend on any nested generator scope, so they go to the prelude
@@ -462,6 +468,11 @@ export class ResidualFunctions {
               let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
 
               funcNode = t.functionExpression(null, params, childBody);
+              if (functionValue.$Strict) {
+                strictFunctionBodies.push(funcNode);
+              } else {
+                unstrictFunctionBodies.push(funcNode);
+              }
             } else {
               funcNode = t.callExpression(
                 t.memberExpression(factoryId, t.identifier("bind")),

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelBinaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
 import { AbruptCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -19,7 +19,9 @@ import {
   Add,
   HasProperty,
   InstanceofOperator,
+  IsCallable,
   StrictEqualityComparison,
+  ToBoolean,
   ToInt32,
   ToNumber,
   ToPrimitive,
@@ -33,9 +35,11 @@ import {
   BooleanValue,
   ConcreteValue,
   EmptyValue,
+  NullValue,
   NumberValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
@@ -81,6 +85,7 @@ export default class ValuesDomain {
       return ValuesDomain.topVal;
     let resultSet = new Set();
     let savedHandler = realm.errorHandler;
+    let savedIsReadOnly = realm.isReadOnly;
     try {
       realm.errorHandler = () => {
         throw new FatalError();
@@ -96,10 +101,13 @@ export default class ValuesDomain {
       if (e instanceof AbruptCompletion) return ValuesDomain.topVal;
     } finally {
       realm.errorHandler = savedHandler;
+      realm.isReadOnly = savedIsReadOnly;
     }
     return new ValuesDomain(resultSet);
   }
 
+  // Note that calling this can result in user code running, which can side-effect the heap.
+  // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
   static computeBinary(realm: Realm, op: BabelBinaryOperator, lval: ConcreteValue, rval: ConcreteValue): Value {
     if (op === "+") {
       // ECMA262 12.8.3 The Addition Operator
@@ -249,6 +257,116 @@ export default class ValuesDomain {
     }
 
     invariant(false, "unimplemented " + op);
+  }
+
+  // Note that calling this can result in user code running, which can side-effect the heap.
+  // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
+  static computeUnary(realm: Realm, op: BabelUnaryOperator, value: ConcreteValue): Value {
+    if (op === "+") {
+      // ECMA262 12.5.6.1
+      // 1. Let expr be the result of evaluating UnaryExpression.
+      // 2. Return ? ToNumber(? GetValue(expr)).
+      return new NumberValue(realm, ToNumber(realm, value));
+    } else if (op === "-") {
+      // ECMA262 12.5.7.1
+      // 1. Let expr be the result of evaluating UnaryExpression.
+      // 2. Let oldValue be ? ToNumber(? GetValue(expr)).
+      let oldValue = ToNumber(realm, value);
+
+      // 3. If oldValue is NaN, return NaN.
+      if (isNaN(oldValue)) {
+        return realm.intrinsics.NaN;
+      }
+
+      // 4. Return the result of negating oldValue; that is, compute a Number with the same magnitude but opposite sign.
+      return new NumberValue(realm, -oldValue);
+    } else if (op === "~") {
+      // ECMA262 12.5.8
+      // 1. Let expr be the result of evaluating UnaryExpression.
+      // 2. Let oldValue be ? ToInt32(? GetValue(expr)).
+      let oldValue = ToInt32(realm, value);
+
+      // 3. Return the result of applying bitwise complement to oldValue. The result is a signed 32-bit integer.
+      return new NumberValue(realm, ~oldValue);
+    } else if (op === "!") {
+      // ECMA262 12.6.9
+      // 1. Let expr be the result of evaluating UnaryExpression.
+      // 2. Let oldValue be ToBoolean(? GetValue(expr)).
+      let oldValue = ToBoolean(realm, value);
+
+      // 3. If oldValue is true, return false.
+      if (oldValue === true) return realm.intrinsics.false;
+
+      // 4. Return true.
+      return realm.intrinsics.true;
+    } else if (op === "void") {
+      // 1. Let expr be the result of evaluating UnaryExpression.
+      // 2. Perform ? GetValue(expr).
+      // 3. Return undefined.
+      return realm.intrinsics.undefined;
+    } else if (op === "typeof") {
+      function isInstance(proto, Constructor): boolean {
+        return proto instanceof Constructor || proto === Constructor.prototype;
+      }
+      // ECMA262 12.6.5
+      // 1. Let val be the result of evaluating UnaryExpression.
+      // 2. If Type(val) is Reference, then
+      // 3. Let val be ? GetValue(val).
+      let val = value;
+      // 4. Return a String according to Table 35.
+      let proto = val.getType().prototype;
+      if (isInstance(proto, UndefinedValue)) {
+        return new StringValue(realm, "undefined");
+      } else if (isInstance(proto, NullValue)) {
+        return new StringValue(realm, "object");
+      } else if (isInstance(proto, StringValue)) {
+        return new StringValue(realm, "string");
+      } else if (isInstance(proto, BooleanValue)) {
+        return new StringValue(realm, "boolean");
+      } else if (isInstance(proto, NumberValue)) {
+        return new StringValue(realm, "number");
+      } else if (isInstance(proto, SymbolValue)) {
+        return new StringValue(realm, "symbol");
+      } else if (isInstance(proto, ObjectValue)) {
+        if (IsCallable(realm, val)) {
+          return new StringValue(realm, "function");
+        }
+        return new StringValue(realm, "object");
+      } else {
+        invariant(false);
+      }
+    } else {
+      invariant(op === "delete");
+      // ECMA262 12.5.3.2
+      // 1. Let ref be the result of evaluating UnaryExpression.
+      // 2. ReturnIfAbrupt(ref).
+      // 3. If Type(ref) is not Reference, return true.
+      return realm.intrinsics.true;
+    }
+  }
+
+  static unaryOp(realm: Realm, op: BabelUnaryOperator, operandValues: ValuesDomain): ValuesDomain {
+    let operandElements = operandValues._elements;
+    if (operandElements === undefined) return ValuesDomain.topVal;
+    let resultSet = new Set();
+    let savedHandler = realm.errorHandler;
+    let savedIsReadOnly = realm.isReadOnly;
+    try {
+      realm.errorHandler = () => {
+        throw new FatalError();
+      };
+      for (let operandElem of operandElements) {
+        let result = ValuesDomain.computeUnary(realm, op, operandElem);
+        invariant(result instanceof ConcreteValue);
+        resultSet.add(result);
+      }
+    } catch (e) {
+      if (e instanceof AbruptCompletion) return ValuesDomain.topVal;
+    } finally {
+      realm.errorHandler = savedHandler;
+      realm.isReadOnly = savedIsReadOnly;
+    }
+    return new ValuesDomain(resultSet);
   }
 
   includesValueNotOfType(type: typeof Value): boolean {

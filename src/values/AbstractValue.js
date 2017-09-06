@@ -14,6 +14,7 @@ import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
   BabelNodeSourceLocation,
+  BabelUnaryOperator,
 } from "babel-types";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
@@ -59,14 +60,6 @@ export default class AbstractValue extends Value {
     this._buildNode = buildNode;
     this.args = args;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
-  }
-
-  clone(): AbstractValue {
-    let result = new AbstractValue(this.$Realm, this.types, this.values, this.args, this._buildNode);
-    if (this.mightBeEmpty) result.mightBeEmpty = true;
-    if (this.args) result.args = this.args;
-    if (this.kind) result.kind = this.kind;
-    return result;
   }
 
   getType() {
@@ -223,12 +216,9 @@ export default class AbstractValue extends Value {
   promoteEmptyToUndefined(): Value {
     if (this.values.isTop()) return this;
     if (!this.mightBeEmpty) return this;
-    let result = this.clone();
-    result.mightBeEmpty = false;
-    result.values = result.values.promoteEmptyToUndefined();
     let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, this.$Realm.intrinsics.empty);
-    result.args = [cond, this.$Realm.intrinsics.undefined, this];
-    result._buildNode = args => t.conditionalExpression(args[0], args[1], args[2]);
+    let result = AbstractValue.createFromConditionalOp(this.$Realm, cond, this.$Realm.intrinsics.undefined, this);
+    result.values = this.values.promoteEmptyToUndefined();
     return result;
   }
 
@@ -297,10 +287,49 @@ export default class AbstractValue extends Value {
 
     let resultTypes = TypesDomain.binaryOp(op, leftTypes, rightTypes);
     let resultValues = ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
-    let C = Value.isTypeCompatibleWith(resultTypes.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new C(realm, resultTypes, resultValues, [left, right], ([x, y]) => t.binaryExpression(op, x, y), {
-      kind: op,
-    });
+    let result = new AbstractValue(realm, resultTypes, resultValues, [left, right], ([x, y]) =>
+      t.binaryExpression(op, x, y)
+    );
+    result.kind = op;
+    result.expressionLocation = loc;
+    return result;
+  }
+
+  static createFromConditionalOp(
+    realm: Realm,
+    condition: Value,
+    left: void | Value,
+    right: void | Value,
+    loc?: ?BabelNodeSourceLocation
+  ): AbstractValue {
+    let types = TypesDomain.joinValues(left, right);
+    let values = ValuesDomain.joinValues(realm, left, right);
+    let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let result = new Constructor(
+      realm,
+      types,
+      values,
+      [condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined],
+      ([c, x, y]) => t.conditionalExpression(c, x, y),
+      { kind: "conditional" }
+    );
+    result.expressionLocation = loc;
+    return result;
+  }
+
+  static createFromUnaryOp(
+    realm: Realm,
+    op: BabelUnaryOperator,
+    operand: AbstractValue,
+    prefix?: boolean,
+    loc?: ?BabelNodeSourceLocation
+  ): AbstractValue {
+    let resultTypes = TypesDomain.unaryOp(op);
+    let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
+    let result = new AbstractValue(realm, resultTypes, resultValues, [operand], ([x]) =>
+      t.unaryExpression(op, x, prefix)
+    );
+    result.kind = op;
     result.expressionLocation = loc;
     return result;
   }

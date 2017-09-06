@@ -63,7 +63,7 @@ export class ResidualHeapInspector {
   }
 
   _getIgnoredProperties(val: ObjectValue) {
-    let set = new Set();
+    let set: Set<string> = new Set();
     for (let [key, propertyBinding] of val.properties) {
       invariant(propertyBinding);
       let desc = propertyBinding.descriptor;

@@ -1,4 +1,5 @@
-let ob = global.__makePartial ? __makeSimple(__makePartial({})) : {};
+let ob = global.__makePartial ? __makeSimple(__makePartial({})) : { a: 123 };
+if (global.__residual) __residual("void", (o) => { o.a = 123; }, ob);
 
 z = ob.a;
 
