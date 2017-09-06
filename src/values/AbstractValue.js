@@ -364,13 +364,13 @@ export default class AbstractValue extends Value {
     return result;
   }
 
-  static generateErrorInformationForAbstractVal(val: AbstractValue): string {
-    let names = [];
-    val.addSourceNamesTo(names);
-    if (names.length === 0) {
-      val.addSourceNamesTo(names);
-    }
-    return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
+  static createFromType(realm: Realm, resultType: typeof Value, kind?: string): AbstractValue {
+    let types = new TypesDomain(resultType);
+    let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let result = new Constructor(realm, types, ValuesDomain.topVal, []);
+    if (kind) result.kind = kind;
+    result.expressionLocation = realm.currentLocation;
+    return result;
   }
 
   /* Emits a declaration for an identifier into the generator at the current point in time
@@ -393,6 +393,15 @@ export default class AbstractValue extends Value {
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
     return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
+  }
+
+  static generateErrorInformationForAbstractVal(val: AbstractValue): string {
+    let names = [];
+    val.addSourceNamesTo(names);
+    if (names.length === 0) {
+      val.addSourceNamesTo(names);
+    }
+    return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
   }
 
   static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
