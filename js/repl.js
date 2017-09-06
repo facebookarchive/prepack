@@ -142,20 +142,9 @@ var storage = window.localStorage;
 
 var selectCache = getCache();
 var defaultName, defaultVal;
-var defaultCode = [
-  '(function() {',
-  '  function fib(x) {',
-  '    return x <= 1 ? x : fib(x - 1) + fib(x - 2);',
-  '  }',
-  '',
-  '  let x = Date.now();',
-  '  if (x * 2 > 42) x = fib(10);',
-  '  global.result = x;',
-  '})();',
-].join('\n');
 defaultName = generateSelect(selectCache, selectRecord);
 selectInput.value = defaultName || '';
-defaultVal = defaultName ? selectCache[defaultName] : defaultCode;
+defaultVal = defaultName ? selectCache[defaultName] : '';
 input.setValue(defaultVal);
 compile();
 
@@ -182,6 +171,83 @@ function getCache() {
 function setCache(data) {
   storage.setItem('prepackDemos', JSON.stringify(data || {}));
 }
+
+function addDefaultExamples() {
+  var cache = getCache();
+  var code, name;
+  name = 'EliminationOfAbstractionTax';
+  code = [
+    '(function () {',
+    '  var self = this;',
+    '    ["A", "B", 42].forEach(function(x) {',
+    '    var name = "_" + x.toString()[0].toLowerCase();',
+    '    var y = parseInt(x);',
+    '    self[name] = y ? y : x;',
+    '  });',
+    '})();',
+  ].join('\n');
+  cache[name] = code;
+
+  name = 'EnvironmentInteractionsAndBranching';
+  code = [
+    '(function(){',
+    '  function fib(x) { return x <= 1 ? x : fib(x - 1) + fib(x - 2); }',
+    '  let x = Date.now();',
+    '  if (x === 0) x = fib(10);',
+    '  global.result = x;',
+    '})();',
+  ].join('\n');
+  cache[name] = code;
+
+  name = 'Fibonacci';
+  code = [
+    '(function () {',
+    '  function fibonacci(x) {',
+    '    return x <= 1 ? x : fibonacci(x - 1) + fibonacci(x - 2);',
+    '  }',
+    '  global.x = fibonacci(10);',
+    '})();',
+  ].join('\n');
+  cache[name] = code;
+
+  name = 'HelloWorld';
+  code = [
+    '(function () {',
+    '  function hello() { return "hello"; }',
+    '  function world() { return "world"; }',
+    '  global.s = hello() + " " + world();',
+    '})();',
+  ].join('\n');
+  cache[name] = code;
+
+  name = 'ModuleInitialization';
+  code = [
+    '(function () {',
+    '  let moduleTable = {};',
+    '  function define(id, f) { moduleTable[id] = f; }',
+    '  function require(id) {',
+    '    let x = moduleTable[id];',
+    '    return x instanceof Function ? (moduleTable[id] = x()) : x;',
+    '  }',
+    '  global.require = require;',
+    '  define("one", function() { return 1; });',
+    '  define("two", function() { return require("one") + require("one"); });',
+    '  define("three", function() { return require("two") + require("one"); });',
+    '  define("four", function() { return require("three") + require("one"); });',
+    '})();',
+    'three = require("three");'
+  ].join('\n');
+  cache[name] = code;
+
+  generateSelect(cache, selectRecord);
+  setCache(cache);
+  setTimeout(() => {
+    demoSelector.change('Fibonacci');
+  });
+}
+
+addDefaultExamples();
+
 deleteButton.addEventListener('click', () => {
   var name = selectInput.value;
   if (name == null || name.replace(/\s+/, '') === '') return;
