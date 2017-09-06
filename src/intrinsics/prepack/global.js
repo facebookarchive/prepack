@@ -11,15 +11,15 @@
 
 import type { Realm } from "../../realm.js";
 import {
-  Value,
-  StringValue,
+  AbstractObjectValue,
+  AbstractValue,
   BooleanValue,
-  ObjectValue,
   FunctionValue,
   NativeFunctionValue,
-  AbstractValue,
-  AbstractObjectValue,
+  ObjectValue,
+  StringValue,
   UndefinedValue,
+  Value,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { ObjectCreate } from "../../methods/index.js";
@@ -29,10 +29,6 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { describeLocation } from "../ecma262/Error.js";
-
-let buildThrowErrorAbstractValue = buildExpressionTemplate(
-  "(function(){throw new global.Error('abstract value defined at ' + LOCATION);})()"
-);
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
@@ -71,6 +67,9 @@ export default function(realm: Realm): void {
     }
   }
 
+  const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
+  const throwTemplate = buildExpressionTemplate(throwTemplateSrc);
+
   // Helper function to model values that are obtained from the environment,
   // and whose concrete values are not known at Prepack-time.
   // __abstract(typeNameOrTemplate, name, options) creates a new abstract value
@@ -90,8 +89,8 @@ export default function(realm: Realm): void {
 
         let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
 
+        let result;
         let nameString = name ? ToStringPartial(realm, name) : "";
-        let buildNode;
         if (nameString === "") {
           let locString;
           for (let executionContext of realm.contextStack.slice().reverse()) {
@@ -104,18 +103,14 @@ export default function(realm: Realm): void {
             );
             if (locString !== undefined) break;
           }
-
-          buildNode = () =>
-            buildThrowErrorAbstractValue(realm.preludeGenerator)({
-              LOCATION: t.stringLiteral(locString || "(unknown location)"),
-            });
+          let locVal = new StringValue(realm, locString || "(unknown location)");
+          result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], throwTemplateSrc);
         } else {
-          buildNode = buildExpressionTemplate(nameString)(realm.preludeGenerator);
+          result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(nameString), type, [], nameString);
+          result.intrinsicName = nameString;
         }
 
-        let types = new TypesDomain(type);
-        let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-        let result = realm.createAbstract(types, values, [], buildNode, undefined, nameString);
+        if (template) result.values = new ValuesDomain(new Set([template]));
         if (template && !(template instanceof FunctionValue)) {
           // why exclude functions?
           template.makePartial();

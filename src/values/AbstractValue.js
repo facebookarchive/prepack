@@ -19,6 +19,7 @@ import type {
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
+import { PreludeGenerator } from "../utils/generator.js";
 
 import {
   AbstractObjectValue,
@@ -334,6 +335,31 @@ export default class AbstractValue extends Value {
     return result;
   }
 
+  static createFromTemplate(
+    realm: Realm,
+    template: PreludeGenerator => ({}) => BabelNodeExpression,
+    resultType: typeof Value,
+    operands: Array<Value>,
+    kind: string,
+    loc?: ?BabelNodeSourceLocation
+  ): AbstractValue {
+    let resultTypes = new TypesDomain(resultType);
+    let resultValues = ValuesDomain.topVal;
+    let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    invariant(labels.length >= operands.length);
+    let result = new Constructor(realm, resultTypes, resultValues, operands, args => {
+      invariant(realm.preludeGenerator !== undefined);
+      let generatorArgs = {};
+      let i = 0;
+      for (let arg of args) generatorArgs[labels.charAt(i++)] = arg;
+      return template(realm.preludeGenerator)(generatorArgs);
+    });
+    result.kind = kind;
+    result.expressionLocation = loc || realm.currentLocation;
+    return result;
+  }
+
   static generateErrorInformationForAbstractVal(val: AbstractValue): string {
     let names = [];
     val.addSourceNamesTo(names);
@@ -341,6 +367,28 @@ export default class AbstractValue extends Value {
       val.addSourceNamesTo(names);
     }
     return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
+  }
+
+  /* Emits a declaration for an identifier into the generator at the current point in time
+     and initializes it with an expression constructed from the given template.
+     Returns an abstract value that refers to the newly declared identifier.
+     Note that the template must generate an expression which has no side-effects
+     on the prepack state. It is assumed, however, that there could be side-effects
+     on the native state unless the isPure option is specified.  */
+  static createTemporalFromTemplate(
+    realm: Realm,
+    template: PreludeGenerator => ({}) => BabelNodeExpression,
+    resultType: typeof Value,
+    operands: Array<Value>,
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+  ): AbstractValue {
+    let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
+    let types = temp.types;
+    let values = temp.values;
+    let args = temp.args;
+    let buildNode_ = temp.getBuildNode();
+    invariant(realm.generator !== undefined);
+    return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
   }
 
   static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
