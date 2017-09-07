@@ -117,34 +117,44 @@ export class ResidualFunctions {
   // TODO: skip generating this function if the captured scope is not shared by multiple residual funcitons.
   _createCaptureScopeAccessFunction() {
     const body = [];
-    const param = t.identifier("selector");
+    const selectorParam = t.identifier("selector");
     const captured = t.identifier("__captured");
-    const selectorExpression = t.memberExpression(this.capturedScopesArray, param, /*Indexer syntax*/ true);
+    const selectorExpression = t.memberExpression(this.capturedScopesArray, selectorParam, /*Indexer syntax*/ true);
 
-    const ifs = [];
+    // One switch case for one scope.
+    const cases = [];
     for (const scopeBinding of this.serializedScopes.values()) {
       const scopeObjectExpression = t.objectExpression(
         Array.from(scopeBinding.initializationValues.entries()).map(([variableName, value]) =>
           t.objectProperty(t.identifier(variableName), value)
         )
       );
-      ifs.push(
-        t.ifStatement(
-          t.binaryExpression("===", param, t.numericLiteral(scopeBinding.id)),
-          t.expressionStatement(t.assignmentExpression("=", selectorExpression, scopeObjectExpression))
-        )
+      cases.push(
+        t.switchCase(t.numericLiteral(scopeBinding.id), [
+          t.expressionStatement(t.assignmentExpression("=", selectorExpression, scopeObjectExpression)),
+          t.breakStatement(),
+        ])
       );
     }
+    // Default case.
+    cases.push(
+      t.switchCase(null, [
+        t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("Unknown scope selector")])),
+      ])
+    );
 
     body.push(t.variableDeclaration("var", [t.variableDeclarator(captured, selectorExpression)]));
     body.push(
       t.ifStatement(
         t.unaryExpression("!", captured),
-        t.blockStatement([...ifs, t.expressionStatement(t.assignmentExpression("=", captured, selectorExpression))])
+        t.blockStatement([
+          t.switchStatement(selectorParam, cases),
+          t.expressionStatement(t.assignmentExpression("=", captured, selectorExpression)),
+        ])
       )
     );
     body.push(t.returnStatement(captured));
-    const factoryFunction = t.functionExpression(null, [param], t.blockStatement(body));
+    const factoryFunction = t.functionExpression(null, [selectorParam], t.blockStatement(body));
     return t.variableDeclaration("var", [t.variableDeclarator(this._captureScopeAccessFunctionId, factoryFunction)]);
   }
 
