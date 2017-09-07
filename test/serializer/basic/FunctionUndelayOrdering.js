@@ -11,5 +11,5 @@ var g1 = f(obj1);
 obj1.foo = g1;
 var g2 = f(obj2);
 obj1.bar = g2;
-inspect = function() {  return obj1.foo(); };
+inspect = function() {  return JSON.stringify(obj1.foo()); };
 })();
