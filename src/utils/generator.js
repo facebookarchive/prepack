@@ -11,17 +11,18 @@
 
 import type { Realm } from "../realm.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
-  Value,
-  FunctionValue,
-  UndefinedValue,
-  NullValue,
-  StringValue,
   BooleanValue,
-  NumberValue,
-  SymbolValue,
-  ObjectValue,
   ConcreteValue,
+  FunctionValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import type { Descriptor } from "../types.js";
@@ -250,7 +251,10 @@ export class Generator {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
-    let res = this.realm.createAbstract(types, values, [], id, optionalArgs ? optionalArgs.kind : undefined);
+    let options = {};
+    if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
+    let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let res = new Constructor(this.realm, types, values, [], id, options);
     this.body.push({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
