@@ -12,14 +12,16 @@
 import invariant from "../../invariant.js";
 import type { Realm } from "../../realm.js";
 import {
-  ConcreteValue,
+  AbstractObjectValue,
+  AbstractValue,
   ArrayValue,
-  ObjectValue,
   BooleanValue,
-  NumberValue,
-  StringValue,
+  ConcreteValue,
   FunctionValue,
   NativeFunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
 } from "../../values/index.js";
 import {
   Get,
@@ -30,7 +32,7 @@ import {
   ToInteger,
   ToBoolean,
 } from "../../methods/index.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import initializeBuffer from "./buffer.js";
 import initializeContextify from "./contextify.js";
@@ -144,12 +146,14 @@ function initializeTTYWrap(realm) {
     // )(this.realm.preludeGenerator);
     // return realm.createAbstract(types, values, [], buildNode, undefined, `(process.binding('tty_wrap').guessHandleType(${fd}))`);
   });
+
   obj.defineNativeMethod("isTTY", 0, (context, args) => {
     let fd = ToInteger(realm, args[0]);
-    let types = new TypesDomain(BooleanValue);
-    let values = new ValuesDomain(new Set([realm.intrinsics.true, realm.intrinsics.false]));
-    let buildNode = buildExpressionTemplate(`(process.binding('tty_wrap').isTTY(${fd}))`)(realm.preludeGenerator);
-    return realm.createAbstract(types, values, [], buildNode, undefined, `(process.binding('tty_wrap').isTTY(${fd}))`);
+    const isTTYtemplateSrc = `(process.binding('tty_wrap').isTTY(${fd}))`;
+    const isTTYtemplate = buildExpressionTemplate(isTTYtemplateSrc);
+    let val = AbstractValue.createFromTemplate(realm, isTTYtemplate, BooleanValue, [], isTTYtemplateSrc);
+    val.intrinsicName = isTTYtemplateSrc;
+    return val;
   });
   // TODO: Implement the rest of this protocol.
   return obj;
@@ -295,11 +299,12 @@ function initializeUtil(realm) {
   return obj;
 }
 
-function createAbstractValue(realm, type, intrinsicName) {
-  let types = new TypesDomain(type);
-  let values = type === ObjectValue ? new ValuesDomain(new Set([new ObjectValue(realm)])) : ValuesDomain.topVal;
-  let buildNode = buildExpressionTemplate(intrinsicName)(realm.preludeGenerator);
-  return realm.createAbstract(types, values, [], buildNode, undefined, intrinsicName);
+function createAbstractValue(realm, type, intrinsicName): AbstractObjectValue {
+  let template = buildExpressionTemplate(intrinsicName);
+  let val = AbstractValue.createFromTemplate(realm, template, ObjectValue, [], intrinsicName);
+  val.values = new ValuesDomain(new Set([new ObjectValue(realm)]));
+  val.intrinsicName = intrinsicName;
+  return (val: any);
 }
 
 function createIntrinsicArrayValue(realm, intrinsicName) {
