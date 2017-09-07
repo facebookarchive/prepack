@@ -386,6 +386,7 @@ export default class AbstractValue extends Value {
     operands: Array<Value>,
     optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
+    invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
     let types = temp.types;
     let values = temp.values;
@@ -393,6 +394,22 @@ export default class AbstractValue extends Value {
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
     return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
+  }
+
+  static createTemporalFromBuildFunction(
+    realm: Realm,
+    resultType: typeof Value,
+    args: Array<Value>,
+    buildFunction: AbstractValueBuildNodeFunction
+  ): AbstractValue | UndefinedValue {
+    let types = new TypesDomain(resultType);
+    let values = ValuesDomain.topVal;
+    invariant(realm.generator !== undefined);
+    if (resultType === UndefinedValue) {
+      return realm.generator.emitVoidExpression(types, values, args, buildFunction);
+    } else {
+      return realm.generator.derive(types, values, args, buildFunction);
+    }
   }
 
   static generateErrorInformationForAbstractVal(val: AbstractValue): string {

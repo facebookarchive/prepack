@@ -25,7 +25,6 @@ import {
   AbstractValue,
   AbstractObjectValue,
 } from "../values/index.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
@@ -1012,10 +1011,10 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
       if (O.isSimpleObject()) {
         if (P instanceof StringValue) P = P.value;
         if (typeof P === "string") {
-          // In this case it is safe to defer the property access to runtime
+          // In this case it is safe to defer the property access to runtime (at this point in time)
           invariant(realm.generator);
           let pname = realm.generator.getAsPropertyNameExpression(P);
-          let absVal = realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [O], ([node]) =>
+          let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
             t.memberExpression(node, pname, !t.isIdentifier(pname))
           );
           return { configurabe: true, enumerable: true, value: absVal, writable: true };

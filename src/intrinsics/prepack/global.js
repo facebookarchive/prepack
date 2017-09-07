@@ -23,7 +23,7 @@ import {
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { ObjectCreate } from "../../methods/index.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
@@ -153,9 +153,7 @@ export default function(realm: Realm): void {
         invariant(f instanceof FunctionValue);
         f.isResidual = true;
         if (unsafe) f.isUnsafeResidual = true;
-        let types = new TypesDomain(type);
-        let values = template ? new ValuesDomain(new Set([template])) : ValuesDomain.topVal;
-        let result = realm.deriveAbstract(types, values, [f].concat(args), nodes =>
+        let result = AbstractValue.createTemporalFromBuildFunction(realm, type, [f].concat(args), nodes =>
           t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>))
         );
         if (template) {
@@ -164,6 +162,7 @@ export default function(realm: Realm): void {
             "the nested properties should only be rebuilt for an abstract value"
           );
           template.makePartial();
+          result.values = new ValuesDomain(new Set([template]));
           invariant(realm.generator);
           realm.rebuildNestedProperties(result, result.getIdentifier().name);
         }
