@@ -335,6 +335,10 @@ export default class AbstractValue extends Value {
     return result;
   }
 
+  /* Note that the template is parameterized by the names A, B, C and so on.
+     When the abstract value is serialized, the serialized operations are substituted
+     for the corresponding parameters and the resulting template is parsed into an AST subtree
+     that is incorporated into the AST produced by the serializer. */
   static createFromTemplate(
     realm: Realm,
     template: PreludeGenerator => ({}) => BabelNodeExpression,
