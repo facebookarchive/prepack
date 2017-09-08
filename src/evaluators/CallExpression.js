@@ -34,7 +34,6 @@ import {
 import type { BabelNode, BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import SuperCall from "./SuperCall";
 
 export default function(
@@ -129,7 +128,7 @@ function EvaluateCall(
         if (realm.handleError(diag) !== "Recover") throw new FatalError();
       }
     }
-    return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, args, nodes => {
+    return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {
       let callFunc;
       let argStart = 1;
       if (thisArg instanceof Value) {

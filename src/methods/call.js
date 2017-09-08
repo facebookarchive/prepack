@@ -51,7 +51,6 @@ import {
   PossiblyNormalCompletion,
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import type { BabelNode, BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
@@ -424,7 +423,7 @@ export function EvaluateDirectCallWithArgList(
 ): Value {
   if (func instanceof AbstractValue && Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
     let fullArgs = [func].concat(argList);
-    return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, fullArgs, nodes => {
+    return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
       let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
       return t.callExpression(nodes[0], fun_args);
     });
@@ -483,7 +482,7 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
   }
   if (F instanceof AbstractValue && Value.isTypeCompatibleWith(F.getType(), FunctionValue)) {
     let fullArgs = [F].concat(argsList);
-    return realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, fullArgs, nodes => {
+    return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
       let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
       return t.callExpression(nodes[0], fun_args);
     });
