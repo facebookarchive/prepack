@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
@@ -130,7 +129,7 @@ function emitResidualLoopIfSafe(
   try {
     let envRec = blockEnv.environmentRecord;
     invariant(envRec instanceof DeclarativeEnvironmentRecord, "expected declarative environment record");
-    let absStr = realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, []);
+    let absStr = AbstractValue.createFromType(realm, StringValue);
     let boundName;
     for (let n of BoundNames(realm, lh)) {
       invariant(boundName === undefined);
