@@ -34,6 +34,14 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
+import {
+  hashBinary,
+  hashCall,
+  hashString,
+  hashTernary,
+  hashUnary,
+  StrictEqualityComparison,
+} from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
@@ -46,9 +54,10 @@ export default class AbstractValue extends Value {
     realm: Realm,
     types: TypesDomain,
     values: ValuesDomain,
+    hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
+    optionalArgs?: {| kind?: string, intrinsicName?: string |}
   ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
@@ -60,6 +69,7 @@ export default class AbstractValue extends Value {
     this.mightBeEmpty = false;
     this._buildNode = buildNode;
     this.args = args;
+    this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
   }
 
@@ -67,12 +77,49 @@ export default class AbstractValue extends Value {
     return this.types.getType();
   }
 
+  hashValue: number;
   kind: ?string;
   types: TypesDomain;
   values: ValuesDomain;
   mightBeEmpty: boolean;
   args: Array<Value>;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
+
+  equals(x: any) {
+    let thisArgs = this.args;
+    let n = thisArgs.length;
+
+    let argsAreEqual = () => {
+      let xArgs = x.args;
+      let m = xArgs.length;
+      if (n !== m) return false;
+      for (let i = 0; i < n; i++) {
+        let a = thisArgs[i];
+        let b = xArgs[i];
+        if (a instanceof AbstractValue) {
+          if (a.equals(b)) continue;
+          else return false;
+        } else {
+          if (b instanceof AbstractValue) return false;
+          if (!StrictEqualityComparison(this.$Realm, (a: any), b)) return false;
+        }
+      }
+      return true;
+    };
+
+    return (
+      this === x ||
+      (x instanceof AbstractValue &&
+        this.kind === x.kind &&
+        this.hashValue === x.hashValue &&
+        ((this.intrinsicName && this.intrinsicName.length > 0 && this.intrinsicName === x.intrinsicName) ||
+          (n > 0 && argsAreEqual())))
+    );
+  }
+
+  getHash(): number {
+    return this.hashValue;
+  }
 
   getBuildNode(): AbstractValueBuildNodeFunction | BabelNodeExpression {
     invariant(this._buildNode);
@@ -194,6 +241,14 @@ export default class AbstractValue extends Value {
     return this.values.includesValueOfType(ObjectValue);
   }
 
+  mightBeString(): boolean {
+    let valueType = this.getType();
+    if (valueType === StringValue) return true;
+    if (valueType !== Value) return false;
+    if (this.values.isTop()) return true;
+    return this.values.includesValueOfType(StringValue);
+  }
+
   mightNotBeString(): boolean {
     let valueType = this.getType();
     if (valueType === StringValue) return false;
@@ -264,7 +319,8 @@ export default class AbstractValue extends Value {
     op: BabelBinaryOperator,
     left: Value,
     right: Value,
-    loc?: ?BabelNodeSourceLocation
+    loc?: ?BabelNodeSourceLocation,
+    kind?: string
   ): AbstractValue {
     let leftTypes, leftValues;
     if (left instanceof AbstractValue) {
@@ -288,10 +344,11 @@ export default class AbstractValue extends Value {
 
     let resultTypes = TypesDomain.binaryOp(op, leftTypes, rightTypes);
     let resultValues = ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
-    let result = new AbstractValue(realm, resultTypes, resultValues, [left, right], ([x, y]) =>
+    let [hash, args] = kind === undefined ? hashBinary(op, left, right) : hashCall(kind, left, right);
+    let result = new AbstractValue(realm, resultTypes, resultValues, hash, args, ([x, y]) =>
       t.binaryExpression(op, x, y)
     );
-    result.kind = op;
+    result.kind = kind || op;
     result.expressionLocation = loc;
     return result;
   }
@@ -305,15 +362,11 @@ export default class AbstractValue extends Value {
   ): AbstractValue {
     let types = TypesDomain.joinValues(left, right);
     let values = ValuesDomain.joinValues(realm, left, right);
+    let [hash, args] = hashTernary(condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new Constructor(
-      realm,
-      types,
-      values,
-      [condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined],
-      ([c, x, y]) => t.conditionalExpression(c, x, y),
-      { kind: "conditional" }
-    );
+    let result = new Constructor(realm, types, values, hash, args, ([c, x, y]) => t.conditionalExpression(c, x, y), {
+      kind: "conditional",
+    });
     result.expressionLocation = loc;
     return result;
   }
@@ -327,7 +380,7 @@ export default class AbstractValue extends Value {
   ): AbstractValue {
     let resultTypes = TypesDomain.unaryOp(op);
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
-    let result = new AbstractValue(realm, resultTypes, resultValues, [operand], ([x]) =>
+    let result = new AbstractValue(realm, resultTypes, resultValues, hashUnary(op, operand), [operand], ([x]) =>
       t.unaryExpression(op, x, prefix)
     );
     result.kind = op;
@@ -349,10 +402,12 @@ export default class AbstractValue extends Value {
   ): AbstractValue {
     let resultTypes = new TypesDomain(resultType);
     let resultValues = ValuesDomain.topVal;
+    let hash;
+    [hash, operands] = hashCall(kind, ...operands);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
     let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     invariant(labels.length >= operands.length);
-    let result = new Constructor(realm, resultTypes, resultValues, operands, args => {
+    let result = new Constructor(realm, resultTypes, resultValues, hash, operands, args => {
       invariant(realm.preludeGenerator !== undefined);
       let generatorArgs = {};
       let i = 0;
@@ -367,7 +422,8 @@ export default class AbstractValue extends Value {
   static createFromType(realm: Realm, resultType: typeof Value, kind?: string): AbstractValue {
     let types = new TypesDomain(resultType);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new Constructor(realm, types, ValuesDomain.topVal, []);
+    let hash = hashString(resultType.name + (kind || ""));
+    let result = new Constructor(realm, types, ValuesDomain.topVal, hash, []);
     if (kind) result.kind = kind;
     result.expressionLocation = realm.currentLocation;
     return result;
