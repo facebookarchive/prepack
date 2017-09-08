@@ -16,6 +16,10 @@ export default class UndefinedValue extends PrimitiveValue {
     return undefined;
   }
 
+  getHash(): number {
+    return 792057514635681;
+  }
+
   mightBeFalse(): boolean {
     return true;
   }

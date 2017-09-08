@@ -37,6 +37,10 @@ export default class Value {
   // Name from original source if existant
   __originalName: void | string;
 
+  getHash(): number {
+    invariant(false, "abstract method; please override");
+  }
+
   getType(): typeof Value {
     return this.constructor;
   }
@@ -113,6 +117,10 @@ export default class Value {
   }
 
   mightBeObject(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  mightBeString(): boolean {
     invariant(false, "abstract method; please override");
   }
 

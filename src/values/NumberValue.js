@@ -21,6 +21,12 @@ export default class NumberValue extends PrimitiveValue {
 
   value: number;
 
+  getHash(): number {
+    let num = Math.abs(this.value);
+    if (num < 100) num *= 10000000;
+    return num | 0; // make a 32-bit integer out of this and get rid of NaN
+  }
+
   mightBeFalse(): boolean {
     return this.value === 0 || isNaN(this.value);
   }
