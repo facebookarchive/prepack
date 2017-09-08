@@ -12,30 +12,29 @@
 import type { Realm, ExecutionContext } from "../realm.js";
 import { FatalError } from "../errors.js";
 import type {
+  DataBlock,
+  Descriptor,
   IterationKind,
+  ObjectKind,
   PromiseCapability,
   PromiseReaction,
-  DataBlock,
-  PropertyKeyValue,
   PropertyBinding,
-  Descriptor,
-  ObjectKind,
+  PropertyKeyValue,
   TypedArrayKind,
 } from "../types.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
-  Value,
   AbstractValue,
-  ConcreteValue,
   BooleanValue,
+  ConcreteValue,
+  NativeFunctionValue,
+  NullValue,
+  NumberValue,
   StringValue,
   SymbolValue,
-  NumberValue,
   UndefinedValue,
-  NullValue,
-  NativeFunctionValue,
+  Value,
 } from "./index.js";
-import type { NativeFunctionCallback, ECMAScriptSourceFunctionValue } from "./index.js";
+import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
 import {
   joinValuesAsConditional,
   IsDataDescriptor,
@@ -51,7 +50,6 @@ import {
   OrdinaryPreventExtensions,
   ThrowIfMightHaveBeenDeleted,
 } from "../methods/index.js";
-import * as t from "babel-types";
 import invariant from "../invariant.js";
 
 export default class ObjectValue extends ConcreteValue {
@@ -487,13 +485,8 @@ export default class ObjectValue extends ConcreteValue {
     // If all else fails, use this expression
     let result;
     if (this.isPartialObject()) {
-      result = this.$Realm.createAbstract(
-        TypesDomain.topVal,
-        ValuesDomain.topVal,
-        [this, P],
-        ([o, x]) => t.memberExpression(o, x, true),
-        "sentinel member expression"
-      );
+      result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression");
+      result.args = [this, P];
     } else {
       result = this.$Realm.intrinsics.undefined;
     }
