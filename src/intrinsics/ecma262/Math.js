@@ -12,11 +12,10 @@
 import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue, NumberValue, AbstractValue } from "../../values/index.js";
 import { ToNumber, ToUint32, IsToNumberPure } from "../../methods/index.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 
-let buildMathTemplates: Map<string, { f: Function, names: Array<string> }> = new Map();
+let buildMathTemplates: Map<string, { template: Function, templateSource: string }> = new Map();
 
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Math");
@@ -151,21 +150,21 @@ export default function(realm: Realm): ObjectValue {
 
   for (let [name, length] of functions) {
     obj.defineNativeMethod(name, length, (context, args, originalLength) => {
+      invariant(originalLength >= 0);
       args.length = originalLength;
-      if (args.some(arg => arg instanceof AbstractValue) && args.every(arg => IsToNumberPure(realm, arg))) {
+      if (
+        originalLength <= 26 &&
+        args.some(arg => arg instanceof AbstractValue) &&
+        args.every(arg => IsToNumberPure(realm, arg))
+      ) {
         let r = buildMathTemplates.get(name);
         if (r === undefined) {
-          let names = [...new Array(args.length)].map((_, i) => `X${i}`);
-          let f = buildExpressionTemplate(`Math.${name}(${names.join(", ")})`);
-          buildMathTemplates.set(name, (r = { f, names }));
+          let params = "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z".substring(0, originalLength * 2 - 1);
+          let templateSource = `Math.${name}(${params})`;
+          let template = buildExpressionTemplate(templateSource);
+          buildMathTemplates.set(name, (r = { template, templateSource }));
         }
-
-        return realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, args, nodes => {
-          invariant(r !== undefined);
-          let mapping = {};
-          for (let i = 0; i < nodes.length; i++) mapping[r.names[i]] = nodes[i];
-          return r.f(realm.preludeGenerator)(mapping);
-        });
+        return AbstractValue.createFromTemplate(realm, r.template, NumberValue, args, r.templateSource);
       }
 
       return new NumberValue(
