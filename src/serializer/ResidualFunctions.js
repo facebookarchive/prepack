@@ -22,8 +22,6 @@ import type {
   BabelNodeLVal,
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
-  BabelNodeIfStatement,
-  BabelNodeVariableDeclaration,
 } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
@@ -65,6 +63,7 @@ export class ResidualFunctions {
     this.scopeNameGenerator = scopeNameGenerator;
     this.capturedScopeInstanceIdx = 0;
     this.capturedScopesArray = t.identifier(this.scopeNameGenerator.generate("main"));
+    this._captureScopeAccessFunctionId = t.identifier("__get_scope_binding");
     this.serializedScopes = new Map();
     this.functionPrototypes = new Map();
     this.firstFunctionUsages = new Map();
@@ -88,6 +87,7 @@ export class ResidualFunctions {
   scopeNameGenerator: NameGenerator;
   capturedScopeInstanceIdx: number;
   capturedScopesArray: BabelNodeIdentifier;
+  _captureScopeAccessFunctionId: BabelNodeIdentifier;
   serializedScopes: Map<DeclarativeEnvironmentRecord, ScopeBinding>;
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
@@ -111,6 +111,51 @@ export class ResidualFunctions {
 
   addFunctionUsage(val: FunctionValue, bodyReference: BodyReference) {
     if (!this.firstFunctionUsages.has(val)) this.firstFunctionUsages.set(val, bodyReference);
+  }
+
+  // Generate a shared function for accessing captured scope bindings.
+  // TODO: skip generating this function if the captured scope is not shared by multiple residual funcitons.
+  _createCaptureScopeAccessFunction() {
+    const body = [];
+    const selectorParam = t.identifier("selector");
+    const captured = t.identifier("__captured");
+    const selectorExpression = t.memberExpression(this.capturedScopesArray, selectorParam, /*Indexer syntax*/ true);
+
+    // One switch case for one scope.
+    const cases = [];
+    for (const scopeBinding of this.serializedScopes.values()) {
+      const scopeObjectExpression = t.objectExpression(
+        Array.from(scopeBinding.initializationValues.entries()).map(([variableName, value]) =>
+          t.objectProperty(t.identifier(variableName), value)
+        )
+      );
+      cases.push(
+        t.switchCase(t.numericLiteral(scopeBinding.id), [
+          t.expressionStatement(t.assignmentExpression("=", selectorExpression, scopeObjectExpression)),
+          t.breakStatement(),
+        ])
+      );
+    }
+    // Default case.
+    cases.push(
+      t.switchCase(null, [
+        t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("Unknown scope selector")])),
+      ])
+    );
+
+    body.push(t.variableDeclaration("var", [t.variableDeclarator(captured, selectorExpression)]));
+    body.push(
+      t.ifStatement(
+        t.unaryExpression("!", captured),
+        t.blockStatement([
+          t.switchStatement(selectorParam, cases),
+          t.expressionStatement(t.assignmentExpression("=", captured, selectorExpression)),
+        ])
+      )
+    );
+    body.push(t.returnStatement(captured));
+    const factoryFunction = t.functionExpression(null, [selectorParam], t.blockStatement(body));
+    return t.variableDeclaration("var", [t.variableDeclarator(this._captureScopeAccessFunctionId, factoryFunction)]);
   }
 
   _getSerializedBindingScopeInstance(serializedBinding: SerializedBinding): ScopeBinding {
@@ -175,28 +220,15 @@ export class ResidualFunctions {
     }
   }
 
-  _getReferentializedScopeInitialization(scope: ScopeBinding): [BabelNodeVariableDeclaration, BabelNodeIfStatement] {
-    let properties = [];
-    for (let [variableName, value] of scope.initializationValues.entries()) {
-      properties.push(t.objectProperty(t.identifier(variableName), value));
-    }
-    let initExpression = t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true);
+  _getReferentializedScopeInitialization(scope: ScopeBinding) {
     invariant(scope.capturedScope);
-    let capturedScope = scope.capturedScope;
-    let capturedScopeId = t.identifier(capturedScope);
-
     return [
-      t.variableDeclaration("var", [t.variableDeclarator(capturedScopeId, initExpression)]),
-      t.ifStatement(
-        t.unaryExpression("!", capturedScopeId),
-        t.expressionStatement(
-          t.assignmentExpression(
-            "=",
-            initExpression,
-            t.assignmentExpression("=", capturedScopeId, t.objectExpression(properties))
-          )
-        )
-      ),
+      t.variableDeclaration("var", [
+        t.variableDeclarator(
+          t.identifier(scope.capturedScope),
+          t.callExpression(this._captureScopeAccessFunctionId, [t.identifier(scope.name)])
+        ),
+      ]),
     ];
   }
 
@@ -465,6 +497,7 @@ export class ResidualFunctions {
     }
 
     if (this.capturedScopeInstanceIdx) {
+      this.prelude.unshift(this._createCaptureScopeAccessFunction());
       let scopeVar = t.variableDeclaration("var", [
         t.variableDeclarator(
           this.capturedScopesArray,
