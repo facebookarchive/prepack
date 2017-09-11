@@ -516,9 +516,10 @@ export class ResidualHeapVisitor {
       if (additionalFunctionValuesAndEffects.size) {
         for (let [functionValue, effects] of additionalFunctionValuesAndEffects.entries()) {
           let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
-          // Need to copy these because applying them is a destructive operation
-          let ob_copy = new Map(ob);
-          let pb_copy = new Map(pb);
+          // Need to do this fixup because otherwise we will skip over this function's
+          // generator in the _getTarget scope lookup
+          g.parent = functionValue.parent;
+          functionValue.parent = g;
           // result -- ignore TODO: return the result from the function somehow
           // Generator -- visit all entries
           // Bindings -- only need to serialize bindings if they're captured by some nested function ??
@@ -527,11 +528,11 @@ export class ResidualHeapVisitor {
           //          -- TODO: deal with these properly
           // PropertyBindings -- visit any property bindings that aren't to createdobjects
           // CreatedObjects -- should take care of itself
-          this.realm.applyEffects([r, new Generator(this.realm), ob_copy, pb_copy, co]);
+          this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
           // Allows us to emit function declarations etc. inside of this additional
           // function instead of adding them at global scope
           this.baseContext = functionValue;
-          let visitProperties = () => {
+          let visitPropertiesAndBindings = () => {
             for (let propertyBinding of pb.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
               let object = binding.object;
@@ -544,8 +545,19 @@ export class ResidualHeapVisitor {
               if (binding.descriptor === undefined) continue; //deleted
               this.visitObjectProperty(binding);
             }
+            // Visit a binding if and only if its overwriting something that we've
+            // already visited
+            /*for (let binding of ob.keys()) {
+              let old_value = binding.value;
+              if (old_value) {
+                let new_value = ob.get(binding);
+                if (new_value && this.values.has(old_value)) this.visitValue(new_value);
+              }
+            }*/
           };
-          this.visitGenerator(g, visitProperties);
+          this.visitGenerator(g, visitPropertiesAndBindings);
+          this.realm.restoreBindings(ob);
+          this.realm.restoreProperties(pb);
         }
       }
       // Do a fixpoint over all pure generator entries to make sure that we visit

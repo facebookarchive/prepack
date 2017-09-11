@@ -6,11 +6,13 @@ let toCapture1 = {};
 function additional1() {
   toCapture1 = 5;
   var x = 5;
+  x = 10;
   global.x = x;
 }
 
 function additional2() {
   var y = 10;
+  y = 5;
   global.y = y;
 }
 

@@ -595,7 +595,7 @@ export class ResidualHeapSerializer {
       return intrinsicId;
     } else {
       // The intrinsic conceptually exists ahead of time.
-      invariant(this.emitter.getBody() === this.mainBody);
+      invariant(this.emitter.getBody() === this.currentFunctionBody);
       return this.preludeGenerator.memoizeReference(intrinsicName);
     }
   }
@@ -1223,15 +1223,13 @@ export class ResidualHeapSerializer {
 
   processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
     let rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
+    let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let processAdditionalFunctionValuesFn = () => {
       let additionalFVEffects = this.additionalFunctionValuesAndEffects;
       if (additionalFVEffects) {
         for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
           let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
           let nestedFunctions = new Set([...co].filter(object => object instanceof FunctionValue));
-          // Need to copy these because applying them is a destructive operation
-          let ob_copy = new Map(ob);
-          let pb_copy = new Map(pb);
           // result -- ignore TODO: return the result from the function somehow
           // Generator -- visit all entries
           // Bindings -- only need to serialize bindings if they're captured by some nested function ??
@@ -1240,7 +1238,7 @@ export class ResidualHeapSerializer {
           //          -- TODO: deal with these properly
           // PropertyBindings -- visit any property bindings that aren't to createdobjects
           // CreatedObjects -- should take care of itself
-          this.realm.applyEffects([r, new Generator(this.realm), ob_copy, pb_copy, co]);
+          this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
           // Allows us to emit function declarations etc. inside of this additional
           // function instead of adding them at global scope
           // TODO: make sure this generator isn't getting mutated oddly
@@ -1262,6 +1260,17 @@ export class ResidualHeapSerializer {
           invariant(body.length > 0, "An additional function has no body");
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
           rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
+          // re-resolve initialized modules to include things from additional functions
+          this.modules.resolveInitializedModules();
+          if (shouldEmitLog && this.modules.moduleIds.size > 0)
+            console.log(
+              `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
+                .size} modules initialized after additional function ${additionalFunctionValue
+                  .intrinsicName ? additionalFunctionValue.intrinsicName : ""}`
+            );
+          // These don't restore themselves properly otherwise.
+          this.realm.restoreBindings(ob);
+          this.realm.restoreProperties(pb);
         }
       }
     };
@@ -1284,6 +1293,8 @@ export class ResidualHeapSerializer {
 
     // Make sure additional functions get serialized.
     let rewrittenAdditionalFunctions = this.processAdditionalFunctionValues();
+
+    this.modules.resolveInitializedModules();
 
     this.emitter.finalize();
 

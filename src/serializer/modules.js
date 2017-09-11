@@ -297,6 +297,7 @@ export class Modules {
   moduleTracer: ModuleTracer;
 
   resolveInitializedModules(): void {
+    this.initializedModules.clear();
     let globalInitializedModulesMap = this._getGlobalProperty("__initializedModules");
     invariant(globalInitializedModulesMap instanceof ObjectValue);
     for (let moduleId of globalInitializedModulesMap.getOwnPropertyKeysArray()) {

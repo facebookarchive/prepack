@@ -60,7 +60,19 @@ function runTest(name: string, code: string): boolean {
     let modelCode = fs.existsSync(modelName) ? fs.readFileSync(modelName, "utf8") : undefined;
     let sourceMap = fs.existsSync(sourceMapName) ? fs.readFileSync(sourceMapName, "utf8") : undefined;
     let sources = [];
-    if (modelCode) sources.push({ filePath: modelName, fileContents: modelCode });
+    let additionalFunctions;
+    if (modelCode) {
+      /* allows specifying additional functions by a comment of the form:
+      // additional function: additional1, additional2
+      */
+      let marker = "// additional functions:";
+      if (modelCode.includes(marker)) {
+        let i = modelCode.indexOf(marker);
+        let value = modelCode.substring(i + marker.length, modelCode.indexOf("\n", i));
+        additionalFunctions = value.split(",").map(funcStr => funcStr.trim());
+      }
+      sources.push({ filePath: modelName, fileContents: modelCode });
+    }
     sources.push({ filePath: name, fileContents: sourceCode, sourceMapContents: sourceMap });
 
     let options = {
@@ -70,8 +82,9 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       errorHandler,
       serialize: true,
-      initializeMoreModules: !modelCode,
+      initializeMoreModules: !modelCode && !additionalFunctions,
       sourceMaps: !!sourceMap,
+      additionalFunctions: additionalFunctions,
     };
     if (name.endsWith("/bundle.js~"))
       (options: any).additionalFunctions = [
