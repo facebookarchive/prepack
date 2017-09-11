@@ -144,6 +144,7 @@ export class Realm {
 
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
+    this.maxStackDepth = opts.maxStackDepth || 1000;
 
     this.$TemplateMap = [];
 
@@ -173,6 +174,7 @@ export class Realm {
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
+  maxStackDepth: void | number;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
@@ -274,6 +276,9 @@ export class Realm {
   }
 
   pushContext(context: ExecutionContext): void {
+    if (this.maxStackDepth && this.contextStack.length >= this.maxStackDepth) {
+      throw new FatalError("Maximum stack depth exceeded");
+    }
     this.contextStack.push(context);
   }
 
