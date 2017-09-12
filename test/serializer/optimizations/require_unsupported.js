@@ -94,7 +94,7 @@ function moduleThrewError(id) {
 // === End require code ===
 
 define(function(global, require, module, exports) {
-  if (__abstract().unsupported) {}
+  if (__abstract("object").unsupported) {}
 }, 0, null);
 
 define(function(global, require, module, exports) {

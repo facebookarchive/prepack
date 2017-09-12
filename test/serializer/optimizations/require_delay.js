@@ -94,7 +94,7 @@ function moduleThrewError(id) {
 // === End require code ===
 
 define(function(global, require, module, exports) {
-  var obj = global.__abstract ? __abstract(undefined, "({unsupported: true})") : ({unsupported: true});
+  var obj = global.__abstract ? __abstract("object", "({unsupported: true})") : ({unsupported: true});
   if (obj.unsupported) {
     exports.magic = 42;
   } else {

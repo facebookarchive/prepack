@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import { LexicalEnvironment, ObjectEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion } from "../completions.js";
-import { AbstractValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, Value } from "../values/index.js";
 import { ToObjectPartial, GetValue, NewObjectEnvironment, UpdateEmpty } from "../methods/index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeWithStatement } from "babel-types";
@@ -30,7 +30,7 @@ export default function(
 
   // 2. Let obj be ? ToObject(? GetValue(val)).
   val = GetValue(realm, val);
-  if (val instanceof AbstractValue) {
+  if (val instanceof AbstractValue || (val instanceof ObjectValue && val.isPartialObject())) {
     let loc = ast.object.loc;
     let error = new CompilerDiagnostic("with object must be a known value", loc, "PP0007", "RecoverableError");
     if (realm.handleError(error) === "Fail") throw new FatalError();
