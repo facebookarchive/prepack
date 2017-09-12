@@ -99,6 +99,12 @@ export function GetReferencedNamePartial(realm: Realm, V: Reference): AbstractVa
 
 // ECMA262 6.2.3.1
 export function GetValue(realm: Realm, V: Reference | Value): Value {
+  let val = dereference(realm, V);
+  if (val instanceof AbstractValue) return val.refineWithPathCondition();
+  return val;
+}
+
+function dereference(realm: Realm, V: Reference | Value): Value {
   // This step is not necessary as we propagate completions with exceptions.
   // 1. ReturnIfAbrupt(V).
 
