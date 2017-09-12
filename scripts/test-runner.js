@@ -105,7 +105,13 @@ function runTest(name, code, options, args) {
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
   if (code.includes("// throws introspection error")) {
     try {
-      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "", errorHandler: diag => "Fail" };
+      let realmOptions = {
+        serialize: true,
+        compatibility,
+        uniqueSuffix: "",
+        errorHandler: diag => "Fail",
+        maxStackDepth: options.maxStackDepth,
+      };
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
       let serializerOptions = {
