@@ -81,12 +81,14 @@ export default class AbstractValue extends Value {
   args: Array<Value>;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
-  addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>) {
+  addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {
+    if (seenValues.has(this)) return;
+    seenValues.add(this);
     if (this._buildNode && !(this._buildNode instanceof Function)) {
       if (this._buildNode.loc) locations.push(this._buildNode.loc);
     }
     for (let val of this.args) {
-      if (val instanceof AbstractValue) val.addSourceLocationsTo(locations);
+      if (val instanceof AbstractValue) val.addSourceLocationsTo(locations, seenValues);
     }
   }
 
