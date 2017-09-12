@@ -102,9 +102,16 @@ function runTest(name, code, options, args) {
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
+  if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
   if (code.includes("// throws introspection error")) {
     try {
-      let realmOptions = { serialize: true, compatibility, uniqueSuffix: "", errorHandler: diag => "Fail" };
+      let realmOptions = {
+        serialize: true,
+        compatibility,
+        uniqueSuffix: "",
+        errorHandler: diag => "Fail",
+        maxStackDepth: options.maxStackDepth,
+      };
       let realm = construct_realm(realmOptions);
       initializeGlobals(realm);
       let serializerOptions = {
