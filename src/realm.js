@@ -150,6 +150,7 @@ export class Realm {
 
     if (this.useAbstractInterpretation) {
       this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
+      this.pathConditions = [];
       ObjectValue.setupTrackedPropertyAccessors();
     }
 
@@ -181,6 +182,10 @@ export class Realm {
   createdObjects: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
+
+  // A list of abstract conditions that are known to be true in the current execution path.
+  // For example, the abstract condition of an if statement is known to be true inside its true branch.
+  pathConditions: Array<AbstractValue>;
 
   currentLocation: ?BabelNodeSourceLocation;
   nextContextLocation: ?BabelNodeSourceLocation;

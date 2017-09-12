@@ -73,10 +73,6 @@ export default class AbstractValue extends Value {
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
   }
 
-  getType() {
-    return this.types.getType();
-  }
-
   hashValue: number;
   kind: ?string;
   types: TypesDomain;
@@ -84,63 +80,6 @@ export default class AbstractValue extends Value {
   mightBeEmpty: boolean;
   args: Array<Value>;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
-
-  equals(x: any) {
-    let thisArgs = this.args;
-    let n = thisArgs.length;
-
-    let argsAreEqual = () => {
-      let xArgs = x.args;
-      let m = xArgs.length;
-      if (n !== m) return false;
-      for (let i = 0; i < n; i++) {
-        let a = thisArgs[i];
-        let b = xArgs[i];
-        if (a instanceof AbstractValue) {
-          if (a.equals(b)) continue;
-          else return false;
-        } else {
-          if (b instanceof AbstractValue) return false;
-          if (!StrictEqualityComparison(this.$Realm, (a: any), b)) return false;
-        }
-      }
-      return true;
-    };
-
-    return (
-      this === x ||
-      (x instanceof AbstractValue &&
-        this.kind === x.kind &&
-        this.hashValue === x.hashValue &&
-        ((this.intrinsicName && this.intrinsicName.length > 0 && this.intrinsicName === x.intrinsicName) ||
-          (n > 0 && argsAreEqual())))
-    );
-  }
-
-  getHash(): number {
-    return this.hashValue;
-  }
-
-  getBuildNode(): AbstractValueBuildNodeFunction | BabelNodeExpression {
-    invariant(this._buildNode);
-    return this._buildNode;
-  }
-
-  buildNode(args: Array<BabelNodeExpression>): BabelNodeExpression {
-    let buildNode = this.getBuildNode();
-    return buildNode instanceof Function
-      ? ((buildNode: any): AbstractValueBuildNodeFunction)(args)
-      : ((buildNode: any): BabelNodeExpression);
-  }
-
-  hasIdentifier() {
-    return this._buildNode && this._buildNode.type === "Identifier";
-  }
-
-  getIdentifier() {
-    invariant(this.hasIdentifier());
-    return ((this._buildNode: any): BabelNodeIdentifier);
-  }
 
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>) {
     if (this._buildNode && !(this._buildNode instanceof Function)) {
@@ -179,6 +118,79 @@ export default class AbstractValue extends Value {
       add_intrinsic(this.intrinsicName);
     }
     add_args(this.args);
+  }
+
+  buildNode(args: Array<BabelNodeExpression>): BabelNodeExpression {
+    let buildNode = this.getBuildNode();
+    return buildNode instanceof Function
+      ? ((buildNode: any): AbstractValueBuildNodeFunction)(args)
+      : ((buildNode: any): BabelNodeExpression);
+  }
+
+  equals(x: Value) {
+    if (x instanceof ConcreteValue) return false;
+    let thisArgs = this.args;
+    let n = thisArgs.length;
+
+    let argsAreEqual = () => {
+      invariant(x instanceof AbstractValue);
+      let xArgs = x.args;
+      let m = xArgs.length;
+      if (n !== m) return false;
+      for (let i = 0; i < n; i++) {
+        let a = thisArgs[i];
+        let b = xArgs[i];
+        if (a instanceof AbstractValue) {
+          if (a.equals(b)) continue;
+          else return false;
+        } else {
+          invariant(a instanceof ConcreteValue);
+          if (b instanceof ConcreteValue) return StrictEqualityComparison(this.$Realm, a, b);
+          invariant(b instanceof AbstractValue);
+          return b.equals(a);
+        }
+      }
+      return true;
+    };
+
+    return (
+      this === x ||
+      (x instanceof AbstractValue &&
+        this.kind === x.kind &&
+        this.hashValue === x.hashValue &&
+        ((this.intrinsicName && this.intrinsicName.length > 0 && this.intrinsicName === x.intrinsicName) ||
+          (n > 0 && argsAreEqual())))
+    );
+  }
+
+  getBuildNode(): AbstractValueBuildNodeFunction | BabelNodeExpression {
+    invariant(this._buildNode);
+    return this._buildNode;
+  }
+
+  getHash(): number {
+    return this.hashValue;
+  }
+
+  getType() {
+    return this.types.getType();
+  }
+
+  getIdentifier() {
+    invariant(this.hasIdentifier());
+    return ((this._buildNode: any): BabelNodeIdentifier);
+  }
+
+  hasIdentifier() {
+    return this._buildNode && this._buildNode.type === "Identifier";
+  }
+
+  implies(val: AbstractValue): boolean {
+    // Neither this nor val is a known value, so we need to some reasoning based on the structure
+    if (this.equals(val)) return true; // x => x regardless of its value
+    // todo: (x & y) => z if (x => z) || (y => z)
+    // todo: x => (y | z) if (x => y) || (x = z)
+    return false;
   }
 
   mightBeFalse(): boolean {
@@ -275,6 +287,28 @@ export default class AbstractValue extends Value {
     let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, this.$Realm.intrinsics.empty);
     let result = AbstractValue.createFromConditionalOp(this.$Realm, cond, this.$Realm.intrinsics.undefined, this);
     result.values = this.values.promoteEmptyToUndefined();
+    return result;
+  }
+
+  refineWithPathCondition(): Value {
+    if (this.kind !== "conditional") return this;
+    let [condition, trueVal, falseVal] = this.args;
+    invariant(condition instanceof AbstractValue);
+    invariant(trueVal !== undefined);
+    invariant(falseVal !== undefined);
+    let inverseCondition = AbstractValue.createFromUnaryOp(this.$Realm, "!", condition);
+    let result = this;
+    for (let pathCondition of this.$Realm.pathConditions) {
+      if (pathCondition.implies(condition)) {
+        result = trueVal;
+        break;
+      }
+      if (pathCondition.implies(inverseCondition)) {
+        result = falseVal;
+        break;
+      }
+    }
+    if (result !== this && result instanceof AbstractValue) return result.refineWithPathCondition();
     return result;
   }
 
