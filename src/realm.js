@@ -144,6 +144,7 @@ export class Realm {
 
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
+    this.maxStackDepth = opts.maxStackDepth || 225;
 
     this.$TemplateMap = [];
 
@@ -174,6 +175,7 @@ export class Realm {
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
+  maxStackDepth: number;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
@@ -279,6 +281,9 @@ export class Realm {
   }
 
   pushContext(context: ExecutionContext): void {
+    if (this.contextStack.length >= this.maxStackDepth) {
+      throw new FatalError("Maximum stack depth exceeded");
+    }
     this.contextStack.push(context);
   }
 
@@ -415,17 +420,21 @@ export class Realm {
     subsequentEffects[1] = pg;
     this.generator = saved_generator;
 
-    pb.forEach((val, key, m) => {
-      if (!sb.has(key)) sb.set(key, val);
-    });
-
-    pp.forEach((desc, propertyBinding, m) => {
-      if (!sp.has(propertyBinding)) sp.set(propertyBinding, desc);
-    });
-
-    po.forEach((ob, a) => {
-      so.add(ob);
-    });
+    if (pb) {
+      pb.forEach((val, key, m) => {
+        if (!sb.has(key)) sb.set(key, val);
+      });
+    }
+    if (pp) {
+      pp.forEach((desc, propertyBinding, m) => {
+        if (!sp.has(propertyBinding)) sp.set(propertyBinding, desc);
+      });
+    }
+    if (po) {
+      po.forEach((ob, a) => {
+        so.add(ob);
+      });
+    }
   }
 
   updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion) {
