@@ -43,6 +43,7 @@ function run(
     --srcmapIn          The input sourcemap filename. If present, Prepack will output a sourcemap that maps from
                         the original file (pre-input sourcemap) to Prepack's output
     --srcmapOut         The output sourcemap filename.
+    --maxStackDepth     Specify the maximum call stack depth
     --debugNames        Changes the output of Prepack so that for named functions and variables that get emitted into
                         Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
     --speculate         Enable speculative initialization of modules (for the module system Prepack has builtin
@@ -65,6 +66,7 @@ function run(
   let inputSourceMap;
   let outputSourceMap;
   let statsFileName;
+  let maxStackDepth: number;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -111,9 +113,17 @@ function run(
         case "statsFile":
           statsFileName = args.shift();
           break;
+        case "maxStackDepth":
+          let value = args.shift();
+          if (isNaN(value)) {
+            console.error("Stack depth value must be a number");
+            process.exit(1);
+          }
+          maxStackDepth = parseInt(value, 10);
+          break;
         case "help":
           console.log(
-            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] " +
+            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ß]" +
               Object.keys(flags).map(s => "[ --" + s + "]").join(" ") +
               "\n" +
               HELP_STR
@@ -139,6 +149,7 @@ function run(
       inputSourceMapFilename: inputSourceMap,
       errorHandler: errorHandler,
       sourceMaps: !!outputSourceMap,
+      maxStackDepth: maxStackDepth,
     },
     flags
   );
