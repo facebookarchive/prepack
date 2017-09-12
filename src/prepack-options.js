@@ -36,6 +36,7 @@ export type PrepackOptions = {|
   timeout?: number,
   trace?: boolean,
   uniqueSuffix?: string,
+  maxStackDepth?: number,
 |};
 
 export function getRealmOptions({

@@ -1,3 +1,4 @@
+// exceeds stack limit
 // throws introspection error
 let immediate = function (future) {
 if (Date.now() > future) {
