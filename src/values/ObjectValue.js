@@ -225,6 +225,10 @@ export default class ObjectValue extends ConcreteValue {
   intrinsicNameGenerated: void | true;
   hashValue: void | number;
 
+  equals(x: Value): boolean {
+    return x instanceof ObjectValue && this.hashValue === x.hashValue;
+  }
+
   getHash(): number {
     if (!this.hashValue) {
       this.hashValue = ++this.$Realm.objectCount;

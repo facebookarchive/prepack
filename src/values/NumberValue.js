@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { PrimitiveValue } from "./index.js";
+import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
 
 export default class NumberValue extends PrimitiveValue {
@@ -20,6 +20,10 @@ export default class NumberValue extends PrimitiveValue {
   }
 
   value: number;
+
+  equals(x: Value): boolean {
+    return x instanceof NumberValue && this.value === x.value;
+  }
 
   getHash(): number {
     let num = Math.abs(this.value);

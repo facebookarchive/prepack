@@ -223,6 +223,7 @@ export default class AbstractValue extends Value {
     return false;
   }
 
+  // todo: abstract values should never be of type UndefinedValue or NullValue, assert this
   mightBeFalse(): boolean {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return true;
@@ -321,31 +322,48 @@ export default class AbstractValue extends Value {
   }
 
   refineWithPathCondition(): Value {
+    function pathImplies(condition: AbstractValue): boolean {
+      let path = condition.$Realm.pathConditions;
+      for (let i = path.length - 1; i >= 0; i--) {
+        let pathCondition = path[i];
+        if (pathCondition.implies(condition)) return true;
+      }
+      return false;
+    }
+
+    let realm = this.$Realm;
     let op = this.kind;
-    if (op === "&&" || op === "||") {
-      let [left, right] = this.args;
-      let refinedLeft = left instanceof AbstractValue ? left.refineWithPathCondition() : left;
-      let refinedRight = right instanceof AbstractValue ? right.refineWithPathCondition() : right;
-      if (left === refinedLeft && right === refinedRight) return this;
-      return AbstractValue.createFromLogicalOp(this.$Realm, op, refinedLeft, refinedRight, this.expressionLocation);
-    }
-    if (op !== "conditional") return this;
-    let [condition, trueVal, falseVal] = this.args;
-    invariant(condition instanceof AbstractValue);
-    invariant(trueVal !== undefined);
-    invariant(falseVal !== undefined);
-    let inverseCondition = AbstractValue.createFromUnaryOp(this.$Realm, "!", condition);
-    let result = this;
-    for (let pathCondition of this.$Realm.pathConditions) {
-      if (pathCondition.implies(condition)) {
-        result = trueVal;
-        break;
+    let result = (() => {
+      if (op === "&&" || op === "||") {
+        let [left, right] = this.args;
+        let refinedLeft = left instanceof AbstractValue ? left.refineWithPathCondition() : left;
+        let refinedRight = right instanceof AbstractValue ? right.refineWithPathCondition() : right;
+        if (left === refinedLeft && right === refinedRight) return this;
+        return AbstractValue.createFromLogicalOp(realm, op, refinedLeft, refinedRight, this.expressionLocation);
       }
-      if (pathCondition.implies(inverseCondition)) {
-        result = falseVal;
-        break;
+      if (op === "!") {
+        let arg = this.args[0];
+        let refinedArg = arg instanceof AbstractValue ? arg.refineWithPathCondition() : arg;
+        if (arg === refinedArg) return this;
+        if (!refinedArg.mightNotBeTrue()) return realm.intrinsics.false;
+        if (!refinedArg.mightNotBeFalse()) return realm.intrinsics.true;
+        invariant(refinedArg instanceof AbstractValue); // concrete values always make up their mind above
+        return AbstractValue.createFromUnaryOp(realm, op, refinedArg);
       }
-    }
+      if (op !== "conditional") return this;
+      let [condition, trueVal, falseVal] = this.args;
+      invariant(trueVal !== undefined);
+      invariant(falseVal !== undefined);
+      invariant(condition instanceof AbstractValue);
+      let inverseCondition = AbstractValue.createFromUnaryOp(this.$Realm, "!", condition);
+      if (pathImplies(condition)) return trueVal;
+      if (pathImplies(inverseCondition)) return falseVal;
+      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", this, trueVal))) return trueVal;
+      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", this, trueVal))) return falseVal;
+      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", this, falseVal))) return trueVal;
+      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", this, falseVal))) return falseVal;
+      return this;
+    })();
     if (result !== this && result instanceof AbstractValue) return result.refineWithPathCondition();
     return result;
   }
