@@ -44,11 +44,9 @@ export default function(
   }
   invariant(lval instanceof AbstractValue);
 
-  if (!lval.mightNotBeFalse()) {
-    if (ast.operator === "&&") return env.evaluate(ast.right, strictCode);
-    else {
-      return lval;
-    }
+  if (!lval.isIntrinsic()) {
+    if (!lval.mightNotBeFalse()) return ast.operator === "||" ? env.evaluate(ast.right, strictCode) : lval;
+    if (!lval.mightNotBeTrue()) return ast.operator === "&&" ? env.evaluate(ast.right, strictCode) : lval;
   }
 
   // Create empty effects for the case where ast.right is not evaluated

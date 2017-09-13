@@ -45,7 +45,7 @@ export type SerializedBinding = {
   scope?: ScopeBinding,
 };
 
-export type VisitedBindings = { [key: string]: VisitedBinding };
+export type VisitedBindings = { [key: string]: VisitedBinding }; //todo: use a map
 export type VisitedBinding = {
   value: void | Value,
   modified: boolean,
