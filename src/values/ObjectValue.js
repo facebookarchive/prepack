@@ -12,30 +12,29 @@
 import type { Realm, ExecutionContext } from "../realm.js";
 import { FatalError } from "../errors.js";
 import type {
+  DataBlock,
+  Descriptor,
   IterationKind,
+  ObjectKind,
   PromiseCapability,
   PromiseReaction,
-  DataBlock,
-  PropertyKeyValue,
   PropertyBinding,
-  Descriptor,
-  ObjectKind,
+  PropertyKeyValue,
   TypedArrayKind,
 } from "../types.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
-  Value,
   AbstractValue,
-  ConcreteValue,
   BooleanValue,
+  ConcreteValue,
+  NativeFunctionValue,
+  NullValue,
+  NumberValue,
   StringValue,
   SymbolValue,
-  NumberValue,
   UndefinedValue,
-  NullValue,
-  NativeFunctionValue,
+  Value,
 } from "./index.js";
-import type { NativeFunctionCallback, ECMAScriptSourceFunctionValue } from "./index.js";
+import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
 import {
   joinValuesAsConditional,
   IsDataDescriptor,
@@ -51,7 +50,6 @@ import {
   OrdinaryPreventExtensions,
   ThrowIfMightHaveBeenDeleted,
 } from "../methods/index.js";
-import * as t from "babel-types";
 import invariant from "../invariant.js";
 
 export default class ObjectValue extends ConcreteValue {
@@ -225,6 +223,14 @@ export default class ObjectValue extends ConcreteValue {
   // or it can be associated with a particular point in time by being used as a template
   // when deriving an abstract value via a generator.
   intrinsicNameGenerated: void | true;
+  hashValue: void | number;
+
+  getHash(): number {
+    if (!this.hashValue) {
+      this.hashValue = ++this.$Realm.objectCount;
+    }
+    return this.hashValue;
+  }
 
   mightBeFalse(): boolean {
     return false;
@@ -487,13 +493,8 @@ export default class ObjectValue extends ConcreteValue {
     // If all else fails, use this expression
     let result;
     if (this.isPartialObject()) {
-      result = this.$Realm.createAbstract(
-        TypesDomain.topVal,
-        ValuesDomain.topVal,
-        [this, P],
-        ([o, x]) => t.memberExpression(o, x, true),
-        "sentinel member expression"
-      );
+      result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression");
+      result.args = [this, P];
     } else {
       result = this.$Realm.intrinsics.undefined;
     }
@@ -515,8 +516,14 @@ export default class ObjectValue extends ConcreteValue {
       if (desc === undefined) continue; // deleted
       invariant(desc.value !== undefined); // otherwise this is not simple
       let val = desc.value;
-      let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
-      cond.kind = "check for known property";
+      let cond = AbstractValue.createFromBinaryOp(
+        this.$Realm,
+        "===",
+        P,
+        new StringValue(this.$Realm, key),
+        undefined,
+        "check for known property"
+      );
       result = joinValuesAsConditional(this.$Realm, cond, val, result);
     }
     return result;
@@ -548,6 +555,18 @@ export default class ObjectValue extends ConcreteValue {
 
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
+
+    function createTemplate(realm: Realm, propName: AbstractValue) {
+      return AbstractValue.createFromBinaryOp(
+        realm,
+        "===",
+        propName,
+        new StringValue(realm, ""),
+        undefined,
+        "template for property name condition"
+      );
+    }
+
     // We assume that simple objects have no getter/setter properties and
     // that all properties are writable.
     if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
@@ -572,8 +591,7 @@ export default class ObjectValue extends ConcreteValue {
       let newVal = V;
       if (!(V instanceof UndefinedValue)) {
         // join V with undefined, using a property name test as the condition
-        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, ""));
-        cond.kind = "template for property name condition";
+        let cond = createTemplate(this.$Realm, P);
         newVal = joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
       }
       prop.descriptor = {
@@ -588,8 +606,7 @@ export default class ObjectValue extends ConcreteValue {
       invariant(oldVal !== undefined);
       let newVal = oldVal;
       if (!(V instanceof UndefinedValue)) {
-        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, ""));
-        cond.kind = "template for property name condition";
+        let cond = createTemplate(this.$Realm, P);
         newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
       }
       desc.value = newVal;

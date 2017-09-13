@@ -36,6 +36,7 @@ export type PrepackOptions = {|
   timeout?: number,
   trace?: boolean,
   uniqueSuffix?: string,
+  maxStackDepth?: number,
 |};
 
 export function getRealmOptions({
@@ -48,6 +49,7 @@ export function getRealmOptions({
   serialize = !residual,
   strictlyMonotonicDateNow,
   timeout,
+  maxStackDepth,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -59,6 +61,7 @@ export function getRealmOptions({
     serialize,
     strictlyMonotonicDateNow,
     timeout,
+    maxStackDepth,
   };
 }
 

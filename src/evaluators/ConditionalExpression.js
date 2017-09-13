@@ -37,6 +37,7 @@ export default function(
   }
   invariant(exprValue instanceof AbstractValue);
 
-  if (!exprValue.mightNotBeObject()) return env.evaluate(ast.consequent, strictCode);
-  else return evaluateWithAbstractConditional(exprValue, ast.consequent, ast.alternate, strictCode, env, realm);
+  if (!exprValue.mightNotBeTrue()) return env.evaluate(ast.consequent, strictCode);
+  if (!exprValue.mightNotBeFalse()) return env.evaluate(ast.alternate, strictCode);
+  return evaluateWithAbstractConditional(exprValue, ast.consequent, ast.alternate, strictCode, env, realm);
 }

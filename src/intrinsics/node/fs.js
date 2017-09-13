@@ -11,9 +11,9 @@
 
 import invariant from "../../invariant.js";
 import type { Realm } from "../../realm.js";
-import { ObjectValue, NumberValue, StringValue } from "../../values/index.js";
+import { AbstractValue, NumberValue, ObjectValue, StringValue } from "../../values/index.js";
 import { DefinePropertyOrThrow, ToString, ToNumber } from "../../methods/index.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import { getNodeBufferFromTypedArray } from "./utils.js";
 
@@ -80,12 +80,13 @@ export default function(realm: Realm): ObjectValue {
     return new StringValue(realm, result);
   });
 
-  let types = new TypesDomain(ObjectValue);
-  let values = new ValuesDomain(new Set([new ObjectValue(realm)]));
-  let buildNode = buildExpressionTemplate(`${intrinsicName}.FSReqWrap`)(realm.preludeGenerator);
-  let FSReqWrap = realm.createAbstract(types, values, [], buildNode, undefined, `${intrinsicName}.FSReqWrap`);
+  let FSReqWrapTemplateSrc = `${intrinsicName}.FSReqWrap`;
+  let FSReqWrapTemplate = buildExpressionTemplate(FSReqWrapTemplateSrc);
+  let val = AbstractValue.createFromTemplate(realm, FSReqWrapTemplate, ObjectValue, [], FSReqWrapTemplateSrc);
+  val.values = new ValuesDomain(new Set([new ObjectValue(realm)]));
+  val.intrinsicName = FSReqWrapTemplateSrc;
   DefinePropertyOrThrow(realm, obj, "FSReqWrap", {
-    value: FSReqWrap,
+    value: val,
     writable: true,
     configurable: true,
     enumerable: true,

@@ -53,6 +53,10 @@ export default class ConcreteValue extends Value {
     return this instanceof ObjectValue;
   }
 
+  mightBeString(): boolean {
+    return this instanceof StringValue;
+  }
+
   mightNotBeString(): boolean {
     return !(this instanceof StringValue);
   }

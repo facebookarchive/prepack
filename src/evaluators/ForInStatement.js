@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
@@ -130,7 +129,7 @@ function emitResidualLoopIfSafe(
   try {
     let envRec = blockEnv.environmentRecord;
     invariant(envRec instanceof DeclarativeEnvironmentRecord, "expected declarative environment record");
-    let absStr = realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, []);
+    let absStr = AbstractValue.createFromType(realm, StringValue);
     let boundName;
     for (let n of BoundNames(realm, lh)) {
       invariant(boundName === undefined);
@@ -184,6 +183,9 @@ function emitResidualLoopIfSafe(
       if (targetObject instanceof ObjectValue && sourceObject !== undefined) {
         let o = ob;
         if (ob instanceof AbstractObjectValue && !ob.values.isTop() && ob.values.getElements().size === 1) {
+          // Note that it is not safe, in general, to extract a concrete object from the values domain of
+          // an abstract object. We can get away with it here only because the concrete object does not
+          // escape the code below and is thus never referenced directly in generated code because of this logic.
           for (let oe of ob.values.getElements()) o = oe;
         }
         let generator = realm.generator;
@@ -193,8 +195,7 @@ function emitResidualLoopIfSafe(
         targetObject.makeSimple();
         targetObject.makePartial();
         if (sourceObject === o) {
-          // Known enumerable properties of sourceObject can become known
-          // properties of targetObject.
+          // Known enumerable properties of sourceObject can become known properties of targetObject.
           invariant(sourceObject.isPartialObject());
           sourceObject.makeNotPartial();
           // EnumerableOwnProperties is sufficient because sourceObject is simple

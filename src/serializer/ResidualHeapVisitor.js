@@ -13,7 +13,7 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
-import { IsUnresolvableReference, ToLength, ResolveBinding, IsArray, Get } from "../methods/index.js";
+import { IsUnresolvableReference, ToLength, ResolveBinding, HashSet, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
   ProxyValue,
@@ -66,6 +66,7 @@ export class ResidualHeapVisitor {
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
+    this.equivalenceSet = new HashSet();
   }
 
   realm: Realm;
@@ -82,6 +83,7 @@ export class ResidualHeapVisitor {
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Set<AbstractValue>;
   delayedVisitGeneratorEntries: Array<{| generator: Generator, entry: GeneratorEntry |}>;
+  equivalenceSet: HashSet<AbstractValue>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -162,7 +164,7 @@ export class ResidualHeapVisitor {
       this.visitValue(V);
     } else {
       // conditional assignment
-      this.visitValue(cond);
+      absVal.args[0] = this.visitEquivalentValue(cond);
       let consequent = absVal.args[1];
       invariant(consequent instanceof AbstractValue);
       let alternate = absVal.args[2];
@@ -173,7 +175,7 @@ export class ResidualHeapVisitor {
   }
 
   visitDescriptor(desc: Descriptor): void {
-    if (desc.value !== undefined) this.visitValue(desc.value);
+    if (desc.value !== undefined) desc.value = this.visitEquivalentValue(desc.value);
     if (desc.get !== undefined) this.visitValue(desc.get);
     if (desc.set !== undefined) this.visitValue(desc.set);
   }
@@ -194,7 +196,7 @@ export class ResidualHeapVisitor {
       visitedBindings[n] = visitedBinding;
     }
     invariant(visitedBinding.value !== undefined);
-    this.visitValue(visitedBinding.value);
+    visitedBinding.value = this.visitEquivalentValue(visitedBinding.value);
     return visitedBinding;
   }
 
@@ -412,7 +414,9 @@ export class ResidualHeapVisitor {
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression")
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
-    for (let abstractArg of val.args) this.visitValue(abstractArg);
+    for (let i = 0, n = val.args.length; i < n; i++) {
+      val.args[i] = this.visitEquivalentValue(val.args[i]);
+    }
   }
 
   _mark(val: Value): boolean {
@@ -421,6 +425,16 @@ export class ResidualHeapVisitor {
     if (scopes.has(this.scope)) return false;
     scopes.add(this.scope);
     return true;
+  }
+
+  visitEquivalentValue<T: Value>(val: T): T {
+    if (val instanceof AbstractValue) {
+      let equivalentValue = this.equivalenceSet.add(val);
+      if (this._mark(equivalentValue)) this.visitAbstractValue(equivalentValue);
+      return (equivalentValue: any);
+    }
+    this.visitValue(val);
+    return val;
   }
 
   visitValue(val: Value): void {
@@ -472,13 +486,15 @@ export class ResidualHeapVisitor {
       binding = ({ value, modified: true }: VisitedBinding);
       this.globalBindings.set(key, binding);
     }
-    if (binding.value) this.visitValue(binding.value);
+    if (binding.value) binding.value = this.visitEquivalentValue(binding.value);
     return binding;
   }
 
   createGeneratorVisitCallbacks(generator: Generator): VisitEntryCallbacks {
     return {
-      visitValue: this.visitValue.bind(this),
+      visitValues: (values: Array<Value>) => {
+        for (let i = 0, n = values.length; i < n; i++) values[i] = this.visitEquivalentValue(values[i]);
+      },
       visitGenerator: this.visitGenerator.bind(this),
       canSkip: (value: AbstractValue): boolean => {
         return !this.referencedDeclaredValues.has(value) && !this.values.has(value);

@@ -20,6 +20,15 @@ export default class SymbolValue extends PrimitiveValue {
 
   $Description: void | Value;
 
+  hashValue: void | number;
+
+  getHash(): number {
+    if (!this.hashValue) {
+      this.hashValue = this.$Description ? this.$Description.getHash() : ++this.$Realm.symbolCount;
+    }
+    return this.hashValue;
+  }
+
   mightBeFalse(): boolean {
     return false;
   }

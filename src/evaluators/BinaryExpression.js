@@ -25,7 +25,6 @@ import {
   Value,
 } from "../values/index.js";
 import { GetValue } from "../methods/index.js";
-import { HasSomeCompatibleType } from "../methods/index.js";
 import { IsToPrimitivePure, GetToPrimitivePureResultType, IsToNumberPure } from "../methods/index.js";
 import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
@@ -151,8 +150,8 @@ export function computeBinary(
   // partial evaluation shortcut for a particular pattern
   if (op === "==" || op === "===" || op === "!=" || op === "!==") {
     if (
-      (!lval.mightNotBeObject() && HasSomeCompatibleType(rval, NullValue, UndefinedValue)) ||
-      (HasSomeCompatibleType(lval, NullValue, UndefinedValue) && !rval.mightNotBeObject())
+      (!lval.mightNotBeObject() && (rval instanceof NullValue || rval instanceof UndefinedValue)) ||
+      ((lval instanceof NullValue || lval instanceof UndefinedValue) && !rval.mightNotBeObject())
     )
       return new BooleanValue(realm, op[0] !== "=");
   }
