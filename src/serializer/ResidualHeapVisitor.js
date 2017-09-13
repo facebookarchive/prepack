@@ -547,13 +547,19 @@ export class ResidualHeapVisitor {
             }
             // Visit a binding if and only if its overwriting something that we've
             // already visited
-            /*for (let binding of ob.keys()) {
-              let old_value = binding.value;
-              if (old_value) {
-                let new_value = ob.get(binding);
-                if (new_value && this.values.has(old_value)) this.visitValue(new_value);
+            for (let binding of ob.keys()) {
+              let new_value = binding.value;
+              let old_value = ob.get(binding);
+              if (old_value && new_value && this.values.has(old_value)) {
+                // Additional function needs to be able to overwrite the old value
+                // so it needs access to both values
+                if (old_value === new_value && old_value instanceof AbstractValue) continue;
+
+                invariant(old_value !== new_value);
+                this.visitValue(old_value);
+                this.visitValue(new_value);
               }
-            }*/
+            }
           };
           this.visitGenerator(g, visitPropertiesAndBindings);
           this.realm.restoreBindings(ob);

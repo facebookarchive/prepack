@@ -1243,7 +1243,8 @@ export class ResidualHeapSerializer {
           // function instead of adding them at global scope
           // TODO: make sure this generator isn't getting mutated oddly
           this.additionalFunctionValueNestedFunctions = ((nestedFunctions: any): Set<FunctionValue>);
-          let serializeProperties = () => {
+          let emitter = this.emitter;
+          let serializePropertiesAndBindings = () => {
             for (let propertyBinding of pb.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
               let object = binding.object;
@@ -1255,8 +1256,26 @@ export class ResidualHeapSerializer {
               if (object.refuseSerialization) continue; // modification to internal state
               this._emitProperty(object, binding.key, binding.descriptor, true);
             }
+            for (let binding of ob.keys()) {
+              let old_value = ob.get(binding);
+              let new_value = binding.value;
+              invariant(old_value !== new_value);
+              if (old_value) {
+                let lhs = ((this.serializeValue(old_value): any): BabelNodeIdentifier);
+                invariant(t.isIdentifier(lhs));
+                emitter.emit(
+                  t.expressionStatement(
+                    t.assignmentExpression(
+                      "=",
+                      lhs,
+                      new_value ? this.serializeValue(new_value) : t.valueToNode(undefined)
+                    )
+                  )
+                );
+              }
+            }
           };
-          let body = this._serializeAdditionalFunction(g, serializeProperties);
+          let body = this._serializeAdditionalFunction(g, serializePropertiesAndBindings);
           invariant(body.length > 0, "An additional function has no body");
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
           rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
@@ -1265,8 +1284,9 @@ export class ResidualHeapSerializer {
           if (shouldEmitLog && this.modules.moduleIds.size > 0)
             console.log(
               `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
-                .size} modules initialized after additional function ${additionalFunctionValue
-                  .intrinsicName ? additionalFunctionValue.intrinsicName : ""}`
+                .size} modules initialized after additional function ${additionalFunctionValue.intrinsicName
+                ? additionalFunctionValue.intrinsicName
+                : ""}`
             );
           // These don't restore themselves properly otherwise.
           this.realm.restoreBindings(ob);

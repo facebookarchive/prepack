@@ -10,6 +10,7 @@ Object.defineProperty(global, "bar", { configurable: true, enumerable: false, ge
 function additional1() {
   toCapture1 = 5;
   toCapture2 = undefined;
+  global.foo += 1;
   foo += 1;
   var x = 5;
   x = 10;
@@ -31,5 +32,5 @@ inspect = function inspect() {
   let z2 = toCapture1;
   additional2();
 
-  return '' + z + z2 + x + y + toCapture1 + toCapture2 + toCapture3 + (foo === bar);
+  return '' + z + z2 + x + y + toCapture1 + toCapture2 + toCapture3 + foo + bar + (foo === bar);
 }
