@@ -22,7 +22,6 @@ import {
   Value,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
-import { ObjectCreate } from "../../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
@@ -52,12 +51,7 @@ export default function(realm: Realm): void {
       if (type === undefined) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
       }
-      return {
-        type,
-        template: Value.isTypeCompatibleWith(type, ObjectValue)
-          ? ObjectCreate(realm, realm.intrinsics.ObjectPrototype)
-          : undefined,
-      };
+      return { type, template: undefined };
     } else if (typeNameOrTemplate instanceof FunctionValue) {
       return { type: FunctionValue, template: typeNameOrTemplate };
     } else if (typeNameOrTemplate instanceof ObjectValue) {
@@ -114,7 +108,6 @@ export default function(realm: Realm): void {
         if (template && !(template instanceof FunctionValue)) {
           // why exclude functions?
           template.makePartial();
-          invariant(realm.generator);
           if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
         return result;
