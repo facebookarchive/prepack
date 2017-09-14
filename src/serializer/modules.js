@@ -50,6 +50,8 @@ export class ModuleTracer extends Tracer {
     this.requireSequence = [];
     this.logModules = logModules;
     this.uninitializedModuleIdsRequiredInEvaluateForEffects = new Set();
+    this.statistics = statistics;
+    this.logStatistics = logStatistics;
   }
 
   modules: Modules;
@@ -152,7 +154,7 @@ export class ModuleTracer extends Tracer {
             let requireSequenceStart = this.requireSequence.length;
             this.requireSequence.push(moduleIdValue);
             let acceleratedModuleIds, effects;
-            let previousNumDelayedModules = this.statistics.delayedModules;
+            const previousNumDelayedModules = this.statistics.delayedModules;
             do {
               try {
                 effects = realm.evaluateForEffects(() => {
