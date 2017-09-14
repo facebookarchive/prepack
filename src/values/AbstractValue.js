@@ -13,6 +13,7 @@ import type {
   BabelBinaryOperator,
   BabelNodeExpression,
   BabelNodeIdentifier,
+  BabelNodeLogicalOperator,
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "babel-types";
@@ -389,13 +390,58 @@ export default class AbstractValue extends Value {
     return result;
   }
 
+  static createFromLogicalOp(
+    realm: Realm,
+    op: BabelNodeLogicalOperator,
+    left: Value,
+    right: Value,
+    loc?: ?BabelNodeSourceLocation
+  ): AbstractValue {
+    let leftTypes, leftValues;
+    if (left instanceof AbstractValue) {
+      leftTypes = left.types;
+      leftValues = left.values;
+    } else {
+      leftTypes = new TypesDomain(left.getType());
+      invariant(left instanceof ConcreteValue);
+      leftValues = new ValuesDomain(left);
+    }
+
+    let rightTypes, rightValues;
+    if (right instanceof AbstractValue) {
+      rightTypes = right.types;
+      rightValues = right.values;
+    } else {
+      rightTypes = new TypesDomain(right.getType());
+      invariant(right instanceof ConcreteValue);
+      rightValues = new ValuesDomain(right);
+    }
+
+    let resultTypes = TypesDomain.logicalOp(op, leftTypes, rightTypes);
+    let resultValues = ValuesDomain.logicalOp(realm, op, leftValues, rightValues);
+    let [hash, args] = hashCall(op, left, right);
+    let Constructor = Value.isTypeCompatibleWith(resultTypes.getType(), ObjectValue)
+      ? AbstractObjectValue
+      : AbstractValue;
+    let result = new Constructor(realm, resultTypes, resultValues, hash, args, ([x, y]) =>
+      t.logicalExpression(op, x, y)
+    );
+    result.kind = op;
+    result.expressionLocation = loc;
+    return result;
+  }
+
   static createFromConditionalOp(
     realm: Realm,
-    condition: Value,
+    condition: AbstractValue,
     left: void | Value,
     right: void | Value,
     loc?: ?BabelNodeSourceLocation
   ): AbstractValue {
+    if (left instanceof BooleanValue && right instanceof BooleanValue) {
+      if (left.value && !right.value) return condition;
+      if (!left.value && right.value) return AbstractValue.createFromUnaryOp(realm, "!", condition, true, loc);
+    }
     let types = TypesDomain.joinValues(left, right);
     let values = ValuesDomain.joinValues(realm, left, right);
     let [hash, args] = hashTernary(condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined);
