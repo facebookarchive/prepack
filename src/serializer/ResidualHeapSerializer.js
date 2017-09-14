@@ -1249,24 +1249,6 @@ export class ResidualHeapSerializer {
               if (object.refuseSerialization) continue; // modification to internal state
               this._emitProperty(object, binding.key, binding.descriptor, true);
             }
-            for (let binding of ob.keys()) {
-              let old_value = ob.get(binding);
-              let new_value = binding.value;
-              invariant(old_value !== new_value);
-              if (old_value) {
-                let lhs = ((this.serializeValue(old_value): any): BabelNodeIdentifier);
-                invariant(t.isIdentifier(lhs));
-                emitter.emit(
-                  t.expressionStatement(
-                    t.assignmentExpression(
-                      "=",
-                      lhs,
-                      new_value ? this.serializeValue(new_value) : t.valueToNode(undefined)
-                    )
-                  )
-                );
-              }
-            }
           };
           let body = this._serializeAdditionalFunction(g, serializePropertiesAndBindings);
           invariant(body.length > 0, "An additional function has no body");
