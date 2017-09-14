@@ -51,6 +51,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   isSimpleObject(): boolean {
+    if (this.values.isTop()) return false;
     let result;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -77,6 +78,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeNotPartial(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       element.makeNotPartial();
@@ -84,6 +89,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makePartial(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       element.makePartial();
@@ -91,6 +100,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeSimple(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       return element.makeSimple();
@@ -154,6 +167,10 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.6
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
     if (P instanceof StringValue) P = P.value;
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -201,6 +218,10 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.7
   $HasProperty(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -228,6 +249,10 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -261,6 +286,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     invariant(this === Receiver, "TODO");
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -287,6 +316,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (P instanceof StringValue) P = P.value;
     invariant(this === Receiver, "TODO");
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -322,6 +355,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
     invariant(this === Receiver, "TODO");
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -345,6 +382,10 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.10
   $Delete(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -378,6 +419,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   $OwnPropertyKeys(): Array<PropertyKeyValue> {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
