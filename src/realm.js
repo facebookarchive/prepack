@@ -126,6 +126,34 @@ export function construct_empty_effects(realm: Realm): Effects {
   return [realm.intrinsics.empty, new Generator(realm), new Map(), new Map(), new Set()];
 }
 
+export class InterpreterStatistics {
+  constructor() {
+    this.objects = 0;
+    this.objectProperties = 0;
+    this.nodeToCount = new Map();
+  }
+  objects: number;
+  objectProperties: number;
+  nodeToCount: Map<string, number>;
+
+  incrNodeCount(nodeType: string) {
+    let count = 0;
+    if (this.nodeToCount.has(nodeType)) {
+      count = this.nodeToCount.get(nodeType);
+    }
+    this.nodeToCount.set(nodeType, count + 1);
+  }
+
+  log() {
+    console.log(`=== interpreter statistics`);
+    console.log(`${this.objects} objects with ${this.objectProperties} properties`);
+    console.log(`Number of AST nodes evaluated`);
+    this.nodeToCount.forEach(function(value, key) {
+      console.log(key + ": " + value);
+    });
+  }
+}
+
 export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
@@ -166,6 +194,7 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
+    this.interpreterStatistics = new InterpreterStatistics();
   }
 
   start: number;
@@ -230,6 +259,7 @@ export class Realm {
   symbolCount = 867501803871088;
 
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
+  interpreterStatistics: InterpreterStatistics;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
