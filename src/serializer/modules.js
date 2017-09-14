@@ -152,6 +152,7 @@ export class ModuleTracer extends Tracer {
             let requireSequenceStart = this.requireSequence.length;
             this.requireSequence.push(moduleIdValue);
             let acceleratedModuleIds, effects;
+            let previousNumDelayedModules = this.statistics.delayedModules;
             do {
               try {
                 effects = realm.evaluateForEffects(() => {
@@ -213,7 +214,9 @@ export class ModuleTracer extends Tracer {
 
             if (effects === undefined) {
               console.log(`delaying require(${moduleIdValue})`);
-              if (this.logStatistics) this.statistics.delayedModules++;
+              if (this.logStatistics) {
+                this.statistics.delayedModules = previousNumDelayedModules + 1;
+              }
               // So we are about to emit a delayed require(...) call.
               // However, before we do that, let's try to require all modules that we
               // know this delayed require call will require.
