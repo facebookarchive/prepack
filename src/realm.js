@@ -698,10 +698,11 @@ export class Realm {
 
   rebuildNestedProperties(abstractValue: AbstractValue | UndefinedValue, path: string) {
     if (!(abstractValue instanceof AbstractObjectValue)) return;
+    if (abstractValue.values.isTop()) return;
     let template = abstractValue.getTemplate();
     invariant(!template.intrinsicName || template.intrinsicName === path);
     // TODO #882: We are using the concept of "intrinsic values" to mark the template
-    // object as intrinsic, so that we'll never emit code that creates it, as it instead is mapConstructorDoesntTakeArguments
+    // object as intrinsic, so that we'll never emit code that creates it, as it instead is used
     // to refer to an unknown but existing object.
     // However, it's not really an intrinsic object, and it might not exist ahead of time, but only starting
     // from this point on, which might be tied to some nested generator.

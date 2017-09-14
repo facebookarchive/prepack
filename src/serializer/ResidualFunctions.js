@@ -334,164 +334,131 @@ export class ResidualFunctions {
           define(instance, id, funcNode);
         }
       } else {
-        // Group instances with modified bindings
-        let instanceBatches = [instances];
-        for (let name in modified) {
-          let newInstanceBatches = [];
+        let suffix = instances[0].functionValue.__originalName || "";
+        let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
 
-          for (let batch of instanceBatches) {
-            // Map from representative binding to function instances that use it
-            let bindingLookup = new Map();
+        // filter included variables to only include those that are different
+        let factoryNames: Array<string> = [];
+        let sameSerializedBindings = Object.create(null);
+        for (let name in unbound) {
+          let isDifferent = false;
+          let lastBinding;
 
-            for (let functionInstance of batch) {
-              let serializedBinding = functionInstance.serializedBindings[name];
-              invariant(serializedBinding !== undefined);
-              let found = false;
-              for (let [binding, group] of bindingLookup.entries()) {
-                if (AreSameSerializedBindings(this.realm, serializedBinding, binding)) {
-                  group.push(functionInstance);
-                  found = true;
-                  break;
-                }
-              }
-              if (!found) {
-                let matchingInstances = [functionInstance];
-                bindingLookup.set(serializedBinding, matchingInstances);
-                newInstanceBatches.push(matchingInstances);
-              }
-            }
-          }
-          instanceBatches = newInstanceBatches;
-        }
-        this.statistics.functionClones += instanceBatches.length - 1;
-
-        for (instances of instanceBatches) {
-          let suffix = instances[0].functionValue.__originalName || "";
-          let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
-
-          // filter included variables to only include those that are different
-          let factoryNames: Array<string> = [];
-          let sameSerializedBindings = Object.create(null);
-          for (let name in unbound) {
-            let isDifferent = false;
-            let lastBinding;
-
-            if (instances[0].serializedBindings[name].modified) {
-              // Must modify for traversal
-              sameSerializedBindings[name] = instances[0].serializedBindings[name];
-              continue;
-            }
-
-            for (let { serializedBindings } of instances) {
-              let serializedBinding = serializedBindings[name];
-
-              invariant(!serializedBinding.modified);
-              if (!lastBinding) {
-                lastBinding = serializedBinding;
-              } else if (!AreSameSerializedBindings(this.realm, serializedBinding, lastBinding)) {
-                isDifferent = true;
-                break;
-              }
-            }
-
-            if (isDifferent) {
-              factoryNames.push(name);
-            } else {
-              invariant(lastBinding);
-              sameSerializedBindings[name] = { serializedValue: lastBinding.serializedValue };
-            }
-          }
-          //
-
-          let factoryParams: Array<BabelNodeLVal> = [];
-          for (let key of factoryNames) {
-            factoryParams.push(t.identifier(key));
+          if (instances[0].serializedBindings[name].modified) {
+            // Must modify for traversal
+            sameSerializedBindings[name] = instances[0].serializedBindings[name];
+            continue;
           }
 
-          let scopeInitialization = [];
-          for (let scope of instances[0].scopeInstances) {
-            factoryParams.push(t.identifier(scope.name));
-            scopeInitialization = scopeInitialization.concat(this._getReferentializedScopeInitialization(scope));
+          for (let { serializedBindings } of instances) {
+            let serializedBinding = serializedBindings[name];
+
+            invariant(!serializedBinding.modified);
+            if (!lastBinding) {
+              lastBinding = serializedBinding;
+            } else if (!AreSameSerializedBindings(this.realm, serializedBinding, lastBinding)) {
+              isDifferent = true;
+              break;
+            }
           }
 
-          factoryParams = factoryParams.concat(params).slice();
-
-          // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
-          let factoryNode = t.functionExpression(
-            null,
-            factoryParams,
-            ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-          );
-
-          if (instances[0].functionValue.$Strict) {
-            strictFunctionBodies.push(factoryNode);
+          if (isDifferent) {
+            factoryNames.push(name);
           } else {
-            unstrictFunctionBodies.push(factoryNode);
+            invariant(lastBinding);
+            sameSerializedBindings[name] = { serializedValue: lastBinding.serializedValue };
           }
+        }
+        //
 
-          factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
+        let factoryParams: Array<BabelNodeLVal> = [];
+        for (let key of factoryNames) {
+          factoryParams.push(t.identifier(key));
+        }
 
-          // factory functions do not depend on any nested generator scope, so they go to the prelude
-          let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
-          this.prelude.push(factoryDeclaration);
+        let scopeInitialization = [];
+        for (let scope of instances[0].scopeInstances) {
+          factoryParams.push(t.identifier(scope.name));
+          scopeInitialization = scopeInitialization.concat(this._getReferentializedScopeInitialization(scope));
+        }
 
-          traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, {
-            serializedBindings: sameSerializedBindings,
-            modified,
-            requireReturns: this.requireReturns,
-            requireStatistics,
-            isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)),
+        factoryParams = factoryParams.concat(params).slice();
+
+        // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
+        let factoryNode = t.functionExpression(
+          null,
+          factoryParams,
+          ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+        );
+
+        if (instances[0].functionValue.$Strict) {
+          strictFunctionBodies.push(factoryNode);
+        } else {
+          unstrictFunctionBodies.push(factoryNode);
+        }
+
+        factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
+
+        // factory functions do not depend on any nested generator scope, so they go to the prelude
+        let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
+        this.prelude.push(factoryDeclaration);
+
+        traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, {
+          serializedBindings: sameSerializedBindings,
+          modified,
+          requireReturns: this.requireReturns,
+          requireStatistics,
+          isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)),
+        });
+
+        for (let instance of instances) {
+          let { functionValue, serializedBindings, insertionPoint } = instance;
+          let functionId = this.locationService.getLocation(functionValue);
+          invariant(functionId !== undefined);
+          let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
+            let serializedValue = serializedBindings[name].serializedValue;
+            invariant(serializedValue);
+            return serializedValue;
           });
-
-          for (let instance of instances) {
-            let { functionValue, serializedBindings, insertionPoint } = instance;
-            let functionId = this.locationService.getLocation(functionValue);
-            invariant(functionId !== undefined);
-            let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
-              let serializedValue = serializedBindings[name].serializedValue;
-              invariant(serializedValue);
-              return serializedValue;
-            });
-            for (let { id } of instance.scopeInstances) {
-              flatArgs.push(t.numericLiteral(id));
-            }
-            let funcNode;
-            let firstUsage = this.firstFunctionUsages.get(functionValue);
-            invariant(insertionPoint !== undefined);
-            if (
-              this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
-              usesThis ||
-              (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
-              this.functionPrototypes.get(functionValue) !== undefined
-            ) {
-              let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
-              for (let flatArg of flatArgs) callArgs.push(flatArg);
-              for (let param of params) {
-                if (param.type !== "Identifier") {
-                  throw new FatalError("TODO: do not know how to deal with non-Identifier parameters");
-                }
-                callArgs.push(((param: any): BabelNodeIdentifier));
-              }
-
-              let callee = t.memberExpression(factoryId, t.identifier("call"));
-
-              let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
-
-              funcNode = t.functionExpression(null, params, childBody);
-              if (functionValue.$Strict) {
-                strictFunctionBodies.push(funcNode);
-              } else {
-                unstrictFunctionBodies.push(funcNode);
-              }
-            } else {
-              funcNode = t.callExpression(
-                t.memberExpression(factoryId, t.identifier("bind")),
-                [nullExpression].concat(flatArgs)
-              );
-            }
-
-            define(instance, functionId, funcNode);
+          for (let { id } of instance.scopeInstances) {
+            flatArgs.push(t.numericLiteral(id));
           }
+          let funcNode;
+          let firstUsage = this.firstFunctionUsages.get(functionValue);
+          invariant(insertionPoint !== undefined);
+          if (
+            this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
+            usesThis ||
+            (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
+            this.functionPrototypes.get(functionValue) !== undefined
+          ) {
+            let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
+            for (let flatArg of flatArgs) callArgs.push(flatArg);
+            for (let param of params) {
+              if (param.type !== "Identifier") {
+                throw new FatalError("TODO: do not know how to deal with non-Identifier parameters");
+              }
+              callArgs.push(((param: any): BabelNodeIdentifier));
+            }
+
+            let callee = t.memberExpression(factoryId, t.identifier("call"));
+
+            let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
+
+            funcNode = t.functionExpression(null, params, childBody);
+            if (functionValue.$Strict) {
+              strictFunctionBodies.push(funcNode);
+            } else {
+              unstrictFunctionBodies.push(funcNode);
+            }
+          } else {
+            funcNode = t.callExpression(
+              t.memberExpression(factoryId, t.identifier("bind")),
+              [nullExpression].concat(flatArgs)
+            );
+          }
+
+          define(instance, functionId, funcNode);
         }
       }
     }
