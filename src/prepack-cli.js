@@ -43,7 +43,9 @@ function run(
     --srcmapIn          The input sourcemap filename. If present, Prepack will output a sourcemap that maps from
                         the original file (pre-input sourcemap) to Prepack's output
     --srcmapOut         The output sourcemap filename.
-    --maxStackDepth     Specify the maximum call stack depth
+    --maxStackDepth     Specify the maximum call stack depth.
+    --timeout           The amount of time until Prepack should time out.
+    --addtlFunctions    Additional functions that should be prepacked (comma separated).
     --debugNames        Changes the output of Prepack so that for named functions and variables that get emitted into
                         Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
     --speculate         Enable speculative initialization of modules (for the module system Prepack has builtin
@@ -67,6 +69,8 @@ function run(
   let outputSourceMap;
   let statsFileName;
   let maxStackDepth: number;
+  let timeout: number;
+  let additionalFunctions: Array<string>;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -121,9 +125,21 @@ function run(
           }
           maxStackDepth = parseInt(value, 10);
           break;
+        case "timeout":
+          let seconds = args.shift();
+          if (isNaN(seconds)) {
+            console.error("Timeout must be a number");
+            process.exit(1);
+          }
+          timeout = parseInt(seconds, 10);
+          break;
+        case "addtlFunctions":
+          let line = args.shift();
+          additionalFunctions = line.split(",");
+          break;
         case "help":
           console.log(
-            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ]" +
+            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ]" +
               Object.keys(flags).map(s => "[ --" + s + "]").join(" ") +
               "\n" +
               HELP_STR
@@ -150,6 +166,8 @@ function run(
       errorHandler: errorHandler,
       sourceMaps: !!outputSourceMap,
       maxStackDepth: maxStackDepth,
+      timeout: timeout,
+      additionalFunctions: additionalFunctions,
     },
     flags
   );
