@@ -55,7 +55,7 @@ import * as t from "babel-types";
 import invariant from "../invariant.js";
 
 export default class ObjectValue extends ConcreteValue {
-  constructor(realm: Realm, proto?: ObjectValue | NullValue, intrinsicName?: string, refuseSerialization?: true) {
+  constructor(realm: Realm, proto?: ObjectValue | NullValue, intrinsicName?: string, refuseSerialization?: boolean) {
     super(realm, intrinsicName);
     realm.recordNewObject(this);
     if (realm.useAbstractInterpretation) this.setupBindings();
@@ -229,7 +229,7 @@ export default class ObjectValue extends ConcreteValue {
 
   // We track some internal state as properties on the global object, these should
   // never be serialized.
-  refuseSerialization: void | true;
+  refuseSerialization: void | boolean;
 
   mightBeFalse(): boolean {
     return false;

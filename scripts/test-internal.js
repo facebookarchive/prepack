@@ -82,7 +82,7 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       errorHandler,
       serialize: true,
-      initializeMoreModules: !modelCode && !additionalFunctions,
+      initializeMoreModules: !modelCode,
       sourceMaps: !!sourceMap,
       additionalFunctions: additionalFunctions,
     };

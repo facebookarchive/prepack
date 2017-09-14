@@ -51,7 +51,12 @@ export type Scope = FunctionValue | Generator;
    TODO #680: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
 */
 export class ResidualHeapVisitor {
-  constructor(realm: Realm, logger: Logger, modules: Modules) {
+  constructor(
+    realm: Realm,
+    logger: Logger,
+    modules: Modules,
+    additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>
+  ) {
     invariant(realm.useAbstractInterpretation);
     this.realm = realm;
     this.logger = logger;
@@ -64,10 +69,11 @@ export class ResidualHeapVisitor {
     this.values = new Map();
     let generator = this.realm.generator;
     invariant(generator);
-    this.scope = this.baseContext = generator;
+    this.scope = this.commonScope = generator;
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
+    this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
   }
 
   realm: Realm;
@@ -75,16 +81,17 @@ export class ResidualHeapVisitor {
   modules: Modules;
 
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, VisitedBindings>;
-  // Either realmGenerator or the FunctionValue of an additional function to serialize
   globalBindings: Map<string, VisitedBinding>;
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   functionBindings: Map<FunctionValue, VisitedBindings>;
   scope: Scope;
-  baseContext: Scope;
+  // Either the realm's generator or the FunctionValue of an additional function to serialize
+  commonScope: Scope;
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Set<AbstractValue>;
-  delayedVisitGeneratorEntries: Array<{| baseContext: Scope, generator: Generator, entry: GeneratorEntry |}>;
+  delayedVisitGeneratorEntries: Array<{| commonScope: Scope, generator: Generator, entry: GeneratorEntry |}>;
+  additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -113,7 +120,7 @@ export class ResidualHeapVisitor {
     }
 
     // visit properties
-    for (let [, propertyBinding] of obj.properties) {
+    for (let propertyBinding of obj.properties.values()) {
       invariant(propertyBinding);
       this.visitObjectProperty(propertyBinding);
     }
@@ -432,12 +439,13 @@ export class ResidualHeapVisitor {
   }
 
   visitValue(val: Value): void {
+    invariant(!val.refuseSerialization);
     if (val instanceof AbstractValue) {
       if (this._mark(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existance as templates for abstract objects (TODO #882).
-      this._withScope(this.baseContext, () => {
+      this._withScope(this.commonScope, () => {
         this._mark(val);
       });
     } else if (val instanceof EmptyValue) {
@@ -450,8 +458,8 @@ export class ResidualHeapVisitor {
     } else if (val instanceof ProxyValue) {
       if (this._mark(val)) this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
-      // Function declarations should get hoisted in the global code so that instances only get allocated once
-      this._withScope(this.baseContext, () => {
+      // Function declarations should get hoisted in common scope so that instances only get allocated once
+      this._withScope(this.commonScope, () => {
         invariant(val instanceof FunctionValue);
         if (this._mark(val)) this.visitValueFunction(val);
       });
@@ -463,7 +471,7 @@ export class ResidualHeapVisitor {
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the global code as well.
       if (val.originalConstructor !== undefined) {
-        this._withScope(this.baseContext, () => {
+        this._withScope(this.commonScope, () => {
           invariant(val instanceof ObjectValue);
           if (this._mark(val)) this.visitValueObject(val);
         });
@@ -484,7 +492,7 @@ export class ResidualHeapVisitor {
     return binding;
   }
 
-  createGeneratorVisitCallbacks(generator: Generator, baseContext: Scope): VisitEntryCallbacks {
+  createGeneratorVisitCallbacks(generator: Generator, commonScope: Scope): VisitEntryCallbacks {
     return {
       visitValue: this.visitValue.bind(this),
       visitGenerator: this.visitGenerator.bind(this),
@@ -495,90 +503,90 @@ export class ResidualHeapVisitor {
         this.referencedDeclaredValues.add(value);
       },
       recordDelayedEntry: (entry: GeneratorEntry) => {
-        this.delayedVisitGeneratorEntries.push({ baseContext, generator, entry });
+        this.delayedVisitGeneratorEntries.push({ commonScope, generator, entry });
       },
     };
   }
 
-  visitGenerator(generator: Generator, afterGeneratorVisit?: () => void): void {
+  visitGenerator(generator: Generator): void {
     this._withScope(generator, () => {
-      generator.visit(this.createGeneratorVisitCallbacks(generator, this.baseContext));
-      if (afterGeneratorVisit) afterGeneratorVisit();
+      generator.visit(this.createGeneratorVisitCallbacks(generator, this.commonScope));
     });
   }
 
-  visitRoots(additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>): void {
+  visitAdditionalFunctionEffects() {
+    for (let [functionValue, effects] of this.additionalFunctionValuesAndEffects.entries()) {
+      let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
+      // Need to do this fixup because otherwise we will skip over this function's
+      // generator in the _getTarget scope lookup
+      g.parent = functionValue.parent;
+      functionValue.parent = g;
+      // result -- ignore TODO: return the result from the function somehow
+      // Generator -- visit all entries
+      // Bindings -- (modifications to named variables) only need to serialize bindings if they're
+      //             captured by a residual function
+      //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
+      //             we don't overwrite anything they capture
+      //          -- TODO: deal with these properly
+      // PropertyBindings -- (property modifications) visit any property bindings to pre-existing objects
+      // CreatedObjects -- should take care of itself
+      this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
+      // Allows us to emit function declarations etc. inside of this additional
+      // function instead of adding them at global scope
+      this.commonScope = functionValue;
+      let visitPropertiesAndBindings = () => {
+        for (let propertyBinding of pb.keys()) {
+          let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
+          let object = binding.object;
+          // These should be in the generator so we can skip them
+          if (object.isPartialObject()) continue;
+          invariant(object instanceof ObjectValue);
+          if (co.has(object)) continue; // Created Object's binding
+          if (object.refuseSerialization) continue; // modification to internal state
+          if (object.intrinsicName === "global") continue; // Avoid double-counting
+          if (binding.descriptor === undefined) continue; //deleted
+          this.visitObjectProperty(binding);
+        }
+        // Visit a binding if and only if its overwriting something that we've
+        // already visited
+        for (let binding of ob.keys()) {
+          let new_value = binding.value;
+          let old_value = ob.get(binding);
+          if (old_value && new_value && this.values.has(old_value)) {
+            // Additional function needs to be able to overwrite the old value
+            // so it needs access to both values
+            if (old_value === new_value && old_value instanceof AbstractValue) continue;
+            invariant(old_value !== new_value);
+            this.visitValue(old_value);
+            this.visitValue(new_value);
+          }
+        }
+      };
+      this.visitGenerator(g);
+      this._withScope(g, visitPropertiesAndBindings);
+      this.realm.restoreBindings(ob);
+      this.realm.restoreProperties(pb);
+    }
+    // Do a fixpoint over all pure generator entries to make sure that we visit
+    // arguments of only BodyEntries that are required by some other residual value
+    let oldDelayedEntries = [];
+    while (oldDelayedEntries.length !== this.delayedVisitGeneratorEntries.length) {
+      oldDelayedEntries = this.delayedVisitGeneratorEntries;
+      this.delayedVisitGeneratorEntries = [];
+      for (let { commonScope, generator: entryGenerator, entry } of oldDelayedEntries) {
+        this.commonScope = commonScope;
+        this._withScope(entryGenerator, () => {
+          entryGenerator.visitEntry(entry, this.createGeneratorVisitCallbacks(entryGenerator, commonScope));
+        });
+      }
+    }
+  }
+
+  visitRoots(): void {
     let generator = this.realm.generator;
     invariant(generator);
     this.visitGenerator(generator);
-    for (let [, moduleValue] of this.modules.initializedModules) this.visitValue(moduleValue);
-    this.realm.evaluateAndRevertInGlobalEnv(() => {
-      if (additionalFunctionValuesAndEffects.size) {
-        for (let [functionValue, effects] of additionalFunctionValuesAndEffects.entries()) {
-          let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
-          // Need to do this fixup because otherwise we will skip over this function's
-          // generator in the _getTarget scope lookup
-          g.parent = functionValue.parent;
-          functionValue.parent = g;
-          // result -- ignore TODO: return the result from the function somehow
-          // Generator -- visit all entries
-          // Bindings -- only need to serialize bindings if they're captured by some nested function ??
-          //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
-          //          -- we don't overwrite anything they capture
-          //          -- TODO: deal with these properly
-          // PropertyBindings -- visit any property bindings that aren't to createdobjects
-          // CreatedObjects -- should take care of itself
-          this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
-          // Allows us to emit function declarations etc. inside of this additional
-          // function instead of adding them at global scope
-          this.baseContext = functionValue;
-          let visitPropertiesAndBindings = () => {
-            for (let propertyBinding of pb.keys()) {
-              let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
-              let object = binding.object;
-              // These should be in the generator so we can skip them
-              if (object.isPartialObject()) continue;
-              invariant(object instanceof ObjectValue);
-              if (co.has(object)) continue; // Created Object's binding
-              if (object.refuseSerialization) continue; // modification to internal state
-              if (object.intrinsicName === "global") continue; // Avoid double-counting
-              if (binding.descriptor === undefined) continue; //deleted
-              this.visitObjectProperty(binding);
-            }
-            // Visit a binding if and only if its overwriting something that we've
-            // already visited
-            for (let binding of ob.keys()) {
-              let new_value = binding.value;
-              let old_value = ob.get(binding);
-              if (old_value && new_value && this.values.has(old_value)) {
-                // Additional function needs to be able to overwrite the old value
-                // so it needs access to both values
-                if (old_value === new_value && old_value instanceof AbstractValue) continue;
-
-                invariant(old_value !== new_value);
-                this.visitValue(old_value);
-                this.visitValue(new_value);
-              }
-            }
-          };
-          this.visitGenerator(g, visitPropertiesAndBindings);
-          this.realm.restoreBindings(ob);
-          this.realm.restoreProperties(pb);
-        }
-      }
-      // Do a fixpoint over all pure generator entries to make sure that we visit
-      // arguments of only BodyEntries that are required by some other residual value
-      let oldDelayedEntries = [];
-      while (oldDelayedEntries.length !== this.delayedVisitGeneratorEntries.length) {
-        oldDelayedEntries = this.delayedVisitGeneratorEntries;
-        this.delayedVisitGeneratorEntries = [];
-        for (let { baseContext, generator: entryGenerator, entry } of oldDelayedEntries) {
-          this.baseContext = baseContext;
-          this._withScope(entryGenerator, () => {
-            entryGenerator.visitEntry(entry, this.createGeneratorVisitCallbacks(entryGenerator, baseContext));
-          });
-        }
-      }
-    });
+    for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
+    this.realm.evaluateAndRevertInGlobalEnv(this.visitAdditionalFunctionEffects.bind(this));
   }
 }

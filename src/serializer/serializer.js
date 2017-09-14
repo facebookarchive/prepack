@@ -118,8 +118,13 @@ export class Serializer {
     let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
     //Deep traversal of the heap to identify the necessary scope of residual functions
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
-    let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
-    residualHeapVisitor.visitRoots(additionalFunctionValuesAndEffects);
+    let residualHeapVisitor = new ResidualHeapVisitor(
+      this.realm,
+      this.logger,
+      this.modules,
+      additionalFunctionValuesAndEffects
+    );
+    residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 

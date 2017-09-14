@@ -163,8 +163,8 @@ export class ResidualHeapSerializer {
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
-  // function values we aren't allowed to delay initializations in because they're
-  // nested in additional functions
+  // function values nested in additional functions can't delay initializations
+  // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
 
   // Configures all mutable aspects of an object, in particular:
@@ -337,7 +337,7 @@ export class ResidualHeapSerializer {
     val: ObjectValue,
     key: string | SymbolValue,
     desc: Descriptor | void,
-    cleanupDummyProperty: boolean = false
+    deleteIfMightHaveBeenDeleted: boolean = false
   ): void {
     // Location for the property to be assigned to
     let locationFunction = () => {
@@ -350,11 +350,9 @@ export class ResidualHeapSerializer {
         computed
       );
     };
-    if (!desc) {
+    if (desc === undefined) {
       this._deleteProperty(locationFunction());
-      return;
-    }
-    if (this._canEmbedProperty(val, key, desc)) {
+    } else if (this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       invariant(!this.emitter.getReasonToWaitForDependencies([descValue, val]), "precondition of _emitProperty");
@@ -367,7 +365,7 @@ export class ResidualHeapSerializer {
           return this.serializeValue(descValue);
         },
         mightHaveBeenDeleted,
-        cleanupDummyProperty
+        deleteIfMightHaveBeenDeleted
       );
     } else {
       this.emitter.emit(this.emitDefinePropertyBody(val, key, desc));
@@ -618,7 +616,7 @@ export class ResidualHeapSerializer {
     locationFn: () => BabelNodeLVal,
     valueFn: () => BabelNodeExpression,
     mightHaveBeenDeleted: boolean,
-    cleanupDummyProperty: boolean = false
+    deleteIfMightHaveBeenDeleted: boolean = false
   ) {
     let location = locationFn();
     let value = valueFn();
@@ -626,7 +624,7 @@ export class ResidualHeapSerializer {
     if (mightHaveBeenDeleted) {
       let condition = t.binaryExpression("!==", value, this.serializeValue(this.realm.intrinsics.empty));
       let deletion = null;
-      if (cleanupDummyProperty) {
+      if (deleteIfMightHaveBeenDeleted) {
         invariant(location.type === "MemberExpression");
         deletion = t.expressionStatement(
           t.unaryExpression("delete", ((location: any): BabelNodeMemberExpression), true)
@@ -878,7 +876,6 @@ export class ResidualHeapSerializer {
       scopeInstances: new Set(),
     };
 
-    let additionalFuncValueEffects = this.additionalFunctionValuesAndEffects;
     if (this.currentFunctionBody !== this.mainBody) instance.declarationBodyOverride = this.currentFunctionBody;
     let delayed = 1;
     let undelay = () => {
@@ -904,12 +901,7 @@ export class ResidualHeapSerializer {
       this.emitter.emitNowOrAfterWaitingForDependencies(referencedValues, () => {
         let serializedBinding = serializeBindingFunc();
         invariant(serializedBinding);
-        // TODO: revisit this and probably remove the check
-        // For now we serialize anything the original function closes over
-        // because after finishing serialization of the main generator we can't emit
-        // any more code into the main body.
-        if (!additionalFuncValueEffects || !additionalFuncValueEffects.has(val))
-          serializedBindings[boundName] = serializedBinding;
+        serializedBindings[boundName] = serializedBinding;
         undelay();
       });
     }
@@ -1152,6 +1144,15 @@ export class ResidualHeapSerializer {
     }
   }
 
+  _withGeneratorScope(generator: Generator, callback: (Array<BabelNodeStatement>) => void): Array<BabelNodeStatement> {
+    let newBody = [];
+    let oldBody = this.emitter.beginEmitting(generator, newBody);
+    this.activeGeneratorBodies.set(generator, newBody);
+    callback(newBody);
+    this.activeGeneratorBodies.delete(generator);
+    return this.emitter.endEmitting(generator, oldBody);
+  }
+
   _getContext(): SerializationContext {
     // TODO #482: Values serialized by nested generators would currently only get defined
     // along the code of the nested generator; their definitions need to get hoisted
@@ -1159,12 +1160,7 @@ export class ResidualHeapSerializer {
     let context = {
       serializeValue: this.serializeValue.bind(this),
       serializeGenerator: (generator: Generator): Array<BabelNodeStatement> => {
-        let newBody = [];
-        let oldBody = this.emitter.beginEmitting(generator, newBody);
-        this.activeGeneratorBodies.set(generator, newBody);
-        generator.serialize(context);
-        this.activeGeneratorBodies.delete(generator);
-        return this.emitter.endEmitting(generator, oldBody);
+        return this._withGeneratorScope(generator, () => generator.serialize(context));
       },
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
@@ -1182,16 +1178,13 @@ export class ResidualHeapSerializer {
 
   _serializeAdditionalFunction(generator: Generator, postGeneratorCallback: () => void) {
     let context = this._getContext();
-    let newBody = [];
-    let oldCurBody = this.currentFunctionBody;
-    this.currentFunctionBody = newBody;
-    let oldBody = this.emitter.beginEmitting(generator, newBody);
-    this.activeGeneratorBodies.set(generator, newBody);
-    generator.serialize(context);
-    if (postGeneratorCallback) postGeneratorCallback();
-    this.activeGeneratorBodies.delete(generator);
-    this.currentFunctionBody = oldCurBody;
-    return this.emitter.endEmitting(generator, oldBody);
+    return this._withGeneratorScope(generator, newBody => {
+      let oldCurBody = this.currentFunctionBody;
+      this.currentFunctionBody = newBody;
+      generator.serialize(context);
+      if (postGeneratorCallback) postGeneratorCallback();
+      this.currentFunctionBody = oldCurBody;
+    });
   }
 
   _shouldBeWrapped(body: Array<any>) {
@@ -1248,9 +1241,9 @@ export class ResidualHeapSerializer {
             for (let propertyBinding of pb.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
               let object = binding.object;
-              // These should be in the generator so we can skip them
               if (object.isPartialObject()) continue;
               invariant(object instanceof ObjectValue);
+              // These should be in the generator so we can skip them
               if (co.has(object)) continue; // Created Object's binding
               if (object.intrinsicName === "global") continue; // Avoid double-serialization
               if (object.refuseSerialization) continue; // modification to internal state

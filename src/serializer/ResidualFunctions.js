@@ -131,7 +131,11 @@ export class ResidualFunctions {
     return scope;
   }
 
-  _referentialize(unbound: Names, instances: Array<FunctionInstance>): void {
+  _referentialize(
+    unbound: Names,
+    instances: Array<FunctionInstance>,
+    shouldReferentializeInstanceFn: FunctionInstance => boolean
+  ): void {
     for (let instance of instances) {
       let serializedBindings = instance.serializedBindings;
 
@@ -141,6 +145,9 @@ export class ResidualFunctions {
         if (serializedBinding.modified) {
           // Initialize captured scope at function call instead of globally
           if (!serializedBinding.referentialized) {
+            if (!shouldReferentializeInstanceFn(instance)) {
+              throw new FatalError("TODO: implement referentialization for prepacked functions");
+            }
             let scope = this._getSerializedBindingScopeInstance(serializedBinding);
             let capturedScope = "__captured" + scope.name;
             // Save the serialized value for initialization at the top of
@@ -225,11 +232,11 @@ export class ResidualFunctions {
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
-      // TODO: figure out how referentialization works with additional functions
-      let normalFunctionInstances = instances.filter(
+      this._referentialize(
+        functionInfo.unbound,
+        instances,
         instance => !rewrittenAdditionalFunctions.has(instance.functionValue)
       );
-      this._referentialize(functionInfo.unbound, normalFunctionInstances);
     }
 
     for (let [funcBody, instances] of functionEntries) {
