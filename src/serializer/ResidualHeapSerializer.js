@@ -66,12 +66,14 @@ export class ResidualHeapSerializer {
     residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     delayInitializations: boolean,
-    referencedDeclaredValues: Set<AbstractValue>
+    referencedDeclaredValues: Set<AbstractValue>,
+    statistics: SerializerStatistics
   ) {
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
     this.residualHeapValueIdentifiers = residualHeapValueIdentifiers;
+    this.statistics = statistics;
 
     let realmGenerator = this.realm.generator;
     invariant(realmGenerator);
@@ -90,7 +92,6 @@ export class ResidualHeapSerializer {
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
     this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
     this.requireReturns = new Map();
-    this.statistics = new SerializerStatistics();
     this.serializedValues = new Set();
     this.residualFunctions = new ResidualFunctions(
       this.realm,

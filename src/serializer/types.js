@@ -110,6 +110,8 @@ export class SerializerStatistics {
     this.valueIds = 0;
     this.valuesInlined = 0;
     this.delayedValues = 0;
+    this.acceleratedModules = 0;
+    this.delayedModules = 0;
   }
   objects: number;
   objectProperties: number;
@@ -119,6 +121,8 @@ export class SerializerStatistics {
   valueIds: number;
   valuesInlined: number;
   delayedValues: number;
+  acceleratedModules: number;
+  delayedModules: number;
 
   log() {
     console.log(`=== serialization statistics`);
@@ -131,6 +135,7 @@ export class SerializerStatistics {
       `${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${this
         .valuesInlined} values inlined`
     );
+    console.log(`${this.acceleratedModules} accelerated and ${this.delayedModules} delayed modules.`);
   }
 }
 
