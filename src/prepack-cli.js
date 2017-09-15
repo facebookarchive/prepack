@@ -36,26 +36,28 @@ function run(
   fs
 ) {
   let HELP_STR = `
-    input               The name of the file to run Prepack over (for web please provide the single js bundle file)
-    --out               The name of the output file
-    --compatibility     The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(", ")}]
-    --mathRandomSeed    If you want Prepack to evaluate Math.random() calls, please provide a seed.
-    --srcmapIn          The input sourcemap filename. If present, Prepack will output a sourcemap that maps from
-                        the original file (pre-input sourcemap) to Prepack's output
-    --srcmapOut         The output sourcemap filename.
-    --maxStackDepth     Specify the maximum call stack depth
-    --debugNames        Changes the output of Prepack so that for named functions and variables that get emitted into
-                        Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
-    --speculate         Enable speculative initialization of modules (for the module system Prepack has builtin
-                        knowledge about). Prepack will try to execute all factory functions it is able to.
-    --trace             Traces the order of module initialization.
-    --serialize         Serializes the partially evaluated global environment as a program that recreates it.
-                        (default = true)
-    --residual          Produces the residual program that results after constant folding.
-    --profile           Enables console logging of profile information of different phases of prepack.
-    --statsFile         The name of the output file where statistics will be written to.
-    --inlineExpressions When generating code, tells prepack to avoid naming expressions when they are only used once,
-                        and instead inline them where they are used.
+    input                    The name of the file to run Prepack over (for web please provide the single js bundle file)
+    --out                    The name of the output file
+    --compatibility          The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(", ")}]
+    --mathRandomSeed         If you want Prepack to evaluate Math.random() calls, please provide a seed.
+    --srcmapIn               The input sourcemap filename. If present, Prepack will output a sourcemap that maps from
+                             the original file (pre-input sourcemap) to Prepack's output
+    --srcmapOut              The output sourcemap filename.
+    --maxStackDepth          Specify the maximum call stack depth.
+    --timeout                The amount of time in seconds until Prepack should time out.
+    --additionalFunctions    Additional functions that should be prepacked (comma separated).
+    --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
+                             Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
+    --speculate              Enable speculative initialization of modules (for the module system Prepack has builtin
+                             knowledge about). Prepack will try to execute all factory functions it is able to.
+    --trace                  Traces the order of module initialization.
+    --serialize              Serializes the partially evaluated global environment as a program that recreates it.
+                             (default = true)
+    --residual               Produces the residual program that results after constant folding.
+    --profile                Enables console logging of profile information of different phases of prepack.
+    --statsFile              The name of the output file where statistics will be written to.
+    --inlineExpressions      When generating code, tells prepack to avoid naming expressions when they are only used once,
+                             and instead inline them where they are used.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -67,6 +69,8 @@ function run(
   let outputSourceMap;
   let statsFileName;
   let maxStackDepth: number;
+  let timeout: number;
+  let additionalFunctions: Array<string>;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -121,9 +125,21 @@ function run(
           }
           maxStackDepth = parseInt(value, 10);
           break;
+        case "timeout":
+          let seconds = args.shift();
+          if (isNaN(seconds)) {
+            console.error("Timeout must be a number");
+            process.exit(1);
+          }
+          timeout = parseInt(seconds, 10) * 1000;
+          break;
+        case "additionalFunctions":
+          let line = args.shift();
+          additionalFunctions = line.split(",");
+          break;
         case "help":
           console.log(
-            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ]" +
+            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ]" +
               Object.keys(flags).map(s => "[ --" + s + "]").join(" ") +
               "\n" +
               HELP_STR
@@ -150,6 +166,8 @@ function run(
       errorHandler: errorHandler,
       sourceMaps: !!outputSourceMap,
       maxStackDepth: maxStackDepth,
+      timeout: timeout,
+      additionalFunctions: additionalFunctions,
     },
     flags
   );
