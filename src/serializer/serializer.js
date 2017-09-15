@@ -43,7 +43,6 @@ export class Serializer {
       this.logger,
       this.statistics,
       !!serializerOptions.logModules,
-      !!serializerOptions.logStatistics,
       !!serializerOptions.delayUnsupportedRequires
     );
     this.functions = new Functions(this.realm, serializerOptions.additionalFunctions, this.modules.moduleTracer);
