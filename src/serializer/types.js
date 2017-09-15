@@ -24,7 +24,7 @@ export type FunctionInstance = {
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
   // Optional place to put the function declaration
-  declarationBodyOverride?: Array<BabelNodeStatement>,
+  preludeOverride?: Array<BabelNodeStatement>,
   scopeInstances: Set<ScopeBinding>,
 };
 

@@ -128,7 +128,6 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
       generator.emitPropertyDelete(O, P, propertyBinding);
     }
   } else {
-    let descValue = desc.value || realm.intrinsics.undefined;
     if (oldDesc === undefined) {
       // The property is being created
       if (O === realm.$GlobalObject) {

@@ -103,7 +103,7 @@ export class ResidualHeapSerializer {
         getLocation: value => this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCountOptional(value),
         createLocation: () => {
           let location = t.identifier(this.valueNameGenerator.generate("initialized"));
-          this.mainBody.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
+          this.currentFunctionBody.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
           return location;
         },
       },
@@ -869,7 +869,7 @@ export class ResidualHeapSerializer {
       scopeInstances: new Set(),
     };
 
-    if (this.currentFunctionBody !== this.mainBody) instance.declarationBodyOverride = this.currentFunctionBody;
+    if (this.currentFunctionBody !== this.mainBody) instance.preludeOverride = this.currentFunctionBody;
     let delayed = 1;
     let undelay = () => {
       if (--delayed === 0) {
@@ -1245,7 +1245,6 @@ export class ResidualHeapSerializer {
           // function instead of adding them at global scope
           // TODO: make sure this generator isn't getting mutated oddly
           this.additionalFunctionValueNestedFunctions = ((nestedFunctions: any): Set<FunctionValue>);
-          let emitter = this.emitter;
           let serializePropertiesAndBindings = () => {
             let serializedPropertyBindings = this.serializedPropertyBindings;
             invariant(serializedPropertyBindings);
