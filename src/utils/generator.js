@@ -131,7 +131,7 @@ export class Generator {
         context.recordPropertySerialized(binding);
         return t.expressionStatement(
           t.assignmentExpression("=", this.preludeGenerator.globalReference(key, !strictMode), valueNode)
-        )
+        );
       },
     });
   }
@@ -141,7 +141,9 @@ export class Generator {
       args: [],
       buildNode: ([], context) => {
         context.recordPropertySerialized(binding);
-        return t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode)))
+        return t.expressionStatement(
+          t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode))
+        );
       },
     });
   }
@@ -159,7 +161,7 @@ export class Generator {
         context.recordPropertySerialized(binding);
         return t.expressionStatement(
           t.assignmentExpression("=", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)), valueNode)
-        )
+        );
       },
     });
   }
@@ -184,7 +186,7 @@ export class Generator {
         buildNode: (_, context: SerializationContext) => {
           context.recordPropertySerialized(binding);
           invariant(desc);
-          return context.emitDefinePropertyBody(object, key, desc)
+          return context.emitDefinePropertyBody(object, key, desc);
         },
       });
     }
@@ -199,7 +201,7 @@ export class Generator {
         context.recordPropertySerialized(binding);
         return t.expressionStatement(
           t.unaryExpression("delete", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)))
-        )
+        );
       },
     });
   }

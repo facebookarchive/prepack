@@ -1164,8 +1164,7 @@ export class ResidualHeapSerializer {
         return this._withGeneratorScope(generator, () => generator.serialize(context));
       },
       recordPropertySerialized: (propertyBinding: PropertyBinding) => {
-        if (this.serializedPropertyBindings)
-          this.serializedPropertyBindings.add(propertyBinding);
+        if (this.serializedPropertyBindings) this.serializedPropertyBindings.add(propertyBinding);
       },
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
@@ -1227,8 +1226,14 @@ export class ResidualHeapSerializer {
       let additionalFVEffects = this.additionalFunctionValuesAndEffects;
       if (additionalFVEffects) {
         for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
-          let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
-          let nestedFunctions = new Set([...co].filter(object => object instanceof FunctionValue));
+          let [
+            result,
+            generator,
+            modifiedBindings,
+            modifiedProperties: Map<PropertyBinding, void | Descriptor>,
+            createdObjects,
+          ] = effects;
+          let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
           // result -- ignore TODO: return the result from the function somehow
           // Generator -- visit all entries
           // Bindings -- only need to serialize bindings if they're captured by some nested function ??
@@ -1237,7 +1242,13 @@ export class ResidualHeapSerializer {
           //          -- TODO: deal with these properly
           // PropertyBindings -- visit any property bindings that aren't to createdobjects
           // CreatedObjects -- should take care of itself
-          this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
+          this.realm.applyEffects([
+            result,
+            new Generator(this.realm),
+            modifiedBindings,
+            modifiedProperties,
+            createdObjects,
+          ]);
           // Allows us to emit function declarations etc. inside of this additional
           // function instead of adding them at global scope
           // TODO: make sure this generator isn't getting mutated oddly
@@ -1246,10 +1257,10 @@ export class ResidualHeapSerializer {
           let serializePropertiesAndBindings = () => {
             let serializedPropertyBindings = this.serializedPropertyBindings;
             invariant(serializedPropertyBindings);
-            for (let propertyBinding of pb.keys()) {
+            for (let propertyBinding of modifiedProperties.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
               let object = binding.object;
-              if (object instanceof ObjectValue && co.has(object)) continue;
+              if (object instanceof ObjectValue && createdObjects.has(object)) continue;
               if (object.refuseSerialization) continue;
               // we've already serialized it from a generator entry.
               if (serializedPropertyBindings.has(binding)) continue;
@@ -1257,7 +1268,7 @@ export class ResidualHeapSerializer {
               this._emitProperty(object, binding.key, binding.descriptor, true);
             }
           };
-          let body = this._serializeAdditionalFunction(g, serializePropertiesAndBindings);
+          let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);
           invariant(body.length > 0, "An additional function has no body");
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
           rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
@@ -1271,8 +1282,8 @@ export class ResidualHeapSerializer {
                 : ""}`
             );
           // These don't restore themselves properly otherwise.
-          this.realm.restoreBindings(ob);
-          this.realm.restoreProperties(pb);
+          this.realm.restoreBindings(modifiedBindings);
+          this.realm.restoreProperties(modifiedProperties);
         }
       }
     };

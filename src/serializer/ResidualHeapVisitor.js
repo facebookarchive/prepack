@@ -334,7 +334,7 @@ export class ResidualHeapVisitor {
         let reference = this.logger.tryQuery(
           () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
           undefined,
-          false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the global scope. */
+          false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the common scope. */
         );
         if (
           reference === undefined ||
@@ -469,7 +469,7 @@ export class ResidualHeapVisitor {
       invariant(val instanceof ObjectValue);
 
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
-      // prototype initialization to the global code as well.
+      // prototype initialization to the common scope code as well.
       if (val.originalConstructor !== undefined) {
         this._withScope(this.commonScope, () => {
           invariant(val instanceof ObjectValue);
@@ -516,11 +516,17 @@ export class ResidualHeapVisitor {
 
   visitAdditionalFunctionEffects() {
     for (let [functionValue, effects] of this.additionalFunctionValuesAndEffects.entries()) {
-      let [r, g, ob, pb: Map<PropertyBinding, void | Descriptor>, co] = effects;
+      let [
+        result,
+        generator,
+        modifiedBindings,
+        modifiedProperties: Map<PropertyBinding, void | Descriptor>,
+        createdObjects,
+      ] = effects;
       // Need to do this fixup because otherwise we will skip over this function's
       // generator in the _getTarget scope lookup
-      g.parent = functionValue.parent;
-      functionValue.parent = g;
+      generator.parent = functionValue.parent;
+      functionValue.parent = generator;
       // result -- ignore TODO: return the result from the function somehow
       // Generator -- visit all entries
       // Bindings -- (modifications to named variables) only need to serialize bindings if they're
@@ -530,25 +536,31 @@ export class ResidualHeapVisitor {
       //          -- TODO: deal with these properly
       // PropertyBindings -- (property modifications) visit any property bindings to pre-existing objects
       // CreatedObjects -- should take care of itself
-      this.realm.applyEffects([r, new Generator(this.realm), ob, pb, co]);
+      this.realm.applyEffects([
+        result,
+        new Generator(this.realm),
+        modifiedBindings,
+        modifiedProperties,
+        createdObjects,
+      ]);
       // Allows us to emit function declarations etc. inside of this additional
       // function instead of adding them at global scope
       this.commonScope = functionValue;
       let visitPropertiesAndBindings = () => {
-        for (let propertyBinding of pb.keys()) {
+        for (let propertyBinding of modifiedProperties.keys()) {
           let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
           let object = binding.object;
           // These shouldn't be serialized
-          if (object instanceof ObjectValue && co.has(object)) continue; // Created Object's binding
+          if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
           if (object.refuseSerialization) continue; // modification to internal state
           if (binding.descriptor === undefined) continue; // deleted
           this.visitObjectProperty(binding);
         }
       };
-      this.visitGenerator(g);
-      this._withScope(g, visitPropertiesAndBindings);
-      this.realm.restoreBindings(ob);
-      this.realm.restoreProperties(pb);
+      this.visitGenerator(generator);
+      this._withScope(generator, visitPropertiesAndBindings);
+      this.realm.restoreBindings(modifiedBindings);
+      this.realm.restoreProperties(modifiedProperties);
     }
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value
