@@ -42,6 +42,7 @@ import {
   IsPropertyReference,
   IsToNumberPure,
 } from "../methods/index.js";
+import simplifyAbstractValue from "../utils/simplifier.js";
 import type { BabelNodeUnaryExpression } from "babel-types";
 
 function isInstance(proto, Constructor): boolean {
@@ -131,7 +132,7 @@ export default function(
     if (value instanceof AbstractValue) {
       if (!value.mightNotBeTrue()) return realm.intrinsics.false;
       if (!value.mightNotBeFalse()) return realm.intrinsics.true;
-      return AbstractValue.createFromUnaryOp(realm, "!", value);
+      return simplifyAbstractValue(realm, AbstractValue.createFromUnaryOp(realm, "!", value));
     }
     invariant(value instanceof ConcreteValue);
     let oldValue = ToBoolean(realm, value);
