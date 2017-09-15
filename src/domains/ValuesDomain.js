@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "babel-types";
 import { AbruptCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -86,6 +86,7 @@ export default class ValuesDomain {
     let resultSet = new Set();
     let savedHandler = realm.errorHandler;
     let savedIsReadOnly = realm.isReadOnly;
+    realm.isReadOnly = true;
     try {
       realm.errorHandler = () => {
         throw new FatalError();
@@ -259,6 +260,53 @@ export default class ValuesDomain {
     invariant(false, "unimplemented " + op);
   }
 
+  static logicalOp(realm: Realm, op: BabelNodeLogicalOperator, left: ValuesDomain, right: ValuesDomain): ValuesDomain {
+    let leftElements = left._elements;
+    let rightElements = right._elements;
+    // Return top if left and/or right are top or if the size of the value set would get to be quite large.
+    // Note: the larger the set of values, the less we know and therefore the less we get value from computing
+    // all of these values. TODO: probably the upper bound can be quite a bit smaller.
+    if (!leftElements || !rightElements || leftElements.size > 100 || rightElements.size > 100)
+      return ValuesDomain.topVal;
+    let resultSet = new Set();
+    let savedHandler = realm.errorHandler;
+    let savedIsReadOnly = realm.isReadOnly;
+    realm.isReadOnly = true;
+    try {
+      realm.errorHandler = () => {
+        throw new FatalError();
+      };
+      for (let leftElem of leftElements) {
+        for (let rightElem of rightElements) {
+          let result = ValuesDomain.computeLogical(realm, op, leftElem, rightElem);
+          invariant(result instanceof ConcreteValue);
+          resultSet.add(result);
+        }
+      }
+    } catch (e) {
+      if (e instanceof AbruptCompletion) return ValuesDomain.topVal;
+    } finally {
+      realm.errorHandler = savedHandler;
+      realm.isReadOnly = savedIsReadOnly;
+    }
+    return new ValuesDomain(resultSet);
+  }
+
+  // Note that calling this can result in user code running, which can side-effect the heap.
+  // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
+  static computeLogical(realm: Realm, op: BabelNodeLogicalOperator, lval: ConcreteValue, rval: ConcreteValue): Value {
+    let lbool = ToBoolean(realm, lval);
+
+    if (op === "&&") {
+      // ECMA262 12.13.3
+      if (lbool === false) return lval;
+    } else if (op === "||") {
+      // ECMA262 12.13.3
+      if (lbool === true) return lval;
+    }
+    return rval;
+  }
+
   // Note that calling this can result in user code running, which can side-effect the heap.
   // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
   static computeUnary(realm: Realm, op: BabelUnaryOperator, value: ConcreteValue): Value {
@@ -351,6 +399,7 @@ export default class ValuesDomain {
     let resultSet = new Set();
     let savedHandler = realm.errorHandler;
     let savedIsReadOnly = realm.isReadOnly;
+    realm.isReadOnly = true;
     try {
       realm.errorHandler = () => {
         throw new FatalError();
