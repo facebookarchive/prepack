@@ -68,6 +68,7 @@ import {
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import IsStrict from "../utils/strict.js";
+import * as t from "babel-types";
 
 function InternalDescriptorPropertyToValue(realm: Realm, value: void | boolean | Value) {
   if (value === undefined) return realm.intrinsics.undefined;
@@ -1005,7 +1006,24 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
   // 2. If O does not have an own property with key P, return undefined.
   let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
   if (!existingBinding) {
-    if (O.isPartialObject() && !O.isSimpleObject()) {
+    if (O.isPartialObject()) {
+      invariant(realm.useAbstractInterpretation); // __makePartial will already have thrown an error if not
+      if (O.isSimpleObject()) {
+        if (P instanceof StringValue) P = P.value;
+        if (typeof P === "string") {
+          // In this case it is safe to defer the property access to runtime (at this point in time)
+          invariant(realm.generator);
+          let pname = realm.generator.getAsPropertyNameExpression(P);
+          let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
+            t.memberExpression(node, pname, !t.isIdentifier(pname))
+          );
+          return { configurabe: true, enumerable: true, value: absVal, writable: true };
+        } else {
+          invariant(P instanceof SymbolValue);
+          // Simple objects don't have symbol properties
+          return undefined;
+        }
+      }
       AbstractValue.reportIntrospectionError(O, P);
       throw new FatalError();
     }
@@ -1027,7 +1045,7 @@ export function OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: Property
     if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
       let realmGenerator = realm.generator;
       invariant(realmGenerator);
-      value = realmGenerator.derive(value.types, value.values, value.args, value._buildNode, { kind: "resolved" });
+      value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), { kind: "resolved" });
       InternalSetProperty(realm, O, P, {
         value: value,
         writable: "writable" in X ? X.writable : false,

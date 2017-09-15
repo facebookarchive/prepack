@@ -21,7 +21,6 @@ import type { Realm } from "../realm.js";
 
 import { computeBinary, getPureBinaryOperationResultType } from "../evaluators/BinaryExpression.js";
 import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { FatalError } from "../errors.js";
 import { composeNormalCompletions, unbundleNormalCompletion } from "../methods/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
@@ -116,12 +115,7 @@ export function createAbstractValueForBinary(
       AbstractValue.reportIntrospectionError((val: any));
       throw new FatalError();
     }
-    resultValue = realm.createAbstract(
-      new TypesDomain(resultType),
-      ValuesDomain.topVal,
-      [],
-      t.identifier("never used")
-    );
+    resultValue = AbstractValue.createFromBinaryOp(realm, op, lval, rval, ast.loc);
   }
   let r = composeNormalCompletions(leftCompletion, rightCompletion, resultValue, realm);
   return [r, ast, io];

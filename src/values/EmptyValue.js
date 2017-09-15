@@ -11,4 +11,8 @@
 
 import { UndefinedValue } from "./index.js";
 
-export default class EmptyValue extends UndefinedValue {}
+export default class EmptyValue extends UndefinedValue {
+  getHash(): number {
+    return 4523845144584502;
+  }
+}

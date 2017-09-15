@@ -15,8 +15,7 @@ import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
-import { Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import { AbstractValue, Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
 import invariant from "../invariant.js";
@@ -233,7 +232,7 @@ export class ModuleTracer extends Tracer {
                 );
               }
 
-              result = realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [], ([]) =>
+              result = AbstractValue.createTemporalFromBuildFunction(realm, Value, [], ([]) =>
                 t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
               );
             } else {

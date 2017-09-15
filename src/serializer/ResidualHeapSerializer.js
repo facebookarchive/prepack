@@ -583,15 +583,7 @@ export class ResidualHeapSerializer {
     invariant(intrinsicName);
     if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
       // The intrinsic was generated at a particular point in time.
-      let intrinsicId = t.identifier(this.valueNameGenerator.generate(intrinsicName));
-      let declar = t.variableDeclaration("var", [
-        t.variableDeclarator(intrinsicId, this.preludeGenerator.convertStringToMember(intrinsicName)),
-      ]);
-      // TODO #882: The value came into existance as a template for an abstract object.
-      // Unfortunately, we are not properly tracking which generate it's associated with.
-      // Until this gets fixed, let's stick to the historical behavior: Emit to the current emitter body.
-      this.emitter.emit(declar);
-      return intrinsicId;
+      return this.preludeGenerator.convertStringToMember(intrinsicName);
     } else {
       // The intrinsic conceptually exists ahead of time.
       invariant(this.emitter.getBody() === this.currentFunctionBody);

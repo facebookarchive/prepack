@@ -12,13 +12,10 @@
 import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue, NumberValue, AbstractValue } from "../../values/index.js";
 import { ToNumber, ToUint32, IsToNumberPure } from "../../methods/index.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 
-let buildMathRandom = buildExpressionTemplate("global.Math.random()");
-let buildMathImul = buildExpressionTemplate("global.Math.imul(A, B)");
-let buildMathTemplates: Map<string, { f: Function, names: Array<string> }> = new Map();
+let buildMathTemplates: Map<string, { template: Function, templateSource: string }> = new Map();
 
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Math");
@@ -153,21 +150,21 @@ export default function(realm: Realm): ObjectValue {
 
   for (let [name, length] of functions) {
     obj.defineNativeMethod(name, length, (context, args, originalLength) => {
+      invariant(originalLength >= 0);
       args.length = originalLength;
-      if (args.some(arg => arg instanceof AbstractValue) && args.every(arg => IsToNumberPure(realm, arg))) {
+      if (
+        originalLength <= 26 &&
+        args.some(arg => arg instanceof AbstractValue) &&
+        args.every(arg => IsToNumberPure(realm, arg))
+      ) {
         let r = buildMathTemplates.get(name);
         if (r === undefined) {
-          let names = [...new Array(args.length)].map((_, i) => `X${i}`);
-          let f = buildExpressionTemplate(`Math.${name}(${names.join(", ")})`);
-          buildMathTemplates.set(name, (r = { f, names }));
+          let params = "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z".substring(0, originalLength * 2 - 1);
+          let templateSource = `Math.${name}(${params})`;
+          let template = buildExpressionTemplate(templateSource);
+          buildMathTemplates.set(name, (r = { template, templateSource }));
         }
-
-        return realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, args, nodes => {
-          invariant(r !== undefined);
-          let mapping = {};
-          for (let i = 0; i < nodes.length; i++) mapping[r.names[i]] = nodes[i];
-          return r.f(realm.preludeGenerator)(mapping);
-        });
+        return AbstractValue.createFromTemplate(realm, r.template, NumberValue, args, r.templateSource);
       }
 
       return new NumberValue(
@@ -177,6 +174,9 @@ export default function(realm: Realm): ObjectValue {
     });
   }
 
+  const imulTemplateSrc = "global.Math.imul(A, B)";
+  const imulTemplate = buildExpressionTemplate(imulTemplateSrc);
+
   // ECMA262 20.2.2.19
   obj.defineNativeMethod("imul", 2, (context, [x, y]) => {
     if (
@@ -184,9 +184,7 @@ export default function(realm: Realm): ObjectValue {
       IsToNumberPure(realm, x) &&
       IsToNumberPure(realm, y)
     ) {
-      return realm.createAbstract(new TypesDomain(NumberValue), ValuesDomain.topVal, [x, y], ([a, b]) =>
-        buildMathImul(realm.preludeGenerator)({ A: a, B: b })
-      );
+      return AbstractValue.createFromTemplate(realm, imulTemplate, NumberValue, [x, y], imulTemplateSrc);
     }
 
     return new NumberValue(
@@ -195,18 +193,18 @@ export default function(realm: Realm): ObjectValue {
     );
   });
 
+  const mathRandomTemplateSrc = "global.Math.random()";
+  const mathRandomTemplate = buildExpressionTemplate(mathRandomTemplateSrc);
+
   // ECMA262 20.2.2.27
   obj.defineNativeMethod("random", 0, context => {
     if (realm.mathRandomGenerator !== undefined) {
       return new NumberValue(realm, realm.mathRandomGenerator());
     } else if (realm.useAbstractInterpretation) {
-      return realm.deriveAbstract(
-        new TypesDomain(NumberValue),
-        ValuesDomain.topVal,
-        [],
-        buildMathRandom(realm.preludeGenerator),
-        { isPure: true, skipInvariant: true }
-      );
+      return AbstractValue.createTemporalFromTemplate(realm, mathRandomTemplate, NumberValue, [], {
+        isPure: true,
+        skipInvariant: true,
+      });
     } else {
       return new NumberValue(realm, Math.random());
     }

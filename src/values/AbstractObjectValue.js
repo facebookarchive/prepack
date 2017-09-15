@@ -12,31 +12,24 @@
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
-import { AbstractValue, BooleanValue, ObjectValue, StringValue, Value } from "./index.js";
+import { AbstractValue, ObjectValue, StringValue, Value } from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, joinValuesAsConditional, cloneDescriptor, equalDescriptors } from "../methods/index.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(
     realm: Realm,
     types: TypesDomain,
     values: ValuesDomain,
+    hashValue: number,
     args: Array<Value>,
-    buildNode: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
+    buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    optionalArgs?: {| kind?: string, intrinsicName?: string |}
   ) {
-    super(realm, types, values, args, buildNode, optionalArgs);
-  }
-
-  clone(): AbstractObjectValue {
-    let result = new AbstractObjectValue(this.$Realm, this.types, this.values, this.args, this._buildNode);
-    if (this.kind) result.kind = this.kind;
-    if (this.intrinsicName) result.intrinsicName = this.intrinsicName;
-    return result;
+    super(realm, types, values, hashValue, args, buildNode, optionalArgs);
   }
 
   getTemplate(): ObjectValue {
@@ -58,6 +51,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   isSimpleObject(): boolean {
+    if (this.values.isTop()) return false;
     let result;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -84,6 +78,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeNotPartial(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       element.makeNotPartial();
@@ -91,6 +89,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makePartial(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       element.makePartial();
@@ -98,6 +100,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeSimple(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       return element.makeSimple();
@@ -145,12 +151,7 @@ export default class AbstractObjectValue extends AbstractValue {
             }
             if (!IsDataDescriptor(this.$Realm, desc)) continue;
             // values may be different
-            let cond = this.$Realm.createAbstract(
-              new TypesDomain(BooleanValue),
-              ValuesDomain.topVal,
-              [this, cv],
-              ([x, y]) => t.binaryExpression("===", x, y)
-            );
+            let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
             desc.value = joinValuesAsConditional(this.$Realm, cond, d.value, desc.value);
           }
         }
@@ -166,6 +167,10 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.6
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
     if (P instanceof StringValue) P = P.value;
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -196,12 +201,7 @@ export default class AbstractObjectValue extends AbstractValue {
           throw new FatalError();
         }
         let dval = d === undefined || d.vale === undefined ? this.$Realm.intrinsics.empty : d.value;
-        let cond = this.$Realm.createAbstract(
-          new TypesDomain(BooleanValue),
-          ValuesDomain.topVal,
-          [this, cv],
-          ([x, y]) => t.binaryExpression("===", x, y)
-        );
+        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
         desc.value = joinValuesAsConditional(this.$Realm, cond, new_val, dval);
         if (cv.$DefineOwnProperty(P, desc)) {
           sawTrue = true;
@@ -218,6 +218,10 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.7
   $HasProperty(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -245,22 +249,15 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        if (cv.isSimpleObject() && typeof P === "string") {
-          let generator = this.$Realm.generator;
-          invariant(generator !== undefined);
-          let pname = generator.getAsPropertyNameExpression(P);
-          let d = cv.$GetOwnProperty(P);
-          if (d === undefined) {
-            return this.$Realm.deriveAbstract(TypesDomain.topVal, ValuesDomain.topVal, [cv], ([node]) =>
-              t.memberExpression(node, pname, !t.isIdentifier(pname))
-            );
-          }
-        }
         return cv.$Get(P, Receiver);
       }
       invariant(false);
@@ -277,12 +274,7 @@ export default class AbstractObjectValue extends AbstractValue {
         let cvVal = d === undefined ? this.$Realm.intrinsics.undefined : d.value;
         if (result === undefined) result = cvVal;
         else {
-          let cond = this.$Realm.createAbstract(
-            new TypesDomain(BooleanValue),
-            ValuesDomain.topVal,
-            [this, cv],
-            ([x, y]) => t.binaryExpression("===", x, y)
-          );
+          let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
           result = joinValuesAsConditional(this.$Realm, cond, cvVal, result);
         }
       }
@@ -294,6 +286,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     invariant(this === Receiver, "TODO");
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -307,12 +303,7 @@ export default class AbstractObjectValue extends AbstractValue {
         let cvVal = cv.$GetPartial(P, cv);
         if (result === undefined) result = cvVal;
         else {
-          let cond = this.$Realm.createAbstract(
-            new TypesDomain(BooleanValue),
-            ValuesDomain.topVal,
-            [this, cv],
-            ([x, y]) => t.binaryExpression("===", x, y)
-          );
+          let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
           result = joinValuesAsConditional(this.$Realm, cond, cvVal, result);
         }
       }
@@ -325,6 +316,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (P instanceof StringValue) P = P.value;
     invariant(this === Receiver, "TODO");
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -344,12 +339,7 @@ export default class AbstractObjectValue extends AbstractValue {
           throw new FatalError();
         }
         let oldVal = d === undefined ? this.$Realm.intrinsics.empty : d.value;
-        let cond = this.$Realm.createAbstract(
-          new TypesDomain(BooleanValue),
-          ValuesDomain.topVal,
-          [this, cv],
-          ([x, y]) => t.binaryExpression("===", x, y)
-        );
+        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
         let v = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
         if (cv.$Set(P, v, cv)) sawTrue = true;
         else sawFalse = true;
@@ -365,6 +355,10 @@ export default class AbstractObjectValue extends AbstractValue {
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
     invariant(this === Receiver, "TODO");
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -377,12 +371,7 @@ export default class AbstractObjectValue extends AbstractValue {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
         let oldVal = this.$GetPartial(P, Receiver);
-        let cond = this.$Realm.createAbstract(
-          new TypesDomain(BooleanValue),
-          ValuesDomain.topVal,
-          [this, cv],
-          ([x, y]) => t.binaryExpression("===", x, y)
-        );
+        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
         let v = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
         cv.$SetPartial(P, v, cv);
       }
@@ -393,6 +382,10 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.10
   $Delete(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
@@ -412,12 +405,7 @@ export default class AbstractObjectValue extends AbstractValue {
           AbstractValue.reportIntrospectionError(this, P);
           throw new FatalError();
         }
-        let cond = this.$Realm.createAbstract(
-          new TypesDomain(BooleanValue),
-          ValuesDomain.topVal,
-          [this, cv],
-          ([x, y]) => t.binaryExpression("===", x, y)
-        );
+        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
         let v = joinValuesAsConditional(this.$Realm, cond, this.$Realm.intrinsics.empty, d.value);
         if (cv.$Set(P, v, cv)) sawTrue = true;
         else sawFalse = true;
@@ -431,6 +419,10 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   $OwnPropertyKeys(): Array<PropertyKeyValue> {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {

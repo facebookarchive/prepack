@@ -23,6 +23,10 @@ export default class BooleanValue extends PrimitiveValue {
 
   value: boolean;
 
+  getHash(): number {
+    return this.value ? 12484058682847432 : 3777063795205331;
+  }
+
   mightBeFalse(): boolean {
     return !this.value;
   }

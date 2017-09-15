@@ -11,11 +11,9 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
   Value,
   AbstractValue,
-  BooleanValue,
   BoundFunctionValue,
   NumberValue,
   ProxyValue,
@@ -46,7 +44,6 @@ import {
 } from "./index.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
-import * as t from "babel-types";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -128,12 +125,7 @@ export function OrdinaryGet(
       // descValue unless it is empty.
       // Only get the parent value if it does not involve a getter call.
       // Use a property get for the joined value since it does the check for empty.
-      let cond = realm.createAbstract(
-        new TypesDomain(BooleanValue),
-        ValuesDomain.topVal,
-        [descValue, realm.intrinsics.empty],
-        ([x, y]) => t.binaryExpression("!==", x, y)
-      );
+      let cond = AbstractValue.createFromBinaryOp(realm, "!==", descValue, realm.intrinsics.empty);
       return joinValuesAsConditional(realm, cond, descValue, parentVal);
     }
     invariant(!desc);

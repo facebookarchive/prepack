@@ -14,28 +14,23 @@ import { AbstractValue, NativeFunctionValue, NumberValue, StringValue, ObjectVal
 import { ToInteger, ToNumber, ToPrimitive } from "../../methods/to.js";
 import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
 import { MakeTime, MakeDate, MakeDay, TimeClip, UTC, ToDateString, thisTimeValue } from "../../methods/date.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import seedrandom from "seedrandom";
 
-let buildDateNow = buildExpressionTemplate("global.Date.now()");
+const buildDateNowSrc = "global.Date.now()";
+const buildDateNow = buildExpressionTemplate(buildDateNowSrc);
 
 export default function(realm: Realm): NativeFunctionValue {
   let lastNow;
   let offsetGenerator;
   function getCurrentTime(): AbstractValue | NumberValue {
     if (realm.useAbstractInterpretation) {
-      let tmp = realm.deriveAbstract(
-        new TypesDomain(NumberValue),
-        ValuesDomain.topVal,
-        [],
-        buildDateNow(realm.preludeGenerator),
-        { isPure: true, skipInvariant: true }
-      );
-      invariant(tmp instanceof AbstractValue, "getCurrentTime() should always return and abstract value");
-      return tmp;
+      return AbstractValue.createTemporalFromTemplate(realm, buildDateNow, NumberValue, [], {
+        isPure: true,
+        skipInvariant: true,
+      });
     } else {
       let newNow = Date.now();
       if (realm.strictlyMonotonicDateNow && lastNow >= newNow) {

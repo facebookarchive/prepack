@@ -9,16 +9,20 @@
 
 /* @flow */
 
+import invariant from "../invariant.js";
+import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
 import {
   AbstractValue,
+  BooleanValue,
   ConcreteValue,
   FunctionValue,
+  NumberValue,
   ObjectValue,
   PrimitiveValue,
+  StringValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import invariant from "../invariant.js";
 
 /* An abstract domain for the type of value a variable might have.  */
 
@@ -34,6 +38,50 @@ export default class TypesDomain {
 
   getType(): typeof Value {
     return this._type || Value;
+  }
+
+  // return the type of the result in the case where there is no exception
+  static binaryOp(op: BabelBinaryOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
+    let lType = left._type;
+    let rType = right._type;
+    if (lType === undefined || rType === undefined) return TypesDomain.topVal;
+    let resultType = Value;
+    switch (op) {
+      case "+":
+        if (Value.isTypeCompatibleWith(lType, StringValue) || Value.isTypeCompatibleWith(rType, StringValue))
+          resultType = StringValue;
+        else if (Value.isTypeCompatibleWith(lType, NumberValue) && Value.isTypeCompatibleWith(rType, NumberValue))
+          resultType = NumberValue;
+        break;
+      case "<":
+      case ">":
+      case ">=":
+      case "<=":
+      case "!=":
+      case "==":
+      case "!==":
+      case "===":
+      case "in":
+      case "instanceof":
+        resultType = BooleanValue;
+        break;
+      case ">>>":
+      case "<<":
+      case ">>":
+      case "&":
+      case "|":
+      case "^":
+      case "**":
+      case "%":
+      case "/":
+      case "*":
+      case "-":
+        resultType = NumberValue;
+        break;
+      default:
+        invariant(false);
+    }
+    return new TypesDomain(resultType);
   }
 
   static joinValues(v1: void | Value, v2: void | Value): TypesDomain {
@@ -57,5 +105,31 @@ export default class TypesDomain {
       return new TypesDomain(PrimitiveValue);
     }
     return TypesDomain.topVal;
+  }
+
+  // return the type of the result in the case where there is no exception
+  // note that the type of the operand has no influence on the type of the non exceptional result
+  static unaryOp(op: BabelUnaryOperator): TypesDomain {
+    let resultType = Value;
+    switch (op) {
+      case "-":
+      case "+":
+      case "~":
+        resultType = NumberValue;
+        break;
+      case "!":
+      case "delete":
+        resultType = BooleanValue;
+        break;
+      case "typeof":
+        resultType = StringValue;
+        break;
+      case "void":
+        resultType = UndefinedValue;
+        break;
+      default:
+        invariant(false);
+    }
+    return new TypesDomain(resultType);
   }
 }

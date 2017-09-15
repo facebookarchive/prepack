@@ -12,11 +12,8 @@
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, UndefinedValue, AbstractValue, NumberValue } from "../../values/index.js";
 import { ToInteger, ToString, thisNumberValue } from "../../methods/index.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
-
-let buildToLocaleString = buildExpressionTemplate("(VALUE).toLocaleString()");
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3
@@ -83,16 +80,16 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return new StringValue(realm, x.toFixed(f));
   });
 
+  let toLocaleStringSrc = "(A).toLocaleString()";
+  let toLocaleString = buildExpressionTemplate(toLocaleStringSrc);
+
   // ECMA262 20.1.3.4
   obj.defineNativeMethod("toLocaleString", 0, context => {
     let x = thisNumberValue(realm, context);
     if (realm.useAbstractInterpretation) {
-      // The locale is environment-dependent
-      return realm.deriveAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [x], ([n]) =>
-        buildToLocaleString(realm.preludeGenerator)({
-          VALUE: n,
-        })
-      );
+      // The locale is environment-dependent and may also be time-dependent
+      // so do this at runtime and at this point in time
+      return AbstractValue.createTemporalFromTemplate(realm, toLocaleString, StringValue, [x]);
     } else {
       return new StringValue(realm, x.toLocaleString());
     }
@@ -139,15 +136,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return new StringValue(realm, s + x.toPrecision(p));
   });
 
+  const tsTemplateSrc = "(A).toString()";
+  const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
+
   // ECMA262 20.1.3.6
   obj.defineNativeMethod("toString", 1, (context, [radix]) => {
     if (radix instanceof UndefinedValue) {
       const target = context instanceof ObjectValue ? context.$NumberData : context;
       if (target instanceof AbstractValue && target.getType() === NumberValue) {
-        const codeTemplate = "(A).toString()";
-        return realm.createAbstract(new TypesDomain(StringValue), ValuesDomain.topVal, [target], ([a]) =>
-          buildExpressionTemplate(codeTemplate)(realm.preludeGenerator)({ A: a })
-        );
+        return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
       }
     }
     // 1. Let x be ? thisNumberValue(this value).

@@ -3,7 +3,7 @@
 
 function foo(){};
 var f = global.__abstract ? __abstract(foo, "foo") : foo;
-var o = global.__abstract ? __abstract({}, "({})") : {};
+var o = global.__abstract ? __abstract(({}), "({})") : {};
 if (global.__makeSimple) global.__makeSimple(o);
 
 foo();

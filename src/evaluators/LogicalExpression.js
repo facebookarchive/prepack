@@ -44,7 +44,7 @@ export default function(
   }
   invariant(lval instanceof AbstractValue);
 
-  if (!lval.mightNotBeObject()) {
+  if (!lval.mightNotBeFalse()) {
     if (ast.operator === "&&") return env.evaluate(ast.right, strictCode);
     else {
       return lval;

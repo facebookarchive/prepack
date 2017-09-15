@@ -22,8 +22,6 @@ import type {
   BabelNodeLVal,
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
-  BabelNodeIfStatement,
-  BabelNodeVariableDeclaration,
 } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
@@ -65,6 +63,7 @@ export class ResidualFunctions {
     this.scopeNameGenerator = scopeNameGenerator;
     this.capturedScopeInstanceIdx = 0;
     this.capturedScopesArray = t.identifier(this.scopeNameGenerator.generate("main"));
+    this._captureScopeAccessFunctionId = t.identifier("__get_scope_binding");
     this.serializedScopes = new Map();
     this.functionPrototypes = new Map();
     this.firstFunctionUsages = new Map();
@@ -88,6 +87,7 @@ export class ResidualFunctions {
   scopeNameGenerator: NameGenerator;
   capturedScopeInstanceIdx: number;
   capturedScopesArray: BabelNodeIdentifier;
+  _captureScopeAccessFunctionId: BabelNodeIdentifier;
   serializedScopes: Map<DeclarativeEnvironmentRecord, ScopeBinding>;
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
@@ -111,6 +111,51 @@ export class ResidualFunctions {
 
   addFunctionUsage(val: FunctionValue, bodyReference: BodyReference) {
     if (!this.firstFunctionUsages.has(val)) this.firstFunctionUsages.set(val, bodyReference);
+  }
+
+  // Generate a shared function for accessing captured scope bindings.
+  // TODO: skip generating this function if the captured scope is not shared by multiple residual funcitons.
+  _createCaptureScopeAccessFunction() {
+    const body = [];
+    const selectorParam = t.identifier("selector");
+    const captured = t.identifier("__captured");
+    const selectorExpression = t.memberExpression(this.capturedScopesArray, selectorParam, /*Indexer syntax*/ true);
+
+    // One switch case for one scope.
+    const cases = [];
+    for (const scopeBinding of this.serializedScopes.values()) {
+      const scopeObjectExpression = t.objectExpression(
+        Array.from(scopeBinding.initializationValues.entries()).map(([variableName, value]) =>
+          t.objectProperty(t.identifier(variableName), value)
+        )
+      );
+      cases.push(
+        t.switchCase(t.numericLiteral(scopeBinding.id), [
+          t.expressionStatement(t.assignmentExpression("=", selectorExpression, scopeObjectExpression)),
+          t.breakStatement(),
+        ])
+      );
+    }
+    // Default case.
+    cases.push(
+      t.switchCase(null, [
+        t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("Unknown scope selector")])),
+      ])
+    );
+
+    body.push(t.variableDeclaration("var", [t.variableDeclarator(captured, selectorExpression)]));
+    body.push(
+      t.ifStatement(
+        t.unaryExpression("!", captured),
+        t.blockStatement([
+          t.switchStatement(selectorParam, cases),
+          t.expressionStatement(t.assignmentExpression("=", captured, selectorExpression)),
+        ])
+      )
+    );
+    body.push(t.returnStatement(captured));
+    const factoryFunction = t.functionExpression(null, [selectorParam], t.blockStatement(body));
+    return t.variableDeclaration("var", [t.variableDeclarator(this._captureScopeAccessFunctionId, factoryFunction)]);
   }
 
   _getSerializedBindingScopeInstance(serializedBinding: SerializedBinding): ScopeBinding {
@@ -182,28 +227,15 @@ export class ResidualFunctions {
     }
   }
 
-  _getReferentializedScopeInitialization(scope: ScopeBinding): [BabelNodeVariableDeclaration, BabelNodeIfStatement] {
-    let properties = [];
-    for (let [variableName, value] of scope.initializationValues.entries()) {
-      properties.push(t.objectProperty(t.identifier(variableName), value));
-    }
-    let initExpression = t.memberExpression(this.capturedScopesArray, t.identifier(scope.name), true);
+  _getReferentializedScopeInitialization(scope: ScopeBinding) {
     invariant(scope.capturedScope);
-    let capturedScope = scope.capturedScope;
-    let capturedScopeId = t.identifier(capturedScope);
-
     return [
-      t.variableDeclaration("var", [t.variableDeclarator(capturedScopeId, initExpression)]),
-      t.ifStatement(
-        t.unaryExpression("!", capturedScopeId),
-        t.expressionStatement(
-          t.assignmentExpression(
-            "=",
-            initExpression,
-            t.assignmentExpression("=", capturedScopeId, t.objectExpression(properties))
-          )
-        )
-      ),
+      t.variableDeclaration("var", [
+        t.variableDeclarator(
+          t.identifier(scope.capturedScope),
+          t.callExpression(this._captureScopeAccessFunctionId, [t.identifier(scope.name)])
+        ),
+      ]),
     ];
   }
 
@@ -343,159 +375,137 @@ export class ResidualFunctions {
       if (shouldInline || normalInstances.length === 1 || usesArguments) {
         naiveProcessInstances(normalInstances, funcBody, false);
       } else {
-        // Group instances with modified bindings
-        let instanceBatches = [normalInstances];
-        for (let name in modified) {
-          let newInstanceBatches = [];
+        let suffix = instances[0].functionValue.__originalName || "";
+        let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
 
-          for (let batch of instanceBatches) {
-            // Map from representative binding to function instances that use it
-            let bindingLookup = new Map();
+        // filter included variables to only include those that are different
+        let factoryNames: Array<string> = [];
+        let sameSerializedBindings = Object.create(null);
+        for (let name in unbound) {
+          let isDifferent = false;
+          let lastBinding;
 
-            for (let functionInstance of batch) {
-              let serializedBinding = functionInstance.serializedBindings[name];
-              invariant(serializedBinding !== undefined);
-              let found = false;
-              for (let [binding, group] of bindingLookup.entries()) {
-                if (AreSameSerializedBindings(this.realm, serializedBinding, binding)) {
-                  group.push(functionInstance);
-                  found = true;
-                  break;
-                }
-              }
-              if (!found) {
-                let matchingInstances = [functionInstance];
-                bindingLookup.set(serializedBinding, matchingInstances);
-                newInstanceBatches.push(matchingInstances);
-              }
+          if (instances[0].serializedBindings[name].modified) {
+            // Must modify for traversal
+            sameSerializedBindings[name] = instances[0].serializedBindings[name];
+            continue;
+          }
+
+          for (let { serializedBindings } of instances) {
+            let serializedBinding = serializedBindings[name];
+
+            invariant(!serializedBinding.modified);
+            if (!lastBinding) {
+              lastBinding = serializedBinding;
+            } else if (!AreSameSerializedBindings(this.realm, serializedBinding, lastBinding)) {
+              isDifferent = true;
+              break;
             }
           }
-          instanceBatches = newInstanceBatches;
+
+          if (isDifferent) {
+            factoryNames.push(name);
+          } else {
+            invariant(lastBinding);
+            sameSerializedBindings[name] = { serializedValue: lastBinding.serializedValue };
+          }
         }
-        this.statistics.functionClones += instanceBatches.length - 1;
+        //
 
-        for (instances of instanceBatches) {
-          let suffix = instances[0].functionValue.__originalName || "";
-          let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
+        let factoryParams: Array<BabelNodeLVal> = [];
+        for (let key of factoryNames) {
+          factoryParams.push(t.identifier(key));
+        }
 
-          // filter included variables to only include those that are different
-          let factoryNames: Array<string> = [];
-          let sameSerializedBindings = Object.create(null);
-          for (let name in unbound) {
-            let isDifferent = false;
-            let lastBinding;
+        let scopeInitialization = [];
+        for (let scope of instances[0].scopeInstances) {
+          factoryParams.push(t.identifier(scope.name));
+          scopeInitialization = scopeInitialization.concat(this._getReferentializedScopeInitialization(scope));
+        }
 
-            if (instances[0].serializedBindings[name].modified) {
-              // Must modify for traversal
-              sameSerializedBindings[name] = instances[0].serializedBindings[name];
-              continue;
-            }
+        factoryParams = factoryParams.concat(params).slice();
 
-            for (let { serializedBindings } of instances) {
-              let serializedBinding = serializedBindings[name];
+        // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
+        let factoryNode = t.functionExpression(
+          null,
+          factoryParams,
+          ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+        );
 
-              invariant(!serializedBinding.modified);
-              if (!lastBinding) {
-                lastBinding = serializedBinding;
-              } else if (!AreSameSerializedBindings(this.realm, serializedBinding, lastBinding)) {
-                isDifferent = true;
-                break;
-              }
-            }
+        if (instances[0].functionValue.$Strict) {
+          strictFunctionBodies.push(factoryNode);
+        } else {
+          unstrictFunctionBodies.push(factoryNode);
+        }
 
-            if (isDifferent) {
-              factoryNames.push(name);
-            } else {
-              invariant(lastBinding);
-              sameSerializedBindings[name] = { serializedValue: lastBinding.serializedValue };
-            }
-          }
-          //
+        factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
 
-          let factoryParams: Array<BabelNodeLVal> = [];
-          for (let key of factoryNames) {
-            factoryParams.push(t.identifier(key));
-          }
+        // factory functions do not depend on any nested generator scope, so they go to the prelude
+        let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
+        this.prelude.push(factoryDeclaration);
 
-          let scopeInitialization = [];
-          for (let scope of instances[0].scopeInstances) {
-            factoryParams.push(t.identifier(scope.name));
-            scopeInitialization = scopeInitialization.concat(this._getReferentializedScopeInitialization(scope));
-          }
+        traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, {
+          serializedBindings: sameSerializedBindings,
+          modified,
+          requireReturns: this.requireReturns,
+          requireStatistics,
+          isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)),
+        });
 
-          factoryParams = factoryParams.concat(params).slice();
-
-          // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
-          let factoryNode = t.functionExpression(
-            null,
-            factoryParams,
-            ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-          );
-
-          factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
-
-          // factory functions do not depend on any nested generator scope, so they go to the prelude
-          let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
-          this.prelude.push(factoryDeclaration);
-
-          traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, {
-            serializedBindings: sameSerializedBindings,
-            modified,
-            requireReturns: this.requireReturns,
-            requireStatistics,
-            isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)),
+        for (let instance of instances) {
+          let { functionValue, serializedBindings, insertionPoint } = instance;
+          let functionId = this.locationService.getLocation(functionValue);
+          invariant(functionId !== undefined);
+          let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
+            let serializedValue = serializedBindings[name].serializedValue;
+            invariant(serializedValue);
+            return serializedValue;
           });
-
-          // Actually create the functions
-          for (let instance of instances) {
-            let { functionValue, serializedBindings, insertionPoint } = instance;
-            let functionId = this.locationService.getLocation(functionValue);
-            invariant(functionId !== undefined);
-            let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
-              let serializedValue = serializedBindings[name].serializedValue;
-              invariant(serializedValue);
-              return serializedValue;
-            });
-            for (let { id } of instance.scopeInstances) {
-              flatArgs.push(t.numericLiteral(id));
-            }
-            let funcNode;
-            let firstUsage = this.firstFunctionUsages.get(functionValue);
-            invariant(insertionPoint !== undefined);
-            if (
-              this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
-              usesThis ||
-              (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
-              this.functionPrototypes.get(functionValue) !== undefined
-            ) {
-              let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
-              for (let flatArg of flatArgs) callArgs.push(flatArg);
-              for (let param of params) {
-                if (param.type !== "Identifier") {
-                  throw new FatalError("TODO: do not know how to deal with non-Identifier parameters");
-                }
-                callArgs.push(((param: any): BabelNodeIdentifier));
-              }
-
-              let callee = t.memberExpression(factoryId, t.identifier("call"));
-
-              let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
-
-              funcNode = t.functionExpression(null, params, childBody);
-            } else {
-              funcNode = t.callExpression(
-                t.memberExpression(factoryId, t.identifier("bind")),
-                [nullExpression].concat(flatArgs)
-              );
-            }
-
-            define(instance, functionId, funcNode);
+          for (let { id } of instance.scopeInstances) {
+            flatArgs.push(t.numericLiteral(id));
           }
+          let funcNode;
+          let firstUsage = this.firstFunctionUsages.get(functionValue);
+          invariant(insertionPoint !== undefined);
+          if (
+            this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
+            usesThis ||
+            (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
+            this.functionPrototypes.get(functionValue) !== undefined
+          ) {
+            let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
+            for (let flatArg of flatArgs) callArgs.push(flatArg);
+            for (let param of params) {
+              if (param.type !== "Identifier") {
+                throw new FatalError("TODO: do not know how to deal with non-Identifier parameters");
+              }
+              callArgs.push(((param: any): BabelNodeIdentifier));
+            }
+
+            let callee = t.memberExpression(factoryId, t.identifier("call"));
+
+            let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
+
+            funcNode = t.functionExpression(null, params, childBody);
+            if (functionValue.$Strict) {
+              strictFunctionBodies.push(funcNode);
+            } else {
+              unstrictFunctionBodies.push(funcNode);
+            }
+          } else {
+            funcNode = t.callExpression(
+              t.memberExpression(factoryId, t.identifier("bind")),
+              [nullExpression].concat(flatArgs)
+            );
+          }
+
+          define(instance, functionId, funcNode);
         }
       }
     }
 
     if (this.capturedScopeInstanceIdx) {
+      this.prelude.unshift(this._createCaptureScopeAccessFunction());
       let scopeVar = t.variableDeclaration("var", [
         t.variableDeclarator(
           this.capturedScopesArray,

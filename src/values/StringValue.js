@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { hashString } from "../methods/index.js";
 import { PrimitiveValue } from "../values/index.js";
 import type { Realm } from "../realm.js";
 
@@ -19,6 +20,10 @@ export default class StringValue extends PrimitiveValue {
   }
 
   value: string;
+
+  getHash(): number {
+    return hashString(this.value);
+  }
 
   mightBeFalse(): boolean {
     return this.value.length === 0;
