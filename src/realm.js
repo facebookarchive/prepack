@@ -132,28 +132,12 @@ export function construct_empty_effects(realm: Realm): Effects {
 export class InterpreterStatistics {
   constructor() {
     this.objects = 0;
-    this.objectProperties = 0;
-    this.nodeToCount = new Map();
   }
   objects: number;
-  objectProperties: number;
-  nodeToCount: Map<string, number>;
-
-  incrNodeCount(nodeType: string) {
-    let count = 0;
-    if (this.nodeToCount.has(nodeType)) {
-      count = this.nodeToCount.get(nodeType);
-    }
-    this.nodeToCount.set(nodeType, count + 1);
-  }
 
   log() {
     console.log(`=== interpreter statistics`);
-    console.log(`${this.objects} objects with ${this.objectProperties} properties`);
-    console.log(`Number of AST nodes evaluated`);
-    this.nodeToCount.forEach(function(value, key) {
-      console.log(key + ": " + value);
-    });
+    console.log(`${this.objects} objects`);
   }
 }
 

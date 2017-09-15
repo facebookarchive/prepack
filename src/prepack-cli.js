@@ -233,13 +233,14 @@ function run(
         console.log(serialized.code);
       }
       if (statsFileName) {
-        if (serialized.statistics === undefined || serialized.timingStats === undefined) {
+        if (serialized.serializerStatistics === undefined || serialized.interpreterStatistics === undefined || serialized.timingStats === undefined) {
           return;
         }
         let stats = {
-          SerializerStatistics: serialized.statistics,
+          SerializerStatistics: serialized.serializerStatistics,
           TimingStatistics: serialized.timingStats,
           MemoryStatistics: v8.getHeapStatistics(),
+          InterpreterStatistics: serialized.interpreterStatistics
         };
         fs.writeFileSync(statsFileName, JSON.stringify(stats));
       }

@@ -69,6 +69,7 @@ export default class ObjectValue extends ConcreteValue {
     this.properties = new Map();
     this.symbols = new Map();
     this.refuseSerialization = refuseSerialization;
+    realm.interpreterStatistics.objects++;
   }
 
   static trackedPropertyNames = [

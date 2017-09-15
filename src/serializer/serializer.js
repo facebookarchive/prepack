@@ -28,7 +28,6 @@ import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import * as t from "babel-types";
-import type { BabelNodeAssignmentExpression } from "babel-types";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -67,17 +66,8 @@ export class Serializer {
       let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
       traverseFast(ast, node => {
         if (!t.isIdentifier(node)) return false;
+
         forbiddenNames.add(((node: any): BabelNodeIdentifier).name);
-        return true;
-      });
-      traverseFast(ast, node => {
-        if (t.isNewExpression(node)) this.realm.interpreterStatistics.objects++;
-        if (t.isAssignmentExpression(node)) {
-          if (t.isMemberExpression(((node: any): BabelNodeAssignmentExpression).left)) {
-            this.realm.interpreterStatistics.objectProperties++;
-          }
-        }
-        this.realm.interpreterStatistics.incrNodeCount(node.type);
         return true;
       });
     });
@@ -198,7 +188,8 @@ export class Serializer {
     return {
       code: generated.code,
       map: generated.map,
-      statistics: residualHeapSerializer.statistics,
+      serializerStatistics: residualHeapSerializer.statistics,
+      interpreterStatistics: this.realm.interpreterStatistics,
       timingStats: timingStats,
     };
   }
