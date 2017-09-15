@@ -36,28 +36,28 @@ function run(
   fs
 ) {
   let HELP_STR = `
-    input               The name of the file to run Prepack over (for web please provide the single js bundle file)
-    --out               The name of the output file
-    --compatibility     The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(", ")}]
-    --mathRandomSeed    If you want Prepack to evaluate Math.random() calls, please provide a seed.
-    --srcmapIn          The input sourcemap filename. If present, Prepack will output a sourcemap that maps from
-                        the original file (pre-input sourcemap) to Prepack's output
-    --srcmapOut         The output sourcemap filename.
-    --maxStackDepth     Specify the maximum call stack depth.
-    --timeout           The amount of time until Prepack should time out.
-    --addtlFunctions    Additional functions that should be prepacked (comma separated).
-    --debugNames        Changes the output of Prepack so that for named functions and variables that get emitted into
-                        Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
-    --speculate         Enable speculative initialization of modules (for the module system Prepack has builtin
-                        knowledge about). Prepack will try to execute all factory functions it is able to.
-    --trace             Traces the order of module initialization.
-    --serialize         Serializes the partially evaluated global environment as a program that recreates it.
-                        (default = true)
-    --residual          Produces the residual program that results after constant folding.
-    --profile           Enables console logging of profile information of different phases of prepack.
-    --statsFile         The name of the output file where statistics will be written to.
-    --inlineExpressions When generating code, tells prepack to avoid naming expressions when they are only used once,
-                        and instead inline them where they are used.
+    input                    The name of the file to run Prepack over (for web please provide the single js bundle file)
+    --out                    The name of the output file
+    --compatibility          The target environment for Prepack [${CompatibilityValues.map(v => `"${v}"`).join(", ")}]
+    --mathRandomSeed         If you want Prepack to evaluate Math.random() calls, please provide a seed.
+    --srcmapIn               The input sourcemap filename. If present, Prepack will output a sourcemap that maps from
+                             the original file (pre-input sourcemap) to Prepack's output
+    --srcmapOut              The output sourcemap filename.
+    --maxStackDepth          Specify the maximum call stack depth.
+    --timeout                The amount of time until Prepack should time out.
+    --additionalFunctions    Additional functions that should be prepacked (comma separated).
+    --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
+                             Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
+    --speculate              Enable speculative initialization of modules (for the module system Prepack has builtin
+                             knowledge about). Prepack will try to execute all factory functions it is able to.
+    --trace                  Traces the order of module initialization.
+    --serialize              Serializes the partially evaluated global environment as a program that recreates it.
+                             (default = true)
+    --residual               Produces the residual program that results after constant folding.
+    --profile                Enables console logging of profile information of different phases of prepack.
+    --statsFile              The name of the output file where statistics will be written to.
+    --inlineExpressions      When generating code, tells prepack to avoid naming expressions when they are only used once,
+                             and instead inline them where they are used.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -133,7 +133,7 @@ function run(
           }
           timeout = parseInt(seconds, 10);
           break;
-        case "addtlFunctions":
+        case "additionalFunctions":
           let line = args.shift();
           additionalFunctions = line.split(",");
           break;
