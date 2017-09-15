@@ -166,6 +166,7 @@ export class ResidualHeapSerializer {
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
+  serializedPropertyBindings: Set<PropertyBinding> | void;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -1162,6 +1163,10 @@ export class ResidualHeapSerializer {
       serializeGenerator: (generator: Generator): Array<BabelNodeStatement> => {
         return this._withGeneratorScope(generator, () => generator.serialize(context));
       },
+      recordPropertySerialized: (propertyBinding: PropertyBinding) => {
+        if (this.serializedPropertyBindings)
+          this.serializedPropertyBindings.add(propertyBinding);
+      },
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
@@ -1177,6 +1182,7 @@ export class ResidualHeapSerializer {
   }
 
   _serializeAdditionalFunction(generator: Generator, postGeneratorCallback: () => void) {
+    this.serializedPropertyBindings = new Set();
     let context = this._getContext();
     return this._withGeneratorScope(generator, newBody => {
       let oldCurBody = this.currentFunctionBody;
@@ -1238,15 +1244,16 @@ export class ResidualHeapSerializer {
           this.additionalFunctionValueNestedFunctions = ((nestedFunctions: any): Set<FunctionValue>);
           let emitter = this.emitter;
           let serializePropertiesAndBindings = () => {
+            let serializedPropertyBindings = this.serializedPropertyBindings;
+            invariant(serializedPropertyBindings);
             for (let propertyBinding of pb.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
               let object = binding.object;
-              if (object.isPartialObject()) continue;
+              if (object instanceof ObjectValue && co.has(object)) continue;
+              if (object.refuseSerialization) continue;
+              // we've already serialized it from a generator entry.
+              if (serializedPropertyBindings.has(binding)) continue;
               invariant(object instanceof ObjectValue);
-              // These should be in the generator so we can skip them
-              if (co.has(object)) continue; // Created Object's binding
-              if (object.intrinsicName === "global") continue; // Avoid double-serialization
-              if (object.refuseSerialization) continue; // modification to internal state
               this._emitProperty(object, binding.key, binding.descriptor, true);
             }
           };

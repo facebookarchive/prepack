@@ -24,7 +24,7 @@ import {
   ConcreteValue,
 } from "../values/index.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
-import type { Descriptor } from "../types.js";
+import type { Descriptor, PropertyBinding } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as base62 from "base62";
 import * as t from "babel-types";
@@ -40,6 +40,7 @@ import { nullExpression } from "./internalizer.js";
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
+  recordPropertySerialized: PropertyBinding => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   canOmit: AbstractValue => boolean,
@@ -110,47 +111,67 @@ export class Generator {
     return !this.body.length;
   }
 
-  emitGlobalDeclaration(key: string, value: Value) {
+  emitGlobalDeclaration(key: string, binding: PropertyBinding) {
+    let descriptor = binding.descriptor;
+    invariant(descriptor);
+    let value = descriptor.value;
+    invariant(value);
     this.preludeGenerator.declaredGlobals.add(key);
-    if (!(value instanceof UndefinedValue)) this.emitGlobalAssignment(key, value, true);
+    if (!(value instanceof UndefinedValue)) this.emitGlobalAssignment(key, binding, true);
   }
 
-  emitGlobalAssignment(key: string, value: Value, strictMode: boolean) {
+  emitGlobalAssignment(key: string, binding: PropertyBinding, strictMode: boolean) {
+    let descriptor = binding.descriptor;
+    invariant(descriptor);
+    let value = descriptor.value;
+    invariant(value);
     this.body.push({
       args: [value],
-      buildNode: ([valueNode]) =>
-        t.expressionStatement(
+      buildNode: ([valueNode], context) => {
+        context.recordPropertySerialized(binding);
+        return t.expressionStatement(
           t.assignmentExpression("=", this.preludeGenerator.globalReference(key, !strictMode), valueNode)
-        ),
+        )
+      },
     });
   }
 
-  emitGlobalDelete(key: string, strictMode: boolean) {
+  emitGlobalDelete(key: string, binding: PropertyBinding, strictMode: boolean) {
     this.body.push({
       args: [],
-      buildNode: ([]) =>
-        t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode))),
+      buildNode: ([], context) => {
+        context.recordPropertySerialized(binding);
+        return t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode)))
+      },
     });
   }
 
-  emitPropertyAssignment(object: ObjectValue, key: string, value: Value) {
+  emitPropertyAssignment(object: ObjectValue, key: string, binding: PropertyBinding) {
     if (object.refuseSerialization) return;
     let propName = this.getAsPropertyNameExpression(key);
+    let descriptor = binding.descriptor;
+    invariant(descriptor);
+    let value = descriptor.value;
+    invariant(value);
     this.body.push({
       args: [object, value],
-      buildNode: ([objectNode, valueNode]) =>
-        t.expressionStatement(
+      buildNode: ([objectNode, valueNode], context) => {
+        context.recordPropertySerialized(binding);
+        return t.expressionStatement(
           t.assignmentExpression("=", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)), valueNode)
-        ),
+        )
+      },
     });
   }
 
-  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor) {
+  emitDefineProperty(object: ObjectValue, key: string, binding: PropertyBinding) {
     if (object.refuseSerialization) return;
+    let desc = binding.descriptor;
+    invariant(desc);
     if (desc.enumerable && desc.configurable && desc.writable && desc.value) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
-      this.emitPropertyAssignment(object, key, descValue);
+      this.emitPropertyAssignment(object, key, binding);
     } else {
       desc = Object.assign({}, desc);
       this.body.push({
@@ -160,20 +181,26 @@ export class Generator {
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        buildNode: (_, context: SerializationContext) => context.emitDefinePropertyBody(object, key, desc),
+        buildNode: (_, context: SerializationContext) => {
+          context.recordPropertySerialized(binding);
+          invariant(desc);
+          return context.emitDefinePropertyBody(object, key, desc)
+        },
       });
     }
   }
 
-  emitPropertyDelete(object: ObjectValue, key: string) {
+  emitPropertyDelete(object: ObjectValue, key: string, binding: PropertyBinding) {
     if (object.refuseSerialization) return;
     let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object],
-      buildNode: ([objectNode]) =>
-        t.expressionStatement(
+      buildNode: ([objectNode], context) => {
+        context.recordPropertySerialized(binding);
+        return t.expressionStatement(
           t.unaryExpression("delete", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)))
-        ),
+        )
+      },
     });
   }
 
