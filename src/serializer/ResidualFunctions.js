@@ -427,7 +427,6 @@ export class ResidualFunctions {
           let firstUsage = this.firstFunctionUsages.get(functionValue);
           invariant(insertionPoint !== undefined);
           if (
-            this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
             usesThis ||
             (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
             this.functionPrototypes.get(functionValue) !== undefined
