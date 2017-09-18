@@ -22,7 +22,7 @@ import {
   Value,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
@@ -200,28 +200,6 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("__isAbstract", {
     value: new NativeFunctionValue(realm, "global.__isAbstract", "__isAbstract", 1, (context, [value]) => {
       return new BooleanValue(realm, value instanceof AbstractValue);
-    }),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
-
-  global.$DefineOwnProperty("__optional", {
-    value: new NativeFunctionValue(realm, "global.__optional", "__optional", 1, (context, [value]) => {
-      if (!realm.useAbstractInterpretation) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
-      }
-      if (value instanceof AbstractValue && value.isIntrinsic()) {
-        let result = AbstractValue.createFromConditionalOp(realm, value, value, realm.intrinsics.undefined);
-        let condition = AbstractValue.createFromBinaryOp(realm, "!==", result, realm.intrinsics.undefined);
-        condition.types = new TypesDomain(BooleanValue);
-        result.args[0] = condition;
-        result.intrinsicName = value.intrinsicName;
-        invariant(value.intrinsicName !== undefined);
-        result._buildNode = t.identifier(value.intrinsicName);
-        return result;
-      }
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an intrinsic abstract value");
     }),
     writable: true,
     enumerable: false,
