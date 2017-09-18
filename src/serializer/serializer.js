@@ -38,9 +38,11 @@ export class Serializer {
 
     this.realm = realm;
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
+    this.statistics = new SerializerStatistics();
     this.modules = new Modules(
       this.realm,
       this.logger,
+      this.statistics,
       !!serializerOptions.logModules,
       !!serializerOptions.delayUnsupportedRequires
     );
@@ -55,6 +57,7 @@ export class Serializer {
   logger: Logger;
   modules: Modules;
   options: SerializerOptions;
+  statistics: SerializerStatistics;
 
   _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false) {
     let realm = this.realm;
@@ -148,7 +151,8 @@ export class Serializer {
         residualHeapVisitor.functionBindings,
         residualHeapVisitor.functionInfos,
         !!this.options.delayInitializations,
-        residualHeapVisitor.referencedDeclaredValues
+        residualHeapVisitor.referencedDeclaredValues,
+        this.statistics
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -168,7 +172,8 @@ export class Serializer {
       residualHeapVisitor.functionBindings,
       residualHeapVisitor.functionInfos,
       !!this.options.delayInitializations,
-      residualHeapVisitor.referencedDeclaredValues
+      residualHeapVisitor.referencedDeclaredValues,
+      this.statistics
     );
     let ast = residualHeapSerializer.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
