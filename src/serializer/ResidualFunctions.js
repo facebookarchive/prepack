@@ -427,6 +427,9 @@ export class ResidualFunctions {
           let firstUsage = this.firstFunctionUsages.get(functionValue);
           invariant(insertionPoint !== undefined);
           if (
+            // The same free variables in shared instances may refer to objects with different initialization values
+            // so a stub forward function is needed during delay initializations.
+            this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
             usesThis ||
             (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
             this.functionPrototypes.get(functionValue) !== undefined
