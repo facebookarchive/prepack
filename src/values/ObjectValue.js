@@ -53,7 +53,12 @@ import {
 import invariant from "../invariant.js";
 
 export default class ObjectValue extends ConcreteValue {
-  constructor(realm: Realm, proto?: ObjectValue | NullValue, intrinsicName?: string) {
+  constructor(
+    realm: Realm,
+    proto?: ObjectValue | NullValue,
+    intrinsicName?: string,
+    refuseSerialization: boolean = false
+  ) {
     super(realm, intrinsicName);
     realm.recordNewObject(this);
     if (realm.useAbstractInterpretation) this.setupBindings();
@@ -63,6 +68,7 @@ export default class ObjectValue extends ConcreteValue {
     this._isSimple = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
+    this.refuseSerialization = refuseSerialization;
   }
 
   static trackedProperties = [
@@ -231,6 +237,10 @@ export default class ObjectValue extends ConcreteValue {
     }
     return this.hashValue;
   }
+
+  // We track some internal state as properties on the global object, these should
+  // never be serialized.
+  refuseSerialization: boolean;
 
   mightBeFalse(): boolean {
     return false;

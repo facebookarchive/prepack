@@ -4,14 +4,15 @@
 
 global.a = "";
 global.b = "";
+var z = global.__abstract ? __abstract("number", "(42)") : 42;
 
 function additional1() {
-  global.a = "foo";
+  global.a = z + "foo";
   var x = 5;
 }
 
 function additional2() {
-  global.b = "bar";
+  global.b = z + "bar";
   var y = 10;
 }
 
