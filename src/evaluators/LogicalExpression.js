@@ -93,5 +93,12 @@ export default function(
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof NormalCompletion || completion instanceof Value || completion instanceof Reference);
+  if (lval instanceof Value && compl2 instanceof Value) {
+    // joinEffects does the right thing for the side effects of the second expression but for the result the join
+    // produces a conditional expressions of the form (a ? b : a) for a && b and (a ? a : b) for a || b
+    // Rather than look for this pattern everywhere, we override this behavior and replace the completion with
+    // the actual logical operator. This helps with simplification and reasoning when dealing with path conditions.
+    completion = AbstractValue.createFromLogicalOp(realm, ast.operator, lval, compl2, ast.loc);
+  }
   return completion;
 }

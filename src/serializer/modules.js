@@ -20,6 +20,7 @@ import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
+import { SerializerStatistics } from "./types.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
@@ -41,7 +42,7 @@ function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
 }
 
 export class ModuleTracer extends Tracer {
-  constructor(modules: Modules, logModules: boolean) {
+  constructor(modules: Modules, statistics: SerializerStatistics, logModules: boolean) {
     super();
     this.modules = modules;
     this.evaluateForEffectsNesting = 0;
@@ -49,6 +50,7 @@ export class ModuleTracer extends Tracer {
     this.requireSequence = [];
     this.logModules = logModules;
     this.uninitializedModuleIdsRequiredInEvaluateForEffects = new Set();
+    this.statistics = statistics;
   }
 
   modules: Modules;
@@ -59,6 +61,7 @@ export class ModuleTracer extends Tracer {
   // We can't say that a module has been initialized if it was initialized in a
   // evaluate for effects context until we know the effects are applied.
   logModules: boolean;
+  statistics: SerializerStatistics;
 
   log(message: string) {
     if (this.logModules) console.log(`[modules] ${this.requireStack.map(_ => "  ").join("")}${message}`);
@@ -149,6 +152,7 @@ export class ModuleTracer extends Tracer {
             let requireSequenceStart = this.requireSequence.length;
             this.requireSequence.push(moduleIdValue);
             let acceleratedModuleIds, effects;
+            const previousNumDelayedModules = this.statistics.delayedModules;
             do {
               try {
                 effects = realm.evaluateForEffects(() => {
@@ -193,6 +197,7 @@ export class ModuleTracer extends Tracer {
                   console.log(
                     `restarting require(${moduleIdValue}) after accelerating conditional require calls for ${acceleratedModuleIds.join()}`
                   );
+                  this.statistics.acceleratedModules += acceleratedModuleIds.length;
                 }
               }
             } while (acceleratedModuleIds.length > 0);
@@ -207,6 +212,7 @@ export class ModuleTracer extends Tracer {
 
             if (effects === undefined) {
               console.log(`delaying require(${moduleIdValue})`);
+              this.statistics.delayedModules = previousNumDelayedModules + 1;
               // So we are about to emit a delayed require(...) call.
               // However, before we do that, let's try to require all modules that we
               // know this delayed require call will require.
@@ -270,7 +276,13 @@ export class ModuleTracer extends Tracer {
 }
 
 export class Modules {
-  constructor(realm: Realm, logger: Logger, logModules: boolean, delayUnsupportedRequires: boolean) {
+  constructor(
+    realm: Realm,
+    logger: Logger,
+    statistics: SerializerStatistics,
+    logModules: boolean,
+    delayUnsupportedRequires: boolean
+  ) {
     this.realm = realm;
     this.logger = logger;
     this._require = realm.intrinsics.undefined;
@@ -278,7 +290,7 @@ export class Modules {
     this.factoryFunctions = new Set();
     this.moduleIds = new Set();
     this.initializedModules = new Map();
-    realm.tracers.push((this.moduleTracer = new ModuleTracer(this, logModules)));
+    realm.tracers.push((this.moduleTracer = new ModuleTracer(this, statistics, logModules)));
     this.delayUnsupportedRequires = delayUnsupportedRequires;
     this.disallowDelayingRequiresOverride = false;
   }
