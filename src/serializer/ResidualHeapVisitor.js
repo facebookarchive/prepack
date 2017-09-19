@@ -566,10 +566,9 @@ export class ResidualHeapVisitor {
         for (let propertyBinding of modifiedProperties.keys()) {
           let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
           let object = binding.object;
-          // These shouldn't be serialized
           if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
           if (object.refuseSerialization) continue; // modification to internal state
-          if (binding.descriptor === undefined) continue; // deleted
+          if (object.intrinsicName === "global") continue; // Avoid double-counting
           this.visitObjectProperty(binding);
         }
       };

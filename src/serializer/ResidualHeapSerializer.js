@@ -166,7 +166,6 @@ export class ResidualHeapSerializer {
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
-  serializedPropertyBindings: Set<PropertyBinding> | void;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -1155,9 +1154,6 @@ export class ResidualHeapSerializer {
       serializeGenerator: (generator: Generator): Array<BabelNodeStatement> => {
         return this._withGeneratorScope(generator, () => generator.serialize(context));
       },
-      recordPropertySerialized: (propertyBinding: PropertyBinding) => {
-        if (this.serializedPropertyBindings) this.serializedPropertyBindings.add(propertyBinding);
-      },
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
@@ -1173,7 +1169,6 @@ export class ResidualHeapSerializer {
   }
 
   _serializeAdditionalFunction(generator: Generator, postGeneratorCallback: () => void) {
-    this.serializedPropertyBindings = new Set();
     let context = this._getContext();
     return this._withGeneratorScope(generator, newBody => {
       let oldCurBody = this.currentFunctionBody;
@@ -1246,21 +1241,17 @@ export class ResidualHeapSerializer {
           // TODO: make sure this generator isn't getting mutated oddly
           this.additionalFunctionValueNestedFunctions = ((nestedFunctions: any): Set<FunctionValue>);
           let serializePropertiesAndBindings = () => {
-            let serializedPropertyBindings = this.serializedPropertyBindings;
-            invariant(serializedPropertyBindings);
             for (let propertyBinding of modifiedProperties.keys()) {
               let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
               let object = binding.object;
               if (object instanceof ObjectValue && createdObjects.has(object)) continue;
               if (object.refuseSerialization) continue;
-              // we've already serialized it from a generator entry.
-              if (serializedPropertyBindings.has(binding)) continue;
+              if (object.isIntrinsic()) continue;
               invariant(object instanceof ObjectValue);
               this._emitProperty(object, binding.key, binding.descriptor, true);
             }
           };
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);
-          invariant(body.length > 0, "An additional function has no body");
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
           rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
           // re-resolve initialized modules to include things from additional functions

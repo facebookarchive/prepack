@@ -123,30 +123,31 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (desc === undefined) {
     // The property is being deleted
     if (O === realm.$GlobalObject) {
-      generator.emitGlobalDelete(P, propertyBinding, realm.getRunningContext().isStrict);
+      generator.emitGlobalDelete(P, realm.getRunningContext().isStrict);
     } else {
-      generator.emitPropertyDelete(O, P, propertyBinding);
+      generator.emitPropertyDelete(O, P);
     }
   } else {
+    let descValue = desc.value || realm.intrinsics.undefined;
     if (oldDesc === undefined) {
       // The property is being created
       if (O === realm.$GlobalObject) {
         if (IsDataDescriptor(realm, desc)) {
           if (isValidIdentifier(P) && !desc.configurable && desc.enumerable && desc.writable) {
-            generator.emitGlobalDeclaration(P, propertyBinding);
+            generator.emitGlobalDeclaration(P, descValue);
           } else if (desc.configurable && desc.enumerable && desc.writable) {
-            generator.emitGlobalAssignment(P, propertyBinding, realm.getRunningContext().isStrict);
+            generator.emitGlobalAssignment(P, descValue, realm.getRunningContext().isStrict);
           } else {
-            generator.emitDefineProperty(O, P, propertyBinding);
+            generator.emitDefineProperty(O, P, desc);
           }
         } else {
-          generator.emitDefineProperty(O, P, propertyBinding);
+          generator.emitDefineProperty(O, P, desc);
         }
       } else {
         if (IsDataDescriptor(realm, desc) && desc.configurable && desc.enumerable && desc.writable) {
-          generator.emitPropertyAssignment(O, P, propertyBinding);
+          generator.emitPropertyAssignment(O, P, descValue);
         } else {
-          generator.emitDefineProperty(O, P, propertyBinding);
+          generator.emitDefineProperty(O, P, desc);
         }
       }
     } else {
@@ -154,12 +155,12 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
       if (equalDescriptors(desc, oldDesc)) {
         // only the value is being modified
         if (O === realm.$GlobalObject) {
-          generator.emitGlobalAssignment(P, propertyBinding, realm.getRunningContext().isStrict);
+          generator.emitGlobalAssignment(P, descValue, realm.getRunningContext().isStrict);
         } else {
-          generator.emitPropertyAssignment(O, P, propertyBinding);
+          generator.emitPropertyAssignment(O, P, descValue);
         }
       } else {
-        generator.emitDefineProperty(O, P, propertyBinding);
+        generator.emitDefineProperty(O, P, desc);
       }
     }
   }
