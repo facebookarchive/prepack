@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { FunctionEnvironmentRecord } from "../environment.js";
@@ -50,7 +51,7 @@ function GetSuperConstructor(realm: Realm) {
 
 // ECMA262 12.3.5.1
 export default function SuperCall(
-  Arguments: Array<BabelNode>,
+  Arguments: Array<BabelNodeExpression | BabelNodeSpreadElement>,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
