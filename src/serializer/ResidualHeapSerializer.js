@@ -825,7 +825,7 @@ export class ResidualHeapSerializer {
     invariant(residualBindings);
 
     invariant(val instanceof ECMAScriptSourceFunctionValue);
-    let serializedBindings = Object.create(null);
+    let serializedBindings = {};
     let instance: FunctionInstance = {
       serializedBindings,
       functionValue: val,

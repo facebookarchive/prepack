@@ -108,7 +108,7 @@ export type Binding = {
 export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   constructor(realm: Realm) {
     super(realm);
-    this.bindings = Object.create(null);
+    this.bindings = (Object.create(null): any);
   }
 
   bindings: { [name: string]: Binding };

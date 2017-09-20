@@ -53,7 +53,7 @@ export default function(
   } else {
     // 6. Else,
     // a. Let argList be ArgumentListEvaluation of arguments.
-    argsList = ArgumentListEvaluation(realm, strictCode, env, args);
+    argsList = ArgumentListEvaluation(realm, strictCode, env, (args: any)); // BabelNodeNewExpression needs updating
 
     // This step not necessary since we propagate completions with exceptions.
     // b. ReturnIfAbrupt(argList).

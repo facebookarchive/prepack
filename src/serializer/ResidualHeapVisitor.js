@@ -183,7 +183,7 @@ export class ResidualHeapVisitor {
   visitDeclarativeEnvironmentRecordBinding(r: DeclarativeEnvironmentRecord, n: string): VisitedBinding {
     let visitedBindings = this.declarativeEnvironmentRecordsBindings.get(r);
     if (!visitedBindings) {
-      visitedBindings = Object.create(null);
+      visitedBindings = (Object.create(null): any);
       this.declarativeEnvironmentRecordsBindings.set(r, visitedBindings);
     }
     let visitedBinding: ?VisitedBinding = visitedBindings[n];
@@ -278,8 +278,8 @@ export class ResidualHeapVisitor {
 
     if (!functionInfo) {
       functionInfo = {
-        unbound: Object.create(null),
-        modified: Object.create(null),
+        unbound: (Object.create(null): any),
+        modified: (Object.create(null): any),
         usesArguments: false,
         usesThis: false,
       };
@@ -312,7 +312,7 @@ export class ResidualHeapVisitor {
       }
     }
 
-    let visitedBindings = Object.create(null);
+    let visitedBindings = (Object.create(null): any);
     this._withScope(val, () => {
       invariant(functionInfo);
       for (let innerName in functionInfo.unbound) {

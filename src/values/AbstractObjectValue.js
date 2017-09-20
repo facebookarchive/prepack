@@ -30,6 +30,9 @@ export default class AbstractObjectValue extends AbstractValue {
     optionalArgs?: {| kind?: string, intrinsicName?: string |}
   ) {
     super(realm, types, values, hashValue, args, buildNode, optionalArgs);
+    if (!values.isTop()) {
+      for (let element of this.values.getElements()) invariant(element instanceof ObjectValue);
+    }
   }
 
   getTemplate(): ObjectValue {
@@ -130,6 +133,24 @@ export default class AbstractObjectValue extends AbstractValue {
         return cv.$GetOwnProperty(P, cv);
       }
       invariant(false);
+    } else if (this.kind === "conditional") {
+      // this is the join of two concrete objects
+      // use this join condition for the join of the two property values
+      let [cond, ob1, ob2] = this.args;
+      invariant(cond instanceof AbstractValue);
+      invariant(ob1 instanceof ObjectValue);
+      invariant(ob2 instanceof ObjectValue);
+      let d1 = ob1.$GetOwnProperty(P);
+      let d2 = ob2.$GetOwnProperty(P);
+      if (d1 === undefined || d2 === undefined || !equalDescriptors(d1, d2)) {
+        AbstractValue.reportIntrospectionError(this, P);
+        throw new FatalError();
+      }
+      let desc = cloneDescriptor(d1);
+      invariant(desc !== undefined);
+      if (IsDataDescriptor(this.$Realm, desc))
+        desc.value = joinValuesAsConditional(this.$Realm, cond, d1.value, d2.value);
+      return desc;
     } else {
       let hasProp = false;
       let doesNotHaveProp = false;
@@ -261,6 +282,24 @@ export default class AbstractObjectValue extends AbstractValue {
         return cv.$Get(P, Receiver);
       }
       invariant(false);
+    } else if (this.kind === "conditional") {
+      // this is the join of two concrete objects
+      // use this join condition for the join of the two property values
+      let [cond, ob1, ob2] = this.args;
+      invariant(cond instanceof AbstractValue);
+      invariant(ob1 instanceof ObjectValue);
+      invariant(ob2 instanceof ObjectValue);
+      let d1 = ob1.$GetOwnProperty(P);
+      let d1val =
+        d1 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d1) ? d1.value : undefined;
+      let d2 = ob2.$GetOwnProperty(P);
+      let d2val =
+        d2 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d2) ? d2.value : undefined;
+      if (d1val === undefined || d2val === undefined) {
+        AbstractValue.reportIntrospectionError(this, P);
+        throw new FatalError();
+      }
+      return joinValuesAsConditional(this.$Realm, cond, d1val, d2val);
     } else {
       let result;
       for (let cv of elements) {
