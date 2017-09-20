@@ -18,6 +18,7 @@ import { Reference } from "../environment.js";
 import { GetValue, joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.js";
 import type { BabelNode, BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
+import { withPathCondition, withInversePathCondition } from "../utils/paths.js";
 
 export function evaluate(
   ast: BabelNodeIfStatement,
@@ -86,23 +87,13 @@ export function evaluateWithAbstractConditional(
   realm: Realm
 ): NormalCompletion | Value {
   // Evaluate consequent and alternate in sandboxes and get their effects.
-  let compl1, gen1, bindings1, properties1, createdObj1;
-  realm.pathConditions.push(condValue);
-  try {
-    [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateNodeForEffects(consequent, strictCode, env);
-  } finally {
-    realm.pathConditions.pop();
-  }
+  let [compl1, gen1, bindings1, properties1, createdObj1] = withPathCondition(condValue, () => {
+    return realm.evaluateNodeForEffects(consequent, strictCode, env);
+  });
 
-  let compl2, gen2, bindings2, properties2, createdObj2;
-  realm.pathConditions.push(AbstractValue.createFromUnaryOp(realm, "!", condValue));
-  try {
-    [compl2, gen2, bindings2, properties2, createdObj2] = alternate
-      ? realm.evaluateNodeForEffects(alternate, strictCode, env)
-      : construct_empty_effects(realm);
-  } finally {
-    realm.pathConditions.pop();
-  }
+  let [compl2, gen2, bindings2, properties2, createdObj2] = withInversePathCondition(condValue, () => {
+    return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
+  });
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of condValue.

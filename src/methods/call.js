@@ -52,7 +52,7 @@ import {
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import invariant from "../invariant.js";
-import type { BabelNode, BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
+import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
 
 // ECMA262 12.3.6.1
@@ -60,13 +60,13 @@ export function ArgumentListEvaluation(
   realm: Realm,
   strictCode: boolean,
   env: LexicalEnvironment,
-  argNodes: Array<BabelNode> | BabelNodeTemplateLiteral
+  argNodes: Array<BabelNodeExpression | BabelNodeSpreadElement> | BabelNodeTemplateLiteral
 ): Array<Value> {
   if (Array.isArray(argNodes)) {
     let args = [];
-    for (let node_ of ((argNodes: any): Array<BabelNode>)) {
+    for (let node_ of argNodes) {
       if (node_.type === "SpreadElement") {
-        let node = ((node_: any): BabelNodeSpreadElement);
+        let node = (node_: BabelNodeSpreadElement);
         // 1. Let list be a new empty List.
         let list = args;
 
@@ -103,7 +103,7 @@ export function ArgumentListEvaluation(
     }
     return args;
   } else {
-    let node = ((argNodes: any): BabelNodeTemplateLiteral);
+    let node = (argNodes: BabelNodeTemplateLiteral);
     if (node.expressions.length === 0) {
       // 1. Let templateLiteral be this TemplateLiteral.
       let templateLiteral = node;
@@ -402,7 +402,7 @@ export function EvaluateDirectCall(
   ref: Value | Reference,
   func: Value,
   thisValue: Value,
-  args: Array<BabelNode> | BabelNodeTemplateLiteral,
+  args: Array<BabelNodeExpression | BabelNodeSpreadElement> | BabelNodeTemplateLiteral,
   tailPosition?: boolean
 ): Value {
   // 1. Let argList be ? ArgumentListEvaluation(arguments).
@@ -422,11 +422,15 @@ export function EvaluateDirectCallWithArgList(
   tailPosition?: boolean
 ): Value {
   if (func instanceof AbstractValue && Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
-    let fullArgs = [func].concat(argList);
-    return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
-      let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-      return t.callExpression(nodes[0], fun_args);
-    });
+    return AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      Value,
+      [func].concat(argList),
+      (nodes: Array<BabelNodeExpression>) => {
+        let fun_args = nodes.slice(1);
+        return t.callExpression(nodes[0], ((fun_args: any): Array<BabelNodeExpression | BabelNodeSpreadElement>));
+      }
+    );
   }
   func = func.throwIfNotConcrete();
 

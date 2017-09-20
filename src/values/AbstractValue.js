@@ -42,6 +42,7 @@ import {
   hashTernary,
   hashUnary,
   StrictEqualityComparison,
+  ToBoolean,
 } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -191,8 +192,34 @@ export default class AbstractValue extends Value {
   implies(val: AbstractValue): boolean {
     // Neither this nor val is a known value, so we need to some reasoning based on the structure
     if (this.equals(val)) return true; // x => x regardless of its value
-    // todo: (x & y) => z if (x => z) || (y => z)
-    // todo: x => (y | z) if (x => y) || (x = z)
+    // (x && y) => z if (x => z) || (y => z)
+    if (this.kind === "&&") {
+      let [x, y] = this.args;
+      invariant(x instanceof AbstractValue);
+      invariant(y instanceof AbstractValue);
+      return x.implies(val) || y.implies(val);
+    }
+    // (x || y) => z if (x => z) && (y => z)
+    if (this.kind === "||") {
+      let [x, y] = this.args;
+      invariant(x instanceof AbstractValue);
+      invariant(y instanceof AbstractValue);
+      return x.implies(val) && y.implies(val);
+    }
+    // x => (y && z) if (x => y) && (x = z)
+    if (val.kind === "&&") {
+      let [y, z] = this.args;
+      invariant(y instanceof AbstractValue);
+      invariant(z instanceof AbstractValue);
+      return this.implies(y) && this.implies(z);
+    }
+    // x => (y || z) if (x => y) || (x = z)
+    if (val.kind === "||") {
+      let [y, z] = this.args;
+      invariant(y instanceof AbstractValue);
+      invariant(z instanceof AbstractValue);
+      return this.implies(y) || this.implies(z);
+    }
     return false;
   }
 
@@ -294,7 +321,15 @@ export default class AbstractValue extends Value {
   }
 
   refineWithPathCondition(): Value {
-    if (this.kind !== "conditional") return this;
+    let op = this.kind;
+    if (op === "&&" || op === "||") {
+      let [left, right] = this.args;
+      let refinedLeft = left instanceof AbstractValue ? left.refineWithPathCondition() : left;
+      let refinedRight = right instanceof AbstractValue ? right.refineWithPathCondition() : right;
+      if (left === refinedLeft && right === refinedRight) return this;
+      return AbstractValue.createFromLogicalOp(this.$Realm, op, refinedLeft, refinedRight, this.expressionLocation);
+    }
+    if (op !== "conditional") return this;
     let [condition, trueVal, falseVal] = this.args;
     invariant(condition instanceof AbstractValue);
     invariant(trueVal !== undefined);
@@ -396,15 +431,19 @@ export default class AbstractValue extends Value {
     left: Value,
     right: Value,
     loc?: ?BabelNodeSourceLocation
-  ): AbstractValue {
+  ): Value {
     let leftTypes, leftValues;
     if (left instanceof AbstractValue) {
+      if (!left.isIntrinsic()) {
+        if (!left.mightNotBeTrue()) return op === "&&" ? right : left;
+        if (!left.mightNotBeFalse()) return op === "&&" ? left : right;
+      }
       leftTypes = left.types;
       leftValues = left.values;
     } else {
-      leftTypes = new TypesDomain(left.getType());
       invariant(left instanceof ConcreteValue);
-      leftValues = new ValuesDomain(left);
+      if (ToBoolean(realm, left)) return op === "&&" ? right : left;
+      else return this.kind === "&&" ? left : right;
     }
 
     let rightTypes, rightValues;
@@ -438,9 +477,15 @@ export default class AbstractValue extends Value {
     right: void | Value,
     loc?: ?BabelNodeSourceLocation
   ): AbstractValue {
-    if (left instanceof BooleanValue && right instanceof BooleanValue) {
-      if (left.value && !right.value) return condition;
-      if (!left.value && right.value) return AbstractValue.createFromUnaryOp(realm, "!", condition, true, loc);
+    if (
+      left !== undefined &&
+      left.getType() === BooleanValue &&
+      right !== undefined &&
+      right.getType() === BooleanValue
+    ) {
+      if (!left.mightNotBeTrue() && !right.mightNotBeFalse()) return condition;
+      if (!left.mightNotBeFalse() && !right.mightNotBeTrue())
+        return AbstractValue.createFromUnaryOp(realm, "!", condition, true, loc);
     }
     let types = TypesDomain.joinValues(left, right);
     let values = ValuesDomain.joinValues(realm, left, right);
