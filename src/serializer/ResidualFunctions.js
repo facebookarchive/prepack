@@ -191,7 +191,7 @@ export class ResidualFunctions {
             // modified variable of its parent scope. In some cases it could be
             // an improvement to split these variables into multiple
             // scopes.
-            const variableIndexInScope = String(scope.initializationValues.length);
+            const variableIndexInScope = scope.initializationValues.length;
             invariant(serializedBinding.serializedValue);
             scope.initializationValues.push(serializedBinding.serializedValue);
             scope.capturedScope = capturedScope;
@@ -199,7 +199,7 @@ export class ResidualFunctions {
             // Replace binding usage with scope references
             serializedBinding.serializedValue = t.memberExpression(
               t.identifier(capturedScope),
-              t.identifier(variableIndexInScope),
+              t.numericLiteral(variableIndexInScope),
               true // Array style access.
             );
 
