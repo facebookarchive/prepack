@@ -37,6 +37,10 @@ export default class ConcreteValue extends Value {
     return this instanceof NullValue;
   }
 
+  mightNotBeNull(): boolean {
+    return !(this instanceof NullValue);
+  }
+
   mightBeNumber(): boolean {
     return this instanceof NumberValue;
   }
@@ -63,6 +67,10 @@ export default class ConcreteValue extends Value {
 
   mightBeUndefined(): boolean {
     return this instanceof UndefinedValue;
+  }
+
+  mightNotBeUndefined(): boolean {
+    return !(this instanceof UndefinedValue);
   }
 
   mightHaveBeenDeleted(): boolean {

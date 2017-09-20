@@ -252,6 +252,14 @@ export default class AbstractValue extends Value {
     return this.values.includesValueOfType(NullValue);
   }
 
+  mightNotBeNull(): boolean {
+    let valueType = this.getType();
+    if (valueType === NullValue) return false;
+    if (valueType !== Value) return true;
+    if (this.values.isTop()) return true;
+    return this.values.includesValueNotOfType(NullValue);
+  }
+
   mightBeNumber(): boolean {
     let valueType = this.getType();
     if (valueType === NumberValue) return true;
@@ -306,6 +314,14 @@ export default class AbstractValue extends Value {
     if (valueType !== Value) return false;
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(UndefinedValue);
+  }
+
+  mightNotBeUndefined(): boolean {
+    let valueType = this.getType();
+    if (valueType === UndefinedValue) return false;
+    if (valueType !== Value) return true;
+    if (this.values.isTop()) return true;
+    return this.values.includesValueNotOfType(UndefinedValue);
   }
 
   mightHaveBeenDeleted(): boolean {
