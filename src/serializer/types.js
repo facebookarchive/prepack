@@ -55,7 +55,7 @@ export type VisitedBinding = {
 export type ScopeBinding = {
   name: string,
   id: number,
-  initializationValues: Map<string, BabelNodeExpression>,
+  initializationValues: Array<BabelNodeExpression>,
   capturedScope?: string,
 };
 
