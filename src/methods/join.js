@@ -327,7 +327,7 @@ function joinResults(
   e1: Effects,
   e2: Effects
 ): AbruptCompletion | PossiblyNormalCompletion | Value {
-  function getAbstractValue(v1: void | Value, v2: void | Value): AbstractValue {
+  function getAbstractValue(v1: void | Value, v2: void | Value): Value {
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }
   if (result1 instanceof Reference || result2 instanceof Reference) {
@@ -443,7 +443,7 @@ export function joinMaps<K, V>(
 // where the join is defined to be just m1[key] if m1[key] === m2[key] and
 // and abstract value with expression "joinCondition ? m1[key] : m2[key]" if not.
 export function joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bindings, m2: Bindings): Bindings {
-  function getAbstractValue(v1: void | Value, v2: void | Value): AbstractValue {
+  function getAbstractValue(v1: void | Value, v2: void | Value): Value {
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }
   function join(b: Binding, v1: void | Value, v2: void | Value) {
@@ -460,7 +460,7 @@ export function joinValues(
   realm: Realm,
   v1: void | Value,
   v2: void | Value,
-  getAbstractValue: (void | Value, void | Value) => AbstractValue
+  getAbstractValue: (void | Value, void | Value) => Value
 ): Value {
   if (
     v1 !== undefined &&
@@ -480,10 +480,12 @@ export function joinValuesAsConditional(
   condition: AbstractValue,
   v1: void | Value,
   v2: void | Value
-): AbstractValue {
+): Value {
   let result = AbstractValue.createFromConditionalOp(realm, condition, v1, v2);
-  if (v1) result.mightBeEmpty = v1.mightHaveBeenDeleted();
-  if (v2 && !result.mightBeEmpty) result.mightBeEmpty = v2.mightHaveBeenDeleted();
+  if (result instanceof AbstractValue) {
+    if (v1) result.mightBeEmpty = v1.mightHaveBeenDeleted();
+    if (v2 && !result.mightBeEmpty) result.mightBeEmpty = v2.mightHaveBeenDeleted();
+  }
   return result;
 }
 
@@ -495,7 +497,7 @@ export function joinPropertyBindings(
   c1: CreatedObjects,
   c2: CreatedObjects
 ): PropertyBindings {
-  function getAbstractValue(v1: void | Value, v2: void | Value): AbstractValue {
+  function getAbstractValue(v1: void | Value, v2: void | Value): Value {
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }
   function join(b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) {
@@ -535,7 +537,7 @@ export function joinDescriptors(
   realm: Realm,
   d1: void | Descriptor,
   d2: void | Descriptor,
-  getAbstractValue: (void | Value, void | Value) => AbstractValue
+  getAbstractValue: (void | Value, void | Value) => Value
 ): void | Descriptor {
   function clone_with_abstract_value(d: Descriptor) {
     if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO: join computed properties");

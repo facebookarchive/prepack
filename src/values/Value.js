@@ -84,6 +84,13 @@ export default class Value {
   expressionLocation: ?BabelNodeSourceLocation;
   $Realm: Realm;
 
+  implies(val: Value): boolean {
+    if (this.equals(val)) return true;
+    if (!this.mightNotBeFalse()) return true;
+    if (!val.mightNotBeTrue()) return true;
+    return false;
+  }
+
   isIntrinsic(): boolean {
     return !!this.intrinsicName;
   }

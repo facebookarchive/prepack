@@ -94,6 +94,21 @@ function pushInversePathCondition(condition: Value) {
     if (right.mightNotBeTrue()) pushInversePathCondition(right);
   } else {
     let realm = condition.$Realm;
+    if (condition.kind === "!=" || condition.kind === "==") {
+      let left = condition.args[0];
+      let right = condition.args[1];
+      if (left instanceof ConcreteValue && right instanceof AbstractValue) [left, right] = [right, left];
+      if (left instanceof AbstractValue && (right instanceof UndefinedValue || right instanceof NullValue)) {
+        let op = condition.kind === "!=" ? "===" : "!==";
+        if (op === "!==") pushInversePathCondition(left);
+        else pushPathCondition(left);
+        let leftEqNull = AbstractValue.createFromBinaryOp(realm, op, left, realm.intrinsics.null);
+        if (leftEqNull.mightNotBeFalse()) pushPathCondition(leftEqNull);
+        let leftEqUndefined = AbstractValue.createFromBinaryOp(realm, op, left, realm.intrinsics.undefined);
+        if (leftEqUndefined.mightNotBeFalse()) pushPathCondition(leftEqUndefined);
+        return;
+      }
+    }
     let inverseCondition = AbstractValue.createFromUnaryOp(realm, "!", condition);
     pushPathCondition(inverseCondition);
     let simplifiedInverseCondition = simplifyAbstractValue(realm, inverseCondition);
