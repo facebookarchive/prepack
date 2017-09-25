@@ -571,6 +571,7 @@ export class ResidualHeapVisitor {
           if (object.intrinsicName === "global") continue; // Avoid double-counting
           this.visitObjectProperty(binding);
         }
+        // TODO #990: Fix additional functions handing of ModifiedBindings
       };
       this.visitGenerator(generator);
       this._withScope(generator, visitPropertiesAndBindings);
