@@ -124,11 +124,7 @@ export class ResidualFunctions {
     // One switch case for one scope.
     const cases = [];
     for (const scopeBinding of this.serializedScopes.values()) {
-      const scopeObjectExpression = t.objectExpression(
-        Array.from(scopeBinding.initializationValues.entries()).map(([variableName, value]) =>
-          t.objectProperty(t.identifier(variableName), value)
-        )
-      );
+      const scopeObjectExpression = t.arrayExpression((scopeBinding.initializationValues: any));
       cases.push(
         t.switchCase(t.numericLiteral(scopeBinding.id), [
           t.expressionStatement(t.assignmentExpression("=", selectorExpression, scopeObjectExpression)),
@@ -167,7 +163,7 @@ export class ResidualFunctions {
       scope = {
         name: this.scopeNameGenerator.generate(),
         id: this.capturedScopeInstanceIdx++,
-        initializationValues: new Map(),
+        initializationValues: [],
       };
       this.serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
@@ -195,15 +191,16 @@ export class ResidualFunctions {
             // modified variable of its parent scope. In some cases it could be
             // an improvement to split these variables into multiple
             // scopes.
+            const variableIndexInScope = scope.initializationValues.length;
             invariant(serializedBinding.serializedValue);
-            scope.initializationValues.set(name, serializedBinding.serializedValue);
+            scope.initializationValues.push(serializedBinding.serializedValue);
             scope.capturedScope = capturedScope;
 
             // Replace binding usage with scope references
             serializedBinding.serializedValue = t.memberExpression(
               t.identifier(capturedScope),
-              t.identifier(name),
-              false
+              t.numericLiteral(variableIndexInScope),
+              true // Array style access.
             );
 
             serializedBinding.referentialized = true;
