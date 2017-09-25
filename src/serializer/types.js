@@ -23,6 +23,8 @@ export type FunctionInstance = {
   serializedBindings: SerializedBindings,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
+  // Optional place to put the function declaration
+  preludeOverride?: Array<BabelNodeStatement>,
   scopeInstances: Set<ScopeBinding>,
 };
 
