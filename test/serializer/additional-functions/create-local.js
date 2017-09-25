@@ -2,21 +2,24 @@
 // does not contain:x = 5;
 // does not contain:y = 10;
 
-global.a = "";
-global.b = "";
-
 function additional1() {
-  global.a = "foo";
+  var z = { foo: 5 };
+  global.x = z;
   var x = 5;
 }
 
 function additional2() {
-  global.b = "bar";
+  var z = { bar: 6 };
+  global.y = z;
   var y = 10;
 }
 
 inspect = function() {
-  additional2();
   additional1();
-  return global.a + global.b;
+  additional2();
+  let x = global.x;
+  let y = global.y;
+  additional1();
+
+  return '' + x.foo + y.bar + (global.x === x) + global.x.foo;
 }

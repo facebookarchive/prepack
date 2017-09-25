@@ -2,21 +2,20 @@
 // does not contain:x = 5;
 // does not contain:y = 10;
 
-global.a = "";
-global.b = "";
+global.c = {};
 
 function additional1() {
-  global.a = "foo";
+  global.c.foo = 5;
   var x = 5;
 }
 
 function additional2() {
-  global.b = "bar";
+  global.c.bar = 2;
   var y = 10;
 }
 
 inspect = function() {
   additional2();
   additional1();
-  return global.a + global.b;
+  return global.b + global.c.foo + global.c.bar;
 }

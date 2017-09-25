@@ -308,6 +308,7 @@ export class Modules {
   moduleTracer: ModuleTracer;
 
   resolveInitializedModules(): void {
+    this.initializedModules.clear();
     let globalInitializedModulesMap = this._getGlobalProperty("__initializedModules");
     invariant(globalInitializedModulesMap instanceof ObjectValue);
     for (let moduleId of globalInitializedModulesMap.getOwnPropertyKeysArray()) {
@@ -468,7 +469,9 @@ export class Modules {
       // Check for escaping property assignments, if none escape, we got an existing object
       let escapes = false;
       for (let [binding] of properties) {
-        if (!createdObjects.has(binding.object)) escapes = true;
+        let object = binding.object;
+        invariant(object instanceof ObjectValue);
+        if (!createdObjects.has(object)) escapes = true;
       }
       if (escapes) return undefined;
 

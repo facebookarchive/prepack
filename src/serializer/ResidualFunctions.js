@@ -172,7 +172,11 @@ export class ResidualFunctions {
     return scope;
   }
 
-  _referentialize(unbound: Names, instances: Array<FunctionInstance>): void {
+  _referentialize(
+    unbound: Names,
+    instances: Array<FunctionInstance>,
+    shouldReferentializeInstanceFn: FunctionInstance => boolean
+  ): void {
     for (let instance of instances) {
       let serializedBindings = instance.serializedBindings;
 
@@ -182,6 +186,9 @@ export class ResidualFunctions {
         if (serializedBinding.modified) {
           // Initialize captured scope at function call instead of globally
           if (!serializedBinding.referentialized) {
+            if (!shouldReferentializeInstanceFn(instance)) {
+              throw new FatalError("TODO: implement referentialization for prepacked functions");
+            }
             let scope = this._getSerializedBindingScopeInstance(serializedBinding);
             let capturedScope = "__captured" + scope.name;
             // Save the serialized value for initialization at the top of
@@ -229,7 +236,9 @@ export class ResidualFunctions {
     ];
   }
 
-  spliceFunctions(): ResidualFunctionsResult {
+  spliceFunctions(
+    rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>
+  ): ResidualFunctionsResult {
     this.residualFunctionInitializers.scrubFunctionInitializers();
 
     let functionBodies = new Map();
@@ -252,7 +261,11 @@ export class ResidualFunctions {
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
-      this._referentialize(functionInfo.unbound, instances);
+      this._referentialize(
+        functionInfo.unbound,
+        instances,
+        instance => !rewrittenAdditionalFunctions.has(instance.functionValue)
+      );
     }
 
     for (let [funcBody, instances] of functionEntries) {
@@ -270,32 +283,69 @@ export class ResidualFunctions {
 
       let define = (instance, funcId, funcNode) => {
         let { functionValue } = instance;
-        let body;
+        let addToBody;
         if (t.isFunctionExpression(funcNode)) {
           funcNodes.set(functionValue, ((funcNode: any): BabelNodeFunctionExpression));
-          body = this.prelude;
+          addToBody = elem => {
+            // Let additional functions override the prelude to be their own body.
+            // In this case, prepend to that body to simulate a "prelude" in the function
+            if (instance.preludeOverride) instance.preludeOverride.unshift(elem);
+            else this.prelude.push(elem);
+          };
         } else {
           invariant(t.isCallExpression(funcNode)); // .bind call
-          body = getFunctionBody(instance);
+          addToBody = elem => getFunctionBody(instance).push(elem);
         }
         let declaration = t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]);
-        body.push(declaration);
+        addToBody(declaration);
         let prototypeId = this.functionPrototypes.get(functionValue);
         if (prototypeId !== undefined) {
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
-          body.push(
+          addToBody(
             t.variableDeclaration("var", [
               t.variableDeclarator(prototypeId, t.memberExpression(id, t.identifier("prototype"))),
             ])
           );
         }
       };
+      // Split instances into normal or additional functions (whose bodies have been rewritten)
+      let normalInstances = [];
+      let additionalFunctionInstances = [];
+      for (let instance of instances) {
+        if (rewrittenAdditionalFunctions.has(instance.functionValue)) additionalFunctionInstances.push(instance);
+        else normalInstances.push(instance);
+      }
 
-      if (shouldInline || instances.length === 1 || usesArguments) {
-        this.statistics.functionClones += instances.length - 1;
+      let rewrittenBody = rewrittenAdditionalFunctions.get(instances[0].functionValue);
 
-        for (let instance of instances) {
+      // rewritten functions shouldn't have references fixed up because the body,
+      // consists of serialized code. For simplicity we emit their instances in a naive way
+      if (rewrittenBody) {
+        let functionBody = t.blockStatement(rewrittenBody);
+        this.statistics.functionClones += additionalFunctionInstances.length - 1;
+
+        for (let instance of additionalFunctionInstances) {
+          let { functionValue } = instance;
+          let id = this.locationService.getLocation(functionValue);
+          invariant(id !== undefined);
+          let funcParams = params.slice();
+          let funcNode = t.functionExpression(null, funcParams, functionBody);
+
+          if (functionValue.$Strict) {
+            strictFunctionBodies.push(funcNode);
+          } else {
+            unstrictFunctionBodies.push(funcNode);
+          }
+
+          define(instance, id, funcNode);
+        }
+      }
+      if (normalInstances.length === 0) continue;
+      if (shouldInline || normalInstances.length === 1 || usesArguments) {
+        this.statistics.functionClones += normalInstances.length - 1;
+
+        for (let instance of normalInstances) {
           let { functionValue, serializedBindings, scopeInstances } = instance;
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
@@ -331,7 +381,7 @@ export class ResidualFunctions {
           define(instance, id, funcNode);
         }
       } else {
-        let suffix = instances[0].functionValue.__originalName || "";
+        let suffix = normalInstances[0].functionValue.__originalName || "";
         let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
 
         // filter included variables to only include those that are different
@@ -341,13 +391,13 @@ export class ResidualFunctions {
           let isDifferent = false;
           let lastBinding;
 
-          if (instances[0].serializedBindings[name].modified) {
+          if (normalInstances[0].serializedBindings[name].modified) {
             // Must modify for traversal
-            sameSerializedBindings[name] = instances[0].serializedBindings[name];
+            sameSerializedBindings[name] = normalInstances[0].serializedBindings[name];
             continue;
           }
 
-          for (let { serializedBindings } of instances) {
+          for (let { serializedBindings } of normalInstances) {
             let serializedBinding = serializedBindings[name];
 
             invariant(!serializedBinding.modified);
@@ -374,7 +424,7 @@ export class ResidualFunctions {
         }
 
         let scopeInitialization = [];
-        for (let scope of instances[0].scopeInstances) {
+        for (let scope of normalInstances[0].scopeInstances) {
           factoryParams.push(t.identifier(scope.name));
           scopeInitialization = scopeInitialization.concat(this._getReferentializedScopeInitialization(scope));
         }
@@ -388,7 +438,7 @@ export class ResidualFunctions {
           ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
         );
 
-        if (instances[0].functionValue.$Strict) {
+        if (normalInstances[0].functionValue.$Strict) {
           strictFunctionBodies.push(factoryNode);
         } else {
           unstrictFunctionBodies.push(factoryNode);
@@ -405,10 +455,10 @@ export class ResidualFunctions {
           modified,
           requireReturns: this.requireReturns,
           requireStatistics,
-          isRequire: this.modules.getIsRequire(factoryParams, instances.map(instance => instance.functionValue)),
+          isRequire: this.modules.getIsRequire(factoryParams, normalInstances.map(instance => instance.functionValue)),
         });
 
-        for (let instance of instances) {
+        for (let instance of normalInstances) {
           let { functionValue, serializedBindings, insertionPoint } = instance;
           let functionId = this.locationService.getLocation(functionValue);
           invariant(functionId !== undefined);
