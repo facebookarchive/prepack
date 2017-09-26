@@ -9,7 +9,14 @@
 
 /* @flow */
 
-import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
+import {
+  AbstractObjectValue,
+  AbstractValue,
+  ConcreteValue,
+  NullValue,
+  UndefinedValue,
+  Value,
+} from "../values/index.js";
 import invariant from "../invariant.js";
 import simplifyAbstractValue from "../utils/simplifier.js";
 
@@ -53,13 +60,30 @@ function pushPathCondition(condition: Value) {
     pushPathCondition(left);
     pushPathCondition(right);
   } else {
+    if (condition.kind === "!=" || condition.kind === "==") {
+      let left = condition.args[0];
+      let right = condition.args[1];
+      if (left instanceof ConcreteValue && right instanceof AbstractValue) [left, right] = [right, left];
+      if (left instanceof AbstractValue && (right instanceof UndefinedValue || right instanceof NullValue)) {
+        let op = condition.kind === "!=" ? "!==" : "===";
+        if (op === "!==") pushPathCondition(left);
+        else pushInversePathCondition(left);
+        let leftNeNull = AbstractValue.createFromBinaryOp(realm, op, left, realm.intrinsics.null);
+        if (leftNeNull.mightNotBeFalse()) pushPathCondition(leftNeNull);
+        let leftNeUndefined = AbstractValue.createFromBinaryOp(realm, op, left, realm.intrinsics.undefined);
+        if (leftNeUndefined.mightNotBeFalse()) pushPathCondition(leftNeUndefined);
+        return;
+      }
+    }
     realm.pathConditions.push(condition);
   }
 }
 
 // An inverse path condition is an abstract value that is known to be false in a particular code path
 function pushInversePathCondition(condition: Value) {
-  invariant(condition.mightNotBeTrue()); // it is mistake to assert that true is false
+  // it is mistake to assert that true is false (but special case intrinsic objects until there is a better story)
+  if (condition instanceof AbstractObjectValue && condition.isIntrinsic()) return;
+  invariant(condition.mightNotBeTrue());
   if (condition instanceof ConcreteValue) return;
   invariant(condition instanceof AbstractValue);
   if (condition.kind === "||") {
@@ -67,13 +91,13 @@ function pushInversePathCondition(condition: Value) {
     let right = condition.args[1];
     invariant(left instanceof AbstractValue); // it is a mistake to create an abstract value when concrete value will do
     pushInversePathCondition(left);
-    pushInversePathCondition(right);
+    if (right.mightNotBeTrue()) pushInversePathCondition(right);
   } else {
     let realm = condition.$Realm;
     let inverseCondition = AbstractValue.createFromUnaryOp(realm, "!", condition);
     pushPathCondition(inverseCondition);
     let simplifiedInverseCondition = simplifyAbstractValue(realm, inverseCondition);
-    if (simplifiedInverseCondition !== inverseCondition) pushPathCondition(simplifiedInverseCondition);
+    if (!simplifiedInverseCondition.equals(inverseCondition)) pushPathCondition(simplifiedInverseCondition);
   }
 }
 

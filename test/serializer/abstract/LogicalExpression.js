@@ -6,7 +6,7 @@ z0 = y || x;
 let ob = global.__abstract ? __abstract("object", "({})") : {};
 z1 = ob && 3;
 z2 = ob && y;
-z3 = ob || y;
+z3 = false || ob || y;
 
 let a = 111;
 let b = y || (a = 123);
@@ -23,5 +23,7 @@ let e = x || (z7 = 789);
 
 z8 = 777;
 let f = y || (z8 = 789);
+
+let g = true || (z8 = 111);
 
 inspect = function() { return "" + z + z0 + z1 + z2 + z3 + z4 + z5 + z6 + z7 + z8; }
