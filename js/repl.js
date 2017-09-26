@@ -75,6 +75,8 @@ function processError(errorOutput, error) {
     errorOutput.appendChild(document.createTextNode(' ('));
     errorOutput.appendChild(errorLineLink);
     errorOutput.appendChild(document.createTextNode('):  ' + error.message + '\n'));
+  } else if (!error.code) {
+    errorOutput.appendChild(document.createTextNode(error.message + '\n'));
   } else {
     errorOutput.appendChild(errorWikiLink);
     errorOutput.appendChild(document.createTextNode(': ' + error.message + '\n'));

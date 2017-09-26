@@ -34,9 +34,9 @@ onmessage = function(e) {
       postMessage({ type: 'error', data: buffer });
     }
   } catch (err) {
-    postMessage({
-      type: 'error',
-      data: err.message || 'An unknown error occurred'
+    buffer.push({
+      message: err.message || 'An unknown error occurred'
     });
+    postMessage({ type: 'error', data: buffer });
   }
 };
