@@ -187,6 +187,7 @@ export class ResidualFunctions {
           // Initialize captured scope at function call instead of globally
           if (!serializedBinding.referentialized) {
             if (!shouldReferentializeInstanceFn(instance)) {
+              // TODO #989: Fix additional functions and referentialization
               throw new FatalError("TODO: implement referentialization for prepacked functions");
             }
             let scope = this._getSerializedBindingScopeInstance(serializedBinding);
