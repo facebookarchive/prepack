@@ -87,7 +87,13 @@ export function getPureBinaryOperationResultType(
     }
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
-  } else if (op === "<" || op === ">" || op === ">=" || op === "<=" || op === "!=" || op === "==") {
+  } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
+    return reportErrorIfNotPure(IsToPrimitivePure, BooleanValue);
+  } else if (op === "!=" || op === "==") {
+    let ltype = lval.getType();
+    let rtype = rval.getType();
+    if (ltype === NullValue || ltype === UndefinedValue || rtype === NullValue || rtype === UndefinedValue)
+      return BooleanValue;
     return reportErrorIfNotPure(IsToPrimitivePure, BooleanValue);
   } else if (op === "===" || op === "!==") {
     return BooleanValue;
