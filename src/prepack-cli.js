@@ -21,8 +21,6 @@ import v8 from "v8";
 // Prepack helper
 declare var __residual: any;
 
-// Currently we need to explictly pass the captured variables we want to access.
-// TODO: In a future version of this can be automatic.
 function run(
   Object,
   Array,

@@ -312,7 +312,7 @@ export default class ObjectValue extends ConcreteValue {
     if (this.$WeakMapData !== undefined) return "WeakMap";
     if (this.$WeakSetData !== undefined) return "WeakSet";
     if (this.$TypedArrayName !== undefined) return this.$TypedArrayName;
-    // TODO #26: Promises. All kinds of iterators. Generators.
+    // TODO #26 #712: Promises. All kinds of iterators. Generators.
     return "Object";
   }
 
@@ -501,7 +501,7 @@ export default class ObjectValue extends ConcreteValue {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     // We assume that simple objects have no getter/setter properties.
     if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
-      AbstractValue.reportIntrospectionError(P, "TODO");
+      AbstractValue.reportIntrospectionError(P, "TODO: #1021");
       throw new FatalError();
     }
     // If all else fails, use this expression
@@ -584,7 +584,7 @@ export default class ObjectValue extends ConcreteValue {
     // We assume that simple objects have no getter/setter properties and
     // that all properties are writable.
     if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
-      AbstractValue.reportIntrospectionError(P, "TODO");
+      AbstractValue.reportIntrospectionError(P, "TODO #1021");
       throw new FatalError();
     }
 
@@ -645,7 +645,7 @@ export default class ObjectValue extends ConcreteValue {
   // ECMA262 9.1.10
   $Delete(P: PropertyKeyValue): boolean {
     if (this.unknownProperty !== undefined) {
-      // TODO: generate a delete from the object
+      // TODO #946: generate a delete from the object
       AbstractValue.reportIntrospectionError(this, P);
       throw new FatalError();
     }

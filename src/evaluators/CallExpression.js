@@ -154,7 +154,7 @@ function EvaluateCall(
     } else if (func.kind === "conditional") {
       return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
     } else {
-      // Assume that it is a safe function. TODO: really?
+      // Assume that it is a safe function. TODO #705: really?
     }
     return generateRuntimeCall();
   }

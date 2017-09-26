@@ -472,7 +472,7 @@ export function PrepareForTailCall(realm: Realm) {
   //    top of the stack becomes the running execution context.
   realm.popContext(leafContext);
 
-  // TODO 4. Assert: leafContext has no further use. It will never be activated as the running execution context.
+  // TODO #1008 4. Assert: leafContext has no further use. It will never be activated as the running execution context.
 }
 
 // ECMA262 7.3.12

@@ -21,5 +21,5 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  throw new FatalError("TODO: YieldExpression");
+  throw new FatalError("TODO: #712 YieldExpression");
 }

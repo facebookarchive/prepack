@@ -56,7 +56,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     //    starting with the second argument, append each argument as the last element of argList.
     argList;
 
-    // TODO 4. Perform PrepareForTailCall().
+    // TODO #1008 4. Perform PrepareForTailCall().
 
     // 5. Return ? Call(func, thisArg, argList).
     return Call(realm, func, thisArg, argList);
@@ -71,7 +71,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 2. If argArray is null or undefined, then
     if (HasSomeCompatibleType(argArray, NullValue, UndefinedValue)) {
-      // TODO a. Perform PrepareForTailCall().
+      // TODO #1008 a. Perform PrepareForTailCall().
 
       // b. Return ? Call(func, thisArg).
       return Call(realm, func, thisArg);
@@ -80,7 +80,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 3. Let argList be ? CreateListFromArrayLike(argArray).
     let argList = CreateListFromArrayLike(realm, argArray);
 
-    // TODO 4. Perform PrepareForTailCall().
+    // TODO #1008 4. Perform PrepareForTailCall().
 
     // 5. Return ? Call(func, thisArg, argList).
     return Call(realm, func, thisArg, argList);
@@ -177,7 +177,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
         return new StringValue(realm, `function ${name}() { [native code] }`);
       }
     } else if (context instanceof FunctionValue) {
-      return new StringValue(realm, "function () { TODO: provide function source code }");
+      // TODO #1009: provide function source code
+      return new StringValue(realm, "function () { }");
     } else {
       // 3. Throw a TypeError exception.
       throw realm.createErrorThrowCompletion(

@@ -294,6 +294,14 @@ export default class AbstractValue extends Value {
     return result;
   }
 
+  // Simplify an already constructed abstract value in the light of the path conditions that apply in the
+  // context where is this value is now being used.
+  // TODO #1019: this logic largely duplicates the functionality in simplifyAbstractValue.
+  // To fix this, two thing have to happen:
+  // 1. Avoid injecting simplifier.js into the big Flow dependency cycle that includes AbstractValue. This can probably
+  //    be done by storing simplifyAbstractValue in the realm.
+  // 2. Make simplifyAbstractValue path sensitive by checking for each condition if the current path conditions
+  //   imply them and then simplifying appropriately.
   refineWithPathCondition(): Value {
     function pathImplies(condition: AbstractValue): boolean {
       let path = condition.$Realm.pathConditions;

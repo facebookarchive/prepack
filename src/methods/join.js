@@ -540,7 +540,7 @@ export function joinDescriptors(
   getAbstractValue: (void | Value, void | Value) => Value
 ): void | Descriptor {
   function clone_with_abstract_value(d: Descriptor) {
-    if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO: join computed properties");
+    if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO #1015: join computed properties");
     let dc = cloneDescriptor(d);
     invariant(dc !== undefined);
     dc.value = getAbstractValue(d.value, realm.intrinsics.empty);
@@ -561,6 +561,7 @@ export function joinDescriptors(
     if (enumerable !== undefined) d3.enumerable = enumerable;
     let configurable = joinBooleans(d1.configurable, d2.configurable);
     if (configurable !== undefined) d3.configurable = configurable;
+    //TODO #1015: do not join the values if one the descriptors is a getter/setters
     if (IsDataDescriptor(realm, d1) || IsDataDescriptor(realm, d2))
       d3.value = joinValues(realm, d1.value, d2.value, getAbstractValue);
     if (d1.hasOwnProperty("get") || d2.hasOwnProperty("get"))
