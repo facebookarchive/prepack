@@ -18,4 +18,4 @@ unsafe.enable_getters_and_setters=true
 module.name_mapper='/lib/' -> '/src/'
 
 [version]
-^0.54.0
+^0.55.0
