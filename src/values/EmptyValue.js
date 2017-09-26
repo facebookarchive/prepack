@@ -9,10 +9,14 @@
 
 /* @flow */
 
-import { UndefinedValue } from "./index.js";
+import { UndefinedValue, Value } from "./index.js";
 
 export default class EmptyValue extends UndefinedValue {
   getHash(): number {
     return 4523845144584502;
+  }
+
+  equals(x: Value): boolean {
+    return x instanceof EmptyValue;
   }
 }
