@@ -16,7 +16,7 @@ import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
-import { AbstractObjectValue, FunctionValue, ObjectValue } from "../values/index.js";
+import { AbstractObjectValue, FunctionValue, ObjectValue, UndefinedValue } from "../values/index.js";
 import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
 import * as t from "babel-types";
@@ -63,6 +63,11 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
+      let funcLength = fun.getLength();
+      if (funcLength && funcLength > 0) {
+        // TODO #987: Make Additional Functions work with arguments
+        throw new FatalError("TODO: implement arguments to additional functions");
+      }
       this.nameToFunctionValue.set(fname, fun);
       let call = t.callExpression(fnameAst, []);
       calls.push([fname, call]);
@@ -91,6 +96,9 @@ export class Functions {
         );
         this.realm.handleError(error);
         throw new FatalError();
+      } else if (!(e1[0] instanceof UndefinedValue)) {
+        // TODO #988: Make Additional Functions work with return values
+        throw new FatalError("TODO: make return values work with additional functions");
       }
       for (let [fname2, call2] of calls) {
         fname2; // not used
