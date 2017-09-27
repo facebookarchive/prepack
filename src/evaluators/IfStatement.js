@@ -18,6 +18,7 @@ import { Reference } from "../environment.js";
 import { GetValue, joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.js";
 import type { BabelNode, BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
+import simplifyAbstractValue from "../utils/simplifier.js";
 import { withPathCondition, withInversePathCondition } from "../utils/paths.js";
 
 export function evaluate(
@@ -30,6 +31,7 @@ export function evaluate(
   let exprRef = env.evaluate(ast.test, strictCode);
   // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
   let exprValue = GetValue(realm, exprRef);
+  if (exprValue instanceof AbstractValue) exprValue = simplifyAbstractValue(realm, exprValue);
 
   if (exprValue instanceof ConcreteValue) {
     let stmtCompletion;
