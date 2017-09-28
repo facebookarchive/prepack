@@ -43,28 +43,34 @@
     </nav>
 
     <div class="record-container">
-      <select class="select-record">
-        <option>1</option>
-        <option>2</option>
-        <option>3</option>
-        <option>4</option>
-      </select>
+      <div class="select-record-input">
+        <select class="select-record">
+          <option>1</option>
+          <option>2</option>
+          <option>3</option>
+          <option>4</option>
+        </select>
+      </div>
+      <div class="options-input">
+        <div id="optionsMenuButton" class="options-menu-button">OPTIONS</div>
+        <div id="optionsMenuRecord" class="options-menu-record"></div>
+      </div>
       <div class="record-input">
         <input id="recordName" placeholder="demo name"/>
         <div id="saveBtn" class="record-button save">SAVE</div>
         <div id="deleteBtn" class="record-button delete">DELETE</div>
       </div>
     </div>
-     <div class="repl-container">
-        <div class="input">
-          <div class="repl"></div>
-        </div>
-
-        <div class="output">
-          <div class="repl"></div>
-          <div class="error"></div>
-        </div>
+    <div class="repl-container">
+      <div class="input">
+        <div class="repl"></div>
       </div>
+
+      <div class="output">
+        <div class="repl"></div>
+        <div class="error"></div>
+      </div>
+    </div>
 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>

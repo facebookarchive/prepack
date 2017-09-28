@@ -33,18 +33,96 @@ header, .repl-container {
   padding-top: 8px;
   /*line-height: 40px;*/
   background: #1c1c1c;
-  color:white;
+  color: white;
+  z-index: 10;
 }
 
+.record-container .select-record-input{
+  display: inline-block;
+  vertical-align: top;
+}
 .record-container .select-record{
   visibility: hidden;
 }
 .record-container .select-target{
-  margin-left:20px;
-  height: 44px;
+  /*margin-left:20px;*/
+  /*height: 44px;*/
+}
+.record-container .options-input{
+  display: inline-block;
+  vertical-align: top;
+  margin-right: 20px;
+  padding: 8px 0px;
+}
+.record-container .options-menu-button{
+  display: inline-block;
+  vertical-align: top;
+  padding: 5px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 3px;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;  
+}
+.record-container .options-menu-button:hover{
+  background-color:gray;
+}
+.record-container .options-menu-record{
+  display: none;
+  vertical-align: top;
+  z-index: 20;
+  background: #1c1c1c;
+  color: white;
+  border-radius: 3px;
+  padding: 10px;
+  border: 1px solid gray;
+  position: fixed;
+}
+.record-container .options-menu-record .prepack-option{
+  padding: 10px;
+  border-bottom: 1px solid gray;
+  font-size: 14px;
+}
+.record-container .options-menu-record .prepack-option .prepack-option-label{
+  display: inline-block;
+  max-width: 100%;
+  font-weight: bold;
+  padding-left: 5px;
+}
+.record-container .options-menu-record .prepack-option .prepack-option-description{
+  max-width: 100%;
+  font-weight: bold;
+  font-size: 12px;
+  padding-left: 5px;
+  color: #b9b9b9;
+}
+.record-container .options-menu-record input{
+  /*height: 30px;*/
+  outline: none;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  width: 100px;
+  padding-left: 15px;
+  margin-right: 5px;
+}
+
+.record-container .options-menu-record input:focus{
+  outline: none;
+  border: 2px solid #63a2f1;
+}
+
+.record-container .options-menu-record:after{
+  content:'';
+  display: block;
+  clear: both;
 }
 .record-container .record-button{
   display: inline-block;
+  vertical-align: top;
   padding: 5px 20px;
   vertical-align: top;
   font-size: 14px;
@@ -66,11 +144,13 @@ header, .repl-container {
 
 
 .record-container .record-input{
-  float: right;
+  right: 0px;
   display: inline-block;
+  vertical-align: top;
   margin-right: 20px;
   padding: 8px 0px;
   /*height: 100%;*/
+  position: fixed;
 }
 
 .record-container .record-input input{
@@ -99,6 +179,7 @@ header, .repl-container {
   top: 120px;
   bottom: 0;
   background-color: #f7f7f7;
+  z-index: -1;
 }
 
 /* NAV */
