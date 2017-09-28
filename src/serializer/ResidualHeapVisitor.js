@@ -95,36 +95,48 @@ export class ResidualHeapVisitor {
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>;
   equivalenceSet: HashSet<AbstractValue>;
 
-  _withScope(scope: Scope, f: () => void) {
+  _withScope(scope: Scope, f: () => boolean): boolean {
     let oldScope = this.scope;
     this.scope = scope;
-    f();
+    let result = f();
     this.scope = oldScope;
+    return result;
   }
 
   visitObjectProperty(binding: PropertyBinding) {
     let desc = binding.descriptor;
-    if (desc === undefined) return; //deleted
+    if (desc === undefined) return true; //deleted
     let obj = binding.object;
     if (obj instanceof AbstractObjectValue || !this.inspector.canIgnoreProperty(obj, binding.key)) {
-      this.visitDescriptor(desc);
+      return this.visitDescriptor(desc);
     }
+    return true;
   }
 
-  visitObjectProperties(obj: ObjectValue): void {
+  visitObjectProperties(obj: ObjectValue): boolean {
     // visit properties
+    let passCheck = true;
     for (let [symbol, propertyBinding] of obj.symbols) {
       invariant(propertyBinding);
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; //deleted
-      this.visitDescriptor(desc);
-      this.visitValue(symbol);
+      passCheck = this.visitDescriptor(desc);
+      if (!passCheck) {
+        return false;
+      }
+      passCheck = this.visitValue(symbol);
+      if (!passCheck) {
+        return false;
+      }
     }
 
     // visit properties
     for (let propertyBinding of obj.properties.values()) {
       invariant(propertyBinding);
-      this.visitObjectProperty(propertyBinding);
+      passCheck = this.visitObjectProperty(propertyBinding);
+      if (!passCheck) {
+        return false;
+      }
     }
 
     // inject properties with computed names
@@ -133,66 +145,114 @@ export class ResidualHeapVisitor {
       if (desc !== undefined) {
         let val = desc.value;
         invariant(val instanceof AbstractValue);
-        this.visitObjectPropertiesWithComputedNames(val);
+        passCheck = this.visitObjectPropertiesWithComputedNames(val);
+        if (!passCheck) {
+          return false;
+        }
       }
     }
 
     // prototype
-    this.visitObjectPrototype(obj);
-    if (obj instanceof FunctionValue) this.visitConstructorPrototype(obj);
+    passCheck = this.visitObjectPrototype(obj);
+    if (!passCheck) {
+      return false;
+    }
+    if (obj instanceof FunctionValue) {
+      passCheck = this.visitConstructorPrototype(obj);
+    }
+    return passCheck;
   }
 
-  visitObjectPrototype(obj: ObjectValue) {
+  visitObjectPrototype(obj: ObjectValue): boolean {
     let proto = obj.$Prototype;
 
     let kind = obj.getKind();
-    if (proto === this.realm.intrinsics[kind + "Prototype"]) return;
+    if (proto === this.realm.intrinsics[kind + "Prototype"]) return true;
 
-    this.visitValue(proto);
+    return this.visitValue(proto);
   }
 
-  visitConstructorPrototype(func: FunctionValue) {
+  visitConstructorPrototype(func: FunctionValue): boolean {
     // If the original prototype object was mutated,
     // request its serialization here as this might be observable by
     // residual code.
+    let passCheck = true;
     let prototype = ResidualHeapInspector.getPropertyValue(func, "prototype");
     if (
       prototype instanceof ObjectValue &&
       prototype.originalConstructor === func &&
       !this.inspector.isDefaultPrototype(prototype)
     ) {
-      this.visitValue(prototype);
+      passCheck = this.visitValue(prototype);
     }
+    return passCheck;
   }
 
-  visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
+  visitObjectPropertiesWithComputedNames(absVal: AbstractValue): boolean {
     invariant(absVal.args.length === 3);
     let cond = absVal.args[0];
     invariant(cond instanceof AbstractValue);
+    let passCheck = true;
     if (cond.kind === "template for property name condition") {
       let P = cond.args[0];
       invariant(P instanceof AbstractValue);
       let V = absVal.args[1];
       let earlier_props = absVal.args[2];
-      if (earlier_props instanceof AbstractValue) this.visitObjectPropertiesWithComputedNames(earlier_props);
-      this.visitValue(P);
-      this.visitValue(V);
+      if (earlier_props instanceof AbstractValue) {
+        passCheck = this.visitObjectPropertiesWithComputedNames(earlier_props);
+        if (!passCheck) {
+          return false;
+        }
+      }
+      passCheck = this.visitValue(P);
+      if (!passCheck) {
+        return false;
+      }
+      passCheck = this.visitValue(V);
+      if (!passCheck) {
+        return false;
+      }
     } else {
       // conditional assignment
-      absVal.args[0] = this.visitEquivalentValue(cond);
+      let retVal;
+      [retVal, passCheck] = this.visitEquivalentValue(cond);
+      absVal.args[0] = retVal;
+      if (!passCheck) {
+        return false;
+      }
       let consequent = absVal.args[1];
       invariant(consequent instanceof AbstractValue);
       let alternate = absVal.args[2];
       invariant(alternate instanceof AbstractValue);
-      this.visitObjectPropertiesWithComputedNames(consequent);
-      this.visitObjectPropertiesWithComputedNames(alternate);
+      passCheck = this.visitObjectPropertiesWithComputedNames(consequent);
+      if (!passCheck) {
+        return false;
+      }
+      passCheck = this.visitObjectPropertiesWithComputedNames(alternate);
     }
+    return passCheck;
   }
 
-  visitDescriptor(desc: Descriptor): void {
-    if (desc.value !== undefined) desc.value = this.visitEquivalentValue(desc.value);
-    if (desc.get !== undefined) this.visitValue(desc.get);
-    if (desc.set !== undefined) this.visitValue(desc.set);
+  visitDescriptor(desc: Descriptor): boolean {
+    let passCheck = true;
+    if (desc.value !== undefined) {
+      let retVal;
+      [retVal, passCheck] = this.visitEquivalentValue(desc.value);
+      desc.value = retVal;
+      if (!passCheck) {
+        return false;
+      }
+    }
+    if (desc.get !== undefined) {
+      passCheck = this.visitValue(desc.get);
+      if (!passCheck) {
+        return false;
+      }
+    }
+    if (desc.set !== undefined) {
+      passCheck = this.visitValue(desc.set);
+    }
+    return passCheck;
   }
 
   visitDeclarativeEnvironmentRecordBinding(r: DeclarativeEnvironmentRecord, n: string): VisitedBinding {
@@ -211,23 +271,27 @@ export class ResidualHeapVisitor {
       visitedBindings[n] = visitedBinding;
     }
     invariant(visitedBinding.value !== undefined);
-    visitedBinding.value = this.visitEquivalentValue(visitedBinding.value);
+    visitedBinding.value = this.visitEquivalentValue(visitedBinding.value)[0];
     return visitedBinding;
   }
 
-  visitValueArray(val: ObjectValue): void {
-    this.visitObjectProperties(val);
+  visitValueArray(val: ObjectValue): boolean {
+    let passCheck = this.visitObjectProperties(val);
+    if (!passCheck) {
+      return false;
+    }
     const realm = this.realm;
     let lenProperty = Get(realm, val, "length");
     if (
       lenProperty instanceof AbstractValue ||
       ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
     ) {
-      this.visitValue(lenProperty);
+      passCheck = this.visitValue(lenProperty);
     }
+    return passCheck;
   }
 
-  visitValueMap(val: ObjectValue): void {
+  visitValueMap(val: ObjectValue): boolean {
     let kind = val.getKind();
 
     let entries;
@@ -240,17 +304,25 @@ export class ResidualHeapVisitor {
     invariant(entries !== undefined);
     let len = entries.length;
 
+    let passCheck = true;
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
       let key = entry.$Key;
       let value = entry.$Value;
       if (key === undefined || value === undefined) continue;
-      this.visitValue(key);
-      this.visitValue(value);
+      passCheck = this.visitValue(key);
+      if (!passCheck) {
+        return false;
+      }
+      passCheck = this.visitValue(value);
+      if (!passCheck) {
+        return false;
+      }
     }
+    return passCheck;
   }
 
-  visitValueSet(val: ObjectValue): void {
+  visitValueSet(val: ObjectValue): boolean {
     let kind = val.getKind();
 
     let entries;
@@ -263,21 +335,37 @@ export class ResidualHeapVisitor {
     invariant(entries !== undefined);
     let len = entries.length;
 
+    let passCheck = true;
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
       if (entry === undefined) continue;
-      this.visitValue(entry);
+      passCheck = this.visitValue(entry);
+      if (!passCheck) {
+        return false;
+      }
     }
+    return passCheck;
   }
 
-  visitValueFunction(val: FunctionValue): void {
-    this.visitObjectProperties(val);
+  visitValueFunction(val: FunctionValue): boolean {
+    let passCheck = this.visitObjectProperties(val);
+    if (!passCheck) {
+      return false;
+    }
 
     if (val instanceof BoundFunctionValue) {
-      this.visitValue(val.$BoundTargetFunction);
-      this.visitValue(val.$BoundThis);
-      for (let boundArg of val.$BoundArguments) this.visitValue(boundArg);
-      return;
+      passCheck = this.visitValue(val.$BoundTargetFunction);
+      if (!passCheck) {
+        return false;
+      }
+      passCheck = this.visitValue(val.$BoundThis);
+      if (!passCheck) {
+        return false;
+      }
+      for (let boundArg of val.$BoundArguments) {
+        passCheck = this.visitValue(boundArg);
+      }
+      return passCheck;
     }
 
     invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
@@ -357,21 +445,27 @@ export class ResidualHeapVisitor {
         visitedBindings[innerName] = visitedBinding;
         if (functionInfo.modified[innerName]) visitedBinding.modified = true;
       }
+      return false;
     });
 
     this.functionBindings.set(val, visitedBindings);
+    // TODO: disable for function temporarily.
+    // Investigate further if we need to enable for function.
+    return false;
   }
 
-  visitValueObject(val: ObjectValue): void {
-    this.visitObjectProperties(val);
+  visitValueObject(val: ObjectValue): boolean {
+    let passCheck = this.visitObjectProperties(val);
+    if (!passCheck) {
+      return false;
+    }
 
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
     // in a special way that's handled alongside function serialization.
     let constructor = val.originalConstructor;
     if (constructor !== undefined) {
-      this.visitValue(constructor);
-      return;
+      return this.visitValue(constructor);
     }
 
     let kind = val.getKind();
@@ -381,12 +475,11 @@ export class ResidualHeapVisitor {
       case "String":
       case "Boolean":
       case "ArrayBuffer":
-        return;
+        return true;
       case "Date":
         let dateValue = val.$DateValue;
         invariant(dateValue !== undefined);
-        this.visitValue(dateValue);
-        return;
+        return this.visitValue(dateValue);
       case "Float32Array":
       case "Float64Array":
       case "Int8Array":
@@ -399,39 +492,48 @@ export class ResidualHeapVisitor {
       case "DataView":
         let buf = val.$ViewedArrayBuffer;
         invariant(buf !== undefined);
-        this.visitValue(buf);
-        return;
+        return this.visitValue(buf);
       case "Map":
       case "WeakMap":
-        this.visitValueMap(val);
-        return;
+        return this.visitValueMap(val);
       case "Set":
       case "WeakSet":
-        this.visitValueSet(val);
-        return;
+        return this.visitValueSet(val);
       default:
         if (kind !== "Object") this.logger.logError(val, `Object of kind ${kind} is not supported in residual heap.`);
         if (this.$ParameterMap !== undefined)
           this.logger.logError(val, `Arguments object is not supported in residual heap.`);
-        return;
+        return false;
     }
   }
 
-  visitValueSymbol(val: SymbolValue): void {
-    if (val.$Description) this.visitValue(val.$Description);
+  visitValueSymbol(val: SymbolValue): boolean {
+    let passCheck = true;
+    if (val.$Description) passCheck = this.visitValue(val.$Description);
+    return passCheck;
   }
 
-  visitValueProxy(val: ProxyValue): void {
-    this.visitValue(val.$ProxyTarget);
-    this.visitValue(val.$ProxyHandler);
+  visitValueProxy(val: ProxyValue): boolean {
+    let passCheck = this.visitValue(val.$ProxyTarget);
+    if (!passCheck) {
+      return false;
+    }
+    return this.visitValue(val.$ProxyHandler);
   }
 
-  visitAbstractValue(val: AbstractValue): void {
+  visitAbstractValue(val: AbstractValue): boolean {
+    let passCheck = true;
     if (val.kind === "sentinel member expression")
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
     for (let i = 0, n = val.args.length; i < n; i++) {
-      val.args[i] = this.visitEquivalentValue(val.args[i]);
+      let retVal;
+      [retVal, passCheck] = this.visitEquivalentValue(val.args[i]);
+      val.args[i] = retVal;
+      if (!passCheck) {
+        return false;
+      }
     }
+    return passCheck;
   }
 
   _mark(val: Value): boolean {
@@ -442,57 +544,73 @@ export class ResidualHeapVisitor {
     return true;
   }
 
-  visitEquivalentValue<T: Value>(val: T): T {
-    if (val instanceof AbstractValue) {
-      let equivalentValue = this.equivalenceSet.add(val);
-      if (this._mark(equivalentValue)) this.visitAbstractValue(equivalentValue);
-      return (equivalentValue: any);
-    }
-    this.visitValue(val);
-    return val;
+  _postProcessValue(val: Value, passCheck: boolean): boolean {
+    return true;
   }
 
-  visitValue(val: Value): void {
-    invariant(!val.refuseSerialization);
+  visitEquivalentValue<T: Value>(val: T): [T, boolean] {
+    let passCheck = true;
     if (val instanceof AbstractValue) {
-      if (this._mark(val)) this.visitAbstractValue(val);
+      let equivalentValue = this.equivalenceSet.add(val);
+      if (this._mark(equivalentValue)) {
+        passCheck = this.visitAbstractValue(equivalentValue);
+      }
+      return [(equivalentValue: any), passCheck];
+    }
+    passCheck = this.visitValue(val);
+    return [val, passCheck];
+  }
+
+  // Return true to indicate the value can be lazied.
+  visitValue(val: Value): boolean {
+    invariant(!val.refuseSerialization);
+    let passCheck = true;
+    if (val instanceof AbstractValue) {
+      if (this._mark(val)) passCheck = this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existance as templates for abstract objects (TODO #882).
-      this._withScope(this.commonScope, () => {
-        this._mark(val);
+      passCheck = this._withScope(this.commonScope, () => {
+        return this._mark(val);
       });
     } else if (val instanceof EmptyValue) {
-      this._mark(val);
+      passCheck = this._mark(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {
-      this._mark(val);
+      passCheck = this._mark(val);
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
-      if (this._mark(val)) this.visitValueArray(val);
+      if (this._mark(val)) passCheck = this.visitValueArray(val);
     } else if (val instanceof ProxyValue) {
-      if (this._mark(val)) this.visitValueProxy(val);
+      if (this._mark(val)) passCheck = this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
       // Function declarations should get hoisted in common scope so that instances only get allocated once
-      this._withScope(this.commonScope, () => {
+      passCheck = this._withScope(this.commonScope, () => {
         invariant(val instanceof FunctionValue);
-        if (this._mark(val)) this.visitValueFunction(val);
+        if (this._mark(val)) {
+          return this.visitValueFunction(val);
+        }
+        return false;
       });
     } else if (val instanceof SymbolValue) {
-      if (this._mark(val)) this.visitValueSymbol(val);
+      if (this._mark(val)) passCheck = this.visitValueSymbol(val);
     } else {
       invariant(val instanceof ObjectValue);
 
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the common scope code as well.
       if (val.originalConstructor !== undefined) {
-        this._withScope(this.commonScope, () => {
+        passCheck = this._withScope(this.commonScope, () => {
           invariant(val instanceof ObjectValue);
-          if (this._mark(val)) this.visitValueObject(val);
+          if (this._mark(val)) {
+            return this.visitValueObject(val);
+          }
+          return false;
         });
       } else {
-        if (this._mark(val)) this.visitValueObject(val);
+        if (this._mark(val)) passCheck = this.visitValueObject(val);
       }
     }
+    return this._postProcessValue(val, passCheck);
   }
 
   visitGlobalBinding(key: string): VisitedBinding {
@@ -502,14 +620,14 @@ export class ResidualHeapVisitor {
       binding = ({ value, modified: true }: VisitedBinding);
       this.globalBindings.set(key, binding);
     }
-    if (binding.value) binding.value = this.visitEquivalentValue(binding.value);
+    if (binding.value) binding.value = this.visitEquivalentValue(binding.value)[0];
     return binding;
   }
 
   createGeneratorVisitCallbacks(generator: Generator, commonScope: Scope): VisitEntryCallbacks {
     return {
       visitValues: (values: Array<Value>) => {
-        for (let i = 0, n = values.length; i < n; i++) values[i] = this.visitEquivalentValue(values[i]);
+        for (let i = 0, n = values.length; i < n; i++) values[i] = this.visitEquivalentValue(values[i])[0];
       },
       visitGenerator: this.visitGenerator.bind(this),
       canSkip: (value: AbstractValue): boolean => {
@@ -527,6 +645,7 @@ export class ResidualHeapVisitor {
   visitGenerator(generator: Generator): void {
     this._withScope(generator, () => {
       generator.visit(this.createGeneratorVisitCallbacks(generator, this.commonScope));
+      return true;
     });
   }
 
@@ -572,6 +691,9 @@ export class ResidualHeapVisitor {
           this.visitObjectProperty(binding);
         }
         // TODO #990: Fix additional functions handing of ModifiedBindings
+        // TODO: disable for addtional functions for now.
+        // Investigate how we can enable for additional functions feature.
+        return false;
       };
       this.visitGenerator(generator);
       this._withScope(generator, visitPropertiesAndBindings);
@@ -588,6 +710,7 @@ export class ResidualHeapVisitor {
         this.commonScope = commonScope;
         this._withScope(entryGenerator, () => {
           entryGenerator.visitEntry(entry, this.createGeneratorVisitCallbacks(entryGenerator, commonScope));
+          return true;
         });
       }
     }
