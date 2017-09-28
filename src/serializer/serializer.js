@@ -28,6 +28,8 @@ import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import * as t from "babel-types";
+import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter.js";
+import { ResidualHeapLazyObjectCalculator } from "./ResidualHeapLazyObjectCalculator.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -130,6 +132,23 @@ export class Serializer {
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
+
+    let residualRefCounter = new ResidualHeapRefCounter(
+      this.realm,
+      this.logger,
+      this.modules,
+      additionalFunctionValuesAndEffects
+    );
+    residualRefCounter.visitRoots();
+    let residualLazyObjectCalculator = new ResidualHeapLazyObjectCalculator(
+      this.realm,
+      this.logger,
+      this.modules,
+      additionalFunctionValuesAndEffects,
+      residualRefCounter.getResult()
+    );
+    residualLazyObjectCalculator.visitRoots();
+    residualLazyObjectCalculator.repotResult();
 
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
