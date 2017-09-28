@@ -23,6 +23,8 @@ export type FunctionInstance = {
   serializedBindings: SerializedBindings,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
+  // Optional place to put the function declaration
+  preludeOverride?: Array<BabelNodeStatement>,
   scopeInstances: Set<ScopeBinding>,
 };
 
@@ -45,7 +47,7 @@ export type SerializedBinding = {
   scope?: ScopeBinding,
 };
 
-export type VisitedBindings = { [key: string]: VisitedBinding };
+export type VisitedBindings = { [key: string]: VisitedBinding }; //todo: use a map
 export type VisitedBinding = {
   value: void | Value,
   modified: boolean,
@@ -55,7 +57,7 @@ export type VisitedBinding = {
 export type ScopeBinding = {
   name: string,
   id: number,
-  initializationValues: Map<string, BabelNodeExpression>,
+  initializationValues: Array<BabelNodeExpression>,
   capturedScope?: string,
 };
 
@@ -110,6 +112,8 @@ export class SerializerStatistics {
     this.valueIds = 0;
     this.valuesInlined = 0;
     this.delayedValues = 0;
+    this.acceleratedModules = 0;
+    this.delayedModules = 0;
   }
   objects: number;
   objectProperties: number;
@@ -119,6 +123,8 @@ export class SerializerStatistics {
   valueIds: number;
   valuesInlined: number;
   delayedValues: number;
+  acceleratedModules: number;
+  delayedModules: number;
 
   log() {
     console.log(`=== serialization statistics`);
@@ -131,6 +137,7 @@ export class SerializerStatistics {
       `${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${this
         .valuesInlined} values inlined`
     );
+    console.log(`${this.acceleratedModules} accelerated and ${this.delayedModules} delayed modules.`);
   }
 }
 

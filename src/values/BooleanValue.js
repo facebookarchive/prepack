@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { PrimitiveValue } from "./index.js";
+import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
 
 export default class BooleanValue extends PrimitiveValue {
@@ -22,6 +22,10 @@ export default class BooleanValue extends PrimitiveValue {
   }
 
   value: boolean;
+
+  equals(x: Value): boolean {
+    return x instanceof BooleanValue && this.value === x.value;
+  }
 
   getHash(): number {
     return this.value ? 12484058682847432 : 3777063795205331;

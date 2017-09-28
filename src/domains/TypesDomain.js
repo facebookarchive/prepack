@@ -10,7 +10,7 @@
 /* @flow */
 
 import invariant from "../invariant.js";
-import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "babel-types";
 import {
   AbstractValue,
   BooleanValue,
@@ -42,6 +42,7 @@ export default class TypesDomain {
 
   // return the type of the result in the case where there is no exception
   static binaryOp(op: BabelBinaryOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
+    //todo: goto top only if op === "+"
     let lType = left._type;
     let rType = right._type;
     if (lType === undefined || rType === undefined) return TypesDomain.topVal;
@@ -105,6 +106,10 @@ export default class TypesDomain {
       return new TypesDomain(PrimitiveValue);
     }
     return TypesDomain.topVal;
+  }
+
+  static logicalOp(op: BabelNodeLogicalOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
+    return TypesDomain.joinValues(left, right);
   }
 
   // return the type of the result in the case where there is no exception

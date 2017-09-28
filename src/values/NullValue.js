@@ -9,11 +9,15 @@
 
 /* @flow */
 
-import { PrimitiveValue } from "./index.js";
+import { PrimitiveValue, Value } from "./index.js";
 
 export default class NullValue extends PrimitiveValue {
   _serialize(): null {
     return null;
+  }
+
+  equals(x: Value): boolean {
+    return x instanceof NullValue;
   }
 
   getHash(): number {

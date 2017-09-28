@@ -37,9 +37,11 @@ export class Serializer {
 
     this.realm = realm;
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
+    this.statistics = new SerializerStatistics();
     this.modules = new Modules(
       this.realm,
       this.logger,
+      this.statistics,
       !!serializerOptions.logModules,
       !!serializerOptions.delayUnsupportedRequires
     );
@@ -54,6 +56,7 @@ export class Serializer {
   logger: Logger;
   modules: Modules;
   options: SerializerOptions;
+  statistics: SerializerStatistics;
 
   _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false) {
     let realm = this.realm;
@@ -106,6 +109,7 @@ export class Serializer {
     if (this.options.additionalFunctions) {
       this.functions.checkThatFunctionsAreIndependent();
     }
+
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
       this.modules.initializeMoreModules();
@@ -114,10 +118,15 @@ export class Serializer {
         timingStats.initializeMoreModulesTime = Date.now() - timingStats.initializeMoreModulesTime;
     }
 
+    let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
     //Deep traversal of the heap to identify the necessary scope of residual functions
-
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
-    let residualHeapVisitor = new ResidualHeapVisitor(this.realm, this.logger, this.modules);
+    let residualHeapVisitor = new ResidualHeapVisitor(
+      this.realm,
+      this.logger,
+      this.modules,
+      additionalFunctionValuesAndEffects
+    );
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
@@ -125,6 +134,7 @@ export class Serializer {
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
     let residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers();
+
     if (this.options.inlineExpressions) {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
       residualHeapValueIdentifiers.initPass1();
@@ -138,7 +148,9 @@ export class Serializer {
         residualHeapVisitor.functionBindings,
         residualHeapVisitor.functionInfos,
         !!this.options.delayInitializations,
-        residualHeapVisitor.referencedDeclaredValues
+        residualHeapVisitor.referencedDeclaredValues,
+        additionalFunctionValuesAndEffects,
+        this.statistics
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -147,7 +159,6 @@ export class Serializer {
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
-
     let residualHeapSerializer = new ResidualHeapSerializer(
       this.realm,
       this.logger,
@@ -158,8 +169,11 @@ export class Serializer {
       residualHeapVisitor.functionBindings,
       residualHeapVisitor.functionInfos,
       !!this.options.delayInitializations,
-      residualHeapVisitor.referencedDeclaredValues
+      residualHeapVisitor.referencedDeclaredValues,
+      additionalFunctionValuesAndEffects,
+      this.statistics
     );
+
     let ast = residualHeapSerializer.serialize();
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
     if (timingStats !== undefined) {

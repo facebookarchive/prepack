@@ -18,6 +18,7 @@ import { Reference } from "../environment.js";
 import { GetValue, joinEffects, ToBoolean } from "../methods/index.js";
 import type { BabelNodeLogicalExpression } from "babel-types";
 import invariant from "../invariant.js";
+import { withPathCondition, withInversePathCondition } from "../utils/paths.js";
 
 export default function(
   ast: BabelNodeLogicalExpression,
@@ -34,7 +35,8 @@ export default function(
     if (ast.operator === "&&") {
       // ECMA262 12.13.3
       if (lbool === false) return lval;
-    } else if (ast.operator === "||") {
+    } else {
+      invariant(ast.operator === "||");
       // ECMA262 12.13.3
       if (lbool === true) return lval;
     }
@@ -44,11 +46,9 @@ export default function(
   }
   invariant(lval instanceof AbstractValue);
 
-  if (!lval.mightNotBeFalse()) {
-    if (ast.operator === "&&") return env.evaluate(ast.right, strictCode);
-    else {
-      return lval;
-    }
+  if (!lval.isIntrinsic()) {
+    if (!lval.mightNotBeFalse()) return ast.operator === "||" ? env.evaluate(ast.right, strictCode) : lval;
+    if (!lval.mightNotBeTrue()) return ast.operator === "&&" ? env.evaluate(ast.right, strictCode) : lval;
   }
 
   // Create empty effects for the case where ast.right is not evaluated
@@ -56,7 +56,10 @@ export default function(
   compl1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
-  let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateNodeForEffects(ast.right, strictCode, env);
+  let wrapper = ast.operator === "&&" ? withPathCondition : withInversePathCondition;
+  let [compl2, gen2, bindings2, properties2, createdObj2] = wrapper(lval, () =>
+    realm.evaluateNodeForEffects(ast.right, strictCode, env)
+  );
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of lval.
@@ -92,6 +95,13 @@ export default function(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof NormalCompletion || completion instanceof Value || completion instanceof Reference);
+  invariant(completion instanceof NormalCompletion || completion instanceof Value); // references do not survive join
+  if (lval instanceof Value && compl2 instanceof Value) {
+    // joinEffects does the right thing for the side effects of the second expression but for the result the join
+    // produces a conditional expressions of the form (a ? b : a) for a && b and (a ? a : b) for a || b
+    // Rather than look for this pattern everywhere, we override this behavior and replace the completion with
+    // the actual logical operator. This helps with simplification and reasoning when dealing with path conditions.
+    completion = AbstractValue.createFromLogicalOp(realm, ast.operator, lval, compl2, ast.loc);
+  }
   return completion;
 }

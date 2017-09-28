@@ -31,7 +31,7 @@ import {
   SameValue,
   TestIntegrityLevel,
 } from "../methods/index.js";
-import type { BabelNode, BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
+import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 import SuperCall from "./SuperCall";
@@ -116,7 +116,7 @@ function EvaluateCall(
     let [thisArg, propName] = ref instanceof Reference ? [ref.base, ref.referencedName] : [];
     if (thisArg instanceof Value) args = [thisArg];
     if (propName !== undefined && typeof propName !== "string") args.push(propName);
-    args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
+    args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
     for (let arg of args) {
       if (arg !== func && arg instanceof ObjectValue && !TestIntegrityLevel(realm, arg, "frozen")) {
         let diag = new CompilerDiagnostic(
@@ -165,7 +165,7 @@ function EvaluateCall(
     // a. If SameValue(func, %eval%) is true, then
     if (SameValue(realm, func, realm.intrinsics.eval)) {
       // i. Let argList be ? ArgumentListEvaluation(Arguments).
-      let argList = ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>));
+      let argList = ArgumentListEvaluation(realm, strictCode, env, ast.arguments);
       // ii. If argList has no elements, return undefined.
       if (argList.length === 0) return realm.intrinsics.undefined;
       // iii. Let evalText be the first element of argList.
@@ -216,14 +216,5 @@ function EvaluateCall(
   let tailCall = IsInTailPosition(realm, thisCall);
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
-  return EvaluateDirectCall(
-    realm,
-    strictCode,
-    env,
-    ref,
-    func,
-    thisValue,
-    ((ast.arguments: any): Array<BabelNode>),
-    tailCall
-  );
+  return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);
 }

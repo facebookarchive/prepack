@@ -13,6 +13,7 @@ import type {
   BabelBinaryOperator,
   BabelNodeExpression,
   BabelNodeIdentifier,
+  BabelNodeLogicalOperator,
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "babel-types";
@@ -41,6 +42,7 @@ import {
   hashTernary,
   hashUnary,
   StrictEqualityComparison,
+  ToBoolean,
 } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -190,11 +192,38 @@ export default class AbstractValue extends Value {
   implies(val: AbstractValue): boolean {
     // Neither this nor val is a known value, so we need to some reasoning based on the structure
     if (this.equals(val)) return true; // x => x regardless of its value
-    // todo: (x & y) => z if (x => z) || (y => z)
-    // todo: x => (y | z) if (x => y) || (x = z)
+    // (x && y) => z if (x => z) || (y => z)
+    if (this.kind === "&&") {
+      let [x, y] = this.args;
+      invariant(x instanceof AbstractValue);
+      invariant(y instanceof AbstractValue);
+      return x.implies(val) || y.implies(val);
+    }
+    // (x || y) => z if (x => z) && (y => z)
+    if (this.kind === "||") {
+      let [x, y] = this.args;
+      invariant(x instanceof AbstractValue);
+      invariant(y instanceof AbstractValue);
+      return x.implies(val) && y.implies(val);
+    }
+    // x => (y && z) if (x => y) && (x = z)
+    if (val.kind === "&&") {
+      let [y, z] = this.args;
+      invariant(y instanceof AbstractValue);
+      invariant(z instanceof AbstractValue);
+      return this.implies(y) && this.implies(z);
+    }
+    // x => (y || z) if (x => y) || (x = z)
+    if (val.kind === "||") {
+      let [y, z] = this.args;
+      invariant(y instanceof AbstractValue);
+      invariant(z instanceof AbstractValue);
+      return this.implies(y) || this.implies(z);
+    }
     return false;
   }
 
+  // todo: abstract values should never be of type UndefinedValue or NullValue, assert this
   mightBeFalse(): boolean {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return true;
@@ -293,23 +322,48 @@ export default class AbstractValue extends Value {
   }
 
   refineWithPathCondition(): Value {
-    if (this.kind !== "conditional") return this;
-    let [condition, trueVal, falseVal] = this.args;
-    invariant(condition instanceof AbstractValue);
-    invariant(trueVal !== undefined);
-    invariant(falseVal !== undefined);
-    let inverseCondition = AbstractValue.createFromUnaryOp(this.$Realm, "!", condition);
-    let result = this;
-    for (let pathCondition of this.$Realm.pathConditions) {
-      if (pathCondition.implies(condition)) {
-        result = trueVal;
-        break;
+    function pathImplies(condition: AbstractValue): boolean {
+      let path = condition.$Realm.pathConditions;
+      for (let i = path.length - 1; i >= 0; i--) {
+        let pathCondition = path[i];
+        if (pathCondition.implies(condition)) return true;
       }
-      if (pathCondition.implies(inverseCondition)) {
-        result = falseVal;
-        break;
-      }
+      return false;
     }
+
+    let realm = this.$Realm;
+    let op = this.kind;
+    let result = (() => {
+      if (op === "&&" || op === "||") {
+        let [left, right] = this.args;
+        let refinedLeft = left instanceof AbstractValue ? left.refineWithPathCondition() : left;
+        let refinedRight = right instanceof AbstractValue ? right.refineWithPathCondition() : right;
+        if (left === refinedLeft && right === refinedRight) return this;
+        return AbstractValue.createFromLogicalOp(realm, op, refinedLeft, refinedRight, this.expressionLocation);
+      }
+      if (op === "!") {
+        let arg = this.args[0];
+        let refinedArg = arg instanceof AbstractValue ? arg.refineWithPathCondition() : arg;
+        if (arg === refinedArg) return this;
+        if (!refinedArg.mightNotBeTrue()) return realm.intrinsics.false;
+        if (!refinedArg.mightNotBeFalse()) return realm.intrinsics.true;
+        invariant(refinedArg instanceof AbstractValue); // concrete values always make up their mind above
+        return AbstractValue.createFromUnaryOp(realm, op, refinedArg);
+      }
+      if (op !== "conditional") return this;
+      let [condition, trueVal, falseVal] = this.args;
+      invariant(trueVal !== undefined);
+      invariant(falseVal !== undefined);
+      invariant(condition instanceof AbstractValue);
+      let inverseCondition = AbstractValue.createFromUnaryOp(this.$Realm, "!", condition);
+      if (pathImplies(condition)) return trueVal;
+      if (pathImplies(inverseCondition)) return falseVal;
+      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", this, trueVal))) return trueVal;
+      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", this, trueVal))) return falseVal;
+      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", this, falseVal))) return trueVal;
+      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", this, falseVal))) return falseVal;
+      return this;
+    })();
     if (result !== this && result instanceof AbstractValue) return result.refineWithPathCondition();
     return result;
   }
@@ -389,13 +443,68 @@ export default class AbstractValue extends Value {
     return result;
   }
 
+  static createFromLogicalOp(
+    realm: Realm,
+    op: BabelNodeLogicalOperator,
+    left: Value,
+    right: Value,
+    loc?: ?BabelNodeSourceLocation
+  ): Value {
+    let leftTypes, leftValues;
+    if (left instanceof AbstractValue) {
+      if (!left.isIntrinsic()) {
+        if (!left.mightNotBeTrue()) return op === "&&" ? right : left;
+        if (!left.mightNotBeFalse()) return op === "&&" ? left : right;
+      }
+      leftTypes = left.types;
+      leftValues = left.values;
+    } else {
+      invariant(left instanceof ConcreteValue);
+      if (ToBoolean(realm, left)) return op === "&&" ? right : left;
+      else return this.kind === "&&" ? left : right;
+    }
+
+    let rightTypes, rightValues;
+    if (right instanceof AbstractValue) {
+      rightTypes = right.types;
+      rightValues = right.values;
+    } else {
+      rightTypes = new TypesDomain(right.getType());
+      invariant(right instanceof ConcreteValue);
+      rightValues = new ValuesDomain(right);
+    }
+
+    let resultTypes = TypesDomain.logicalOp(op, leftTypes, rightTypes);
+    let resultValues = ValuesDomain.logicalOp(realm, op, leftValues, rightValues);
+    let [hash, args] = hashCall(op, left, right);
+    let Constructor = Value.isTypeCompatibleWith(resultTypes.getType(), ObjectValue)
+      ? AbstractObjectValue
+      : AbstractValue;
+    let result = new Constructor(realm, resultTypes, resultValues, hash, args, ([x, y]) =>
+      t.logicalExpression(op, x, y)
+    );
+    result.kind = op;
+    result.expressionLocation = loc;
+    return result;
+  }
+
   static createFromConditionalOp(
     realm: Realm,
-    condition: Value,
+    condition: AbstractValue,
     left: void | Value,
     right: void | Value,
     loc?: ?BabelNodeSourceLocation
   ): AbstractValue {
+    if (
+      left !== undefined &&
+      left.getType() === BooleanValue &&
+      right !== undefined &&
+      right.getType() === BooleanValue
+    ) {
+      if (!left.mightNotBeTrue() && !right.mightNotBeFalse()) return condition;
+      if (!left.mightNotBeFalse() && !right.mightNotBeTrue())
+        return AbstractValue.createFromUnaryOp(realm, "!", condition, true, loc);
+    }
     let types = TypesDomain.joinValues(left, right);
     let values = ValuesDomain.joinValues(realm, left, right);
     let [hash, args] = hashTernary(condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined);

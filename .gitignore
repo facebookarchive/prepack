@@ -8,4 +8,5 @@ build/
 coverage*/
 .vscode
 facebook/test
+facebook/tutorial
 prepack.min.js

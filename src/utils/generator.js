@@ -134,7 +134,8 @@ export class Generator {
     });
   }
 
-  emitPropertyAssignment(object: Value, key: string, value: Value) {
+  emitPropertyAssignment(object: ObjectValue, key: string, value: Value) {
+    if (object.refuseSerialization) return;
     let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object, value],
@@ -146,6 +147,7 @@ export class Generator {
   }
 
   emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor) {
+    if (object.refuseSerialization) return;
     if (desc.enumerable && desc.configurable && desc.writable && desc.value) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -164,7 +166,8 @@ export class Generator {
     }
   }
 
-  emitPropertyDelete(object: Value, key: string) {
+  emitPropertyDelete(object: ObjectValue, key: string) {
+    if (object.refuseSerialization) return;
     let propName = this.getAsPropertyNameExpression(key);
     this.body.push({
       args: [object],

@@ -16,7 +16,7 @@ import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
-import { AbstractObjectValue, FunctionValue, ObjectValue } from "../values/index.js";
+import { AbstractObjectValue, FunctionValue, ObjectValue, UndefinedValue } from "../values/index.js";
 import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
 import * as t from "babel-types";
@@ -26,11 +26,15 @@ export class Functions {
     this.realm = realm;
     this.functions = functions;
     this.moduleTracer = moduleTracer;
+    this.writeEffects = new Map();
+    this.nameToFunctionValue = new Map();
   }
 
   realm: Realm;
   functions: ?Array<string>;
   moduleTracer: ModuleTracer;
+  writeEffects: Map<string, Effects>;
+  nameToFunctionValue: Map<string, FunctionValue>;
 
   checkThatFunctionsAreIndependent() {
     let functions = this.functions;
@@ -59,24 +63,29 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
+      let funcLength = fun.getLength();
+      if (funcLength && funcLength > 0) {
+        // TODO #987: Make Additional Functions work with arguments
+        throw new FatalError("TODO: implement arguments to additional functions");
+      }
+      this.nameToFunctionValue.set(fname, fun);
       let call = t.callExpression(fnameAst, []);
       calls.push([fname, call]);
     }
 
     // Get write effects of the functions
-    let writeEffects: Map<string, Effects> = new Map();
     for (let [fname, call] of calls) {
       // This may throw a FatalError if there is an unrecoverable error in the called function
       // When that happens we cannot prepack the bundle.
       // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
       let e = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
-      writeEffects.set(fname, e);
+      this.writeEffects.set(fname, e);
     }
 
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
     for (let [fname1, call1] of calls) {
-      let e1 = writeEffects.get(fname1);
+      let e1 = this.writeEffects.get(fname1);
       invariant(e1 !== undefined);
       if (e1[0] instanceof Completion) {
         let error = new CompilerDiagnostic(
@@ -87,6 +96,9 @@ export class Functions {
         );
         this.realm.handleError(error);
         throw new FatalError();
+      } else if (!(e1[0] instanceof UndefinedValue)) {
+        // TODO #988: Make Additional Functions work with return values
+        throw new FatalError("TODO: make return values work with additional functions");
       }
       for (let [fname2, call2] of calls) {
         fname2; // not used
@@ -98,6 +110,16 @@ export class Functions {
       for (let diagnostic of conflicts.values()) this.realm.handleError(diagnostic);
       throw new FatalError();
     }
+  }
+
+  getAdditionalFunctionValuesToEffects(): Map<FunctionValue, Effects> {
+    let functionValueToEffects = new Map();
+    for (let [functionString, effects] of this.writeEffects.entries()) {
+      let funcValue = this.nameToFunctionValue.get(functionString);
+      invariant(funcValue);
+      functionValueToEffects.set(funcValue, effects);
+    }
+    return functionValueToEffects;
   }
 
   reportWriteConflicts(
