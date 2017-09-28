@@ -108,6 +108,10 @@ export default class Value {
     invariant(false, "abstract method; please override");
   }
 
+  mightNotBeNull(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
   mightBeNumber(): boolean {
     invariant(false, "abstract method; please override");
   }
@@ -141,6 +145,10 @@ export default class Value {
   }
 
   mightBeUndefined(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  mightNotBeUndefined(): boolean {
     invariant(false, "abstract method; please override");
   }
 
