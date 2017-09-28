@@ -15,7 +15,7 @@ import type { Realm } from "../realm.js";
 import type { Effects } from "../realm.js";
 
 import invariant from "../invariant.js";
-import { Value, EmptyValue, AbstractValue, FunctionValue } from "../values/index.js";
+import { Value, EmptyValue, FunctionValue } from "../values/index.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 
