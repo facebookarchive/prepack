@@ -564,53 +564,53 @@ export class ResidualHeapVisitor {
   // Return true to indicate the value can be lazied.
   visitValue(val: Value): boolean {
     invariant(!val.refuseSerialization);
-    let passCheck = true;
+    let childrenPassCheck = true;
     if (val instanceof AbstractValue) {
-      if (this._mark(val)) passCheck = this.visitAbstractValue(val);
+      if (this._mark(val)) childrenPassCheck = this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existance as templates for abstract objects (TODO #882).
-      passCheck = this._withScope(this.commonScope, () => {
+      this._withScope(this.commonScope, () => {
         return this._mark(val);
       });
     } else if (val instanceof EmptyValue) {
-      passCheck = this._mark(val);
+      this._mark(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {
-      passCheck = this._mark(val);
+      this._mark(val);
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
-      if (this._mark(val)) passCheck = this.visitValueArray(val);
+      if (this._mark(val)) childrenPassCheck = this.visitValueArray(val);
     } else if (val instanceof ProxyValue) {
-      if (this._mark(val)) passCheck = this.visitValueProxy(val);
+      if (this._mark(val)) childrenPassCheck = this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
       // Function declarations should get hoisted in common scope so that instances only get allocated once
-      passCheck = this._withScope(this.commonScope, () => {
+      childrenPassCheck = this._withScope(this.commonScope, () => {
         invariant(val instanceof FunctionValue);
         if (this._mark(val)) {
           return this.visitValueFunction(val);
         }
-        return false;
+        return true;
       });
     } else if (val instanceof SymbolValue) {
-      if (this._mark(val)) passCheck = this.visitValueSymbol(val);
+      if (this._mark(val)) childrenPassCheck = this.visitValueSymbol(val);
     } else {
       invariant(val instanceof ObjectValue);
 
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the common scope code as well.
       if (val.originalConstructor !== undefined) {
-        passCheck = this._withScope(this.commonScope, () => {
+        childrenPassCheck = this._withScope(this.commonScope, () => {
           invariant(val instanceof ObjectValue);
           if (this._mark(val)) {
             return this.visitValueObject(val);
           }
-          return false;
+          return true;
         });
       } else {
-        if (this._mark(val)) passCheck = this.visitValueObject(val);
+        if (this._mark(val)) childrenPassCheck = this.visitValueObject(val);
       }
     }
-    return this._postProcessValue(val, passCheck);
+    return this._postProcessValue(val, childrenPassCheck);
   }
 
   visitGlobalBinding(key: string): VisitedBinding {
