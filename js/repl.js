@@ -18,9 +18,37 @@ function createEditor(elem) {
   return editor;
 }
 
+var optionsConfig = [
+  {
+    type: "string",
+    name: "mathRandomSeed",
+    defaultVal: "",
+    description: "If you want Prepack to evaluate Math.random() calls, please provide a seed."
+  },
+  {
+    type: "boolean",
+    name: "inlineExpressions",
+    defaultVal: false,
+    description: "Avoids naming expressions when they are only used once, and instead inline them where they are used."
+  },
+  {
+    type: "boolean",
+    name: "delayInitializations",
+    defaultVal: false,
+    description: "Delay initializations."
+  },
+  {
+    type: "choice",
+    name: "compatibility",
+    choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"],
+    defaultVal: "browser",
+    description: "The target environment for Prepack"
+  }
+];
+
 var demos = [];
 /**generate select */
-function generateSelect(obj, dom) {
+function generateDemosSelect(obj, dom) {
   var tmpName;
   // var keys = ['<option value='+-1+'>select demo</option>'];
   var keys = [];
@@ -122,7 +150,21 @@ function compile() {
       }
       terminateWorker();
     };
-    worker.postMessage(input.getValue());
+
+    var options = {}
+    for (var configIndex in optionsConfig) {
+      var config = optionsConfig[configIndex];
+      var domE = document.querySelector("#prepack-option-" + config.name);
+      if (config.type === "choice") {
+        options[config.name] = domE.options[domE.selectedIndex].value;
+      } else if (config.type === "boolean") {
+        options[config.name] = (domE.checked === true);
+      } else if (config.type === "string") {
+        options[config.name] = domE.value;
+      }      
+    }
+
+    worker.postMessage({code: input.getValue(), options: options});
   }, 500);
 }
 
@@ -137,45 +179,47 @@ input.on('change', compile);
 /**record **/
 
 var selectRecord = document.querySelector('select.select-record');
+var optionsRecord = document.querySelector('#optionsMenuRecord');
 var selectInput = document.querySelector('#recordName');
+var optionsButton = document.querySelector('#optionsMenuButton');
 var saveButton = document.querySelector('#saveBtn');
 var deleteButton = document.querySelector('#deleteBtn');
 var storage = window.localStorage;
 
-var selectCache = getCache();
+var demosSelectCache = getDemosCache();
 var defaultName, defaultVal;
-defaultName = generateSelect(selectCache, selectRecord);
+defaultName = generateDemosSelect(demosSelectCache, selectRecord);
 selectInput.value = defaultName || '';
-defaultVal = defaultName ? selectCache[defaultName] : '';
+defaultVal = defaultName ? demosSelectCache[defaultName] : '';
 input.setValue(defaultVal);
 compile();
 
-function changeSelect(val) {
+function changeDemosSelect(val) {
   if (!val.value) return;
   selectInput.value = val.value;
-  var localCache = getCache();
+  var localCache = getDemosCache();
   var code = localCache[val.value] || '';
   input.setValue(code);
   compile();
 }
-changeSelect(defaultVal);
+changeDemosSelect(defaultVal);
 
 var demoSelector = new Select({
   el: selectRecord,
   className: 'select-theme-dark',
 });
-demoSelector.on('change', changeSelect);
+demoSelector.on('change', changeDemosSelect);
 
-function getCache() {
+function getDemosCache() {
   return JSON.parse(storage.getItem('prepackDemos') || '{}');
 }
 
-function setCache(data) {
+function setDemosCache(data) {
   storage.setItem('prepackDemos', JSON.stringify(data || {}));
 }
 
 function addDefaultExamples() {
-  var cache = getCache();
+  var cache = getDemosCache();
   var code, name;
   name = 'EliminationOfAbstractionTax';
   code = [
@@ -241,14 +285,90 @@ function addDefaultExamples() {
   ].join('\n');
   cache[name] = code;
 
-  generateSelect(cache, selectRecord);
-  setCache(cache);
+  generateDemosSelect(cache, selectRecord);
+  setDemosCache(cache);
   setTimeout(() => {
     demoSelector.change('Fibonacci');
   });
 }
 
+function addOptions() {
+  var optionStrings = [];
+  for (var configIndex in optionsConfig) {
+    var config = optionsConfig[configIndex];
+    var configId = 'prepack-option-' + config.name;
+    optionStrings.push("<div class='prepack-option'>");    
+    optionStrings.push("<label class='prepack-option-label' for='");
+    optionStrings.push(configId);
+    optionStrings.push("'>");
+    optionStrings.push(config.name);
+    optionStrings.push("<div class='prepack-option-description'>");
+    optionStrings.push(config.description);
+    optionStrings.push("</div>");
+    if (config.type === "choice") {
+      optionStrings.push("<select id='");
+      optionStrings.push(configId);
+      optionStrings.push("'>");
+      for (var nameIndex in config.choices) {
+        var name = config.choices[nameIndex];
+        if (name === config.defaultVal) {
+          optionStrings.push('<option value=' + name + ' selected>' + name + '</option>');
+        } else {
+          optionStrings.push('<option value=' + name + '>' + name + '</option>');
+        }
+      }
+      optionStrings.push("</select>");
+    } else if (config.type === "boolean") {
+      optionStrings.push("<input type='checkbox' id='");
+      optionStrings.push(configId);
+      if (config.defaultVal === true) {
+        optionStrings.push("' checked=true>")
+      } else {
+        optionStrings.push("'>");
+      }
+    } else if (config.type === "string") {
+      optionStrings.push("<input type='text' id='");
+      optionStrings.push(configId);
+      if (config.defaultVal != null) {
+        optionStrings.push("' value='");
+        optionStrings.push(config.defaultVal);
+        optionStrings.push("'>");
+      } else {
+        optionStrings.push("'>");
+      }
+    }    
+    optionStrings.push("</label>");
+    optionStrings.push("</div>");
+  }
+  optionsRecord.innerHTML = optionStrings.join('');
+  for (var configIndex in optionsConfig) {
+    var config = optionsConfig[configIndex];
+    var domE = document.querySelector("#prepack-option-" + config.name);
+    if (config.type === "choice") {
+      var demoSelector = new Select({
+        el: domE,
+        className: 'select-theme-dark',
+      });
+      domE.addEventListener('change', compile);
+    } else if (config.type === "boolean") {
+      domE.addEventListener('change', compile);
+    } else if (config.type === "string") {
+      domE.addEventListener('input', compile);
+    }
+  }
+
+  optionsButton.onclick = function() {
+    if (optionsRecord.style.display !== "inline-block") {
+      optionsRecord.style.display = "inline-block" ;
+    } else {
+      optionsRecord.style.display = "none" ;
+    }
+  };
+}
+
 addDefaultExamples();
+
+addOptions();
 
 deleteButton.addEventListener('click', () => {
   var name = selectInput.value;
@@ -257,11 +377,11 @@ deleteButton.addEventListener('click', () => {
     selectInput.value = '';
     return;
   }
-  var cache = getCache();
+  var cache = getDemosCache();
   delete cache[name];
   input.setValue('');
-  generateSelect(cache, selectRecord);
-  setCache(cache);
+  generateDemosSelect(cache, selectRecord);
+  setDemosCache(cache);
   if (demos.length > 0) {
     selectInput.value = demos[0];
     setTimeout(() => {
@@ -278,10 +398,10 @@ saveButton.addEventListener('click', () => {
   var name = selectInput.value;
   if (name == null || name.replace(/\s+/, '') === '') return;
   var code = input.getValue();
-  var cache = getCache();
+  var cache = getDemosCache();
   cache[name] = code;
-  generateSelect(cache, selectRecord);
-  setCache(cache);
+  generateDemosSelect(cache, selectRecord);
+  setDemosCache(cache);
   setTimeout(() => {
     demoSelector.change(name);
   });

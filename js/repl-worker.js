@@ -19,14 +19,20 @@ onmessage = function(e) {
   }
 
   try {
-    var sources = [{ filePath: 'dummy', fileContents: e.data }];
-    var result = Prepack.prepackSources(sources, {
+    var sources = [{ filePath: 'dummy', fileContents: e.data.code }];
+    var options = {
       compatibility: 'browser',
       filename: 'repl',
       timeout: 1000,
       serialize: true,
       errorHandler,
-    });
+    };
+    for (var property in e.data.options) {
+      if (e.data.options.hasOwnProperty(property)) {
+        options[property] = e.data.options[property];
+      }
+    }
+    var result = Prepack.prepackSources(sources, options);
     if (result && !buffer.length) {
       postMessage({ type: 'success', data: result.code });
     } else {
