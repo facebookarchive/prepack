@@ -43,7 +43,7 @@ import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.j
 import type { SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type { SerializedBinding, VisitedBinding, FunctionInfo, FunctionInstance } from "./types.js";
-import { TimingStatistics, SerializerStatistics, type VisitedBindings } from "./types.js";
+import { TimingStatistics, SerializerStatistics } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -64,7 +64,7 @@ export class ResidualHeapSerializer {
     residualHeapValueIdentifiers: ResidualHeapValueIdentifiers,
     residualHeapInspector: ResidualHeapInspector,
     residualValues: Map<Value, Set<Scope>>,
-    residualFunctionBindings: Map<FunctionValue, VisitedBindings>,
+    residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     delayInitializations: boolean,
     referencedDeclaredValues: Set<AbstractValue>,
@@ -119,7 +119,7 @@ export class ResidualHeapSerializer {
     this.currentFunctionBody = this.mainBody;
     this.residualHeapInspector = residualHeapInspector;
     this.residualValues = residualValues;
-    this.residualFunctionBindings = residualFunctionBindings;
+    this.residualFunctionInstances = residualFunctionInstances;
     this.residualFunctionInfos = residualFunctionInfos;
     this.delayInitializations = delayInitializations;
     this.referencedDeclaredValues = referencedDeclaredValues;
@@ -156,7 +156,7 @@ export class ResidualHeapSerializer {
   timingStats: TimingStatistics;
   residualHeapInspector: ResidualHeapInspector;
   residualValues: Map<Value, Set<Scope>>;
-  residualFunctionBindings: Map<FunctionValue, VisitedBindings>;
+  residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
@@ -859,27 +859,21 @@ export class ResidualHeapSerializer {
     invariant(!(val instanceof NativeFunctionValue), "all native function values should be intrinsics");
     invariant(val instanceof ECMAScriptSourceFunctionValue);
 
-    let residualBindings = this.residualFunctionBindings.get(val);
-    invariant(residualBindings);
-
-    invariant(val instanceof ECMAScriptSourceFunctionValue);
-    let serializedBindings = {};
-    let instance: FunctionInstance = {
-      serializedBindings,
-      functionValue: val,
-      scopeInstances: new Set(),
-    };
+    let instance = this.residualFunctionInstances.get(val);
+    invariant(instance);
+    let serializedBindings = instance.serializedBindings;
 
     if (this.currentFunctionBody !== this.mainBody) instance.preludeOverride = this.currentFunctionBody;
     let delayed = 1;
     let undelay = () => {
       if (--delayed === 0) {
+        invariant(instance);
         instance.insertionPoint = this.emitter.getBodyReference();
+        // TODO move this line
         this.residualFunctions.addFunctionInstance(instance);
       }
     };
-    for (let boundName in residualBindings) {
-      let residualBinding = residualBindings[boundName];
+    for (let [boundName, residualBinding] of instance.visitedBindings) {
       let referencedValues = [];
       let serializeBindingFunc;
       if (!residualBinding.declarativeEnvironmentRecord) {
@@ -895,7 +889,7 @@ export class ResidualHeapSerializer {
       this.emitter.emitNowOrAfterWaitingForDependencies(referencedValues, () => {
         let serializedBinding = serializeBindingFunc();
         invariant(serializedBinding);
-        serializedBindings[boundName] = serializedBinding;
+        serializedBindings.set(boundName, serializedBinding);
         undelay();
       });
     }
