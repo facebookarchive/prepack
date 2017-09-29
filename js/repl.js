@@ -28,7 +28,7 @@ var optionsConfig = [
   {
     type: "boolean",
     name: "inlineExpressions",
-    defaultVal: false,
+    defaultVal: true,
     description: "Avoids naming expressions when they are only used once, and instead inline them where they are used."
   },
   {
