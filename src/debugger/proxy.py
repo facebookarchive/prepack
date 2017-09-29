@@ -1,5 +1,7 @@
 from datetime import datetime
 import sys
+import json
+
 class Processor(object):
     def __init__(self, inputer, outputer):
         self.inputer = inputer
@@ -94,11 +96,18 @@ class Outputer():
         self.file = open(self.fileName, "w")
 
 class Session():
-    def __init__(self, inFileName, outFileName):
-        self.inputer = Inputer(inFileName)
-        self.outputer = Outputer(outFileName)
+    def __init__(self):
+        self.configure()
+        self.inputer = Inputer(self.inFileName)
+        self.outputer = Outputer(self.outFileName)
         self.breakpointProcessor = BreakpointProcessor(self.inputer, self.outputer)
         self.run = True
+
+    def configure(self):
+        configFile = open("./src/debugger/config.json")
+        config = json.loads(configFile.read())
+        self.inFileName = config["files"]["debugger2proxy"]
+        self.outFileName = config["files"]["proxy2debugger"]
 
     def serve(self):
         self.outputer.addLine("Debugger Attached")
@@ -108,7 +117,9 @@ class Session():
             self.inputer.checkPollDispatch(self)
             if not self.run:
                 break
-            if command == "exit":
+            if len(command) == 0:
+                continue
+            elif command == "exit":
                 self.run = False
                 break
             parts = command.split(" ")
@@ -129,9 +140,7 @@ class Session():
         self.outputer.shutdown()
 
 def main():
-    inFileName = "./src/debugger/.sessionlogs/debugger2proxy.txt"
-    outFileName = "./src/debugger/.sessionlogs/proxy2debugger.txt"
-    session = Session(inFileName, outFileName)
+    session = Session()
     session.serve()
 if __name__ == "__main__":
     main()
