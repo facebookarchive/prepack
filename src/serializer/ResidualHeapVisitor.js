@@ -35,7 +35,7 @@ import { Generator } from "../utils/generator.js";
 import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { VisitedBinding, VisitedBindings, FunctionInfo } from "./types.js";
+import type { VisitedBinding, FunctionInfo, FunctionInstance } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -65,7 +65,7 @@ export class ResidualHeapVisitor {
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.globalBindings = new Map();
     this.functionInfos = new Map();
-    this.functionBindings = new Map();
+    this.functionInstances = new Map();
     this.values = new Map();
     let generator = this.realm.generator;
     invariant(generator);
@@ -81,10 +81,11 @@ export class ResidualHeapVisitor {
   logger: Logger;
   modules: Modules;
 
-  declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, VisitedBindings>;
+  // Caches that ensure one VisitedBinding exists per (record, name) pair
+  declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, VisitedBinding>>;
   globalBindings: Map<string, VisitedBinding>;
+
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
-  functionBindings: Map<FunctionValue, VisitedBindings>;
   scope: Scope;
   // Either the realm's generator or the FunctionValue of an additional function to serialize
   commonScope: Scope;
@@ -93,6 +94,7 @@ export class ResidualHeapVisitor {
   referencedDeclaredValues: Set<AbstractValue>;
   delayedVisitGeneratorEntries: Array<{| commonScope: Scope, generator: Generator, entry: GeneratorEntry |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>;
+  functionInstances: Map<FunctionValue, FunctionInstance>;
   equivalenceSet: HashSet<AbstractValue>;
 
   _withScope(scope: Scope, f: () => void) {
@@ -198,17 +200,17 @@ export class ResidualHeapVisitor {
   visitDeclarativeEnvironmentRecordBinding(r: DeclarativeEnvironmentRecord, n: string): VisitedBinding {
     let visitedBindings = this.declarativeEnvironmentRecordsBindings.get(r);
     if (!visitedBindings) {
-      visitedBindings = (Object.create(null): any);
+      visitedBindings = new Map();
       this.declarativeEnvironmentRecordsBindings.set(r, visitedBindings);
     }
-    let visitedBinding: ?VisitedBinding = visitedBindings[n];
+    let visitedBinding: ?VisitedBinding = visitedBindings.get(n);
     if (!visitedBinding) {
       let realm = this.realm;
       let binding = r.bindings[n];
       invariant(!binding.deletable);
       let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
       visitedBinding = { value, modified: false, declarativeEnvironmentRecord: r };
-      visitedBindings[n] = visitedBinding;
+      visitedBindings.set(n, visitedBinding);
     }
     invariant(visitedBinding.value !== undefined);
     visitedBinding.value = this.visitEquivalentValue(visitedBinding.value);
@@ -327,7 +329,7 @@ export class ResidualHeapVisitor {
       }
     }
 
-    let visitedBindings = (Object.create(null): any);
+    let visitedBindings = new Map();
     this._withScope(val, () => {
       invariant(functionInfo);
       for (let innerName in functionInfo.unbound) {
@@ -354,12 +356,17 @@ export class ResidualHeapVisitor {
           invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
           visitedBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
         }
-        visitedBindings[innerName] = visitedBinding;
+        visitedBindings.set(innerName, visitedBinding);
         if (functionInfo.modified[innerName]) visitedBinding.modified = true;
       }
     });
 
-    this.functionBindings.set(val, visitedBindings);
+    this.functionInstances.set(val, {
+      serializedBindings: new Map(),
+      visitedBindings,
+      functionValue: val,
+      scopeInstances: new Set(),
+    });
   }
 
   visitValueObject(val: ObjectValue): void {
