@@ -160,7 +160,9 @@ function compile() {
       } else if (config.type === "boolean") {
         options[config.name] = (domE.checked === true);
       } else if (config.type === "string") {
-        options[config.name] = domE.value;
+        if (domE.value) {
+          options[config.name] = domE.value;
+        }
       }      
     }
 
