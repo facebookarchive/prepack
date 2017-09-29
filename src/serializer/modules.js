@@ -465,7 +465,7 @@ export class Modules {
       if (compl instanceof AbruptCompletion) return undefined;
       invariant(compl instanceof Value);
 
-      if (generator.body.length !== 0 || (compl instanceof ObjectValue && createdObjects.has(compl))) return undefined;
+      if (!generator.empty() || (compl instanceof ObjectValue && createdObjects.has(compl))) return undefined;
       // Check for escaping property assignments, if none escape, we got an existing object
       let escapes = false;
       for (let [binding] of properties) {
