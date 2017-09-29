@@ -232,7 +232,7 @@ export default class ObjectValue extends ConcreteValue {
   hashValue: void | number;
 
   equals(x: Value): boolean {
-    return x instanceof ObjectValue && this.hashValue === x.hashValue;
+    return x instanceof ObjectValue && this.getHash() === x.getHash();
   }
 
   getHash(): number {
@@ -543,7 +543,7 @@ export default class ObjectValue extends ConcreteValue {
     return result;
   }
 
-  specializeJoin(absVal: AbstractValue, propName: Value): AbstractValue {
+  specializeJoin(absVal: AbstractValue, propName: Value): Value {
     invariant(absVal.args.length === 3 && absVal.kind === "conditional");
     let generic_cond = absVal.args[0];
     invariant(generic_cond instanceof AbstractValue);
