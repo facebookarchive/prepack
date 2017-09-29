@@ -66,10 +66,11 @@ header, .repl-container {
   -khtml-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
-  user-select: none;  
+  user-select: none;
+  background-color:#505050;
 }
 .record-container .options-menu-button:hover{
-  background-color:gray;
+  background-color:#808080;
 }
 .record-container .options-menu-record{
   display: none;
