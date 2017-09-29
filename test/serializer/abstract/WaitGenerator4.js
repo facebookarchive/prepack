@@ -1,6 +1,7 @@
 (function() {
     let x = global.__abstract ? __abstract("boolean", "(true)") : true;
-    let y = global.__abstract ? __abstract("boolean", "(true)") : true;
+    // Create second abstract value with a different name so that !x.equals(y).
+    let y = global.__abstract ? __abstract("boolean", "((true))") : true;
     let obj = { time: 99 };
     if (x) {
       if (y) {

@@ -9,11 +9,15 @@
 
 /* @flow */
 
-import { PrimitiveValue } from "./index.js";
+import { EmptyValue, PrimitiveValue, Value } from "./index.js";
 
 export default class UndefinedValue extends PrimitiveValue {
   _serialize() {
     return undefined;
+  }
+
+  equals(x: Value): boolean {
+    return x instanceof UndefinedValue && !(x instanceof EmptyValue);
   }
 
   getHash(): number {
