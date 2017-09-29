@@ -338,10 +338,10 @@ export class Generator {
   }
 
   addEntry(entry: GeneratorEntry) {
-    this.addEntry(entry);
+    this._entries.push(entry);
   }
 
-  appendGenerator(other: Generator, leadingComment: string = ""): void {
+  appendGenerator(other: Generator, leadingComment: string): void {
     let appendEntries = other._entries;
 
     let i = 0;

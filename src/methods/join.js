@@ -396,7 +396,7 @@ function joinGenerators(
 ): Generator {
   let result = new Generator(realm);
   if (!generator1.empty() || !generator2.empty()) {
-    result.body.push({
+    result.addEntry({
       args: [joinCondition],
       buildNode: function([cond], context) {
         let block1 = generator1.empty() ? null : serializeBody(generator1, context);
