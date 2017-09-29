@@ -17,9 +17,18 @@ import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
+import { Debugger } from "./debugger/Debugger.js";
+const fs = require('fs');
 
 export default function(opts: RealmOptions = {}): Realm {
   let r = new Realm(opts);
+
+  let dbgFileContents = fs.readFileSync("./src/debugger/.sessionlogs/proxy2debugger.txt", 'utf8');
+  let dbgFileLines = dbgFileContents.toString().split("\n");
+  if (dbgFileLines[0] === "Debugger Attached") {
+    r.attachedDebugger = new Debugger(dbgFileLines);
+  }
+
   let i = r.intrinsics;
   initializeIntrinsics(i, r);
   // TODO: Find a way to let different environments initialize their own global

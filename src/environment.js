@@ -1253,6 +1253,9 @@ export class LexicalEnvironment {
   }
 
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
+    if (this.realm.attachedDebugger && ast.loc) {
+      this.realm.attachedDebugger.checkForActions(ast, this.realm.contextStack);
+    }
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     if (res instanceof PossiblyNormalCompletion) {
       AbstractValue.reportIntrospectionError(res.joinCondition);
