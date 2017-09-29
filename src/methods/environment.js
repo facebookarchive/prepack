@@ -310,7 +310,7 @@ export function BlockDeclarationInstantiation(
   // 3. Let declarations be the LexicallyScopedDeclarations of code.
   let declarations = [];
   for (let node of body) {
-    if (node.type === "FunctionDeclaration" || (node.type === "VariableDeclaration" && node.kind !== "var")) {
+    if (node.type === "ClassDeclaration" || node.type === "FunctionDeclaration" || (node.type === "VariableDeclaration" && node.kind !== "var")) {
       declarations.push(node);
     }
   }
