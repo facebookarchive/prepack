@@ -745,7 +745,7 @@ export class Realm {
       invariant(generator.empty());
       return;
     }
-    realmGenerator.appendGenerator(generator);
+    realmGenerator.appendGenerator(generator, leadingComment);
   }
 
   // Pass the error to the realm's error-handler
