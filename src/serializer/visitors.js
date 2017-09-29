@@ -14,7 +14,7 @@ import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeCallExpression } from "babel-types";
 import { BabelTraversePath } from "babel-traverse";
-import type { TryQuery, FunctionInfo, Names } from "./types.js";
+import type { TryQuery, FunctionInfo, Names, SerializedBinding } from "./types.js";
 
 export type ClosureRefVisitorState = {
   tryQuery: TryQuery<*>,
@@ -24,7 +24,7 @@ export type ClosureRefVisitorState = {
 };
 
 export type ClosureRefReplacerState = {
-  serializedBindings: any,
+  serializedBindings: Map<string, SerializedBinding>,
   modified: Names,
   requireReturns: Map<number | string, BabelNodeExpression>,
   requireStatistics: { replaced: 0, count: 0 },
@@ -62,7 +62,7 @@ export let ClosureRefReplacer = {
 
     let serializedBindings = state.serializedBindings;
     let name = path.node.name;
-    let serializedBinding = serializedBindings[name];
+    let serializedBinding = serializedBindings.get(name);
     if (serializedBinding) replaceName(path, serializedBinding, name, serializedBindings);
   },
 
@@ -87,7 +87,7 @@ export let ClosureRefReplacer = {
     let serializedBindings = state.serializedBindings;
     let ids = path.getBindingIdentifierPaths();
     for (let name in ids) {
-      let serializedBinding = serializedBindings[name];
+      let serializedBinding = serializedBindings.get(name);
       if (serializedBinding) {
         let nestedPath = ids[name];
         replaceName(nestedPath, serializedBinding, name, serializedBindings);
