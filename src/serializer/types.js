@@ -20,7 +20,8 @@ import invariant from "../invariant.js";
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
 export type FunctionInstance = {
-  serializedBindings: SerializedBindings,
+  serializedBindings: Map<string, SerializedBinding>,
+  visitedBindings: Map<string, VisitedBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
   // Optional place to put the function declaration
@@ -36,7 +37,6 @@ export type FunctionInfo = {
   usesThis: boolean,
 };
 
-export type SerializedBindings = { [key: string]: SerializedBinding };
 export type SerializedBinding = {
   value: void | Value,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
@@ -47,7 +47,6 @@ export type SerializedBinding = {
   scope?: ScopeBinding,
 };
 
-export type VisitedBindings = { [key: string]: VisitedBinding }; //todo: use a map
 export type VisitedBinding = {
   value: void | Value,
   modified: boolean,
