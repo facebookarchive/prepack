@@ -1253,8 +1253,12 @@ export class LexicalEnvironment {
   }
 
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
-    if (this.realm.enableDebugger && this.realm.attachedDebugger && ast.loc) {
-      this.realm.attachedDebugger.checkForActions(ast, this.realm.contextStack);
+    //Debugger will be hidden for now since the code to set attachedDebugger
+    //is hidden behind a flag.
+    if (this.realm.attachedDebugger) {
+      if (ast.loc) {
+        this.realm.attachedDebugger.checkForActions(ast);
+      }
     }
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     if (res instanceof PossiblyNormalCompletion) {

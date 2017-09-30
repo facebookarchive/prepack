@@ -11,31 +11,28 @@
 
 import type { BabelNode } from "babel-types";
 import { Breakpoint } from "./Breakpoint.js";
-import { ExecutionContext } from "../realm.js";
 import invariant from "../invariant.js";
-import fs from "fs";
+import { DebugChannel } from "../DebugChannel.js";
 
 export class Debugger {
-  constructor(dbgFileLines: Array<string>) {
+  constructor(dbgFileLines: Array<string>, channel: DebugChannel) {
     this.breakpoints = new Map();
     this.prevBreakLine = 0;
     this.prevBreakCol = 0;
     this.parseCommands(dbgFileLines);
+    this.channel = channel;
   }
-  breakpoints: Map<number, Breakpoint>;
+  breakpoints: { [number]: Breakpoint };
   prevBreakLine: number;
   prevBreakCol: number;
+  channel: DebugChannel;
 
-  serializeContext(context: ExecutionContext) {
-    return context.loc;
-  }
-
-  checkForActions(ast: BabelNode, contextStack: Array<ExecutionContext>) {
-    this.checkForBreakpoint(ast, contextStack);
+  checkForActions(ast: BabelNode) {
+    this.checkForBreakpoint(ast);
   }
 
   proceedBreakpoint(lineNum: number, colNum: number): boolean {
-    if (this.breakpoints.has(lineNum) && this.breakpoints.get(lineNum).enabled) {
+    if (lineNum in this.breakpoints && this.breakpoints[lineNum].enabled) {
       if (lineNum === this.prevBreakLine) {
         if (colNum === this.prevBreakCol) {
           this.prevBreakCol = 0;
@@ -50,7 +47,7 @@ export class Debugger {
     return false;
   }
 
-  checkForBreakpoint(ast: BabelNode, contextStack: Array<ExecutionContext>) {
+  checkForBreakpoint(ast: BabelNode) {
     invariant(ast.loc);
     let location = ast.loc;
     if (location.start.line === location.end.line) {
@@ -59,14 +56,14 @@ export class Debugger {
       if (!this.proceedBreakpoint(lineNum, colNum)) return;
 
       console.log("Stopped for breakpoint on line " + lineNum);
-      this.sendDebugInfo(ast, contextStack, lineNum);
+      this.sendDebugInfo(ast, lineNum);
 
       let lastPoll = Date.now();
       let blocking = true;
       let contents = "";
       while (blocking) {
         if (Date.now() - lastPoll > 1000) {
-          contents = fs.readFileSync("./src/debugger/.sessionlogs/proxy2debugger.txt", "utf8").toString().split("\n");
+          contents = this.channel.readIn().toString().split("\n");
           if (contents[0] === "proceed " + lineNum) {
             blocking = false;
           } else {
@@ -75,15 +72,12 @@ export class Debugger {
           lastPoll = Date.now();
         }
       }
-      fs.writeFileSync("./src/debugger/.sessionlogs/proxy2debugger.txt", "");
+      this.channel.writeOut("");
     }
   }
 
-  sendDebugInfo(ast: BabelNode, contextStack: Array<ExecutionContext>, lineNum: number) {
-    fs.writeFileSync("./src/debugger/.sessionlogs/debugger2proxy.txt", "breakpoint " + lineNum);
-    // for (let i = 0; i < contextStack.length; i++) {
-    //   let ctxt = contextStack[i];
-    // }
+  sendDebugInfo(ast: BabelNode, lineNum: number) {
+    this.channel.writeOut("breakpoint " + lineNum);
   }
 
   parseCommands(commands: Array<string>) {
@@ -103,19 +97,19 @@ export class Debugger {
     if (parts[1] === "add") {
       let lineNum = parseInt(parts[2], 10);
       let breakpoint = new Breakpoint(lineNum, true);
-      this.breakpoints.set(lineNum, breakpoint);
+      this.breakpoints[lineNum] = breakpoint;
     } else if (parts[1] === "remove") {
       let lineNum = parseInt(parts[2], 10);
-      invariant(this.breakpoints.has(lineNum));
-      this.breakpoints.delete(lineNum);
+      invariant(lineNum in this.breakpoints);
+      delete this.breakpoints[lineNum];
     } else if (parts[1] === "enable") {
       let lineNum = parseInt(parts[2], 10);
-      invariant(this.breakpoints.has(lineNum) && !this.breakpoints.get(lineNum).enabled);
-      this.breakpoints.get(lineNum).enabled = true;
+      invariant(lineNum in this.breakpoints && !this.breakpoints[lineNum].enabled);
+      this.breakpoints[lineNum].enabled = true;
     } else if (parts[1] === "disable") {
       let lineNum = parseInt(parts[2], 10);
-      invariant(this.breakpoints.has(lineNum) && this.breakpoints.get(lineNum).enabled);
-      this.breakpoints.get(lineNum).enabled = false;
+      invariant(lineNum in this.breakpoints && this.breakpoints[lineNum].enabled);
+      this.breakpoints[lineNum].enabled = false;
     }
   }
 }

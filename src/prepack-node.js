@@ -17,6 +17,7 @@ import { type PrepackOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
+import { DebugChannel } from "./DebugChannel.js";
 
 import fs from "fs";
 
@@ -110,5 +111,9 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     }
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
-  return prepackSources(sourceFiles, options);
+  let debugChannel;
+  if (options.enableDebugger) {
+    debugChannel = new DebugChannel(fs);
+  }
+  return prepackSources(sourceFiles, options, debugChannel);
 }

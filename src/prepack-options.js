@@ -37,6 +37,7 @@ export type PrepackOptions = {|
   trace?: boolean,
   uniqueSuffix?: string,
   maxStackDepth?: number,
+  enableDebugger?: boolean,
 |};
 
 export function getRealmOptions({

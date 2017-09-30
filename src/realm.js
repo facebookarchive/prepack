@@ -167,7 +167,6 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
-    this.enableDebugger = false;
   }
 
   start: number;
@@ -234,7 +233,6 @@ export class Realm {
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
   attachedDebugger: Debugger | void;
-  enableDebugger: boolean;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {

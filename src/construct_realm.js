@@ -18,15 +18,15 @@ import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
 import { Debugger } from "./debugger/Debugger.js";
-import fs from "fs";
+import { DebugChannel } from "./DebugChannel.js";
 
-export default function(opts: RealmOptions = {}): Realm {
+export default function(opts: RealmOptions = {}, debugChannel: DebugChannel | void = undefined): Realm {
   let r = new Realm(opts);
-  if (r.enableDebugger) {
-    let dbgFileContents = fs.readFileSync("./src/debugger/.sessionlogs/proxy2debugger.txt", "utf8");
+  if (debugChannel) {
+    let dbgFileContents = debugChannel.readIn();
     let dbgFileLines = dbgFileContents.toString().split("\n");
     if (dbgFileLines[0] === "Debugger Attached") {
-      r.attachedDebugger = new Debugger(dbgFileLines);
+      r.attachedDebugger = new Debugger(dbgFileLines, debugChannel);
     }
   }
 

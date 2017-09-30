@@ -10,7 +10,6 @@
 /* @flow */
 
 export class Breakpoint {
-  //Will add more fields as needed in the future
   constructor(line: number, virtual: boolean = false, enabled: boolean = true) {
     this.line = line;
     this.virtual = virtual;
