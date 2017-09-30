@@ -17,7 +17,6 @@ import {
   IsCallable,
   SameValueZeroPartial,
   ThrowIfMightHaveBeenDeleted,
-  ThrowIfInternalSlotNotWritable,
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
@@ -38,7 +37,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of M's [[MapData]] internal slot.
-    let entries = ThrowIfInternalSlotNotWritable(realm, M, "$MapData").$MapData;
+    realm.recordModifiedProperty((M: any).$MapData_binding);
+    let entries = M.$MapData;
     invariant(entries !== undefined);
 
     // 5. Repeat for each Record {[[Key]], [[Value]]} p that is an element of entries,
@@ -70,6 +70,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of M's [[MapData]] internal slot.
+    realm.recordModifiedProperty((M: any).$MapData_binding);
     let entries = M.$MapData;
     invariant(entries !== undefined);
 
@@ -77,8 +78,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
     for (let p of entries) {
       // a. If p.[[Key]] is not empty and SameValueZero(p.[[Key]], key) is true, then
       if (p.$Key !== undefined && SameValueZeroPartial(realm, p.$Key, key)) {
-        ThrowIfInternalSlotNotWritable(realm, M, "$MapData");
-
         // i. Set p.[[Key]] to empty.
         p.$Key = undefined;
 
@@ -232,7 +231,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of M's [[MapData]] internal slot.
-    let entries = ThrowIfInternalSlotNotWritable(realm, M, "$MapData").$MapData;
+    realm.recordModifiedProperty((M: any).$MapData_binding);
+    let entries = M.$MapData;
     invariant(entries !== undefined);
 
     // 5. Repeat for each Record {[[Key]], [[Value]]} p that is an element of entries,

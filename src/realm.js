@@ -11,16 +11,19 @@
 
 import type { Intrinsics, PropertyBinding, Descriptor } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
-import { NativeFunctionValue, ECMAScriptSourceFunctionValue, FunctionValue } from "./values/index.js";
 import {
-  Value,
-  ObjectValue,
-  AbstractValue,
   AbstractObjectValue,
-  StringValue,
+  AbstractValue,
   ConcreteValue,
-  UndefinedValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  NativeFunctionValue,
+  ObjectValue,
+  ProxyValue,
+  StringValue,
   SymbolValue,
+  UndefinedValue,
+  Value,
 } from "./values/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
@@ -151,7 +154,9 @@ export class Realm {
     if (this.useAbstractInterpretation) {
       this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
       this.pathConditions = [];
-      ObjectValue.setupTrackedPropertyAccessors();
+      ObjectValue.setupTrackedPropertyAccessors(ObjectValue.trackedPropertyNames);
+      ObjectValue.setupTrackedPropertyAccessors(NativeFunctionValue.trackedPropertyNames);
+      ObjectValue.setupTrackedPropertyAccessors(ProxyValue.trackedPropertyNames);
     }
 
     this.tracers = [];
@@ -598,7 +603,8 @@ export class Realm {
 
   // Record the current value of binding in this.modifiedProperties unless
   // there is already an entry for binding.
-  recordModifiedProperty(binding: PropertyBinding): void {
+  recordModifiedProperty(binding: void | PropertyBinding): void {
+    if (binding === undefined) return;
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
@@ -693,6 +699,7 @@ export class Realm {
         AbstractValue.reportIntrospectionError(abstractValue, key);
         throw new FatalError();
       }
+      invariant(value instanceof Value);
       this.rebuildObjectProperty(abstractValue, key, value, path);
     }
   }

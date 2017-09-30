@@ -87,7 +87,8 @@ export type Descriptor = {
 
   // If value.IsEmpty is true then this descriptor indicates that the
   // corresponding property has been deleted.
-  value?: Value,
+  // Only internal properties (those starting with $) will ever have array values.
+  value?: Value | Array<any>,
 
   get?: UndefinedValue | CallableObjectValue | AbstractValue,
   set?: UndefinedValue | CallableObjectValue | AbstractValue,
