@@ -36,7 +36,7 @@ export default function(realm: Realm): NativeFunctionValue {
       if (realm.strictlyMonotonicDateNow && lastNow >= newNow) {
         if (!offsetGenerator) offsetGenerator = seedrandom(0);
         // certain behaviors in the test262 test suite can only be (reliably) triggered if Date.now() is strictly monotonically increasing
-        // TODO: Set the strictlyMonotonicDateNow option on the realm in the test262 test runner, fix the issues that will come up in the tests, and remove this TODO.
+        // TODO #1004: Set the strictlyMonotonicDateNow option on the realm in the test262 test runner, fix the issues that will come up in the tests, and remove this comment.
         newNow = lastNow + 1 + Math.floor(offsetGenerator() * 500);
       }
       lastNow = newNow;

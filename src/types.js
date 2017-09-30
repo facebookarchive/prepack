@@ -275,4 +275,4 @@ export type ObjectKind =
   | "WeakMap"
   | "WeakSet"
   | TypedArrayKind;
-// TODO #26: Promises. All kinds of iterators. Generators.
+// TODO #26 #712: Promises. All kinds of iterators. Generators.

@@ -268,8 +268,8 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
 
   // 14. If fullUnicode is true, then
   if (fullUnicode) {
-    // TODO a. e is an index into the Input character list, derived from S, matched by matcher. Let eUTF be the smallest index into S that corresponds to the character at element e of Input. If e is greater than or equal to the length of Input, then eUTF is the number of code units in S.
-    // TODO b. Let e be eUTF.
+    // TODO #1018 a. e is an index into the Input character list, derived from S, matched by matcher. Let eUTF be the smallest index into S that corresponds to the character at element e of Input. If e is greater than or equal to the length of Input, then eUTF is the number of code units in S.
+    // b. Let e be eUTF.
   }
 
   // 15. If global is true or sticky is true, then
@@ -315,8 +315,8 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
       capturedValue = realm.intrinsics.undefined;
     } else if (fullUnicode) {
       // c. Else if fullUnicode is true, then
-      // TODO: i. Assert: captureI is a List of code points.
-      // TODO: ii. Let capturedValue be a string whose code units are the UTF16Encoding of the code points of captureI.
+      // TODO #1018: i. Assert: captureI is a List of code points.
+      // ii. Let capturedValue be a string whose code units are the UTF16Encoding of the code points of captureI.
       capturedValue = realm.intrinsics.undefined;
     } else {
       // d. Else, fullUnicode is false,

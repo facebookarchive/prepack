@@ -160,7 +160,7 @@ export function computeBinary(
       (!lval.mightNotBeObject() && (rval instanceof NullValue || rval instanceof UndefinedValue)) ||
       ((lval instanceof NullValue || lval instanceof UndefinedValue) && !rval.mightNotBeObject())
     ) {
-      //TODO: We can only get here if lval or rval is known to be an object. In general, we require that such values
+      //TODO #1001: We can only get here if lval or rval is known to be an object. In general, we require that such values
       //can never be null or undefined, so the next line makes no sense. It is in fact a short term hack to deal
       //with the need for some intrinsic objects to be optionally null or undefined. It is still an open question
       //how best to model such objects. When that question is resolved, the next line should go away.

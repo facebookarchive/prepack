@@ -36,7 +36,7 @@ function letAndConst(
 ): Value {
   for (let declar of ast.declarations) {
     if (declar.id.type !== "Identifier") {
-      throw new FatalError("TODO: Patterns aren't supported yet");
+      throw new FatalError("TODO #415: Patterns aren't supported yet");
     }
 
     let Initializer = declar.init;

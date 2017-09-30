@@ -43,6 +43,6 @@ export default function convert(realm: Realm, val: any): Value {
 
     return obj;
   } else {
-    throw new FatalError("TODO: need to convert value of type " + typeof val);
+    throw new FatalError("need to convert value of type " + typeof val);
   }
 }

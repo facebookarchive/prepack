@@ -44,7 +44,7 @@ export default class ProxyValue extends ObjectValue {
   constructor(realm: Realm) {
     super(realm);
 
-    // $FlowFixMe TODO: exotics should not have $Realm
+    // $FlowFixMe TODO #1022: exotics should not have $Realm
     this.$Realm = undefined;
     this.realm = realm;
   }

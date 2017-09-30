@@ -991,16 +991,8 @@ function runTest(
     // succeeded
     return new TestResult(true, strict);
   } catch (err) {
-    switch (err.message) {
-      case "TODO: Patterns aren't supported yet":
-      case "TODO: AwaitExpression":
-      case "TODO: YieldExpression":
-        return null;
-      default:
-        if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
-          return null;
-        }
-        break;
+    if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
+      return null;
     }
 
     let stack = err.stack;
