@@ -14,6 +14,7 @@
 /* @flow */
 import { defaultOptions } from "./options";
 import { type PrepackOptions } from "./prepack-options";
+import { getDebuggerOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
@@ -112,8 +113,12 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
   let debugChannel;
+  //flag to hide the debugger for now
   if (options.enableDebugger) {
-    debugChannel = new DebugChannel(fs);
+    if (options.debugConfigPath) {
+      let dbgOptions = getDebuggerOptions(options.debugConfigPath);
+      debugChannel = new DebugChannel(fs, dbgOptions);
+    }
   }
   return prepackSources(sourceFiles, options, debugChannel);
 }

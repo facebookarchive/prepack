@@ -9,10 +9,11 @@
 
 /* @flow */
 import path from "path";
+import type { DebuggerOptions } from "./options";
 
 export class DebugChannel {
-  constructor(fs: any) {
-    let configFilePath = path.join(__dirname, "../src/debugger/config.json");
+  constructor(fs: any, dbgOptions: DebuggerOptions) {
+    let configFilePath = dbgOptions.configFilePath;
     let config = JSON.parse(fs.readFileSync(configFilePath, "utf8").toString());
     this.inFilePath = path.join(__dirname, "../", config.files.proxy2debugger);
     this.outFilePath = path.join(__dirname, "../", config.files.debugger2proxy);

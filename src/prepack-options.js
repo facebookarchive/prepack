@@ -10,7 +10,8 @@
 /* @flow */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions, Compatibility } from "./options";
+import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions } from "./options";
+import path from "path";
 
 export type PrepackOptions = {|
   additionalFunctions?: Array<string>,
@@ -38,6 +39,7 @@ export type PrepackOptions = {|
   uniqueSuffix?: string,
   maxStackDepth?: number,
   enableDebugger?: boolean,
+  debugConfigPath?: string,
 |};
 
 export function getRealmOptions({
@@ -90,5 +92,12 @@ export function getSerializerOptions({
     trace,
   };
   if (additionalFunctions) result.additionalFunctions = additionalFunctions;
+  return result;
+}
+
+export function getDebuggerOptions(configFilePath: string): DebuggerOptions {
+  let result: DebuggerOptions = {
+    configFilePath: path.join(__dirname, "../", configFilePath),
+  };
   return result;
 }

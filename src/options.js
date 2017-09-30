@@ -44,4 +44,8 @@ export type PartialEvaluatorOptions = {
   sourceMaps?: boolean,
 };
 
+export type DebuggerOptions = {
+  configFilePath: string,
+};
+
 export const defaultOptions = {};
