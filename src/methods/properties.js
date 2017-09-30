@@ -176,7 +176,7 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
     // O might not object, so first ask its parent
     let parent = O.$GetPrototypeOf();
-    parent.throwIfNotConcrete(); //TODO: deal with abstract parents
+    parent.throwIfNotConcrete(); //TODO #1016: deal with abstract parents
     if (!(parent instanceof NullValue)) {
       if (!parentPermitsChildPropertyCreation(realm, parent, P)) return false;
     }
@@ -189,7 +189,7 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   // O might have a property P and so might object
   if (IsDataDescriptor(realm, ownDesc)) {
     if (ownDesc.writable) {
-      // The grand parent does not object so it is OK parent does not have P
+      // The grand parent does not object so it is OK that parent does not have P
       // If parent does have P, it is also OK because it is a writable data property
       return true;
     }
@@ -216,7 +216,7 @@ export function OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V
   if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
     // a. Let parent be ? O.[[GetPrototypeOf]]().
     let parent = O.$GetPrototypeOf();
-    parent.throwIfNotConcrete(); //TODO: deal with abstract parents
+    parent.throwIfNotConcrete(); //TODO #1016: deal with abstract parents
 
     // b. If parent is not null, then
     if (!(parent instanceof NullValue)) {
@@ -1113,7 +1113,7 @@ export function OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectVa
       return false;
     } else {
       // c. Else,
-      // TODO i. If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
+      // TODO #1017 i. If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
 
       // ii. Else, let p be the value of p's [[Prototype]] internal slot.
       p = p.$Prototype;

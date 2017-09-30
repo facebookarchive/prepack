@@ -947,7 +947,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     // 7. Perform ? DefinePropertyOrThrow(globalObject, N, desc).
     DefinePropertyOrThrow(this.realm, globalObject, N, desc);
 
-    // TODO? 8. Record that the binding for N in ObjRec has been initialized.
+    // 8. Record that the binding for N in ObjRec has been initialized.
 
     // 9. Perform ? Set(globalObject, N, V, false).
     Set(this.realm, globalObject, N, V, false);
@@ -962,36 +962,6 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 12. Return NormalCompletion(empty).
-  }
-}
-
-// ECMA262 8.1.1.5
-export class ModuleEnvironmentRecord extends DeclarativeEnvironmentRecord {
-  // ECMA262 8.1.1.3.1
-  BindThisValue(
-    V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
-  ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.2
-  HasThisBinding(): boolean {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.3
-  HasSuperBinding(): boolean {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.4
-  GetThisBinding(): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.5
-  GetSuperBase(): NullValue | ObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
   }
 }
 

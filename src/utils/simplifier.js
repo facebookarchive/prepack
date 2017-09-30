@@ -101,7 +101,7 @@ function negate(realm: Realm, value: Value): Value {
   if (value instanceof ConcreteValue) return ValuesDomain.computeUnary(realm, "!", value);
   invariant(value instanceof AbstractValue);
   if (value.kind === "!") return makeBoolean(realm, value.args[0]);
-  // todo: remove this check once intrinsic objects can be properly nullable
+  // todo #1001: remove this check once intrinsic objects can be properly nullable
   if (!(value instanceof AbstractObjectValue) || !value.isIntrinsic()) {
     if (!value.mightNotBeTrue()) return realm.intrinsics.false;
     if (!value.mightNotBeFalse()) return realm.intrinsics.true;
