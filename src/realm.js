@@ -812,21 +812,25 @@ export class Realm {
         let loc_end = diagnostic.location.end;
         msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
       }
-      switch (diagnostic.severity) {
-        case "Information":
-          console.log(`Info: ${msg}`);
-          return "Recover";
-        case "Warning":
-          console.warn(`Warn: ${msg}`);
-          return "Recover";
-        case "RecoverableError":
-          console.error(`Error: ${msg}`);
-          return "Fail";
-        case "FatalError":
-          console.error(`Fatal Error: ${msg}`);
-          return "Fail";
-        default:
-          invariant(false, "Unexpected error type");
+      try {
+        switch (diagnostic.severity) {
+          case "Information":
+            console.log(`Info: ${msg}`);
+            return "Recover";
+          case "Warning":
+            console.warn(`Warn: ${msg}`);
+            return "Recover";
+          case "RecoverableError":
+            console.error(`Error: ${msg}`);
+            return "Fail";
+          case "FatalError":
+            console.error(`Fatal Error: ${msg}`);
+            return "Fail";
+          default:
+            invariant(false, "Unexpected error type");
+        }
+      } finally {
+        console.log(diagnostic.callStack);
       }
     }
     return errorHandler(diagnostic);
