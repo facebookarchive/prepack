@@ -22,11 +22,12 @@ const fs = require('fs');
 
 export default function(opts: RealmOptions = {}): Realm {
   let r = new Realm(opts);
-
-  let dbgFileContents = fs.readFileSync("./src/debugger/.sessionlogs/proxy2debugger.txt", 'utf8');
-  let dbgFileLines = dbgFileContents.toString().split("\n");
-  if (dbgFileLines[0] === "Debugger Attached") {
-    r.attachedDebugger = new Debugger(dbgFileLines);
+  if (r.enableDebugger) {
+    let dbgFileContents = fs.readFileSync("./src/debugger/.sessionlogs/proxy2debugger.txt", 'utf8');
+    let dbgFileLines = dbgFileContents.toString().split("\n");
+    if (dbgFileLines[0] === "Debugger Attached") {
+      r.attachedDebugger = new Debugger(dbgFileLines);
+    }
   }
 
   let i = r.intrinsics;

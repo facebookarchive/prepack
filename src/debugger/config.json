@@ -1,6 +1,6 @@
 {
   "files": {
-    "proxy2debugger": "./src/debugger/.sessionlogs/debugger2proxy.txt",
-    "debugger2proxy": "./src/debugger/.sessionlogs/proxy2debugger.txt"
+    "proxy2debugger": "./src/debugger/.sessionlogs/proxy2debugger.txt",
+    "debugger2proxy": "./src/debugger/.sessionlogs/debugger2proxy.txt"
   }
 }
