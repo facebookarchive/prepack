@@ -113,11 +113,11 @@ export class ExecutionContext {
   }
 
   suspend(): void {
-    // TODO: suspend
+    // TODO #712: suspend
   }
 
   resume(): Value {
-    // TODO: resume
+    // TODO #712: resume
     return this.realm.intrinsics.undefined;
   }
 }
@@ -752,7 +752,7 @@ export class Realm {
   }
 
   reportIntrospectionError(message?: void | string | StringValue) {
-    if (message === undefined) message = "TODO";
+    if (message === undefined) message = "";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
@@ -762,7 +762,7 @@ export class Realm {
 
   createErrorThrowCompletion(type: NativeFunctionValue, message?: void | string | StringValue): ThrowCompletion {
     invariant(type !== this.intrinsics.__IntrospectionError);
-    if (message === undefined) message = "TODO";
+    if (message === undefined) message = "";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;

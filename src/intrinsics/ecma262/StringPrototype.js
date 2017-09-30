@@ -804,7 +804,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
       locales = undefined;
     } else {
-      // TODO filter locales for only serialisable values
+      // TODO #1013 filter locales for only serialisable values
       if (locales) locales = locales.serialize();
     }
 

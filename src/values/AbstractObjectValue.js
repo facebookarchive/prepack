@@ -324,7 +324,7 @@ export default class AbstractObjectValue extends AbstractValue {
 
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
-    invariant(this === Receiver, "TODO");
+    invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
@@ -354,7 +354,7 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.9
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (P instanceof StringValue) P = P.value;
-    invariant(this === Receiver, "TODO");
+    invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
       AbstractValue.reportIntrospectionError(this, P);
       throw new FatalError();
@@ -393,7 +393,7 @@ export default class AbstractObjectValue extends AbstractValue {
 
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
-    invariant(this === Receiver, "TODO");
+    invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();

@@ -205,7 +205,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 23.2.3.9 get Set.prototype.size
   obj.$DefineOwnProperty("size", {
-    get: new NativeFunctionValue(realm, "TODO", "get size", 0, context => {
+    get: new NativeFunctionValue(realm, undefined, "get size", 0, context => {
       // 1. Let S be the this value.
       let S = context.throwIfNotConcrete();
 

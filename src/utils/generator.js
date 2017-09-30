@@ -95,7 +95,7 @@ export class Generator {
     }
 
     if (canBeIdentifier) {
-      // TODO: revert this when Unicode identifiers are supported by all targetted JavaScript engines
+      // TODO #1020: revert this when Unicode identifiers are supported by all targetted JavaScript engines
       let keyIsAscii = /^[\u0000-\u007f]*$/.test(key);
       if (t.isValidIdentifier(key) && keyIsAscii) return t.identifier(key);
     }
