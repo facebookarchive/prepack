@@ -13,7 +13,7 @@ import type { BabelNode } from "babel-types";
 import { Breakpoint } from "./Breakpoint.js";
 import { ExecutionContext } from "../realm.js";
 import invariant from "../invariant.js";
-const fs = require("fs");
+import fs from "fs";
 
 export class Debugger {
   constructor(dbgFileLines: Array<string>) {

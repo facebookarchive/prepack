@@ -18,7 +18,7 @@ import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
 import { Debugger } from "./debugger/Debugger.js";
-const fs = require("fs");
+import fs from "fs";
 
 export default function(opts: RealmOptions = {}): Realm {
   let r = new Realm(opts);
