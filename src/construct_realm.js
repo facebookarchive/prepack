@@ -26,7 +26,7 @@ export default function(opts: RealmOptions = {}, debugChannel: DebugChannel | vo
     let dbgFileContents = debugChannel.readIn();
     let dbgFileLines = dbgFileContents.toString().split("\n");
     if (dbgFileLines[0] === "Debugger Attached") {
-      r.attachedDebugger = new Debugger(dbgFileLines, debugChannel);
+      r.debuggerInstance = new Debugger(dbgFileLines, debugChannel);
     }
   }
 

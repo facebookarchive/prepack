@@ -232,7 +232,7 @@ export class Realm {
 
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
-  attachedDebugger: Debugger | void;
+  debuggerInstance: Debugger | void;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {

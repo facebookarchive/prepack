@@ -168,7 +168,7 @@ function run(
       maxStackDepth: maxStackDepth,
       timeout: timeout,
       additionalFunctions: additionalFunctions,
-      enableDebugger: true, //always turn off debugger for now
+      enableDebugger: false, //always turn off debugger for now
     },
     flags
   );
