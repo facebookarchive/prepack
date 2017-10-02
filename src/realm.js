@@ -32,7 +32,6 @@ import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
-import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
 
@@ -574,8 +573,8 @@ export class Realm {
 
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
-  recordModifiedBinding(binding: Binding, env: EnvironmentRecord): Binding {
-    if (env.isReadOnly) {
+  recordModifiedBinding(binding: Binding): Binding {
+    if (binding.environment.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a binding in read-only realm");
     }
