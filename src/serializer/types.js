@@ -9,9 +9,9 @@
 
 /* @flow */
 
-import { DeclarativeEnvironmentRecord } from "../environment.js";
+import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
 import { ConcreteValue, Value } from "../values/index.js";
-import type { ECMAScriptSourceFunctionValue } from "../values/index.js";
+import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm } from "../realm.js";
@@ -19,12 +19,21 @@ import invariant from "../invariant.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
+export type AdditionalFunctionInfo = {
+  functionValue: FunctionValue,
+  captures: Names,
+  // TODO: use for storing modified residual function bindings (captured by other functions)
+  modifiedBindings: Map<Binding, ResidualFunctionBinding>,
+  instance: FunctionInstance,
+};
+
 export type FunctionInstance = {
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
   // Optional place to put the function declaration
   preludeOverride?: Array<BabelNodeStatement>,
+  additionalFunction?: FunctionValue,
   scopeInstances: Set<ScopeBinding>,
 };
 
@@ -40,9 +49,13 @@ export type ResidualFunctionBinding = {
   modified: boolean,
   // void means a global binding
   declarativeEnvironmentRecord: null | DeclarativeEnvironmentRecord,
+  // an additional function may overwrite the value of this binding
+  additionalValue?: null | Value,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
   serializedValue?: void | BabelNodeExpression,
   referentialized?: boolean,
+  // Additional function value co
+  referencedOnlyFromAdditionalFunctions?: FunctionValue,
   scope?: ScopeBinding,
 };
 
@@ -51,6 +64,7 @@ export type ScopeBinding = {
   id: number,
   initializationValues: Array<BabelNodeExpression>,
   capturedScope?: string,
+  containingAdditionalFunction: void | FunctionValue,
 };
 
 export type GeneratorBody = Array<BabelNodeStatement>;

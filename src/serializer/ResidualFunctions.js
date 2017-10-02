@@ -12,7 +12,7 @@
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import { FunctionValue } from "../values/index.js";
+import { FunctionValue, type ECMAScriptSourceFunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -26,7 +26,14 @@ import type {
 import { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { ResidualFunctionBinding, ScopeBinding, FunctionInfo, FunctionInstance } from "./types.js";
+import type {
+  ResidualFunctionBinding,
+  ScopeBinding,
+  FunctionInfo,
+  FunctionInstance,
+  Names,
+  AdditionalFunctionInfo,
+} from "./types.js";
 import { BodyReference, AreSameResidualBinding, SerializerStatistics } from "./types.js";
 import { ClosureRefReplacer } from "./visitors.js";
 import { Modules } from "./modules.js";
@@ -52,7 +59,9 @@ export class ResidualFunctions {
     factoryNameGenerator: NameGenerator,
     scopeNameGenerator: NameGenerator,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
-    residualFunctionInstances: Map<FunctionValue, FunctionInstance>
+    residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
+    additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
+    additionalFunctionValueNestedFunctions: Set<FunctionValue>
   ) {
     this.realm = realm;
     this.statistics = statistics;
@@ -62,10 +71,10 @@ export class ResidualFunctions {
     this.prelude = prelude;
     this.factoryNameGenerator = factoryNameGenerator;
     this.scopeNameGenerator = scopeNameGenerator;
-    this.capturedScopeInstanceIdx = 0;
-    this.capturedScopesArray = t.identifier(this.scopeNameGenerator.generate("main"));
-    this._captureScopeAccessFunctionId = t.identifier("__get_scope_binding");
-    this.serializedScopes = new Map();
+    this._funcToCapturedScopeInstanceIdx = new Map();
+    this._funcToCapturedScopesArray = new Map();
+    this._funcToCaptureScopeAccessFunctionId = new Map();
+    this._funcToSerializedScopes = new Map();
     this.functionPrototypes = new Map();
     this.firstFunctionUsages = new Map();
     this.functions = new Map();
@@ -77,8 +86,12 @@ export class ResidualFunctions {
     );
     this.residualFunctionInfos = residualFunctionInfos;
     this.residualFunctionInstances = residualFunctionInstances;
-    for (let instance of residualFunctionInstances.values())
-      this.addFunctionInstance(((instance: any): FunctionInstance));
+    this.additionalFunctionValueInfos = additionalFunctionValueInfos;
+    for (let instance of residualFunctionInstances.values()) {
+      let functionInstance = ((instance: any): FunctionInstance);
+      if (!additionalFunctionValueInfos.has(functionInstance.functionValue)) this.addFunctionInstance(functionInstance);
+    }
+    this.additionalFunctionValueNestedFunctions = additionalFunctionValueNestedFunctions;
   }
 
   realm: Realm;
@@ -89,10 +102,11 @@ export class ResidualFunctions {
   prelude: Array<BabelNodeStatement>;
   factoryNameGenerator: NameGenerator;
   scopeNameGenerator: NameGenerator;
-  capturedScopeInstanceIdx: number;
-  capturedScopesArray: BabelNodeIdentifier;
-  _captureScopeAccessFunctionId: BabelNodeIdentifier;
-  serializedScopes: Map<DeclarativeEnvironmentRecord, ScopeBinding>;
+  // Null means not in an additionalFunction
+  _funcToCapturedScopeInstanceIdx: Map<FunctionValue | null, number>;
+  _funcToCapturedScopesArray: Map<FunctionValue | null, BabelNodeIdentifier>;
+  _funcToCaptureScopeAccessFunctionId: Map<FunctionValue | null, BabelNodeIdentifier>;
+  _funcToSerializedScopes: Map<FunctionValue | null, Map<DeclarativeEnvironmentRecord, ScopeBinding>>;
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
   functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
@@ -100,14 +114,40 @@ export class ResidualFunctions {
   residualFunctionInitializers: ResidualFunctionInitializers;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
+  additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
+  additionalFunctionValueNestedFunctions: Set<FunctionValue>;
+
+  _getOrDefault<K, V>(map: Map<K, V>, key: K, defaultFn: () => V): V {
+    let value = map.get(key);
+    if (!value) map.set(key, (value = defaultFn()));
+    return value;
+  }
+
+  _getCapturedScopeInstanceIdx(functionValue: FunctionValue | null): number {
+    return this._getOrDefault(this._funcToCapturedScopeInstanceIdx, functionValue, () => 0);
+  }
+
+  _getCapturedScopesArray(functionValue: FunctionValue | null): BabelNodeIdentifier {
+    return this._getOrDefault(this._funcToCapturedScopesArray, functionValue, () =>
+      t.identifier(this.scopeNameGenerator.generate("main"))
+    );
+  }
+
+  _getCaptureScopeAccessFunctionId(functionValue: FunctionValue | null): BabelNodeIdentifier {
+    return this._getOrDefault(this._funcToCaptureScopeAccessFunctionId, functionValue, () =>
+      t.identifier(this.scopeNameGenerator.generate("get_scope_binding"))
+    );
+  }
+
+  _getSerializedScopes(functionValue: FunctionValue | null): Map<DeclarativeEnvironmentRecord, ScopeBinding> {
+    return this._getOrDefault(this._funcToSerializedScopes, functionValue, () => new Map());
+  }
 
   addFunctionInstance(instance: FunctionInstance) {
     this.functionInstances.push(instance);
     let code = instance.functionValue.$ECMAScriptCode;
     invariant(code != null);
-    let functionInstances = this.functions.get(code);
-    if (functionInstances === undefined) this.functions.set(code, (functionInstances = []));
-    functionInstances.push(instance);
+    this._getOrDefault(this.functions, code, () => []).push(instance);
   }
 
   setFunctionPrototype(constructor: FunctionValue, prototypeId: BabelNodeIdentifier) {
@@ -120,15 +160,17 @@ export class ResidualFunctions {
 
   // Generate a shared function for accessing captured scope bindings.
   // TODO: skip generating this function if the captured scope is not shared by multiple residual funcitons.
-  _createCaptureScopeAccessFunction() {
+  _createCaptureScopeAccessFunction(functionValue: FunctionValue | null) {
     const body = [];
     const selectorParam = t.identifier("selector");
     const captured = t.identifier("__captured");
-    const selectorExpression = t.memberExpression(this.capturedScopesArray, selectorParam, /*Indexer syntax*/ true);
+    const capturedScopesArray = this._getCapturedScopesArray(functionValue);
+    const selectorExpression = t.memberExpression(capturedScopesArray, selectorParam, /*Indexer syntax*/ true);
 
     // One switch case for one scope.
     const cases = [];
-    for (const scopeBinding of this.serializedScopes.values()) {
+    const serializedScopes = this._getSerializedScopes(functionValue);
+    for (const scopeBinding of serializedScopes.values()) {
       const scopeObjectExpression = t.arrayExpression((scopeBinding.initializationValues: any));
       cases.push(
         t.switchCase(t.numericLiteral(scopeBinding.id), [
@@ -156,21 +198,28 @@ export class ResidualFunctions {
     );
     body.push(t.returnStatement(captured));
     const factoryFunction = t.functionExpression(null, [selectorParam], t.blockStatement(body));
-    return t.variableDeclaration("var", [t.variableDeclarator(this._captureScopeAccessFunctionId, factoryFunction)]);
+    const accessFunctionId = this._getCaptureScopeAccessFunctionId(functionValue);
+    return t.variableDeclaration("var", [t.variableDeclarator(accessFunctionId, factoryFunction)]);
   }
 
   _getSerializedBindingScopeInstance(residualBinding: ResidualFunctionBinding): ScopeBinding {
     let declarativeEnvironmentRecord = residualBinding.declarativeEnvironmentRecord;
+    let functionValue = residualBinding.referencedOnlyFromAdditionalFunctions || null;
     invariant(declarativeEnvironmentRecord);
 
-    let scope = this.serializedScopes.get(declarativeEnvironmentRecord);
+    // figure out if this is accessed only from additional functions
+    let serializedScopes = this._getSerializedScopes(functionValue);
+    let scope = serializedScopes.get(declarativeEnvironmentRecord);
     if (!scope) {
+      let id = this._getCapturedScopeInstanceIdx(functionValue);
       scope = {
         name: this.scopeNameGenerator.generate(),
-        id: this.capturedScopeInstanceIdx++,
+        id,
         initializationValues: [],
+        containingAdditionalFunction: residualBinding.referencedOnlyFromAdditionalFunctions,
       };
-      this.serializedScopes.set(declarativeEnvironmentRecord, scope);
+      this._funcToCapturedScopeInstanceIdx.set(functionValue, ++id);
+      serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
 
     residualBinding.scope = scope;
@@ -231,13 +280,12 @@ export class ResidualFunctions {
   }
 
   _getReferentializedScopeInitialization(scope: ScopeBinding) {
-    invariant(scope.capturedScope);
+    let capturedScope = scope.capturedScope;
+    invariant(capturedScope);
+    const funcName = this._getCaptureScopeAccessFunctionId(scope.containingAdditionalFunction || null);
     return [
       t.variableDeclaration("var", [
-        t.variableDeclarator(
-          t.identifier(scope.capturedScope),
-          t.callExpression(this._captureScopeAccessFunctionId, [t.identifier(scope.name)])
-        ),
+        t.variableDeclarator(t.identifier(capturedScope), t.callExpression(funcName, [t.identifier(scope.name)])),
       ]),
     ];
   }
@@ -248,9 +296,25 @@ export class ResidualFunctions {
     this.residualFunctionInitializers.scrubFunctionInitializers();
 
     let functionBodies = new Map();
+    // these need to get spliced in at the end
+    let overriddenPreludes = new Map();
     function getFunctionBody(instance: FunctionInstance): Array<BabelNodeStatement> {
       let b = functionBodies.get(instance);
       if (b === undefined) functionBodies.set(instance, (b = []));
+      return b;
+    }
+    let globalPrelude = this.prelude;
+    function getPrelude(instance: FunctionInstance): Array<BabelNodeStatement> {
+      let preludeOverride = instance.preludeOverride;
+      let b;
+      if (preludeOverride) {
+        b = overriddenPreludes.get(preludeOverride);
+        if (b === undefined) {
+          overriddenPreludes.set(preludeOverride, (b = []));
+        }
+      } else {
+        b = globalPrelude;
+      }
       return b;
     }
 
@@ -274,6 +338,58 @@ export class ResidualFunctions {
       );
     }
 
+    let defineFunction = (instance, funcId, funcNode) => {
+      let { functionValue } = instance;
+      let body;
+      if (t.isFunctionExpression(funcNode)) {
+        funcNodes.set(functionValue, ((funcNode: any): BabelNodeFunctionExpression));
+        body = getPrelude(instance);
+      } else {
+        invariant(t.isCallExpression(funcNode)); // .bind call
+        body = getFunctionBody(instance);
+      }
+      body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]));
+      let prototypeId = this.functionPrototypes.get(functionValue);
+      if (prototypeId !== undefined) {
+        let id = this.locationService.getLocation(functionValue);
+        invariant(id !== undefined);
+        body.push(
+          t.variableDeclaration("var", [
+            t.variableDeclarator(prototypeId, t.memberExpression(id, t.identifier("prototype"))),
+          ])
+        );
+      }
+    };
+
+    // Process Additional Functions
+    for (let [funcValue, additionalFunctionInfo] of this.additionalFunctionValueInfos.entries()) {
+      let { instance } = additionalFunctionInfo;
+      let functionValue = ((funcValue: any): ECMAScriptSourceFunctionValue);
+      let params = functionValue.$FormalParameters;
+      invariant(params !== undefined);
+
+      let rewrittenBody = rewrittenAdditionalFunctions.get(funcValue);
+      invariant(rewrittenBody);
+
+      // rewritten functions shouldn't have references fixed up because the body,
+      // consists of serialized code. For simplicity we emit their instances in a naive way
+      let functionBody = t.blockStatement(rewrittenBody);
+
+      let id = this.locationService.getLocation(funcValue);
+      invariant(id !== undefined);
+      let funcParams = params.slice();
+      let funcNode = t.functionExpression(null, funcParams, functionBody);
+
+      if (funcValue.$Strict) {
+        strictFunctionBodies.push(funcNode);
+      } else {
+        unstrictFunctionBodies.push(funcNode);
+      }
+
+      defineFunction(instance, id, funcNode);
+    }
+
+    // Process normal functions
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
@@ -287,71 +403,19 @@ export class ResidualFunctions {
         shouldInline = bodySize <= 30;
       }
 
-      let define = (instance, funcId, funcNode) => {
-        let { functionValue } = instance;
-        let addToBody;
-        if (t.isFunctionExpression(funcNode)) {
-          funcNodes.set(functionValue, ((funcNode: any): BabelNodeFunctionExpression));
-          addToBody = elem => {
-            // Let additional functions override the prelude to be their own body.
-            // In this case, prepend to that body to simulate a "prelude" in the function
-            if (instance.preludeOverride) instance.preludeOverride.unshift(elem);
-            else this.prelude.push(elem);
-          };
-        } else {
-          invariant(t.isCallExpression(funcNode)); // .bind call
-          addToBody = elem => getFunctionBody(instance).push(elem);
-        }
-        let declaration = t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]);
-        addToBody(declaration);
-        let prototypeId = this.functionPrototypes.get(functionValue);
-        if (prototypeId !== undefined) {
-          let id = this.locationService.getLocation(functionValue);
-          invariant(id !== undefined);
-          addToBody(
-            t.variableDeclaration("var", [
-              t.variableDeclarator(prototypeId, t.memberExpression(id, t.identifier("prototype"))),
-            ])
-          );
-        }
-      };
-      // Split instances into normal or additional functions (whose bodies have been rewritten)
+      // Split instances into normal or nested in an additional function
       let normalInstances = [];
-      let additionalFunctionInstances = [];
+      let additionalFunctionNestedInstances = [];
       for (let instance of instances) {
-        if (rewrittenAdditionalFunctions.has(instance.functionValue)) additionalFunctionInstances.push(instance);
+        if (this.additionalFunctionValueNestedFunctions.has(instance.functionValue))
+          additionalFunctionNestedInstances.push(instance);
         else normalInstances.push(instance);
       }
 
-      let rewrittenBody = rewrittenAdditionalFunctions.get(instances[0].functionValue);
+      let naiveProcessInstances = instancesToSplice => {
+        this.statistics.functionClones += instancesToSplice.length - 1;
 
-      // rewritten functions shouldn't have references fixed up because the body,
-      // consists of serialized code. For simplicity we emit their instances in a naive way
-      if (rewrittenBody) {
-        let functionBody = t.blockStatement(rewrittenBody);
-        this.statistics.functionClones += additionalFunctionInstances.length - 1;
-
-        for (let instance of additionalFunctionInstances) {
-          let { functionValue } = instance;
-          let id = this.locationService.getLocation(functionValue);
-          invariant(id !== undefined);
-          let funcParams = params.slice();
-          let funcNode = t.functionExpression(null, funcParams, functionBody);
-
-          if (functionValue.$Strict) {
-            strictFunctionBodies.push(funcNode);
-          } else {
-            unstrictFunctionBodies.push(funcNode);
-          }
-
-          define(instance, id, funcNode);
-        }
-      }
-      if (normalInstances.length === 0) continue;
-      if (shouldInline || normalInstances.length === 1 || usesArguments) {
-        this.statistics.functionClones += normalInstances.length - 1;
-
-        for (let instance of normalInstances) {
+        for (let instance of instancesToSplice) {
           let { functionValue, residualFunctionBindings, scopeInstances } = instance;
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
@@ -384,8 +448,13 @@ export class ResidualFunctions {
             unstrictFunctionBodies.push(funcNode);
           }
 
-          define(instance, id, funcNode);
+          defineFunction(instance, id, funcNode);
         }
+      };
+
+      if (additionalFunctionNestedInstances.length > 0) naiveProcessInstances(additionalFunctionNestedInstances);
+      if (shouldInline || normalInstances.length === 1 || usesArguments) {
+        naiveProcessInstances(normalInstances);
       } else {
         let suffix = normalInstances[0].functionValue.__originalName || "";
         let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
@@ -518,21 +587,39 @@ export class ResidualFunctions {
             );
           }
 
-          define(instance, functionId, funcNode);
+          defineFunction(instance, functionId, funcNode);
         }
       }
     }
 
-    if (this.capturedScopeInstanceIdx) {
-      this.prelude.unshift(this._createCaptureScopeAccessFunction());
+    for (let additionalFunctionValue of this._funcToCapturedScopeInstanceIdx.keys()) {
+      let prelude = this.prelude;
+      // Get the prelude for this additional function value
+      if (additionalFunctionValue) {
+        let rewrittenBody = rewrittenAdditionalFunctions.get(additionalFunctionValue);
+        prelude = overriddenPreludes.get(rewrittenBody);
+        if (!prelude) {
+          prelude = [];
+          overriddenPreludes.set(rewrittenBody, prelude);
+        }
+      }
+      prelude.unshift(this._createCaptureScopeAccessFunction(additionalFunctionValue));
       let scopeVar = t.variableDeclaration("var", [
         t.variableDeclarator(
-          this.capturedScopesArray,
-          t.callExpression(t.identifier("Array"), [t.numericLiteral(this.capturedScopeInstanceIdx)])
+          this._getCapturedScopesArray(additionalFunctionValue),
+          t.callExpression(t.identifier("Array"), [
+            t.numericLiteral(this._getCapturedScopeInstanceIdx(additionalFunctionValue)),
+          ])
         ),
       ]);
-      // The `scopeVar` must be visible in all scopes.
-      this.prelude.unshift(scopeVar);
+      // The `scopeVar` must be put in the prelude of the additional function (or the global prelude).
+      prelude.unshift(scopeVar);
+    }
+
+    for (let [preludeOverride, body] of overriddenPreludes.entries()) {
+      invariant(preludeOverride);
+      let prelude = ((body: any): Array<BabelNodeStatement>);
+      preludeOverride.unshift(...prelude);
     }
 
     for (let instance of this.functionInstances.reverse()) {
@@ -549,7 +636,7 @@ export class ResidualFunctions {
       }
     }
 
-    // Inject initializer code for indexed vars into functions
+    // Inject initializer code for indexed vars into functions (for delay initializations)
     for (let [functionValue, funcNode] of funcNodes) {
       let initializerStatement = this.residualFunctionInitializers.getInitializerStatement(functionValue);
       if (initializerStatement !== undefined) {
