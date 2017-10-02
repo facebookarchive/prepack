@@ -770,28 +770,12 @@ export class Realm {
   }
 
   appendGenerator(generator: Generator, leadingComment: string = ""): void {
-    let generatorBody = generator.body;
     let realmGenerator = this.generator;
     if (realmGenerator === undefined) {
-      invariant(generatorBody.length === 0);
+      invariant(generator.empty());
       return;
     }
-    let realmGeneratorBody = realmGenerator.body;
-    let i = 0;
-    if (generatorBody.length > 0 && leadingComment.length > 0) {
-      let firstEntry = generatorBody[i++];
-      let buildNode = (nodes, f) => {
-        let n = firstEntry.buildNode(nodes, f);
-        n.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-        return n;
-      };
-      realmGeneratorBody.push({
-        declared: firstEntry.declared,
-        args: firstEntry.args,
-        buildNode: buildNode,
-      });
-    }
-    for (; i < generatorBody.length; i++) realmGeneratorBody.push(generatorBody[i]);
+    realmGenerator.appendGenerator(generator, leadingComment);
   }
 
   // Pass the error to the realm's error-handler

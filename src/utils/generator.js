@@ -73,17 +73,17 @@ export class Generator {
     this.preludeGenerator = realmPreludeGenerator;
     this.parent = realm.generator;
     this.realm = realm;
-    this.body = [];
+    this._entries = [];
   }
 
   realm: Realm;
-  body: Array<GeneratorEntry>;
+  _entries: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
   parent: void | Generator;
 
   clone(): Generator {
     let result = new Generator(this.realm);
-    result.body = this.body.slice(0);
+    result._entries = this._entries.slice(0);
     return result;
   }
 
@@ -108,7 +108,7 @@ export class Generator {
   }
 
   empty() {
-    return !this.body.length;
+    return this._entries.length === 0;
   }
 
   emitGlobalDeclaration(key: string, value: Value) {
@@ -117,7 +117,7 @@ export class Generator {
   }
 
   emitGlobalAssignment(key: string, value: Value, strictMode: boolean) {
-    this.body.push({
+    this.addEntry({
       args: [value],
       buildNode: ([valueNode]) =>
         t.expressionStatement(
@@ -127,7 +127,7 @@ export class Generator {
   }
 
   emitGlobalDelete(key: string, strictMode: boolean) {
-    this.body.push({
+    this.addEntry({
       args: [],
       buildNode: ([]) =>
         t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode))),
@@ -137,7 +137,7 @@ export class Generator {
   emitPropertyAssignment(object: ObjectValue, key: string, value: Value) {
     if (object.refuseSerialization) return;
     let propName = this.getAsPropertyNameExpression(key);
-    this.body.push({
+    this.addEntry({
       args: [object, value],
       buildNode: ([objectNode, valueNode]) =>
         t.expressionStatement(
@@ -154,7 +154,7 @@ export class Generator {
       this.emitPropertyAssignment(object, key, descValue);
     } else {
       desc = Object.assign({}, desc);
-      this.body.push({
+      this.addEntry({
         args: [
           object,
           desc.value || object.$Realm.intrinsics.undefined,
@@ -169,7 +169,7 @@ export class Generator {
   emitPropertyDelete(object: ObjectValue, key: string) {
     if (object.refuseSerialization) return;
     let propName = this.getAsPropertyNameExpression(key);
-    this.body.push({
+    this.addEntry({
       args: [object],
       buildNode: ([objectNode]) =>
         t.expressionStatement(
@@ -179,7 +179,7 @@ export class Generator {
   }
 
   emitCall(createCallee: () => BabelNodeExpression, args: Array<Value>) {
-    this.body.push({
+    this.addEntry({
       args,
       buildNode: values => t.expressionStatement(t.callExpression(createCallee(), [...values])),
     });
@@ -197,7 +197,7 @@ export class Generator {
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
     appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression
   ): void {
-    this.body.push({
+    this.addEntry({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
         let throwString = t.stringLiteral("Prepack model invariant violation");
@@ -232,7 +232,7 @@ export class Generator {
     args: Array<Value>,
     buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression
   ): UndefinedValue {
-    this.body.push({
+    this.addEntry({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) =>
         t.expressionStatement(
@@ -258,7 +258,7 @@ export class Generator {
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let res = new Constructor(this.realm, types, values, 0, [], id, options);
-    this.body.push({
+    this.addEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
@@ -314,7 +314,7 @@ export class Generator {
   }
 
   serialize(context: SerializationContext) {
-    for (let entry of this.body) {
+    for (let entry of this._entries) {
       if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
         let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
         context.emit(entry.buildNode(nodes, context));
@@ -334,7 +334,33 @@ export class Generator {
   }
 
   visit(callbacks: VisitEntryCallbacks) {
-    for (let bodyEntry of this.body) this.visitEntry(bodyEntry, callbacks);
+    for (let entry of this._entries) this.visitEntry(entry, callbacks);
+  }
+
+  addEntry(entry: GeneratorEntry) {
+    this._entries.push(entry);
+  }
+
+  appendGenerator(other: Generator, leadingComment: string): void {
+    let appendEntries = other._entries;
+
+    let i = 0;
+    if (appendEntries.length > 0 && leadingComment.length > 0) {
+      let firstEntry = appendEntries[i++];
+      let buildNode = (nodes, f) => {
+        let n = firstEntry.buildNode(nodes, f);
+        n.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
+        return n;
+      };
+      this.addEntry({
+        declared: firstEntry.declared,
+        args: firstEntry.args,
+        buildNode: buildNode,
+      });
+    }
+    for (; i < appendEntries.length; i++) {
+      this.addEntry(appendEntries[i]);
+    }
   }
 }
 
