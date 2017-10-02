@@ -146,9 +146,9 @@ export class Generator {
     });
   }
 
-  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor) {
+  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor, isDescChanged?: boolean) {
     if (object.refuseSerialization) return;
-    if (desc.enumerable && desc.configurable && desc.writable && desc.value) {
+    if (desc.enumerable && desc.configurable && desc.writable && desc.value && !isDescChanged) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       this.emitPropertyAssignment(object, key, descValue);
