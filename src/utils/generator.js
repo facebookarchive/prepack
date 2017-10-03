@@ -197,6 +197,7 @@ export class Generator {
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
     appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression
   ): void {
+    if (this.realm.omitInvariants) return;
     this.addEntry({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
