@@ -315,7 +315,7 @@ export class Modules {
       let property = globalInitializedModulesMap.properties.get(moduleId);
       invariant(property);
       let moduleValue = property.descriptor && property.descriptor.value;
-      invariant(moduleValue);
+      invariant(moduleValue instanceof Value);
       this.initializedModules.set(moduleId, moduleValue);
     }
   }
