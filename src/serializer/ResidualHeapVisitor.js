@@ -192,6 +192,7 @@ export class ResidualHeapVisitor {
   }
 
   visitDescriptor(desc: Descriptor): void {
+    invariant(desc.value === undefined || desc.value instanceof Value);
     if (desc.value !== undefined) desc.value = this.visitEquivalentValue(desc.value);
     if (desc.get !== undefined) this.visitValue(desc.get);
     if (desc.set !== undefined) this.visitValue(desc.set);
