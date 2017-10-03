@@ -1,3 +1,5 @@
+// Copies of enumerable:2
+
 (function() {
     global.obj = 13;
     Object.defineProperty(global, "obj", { enumerable: false, configurable: true, writable: true, value: 42 });

@@ -146,7 +146,7 @@ export class Generator {
     });
   }
 
-  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor, isDescChanged?: boolean) {
+  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor, isDescChanged: boolean = true) {
     if (object.refuseSerialization) return;
     if (desc.enumerable && desc.configurable && desc.writable && desc.value && !isDescChanged) {
       let descValue = desc.value;
