@@ -145,6 +145,7 @@ export class Realm {
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
+    this.omitInvariants = !!opts.omitInvariants;
 
     this.$TemplateMap = [];
 
@@ -176,6 +177,7 @@ export class Realm {
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
+  omitInvariants: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
