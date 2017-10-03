@@ -49,6 +49,12 @@ export default class ProxyValue extends ObjectValue {
     this.realm = realm;
   }
 
+  static trackedPropertyNames = ObjectValue.trackedPropertyNames.concat("$ProxyTarget");
+
+  getTrackedBindings(): Array<string> {
+    return ProxyValue.trackedPropertyNames;
+  }
+
   isSimpleObject(): boolean {
     return false;
   }
@@ -553,7 +559,9 @@ export default class ProxyValue extends ObjectValue {
       // a. If IsDataDescriptor(targetDesc) is true and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is false, then
       if (IsDataDescriptor(realm, targetDesc) && targetDesc.configurable === false && targetDesc.writable === false) {
         // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
-        if (!SameValuePartial(realm, trapResult, targetDesc.value || realm.intrinsics.undefined)) {
+        let targetValue = targetDesc.value || realm.intrinsics.undefined;
+        invariant(targetValue instanceof Value);
+        if (!SameValuePartial(realm, trapResult, targetValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
         }
       }
@@ -626,7 +634,9 @@ export default class ProxyValue extends ObjectValue {
       // a. If IsDataDescriptor(targetDesc) is true and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is false, then
       if (IsDataDescriptor(realm, targetDesc) && !targetDesc.configurable && !targetDesc.writable) {
         // i. If SameValue(V, targetDesc.[[Value]]) is false, throw a TypeError exception.
-        if (!SameValuePartial(realm, V, targetDesc.value || realm.intrinsics.undefined)) {
+        let targetValue = targetDesc.value || realm.intrinsics.undefined;
+        invariant(targetValue instanceof Value);
+        if (!SameValuePartial(realm, V, targetValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
         }
       }

@@ -154,10 +154,12 @@ export class Generator {
       this.emitPropertyAssignment(object, key, descValue);
     } else {
       desc = Object.assign({}, desc);
+      let descValue = desc.value || object.$Realm.intrinsics.undefined;
+      invariant(descValue instanceof Value);
       this.addEntry({
         args: [
           object,
-          desc.value || object.$Realm.intrinsics.undefined,
+          descValue,
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],

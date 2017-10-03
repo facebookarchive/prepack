@@ -314,6 +314,7 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
       AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
       throw new FatalError();
     }
+    invariant(value instanceof Value);
     CreateDataProperty(realm, clone, key, InternalJSONClone(realm, value));
   }
   if (val.isPartialObject()) clone.makePartial();

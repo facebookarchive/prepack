@@ -106,6 +106,7 @@ export default class ArgumentsExotic extends ObjectValue {
         // i. If Desc.[[Value]] is present, then
         if (Desc.value !== undefined) {
           // 1. Let setStatus be Set(map, P, Desc.[[Value]], false).
+          invariant(Desc.value instanceof Value);
           let setStatus = Set(this.$Realm, map, P, Desc.value, false);
 
           // 2. Assert: setStatus is true because formal parameters mapped by argument objects are always writable.

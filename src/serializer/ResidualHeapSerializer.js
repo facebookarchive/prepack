@@ -267,7 +267,7 @@ export class ResidualHeapSerializer {
     let prototype = ResidualHeapInspector.getPropertyValue(func, "prototype");
     if (prototype instanceof ObjectValue && this.residualValues.has(prototype)) {
       this.emitter.emitNowOrAfterWaitingForDependencies([func], () => {
-        invariant(prototype);
+        invariant(prototype instanceof Value);
         this.serializeValue(prototype);
       });
     }
@@ -581,6 +581,7 @@ export class ResidualHeapSerializer {
   }
 
   _getDescriptorValues(desc: Descriptor): Array<Value> {
+    invariant(desc.value === undefined || desc.value instanceof Value);
     if (desc.value !== undefined) return [desc.value];
     invariant(desc.get !== undefined);
     invariant(desc.set !== undefined);

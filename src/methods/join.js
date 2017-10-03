@@ -346,10 +346,12 @@ function joinResults(
   }
   if (result1 instanceof ReturnCompletion && result2 instanceof ReturnCompletion) {
     let val = joinValues(realm, result1.value, result2.value, getAbstractValue);
+    invariant(val instanceof Value);
     return new ReturnCompletion(val, joinCondition.expressionLocation);
   }
   if (result1 instanceof ThrowCompletion && result2 instanceof ThrowCompletion) {
     let val = joinValues(realm, result1.value, result2.value, getAbstractValue);
+    invariant(val instanceof Value);
     return new ThrowCompletion(val, result1.location);
   }
   if (result1 instanceof AbruptCompletion && result2 instanceof AbruptCompletion) {
@@ -446,10 +448,12 @@ export function joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bin
   function getAbstractValue(v1: void | Value, v2: void | Value): Value {
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }
-  function join(b: Binding, v1: void | Value, v2: void | Value) {
+  function join(b: Binding, v1: void | Value, v2: void | Value): Value {
     if (v1 === undefined) v1 = b.value;
     if (v2 === undefined) v2 = b.value;
-    return joinValues(realm, v1, v2, getAbstractValue);
+    let result = joinValues(realm, v1, v2, getAbstractValue);
+    invariant(result instanceof Value);
+    return result;
   }
   return joinMaps(m1, m2, join);
 }
@@ -458,10 +462,16 @@ export function joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bin
 // otherwise return getAbstractValue(v1, v2)
 export function joinValues(
   realm: Realm,
-  v1: void | Value,
-  v2: void | Value,
+  v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+  v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
   getAbstractValue: (void | Value, void | Value) => Value
-): Value {
+): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }> {
+  if (Array.isArray(v1)) {
+    invariant(Array.isArray(v2)); // This use of Array is restricted to internal properties that are always arrays
+    return joinArrays(realm, ((v1: any): Array<Value>), ((v2: any): Array<Value>), getAbstractValue);
+  }
+  invariant(v1 === undefined || v1 instanceof Value);
+  invariant(v2 === undefined || v2 instanceof Value);
   if (
     v1 !== undefined &&
     v2 !== undefined &&
@@ -473,6 +483,50 @@ export function joinValues(
   } else {
     return getAbstractValue(v1, v2);
   }
+}
+
+function joinArrays(
+  realm: Realm,
+  v1: Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+  v2: Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+  getAbstractValue: (void | Value, void | Value) => Value
+): Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }> {
+  let e = v1[0] || v2[0];
+  if (e instanceof Value) return joinArraysOfValues(realm, (v1: any), (v2: any), getAbstractValue);
+  else return joinArrayOfsMapEntries(realm, (v1: any), (v2: any), getAbstractValue);
+}
+
+function joinArrayOfsMapEntries(
+  realm: Realm,
+  a1: Array<{ $Key: void | Value, $Value: void | Value }>,
+  a2: Array<{ $Key: void | Value, $Value: void | Value }>,
+  getAbstractValue: (void | Value, void | Value) => Value
+): Array<{ $Key: void | Value, $Value: void | Value }> {
+  let empty = realm.intrinsics.empty;
+  let n = Math.max(a1.length, a2.length);
+  let result = [];
+  for (let i = 0; i < n; i++) {
+    let { $Key: key1, $Value: val1 } = a1[i] || { $Key: empty, $Value: empty };
+    let { $Key: key2, $Value: val2 } = a2[i] || { $Key: empty, $Value: empty };
+    let key3 = getAbstractValue(key1, key2);
+    let val3 = getAbstractValue(val1, val2);
+    result[i] = { $Key: key3, $Value: val3 };
+  }
+  return result;
+}
+
+function joinArraysOfValues(
+  realm: Realm,
+  a1: Array<Value>,
+  a2: Array<Value>,
+  getAbstractValue: (void | Value, void | Value) => Value
+): Array<Value> {
+  let n = Math.max(a1.length, a2.length);
+  let result = [];
+  for (let i = 0; i < n; i++) {
+    result[i] = getAbstractValue(a1[i], a2[i]);
+  }
+  return result;
 }
 
 export function joinValuesAsConditional(
@@ -543,7 +597,24 @@ export function joinDescriptors(
     if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO #1015: join computed properties");
     let dc = cloneDescriptor(d);
     invariant(dc !== undefined);
-    dc.value = getAbstractValue(d.value, realm.intrinsics.empty);
+    let dcValue = dc.value;
+    if (Array.isArray(dcValue)) {
+      invariant(dcValue.length > 0);
+      let elem0 = dcValue[0];
+      if (elem0 instanceof Value) {
+        dc.value = dcValue.map(e => getAbstractValue((e: any), realm.intrinsics.empty));
+      } else {
+        dc.value = dcValue.map(e => {
+          let { $Key: key1, $Value: val1 } = (e: any);
+          let key3 = getAbstractValue(key1, realm.intrinsics.empty);
+          let val3 = getAbstractValue(val1, realm.intrinsics.empty);
+          return { $Key: key3, $Value: val3 };
+        });
+      }
+    } else {
+      invariant(dcValue === undefined || dcValue instanceof Value);
+      dc.value = getAbstractValue(dcValue, realm.intrinsics.empty);
+    }
     return dc;
   }
   if (d1 === undefined) {

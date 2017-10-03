@@ -148,8 +148,13 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       let desc = cloneDescriptor(d1);
       invariant(desc !== undefined);
-      if (IsDataDescriptor(this.$Realm, desc))
-        desc.value = joinValuesAsConditional(this.$Realm, cond, d1.value, d2.value);
+      if (IsDataDescriptor(this.$Realm, desc)) {
+        let d1Value = d1.value;
+        invariant(d1Value === undefined || d1Value instanceof Value);
+        let d2Value = d2.value;
+        invariant(d2Value === undefined || d2Value instanceof Value);
+        desc.value = joinValuesAsConditional(this.$Realm, cond, d1Value, d2Value);
+      }
       return desc;
     } else {
       let hasProp = false;
@@ -212,6 +217,7 @@ export default class AbstractObjectValue extends AbstractValue {
         configurable: "configurable" in Desc ? Desc.configurable : false,
       };
       let new_val = desc.value;
+      invariant(new_val instanceof Value);
       let sawTrue = false;
       let sawFalse = false;
       for (let cv of elements) {
@@ -222,6 +228,7 @@ export default class AbstractObjectValue extends AbstractValue {
           throw new FatalError();
         }
         let dval = d === undefined || d.vale === undefined ? this.$Realm.intrinsics.empty : d.value;
+        invariant(dval instanceof Value);
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
         desc.value = joinValuesAsConditional(this.$Realm, cond, new_val, dval);
         if (cv.$DefineOwnProperty(P, desc)) {
@@ -299,6 +306,8 @@ export default class AbstractObjectValue extends AbstractValue {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
       }
+      invariant(d1val instanceof Value);
+      invariant(d2val instanceof Value);
       return joinValuesAsConditional(this.$Realm, cond, d1val, d2val);
     } else {
       let result;

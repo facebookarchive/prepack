@@ -31,7 +31,10 @@ export function copyDescriptor(from: Descriptor, to: Descriptor) {
   if (from.hasOwnProperty("writable")) to.writable = from.writable;
   if (from.hasOwnProperty("enumerable")) to.enumerable = from.enumerable;
   if (from.hasOwnProperty("configurable")) to.configurable = from.configurable;
-  if (from.hasOwnProperty("value")) to.value = from.value;
+  if (from.hasOwnProperty("value")) {
+    if (from.value instanceof Array) to.value = from.value.slice();
+    else to.value = from.value;
+  }
   if (from.hasOwnProperty("get")) to.get = from.get;
   if (from.hasOwnProperty("set")) to.set = from.set;
 }

@@ -87,6 +87,12 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     }
   }
 
+  static trackedPropertyNames = ObjectValue.trackedPropertyNames.concat("$RevocableProxy");
+
+  getTrackedPropertyNames(): Array<string> {
+    return NativeFunctionValue.trackedPropertyNames;
+  }
+
   hasDefaultLength(): boolean {
     return this.getLength() === this.length;
   }
