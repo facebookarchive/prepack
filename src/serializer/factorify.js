@@ -94,39 +94,43 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
 
   let initializerAstNodeName = "init";
   for (let node of body) {
-    if (node.type !== "VariableDeclaration") continue;
+    switch (node.type) {
+      case "VariableDeclaration":
+        for (let declar of node.declarations) {
+          let { init } = declar;
+          if (!init) continue;
+          if (init.type !== "ObjectExpression") continue;
 
-    for (let declar of node.declarations) {
-      let { init } = declar;
-      if (!init) continue;
-      if (init.type !== "ObjectExpression") continue;
+          let keys = getObjectKeys(init);
+          if (!keys) continue;
 
-      let keys = getObjectKeys(init);
-      if (!keys) continue;
+          let declars = (signatures[keys] = signatures[keys] || []);
+          declars.push(declar);
+        }
+        break;
 
-      let declars = signatures[keys] = (signatures[keys] || []);
-      declars.push(declar);
+      case "ExpressionStatement":
+        const expr = node.expression;
+        if (expr.type !== "AssignmentExpression") {
+          break;
+        }
+        const { right } = expr;
+        if (right.type !== "ObjectExpression") {
+          break;
+        }
+
+        let keys = getObjectKeys(right);
+        if (!keys) continue;
+
+        initializerAstNodeName = "right";
+        let declars = (signatures[keys] = signatures[keys] || []);
+        declars.push(node.expression);
+        break;
+
+      default:
+        // Continue to next node.
+        break;
     }
-  }
-
-  for (let entry of body) {
-    if (entry.type !== "ExpressionStatement") continue;
-
-    const expr = entry.expression;
-    if (expr.type !== "AssignmentExpression") {
-      continue;
-    }
-    const { right } = expr;
-    if (right.type !== "ObjectExpression") {
-      continue;
-    }
-
-    let keys = getObjectKeys(right);
-    if (!keys) continue;
-
-    initializerAstNodeName = "right";
-    let declars = signatures[keys] = (signatures[keys] || []);
-    declars.push(entry.expression);
   }
 
   for (let signatureKey in signatures) {
