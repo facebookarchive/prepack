@@ -1256,7 +1256,8 @@ export class LexicalEnvironment {
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     if (res instanceof PossiblyNormalCompletion) {
       let error = new CompilerDiagnostic("Global code may end abruptly", res.location, "PP0016", "FatalError");
-      if (this.realm.handleError(error) === "Fail") throw new FatalError();
+      this.realm.handleError(error);
+      throw new FatalError();
     }
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;
