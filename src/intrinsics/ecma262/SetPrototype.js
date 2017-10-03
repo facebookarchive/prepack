@@ -17,7 +17,6 @@ import {
   IsCallable,
   SameValueZeroPartial,
   ThrowIfMightHaveBeenDeleted,
-  ThrowIfInternalSlotNotWritable,
 } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
@@ -38,7 +37,9 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of S's [[SetData]] internal slot.
+    realm.recordModifiedProperty((S: any).$SetData_binding);
     let entries = S.$SetData;
+    invariant(entries !== undefined);
 
     // 5. Repeat for each e that is an element of entries,
     for (let e of entries) {
@@ -56,7 +57,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 7. Append value as the last element of entries.
-    ThrowIfInternalSlotNotWritable(realm, S, "$SetData");
     entries.push(value);
 
     // 8. Return S.
@@ -82,7 +82,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 4. Let entries be the List that is the value of S's [[SetData]] internal slot.
     // 5. Repeat for each e that is an element of entries,
     // 5.a Replace the element of entries whose value is e with an element whose value is empty.
-    ThrowIfInternalSlotNotWritable(realm, S, "$SetData").$SetData = [];
+    realm.recordModifiedProperty((S: any).$SetData_binding);
+    S.$SetData = [];
 
     // 6. Return undefined.
     return realm.intrinsics.undefined;
@@ -104,6 +105,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of S's [[SetData]] internal slot.
+    realm.recordModifiedProperty((S: any).$SetData_binding);
     let entries = S.$SetData;
     invariant(entries !== undefined);
 
@@ -114,7 +116,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // a. If e is not empty and SameValueZero(e, value) is true, then
       if (e !== undefined && SameValueZeroPartial(realm, e, value)) {
         // i. Replace the element of entries whose value is e with an element whose value is empty.
-        ThrowIfInternalSlotNotWritable(realm, S, "$SetData");
         entries[i] = undefined;
 
         // ii. Return true.
