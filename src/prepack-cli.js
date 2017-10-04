@@ -197,7 +197,7 @@ function run(
         console.log(
           `${loc.source || ""}(${loc.start.line}:${loc.start.column +
             1}) ${error.severity} ${error.errorCode}: ${error.message}` +
-            ` (github.com/facebook/prepack/wiki/${error.errorCode})`
+            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
         );
       }
       if (foundFatal) process.exit(1);
