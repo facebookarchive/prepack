@@ -196,7 +196,8 @@ function run(
         foundFatal = foundFatal || error.severity === "FatalError";
         console.log(
           `${loc.source || ""}(${loc.start.line}:${loc.start.column +
-            1}) ${error.severity} ${error.errorCode}: ${error.message}`
+            1}) ${error.severity} ${error.errorCode}: ${error.message}` +
+            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
         );
       }
       if (foundFatal) process.exit(1);
