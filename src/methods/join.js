@@ -508,9 +508,13 @@ function joinArrayOfsMapEntries(
   for (let i = 0; i < n; i++) {
     let { $Key: key1, $Value: val1 } = a1[i] || { $Key: empty, $Value: empty };
     let { $Key: key2, $Value: val2 } = a2[i] || { $Key: empty, $Value: empty };
-    let key3 = getAbstractValue(key1, key2);
-    let val3 = getAbstractValue(val1, val2);
-    result[i] = { $Key: key3, $Value: val3 };
+    if (key1 === undefined && key2 === undefined) {
+      result[i] = { $Key: undefined, $Value: undefined };
+    } else {
+      let key3 = getAbstractValue(key1, key2);
+      let val3 = getAbstractValue(val1, val2);
+      result[i] = { $Key: key3, $Value: val3 };
+    }
   }
   return result;
 }
