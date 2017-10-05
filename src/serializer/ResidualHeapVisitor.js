@@ -231,7 +231,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValueReactElement(val: ObjectValue): void {
-    // debugger;
+    // TODO: do we even need to visit anything on the React element specifically?
   }
 
   visitValueMap(val: ObjectValue): void {
