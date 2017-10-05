@@ -26,7 +26,7 @@ import type {
 import { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { ResidualFunctionBinding, ScopeBinding, FunctionInfo, FunctionInstance, Names } from "./types.js";
+import type { ResidualFunctionBinding, ScopeBinding, FunctionInfo, FunctionInstance } from "./types.js";
 import { BodyReference, AreSameResidualBinding, SerializerStatistics } from "./types.js";
 import { ClosureRefReplacer } from "./visitors.js";
 import { Modules } from "./modules.js";
@@ -178,14 +178,14 @@ export class ResidualFunctions {
   }
 
   _referentialize(
-    unbound: Names,
+    unbound: Set<string>,
     instances: Array<FunctionInstance>,
     shouldReferentializeInstanceFn: FunctionInstance => boolean
   ): void {
     for (let instance of instances) {
       let residualBindings = instance.residualFunctionBindings;
 
-      for (let name in unbound) {
+      for (let name of unbound) {
         let residualBinding = residualBindings.get(name);
         invariant(residualBinding !== undefined);
         if (residualBinding.modified) {
@@ -393,7 +393,7 @@ export class ResidualFunctions {
         // filter included variables to only include those that are different
         let factoryNames: Array<string> = [];
         let sameResidualBindings = new Map();
-        for (let name in unbound) {
+        for (let name of unbound) {
           let isDifferent = false;
           let lastBinding;
 

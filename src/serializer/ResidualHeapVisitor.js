@@ -296,8 +296,8 @@ export class ResidualHeapVisitor {
 
     if (!functionInfo) {
       functionInfo = {
-        unbound: (Object.create(null): any),
-        modified: (Object.create(null): any),
+        unbound: new Set(),
+        modified: new Set(),
         usesArguments: false,
         usesThis: false,
       };
@@ -317,7 +317,7 @@ export class ResidualHeapVisitor {
         state
       );
 
-      if (val.isResidual && Object.keys(functionInfo.unbound).length) {
+      if (val.isResidual && functionInfo.unbound.size) {
         if (!val.isUnsafeResidual) {
           this.logger.logError(
             val,
@@ -333,7 +333,7 @@ export class ResidualHeapVisitor {
     let residualFunctionBindings = new Map();
     this._withScope(val, () => {
       invariant(functionInfo);
-      for (let innerName in functionInfo.unbound) {
+      for (let innerName of functionInfo.unbound) {
         let residualFunctionBinding;
         let doesNotMatter = true;
         let reference = this.logger.tryQuery(
@@ -358,7 +358,7 @@ export class ResidualHeapVisitor {
           residualFunctionBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
         }
         residualFunctionBindings.set(innerName, residualFunctionBinding);
-        if (functionInfo.modified[innerName]) residualFunctionBinding.modified = true;
+        if (functionInfo.modified.has(innerName)) residualFunctionBinding.modified = true;
       }
     });
 
