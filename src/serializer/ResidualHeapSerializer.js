@@ -1018,7 +1018,6 @@ export class ResidualHeapSerializer {
         let serializedDateValue = this.serializeValue(dateValue);
         this._emitObjectProperties(val);
         return t.newExpression(this.preludeGenerator.memoizeReference("Date"), [serializedDateValue]);
-      case "ReactElement":
       case "Float32Array":
       case "Float64Array":
       case "Int8Array":
