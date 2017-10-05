@@ -1228,6 +1228,8 @@ export class ResidualHeapSerializer {
               this._emitProperty(object, binding.key, binding.descriptor, true);
             }
             // TODO #990: Fix additional functions handing of ModifiedBindings
+            invariant(result instanceof Value);
+            this.emitter.emit(t.returnStatement(this.serializeValue(result)));
           };
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
