@@ -27,7 +27,7 @@ export default function(
   startLine: number = 1
 ): BabelNodeFile {
   try {
-    let ast = parse(code, { filename, sourceType, startLine });
+    let ast = parse(code, { filename, sourceType, startLine, plugins: ["jsx", "flow"] });
     traverseFast(ast, node => {
       invariant(node.loc);
       node.loc.source = filename;

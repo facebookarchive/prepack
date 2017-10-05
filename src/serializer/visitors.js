@@ -15,6 +15,7 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeCallExpression } from "babel-types";
 import { BabelTraversePath } from "babel-traverse";
 import type { TryQuery, FunctionInfo, Names, ResidualFunctionBinding } from "./types.js";
+import { convertExpressionToJSXIdentifier } from "../utils/jsx";
 
 export type ClosureRefVisitorState = {
   tryQuery: TryQuery<*>,
@@ -52,7 +53,13 @@ function replaceName(path, residualFunctionBinding, name, data) {
 
   if (residualFunctionBinding && shouldVisit(path.node, data)) {
     markVisited(residualFunctionBinding.serializedValue, data);
-    path.replaceWith(residualFunctionBinding.serializedValue);
+    let serializedValue = residualFunctionBinding.serializedValue;
+
+    if (path.node.type === "JSXIdentifier" || path.node.type === "JSXMemberIdentifier") {
+      path.replaceWith(convertExpressionToJSXIdentifier(serializedValue));
+    } else {
+      path.replaceWith(serializedValue);
+    }
   }
 }
 

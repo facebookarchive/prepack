@@ -230,6 +230,10 @@ export class ResidualHeapVisitor {
     }
   }
 
+  visitValueReactElement(val: ObjectValue): void {
+    // debugger;
+  }
+
   visitValueMap(val: ObjectValue): void {
     let kind = val.getKind();
 
@@ -388,6 +392,9 @@ export class ResidualHeapVisitor {
       case "String":
       case "Boolean":
       case "ArrayBuffer":
+        return;
+      case "ReactElement":
+        this.visitValueReactElement(val);
         return;
       case "Date":
         let dateValue = val.$DateValue;
