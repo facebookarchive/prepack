@@ -161,7 +161,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
           generator.emitPropertyAssignment(O, P, descValue);
         }
       } else {
-        generator.emitDefineProperty(O, P, desc);
+        generator.emitDefineProperty(O, P, desc, /*isDescChanged*/ true);
       }
     }
   }
