@@ -49,7 +49,7 @@ export default class ProxyValue extends ObjectValue {
     this.realm = realm;
   }
 
-  static trackedPropertyNames = ObjectValue.trackedPropertyNames.concat("$ProxyTarget");
+  static trackedPropertyNames = ObjectValue.trackedPropertyNames.concat(["$ProxyTarget", "$ProxyHandler"]);
 
   getTrackedBindings(): Array<string> {
     return ProxyValue.trackedPropertyNames;
