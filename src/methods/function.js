@@ -25,15 +25,16 @@ import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
 import {
   AbstractValue,
-  Value,
   BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
-  ECMAScriptSourceFunctionValue,
+  NumberValue,
   ObjectValue,
   StringValue,
   SymbolValue,
-  NumberValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
 import { DefinePropertyOrThrow, NewDeclarativeEnvironment } from "./index.js";
 import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
@@ -567,6 +568,14 @@ export function FunctionInitialize(
 
   // 4. Let Strict be the value of the [[Strict]] internal slot of F.
   let Strict = F.$Strict;
+  if (!Strict) {
+    DefinePropertyOrThrow(realm, F, "caller", {
+      value: new UndefinedValue(realm),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
+  }
 
   // 5. Set the [[Environment]] internal slot of F to the value of Scope.
   F.$Environment = Scope;
@@ -627,7 +636,9 @@ export function AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm) 
     enumerable: false,
     configurable: true,
   };
-  // 3. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
+  // 3. Perform ! DefinePropertyOrThrow(F, "caller", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
+  DefinePropertyOrThrow(realm, F, "caller", desc);
+  // 4. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
   return DefinePropertyOrThrow(realm, F, "arguments", desc);
 }
 
