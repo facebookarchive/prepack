@@ -23,10 +23,8 @@ import { DebugChannel } from "./DebugChannel.js";
 export default function(opts: RealmOptions = {}, debugChannel: DebugChannel | void = undefined): Realm {
   let r = new Realm(opts);
   if (debugChannel) {
-    let dbgFileContents = debugChannel.readIn();
-    let dbgFileLines = dbgFileContents.toString().split("\n");
-    if (dbgFileLines[0] === "Debugger Attached") {
-      r.debuggerInstance = new Debugger(dbgFileLines, debugChannel);
+    if (debugChannel.checkForDebugger()) {
+      r.debuggerInstance = new Debugger(debugChannel);
     }
   }
 

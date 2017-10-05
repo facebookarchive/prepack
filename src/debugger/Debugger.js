@@ -15,17 +15,49 @@ import invariant from "../invariant.js";
 import { DebugChannel } from "../DebugChannel.js";
 
 export class Debugger {
-  constructor(dbgFileLines: Array<string>, channel: DebugChannel) {
+  constructor(channel: DebugChannel) {
     this.breakpoints = new Map();
     this.prevBreakLine = 0;
     this.prevBreakCol = 0;
-    this.parseCommands(dbgFileLines);
     this.channel = channel;
+    this.waitForRun(1000, function(line) {
+      return line === "Run";
+    });
   }
   breakpoints: { [number]: Breakpoint };
   prevBreakLine: number;
   prevBreakCol: number;
   channel: DebugChannel;
+
+  /* Block until adapter says to run
+  /* threshold: # of milliseconds before polling the input again
+  /* runCondition: a function that determines whether the adapter has told
+  /* Prepack to continue running
+  */
+  waitForRun(threshold: number, runCondition: string => boolean) {
+    let lastPoll = Date.now();
+    let blocking = true;
+    let line = "";
+    while (blocking) {
+      if (Date.now() - lastPoll > threshold) {
+        line = this.channel.readIn().toString();
+
+        if (runCondition(line)) {
+          //The adapter gave the command to continue running
+          //The caller (or someone else later) needs to send a response
+          //to the adapter
+          //We cannot pass in the response too because it may not be ready
+          //immediately after Prepack unblocks
+          blocking = false;
+        } else {
+          //The adapter gave another command so Prepack still blocks
+          //but can read in other commands and respond to them
+          this.parseCommand(line);
+        }
+        lastPoll = Date.now();
+      }
+    }
+  }
 
   checkForActions(ast: BabelNode) {
     this.checkForBreakpoint(ast);
@@ -57,39 +89,23 @@ export class Debugger {
 
       console.log("Stopped for breakpoint on line " + lineNum);
       this.sendDebugInfo(ast, lineNum);
-
-      let lastPoll = Date.now();
-      let blocking = true;
-      let contents = "";
-      while (blocking) {
-        if (Date.now() - lastPoll > 1000) {
-          contents = this.channel.readIn().toString().split("\n");
-          if (contents[0] === "proceed " + lineNum) {
-            blocking = false;
-          } else {
-            this.parseCommands(contents);
-          }
-          lastPoll = Date.now();
-        }
-      }
-      this.channel.writeOut("");
+      this.waitForRun(1000, function(line) {
+        return line === "proceed " + lineNum;
+      });
     }
   }
 
   sendDebugInfo(ast: BabelNode, lineNum: number) {
-    this.channel.writeOut("breakpoint " + lineNum);
+    this.channel.writeOut("breakpoint stopped " + lineNum);
   }
 
-  parseCommands(commands: Array<string>) {
-    for (let i = 0; i < commands.length; i++) {
-      let com = commands[i];
-      if (com.length === 0) {
-        return;
-      }
-      let parts = com.split(" ");
-      if (parts[0] === "breakpoint") {
-        this.parseBreakpointCommand(parts);
-      }
+  parseCommand(command: string) {
+    if (command.length === 0) {
+      return;
+    }
+    let parts = command.split(" ");
+    if (parts[0] === "breakpoint") {
+      this.parseBreakpointCommand(parts);
     }
   }
 
@@ -98,18 +114,27 @@ export class Debugger {
       let lineNum = parseInt(parts[2], 10);
       let breakpoint = new Breakpoint(lineNum, true);
       this.breakpoints[lineNum] = breakpoint;
+      this.channel.writeOut("added breakpoint " + lineNum);
     } else if (parts[1] === "remove") {
       let lineNum = parseInt(parts[2], 10);
       invariant(lineNum in this.breakpoints);
       delete this.breakpoints[lineNum];
+      this.channel.writeOut("removed breakpoint " + lineNum);
     } else if (parts[1] === "enable") {
       let lineNum = parseInt(parts[2], 10);
       invariant(lineNum in this.breakpoints && !this.breakpoints[lineNum].enabled);
       this.breakpoints[lineNum].enabled = true;
+      this.channel.writeOut("enabled breakpoint " + lineNum);
     } else if (parts[1] === "disable") {
       let lineNum = parseInt(parts[2], 10);
       invariant(lineNum in this.breakpoints && this.breakpoints[lineNum].enabled);
       this.breakpoints[lineNum].enabled = false;
+      this.channel.writeOut("disabled breakpoint " + lineNum);
     }
+  }
+
+  shutdown() {
+    //let the adapter know Prepack is done running
+    this.channel.writeOut("Finished");
   }
 }

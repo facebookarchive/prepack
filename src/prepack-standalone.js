@@ -53,6 +53,9 @@ export function prepackSources(
     if (!serialized) {
       throw new FatalError("serializer failed");
     }
+    if (realm.debuggerInstance) {
+      realm.debuggerInstance.shutdown();
+    }
     if (!options.residual) return serialized;
     let residualSources = [
       {
