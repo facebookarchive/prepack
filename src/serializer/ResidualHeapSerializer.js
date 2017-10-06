@@ -720,16 +720,25 @@ export class ResidualHeapSerializer {
 
     // we do this so they don't get emited
     this.serializedValues.add(val.$Prototype);
-    // this.serializedValues.add(objectProps.get("$$typeof").descriptor.value);
-    // this.serializedValues.add(objectProps.get("$$typeof").descriptor.value.$Description);
-    // this.serializedValues.add(objectProps.get("_owner").descriptor.value);
-    // this.serializedValues.add(objectProps.get("props").descriptor.value);
-
+    let $$typeof = this._getPropertyValue(objectProps, "$$typeof", false);
+    if ($$typeof !== null) {
+      this.serializedValues.add(($$typeof: any));
+      if ($$typeof.$Description != null) {
+        this.serializedValues.add(($$typeof.$Description: any));
+      }
+    }
+    let _owner = this._getPropertyValue(objectProps, "_owner", false);
+    if (_owner !== null) {
+      this.serializedValues.add((_owner: any));
+    }
     let typeValue = this._getPropertyValue(objectProps, "type", true);
     let keyValue = this._getPropertyValue(objectProps, "key", true);
     let refValue = this._getPropertyValue(objectProps, "ref", true);
     let propsValue = this._getPropertyValue(objectProps, "props", false);
 
+    if (propsValue !== null) {
+      this.serializedValues.add((propsValue: any));
+    }
     invariant(typeValue !== null, "JSXElement type of null");
 
     let identifier = convertExpressionToJSXIdentifier(typeValue);

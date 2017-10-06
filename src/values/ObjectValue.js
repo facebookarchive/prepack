@@ -319,7 +319,7 @@ export default class ObjectValue extends ConcreteValue {
     if (this.$ArrayBufferData !== undefined) return "ArrayBuffer";
     if (this.$WeakMapData !== undefined) return "WeakMap";
     if (this.$WeakSetData !== undefined) return "WeakSet";
-    if (this.properties.has("$$typeof") !== undefined) return "ReactElement";
+    if (this.properties.has("$$typeof") === true) return "ReactElement";
     if (this.$TypedArrayName !== undefined) return this.$TypedArrayName;
     // TODO #26 #712: Promises. All kinds of iterators. Generators.
     return "Object";
