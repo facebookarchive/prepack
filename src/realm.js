@@ -172,7 +172,6 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
-    this.recordedAdditionalFunctions = new Map();
   }
 
   start: number;
@@ -238,9 +237,6 @@ export class Realm {
   symbolCount = 867501803871088;
 
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
-
-  // Maps an addittional function to a key for the global.__additionalFunctions object
-  recordedAdditionalFunctions: Map<ECMAScriptSourceFunctionValue, number>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {

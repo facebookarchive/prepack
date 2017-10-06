@@ -1,4 +1,5 @@
-// does not contain:x = 5;
+// throws introspection error
+let abstract_bool = global.__abstract ? global.__abstract("boolean", "(false)") : false;
 
 function func1() {
   let x = 5;
@@ -12,7 +13,7 @@ function func2() {
   return global.y;
 }
 
-if (global.__registerAdditionalFunctionToPrepack) {
+if (global.__registerAdditionalFunctionToPrepack && abstract_bool) {
   __registerAdditionalFunctionToPrepack(func1);
   __registerAdditionalFunctionToPrepack(func2);
 }

@@ -126,20 +126,24 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  global.$DefineOwnProperty("__registerAdditionalFunction", {
+  let uid = 0;
+  // Allows dynamically registering additional functions.
+  // WARNING: these functions will get exposed at global scope and called there.
+  // NB: If we interpret one of these calls in an evaluateForEffects context
+  //     that is not subsequently applied, the function will not be registered
+  //     (because prepack won't have a correct value for the FunctionValue itself)
+  global.$DefineOwnProperty("__registerAdditionalFunctionToPrepack", {
     value: new NativeFunctionValue(
       realm,
-      "global.__registerAdditionalFunction",
-      "__registerAdditionalFunction",
+      "global.__registerAdditionalFunctionToPrepack",
+      "__registerAdditionalFunctionToPrepack",
       0,
       (context, [functionValue]) => {
         invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-        let id = realm.recordedAdditionalFunctions.size;
-        realm.recordedAdditionalFunctions.set(functionValue, id);
         realm.assignToGlobal(
           t.memberExpression(
             t.memberExpression(t.identifier("global"), t.identifier("__additionalFunctions")),
-            t.identifier("" + id)
+            t.identifier("" + uid++)
           ),
           functionValue
         );

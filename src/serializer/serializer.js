@@ -45,12 +45,7 @@ export class Serializer {
       !!serializerOptions.logModules,
       !!serializerOptions.delayUnsupportedRequires
     );
-    this.functions = new Functions(
-      this.realm,
-      serializerOptions.additionalFunctions,
-      this.modules.moduleTracer,
-      this.realm.recordedAdditionalFunctions
-    );
+    this.functions = new Functions(this.realm, serializerOptions.additionalFunctions, this.modules.moduleTracer);
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));
 
     this.options = serializerOptions;
@@ -111,9 +106,7 @@ export class Serializer {
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
-    if (this.options.additionalFunctions || this.realm.recordedAdditionalFunctions.size > 0) {
-      this.functions.checkThatFunctionsAreIndependent();
-    }
+    this.functions.checkThatFunctionsAreIndependent();
 
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
