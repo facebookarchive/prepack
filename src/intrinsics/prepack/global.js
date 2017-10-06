@@ -249,13 +249,20 @@ export default function(realm: Realm): void {
         }
 
         let key = ToStringPartial(realm, propertyName);
+        // The key passed to __assumeDataProperty() may contain special characters that need
+        // to be quoted with indexer property accesser.
+        let propertyIdentifier = t.identifier(`"${key}"`);
 
         // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
         if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
           let generator = realm.generator;
           invariant(generator);
           let condition = ([objectNode, valueNode]) =>
-            t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode);
+            t.binaryExpression(
+              "!==",
+              t.memberExpression(objectNode, propertyIdentifier, /*Indexer property access*/ true),
+              valueNode
+            );
           if (invariantOptions) {
             let invariantOptionString = ToStringPartial(realm, invariantOptions);
             switch (invariantOptionString) {
@@ -263,7 +270,7 @@ export default function(realm: Realm): void {
                 condition = ([objectNode, valueNode]) =>
                   t.binaryExpression(
                     "===",
-                    t.memberExpression(objectNode, t.identifier(key)),
+                    t.memberExpression(objectNode, propertyIdentifier, /*Indexer property access*/ true),
                     t.valueToNode(undefined)
                   );
                 break;
@@ -278,7 +285,7 @@ export default function(realm: Realm): void {
           }
           if (condition)
             generator.emitInvariant([object, value, object], condition, objnode =>
-              t.memberExpression(objnode, t.identifier(key))
+              t.memberExpression(objnode, propertyIdentifier, /*Indexer property access*/ true)
             );
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
