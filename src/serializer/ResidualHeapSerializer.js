@@ -717,28 +717,11 @@ export class ResidualHeapSerializer {
 
   _serializeValueReactElement(val: ObjectValue): BabelNodeExpression {
     let objectProps = val.properties;
-
-    // we do this so they don't get emited
-    this.serializedValues.add(val.$Prototype);
-    let $$typeof = this._getPropertyValue(objectProps, "$$typeof", false);
-    if ($$typeof !== null) {
-      this.serializedValues.add(($$typeof: any));
-      if ($$typeof.$Description != null) {
-        this.serializedValues.add(($$typeof.$Description: any));
-      }
-    }
-    let _owner = this._getPropertyValue(objectProps, "_owner", false);
-    if (_owner !== null) {
-      this.serializedValues.add((_owner: any));
-    }
     let typeValue = this._getPropertyValue(objectProps, "type", true);
     let keyValue = this._getPropertyValue(objectProps, "key", true);
     let refValue = this._getPropertyValue(objectProps, "ref", true);
     let propsValue = this._getPropertyValue(objectProps, "props", false);
 
-    if (propsValue !== null) {
-      this.serializedValues.add((propsValue: any));
-    }
     invariant(typeValue !== null, "JSXElement type of null");
 
     let identifier = convertExpressionToJSXIdentifier(typeValue);
@@ -746,24 +729,24 @@ export class ResidualHeapSerializer {
     let children = [];
 
     if (keyValue !== null && keyValue.type !== "NullLiteral") {
-      attributes.push((0, convertKeyValueToJSXAttribute)("key", keyValue));
+      attributes.push(convertKeyValueToJSXAttribute("key", keyValue));
     }
 
     if (refValue !== null && refValue.type !== "NullLiteral") {
-      attributes.push((0, convertKeyValueToJSXAttribute)("ref", refValue));
+      attributes.push(convertKeyValueToJSXAttribute("ref", refValue));
     }
 
-    if (propsValue !== null && propsValue.properties !== undefined) {
-      for (let [key, propertyBinding] of (propsValue: any).properties) {
+    if (propsValue instanceof ObjectValue) {
+      this.serializedValues.add(propsValue);
+      // have to case propsValue to ObjectValue or Flow complains that propsValues can be null/undefined
+      for (let [key, propertyBinding] of (propsValue: ObjectValue).properties) {
         let desc = propertyBinding.descriptor;
         if (desc === undefined) continue; // deleted
 
-        if (key === "key" || key === "ref") {
-          throw new Error(key + " is a reserved prop name");
-        }
+        invariant(key !== "key" && key !== "ref", `"${key}" is a reserved prop name`);
 
-        if (key === "children") {
-          let expr = this.serializeValue(desc.value);
+        if (key === "children" && desc.value !== undefined) {
+          let expr = this.serializeValue((desc.value: any));
           if (expr != null) {
             let elements: any =
               expr.type === "ArrayExpression" && (expr.elements: any).length > 1 ? expr.elements : [expr];
@@ -780,7 +763,7 @@ export class ResidualHeapSerializer {
           }
           continue;
         }
-        attributes.push(convertKeyValueToJSXAttribute(key, this.serializeValue(desc.value)));
+        attributes.push(convertKeyValueToJSXAttribute(key, this.serializeValue((desc.value: any))));
       }
     }
     let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);

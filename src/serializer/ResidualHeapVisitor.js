@@ -13,7 +13,7 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Effects } from "../realm.js";
-import type { Descriptor, PropertyBinding } from "../types.js";
+import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import { IsUnresolvableReference, ToLength, ResolveBinding, HashSet, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
@@ -113,7 +113,7 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitObjectProperties(obj: ObjectValue): void {
+  visitObjectProperties(obj: ObjectValue, kind: ?ObjectKind): void {
     // visit properties
     for (let [symbol, propertyBinding] of obj.symbols) {
       invariant(propertyBinding);
@@ -124,9 +124,12 @@ export class ResidualHeapVisitor {
     }
 
     // visit properties
-    for (let propertyBinding of obj.properties.values()) {
-      invariant(propertyBinding);
-      this.visitObjectProperty(propertyBinding);
+    for (let [propertyBindingKey, propertyBindingValue] of obj.properties) {
+      if (kind === "ReactElement" && (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner")) {
+        continue;
+      }
+      invariant(propertyBindingValue);
+      this.visitObjectProperty(propertyBindingValue);
     }
 
     // inject properties with computed names
@@ -140,7 +143,9 @@ export class ResidualHeapVisitor {
     }
 
     // prototype
-    this.visitObjectPrototype(obj);
+    if (kind !== "ReactElement") {
+      this.visitObjectPrototype(obj);
+    }
     if (obj instanceof FunctionValue) this.visitConstructorPrototype(obj);
   }
 
@@ -228,10 +233,6 @@ export class ResidualHeapVisitor {
     ) {
       this.visitValue(lenProperty);
     }
-  }
-
-  visitValueReactElement(val: ObjectValue): void {
-    // TODO: do we even need to visit anything on the React element specifically?
   }
 
   visitValueMap(val: ObjectValue): void {
@@ -374,7 +375,8 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    this.visitObjectProperties(val);
+    let kind = val.getKind();
+    this.visitObjectProperties(val, kind);
 
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
@@ -385,16 +387,13 @@ export class ResidualHeapVisitor {
       return;
     }
 
-    let kind = val.getKind();
     switch (kind) {
       case "RegExp":
       case "Number":
       case "String":
       case "Boolean":
-      case "ArrayBuffer":
-        return;
       case "ReactElement":
-        this.visitValueReactElement(val);
+      case "ArrayBuffer":
         return;
       case "Date":
         let dateValue = val.$DateValue;
