@@ -719,6 +719,7 @@ export class ResidualHeapSerializer {
   _serializeValueReactElementChild(child: Value): BabelNode {
     const expr = this.serializeValue(child);
 
+    // TODO: what if the child is an array but serializes to a reference?
     if (t.isArrayExpression(expr)) {
       applyKeysToNestedArray((expr: any), true);
       return expr;
