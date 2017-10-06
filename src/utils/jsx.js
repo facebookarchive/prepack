@@ -24,9 +24,7 @@ export function convertExpressionToJSXIdentifier(
     case "StringLiteral":
       return t.jSXIdentifier(expr.value);
     case "MemberExpression":
-      if (expr.computed) {
-        invariant(false, "Cannot inline computed expressions in JSX type.");
-      }
+      invariant(expr.computed, "Cannot inline computed expressions in JSX type.");
       return t.jSXMemberExpression(
         convertExpressionToJSXIdentifier(expr.object),
         (convertExpressionToJSXIdentifier(expr.property): any)
