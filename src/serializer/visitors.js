@@ -94,6 +94,48 @@ export let ClosureRefReplacer = {
       }
     }
   },
+
+  // A few very simple dead code elimination helpers. Eventually these should be subsumed by the partial evaluators.
+  IfStatement: {
+    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
+      let node = path.node;
+      if (t.isBooleanLiteral(node.test)) {
+        if (node.test.value) {
+          // Strictly speaking this is not safe: Annex B.3.4 allows FunctionDeclarations as the body of IfStatements in sloppy mode,
+          // which have weird hoisting behavior: `console.log(typeof f); if (true) function f(){} console.log(typeof f)` will print 'undefined', 'function', but
+          // `console.log(typeof f); function f(){} console.log(typeof f)` will print 'function', 'function'.
+          // However, Babylon can't parse these, so it doesn't come up.
+          path.replaceWith(node.consequent);
+        } else {
+          if (node.alternate !== null) {
+            path.replaceWith(node.alternate);
+          } else {
+            path.remove();
+          }
+        }
+      }
+    },
+  },
+
+  ConditionalExpression: {
+    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
+      let node = path.node;
+      if (t.isBooleanLiteral(node.test)) {
+        path.replaceWith(node.test.value ? node.consequent : node.alternate);
+      }
+    },
+  },
+
+  LogicalExpression: {
+    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
+      let node = path.node;
+      if (node.operator === "&&" && t.isBooleanLiteral(node.left, { value: false })) {
+        path.replaceWith(node.left);
+      } else if (node.operator === "||" && t.isBooleanLiteral(node.left, { value: true })) {
+        path.replaceWith(node.left);
+      }
+    },
+  },
 };
 
 function visitName(path, state, name, modified) {
