@@ -56,6 +56,27 @@ function replaceName(path, residualFunctionBinding, name, data) {
   }
 }
 
+function getLiteralTruthiness(node) {
+  // Returns { known: boolean, value?: boolean }. 'known' is true only if this is a literal of known truthiness and with no side effects; if 'known' is true, 'value' is its truthiness.
+  if (t.isBooleanLiteral(node) || t.isNumericLiteral(node) || t.isStringLiteral(node)) {
+    return { known: true, value: !!node.value };
+  }
+  if (
+    t.isFunctionExpression(node) ||
+    t.isArrowFunctionExpression(node) ||
+    t.isRegExpLiteral(node) ||
+    (t.isClassExpression(node) && node.superClass === null) ||
+    (t.isObjectExpression(node) && node.properties.length === 0) ||
+    (t.isArrayExpression(node) && node.elements.length === 0)
+  ) {
+    return { known: true, value: true };
+  }
+  if (t.isNullLiteral(node)) {
+    return { known: true, value: false };
+  }
+  return { known: false };
+}
+
 export let ClosureRefReplacer = {
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefReplacerState) {
     if (ignorePath(path)) return;
@@ -99,8 +120,9 @@ export let ClosureRefReplacer = {
   IfStatement: {
     exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
       let node = path.node;
-      if (t.isBooleanLiteral(node.test)) {
-        if (node.test.value) {
+      let testTruthiness = getLiteralTruthiness(node.test);
+      if (testTruthiness.known) {
+        if (testTruthiness.value) {
           // Strictly speaking this is not safe: Annex B.3.4 allows FunctionDeclarations as the body of IfStatements in sloppy mode,
           // which have weird hoisting behavior: `console.log(typeof f); if (true) function f(){} console.log(typeof f)` will print 'undefined', 'function', but
           // `console.log(typeof f); function f(){} console.log(typeof f)` will print 'function', 'function'.
@@ -120,8 +142,9 @@ export let ClosureRefReplacer = {
   ConditionalExpression: {
     exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
       let node = path.node;
-      if (t.isBooleanLiteral(node.test)) {
-        path.replaceWith(node.test.value ? node.consequent : node.alternate);
+      let testTruthiness = getLiteralTruthiness(node.test);
+      if (testTruthiness.known) {
+        path.replaceWith(testTruthiness.value ? node.consequent : node.alternate);
       }
     },
   },
@@ -129,10 +152,11 @@ export let ClosureRefReplacer = {
   LogicalExpression: {
     exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
       let node = path.node;
-      if (node.operator === "&&" && t.isBooleanLiteral(node.left, { value: false })) {
-        path.replaceWith(node.left);
-      } else if (node.operator === "||" && t.isBooleanLiteral(node.left, { value: true })) {
-        path.replaceWith(node.left);
+      let leftTruthiness = getLiteralTruthiness(node.left);
+      if (node.operator === "&&" && leftTruthiness.known) {
+        path.replaceWith(leftTruthiness.value ? node.right : node.left);
+      } else if (node.operator === "||" && leftTruthiness.known) {
+        path.replaceWith(leftTruthiness.value ? node.left : node.right);
       }
     },
   },
