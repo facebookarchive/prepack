@@ -764,7 +764,7 @@ export class ResidualHeapSerializer {
 
         if (key === "children") {
           let expr = this.serializeValue(desc.value);
-          if (expr != null && expr.elements != null) {
+          if (expr != null) {
             let elements: any =
               expr.type === "ArrayExpression" && (expr.elements: any).length > 1 ? expr.elements : [expr];
             children = elements.map(_expr => {
