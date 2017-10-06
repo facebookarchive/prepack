@@ -28,11 +28,7 @@ import {
   NativeFunctionValue,
   UndefinedValue,
 } from "../values/index.js";
-import {
-  convertExpressionToJSXIdentifier,
-  convertKeyValueToJSXAttribute,
-  applyKeysToNestedArray
-} from "../utils/jsx";
+import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute, applyKeysToNestedArray } from "../utils/jsx";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -700,20 +696,41 @@ export class ResidualHeapSerializer {
     return t.arrayExpression(initProperties);
   }
 
+  _getPropertyValue(object: any, key: string, serialzeValue: boolean) {
+    if (object != null && object.has(key) === true) {
+      let val = object.get(key);
+
+      if (val !== undefined) {
+        let descriptor = val.descriptor;
+
+        if (descriptor !== undefined) {
+          let descriptorValue = descriptor.value;
+
+          if (descriptorValue !== undefined) {
+            return serialzeValue === true ? this.serializeValue(descriptorValue) : descriptorValue;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   _serializeValueReactElement(val: ObjectValue): BabelNodeExpression {
     let objectProps = val.properties;
 
     // we do this so they don't get emited
     this.serializedValues.add(val.$Prototype);
-    this.serializedValues.add(objectProps.get("$$typeof").descriptor.value);
-    this.serializedValues.add(objectProps.get("$$typeof").descriptor.value.$Description);
-    this.serializedValues.add(objectProps.get("_owner").descriptor.value);
-    this.serializedValues.add(objectProps.get("props").descriptor.value);
+    // this.serializedValues.add(objectProps.get("$$typeof").descriptor.value);
+    // this.serializedValues.add(objectProps.get("$$typeof").descriptor.value.$Description);
+    // this.serializedValues.add(objectProps.get("_owner").descriptor.value);
+    // this.serializedValues.add(objectProps.get("props").descriptor.value);
 
-    let typeValue = this.serializeValue(objectProps.get("type").descriptor.value);
-    let keyValue = this.serializeValue(objectProps.get("key").descriptor.value);
-    let refValue = this.serializeValue(objectProps.get("ref").descriptor.value);
-    let propsValue = objectProps.get("props").descriptor.value;
+    let typeValue = this._getPropertyValue(objectProps, "type", true);
+    let keyValue = this._getPropertyValue(objectProps, "key", true);
+    let refValue = this._getPropertyValue(objectProps, "ref", true);
+    let propsValue = this._getPropertyValue(objectProps, "props", false);
+
+    invariant(typeValue !== null, "JSXElement type of null");
 
     let identifier = convertExpressionToJSXIdentifier(typeValue);
     let attributes = [];
@@ -727,33 +744,37 @@ export class ResidualHeapSerializer {
       attributes.push((0, convertKeyValueToJSXAttribute)("ref", refValue));
     }
 
-    for (let [key, propertyBinding] of propsValue.properties) {
-      let desc = propertyBinding.descriptor;
-      if (desc === undefined) continue; // deleted
+    if (propsValue !== null && propsValue.properties !== undefined) {
+      for (let [key, propertyBinding] of (propsValue: any).properties) {
+        let desc = propertyBinding.descriptor;
+        if (desc === undefined) continue; // deleted
 
-      if (key === "key" || key === "ref") {
-        throw new Error(key + " is a reserved prop name");
-      }
+        if (key === "key" || key === "ref") {
+          throw new Error(key + " is a reserved prop name");
+        }
 
-      if (key === "children") {
-        let expr = this.serializeValue(desc.value);
-        let elements = expr.type === "ArrayExpression" && expr.elements.length > 1 ? expr.elements : [expr];
-        children = elements.map(_expr => {
-          if (expr.type === "ArrayExpression") {
-            applyKeysToNestedArray(_expr, true);
+        if (key === "children") {
+          let expr = this.serializeValue(desc.value);
+          if (expr != null && expr.elements != null) {
+            let elements: any =
+              expr.type === "ArrayExpression" && (expr.elements: any).length > 1 ? expr.elements : [expr];
+            children = elements.map(_expr => {
+              if (expr.type === "ArrayExpression") {
+                applyKeysToNestedArray(_expr, true);
+              }
+              return _expr === null
+                ? t.jSXExpressionContainer(t.jSXEmptyExpression())
+                : _expr.type === "StringLiteral"
+                  ? t.jSXText(_expr.value)
+                  : _expr.type === "JSXElement" ? _expr : t.jSXExpressionContainer(_expr);
+            });
           }
-          return _expr === null
-            ? t.jSXExpressionContainer(t.jSXEmptyExpression())
-            : _expr.type === "StringLiteral"
-              ? t.jSXText(_expr.value)
-              : _expr.type === "JSXElement" ? _expr : t.jSXExpressionContainer(_expr);
-        });
-        continue;
+          continue;
+        }
+        attributes.push(convertKeyValueToJSXAttribute(key, this.serializeValue(desc.value)));
       }
-      attributes.push(convertKeyValueToJSXAttribute(key, this.serializeValue(desc.value)));
     }
-
-    let openingElement = t.jSXOpeningElement(identifier, attributes, children.length === 0);
+    let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
     let closingElement = t.jSXClosingElement(identifier);
 
     return t.jSXElement(openingElement, closingElement, children, children.length === 0);

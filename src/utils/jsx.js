@@ -10,8 +10,12 @@
 /* @flow */
 
 import * as t from "babel-types";
+import type { BabelNodeExpression, BabelNodeJSXMemberExpression, BabelNodeJSXIdentifier } from "babel-types";
+import invariant from "../invariant.js";
 
-export function convertExpressionToJSXIdentifier(expr) {
+export function convertExpressionToJSXIdentifier(
+  expr: BabelNodeExpression
+): BabelNodeJSXMemberExpression | BabelNodeJSXIdentifier {
   switch (expr.type) {
     case "ThisExpression":
       return t.jSXIdentifier("this");
@@ -25,15 +29,19 @@ export function convertExpressionToJSXIdentifier(expr) {
       }
       return t.jSXMemberExpression(
         convertExpressionToJSXIdentifier(expr.object),
-        convertExpressionToJSXIdentifier(expr.property)
+        (convertExpressionToJSXIdentifier(expr.property): any)
       );
     case "ArrowFunctionExpression":
-      return expr;
+      return (expr: any);
     default:
-      throw new Error("Invalid JSX Type: " + expr.type);
+      invariant(false, "Invalid JSX type");
   }
 }
 
-export function convertKeyValueToJSXAttribute(key, expr) {
+export function convertKeyValueToJSXAttribute(key: string, expr: BabelNodeExpression) {
   return t.jSXAttribute(t.jSXIdentifier(key), expr.type === "StringLiteral" ? expr : t.jSXExpressionContainer(expr));
+}
+
+export function applyKeysToNestedArray(expr: BabelNodeExpression, isBase: boolean): void {
+  // TODO
 }
