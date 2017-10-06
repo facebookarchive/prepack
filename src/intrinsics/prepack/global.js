@@ -20,6 +20,7 @@ import {
   StringValue,
   UndefinedValue,
   Value,
+  ECMAScriptSourceFunctionValue,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
@@ -111,6 +112,38 @@ export default function(realm: Realm): void {
           if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
         return result;
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__additionalFunctions", {
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__additionalFunctions", true),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__registerAdditionalFunction", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__registerAdditionalFunction",
+      "__registerAdditionalFunction",
+      0,
+      (context, [functionValue]) => {
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        let id = realm.recordedAdditionalFunctions.size;
+        realm.recordedAdditionalFunctions.set(functionValue, id);
+        realm.assignToGlobal(
+          t.memberExpression(
+            t.memberExpression(t.identifier("global"), t.identifier("__additionalFunctions")),
+            t.identifier("" + id)
+          ),
+          functionValue
+        );
+        return realm.intrinsics.undefined;
       }
     ),
     writable: true,
