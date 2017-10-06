@@ -586,6 +586,8 @@ export class ResidualHeapVisitor {
           this.visitObjectProperty(binding);
         }
         // TODO #990: Fix additional functions handing of ModifiedBindings
+        invariant(result instanceof Value);
+        this.visitValue(result);
       };
       this.visitGenerator(generator);
       this._withScope(generator, visitPropertiesAndBindings);
