@@ -439,7 +439,13 @@ export class ResidualFunctions {
 
         factoryParams = factoryParams.concat(params).slice();
 
-        let factoryNode = t.functionExpression(null, factoryParams, funcBody);
+        // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
+        let factoryNode = t.functionExpression(
+          null,
+          factoryParams,
+          ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+        );
+
         if (normalInstances[0].functionValue.$Strict) {
           strictFunctionBodies.push(factoryNode);
         } else {
