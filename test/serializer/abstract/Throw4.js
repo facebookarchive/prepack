@@ -1,10 +1,11 @@
+// throws introspection error
+
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 
 try {
-  if (x) throw  new Error("is true");
-  z = "is false";
-} catch (e) {
-  z = e;
+  if (x) z = "is true"; else throw "is false";
+} finally {
+  z = "is finally";
 }
 
 inspect = function() { return z; }
