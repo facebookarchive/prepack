@@ -696,9 +696,9 @@ export class ResidualHeapSerializer {
     return t.arrayExpression(initProperties);
   }
 
-  _getPropertyValue(object: any, key: string, serialzeValue: boolean) {
-    if (object != null && object.has(key) === true) {
-      let val = object.get(key);
+  _getSerializedPropertyValue(properties: Map<string, any>, key: string) {
+    if (properties.has(key) === true) {
+      let val = properties.get(key);
 
       if (val !== undefined) {
         let descriptor = val.descriptor;
@@ -707,7 +707,7 @@ export class ResidualHeapSerializer {
           let descriptorValue = descriptor.value;
 
           if (descriptorValue !== undefined) {
-            return serialzeValue === true ? this.serializeValue(descriptorValue) : descriptorValue;
+            return this.serializeValue(descriptorValue);
           }
         }
       }
@@ -717,10 +717,10 @@ export class ResidualHeapSerializer {
 
   _serializeValueReactElement(val: ObjectValue): BabelNodeExpression {
     let objectProps = val.properties;
-    let typeValue = this._getPropertyValue(objectProps, "type", true);
-    let keyValue = this._getPropertyValue(objectProps, "key", true);
-    let refValue = this._getPropertyValue(objectProps, "ref", true);
-    let propsValue = this._getPropertyValue(objectProps, "props", false);
+    let typeValue = this._getSerializedPropertyValue(objectProps, "type");
+    let keyValue = this._getSerializedPropertyValue(objectProps, "key");
+    let refValue = this._getSerializedPropertyValue(objectProps, "ref");
+    let propsValue = this._getSerializedPropertyValue(objectProps, "props");
 
     invariant(typeValue !== null, "JSXElement type of null");
 
