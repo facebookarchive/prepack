@@ -28,10 +28,9 @@ export type FunctionInstance = {
   scopeInstances: Set<ScopeBinding>,
 };
 
-export type Names = { [key: string]: true };
 export type FunctionInfo = {
-  unbound: Names,
-  modified: Names,
+  unbound: Set<string>,
+  modified: Set<string>,
   usesArguments: boolean,
   usesThis: boolean,
 };

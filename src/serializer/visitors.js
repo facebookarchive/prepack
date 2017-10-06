@@ -14,7 +14,7 @@ import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeCallExpression } from "babel-types";
 import { BabelTraversePath } from "babel-traverse";
-import type { TryQuery, FunctionInfo, Names, ResidualFunctionBinding } from "./types.js";
+import type { TryQuery, FunctionInfo, ResidualFunctionBinding } from "./types.js";
 
 export type ClosureRefVisitorState = {
   tryQuery: TryQuery<*>,
@@ -25,7 +25,7 @@ export type ClosureRefVisitorState = {
 
 export type ClosureRefReplacerState = {
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
-  modified: Names,
+  modified: Set<string>,
   requireReturns: Map<number | string, BabelNodeExpression>,
   requireStatistics: { replaced: 0, count: 0 },
   isRequire: void | ((scope: any, node: BabelNodeCallExpression) => boolean),
@@ -72,7 +72,7 @@ export let ClosureRefReplacer = {
     let requireReturns = state.requireReturns;
     if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
     state.requireStatistics.count++;
-    if (state.modified[path.node.callee.name]) return;
+    if (state.modified.has(path.node.callee.name)) return;
 
     let moduleId = "" + path.node.arguments[0].value;
     let new_node = requireReturns.get(moduleId);
@@ -101,8 +101,8 @@ function visitName(path, state, name, modified) {
   if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
 
   // Otherwise, let's record that there's an unbound identifier
-  state.functionInfo.unbound[name] = true;
-  if (modified) state.functionInfo.modified[name] = true;
+  state.functionInfo.unbound.add(name);
+  if (modified) state.functionInfo.modified.add(name);
 }
 
 function ignorePath(path: BabelTraversePath) {
