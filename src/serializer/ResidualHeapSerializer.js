@@ -13,6 +13,7 @@ import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { ToLength, IsArray, Get } from "../methods/index.js";
 import {
+  ArrayValue,
   BoundFunctionValue,
   ProxyValue,
   SymbolValue,
@@ -696,7 +697,7 @@ export class ResidualHeapSerializer {
     return t.arrayExpression(initProperties);
   }
 
-  _getSerializedPropertyValue(properties: Map<string, any>, key: string) {
+  _getPropertyValue(properties: Map<string, any>, key: string) {
     if (properties.has(key) === true) {
       let val = properties.get(key);
 
@@ -707,7 +708,7 @@ export class ResidualHeapSerializer {
           let descriptorValue = descriptor.value;
 
           if (descriptorValue !== undefined) {
-            return this.serializeValue(descriptorValue);
+            return descriptorValue;
           }
         }
       }
@@ -715,25 +716,50 @@ export class ResidualHeapSerializer {
     return null;
   }
 
+  _serializeValueReactElementChild(child: Value): BabelNode {
+    const expr = this.serializeValue(child);
+
+    if (t.isArrayExpression(expr)) {
+      applyKeysToNestedArray((expr: any), true);
+      return expr;
+    }
+    if (expr === null) {
+      return t.jSXExpressionContainer(t.jSXEmptyExpression());
+    }
+    if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
+      return t.jSXText((expr: any).value + "");
+    }
+    if (t.isJSXElement(expr)) {
+      return (expr: any).value;
+    }
+    return t.jSXExpressionContainer(expr);
+  }
+
   _serializeValueReactElement(val: ObjectValue): BabelNodeExpression {
-    let objectProps = val.properties;
-    let typeValue = this._getSerializedPropertyValue(objectProps, "type");
-    let keyValue = this._getSerializedPropertyValue(objectProps, "key");
-    let refValue = this._getSerializedPropertyValue(objectProps, "ref");
-    let propsValue = this._getSerializedPropertyValue(objectProps, "props");
+    let objectProperties: Map<string, any> = val.properties;
+    let typeValue = this._getPropertyValue(objectProperties, "type");
+    let keyValue = this._getPropertyValue(objectProperties, "key");
+    let refValue = this._getPropertyValue(objectProperties, "ref");
+    let propsValue = this._getPropertyValue(objectProperties, "props");
 
     invariant(typeValue !== null, "JSXElement type of null");
 
-    let identifier = convertExpressionToJSXIdentifier(typeValue);
+    let identifier = convertExpressionToJSXIdentifier(this.serializeValue(typeValue));
     let attributes = [];
     let children = [];
 
-    if (keyValue !== null && keyValue.type !== "NullLiteral") {
-      attributes.push(convertKeyValueToJSXAttribute("key", keyValue));
+    if (keyValue !== null) {
+      let keyExpr = this.serializeValue(keyValue);
+      if (keyExpr.type !== "NullLiteral") {
+        attributes.push(convertKeyValueToJSXAttribute("key", keyExpr));
+      }
     }
 
-    if (refValue !== null && refValue.type !== "NullLiteral") {
-      attributes.push(convertKeyValueToJSXAttribute("ref", refValue));
+    if (refValue !== null) {
+      let refExpr = this.serializeValue(refValue);
+      if (refExpr.type !== "NullLiteral") {
+        attributes.push(convertKeyValueToJSXAttribute("ref", refExpr));
+      }
     }
 
     if (propsValue instanceof ObjectValue) {
@@ -746,20 +772,19 @@ export class ResidualHeapSerializer {
         invariant(key !== "key" && key !== "ref", `"${key}" is a reserved prop name`);
 
         if (key === "children" && desc.value !== undefined) {
-          let expr = this.serializeValue((desc.value: any));
-          if (expr != null) {
-            let elements: any =
-              expr.type === "ArrayExpression" && (expr.elements: any).length > 1 ? expr.elements : [expr];
-            children = elements.map(_expr => {
-              if (expr.type === "ArrayExpression") {
-                applyKeysToNestedArray(_expr, true);
+          let childrenValue = desc.value;
+          if (childrenValue instanceof ArrayValue) {
+            this.serializedValues.add(childrenValue);
+            let childrenLength = this._getPropertyValue(childrenValue.properties, "length");
+            let childrenLengthValue = childrenLength != null ? childrenLength.value : 0;
+            for (let i = 0; i < childrenLengthValue; i++) {
+              let child = this._getPropertyValue(childrenValue.properties, "" + i);
+              if (child instanceof Value) {
+                children.push(this._serializeValueReactElementChild(child));
               }
-              return _expr === null
-                ? t.jSXExpressionContainer(t.jSXEmptyExpression())
-                : _expr.type === "StringLiteral"
-                  ? t.jSXText(_expr.value)
-                  : _expr.type === "JSXElement" ? _expr : t.jSXExpressionContainer(_expr);
-            });
+            }
+          } else if (childrenValue instanceof Value) {
+            children.push(this._serializeValueReactElementChild(childrenValue));
           }
           continue;
         }
