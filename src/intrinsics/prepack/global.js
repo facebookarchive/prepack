@@ -248,21 +248,16 @@ export default function(realm: Realm): void {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
 
-        let key = ToStringPartial(realm, propertyName);
-        // The key passed to __assumeDataProperty() may contain special characters that need
-        // to be quoted with indexer property accesser.
-        let propertyIdentifier = t.identifier(`"${key}"`);
-
         // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
         if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
           let generator = realm.generator;
           invariant(generator);
+
+          let key = ToStringPartial(realm, propertyName);
+          let propertyIdentifier = generator.getAsPropertyNameExpression(key);
+          let computed = !t.isIdentifier(propertyIdentifier);
           let condition = ([objectNode, valueNode]) =>
-            t.binaryExpression(
-              "!==",
-              t.memberExpression(objectNode, propertyIdentifier, /*Indexer property access*/ true),
-              valueNode
-            );
+            t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
           if (invariantOptions) {
             let invariantOptionString = ToStringPartial(realm, invariantOptions);
             switch (invariantOptionString) {
@@ -270,7 +265,7 @@ export default function(realm: Realm): void {
                 condition = ([objectNode, valueNode]) =>
                   t.binaryExpression(
                     "===",
-                    t.memberExpression(objectNode, propertyIdentifier, /*Indexer property access*/ true),
+                    t.memberExpression(objectNode, propertyIdentifier, computed),
                     t.valueToNode(undefined)
                   );
                 break;
@@ -285,7 +280,7 @@ export default function(realm: Realm): void {
           }
           if (condition)
             generator.emitInvariant([object, value, object], condition, objnode =>
-              t.memberExpression(objnode, propertyIdentifier, /*Indexer property access*/ true)
+              t.memberExpression(objnode, propertyIdentifier, computed)
             );
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
