@@ -106,7 +106,7 @@ export type Binding = {
   // used to access this binding
   environment: EnvironmentRecord,
   name: string,
-  isGlobal?: boolean,
+  isGlobal: boolean,
 };
 
 // ECMA262 8.1.1.1
@@ -131,7 +131,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   }
 
   // ECMA262 8.1.1.1.2
-  CreateMutableBinding(N: string, D: boolean, isGlobal?: boolean): Value {
+  CreateMutableBinding(N: string, D: boolean, isGlobal: boolean = false): Value {
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -147,7 +147,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       deletable: D,
       environment: envRec,
       name: N,
-      isGlobal,
+      isGlobal: !!isGlobal,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -155,7 +155,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   }
 
   // ECMA262 8.1.1.1.3
-  CreateImmutableBinding(N: string, S: boolean, isGlobal?: boolean): Value {
+  CreateImmutableBinding(N: string, S: boolean, isGlobal: boolean = false): Value {
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -171,7 +171,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       deletable: false,
       environment: envRec,
       name: N,
-      isGlobal,
+      isGlobal: !!isGlobal,
     });
 
     // 4. Return NormalCompletion(empty).
