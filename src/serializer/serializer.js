@@ -19,7 +19,7 @@ import type SourceMap from "babel-generator";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics } from "./types.js";
+import { TimingStatistics, SerializerStatistics, InterpreterStatistics } from "./types.js";
 import { Functions } from "./functions.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -94,6 +94,7 @@ export class Serializer {
     code: string,
     map: void | SourceMap,
     statistics?: SerializerStatistics,
+    interpreterStatistics?: InterpreterStatistics,
     timingStats?: TimingStatistics,
   } {
     // Phase 1: Let's interpret.
@@ -188,7 +189,7 @@ export class Serializer {
     return {
       code: generated.code,
       map: generated.map,
-      serializerStatistics: residualHeapSerializer.statistics,
+      statistics: residualHeapSerializer.statistics,
       interpreterStatistics: this.realm.interpreterStatistics,
       timingStats: timingStats,
     };

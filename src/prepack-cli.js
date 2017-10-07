@@ -233,11 +233,11 @@ function run(
         console.log(serialized.code);
       }
       if (statsFileName) {
-        if (serialized.serializerStatistics === undefined || serialized.interpreterStatistics === undefined || serialized.timingStats === undefined) {
+        if (serialized.statistics === undefined || serialized.interpreterStatistics === undefined || serialized.timingStats === undefined) {
           return;
         }
         let stats = {
-          SerializerStatistics: serialized.serializerStatistics,
+          SerializerStatistics: serialized.statistics,
           TimingStatistics: serialized.timingStats,
           MemoryStatistics: v8.getHeapStatistics(),
           InterpreterStatistics: serialized.interpreterStatistics

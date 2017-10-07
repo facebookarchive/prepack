@@ -38,6 +38,7 @@ import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatem
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
+import { InterpreterStatistics } from "./serializer/types.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -129,18 +130,6 @@ export function construct_empty_effects(realm: Realm): Effects {
   return [realm.intrinsics.empty, new Generator(realm), new Map(), new Map(), new Set()];
 }
 
-export class InterpreterStatistics {
-  constructor() {
-    this.objects = 0;
-  }
-  objects: number;
-
-  log() {
-    console.log(`=== interpreter statistics`);
-    console.log(`${this.objects} objects`);
-  }
-}
-
 export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
@@ -185,6 +174,7 @@ export class Realm {
 
     this.globalSymbolRegistry = [];
     this.interpreterStatistics = new InterpreterStatistics();
+    this.intrinsicsInitialized = false;
   }
 
   start: number;
@@ -196,6 +186,7 @@ export class Realm {
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
   omitInvariants: boolean;
+  intrinsicsInitialized: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;

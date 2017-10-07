@@ -133,6 +133,18 @@ export class SerializerStatistics {
   }
 }
 
+export class InterpreterStatistics {
+  constructor() {
+    this.objects = 0;
+  }
+  objects: number;
+
+  log() {
+    console.log(`=== interpreter statistics`);
+    console.log(`${this.objects} objects`);
+  }
+}
+
 export type LocationService = {
   getLocation: Value => void | BabelNodeIdentifier,
   createLocation: () => BabelNodeIdentifier,
