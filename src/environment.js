@@ -62,8 +62,6 @@ import {
   HasOwnProperty,
   IsDataDescriptor,
   ThrowIfMightHaveBeenDeleted,
-  composePossiblyNormalCompletions,
-  updatePossiblyNormalCompletionWithValue,
 } from "./methods/index.js";
 import * as t from "babel-types";
 
@@ -1240,20 +1238,6 @@ export class LexicalEnvironment {
     let evaluator = this.realm.evaluators[(ast.type: string)];
     if (evaluator) {
       let result = evaluator(ast, strictCode, this, this.realm, metadata);
-      let context = this.realm.getRunningContext();
-      let savedCompletion = context.savedCompletion;
-      if (savedCompletion !== undefined) {
-        if (result instanceof Value) {
-          updatePossiblyNormalCompletionWithValue(this.realm, savedCompletion, result);
-          result = savedCompletion;
-        } else if (result instanceof PossiblyNormalCompletion) {
-          result = composePossiblyNormalCompletions(this.realm, savedCompletion, result);
-        } else {
-          AbstractValue.reportIntrospectionError(savedCompletion.joinCondition);
-          throw new FatalError();
-        }
-        context.savedCompletion = undefined;
-      }
       return result;
     }
 
