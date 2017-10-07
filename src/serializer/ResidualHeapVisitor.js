@@ -113,14 +113,17 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitObjectProperties(obj: ObjectValue, kind: ?ObjectKind): void {
+  visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
     // visit properties
-    for (let [symbol, propertyBinding] of obj.symbols) {
-      invariant(propertyBinding);
-      let desc = propertyBinding.descriptor;
-      if (desc === undefined) continue; //deleted
-      this.visitDescriptor(desc);
-      this.visitValue(symbol);
+    // prototype
+    if (kind !== "ReactElement") {
+      for (let [symbol, propertyBinding] of obj.symbols) {
+        invariant(propertyBinding);
+        let desc = propertyBinding.descriptor;
+        if (desc === undefined) continue; //deleted
+        this.visitDescriptor(desc);
+        this.visitValue(symbol);
+      }
     }
 
     // visit properties

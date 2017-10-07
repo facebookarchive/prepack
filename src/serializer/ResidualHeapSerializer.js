@@ -32,6 +32,7 @@ import {
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute, applyKeysToNestedArray } from "../utils/jsx";
 import * as t from "babel-types";
 import type {
+  BabelNodeArrayExpression,
   BabelNodeExpression,
   BabelNodeStatement,
   BabelNodeIdentifier,
@@ -721,11 +722,8 @@ export class ResidualHeapSerializer {
 
     // TODO: what if the child is an array but serializes to a reference?
     if (t.isArrayExpression(expr)) {
-      applyKeysToNestedArray((expr: any), true);
+      applyKeysToNestedArray(((expr: any): BabelNodeArrayExpression), true);
       return expr;
-    }
-    if (expr === null) {
-      return t.jSXExpressionContainer(t.jSXEmptyExpression());
     }
     if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
       return t.jSXText((expr: any).value + "");
@@ -777,15 +775,24 @@ export class ResidualHeapSerializer {
           if (childrenValue instanceof ArrayValue) {
             this.serializedValues.add(childrenValue);
             let childrenLength = this._getPropertyValue(childrenValue.properties, "length");
-            let childrenLengthValue = childrenLength != null ? childrenLength.value : 0;
-            for (let i = 0; i < childrenLengthValue; i++) {
-              let child = this._getPropertyValue(childrenValue.properties, "" + i);
-              if (child instanceof Value) {
-                children.push(this._serializeValueReactElementChild(child));
+            let childrenLengthValue = 0;
+            if (childrenLength instanceof NumberValue) {
+              childrenLengthValue = childrenLength.value;
+              for (let i = 0; i < childrenLengthValue; i++) {
+                let child = this._getPropertyValue(childrenValue.properties, "" + i);
+                if (child instanceof Value) {
+                  children.push(this._serializeValueReactElementChild(child));
+                } else {
+                  this.logger.logError(val, `JSXElement "props.children[${i}]" failed to serialize due to a non-value`);
+                }
               }
+              continue;
             }
-          } else if (childrenValue instanceof Value) {
+          }
+          if (childrenValue instanceof Value) {
             children.push(this._serializeValueReactElementChild(childrenValue));
+          } else {
+            this.logger.logError(val, `JSXElement "props.children" failed to serialize due to a non-value`);
           }
           continue;
         }
