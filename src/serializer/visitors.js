@@ -65,7 +65,7 @@ function getLiteralTruthiness(node): { known: boolean, value?: boolean } {
     t.isFunctionExpression(node) ||
     t.isArrowFunctionExpression(node) ||
     t.isRegExpLiteral(node) ||
-    (t.isClassExpression(node) && node.superClass === null) ||
+    (t.isClassExpression(node) && node.superClass === null && node.body.body.length === 0) ||
     (t.isObjectExpression(node) && node.properties.length === 0) ||
     (t.isArrayExpression(node) && node.elements.length === 0)
   ) {
