@@ -28,6 +28,7 @@ import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import * as t from "babel-types";
+import type { BabelNodeAssignmentExpression } from "babel-types";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -66,8 +67,17 @@ export class Serializer {
       let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
       traverseFast(ast, node => {
         if (!t.isIdentifier(node)) return false;
-
         forbiddenNames.add(((node: any): BabelNodeIdentifier).name);
+        return true;
+      });
+      traverseFast(ast, node => {
+        if (t.isNewExpression(node)) this.realm.interpreterStatistics.objects++;
+        if (t.isAssignmentExpression(node)) {
+          if (t.isMemberExpression(((node: any): BabelNodeAssignmentExpression).left)) {
+            this.realm.interpreterStatistics.objectProperties++;
+          }
+        }
+        this.realm.interpreterStatistics.incrNodeCount(node.type);
         return true;
       });
     });
@@ -181,7 +191,10 @@ export class Serializer {
       timingStats.totalTime = Date.now() - timingStats.totalTime;
     }
     invariant(!this.logger.hasErrors());
-    if (this.options.logStatistics) residualHeapSerializer.statistics.log();
+    if (this.options.logStatistics) {
+      this.realm.interpreterStatistics.log();
+      residualHeapSerializer.statistics.log();
+    }
     return {
       code: generated.code,
       map: generated.map,
