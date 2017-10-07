@@ -1,10 +1,12 @@
 // does not contain:eliminate
+// contains:preserve
 (function () {
   let f = false;
   let t = true;
 
   global.inspect = function () {
     if (f) { console.log("eliminate me"); }
+    if (f) { console.log("eliminate me"); } else { console.log('preserve'); }
     if (t) { } else { console.log("eliminate me"); }
 
     f ? console.log("eliminate me") : null;
