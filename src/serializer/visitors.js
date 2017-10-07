@@ -56,8 +56,8 @@ function replaceName(path, residualFunctionBinding, name, data) {
   }
 }
 
-function getLiteralTruthiness(node) {
-  // Returns { known: boolean, value?: boolean }. 'known' is true only if this is a literal of known truthiness and with no side effects; if 'known' is true, 'value' is its truthiness.
+function getLiteralTruthiness(node): { known: boolean, value?: boolean } {
+  // In the return value, 'known' is true only if this is a literal of known truthiness and with no side effects; if 'known' is true, 'value' is its truthiness.
   if (t.isBooleanLiteral(node) || t.isNumericLiteral(node) || t.isStringLiteral(node)) {
     return { known: true, value: !!node.value };
   }
