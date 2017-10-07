@@ -9,8 +9,10 @@
 
 /* @flow */
 
+import { Completion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
+import { FatalError } from "../errors.js";
 import { Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { FindVarScopedDeclarations } from "../methods/function.js";
@@ -222,11 +224,21 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);
 
+  let context = realm.getRunningContext();
   let val;
 
   for (let node of ast.body) {
     if (node.type !== "FunctionDeclaration") {
-      let potentialVal = env.evaluate(node, strictCode);
+      let potentialVal = env.evaluateCompletion(node, strictCode);
+      if (potentialVal instanceof Completion) {
+        if (!realm.useAbstractInterpretation) throw potentialVal;
+        // todo: emit code to throw exeptions at runtime
+        throw new FatalError();
+      }
+      if (context.savedCompletion !== undefined) {
+        // todo: emit conditional code to throw exeptions at runtime
+        throw new FatalError();
+      }
       if (!(potentialVal instanceof EmptyValue)) val = potentialVal;
     }
   }
