@@ -18,6 +18,7 @@ import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./prepack-options";
 import { FatalError } from "./errors.js";
 import { SerializerStatistics, TimingStatistics } from "./serializer/types.js";
+import { InterpreterStatistics } from "./realm.js";
 import type { SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
 import type { PrepackOptions } from "./prepack-options";
@@ -39,7 +40,13 @@ Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
 export function prepackSources(
   sources: Array<SourceFile>,
   options: PrepackOptions = defaultOptions
-): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
+): {
+  code: string,
+  map?: SourceMap,
+  statistics?: SerializerStatistics,
+  interpreterStats?: InterpreterStatistics,
+  timingStats?: TimingStatistics,
+} {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(realmOptions);
