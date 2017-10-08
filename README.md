@@ -3,7 +3,7 @@
 Prepack is a partial evaluator for JavaScript. Prepack rewrites a JavaScript bundle, resulting in JavaScript code that executes more efficiently.
 For initialization-heavy code, Prepack works best in an environment where JavaScript parsing is effectively cached.
 
-See the official [prepack.io](http://prepack.io) website for an introduction and an [interactive REPL playground](http://prepack.io/repl.html).
+See the official [prepack.io](https://prepack.io) website for an introduction and an [interactive REPL playground](https://prepack.io/repl.html).
 
 ## How to use Prepack
 
@@ -100,7 +100,7 @@ Instead of building, linting, type checking, testing separately, the following d
 
 ## How to edit the website
 
-The content for [prepack.io](http://prepack.io) resides in the [gh-pages branch](https://github.com/facebook/prepack/tree/gh-pages) of this repository. To make changes, submit a pull request, just like for any code changes. In order to run the website locally at [localhost:8000](http://localhost:8000), run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the cloned `gh-pages` branch.
+The content for [prepack.io](https://prepack.io) resides in the [gh-pages branch](https://github.com/facebook/prepack/tree/gh-pages) of this repository. To make changes, submit a pull request, just like for any code changes. In order to run the website locally at [localhost:8000](http://localhost:8000), run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the cloned `gh-pages` branch.
 
 At this time, a particular bundled version of Prepack is checked in to the `gh-pages` branch at `js/prepack.min.js`. To update the bundle, run `yarn build-bundle` from the `master` branch, and copy the resulting `prepack.min.js` file into the `gh-pages` branch into the `js` directory, and submit a pull request for that change.
 

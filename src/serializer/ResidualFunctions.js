@@ -26,8 +26,8 @@ import type {
 import { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { SerializedBinding, ScopeBinding, FunctionInfo, FunctionInstance, Names } from "./types.js";
-import { BodyReference, AreSameSerializedBindings, SerializerStatistics } from "./types.js";
+import type { ResidualFunctionBinding, ScopeBinding, FunctionInfo, FunctionInstance } from "./types.js";
+import { BodyReference, AreSameResidualBinding, SerializerStatistics } from "./types.js";
 import { ClosureRefReplacer } from "./visitors.js";
 import { Modules } from "./modules.js";
 import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js";
@@ -51,7 +51,8 @@ export class ResidualFunctions {
     initializerNameGenerator: NameGenerator,
     factoryNameGenerator: NameGenerator,
     scopeNameGenerator: NameGenerator,
-    residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>
+    residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
+    residualFunctionInstances: Map<FunctionValue, FunctionInstance>
   ) {
     this.realm = realm;
     this.statistics = statistics;
@@ -75,6 +76,9 @@ export class ResidualFunctions {
       initializerNameGenerator
     );
     this.residualFunctionInfos = residualFunctionInfos;
+    this.residualFunctionInstances = residualFunctionInstances;
+    for (let instance of residualFunctionInstances.values())
+      this.addFunctionInstance(((instance: any): FunctionInstance));
   }
 
   realm: Realm;
@@ -95,6 +99,7 @@ export class ResidualFunctions {
   functionInstances: Array<FunctionInstance>;
   residualFunctionInitializers: ResidualFunctionInitializers;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
+  residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
 
   addFunctionInstance(instance: FunctionInstance) {
     this.functionInstances.push(instance);
@@ -154,8 +159,8 @@ export class ResidualFunctions {
     return t.variableDeclaration("var", [t.variableDeclarator(this._captureScopeAccessFunctionId, factoryFunction)]);
   }
 
-  _getSerializedBindingScopeInstance(serializedBinding: SerializedBinding): ScopeBinding {
-    let declarativeEnvironmentRecord = serializedBinding.declarativeEnvironmentRecord;
+  _getSerializedBindingScopeInstance(residualBinding: ResidualFunctionBinding): ScopeBinding {
+    let declarativeEnvironmentRecord = residualBinding.declarativeEnvironmentRecord;
     invariant(declarativeEnvironmentRecord);
 
     let scope = this.serializedScopes.get(declarativeEnvironmentRecord);
@@ -168,29 +173,29 @@ export class ResidualFunctions {
       this.serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
 
-    serializedBinding.scope = scope;
+    residualBinding.scope = scope;
     return scope;
   }
 
   _referentialize(
-    unbound: Names,
+    unbound: Set<string>,
     instances: Array<FunctionInstance>,
     shouldReferentializeInstanceFn: FunctionInstance => boolean
   ): void {
     for (let instance of instances) {
-      let serializedBindings = instance.serializedBindings;
+      let residualBindings = instance.residualFunctionBindings;
 
-      for (let name in unbound) {
-        let serializedBinding = serializedBindings[name];
-        invariant(serializedBinding !== undefined);
-        if (serializedBinding.modified) {
+      for (let name of unbound) {
+        let residualBinding = residualBindings.get(name);
+        invariant(residualBinding !== undefined);
+        if (residualBinding.modified) {
           // Initialize captured scope at function call instead of globally
-          if (!serializedBinding.referentialized) {
+          if (!residualBinding.referentialized) {
             if (!shouldReferentializeInstanceFn(instance)) {
               // TODO #989: Fix additional functions and referentialization
               throw new FatalError("TODO: implement referentialization for prepacked functions");
             }
-            let scope = this._getSerializedBindingScopeInstance(serializedBinding);
+            let scope = this._getSerializedBindingScopeInstance(residualBinding);
             let capturedScope = "__captured" + scope.name;
             // Save the serialized value for initialization at the top of
             // the factory.
@@ -200,25 +205,25 @@ export class ResidualFunctions {
             // an improvement to split these variables into multiple
             // scopes.
             const variableIndexInScope = scope.initializationValues.length;
-            invariant(serializedBinding.serializedValue);
-            scope.initializationValues.push(serializedBinding.serializedValue);
+            invariant(residualBinding.serializedValue);
+            scope.initializationValues.push(residualBinding.serializedValue);
             scope.capturedScope = capturedScope;
 
             // Replace binding usage with scope references
-            serializedBinding.serializedValue = t.memberExpression(
+            residualBinding.serializedValue = t.memberExpression(
               t.identifier(capturedScope),
               t.numericLiteral(variableIndexInScope),
               true // Array style access.
             );
 
-            serializedBinding.referentialized = true;
+            residualBinding.referentialized = true;
             this.statistics.referentialized++;
           }
 
           // Already referentialized in prior scope
-          if (serializedBinding.declarativeEnvironmentRecord) {
-            invariant(serializedBinding.scope);
-            instance.scopeInstances.add(serializedBinding.scope);
+          if (residualBinding.declarativeEnvironmentRecord) {
+            invariant(residualBinding.scope);
+            instance.scopeInstances.add(residualBinding.scope);
           }
         }
       }
@@ -347,7 +352,7 @@ export class ResidualFunctions {
         this.statistics.functionClones += normalInstances.length - 1;
 
         for (let instance of normalInstances) {
-          let { functionValue, serializedBindings, scopeInstances } = instance;
+          let { functionValue, residualFunctionBindings, scopeInstances } = instance;
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
           let funcParams = params.slice();
@@ -366,7 +371,7 @@ export class ResidualFunctions {
           funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
 
           traverse(t.file(t.program([t.expressionStatement(funcNode)])), ClosureRefReplacer, null, {
-            serializedBindings,
+            residualFunctionBindings,
             modified,
             requireReturns: this.requireReturns,
             requireStatistics,
@@ -387,24 +392,27 @@ export class ResidualFunctions {
 
         // filter included variables to only include those that are different
         let factoryNames: Array<string> = [];
-        let sameSerializedBindings = Object.create(null);
-        for (let name in unbound) {
+        let sameResidualBindings = new Map();
+        for (let name of unbound) {
           let isDifferent = false;
           let lastBinding;
 
-          if (normalInstances[0].serializedBindings[name].modified) {
+          let firstBinding = normalInstances[0].residualFunctionBindings.get(name);
+          invariant(firstBinding);
+          if (firstBinding.modified) {
             // Must modify for traversal
-            sameSerializedBindings[name] = normalInstances[0].serializedBindings[name];
+            sameResidualBindings.set(name, firstBinding);
             continue;
           }
 
-          for (let { serializedBindings } of normalInstances) {
-            let serializedBinding = serializedBindings[name];
+          for (let { residualFunctionBindings } of normalInstances) {
+            let residualBinding = residualFunctionBindings.get(name);
 
-            invariant(!serializedBinding.modified);
+            invariant(residualBinding);
+            invariant(!residualBinding.modified);
             if (!lastBinding) {
-              lastBinding = serializedBinding;
-            } else if (!AreSameSerializedBindings(this.realm, serializedBinding, lastBinding)) {
+              lastBinding = residualBinding;
+            } else if (!AreSameResidualBinding(this.realm, residualBinding, lastBinding)) {
               isDifferent = true;
               break;
             }
@@ -414,10 +422,9 @@ export class ResidualFunctions {
             factoryNames.push(name);
           } else {
             invariant(lastBinding);
-            sameSerializedBindings[name] = { serializedValue: lastBinding.serializedValue };
+            sameResidualBindings.set(name, lastBinding);
           }
         }
-        //
 
         let factoryParams: Array<BabelNodeLVal> = [];
         for (let key of factoryNames) {
@@ -432,13 +439,7 @@ export class ResidualFunctions {
 
         factoryParams = factoryParams.concat(params).slice();
 
-        // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
-        let factoryNode = t.functionExpression(
-          null,
-          factoryParams,
-          ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-        );
-
+        let factoryNode = t.functionExpression(null, factoryParams, funcBody);
         if (normalInstances[0].functionValue.$Strict) {
           strictFunctionBodies.push(factoryNode);
         } else {
@@ -452,7 +453,7 @@ export class ResidualFunctions {
         this.prelude.push(factoryDeclaration);
 
         traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, {
-          serializedBindings: sameSerializedBindings,
+          residualFunctionBindings: sameResidualBindings,
           modified,
           requireReturns: this.requireReturns,
           requireStatistics,
@@ -460,11 +461,13 @@ export class ResidualFunctions {
         });
 
         for (let instance of normalInstances) {
-          let { functionValue, serializedBindings, insertionPoint } = instance;
+          let { functionValue, residualFunctionBindings, insertionPoint } = instance;
           let functionId = this.locationService.getLocation(functionValue);
           invariant(functionId !== undefined);
           let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
-            let serializedValue = serializedBindings[name].serializedValue;
+            let residualBinding = residualFunctionBindings.get(name);
+            invariant(residualBinding);
+            let serializedValue = residualBinding.serializedValue;
             invariant(serializedValue);
             return serializedValue;
           });

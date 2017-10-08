@@ -171,7 +171,6 @@ export default function(realm: Realm): void {
   // that is computed by invoking function(arg0, arg1, ...) in the residual program and
   // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
   // The function must not have side effects, and it must not access any state (besides the supplied arguments).
-  // TODO: In some distant future, Prepack should be able to figure out automatically what computations need to remain part of the residual program.
   global.$DefineOwnProperty("__residual", {
     value: deriveNativeFunctionValue(false),
     writable: true,
@@ -188,7 +187,7 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  // TODO: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
+  // TODO #1023: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
   global.$DefineOwnProperty("__annotate", {
     value: realm.intrinsics.undefined,
     writable: true,

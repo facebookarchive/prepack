@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
-import { ObjectValue, StringValue, NumberValue } from "./index.js";
+import { ObjectValue, StringValue, NumberValue, Value } from "./index.js";
 import { ArraySetLength } from "../methods/properties.js";
 import {
   OrdinaryGetOwnProperty,
@@ -62,7 +62,7 @@ export default class ArrayValue extends ObjectValue {
 
       // c. Let oldLen be oldLenDesc.[[Value]].
       let oldLen = oldLenDesc.value;
-      invariant(oldLen !== undefined);
+      invariant(oldLen instanceof Value);
       oldLen = oldLen.throwIfNotConcrete();
       invariant(oldLen instanceof NumberValue, "expected number value");
       oldLen = oldLen.value;

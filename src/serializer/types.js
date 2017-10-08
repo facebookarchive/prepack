@@ -20,7 +20,7 @@ import invariant from "../invariant.js";
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
 export type FunctionInstance = {
-  serializedBindings: SerializedBindings,
+  residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
   // Optional place to put the function declaration
@@ -28,30 +28,22 @@ export type FunctionInstance = {
   scopeInstances: Set<ScopeBinding>,
 };
 
-export type Names = { [key: string]: true };
 export type FunctionInfo = {
-  unbound: Names,
-  modified: Names,
+  unbound: Set<string>,
+  modified: Set<string>,
   usesArguments: boolean,
   usesThis: boolean,
 };
 
-export type SerializedBindings = { [key: string]: SerializedBinding };
-export type SerializedBinding = {
+export type ResidualFunctionBinding = {
   value: void | Value,
+  modified: boolean,
+  // void means a global binding
+  declarativeEnvironmentRecord: null | DeclarativeEnvironmentRecord,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
-  serializedValue: void | BabelNodeExpression,
-  referentialized: boolean,
-  modified: boolean,
-  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord,
+  serializedValue?: void | BabelNodeExpression,
+  referentialized?: boolean,
   scope?: ScopeBinding,
-};
-
-export type VisitedBindings = { [key: string]: VisitedBinding }; //todo: use a map
-export type VisitedBinding = {
-  value: void | Value,
-  modified: boolean,
-  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord,
 };
 
 export type ScopeBinding = {
@@ -63,7 +55,7 @@ export type ScopeBinding = {
 
 export type GeneratorBody = Array<BabelNodeStatement>;
 
-export function AreSameSerializedBindings(realm: Realm, x: SerializedBinding, y: SerializedBinding) {
+export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding, y: ResidualFunctionBinding) {
   if (x.serializedValue === y.serializedValue) return true;
   if (x.value && x.value === y.value) return true;
   if (x.value instanceof ConcreteValue && y.value instanceof ConcreteValue) {

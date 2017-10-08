@@ -84,6 +84,13 @@ export default class Value {
   expressionLocation: ?BabelNodeSourceLocation;
   $Realm: Realm;
 
+  implies(val: Value): boolean {
+    if (this.equals(val)) return true;
+    if (!this.mightNotBeFalse()) return true;
+    if (!val.mightNotBeTrue()) return true;
+    return false;
+  }
+
   isIntrinsic(): boolean {
     return !!this.intrinsicName;
   }
@@ -105,6 +112,10 @@ export default class Value {
   }
 
   mightBeNull(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  mightNotBeNull(): boolean {
     invariant(false, "abstract method; please override");
   }
 
@@ -141,6 +152,10 @@ export default class Value {
   }
 
   mightBeUndefined(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  mightNotBeUndefined(): boolean {
     invariant(false, "abstract method; please override");
   }
 

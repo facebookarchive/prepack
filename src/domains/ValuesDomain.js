@@ -80,7 +80,7 @@ export default class ValuesDomain {
     let rightElements = right._elements;
     // Return top if left and/or right are top or if the size of the value set would get to be quite large.
     // Note: the larger the set of values, the less we know and therefore the less we get value from computing
-    // all of these values. TODO: probably the upper bound can be quite a bit smaller.
+    // all of these values. TODO #1000: probably the upper bound can be quite a bit smaller.
     if (!leftElements || !rightElements || leftElements.size > 100 || rightElements.size > 100)
       return ValuesDomain.topVal;
     let resultSet = new Set();
@@ -265,7 +265,7 @@ export default class ValuesDomain {
     let rightElements = right._elements;
     // Return top if left and/or right are top or if the size of the value set would get to be quite large.
     // Note: the larger the set of values, the less we know and therefore the less we get value from computing
-    // all of these values. TODO: probably the upper bound can be quite a bit smaller.
+    // all of these values. TODO #1000: probably the upper bound can be quite a bit smaller.
     if (!leftElements || !rightElements || leftElements.size > 100 || rightElements.size > 100)
       return ValuesDomain.topVal;
     let resultSet = new Set();

@@ -14,7 +14,7 @@ import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeCallExpression } from "babel-types";
 import { BabelTraversePath } from "babel-traverse";
-import type { TryQuery, FunctionInfo, Names } from "./types.js";
+import type { TryQuery, FunctionInfo, ResidualFunctionBinding } from "./types.js";
 
 export type ClosureRefVisitorState = {
   tryQuery: TryQuery<*>,
@@ -24,8 +24,8 @@ export type ClosureRefVisitorState = {
 };
 
 export type ClosureRefReplacerState = {
-  serializedBindings: any,
-  modified: Names,
+  residualFunctionBindings: Map<string, ResidualFunctionBinding>,
+  modified: Set<string>,
   requireReturns: Map<number | string, BabelNodeExpression>,
   requireStatistics: { replaced: 0, count: 0 },
   isRequire: void | ((scope: any, node: BabelNodeCallExpression) => boolean),
@@ -47,12 +47,12 @@ function shouldVisit(node, data) {
 //       they will be visited again and possibly transformed.
 //       If necessary we could implement this by following node.parentPath and checking
 //       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
-function replaceName(path, serializedBinding, name, data) {
+function replaceName(path, residualFunctionBinding, name, data) {
   if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
 
-  if (serializedBinding && shouldVisit(path.node, data)) {
-    markVisited(serializedBinding.serializedValue, data);
-    path.replaceWith(serializedBinding.serializedValue);
+  if (residualFunctionBinding && shouldVisit(path.node, data)) {
+    markVisited(residualFunctionBinding.serializedValue, data);
+    path.replaceWith(residualFunctionBinding.serializedValue);
   }
 }
 
@@ -60,10 +60,10 @@ export let ClosureRefReplacer = {
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefReplacerState) {
     if (ignorePath(path)) return;
 
-    let serializedBindings = state.serializedBindings;
+    let residualFunctionBindings = state.residualFunctionBindings;
     let name = path.node.name;
-    let serializedBinding = serializedBindings[name];
-    if (serializedBinding) replaceName(path, serializedBinding, name, serializedBindings);
+    let residualFunctionBinding = residualFunctionBindings.get(name);
+    if (residualFunctionBinding) replaceName(path, residualFunctionBinding, name, residualFunctionBindings);
   },
 
   CallExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
@@ -72,25 +72,25 @@ export let ClosureRefReplacer = {
     let requireReturns = state.requireReturns;
     if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
     state.requireStatistics.count++;
-    if (state.modified[path.node.callee.name]) return;
+    if (state.modified.has(path.node.callee.name)) return;
 
     let moduleId = "" + path.node.arguments[0].value;
     let new_node = requireReturns.get(moduleId);
     if (new_node !== undefined) {
-      markVisited(new_node, state.serializedBindings);
+      markVisited(new_node, state.residualFunctionBindings);
       path.replaceWith(new_node);
       state.requireStatistics.replaced++;
     }
   },
 
   "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: ClosureRefReplacerState) {
-    let serializedBindings = state.serializedBindings;
+    let residualFunctionBindings = state.residualFunctionBindings;
     let ids = path.getBindingIdentifierPaths();
     for (let name in ids) {
-      let serializedBinding = serializedBindings[name];
-      if (serializedBinding) {
+      let residualFunctionBinding = residualFunctionBindings.get(name);
+      if (residualFunctionBinding) {
         let nestedPath = ids[name];
-        replaceName(nestedPath, serializedBinding, name, serializedBindings);
+        replaceName(nestedPath, residualFunctionBinding, name, residualFunctionBindings);
       }
     }
   },
@@ -101,8 +101,8 @@ function visitName(path, state, name, modified) {
   if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
 
   // Otherwise, let's record that there's an unbound identifier
-  state.functionInfo.unbound[name] = true;
-  if (modified) state.functionInfo.modified[name] = true;
+  state.functionInfo.unbound.add(name);
+  if (modified) state.functionInfo.modified.add(name);
 }
 
 function ignorePath(path: BabelTraversePath) {

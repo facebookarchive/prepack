@@ -36,7 +36,7 @@ export default function(realm: Realm): ObjectValue {
     // 2. Let args be ? CreateListFromArrayLike(argumentsList).
     let args = CreateListFromArrayLike(realm, argumentsList);
 
-    // TODO 3. Perform PrepareForTailCall().
+    // TODO #1008 3. Perform PrepareForTailCall().
 
     // 4. Return ? Call(target, thisArgument, args).
     return Call(realm, target, thisArgument, args);

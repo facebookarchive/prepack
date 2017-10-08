@@ -13,7 +13,6 @@ import type { Realm } from "../../realm.js";
 import { ProxyValue, NullValue, NativeFunctionValue } from "../../values/index.js";
 import { ObjectCreate, CreateDataProperty } from "../../methods/create.js";
 import { ProxyCreate } from "../../methods/proxy.js";
-import { ThrowIfInternalSlotNotWritable } from "../../methods/properties.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -66,16 +65,16 @@ export default function(realm: Realm): NativeFunctionValue {
         if (p instanceof NullValue) return realm.intrinsics.undefined;
 
         // 3. Set the value of F's [[RevocableProxy]] internal slot to null.
-        ThrowIfInternalSlotNotWritable(realm, F, "$RevocableProxy").$RevocableProxy = realm.intrinsics.null;
+        F.$RevocableProxy = realm.intrinsics.null;
 
         // 4. Assert: p is a Proxy object.
         invariant(p instanceof ProxyValue, "expected proxy");
 
         // 5. Set the [[ProxyTarget]] internal slot of p to null.
-        ThrowIfInternalSlotNotWritable(realm, p, "$ProxyTarget").$ProxyTarget = realm.intrinsics.null;
+        p.$ProxyTarget = realm.intrinsics.null;
 
         // 6. Set the [[ProxyHandler]] internal slot of p to null.
-        ThrowIfInternalSlotNotWritable(realm, p, "$ProxyTarget").$ProxyHandler = realm.intrinsics.null;
+        p.$ProxyHandler = realm.intrinsics.null;
 
         // 7. Return undefined.
         return realm.intrinsics.undefined;

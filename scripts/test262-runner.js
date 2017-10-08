@@ -635,7 +635,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 11798 || numPassedES6 < 5244 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 11798 || numPassedES6 < 5245 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -991,16 +991,8 @@ function runTest(
     // succeeded
     return new TestResult(true, strict);
   } catch (err) {
-    switch (err.message) {
-      case "TODO: Patterns aren't supported yet":
-      case "TODO: AwaitExpression":
-      case "TODO: YieldExpression":
-        return null;
-      default:
-        if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
-          return null;
-        }
-        break;
+    if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
+      return null;
     }
 
     let stack = err.stack;
@@ -1125,9 +1117,6 @@ function testFilterByMetadata(test: TestFileInfo): boolean {
 
   // disable SharedArrayBuffer tests
   if (test.location.includes("sharedarraybuffer") || test.location.includes("SharedArrayBuffer")) return false;
-
-  // disable outdated arguments.caller test
-  if (test.location.includes("StrictFunction_restricted-properties.js")) return false;
 
   return true;
 }

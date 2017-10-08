@@ -1,6 +1,4 @@
-// throws introspection error
-
-let x = __abstract("boolean", "true");
+let x = global.__abstract ? __abstract("boolean", "true") : true;
 
 try {
   if (x) throw  new Error("is true");
@@ -8,3 +6,5 @@ try {
 } catch (e) {
   z = e;
 }
+
+inspect = function() { return z; }

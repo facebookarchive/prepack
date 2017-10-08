@@ -90,7 +90,6 @@ export function prepackFile(
 
 export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions) {
   if (options.compatibility === "node-cli") {
-    // TODO: support multiple file prepack in node-cli mode.
     if (filenames.length !== 1) {
       console.error(`Does not support multiple file prepack in node-cli mode.`);
       process.exit(1);
@@ -100,8 +99,6 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
-    // Use the single input source map file for each source file.
-    // TODO: support separate source map file for each source file.
     let sourceMapFilename = options.inputSourceMapFilename || filename + ".map";
     try {
       sourceMap = fs.readFileSync(sourceMapFilename, "utf8");

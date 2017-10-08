@@ -62,8 +62,6 @@ import {
   HasOwnProperty,
   IsDataDescriptor,
   ThrowIfMightHaveBeenDeleted,
-  composePossiblyNormalCompletions,
-  updatePossiblyNormalCompletionWithValue,
 } from "./methods/index.js";
 import * as t from "babel-types";
 
@@ -947,7 +945,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     // 7. Perform ? DefinePropertyOrThrow(globalObject, N, desc).
     DefinePropertyOrThrow(this.realm, globalObject, N, desc);
 
-    // TODO? 8. Record that the binding for N in ObjRec has been initialized.
+    // 8. Record that the binding for N in ObjRec has been initialized.
 
     // 9. Perform ? Set(globalObject, N, V, false).
     Set(this.realm, globalObject, N, V, false);
@@ -962,36 +960,6 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 12. Return NormalCompletion(empty).
-  }
-}
-
-// ECMA262 8.1.1.5
-export class ModuleEnvironmentRecord extends DeclarativeEnvironmentRecord {
-  // ECMA262 8.1.1.3.1
-  BindThisValue(
-    V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
-  ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.2
-  HasThisBinding(): boolean {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.3
-  HasSuperBinding(): boolean {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.4
-  GetThisBinding(): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.5
-  GetSuperBase(): NullValue | ObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
   }
 }
 
@@ -1255,7 +1223,8 @@ export class LexicalEnvironment {
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     if (res instanceof PossiblyNormalCompletion) {
-      AbstractValue.reportIntrospectionError(res.joinCondition);
+      let error = new CompilerDiagnostic("Global code may end abruptly", res.location, "PP0016", "FatalError");
+      this.realm.handleError(error);
       throw new FatalError();
     }
     invariant(res instanceof Value || res instanceof Reference, ast.type);
@@ -1269,20 +1238,6 @@ export class LexicalEnvironment {
     let evaluator = this.realm.evaluators[(ast.type: string)];
     if (evaluator) {
       let result = evaluator(ast, strictCode, this, this.realm, metadata);
-      let context = this.realm.getRunningContext();
-      let savedCompletion = context.savedCompletion;
-      if (savedCompletion !== undefined) {
-        if (result instanceof Value) {
-          updatePossiblyNormalCompletionWithValue(this.realm, savedCompletion, result);
-          result = savedCompletion;
-        } else if (result instanceof PossiblyNormalCompletion) {
-          result = composePossiblyNormalCompletions(this.realm, savedCompletion, result);
-        } else {
-          AbstractValue.reportIntrospectionError(savedCompletion.joinCondition);
-          throw new FatalError();
-        }
-        context.savedCompletion = undefined;
-      }
       return result;
     }
 

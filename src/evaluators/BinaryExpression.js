@@ -28,6 +28,7 @@ import { GetValue } from "../methods/index.js";
 import { IsToPrimitivePure, GetToPrimitivePureResultType, IsToNumberPure } from "../methods/index.js";
 import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
+import simplifyAbstractValue from "../utils/simplifier.js";
 
 export default function(
   ast: BabelNodeBinaryExpression,
@@ -159,7 +160,7 @@ export function computeBinary(
       (!lval.mightNotBeObject() && (rval instanceof NullValue || rval instanceof UndefinedValue)) ||
       ((lval instanceof NullValue || lval instanceof UndefinedValue) && !rval.mightNotBeObject())
     ) {
-      //TODO: We can only get here if lval or rval is known to be an object. In general, we require that such values
+      //TODO #1001: We can only get here if lval or rval is known to be an object. In general, we require that such values
       //can never be null or undefined, so the next line makes no sense. It is in fact a short term hack to deal
       //with the need for some intrinsic objects to be optionally null or undefined. It is still an open question
       //how best to model such objects. When that question is resolved, the next line should go away.
@@ -171,7 +172,7 @@ export function computeBinary(
   if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
     // generate error if binary operation might throw or have side effects
     getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-    return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+    return simplifyAbstractValue(realm, AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc));
   }
 
   // ECMA262 12.10.3

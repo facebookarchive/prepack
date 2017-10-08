@@ -210,7 +210,7 @@ function emitResidualLoopIfSafe(
           }
         }
         // add loop to generator
-        generator.body.push({
+        generator.addEntry({
           // duplicate args to ensure refcount > 1
           args: [o, targetObject, sourceObject, targetObject, sourceObject],
           buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {

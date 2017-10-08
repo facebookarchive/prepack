@@ -170,6 +170,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
         if (Desc.value) {
           // 1. Let value be Desc.[[Value]].
           let value = Desc.value;
+          invariant(value === undefined || value instanceof Value);
 
           // 2. Return ? IntegerIndexedElementSet(O, numericIndex, value).
           return IntegerIndexedElementSet(this.$Realm, O, numericIndex, value);
