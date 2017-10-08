@@ -49,19 +49,14 @@ var optionsConfig = [
 var demos = [];
 /**generate select */
 function generateDemosSelect(obj, dom) {
-  var tmpName;
   // var keys = ['<option value='+-1+'>select demo</option>'];
   var keys = [];
   demos = [];
   for (var name in obj) {
-    if (!tmpName) {
-      tmpName = name;
-    }
     demos.push(name);
     keys.push('<option value=' + name + '>' + name + '</option>');
   }
   dom.innerHTML = keys.join('');
-  return tmpName;
 }
 
 var worker;
@@ -109,6 +104,30 @@ function processError(errorOutput, error) {
     errorOutput.appendChild(errorWikiLink);
     errorOutput.appendChild(document.createTextNode(': ' + error.message + '\n'));
   }
+}
+
+function getUrlParameter(query, name) {
+  var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+  var results = regex.exec(query);
+  return results === null ? '' : decodeURIComponent(results[1]);
+};
+
+function getHashedDemo(query) {
+  var name = getUrlParameter(query, 'name');
+  var code = getUrlParameter(query, 'code');
+  if (name && code && code.match(/^[a-zA-Z0-9+/=_-]+$/)) {
+    return {
+      name: name,
+      code: LZString.decompressFromEncodedURIComponent(code)
+    }
+  }
+  return null;
+}
+
+function makeDemoSharable() {
+  var name = selectInput.value;
+  var code = LZString.compressToEncodedURIComponent(input.getValue());
+  history.replaceState(undefined, undefined, `?name=${name}&code=${code}`);
 }
 
 function compile() {
@@ -163,7 +182,7 @@ function compile() {
         if (domE.value) {
           options[config.name] = domE.value;
         }
-      }      
+      }
     }
 
     worker.postMessage({code: input.getValue(), options: options});
@@ -177,6 +196,7 @@ output.setHighlightGutterLine(false);
 
 var input = createEditor(document.querySelector('.input .repl'));
 input.on('change', compile);
+input.on('change', makeDemoSharable);
 
 /**record **/
 
@@ -188,14 +208,6 @@ var saveButton = document.querySelector('#saveBtn');
 var deleteButton = document.querySelector('#deleteBtn');
 var storage = window.localStorage;
 
-var demosSelectCache = getDemosCache();
-var defaultName, defaultVal;
-defaultName = generateDemosSelect(demosSelectCache, selectRecord);
-selectInput.value = defaultName || '';
-defaultVal = defaultName ? demosSelectCache[defaultName] : '';
-input.setValue(defaultVal);
-compile();
-
 function changeDemosSelect(val) {
   if (!val.value) return;
   selectInput.value = val.value;
@@ -204,7 +216,6 @@ function changeDemosSelect(val) {
   input.setValue(code);
   compile();
 }
-changeDemosSelect(defaultVal);
 
 var demoSelector = new Select({
   el: selectRecord,
@@ -287,10 +298,17 @@ function addDefaultExamples() {
   ].join('\n');
   cache[name] = code;
 
+  var hashedDemo = getHashedDemo(location.search);
+  name = null;
+  if (hashedDemo) {
+    name = hashedDemo.name;
+    cache[name] = hashedDemo.code;
+  }
+
   generateDemosSelect(cache, selectRecord);
   setDemosCache(cache);
   setTimeout(() => {
-    demoSelector.change('Fibonacci');
+    demoSelector.change(name || 'Fibonacci');
   });
 }
 
@@ -299,7 +317,7 @@ function addOptions() {
   for (var configIndex in optionsConfig) {
     var config = optionsConfig[configIndex];
     var configId = 'prepack-option-' + config.name;
-    optionStrings.push("<div class='prepack-option'>");    
+    optionStrings.push("<div class='prepack-option'>");
     optionStrings.push("<label class='prepack-option-label' for='");
     optionStrings.push(configId);
     optionStrings.push("'>");
@@ -338,7 +356,7 @@ function addOptions() {
       } else {
         optionStrings.push("'>");
       }
-    }    
+    }
     optionStrings.push("</label>");
     optionStrings.push("</div>");
   }
