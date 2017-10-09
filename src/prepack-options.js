@@ -11,7 +11,6 @@
 
 import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions } from "./options";
-import path from "path";
 
 export type PrepackOptions = {|
   additionalFunctions?: Array<string>,
