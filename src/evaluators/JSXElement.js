@@ -23,7 +23,7 @@ import type {
   BabelNodeJSXSpreadAttribute,
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
-import { StringValue, ConcreteValue, Value, NumberValue, ObjectValue } from "../values/index.js";
+import { StringValue, ConcreteValue, Value, NumberValue, ObjectValue, SymbolValue } from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../utils/jsx";
 import {
   GetValue,
@@ -43,7 +43,6 @@ let RESERVED_PROPS = {
   __source: true,
 };
 
-let reactElementSymbol;
 let reactElementSymbolKey = "react.element";
 
 // taken from Babel
@@ -243,6 +242,7 @@ function evaluateJSXAttributes(
 }
 
 function getReactElementSymbol(realm: Realm) {
+  let reactElementSymbol = realm.react.reactElementSymbol;
   if (reactElementSymbol !== undefined) {
     return reactElementSymbol;
   }
@@ -253,12 +253,13 @@ function getReactElementSymbol(realm: Realm) {
     if (SymbolForDescriptor !== undefined) {
       let SymbolForValue = SymbolForDescriptor.value;
       if (SymbolForValue !== undefined && typeof SymbolForValue.$Call === "function") {
-        reactElementSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [
+        realm.react.reactElementSymbol = reactElementSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [
           new StringValue(realm, reactElementSymbolKey),
         ]);
       }
     }
   }
+  invariant(reactElementSymbol instanceof SymbolValue, `ReactElement "$$typeof" property was not a symbol`);
   return reactElementSymbol;
 }
 

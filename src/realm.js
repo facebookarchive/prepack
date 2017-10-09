@@ -179,6 +179,7 @@ export class Realm {
     this.react = {
       enabled: opts.reactEnabled || false,
       componentsFromNames: new Map(),
+      reactElementSymbol: undefined,
     };
 
     this.errorHandler = opts.errorHandler;
@@ -215,6 +216,7 @@ export class Realm {
   react: {
     enabled: boolean,
     componentsFromNames: Map<string, FunctionalComponent>,
+    reactElementSymbol?: SymbolValue,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
