@@ -25,6 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
+import FunctionalComponent from "./intrinsics/react/FunctionalComponent";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
@@ -169,6 +170,11 @@ export class Realm {
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
+    this.react = {
+      enabled: opts.reactEnabled || false,
+      componentsFromNames: new Map(),
+    };
+
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
@@ -199,6 +205,11 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+
+  react: {
+    enabled: boolean,
+    componentsFromNames: Map<string, FunctionalComponent>,
+  };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
   compatibility: Compatibility;
