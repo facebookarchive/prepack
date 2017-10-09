@@ -31,7 +31,6 @@ import type {
   ScopeBinding,
   FunctionInfo,
   FunctionInstance,
-  Names,
   AdditionalFunctionInfo,
 } from "./types.js";
 import { BodyReference, AreSameResidualBinding, SerializerStatistics } from "./types.js";
@@ -88,8 +87,8 @@ export class ResidualFunctions {
     this.residualFunctionInstances = residualFunctionInstances;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
     for (let instance of residualFunctionInstances.values()) {
-      let functionInstance = ((instance: any): FunctionInstance);
-      if (!additionalFunctionValueInfos.has(functionInstance.functionValue)) this.addFunctionInstance(functionInstance);
+      invariant(instance !== undefined);
+      if (!additionalFunctionValueInfos.has(instance.functionValue)) this.addFunctionInstance(instance);
     }
     this.additionalFunctionValueNestedFunctions = additionalFunctionValueNestedFunctions;
   }
@@ -120,6 +119,7 @@ export class ResidualFunctions {
   _getOrDefault<K, V>(map: Map<K, V>, key: K, defaultFn: () => V): V {
     let value = map.get(key);
     if (!value) map.set(key, (value = defaultFn()));
+    invariant(value !== undefined);
     return value;
   }
 

@@ -21,7 +21,7 @@ export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) =>
 
 export type AdditionalFunctionInfo = {
   functionValue: FunctionValue,
-  captures: Names,
+  captures: Set<string>,
   // TODO: use for storing modified residual function bindings (captured by other functions)
   modifiedBindings: Map<Binding, ResidualFunctionBinding>,
   instance: FunctionInstance,
@@ -33,7 +33,8 @@ export type FunctionInstance = {
   insertionPoint?: BodyReference,
   // Optional place to put the function declaration
   preludeOverride?: Array<BabelNodeStatement>,
-  additionalFunction?: FunctionValue,
+  // Additional function that the function instance was declared inside of (if any)
+  containingAdditionalFunction?: FunctionValue,
   scopeInstances: Set<ScopeBinding>,
 };
 
@@ -49,12 +50,12 @@ export type ResidualFunctionBinding = {
   modified: boolean,
   // void means a global binding
   declarativeEnvironmentRecord: null | DeclarativeEnvironmentRecord,
-  // an additional function may overwrite the value of this binding
-  additionalValue?: null | Value,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
   serializedValue?: void | BabelNodeExpression,
   referentialized?: boolean,
-  // Additional function value co
+  // If the binding is only accessed by an additional function or nested values
+  // this field contains that additional function. (Determines what initializer
+  // to put the binding in -- global or additional function) 
   referencedOnlyFromAdditionalFunctions?: FunctionValue,
   scope?: ScopeBinding,
 };
