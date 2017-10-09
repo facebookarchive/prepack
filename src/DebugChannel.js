@@ -13,10 +13,8 @@ import type { DebuggerOptions } from "./options";
 
 export class DebugChannel {
   constructor(fs: any, dbgOptions: DebuggerOptions) {
-    let configFilePath = dbgOptions.configFilePath;
-    let config = JSON.parse(fs.readFileSync(configFilePath, "utf8").toString());
-    this.inFilePath = path.join(__dirname, "../", config.files.proxy2debugger);
-    this.outFilePath = path.join(__dirname, "../", config.files.debugger2proxy);
+    this.inFilePath = path.join(__dirname, "../", dbgOptions.inFilePath);
+    this.outFilePath = path.join(__dirname, "../", dbgOptions.outFilePath);
     this.fs = fs;
     this.requestReceived = false;
   }
@@ -30,7 +28,7 @@ export class DebugChannel {
   */
   checkForDebugger(): boolean {
     let line = this.readIn();
-    if (line === "Debugger Attached") {
+    if (line === "Debugger Attached\n") {
       this.writeOut("Ready\n");
       return true;
     }

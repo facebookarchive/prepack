@@ -39,7 +39,8 @@ export type PrepackOptions = {|
   uniqueSuffix?: string,
   maxStackDepth?: number,
   enableDebugger?: boolean,
-  debugConfigPath?: string,
+  debugInFilePath?: string,
+  debugOutFilePath?: string,
 |};
 
 export function getRealmOptions({
@@ -95,9 +96,13 @@ export function getSerializerOptions({
   return result;
 }
 
-export function getDebuggerOptions(configFilePath: string): DebuggerOptions {
+export function getDebuggerOptions({
+  debugInFilePath = "./src/debugger/.sessionlogs/proxy2debugger.txt",
+  debugOutFilePath = "./src/debugger/.sessionlogs/debugger2proxy.txt",
+}: PrepackOptions): DebuggerOptions {
   let result: DebuggerOptions = {
-    configFilePath: path.join(__dirname, "../", configFilePath),
+    inFilePath: debugInFilePath,
+    outFilePath: debugOutFilePath,
   };
   return result;
 }

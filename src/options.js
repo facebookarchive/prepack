@@ -45,7 +45,8 @@ export type PartialEvaluatorOptions = {
 };
 
 export type DebuggerOptions = {
-  configFilePath: string,
+  inFilePath: string,
+  outFilePath: string,
 };
 
 export const defaultOptions = {};
