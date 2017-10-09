@@ -729,7 +729,7 @@ export class ResidualHeapSerializer {
       return t.jSXText((expr: any).value + "");
     }
     if (t.isJSXElement(expr)) {
-      return (expr: any).value;
+      return expr;
     }
     return t.jSXExpressionContainer(expr);
   }

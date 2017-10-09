@@ -22,7 +22,14 @@ let fs = require("fs");
 let vm = require("vm");
 let os = require("os");
 let minimist = require("minimist");
+let babel = require("babel-core");
 const EOL = os.EOL;
+
+function transformWithBabel(code, plugins) {
+  return babel.transform(code, {
+    plugins,
+  }).code;
+}
 
 function search(dir, relative) {
   let tests = [];
@@ -87,6 +94,7 @@ function runTest(name, code, options, args) {
   console.log(chalk.inverse(name) + " " + util.inspect(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
+  let compileJSXWithBabel = code.includes("// babel:jsx");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   options = Object.assign({}, options, {
@@ -226,6 +234,9 @@ function runTest(name, code, options, args) {
           break;
         }
         let newCode = serialized.code;
+        if (compileJSXWithBabel) {
+          newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
+        }
         codeIterations.push(newCode);
         if (args.verbose) console.log(newCode);
         let markersIssue = false;
