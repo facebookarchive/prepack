@@ -147,7 +147,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       deletable: D,
       environment: envRec,
       name: N,
-      isGlobal: !!isGlobal,
+      isGlobal: isGlobal,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -171,7 +171,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       deletable: false,
       environment: envRec,
       name: N,
-      isGlobal: !!isGlobal,
+      isGlobal: isGlobal,
     });
 
     // 4. Return NormalCompletion(empty).
