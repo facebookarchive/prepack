@@ -762,6 +762,8 @@ export class ResidualHeapSerializer {
     }
 
     if (propsValue instanceof ObjectValue) {
+      // the propsValue is visited to get the properties, but we don't emit it as the object
+      // is contained within a JSXOpeningElement
       this.serializedValues.add(propsValue);
       // have to case propsValue to ObjectValue or Flow complains that propsValues can be null/undefined
       for (let [key, propertyBinding] of (propsValue: ObjectValue).properties) {
@@ -796,7 +798,9 @@ export class ResidualHeapSerializer {
           }
           continue;
         }
-        attributes.push(convertKeyValueToJSXAttribute(key, this.serializeValue((desc.value: any))));
+        if (desc.value instanceof Value) {
+          attributes.push(convertKeyValueToJSXAttribute(key, this.serializeValue(desc.value)));
+        }
       }
     }
     let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);

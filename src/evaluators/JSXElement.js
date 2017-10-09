@@ -12,9 +12,19 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Reference } from "../environment.js";
-import type { BabelNodeJSXElement, BabelNodeJSXIdentifier } from "babel-types";
-import { StringValue, ConcreteValue, Value, NumberValue } from "../values/index.js";
-import { convertJSXExpressionToIdentifier } from '../utils/jsx';
+import type {
+  BabelNode,
+  BabelNodeStringLiteral,
+  BabelNodeJSXText,
+  BabelNodeJSXElement,
+  BabelNodeJSXIdentifier,
+  BabelNodeJSXMemberExpression,
+  BabelNodeJSXAttribute,
+  BabelNodeJSXSpreadAttribute,
+  BabelNodeJSXExpressionContainer,
+} from "babel-types";
+import { StringValue, ConcreteValue, Value, NumberValue, ObjectValue } from "../values/index.js";
+import { convertJSXExpressionToIdentifier } from "../utils/jsx";
 import {
   GetValue,
   ToString,
@@ -25,7 +35,6 @@ import {
   Set,
 } from "../methods/index.js";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
 
 let RESERVED_PROPS = {
   key: true,
@@ -38,8 +47,8 @@ let reactElementSymbol;
 let reactElementSymbolKey = "react.element";
 
 // taken from Babel
-function cleanJSXElementLiteralChild(child, args) {
-  let lines = child.value.split(/\r\n|\n|\r/);
+function cleanJSXElementLiteralChild(child: string): null | string {
+  let lines = child.split(/\r\n|\n|\r/);
 
   let lastNonEmptyLine = 0;
 
@@ -80,15 +89,21 @@ function cleanJSXElementLiteralChild(child, args) {
     }
   }
 
-  if (str) args.push(t.stringLiteral(str));
+  if (str) {
+    return str;
+  }
+  return null;
 }
 
-function evaluateJSXMemberExpression(ast, strictCode, env, realm) {
+function evaluateJSXMemberExpression(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm) {
   switch (ast.type) {
     case "JSXIdentifier":
-      return GetValue(realm, ResolveBinding(realm, ast.name, strictCode, env));
+      return GetValue(realm, ResolveBinding(realm, ((ast: any): BabelNodeJSXIdentifier).name, strictCode, env));
     case "JSXMemberExpression":
-      return GetValue(realm, env.evaluate(convertJSXExpressionToIdentifier(ast), strictCode));
+      return GetValue(
+        realm,
+        env.evaluate(convertJSXExpressionToIdentifier(((ast: any): BabelNodeJSXMemberExpression)), strictCode)
+      );
     default:
       invariant(false, "Unknown JSX Identifier");
   }
@@ -102,26 +117,29 @@ function evaluateJSXIdentifier(ast, strictCode, env, realm) {
   return evaluateJSXMemberExpression(ast, strictCode, env, realm);
 }
 
-function evaluateJSXValue(value, strictCode, env, realm) {
-  switch (value.type) {
-    case "JSXText":
-      return new StringValue(realm, value.value);
-    case "StringLiteral":
-      return new StringValue(realm, value.value);
-    case "JSXExpressionContainer":
-      return GetValue(realm, env.evaluate(value.expression, strictCode));
-    case "JSXElement":
-      return GetValue(realm, env.evaluate(value, strictCode));
-    default:
-      invariant(false, `Unknown JSX value type:: ${value.type}`);
+function evaluateJSXValue(value: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm) {
+  if (value != null) {
+    switch (value.type) {
+      case "JSXText":
+        return new StringValue(realm, ((value: any): BabelNodeJSXText).value);
+      case "StringLiteral":
+        return new StringValue(realm, ((value: any): BabelNodeStringLiteral).value);
+      case "JSXExpressionContainer":
+        return GetValue(realm, env.evaluate(((value: any): BabelNodeJSXExpressionContainer).expression, strictCode));
+      case "JSXElement":
+        return GetValue(realm, env.evaluate(value, strictCode));
+      default:
+        invariant(false, `Unknown JSX value type: ${value.type}`);
+    }
   }
+  invariant(false, `Null or undefined value passed when trying to evaluate JSX node value`);
 }
 
-function isTagName(ast) {
-  return ast.type === "JSXIdentifier" && /^[a-z]|\-/.test(ast.name);
+function isTagName(ast: BabelNode) {
+  return ast.type === "JSXIdentifier" && /^[a-z]|\-/.test(((ast: any): BabelNodeJSXIdentifier).name);
 }
 
-function getDefaultProps(elementType, realm) {
+function getDefaultProps(elementType: BabelNodeJSXIdentifier | BabelNodeJSXMemberExpression, realm: Realm) {
   let name;
   if (elementType.type === "JSXIdentifier") {
     name = elementType.name;
@@ -139,7 +157,7 @@ function getDefaultProps(elementType, realm) {
   return null;
 }
 
-function evaluateJSXChildren(children, strictCode, env, realm) {
+function evaluateJSXChildren(children: Array<BabelNode>, strictCode: boolean, env: LexicalEnvironment, realm: Realm) {
   if (children.length === 0) {
     return null;
   }
@@ -147,9 +165,10 @@ function evaluateJSXChildren(children, strictCode, env, realm) {
     let singleChild = evaluateJSXValue(children[0], strictCode, env, realm);
 
     if (singleChild instanceof StringValue) {
-      let lines = [];
-      cleanJSXElementLiteralChild({ value: singleChild.value }, lines);
-      singleChild.value = lines[0].value;
+      let text = cleanJSXElementLiteralChild(singleChild.value);
+      if (text !== null) {
+        singleChild.value = text;
+      }
     }
     return singleChild;
   }
@@ -160,14 +179,13 @@ function evaluateJSXChildren(children, strictCode, env, realm) {
   for (let i = 0; i < children.length; i++) {
     let value = evaluateJSXValue(children[i], strictCode, env, realm);
     if (value instanceof StringValue) {
-      let lines = [];
-      cleanJSXElementLiteralChild({ value: value.value }, lines);
-      if (lines.length === 0) {
+      let text = cleanJSXElementLiteralChild(value.value);
+      if (text === null) {
         dynamicChildrenLength--;
         // this is a space full of whitespace, so let's proceed
         continue;
       } else {
-        value.value = lines[0].value;
+        value.value = text;
       }
     }
     lastChildValue = value;
@@ -182,7 +200,14 @@ function evaluateJSXChildren(children, strictCode, env, realm) {
   return array;
 }
 
-function evaluateJSXAttributes(elementType, astAttributes, astChildren, strictCode, env, realm) {
+function evaluateJSXAttributes(
+  elementType: BabelNodeJSXIdentifier | BabelNodeJSXMemberExpression,
+  astAttributes: Array<BabelNodeJSXAttribute | BabelNodeJSXSpreadAttribute>,
+  astChildren: Array<BabelNode>,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+) {
   let attributes = new Map();
   let children = evaluateJSXChildren(astChildren, strictCode, env, realm);
   let defaultPropsObjectExpression = getDefaultProps(elementType, realm);
@@ -193,6 +218,7 @@ function evaluateJSXAttributes(elementType, astAttributes, astChildren, strictCo
       if (property.key.type === "Identifier") {
         name = property.key.name;
       }
+      invariant(typeof name === "string", "Invalid JSX attribute key with non-string type");
       attributes.set(name, GetValue(realm, env.evaluate(property.value, strictCode)));
     });
   }
@@ -201,7 +227,7 @@ function evaluateJSXAttributes(elementType, astAttributes, astChildren, strictCo
       case "JSXAttribute":
         let { name, value } = astAttribute;
         invariant(name.type === "JSXIdentifier", `JSX attribute name type not supported: ${astAttribute.type}`);
-        attributes.set(name.name, evaluateJSXValue(value, strictCode, env, realm));
+        attributes.set(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm));
         break;
       case "JSXSpreadAttribute":
         // TODO
@@ -216,7 +242,7 @@ function evaluateJSXAttributes(elementType, astAttributes, astChildren, strictCo
   };
 }
 
-function getReactElementSymbol(realm) {
+function getReactElementSymbol(realm: Realm) {
   if (reactElementSymbol !== undefined) {
     return reactElementSymbol;
   }
@@ -236,7 +262,13 @@ function getReactElementSymbol(realm) {
   return reactElementSymbol;
 }
 
-function createReactProps(realm, type, attributes, children, env) {
+function createReactProps(
+  realm: Realm,
+  type: Value,
+  attributes: Map<string, Value>,
+  children,
+  env: LexicalEnvironment
+): ObjectValue {
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   for (let [key, value] of attributes) {
     if (typeof key === "string") {
@@ -252,7 +284,7 @@ function createReactProps(realm, type, attributes, children, env) {
   return obj;
 }
 
-function createReactElement(realm, type, key, ref, props) {
+function createReactElement(realm: Realm, type: Value, key: Value, ref: Value, props: ObjectValue) {
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactElementSymbol(realm));
   CreateDataPropertyOrThrow(realm, obj, "type", type);
