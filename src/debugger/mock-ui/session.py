@@ -7,7 +7,7 @@ import fcntl, os
 class Session():
     def __init__(self, adapterPath):
         self.run = True
-        self.channel = Channel()
+        self.channel = Channel(self)
         self.adapterPath = adapterPath
         self.adapterProcess = None
 
@@ -39,6 +39,9 @@ class Session():
     def startAdapter(self):
         self.adapterProcess = subprocess.Popen(["node", self.adapterPath], stdin = subprocess.PIPE, stdout = subprocess.PIPE)
         fcntl.fcntl(self.adapterProcess.stdout.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+
+    def receiveMessages(self, messages):
+        print messages
 
     def shutdown(self):
         self.adapterProcess.kill()

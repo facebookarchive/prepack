@@ -5,9 +5,11 @@ import json
 import time
 
 class Channel():
-    def __init__(self):
+    def __init__(self, session):
         self.sequenceNum = 1
         self.TWO_CRLF = "\r\n\r\n"
+        self.session = session
+        self._requests = {}
 
     def send(self, command, args, process):
         request = {
@@ -27,6 +29,7 @@ class Channel():
         message["type"] = typ
         self.sequenceNum+=1
         message["seq"] = self.sequenceNum
+        self._requests[self.sequenceNum] = message
         js = json.dumps(message)
         length = sys.getsizeof(js) - sys.getsizeof("")
 
@@ -35,7 +38,8 @@ class Channel():
             print content
         else:
             process.stdin.write(content)
-            print self._readProcessStdout(process)
+            messages = self._readProcessStdout(process)
+            self.session.receiveMessages(messages)
 
     def _readProcessStdout(self, process):
         output = ""
@@ -50,4 +54,32 @@ class Channel():
                 break
             time.sleep(.1)
             timeWaited += .1
-        return output
+        return self._parseMessages(output)
+
+    def _parseMessages(self, text):
+        messages = []
+        prefix = "Content-Length: "
+        while len(text) > 0:
+            spIndex = text.index(self.TWO_CRLF)
+            if spIndex == -1:
+                return []
+            header = text[:spIndex]
+            clIndex = header.index(prefix)
+            assert clIndex == 0 #Content-Length should be the first part of any message
+            contentLength = int(header[clIndex + len(prefix):])
+            contentStart = spIndex + len(self.TWO_CRLF)
+            contentEnd = contentStart + contentLength
+            content = text[contentStart:contentEnd]
+            assert len(content) == contentLength
+            message = self._handleMessage(content)
+            if message is not None:
+                messages.append(message)
+            text = text[contentEnd:]
+        return messages
+
+    def _handleMessage(self, rawMessage):
+        try:
+            message = json.loads(rawMessage)
+            return message
+        except:
+            return None

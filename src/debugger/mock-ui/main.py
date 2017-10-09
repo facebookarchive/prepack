@@ -9,7 +9,10 @@ def main():
     assert len(args) == 2
     adapterPath = args[1]
     s = Session(adapterPath)
-    s.serve()
+    try:
+        s.serve()
+    except e:
+        print e
 
 if __name__ == "__main__":
     main()
