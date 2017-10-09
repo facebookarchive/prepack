@@ -21,8 +21,6 @@ import type {
 } from "babel-types";
 import invariant from "../invariant.js";
 
-const usedKeys = new Set();
-
 export function convertExpressionToJSXIdentifier(
   expr: BabelNodeExpression
 ): BabelNodeJSXMemberExpression | BabelNodeJSXIdentifier {
@@ -91,19 +89,23 @@ function addKeyToElement(astElement: BabelNodeJSXElement, key) {
 // we create a unique key for each JSXElement to prevent collisions
 // otherwise React will detect a missing/conflicting key at runtime and
 // this can break the reconcilation of JSXElements in arrays
-function getUniqueJSXElementKey(index?: string) {
+function getUniqueJSXElementKey(index?: string, usedReactElementKeys: Set<string>) {
   let key;
   do {
     key = Math.random().toString(36).replace(/[^a-z]+/g, "").substring(0, 2);
-  } while (!usedKeys.has(key));
-  usedKeys.add(key);
+  } while (usedReactElementKeys.has(key));
+  usedReactElementKeys.add(key);
   if (index !== undefined) {
     return `${key}${index}`;
   }
   return key;
 }
 
-export function applyKeysToNestedArray(expr: BabelNodeArrayExpression, isBase: boolean): void {
+export function applyKeysToNestedArray(
+  expr: BabelNodeArrayExpression,
+  isBase: boolean,
+  usedReactElementKeys: Set<string>
+): void {
   let astElements = expr.elements;
 
   if (Array.isArray(astElements)) {
@@ -112,22 +114,22 @@ export function applyKeysToNestedArray(expr: BabelNodeArrayExpression, isBase: b
 
       if (astElement != null) {
         if (t.isJSXElement(astElement) && isBase === false) {
-          addKeyToElement((astElement: any), getUniqueJSXElementKey("" + i));
+          addKeyToElement((astElement: any), getUniqueJSXElementKey("" + i, usedReactElementKeys));
         } else if (t.isArrayExpression(astElement)) {
-          applyKeysToNestedArray((astElement: any), false);
+          applyKeysToNestedArray((astElement: any), false, usedReactElementKeys);
         } else if (astElement.type === "ConditionalExpression") {
           let alternate = (astElement.alternate: any);
           // it's common for conditions to be in an array, which means we need to check them for keys too
           if (t.isJSXElement(alternate.type) && isBase === false) {
-            addKeyToElement(alternate, getUniqueJSXElementKey("0" + i));
+            addKeyToElement(alternate, getUniqueJSXElementKey("0" + i, usedReactElementKeys));
           } else if (t.isArrayExpression(alternate.type)) {
-            applyKeysToNestedArray(alternate, false);
+            applyKeysToNestedArray(alternate, false, usedReactElementKeys);
           }
           let consequent = (astElement.consequent: any);
           if (t.isJSXElement(consequent.type) && isBase === false) {
-            addKeyToElement(consequent, getUniqueJSXElementKey("1" + i));
+            addKeyToElement(consequent, getUniqueJSXElementKey("1" + i, usedReactElementKeys));
           } else if (t.isArrayExpression(consequent.type)) {
-            applyKeysToNestedArray(consequent, false);
+            applyKeysToNestedArray(consequent, false, usedReactElementKeys);
           }
         }
       }

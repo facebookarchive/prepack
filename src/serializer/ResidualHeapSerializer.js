@@ -45,7 +45,7 @@ import type {
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";
-import type { ResidualFunctionBinding, FunctionInfo, FunctionInstance } from "./types.js";
+import type { ResidualFunctionBinding, FunctionInfo, FunctionInstance, ReactSerializerState } from "./types.js";
 import { TimingStatistics, SerializerStatistics } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -72,13 +72,15 @@ export class ResidualHeapSerializer {
     delayInitializations: boolean,
     referencedDeclaredValues: Set<AbstractValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void,
-    statistics: SerializerStatistics
+    statistics: SerializerStatistics,
+    react: ReactSerializerState
   ) {
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
     this.residualHeapValueIdentifiers = residualHeapValueIdentifiers;
     this.statistics = statistics;
+    this.react = react;
 
     let realmGenerator = this.realm.generator;
     invariant(realmGenerator);
@@ -166,6 +168,7 @@ export class ResidualHeapSerializer {
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
+  react: ReactSerializerState;
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
@@ -722,7 +725,7 @@ export class ResidualHeapSerializer {
 
     // TODO: what if the child is an array but serializes to a reference?
     if (t.isArrayExpression(expr)) {
-      applyKeysToNestedArray(((expr: any): BabelNodeArrayExpression), true);
+      applyKeysToNestedArray(((expr: any): BabelNodeArrayExpression), true, this.react.usedReactElementKeys);
       return expr;
     }
     if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
