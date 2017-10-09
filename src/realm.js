@@ -28,7 +28,14 @@ import {
 import FunctionalComponent from "./intrinsics/react/FunctionalComponent";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
+import {
+  cloneDescriptor,
+  Construct,
+  GetValue,
+  incorporateSavedCompletion,
+  ThrowIfMightHaveBeenDeleted,
+  ToString,
+} from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
@@ -38,7 +45,6 @@ import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
-import { ToString } from "./methods/to.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -390,6 +396,7 @@ export class Realm {
     try {
       c = f();
       if (c instanceof Reference) c = GetValue(this, c);
+      c = incorporateSavedCompletion(this, c);
 
       invariant(this.generator !== undefined);
       invariant(this.modifiedBindings !== undefined);
@@ -437,7 +444,7 @@ export class Realm {
     sc;
 
     let saved_generator = this.generator;
-    this.generator = pg.clone();
+    this.generator = pg === undefined ? pg : pg.clone();
     this.appendGenerator(sg);
     subsequentEffects[1] = pg;
     this.generator = saved_generator;
