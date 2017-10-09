@@ -5,6 +5,10 @@ function MyComponent() {
   // ...
 }
 
+const Container = {
+  MyComponent,
+};
+
 function createElement(type, options, ...children) {
   let key = null;
   let ref = null;
@@ -42,5 +46,6 @@ global.React = {
 };
 
 global.reactElement = <div><MyComponent foo="bar">Hello world</MyComponent></div>;
+global.reactElementB = <div><Container.MyComponent foo="bar">Hello world</Container.MyComponent></div>;
 
-inspect = function() { return reactElement; }
+inspect = function() { return [reactElement, reactElementB]; }

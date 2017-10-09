@@ -16,6 +16,8 @@ import type {
   BabelNodeJSXElement,
   BabelNodeJSXMemberExpression,
   BabelNodeJSXIdentifier,
+  BabelNodeIdentifier,
+  BabelNodeMemberExpression,
 } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -39,6 +41,22 @@ export function convertExpressionToJSXIdentifier(
       );
     case "ArrowFunctionExpression":
       return (expr: any);
+    default:
+      invariant(false, "Invalid JSX type");
+  }
+}
+
+export function convertJSXExpressionToIdentifier(
+  expr: BabelNodeExpression
+): BabelNodeMemberExpression | BabelNodeIdentifier {
+  switch (expr.type) {
+    case "JSXIdentifier":
+      return t.identifier(expr.name);
+    case "JSXMemberExpression":
+      return t.memberExpression(
+        convertJSXExpressionToIdentifier(expr.object),
+        (convertJSXExpressionToIdentifier(expr.property): any)
+      );
     default:
       invariant(false, "Invalid JSX type");
   }

@@ -14,6 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Reference } from "../environment.js";
 import type { BabelNodeJSXElement, BabelNodeJSXIdentifier } from "babel-types";
 import { StringValue, ConcreteValue, Value, NumberValue } from "../values/index.js";
+import { convertJSXExpressionToIdentifier } from '../utils/jsx';
 import {
   GetValue,
   ToString,
@@ -36,7 +37,7 @@ let RESERVED_PROPS = {
 let reactElementSymbol;
 let reactElementSymbolKey = "react.element";
 
-// takan from Babel
+// taken from Babel
 function cleanJSXElementLiteralChild(child, args) {
   let lines = child.value.split(/\r\n|\n|\r/);
 
@@ -87,7 +88,7 @@ function evaluateJSXMemberExpression(ast, strictCode, env, realm) {
     case "JSXIdentifier":
       return GetValue(realm, ResolveBinding(realm, ast.name, strictCode, env));
     case "JSXMemberExpression":
-      return evaluateJSXMemberExpression(ast, strictCode, env, realm);
+      return GetValue(realm, env.evaluate(convertJSXExpressionToIdentifier(ast), strictCode));
     default:
       invariant(false, "Unknown JSX Identifier");
   }
