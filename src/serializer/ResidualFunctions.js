@@ -439,7 +439,8 @@ export class ResidualFunctions {
 
         factoryParams = factoryParams.concat(params).slice();
 
-        // The Replacer below mutates the AST, so let's clone the original AST to avoid modifying it
+        // The Replacer below mutates the AST while the original AST may still be referenced
+        // by another outer residual function so let's clone the original AST to avoid modifying it.
         let factoryNode = t.functionExpression(
           null,
           factoryParams,
