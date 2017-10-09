@@ -84,7 +84,7 @@ function run(
     serialize: false,
     residual: false,
     profile: false,
-    react: false,
+    reactEnabled: false,
   };
 
   while (args.length) {
@@ -169,7 +169,6 @@ function run(
       maxStackDepth: maxStackDepth,
       timeout: timeout,
       additionalFunctions: additionalFunctions,
-      reactEnabled: flags.react,
     },
     flags
   );
