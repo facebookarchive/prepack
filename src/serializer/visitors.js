@@ -56,6 +56,27 @@ function replaceName(path, residualFunctionBinding, name, data) {
   }
 }
 
+function getLiteralTruthiness(node): { known: boolean, value?: boolean } {
+  // In the return value, 'known' is true only if this is a literal of known truthiness and with no side effects; if 'known' is true, 'value' is its truthiness.
+  if (t.isBooleanLiteral(node) || t.isNumericLiteral(node) || t.isStringLiteral(node)) {
+    return { known: true, value: !!node.value };
+  }
+  if (
+    t.isFunctionExpression(node) ||
+    t.isArrowFunctionExpression(node) ||
+    t.isRegExpLiteral(node) ||
+    (t.isClassExpression(node) && node.superClass === null && node.body.body.length === 0) ||
+    (t.isObjectExpression(node) && node.properties.length === 0) ||
+    (t.isArrayExpression(node) && node.elements.length === 0)
+  ) {
+    return { known: true, value: true };
+  }
+  if (t.isNullLiteral(node)) {
+    return { known: true, value: false };
+  }
+  return { known: false };
+}
+
 export let ClosureRefReplacer = {
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefReplacerState) {
     if (ignorePath(path)) return;
@@ -93,6 +114,71 @@ export let ClosureRefReplacer = {
         replaceName(nestedPath, residualFunctionBinding, name, residualFunctionBindings);
       }
     }
+  },
+
+  // A few very simple dead code elimination helpers. Eventually these should be subsumed by the partial evaluators.
+  IfStatement: {
+    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
+      let node = path.node;
+      let testTruthiness = getLiteralTruthiness(node.test);
+      if (testTruthiness.known) {
+        if (testTruthiness.value) {
+          // Strictly speaking this is not safe: Annex B.3.4 allows FunctionDeclarations as the body of IfStatements in sloppy mode,
+          // which have weird hoisting behavior: `console.log(typeof f); if (true) function f(){} console.log(typeof f)` will print 'undefined', 'function', but
+          // `console.log(typeof f); function f(){} console.log(typeof f)` will print 'function', 'function'.
+          // However, Babylon can't parse these, so it doesn't come up.
+          path.replaceWith(node.consequent);
+        } else {
+          if (node.alternate !== null) {
+            path.replaceWith(node.alternate);
+          } else {
+            path.remove();
+          }
+        }
+      }
+    },
+  },
+
+  ConditionalExpression: {
+    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
+      let node = path.node;
+      let testTruthiness = getLiteralTruthiness(node.test);
+      if (testTruthiness.known) {
+        path.replaceWith(testTruthiness.value ? node.consequent : node.alternate);
+      }
+    },
+  },
+
+  LogicalExpression: {
+    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
+      let node = path.node;
+      let leftTruthiness = getLiteralTruthiness(node.left);
+      if (node.operator === "&&" && leftTruthiness.known) {
+        path.replaceWith(leftTruthiness.value ? node.right : node.left);
+      } else if (node.operator === "||" && leftTruthiness.known) {
+        path.replaceWith(leftTruthiness.value ? node.left : node.right);
+      }
+    },
+  },
+
+  WhileStatement: {
+    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
+      let node = path.node;
+      let testTruthiness = getLiteralTruthiness(node.test);
+      if (testTruthiness.known && !testTruthiness.value) {
+        path.remove();
+      }
+    },
+  },
+
+  DoWhileStatement: {
+    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
+      let node = path.node;
+      let testTruthiness = getLiteralTruthiness(node.test);
+      if (testTruthiness.known && !testTruthiness.value) {
+        path.replaceWith(node.body);
+      }
+    },
   },
 };
 
