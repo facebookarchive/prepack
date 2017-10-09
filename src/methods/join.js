@@ -33,19 +33,18 @@ import { AbstractValue, ObjectValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 
-export function stopEffectCaptureAndJoinCompletions(
+export function stopEffectCaptureJoinApplyAndReturnCompletion(
   c1: PossiblyNormalCompletion,
   c2: AbruptCompletion,
   realm: Realm
-): Completion {
+): AbruptCompletion {
   let e = realm.getCapturedEffects();
   invariant(e !== undefined);
   realm.stopEffectCaptureAndUndoEffects();
-  e[0] = c2;
   let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, c1, c2, e);
   realm.applyEffects(joined_effects);
   let result = joined_effects[0];
-  invariant(result instanceof Completion);
+  invariant(result instanceof AbruptCompletion);
   return result;
 }
 
@@ -134,6 +133,33 @@ export function composePossiblyNormalCompletions(
       pnc.alternate,
       pnc.alternateEffects
     );
+  }
+}
+
+export function updatePossiblyNormalCompletionWithSubsequentEffects(
+  realm: Realm,
+  pnc: PossiblyNormalCompletion,
+  subsequentEffects: Effects
+) {
+  let v = subsequentEffects[0];
+  invariant(v instanceof Value);
+  pnc.value = v;
+  if (pnc.consequent instanceof AbruptCompletion) {
+    if (pnc.alternate instanceof Value) {
+      pnc.alternate = v;
+      pnc.alternateEffects = realm.composeEffects(pnc.alternateEffects, subsequentEffects);
+    } else {
+      invariant(pnc.alternate instanceof PossiblyNormalCompletion);
+      updatePossiblyNormalCompletionWithSubsequentEffects(realm, pnc.alternate, subsequentEffects);
+    }
+  } else {
+    if (pnc.consequent instanceof Value) {
+      pnc.consequent = v;
+      pnc.consequentEffects = realm.composeEffects(pnc.consequentEffects, subsequentEffects);
+    } else {
+      invariant(pnc.consequent instanceof PossiblyNormalCompletion);
+      updatePossiblyNormalCompletionWithSubsequentEffects(realm, pnc.consequent, subsequentEffects);
+    }
   }
 }
 

@@ -30,13 +30,13 @@ import type { Binding } from "./environment.js";
 import {
   cloneDescriptor,
   composeGenerators,
+  composePossiblyNormalCompletions,
   Construct,
   GetValue,
   incorporateSavedCompletion,
   ThrowIfMightHaveBeenDeleted,
   ToString,
 } from "./methods/index.js";
-import type { NormalCompletion } from "./completions.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
@@ -90,6 +90,12 @@ export class ExecutionContext {
   isStrict: boolean;
   savedEffects: void | Effects;
   savedCompletion: void | PossiblyNormalCompletion;
+
+  composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
+    if (this.savedCompletion === undefined) this.savedCompletion = completion;
+    else this.savedCompletion = composePossiblyNormalCompletions(this.realm, this.savedCompletion, completion);
+    return completion.value;
+  }
 
   setCaller(context: ExecutionContext): void {
     this.caller = context;
@@ -233,7 +239,7 @@ export class Realm {
       env: LexicalEnvironment,
       realm: Realm,
       metadata?: any
-    ) => NormalCompletion | Value | Reference,
+    ) => Value | Reference,
   };
   partialEvaluators: {
     [key: string]: (
@@ -359,7 +365,7 @@ export class Realm {
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
   evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, state?: any): Effects {
-    return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode), state);
+    return this.evaluateForEffects(() => env.evaluateCompletion(ast, strictCode), state);
   }
 
   evaluateAndRevertInGlobalEnv(func: () => Value): void {

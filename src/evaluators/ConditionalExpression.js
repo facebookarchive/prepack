@@ -9,7 +9,6 @@
 
 /* @flow */
 
-import type { NormalCompletion } from "../completions.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
@@ -24,7 +23,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): NormalCompletion | Value | Reference {
+): Value | Reference {
   let exprRef = env.evaluate(ast.test, strictCode);
   let exprValue = GetValue(realm, exprRef);
 
