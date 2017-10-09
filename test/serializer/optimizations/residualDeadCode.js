@@ -1,4 +1,5 @@
 // does not contain:eliminate
+// does not contain:while
 // contains:preserve
 (function () {
   let f = false;
@@ -16,6 +17,7 @@
     t || console.log("eliminate me");
 
     while (f) console.log("eliminate me");
+    do { } while (f);
 
     0 ? console.log("eliminate me") : null;
     1 ? null : console.log("eliminate me");
