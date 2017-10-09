@@ -1274,6 +1274,7 @@ export class ResidualHeapSerializer {
 
     this.emitter.finalize();
 
+    this.residualFunctions.residualFunctionInitializers.factorifyInitializers(this.factoryNameGenerator);
     let { unstrictFunctionBodies, strictFunctionBodies, requireStatistics } = this.residualFunctions.spliceFunctions(
       rewrittenAdditionalFunctions
     );
