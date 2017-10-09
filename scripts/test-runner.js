@@ -112,6 +112,7 @@ function runTest(name, code, options, args) {
   if (code.includes("// omit invariants")) options.omitInvariants = true;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
+  if (code.includes("// react")) options.reactEnabled = true;
   if (code.includes("// throws introspection error")) {
     try {
       let realmOptions = {
@@ -216,8 +217,12 @@ function runTest(name, code, options, args) {
     }
     let unique = 27277;
     let oldUniqueSuffix = "";
+    let expectedCode = code;
+    if (compileJSXWithBabel) {
+      expectedCode = transformWithBabel(expectedCode, ["transform-react-jsx"]);
+    }
     try {
-      expected = exec(`${addedCode}\n(function () {${code} // keep newline here as code may end with comment
+      expected = exec(`${addedCode}\n(function () {${expectedCode} // keep newline here as code may end with comment
 }).call(this);`);
 
       let i = 0;

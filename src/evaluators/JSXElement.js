@@ -268,6 +268,7 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): Value | Reference {
+  invariant(realm.react.enabled, "JSXElements can only be evaluated with the reactEnabled option");
   let openingElement = ast.openingElement;
   let type = evaluateJSXIdentifier(openingElement.name, strictCode, env, realm);
   let { attributes, children } = evaluateJSXAttributes(

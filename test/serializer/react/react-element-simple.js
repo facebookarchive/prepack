@@ -41,6 +41,8 @@ global.React = {
   createElement,
 };
 
-global.reactElement = <div><MyComponent foo="bar">Hello world</MyComponent></div>;
+global.reactElement = createElement('div', null, createElement(MyComponent, {
+  foo: 'bar'
+}, 'Hello world'));
 
 inspect = function() { return reactElement; }
