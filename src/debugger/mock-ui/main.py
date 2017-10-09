@@ -11,7 +11,7 @@ def main():
     s = Session(adapterPath)
     try:
         s.serve()
-    except e:
+    except Exception as e:
         print e
 
 if __name__ == "__main__":

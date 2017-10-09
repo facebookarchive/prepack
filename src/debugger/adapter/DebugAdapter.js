@@ -33,8 +33,8 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.sendEvent(new InitializedEvent());
 
     response.body = response.body || {};
-
-    //Respond back to the frontend with the configurations. Will add the configurations gradually as needed.
+    response.body.supportsConfigurationDoneRequest = true;
+    //Respond back to the frontend with the configurations. Will add more configurations gradually as needed.
     this.sendResponse(response);
   }
 }
