@@ -71,17 +71,12 @@ function addKeyToElement(astElement: BabelNodeJSXElement, key) {
   for (let i = 0; i < astAttributes.length; i++) {
     let astAttribute = astAttributes[i];
 
-    if (
-      t.isJSXAttribute(astAttribute.type) &&
-      t.isJSXIdentifier(astAttribute.name.type) &&
-      astAttribute.name.name === "key"
-    ) {
+    if (t.isJSXAttribute(astAttribute) && t.isJSXIdentifier(astAttribute.name) && astAttribute.name.name === "key") {
       existingKey = astAttribute.value;
+      break;
     }
   }
-  if (existingKey !== null) {
-    // do nothing for now
-  } else {
+  if (existingKey === null) {
     astAttributes.push(t.jSXAttribute(t.jSXIdentifier("key"), t.stringLiteral(key)));
   }
 }

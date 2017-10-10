@@ -726,12 +726,9 @@ export class ResidualHeapSerializer {
     // TODO: what if the child is an array but serializes to a reference?
     if (t.isArrayExpression(expr)) {
       applyKeysToNestedArray(((expr: any): BabelNodeArrayExpression), true, this.react.usedReactElementKeys);
-      return expr;
-    }
-    if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
+    } else if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
       return t.jSXText((expr: any).value + "");
-    }
-    if (t.isJSXElement(expr)) {
+    } else if (t.isJSXElement(expr)) {
       return expr;
     }
     return t.jSXExpressionContainer(expr);
