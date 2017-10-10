@@ -30,6 +30,7 @@ import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js"
 import * as t from "babel-types";
 import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter.js";
 import { ResidualHeapLazyObjectCalculator } from "./ResidualHeapLazyObjectCalculator.js";
+import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -149,6 +150,15 @@ export class Serializer {
     );
     residualLazyObjectCalculator.visitRoots();
     residualLazyObjectCalculator.repotResult();
+    let residualHeapGraphGenerator = new ResidualHeapGraphGenerator(
+      this.realm,
+      this.logger,
+      this.modules,
+      additionalFunctionValuesAndEffects,
+      residualRefCounter.getResult()
+    );
+    residualHeapGraphGenerator.visitRoots();
+    residualHeapGraphGenerator.generateResult();
 
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
