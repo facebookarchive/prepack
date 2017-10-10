@@ -13,8 +13,9 @@ function produceObject() {
 }
 
 function additional2() {
+  "use strict";
   let x1 = produceObject();
-  bar = function() { return x1; }
+  global.bar = function() { return x1; }
 }
 
 inspect = function() {

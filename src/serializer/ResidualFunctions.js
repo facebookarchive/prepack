@@ -282,7 +282,7 @@ export class ResidualFunctions {
       if (additionalFunctionNestedInstances.length > 0) naiveProcessInstances(additionalFunctionNestedInstances);
       if (shouldInline || normalInstances.length === 1 || usesArguments) {
         naiveProcessInstances(normalInstances);
-      } else {
+      } else if (normalInstances.length > 0) {
         let suffix = normalInstances[0].functionValue.__originalName || "";
         let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
 
