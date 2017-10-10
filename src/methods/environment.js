@@ -64,7 +64,6 @@ import type {
   BabelNodeArrayPattern,
   BabelNodeStatement,
   BabelNodeLVal,
-  BabelNodePattern,
 } from "babel-types";
 
 // ECMA262 6.2.3
@@ -310,7 +309,11 @@ export function BlockDeclarationInstantiation(
   // 3. Let declarations be the LexicallyScopedDeclarations of code.
   let declarations = [];
   for (let node of body) {
-    if (node.type === "ClassDeclaration" || node.type === "FunctionDeclaration" || (node.type === "VariableDeclaration" && node.kind !== "var")) {
+    if (
+      node.type === "ClassDeclaration" ||
+      node.type === "FunctionDeclaration" ||
+      (node.type === "VariableDeclaration" && node.kind !== "var")
+    ) {
       declarations.push(node);
     }
   }
