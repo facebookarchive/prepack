@@ -16,13 +16,11 @@ class FunctionalComponent {
   name: string;
   ast: BabelNode;
   type: null;
-  defaultPropsObjectExpression: null;
 
   constructor(name: string, ast: BabelNode, path: BabelTraversePath) {
     this.name = name;
     this.ast = ast;
     this.type = null;
-    this.defaultPropsObjectExpression = null;
   }
 }
 

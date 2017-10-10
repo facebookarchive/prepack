@@ -178,7 +178,7 @@ export class Realm {
 
     this.react = {
       enabled: opts.reactEnabled || false,
-      componentsFromNames: new Map(),
+      componentsByName: new Map(),
       reactElementSymbol: undefined,
     };
 
@@ -215,7 +215,7 @@ export class Realm {
 
   react: {
     enabled: boolean,
-    componentsFromNames: Map<string, FunctionalComponent>,
+    componentsByName: Map<string, FunctionalComponent>,
     reactElementSymbol?: SymbolValue,
   };
 

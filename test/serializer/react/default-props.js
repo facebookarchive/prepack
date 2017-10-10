@@ -1,12 +1,19 @@
 // react
 // babel:jsx
 
-function MyComponent() {
-  // ...
+function MyComponent(props) {
+  return <span>{props.title}</span>;
 }
+MyComponent.defaultProps = {
+  title: 'Hello world',
+  children: 'No children!',
+};
 
-const Container = {
-  MyComponent,
+function ChildComponent(props) {
+  return <span>{props.title}</span>;
+}
+ChildComponent.defaultProps = {
+  title: 'I am a child',
 };
 
 function createElement(type, options, ...children) {
@@ -45,28 +52,10 @@ global.React = {
   createElement,
 };
 
-global.toggle = true;
-
 global.reactElement = (
-  <div>
-    <span>Span 1</span>
-    Text node
-    {
-      [
-        <span>Span 2</span>,
-        "Text node",
-        [
-          <em key="a">Em 1</em>,
-          <em key="b">Em 2</em>,
-          "Text node",
-          <em key="c">Em 3</em>,
-          toggle ? <em key="d">Em 4</em> : <em key="d">Em 5</em>,
-        ],
-        <span>Span 3</span>,
-      ]
-    }
-    <span>Span 4</span>
-  </div>
+  <MyComponent>
+    <ChildComponent title={"I am a child (overwritten)"} />
+  </MyComponent>
 );
 
 inspect = function() { return reactElement; }

@@ -25,6 +25,7 @@ import type {
 } from "babel-types";
 import { StringValue, ConcreteValue, Value, NumberValue, ObjectValue, SymbolValue } from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../utils/jsx";
+import * as t from "babel-types";
 import {
   GetValue,
   ToString,
@@ -138,19 +139,28 @@ function isTagName(ast: BabelNode) {
   return ast.type === "JSXIdentifier" && /^[a-z]|\-/.test(((ast: any): BabelNodeJSXIdentifier).name);
 }
 
-function getDefaultProps(elementType: BabelNodeJSXIdentifier | BabelNodeJSXMemberExpression, realm: Realm) {
+function getDefaultProps(
+  elementType: BabelNodeJSXIdentifier | BabelNodeJSXMemberExpression,
+  env,
+  realm: Realm
+): null | ObjectValue {
   let name;
   if (elementType.type === "JSXIdentifier") {
     name = elementType.name;
   }
   if (!isTagName(elementType) && typeof name === "string") {
-    let componentsFromNames = realm.react.componentsFromNames;
+    try {
+      // find the value of "ComponentXXX.defaultProps"
+      let defaultProps = GetValue(
+        realm,
+        env.evaluate(t.memberExpression(t.identifier(name), t.identifier("defaultProps")), false)
+      );
 
-    if (componentsFromNames.has(name)) {
-      let component = componentsFromNames.get(name);
-      if (component !== undefined) {
-        return component.defaultPropsObjectExpression;
+      if (defaultProps instanceof ObjectValue) {
+        return defaultProps;
       }
+    } catch (error) {
+      return null;
     }
   }
   return null;
@@ -209,22 +219,32 @@ function evaluateJSXAttributes(
 ) {
   let attributes = new Map();
   let children = evaluateJSXChildren(astChildren, strictCode, env, realm);
-  let defaultPropsObjectExpression = getDefaultProps(elementType, realm);
+  let defaultProps = getDefaultProps(elementType, env, realm);
 
-  if (defaultPropsObjectExpression !== null) {
-    defaultPropsObjectExpression.properties.forEach(property => {
-      let name;
-      if (property.key.type === "Identifier") {
-        name = property.key.name;
+  // defaultProps are a bit like default function arguments
+  // if an actual value exists, it should overwrite the default value
+  if (defaultProps !== null) {
+    for (let [key, defaultProp] of defaultProps.properties) {
+      if (defaultProp !== undefined && defaultProp.descriptor !== undefined) {
+        let value = defaultProp.descriptor.value;
+
+        if (value instanceof Value) {
+          if (key === "children") {
+            if (children === null) {
+              children = value;
+            }
+          } else {
+            attributes.set(key, value);
+          }
+        }
       }
-      invariant(typeof name === "string", "Invalid JSX attribute key with non-string type");
-      attributes.set(name, GetValue(realm, env.evaluate(property.value, strictCode)));
-    });
+    }
   }
   for (let astAttribute of astAttributes) {
     switch (astAttribute.type) {
       case "JSXAttribute":
         let { name, value } = astAttribute;
+
         invariant(name.type === "JSXIdentifier", `JSX attribute name type not supported: ${astAttribute.type}`);
         attributes.set(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm));
         break;
