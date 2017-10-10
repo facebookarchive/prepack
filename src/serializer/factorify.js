@@ -92,19 +92,44 @@ function getObjectKeys(obj: BabelNodeObjectExpression): string | false {
 export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGenerator: NameGenerator) {
   let signatures = Object.create(null);
 
+  let initializerAstNodeName = "init";
   for (let node of body) {
-    if (node.type !== "VariableDeclaration") continue;
+    switch (node.type) {
+      case "VariableDeclaration":
+        for (let declar of node.declarations) {
+          let { init } = declar;
+          if (!init) continue;
+          if (init.type !== "ObjectExpression") continue;
 
-    for (let declar of node.declarations) {
-      let { init } = declar;
-      if (!init) continue;
-      if (init.type !== "ObjectExpression") continue;
+          let keys = getObjectKeys(init);
+          if (!keys) continue;
 
-      let keys = getObjectKeys(init);
-      if (!keys) continue;
+          let declars = (signatures[keys] = signatures[keys] || []);
+          declars.push(declar);
+        }
+        break;
 
-      let declars = (signatures[keys] = signatures[keys] || []);
-      declars.push(declar);
+      case "ExpressionStatement":
+        const expr = node.expression;
+        if (expr.type !== "AssignmentExpression") {
+          break;
+        }
+        const { right } = expr;
+        if (right.type !== "ObjectExpression") {
+          break;
+        }
+
+        let keys = getObjectKeys(right);
+        if (!keys) continue;
+
+        initializerAstNodeName = "right";
+        let declars = (signatures[keys] = signatures[keys] || []);
+        declars.push(node.expression);
+        break;
+
+      default:
+        // Continue to next node.
+        break;
     }
   }
 
@@ -133,11 +158,11 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
     //
     for (let declar of declars) {
       let args = [];
-      for (let prop of declar.init.properties) {
+      for (let prop of declar[initializerAstNodeName].properties) {
         args.push(prop.value);
       }
 
-      declar.init = t.callExpression(rootFactoryId, args);
+      declar[initializerAstNodeName] = t.callExpression(rootFactoryId, args);
     }
 
     //
@@ -154,7 +179,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
 
         let sharedArgs = [];
         for (let i = 0; i < keys.length; i++) {
-          if (isSameNode(declar.init.arguments[i], declar2.init.arguments[i])) {
+          if (isSameNode(declar[initializerAstNodeName].arguments[i], declar2[initializerAstNodeName].arguments[i])) {
             sharedArgs.push(i);
           }
         }
@@ -192,7 +217,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
 
       let subFactoryArgs = [];
       let subFactoryParams = [];
-      let sharedArgs = declarsSub[0].init.arguments;
+      let sharedArgs = declarsSub[0][initializerAstNodeName].arguments;
       for (let i = 0; i < sharedArgs.length; i++) {
         let arg = sharedArgs[i];
         if (removeArgs.indexOf(i + "") >= 0) {
@@ -212,7 +237,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       for (let declarSub of declarsSub) {
         seen.add(declarSub);
 
-        let call = declarSub.init;
+        let call = declarSub[initializerAstNodeName];
         call.callee = subFactoryId;
         call.arguments = call.arguments.filter(function(val, i) {
           return removeArgs.indexOf(i + "") < 0;
