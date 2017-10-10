@@ -721,9 +721,15 @@ export class ResidualHeapSerializer {
   }
 
   _serializeValueReactElementChild(child: Value): BabelNode {
+    if (child instanceof ObjectValue && child.properties.has("$$typeof")) {
+      // if we know it's a ReactElement, we add the value to the serializedValues
+      // and short cut to get back the JSX expression so we don't emit additional data
+      // we do this to ensure child JSXElements can get keys assigned if needed
+      this.serializedValues.add(child);
+      return this._serializeValueObject(child);
+    }
     const expr = this.serializeValue(child);
 
-    // TODO: what if the child is an array but serializes to a reference?
     if (t.isArrayExpression(expr)) {
       applyKeysToNestedArray(((expr: any): BabelNodeArrayExpression), true, this.react.usedReactElementKeys);
     } else if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
