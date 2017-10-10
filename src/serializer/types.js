@@ -55,7 +55,7 @@ export type ResidualFunctionBinding = {
   referentialized?: boolean,
   // If the binding is only accessed by an additional function or nested values
   // this field contains that additional function. (Determines what initializer
-  // to put the binding in -- global or additional function) 
+  // to put the binding in -- global or additional function)
   referencedOnlyFromAdditionalFunctions?: FunctionValue,
   scope?: ScopeBinding,
 };
