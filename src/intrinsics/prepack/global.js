@@ -20,6 +20,7 @@ import {
   StringValue,
   UndefinedValue,
   Value,
+  ECMAScriptSourceFunctionValue,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
@@ -111,6 +112,42 @@ export default function(realm: Realm): void {
           if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
         return result;
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__additionalFunctions", {
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__additionalFunctions", true),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  let uid = 0;
+  // Allows dynamically registering additional functions.
+  // WARNING: these functions will get exposed at global scope and called there.
+  // NB: If we interpret one of these calls in an evaluateForEffects context
+  //     that is not subsequently applied, the function will not be registered
+  //     (because prepack won't have a correct value for the FunctionValue itself)
+  global.$DefineOwnProperty("__registerAdditionalFunctionToPrepack", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__registerAdditionalFunctionToPrepack",
+      "__registerAdditionalFunctionToPrepack",
+      0,
+      (context, [functionValue]) => {
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        realm.assignToGlobal(
+          t.memberExpression(
+            t.memberExpression(t.identifier("global"), t.identifier("__additionalFunctions")),
+            t.identifier("" + uid++)
+          ),
+          functionValue
+        );
+        return realm.intrinsics.undefined;
       }
     ),
     writable: true,
