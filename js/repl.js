@@ -106,28 +106,18 @@ function processError(errorOutput, error) {
   }
 }
 
-function getUrlParameter(query, name) {
-  var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-  var results = regex.exec(query);
-  return results === null ? '' : decodeURIComponent(results[1]);
-};
-
-function getHashedDemo(query) {
-  var name = getUrlParameter(query, 'name');
-  var code = getUrlParameter(query, 'code');
-  if (name && code && code.match(/^[a-zA-Z0-9+/=_-]+$/)) {
-    return {
-      name: name,
-      code: LZString.decompressFromEncodedURIComponent(code)
-    }
+function getHashedDemo(hash) {
+  if (hash[0] !== '#' || hash.length < 2) return null;
+  var encoded = hash.slice(1);
+  if (encoded.match(/^[a-zA-Z0-9+/=_-]+$/)) {
+    return LZString.decompressFromEncodedURIComponent(encoded)
   }
   return null;
 }
 
 function makeDemoSharable() {
-  var name = selectInput.value;
-  var code = LZString.compressToEncodedURIComponent(input.getValue());
-  history.replaceState(undefined, undefined, `?name=${name}&code=${code}`);
+  var encoded = LZString.compressToEncodedURIComponent(input.getValue());
+  history.replaceState(undefined, undefined, `#${encoded}`);
 }
 
 function compile() {
@@ -298,11 +288,11 @@ function addDefaultExamples() {
   ].join('\n');
   cache[name] = code;
 
-  var hashedDemo = getHashedDemo(location.search);
+  var hashedDemo = getHashedDemo(location.hash);
   name = null;
   if (hashedDemo) {
-    name = hashedDemo.name;
-    cache[name] = hashedDemo.code;
+    name = createHashedDemoName(hashedDemo, cache);
+    cache[name] = hashedDemo;
   }
 
   generateDemosSelect(cache, selectRecord);
@@ -310,6 +300,17 @@ function addDefaultExamples() {
   setTimeout(() => {
     demoSelector.change(name || 'Fibonacci');
   });
+}
+
+function createHashedDemoName(hashedDemo, cache) {
+  var name = '\xa0';
+  for (var key in cache) {
+    if (cache[key] === hashedDemo) {
+      name = key;
+      break;
+    }
+  }
+  return name;
 }
 
 function addOptions() {
