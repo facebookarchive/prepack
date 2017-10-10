@@ -226,15 +226,15 @@ function evaluateJSXAttributes(
   if (defaultProps !== null) {
     for (let [key, defaultProp] of defaultProps.properties) {
       if (defaultProp !== undefined && defaultProp.descriptor !== undefined) {
-        let value = defaultProp.descriptor.value;
+        let defaultPropValue = defaultProp.descriptor.value;
 
-        if (value instanceof Value) {
+        if (defaultPropValue instanceof Value) {
           if (key === "children") {
             if (children === null) {
-              children = value;
+              children = defaultPropValue;
             }
           } else {
-            attributes.set(key, value);
+            attributes.set(key, defaultPropValue);
           }
         }
       }
@@ -249,8 +249,26 @@ function evaluateJSXAttributes(
         attributes.set(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm));
         break;
       case "JSXSpreadAttribute":
-        // TODO
-        return invariant(false, "TODO: JSX Spread Attibutes are not supported");
+        let spreadValue = GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
+
+        if (spreadValue instanceof ObjectValue) {
+          for (let [key, spreadProp] of spreadValue.properties) {
+            if (spreadProp !== undefined && spreadProp.descriptor !== undefined) {
+              let spreadPropValue = spreadProp.descriptor.value;
+
+              if (spreadPropValue instanceof Value) {
+                if (key === "children") {
+                  children = spreadPropValue;
+                } else {
+                  attributes.set(key, spreadPropValue);
+                }
+              }
+            }
+          }
+        } else {
+          invariant(false, "TODO: only ObjectValue JSX Spread Attributes are supported");
+        }
+        break;
       default:
         invariant(false, `Unknown JSX attribute type:: ${astAttribute.type}`);
     }
