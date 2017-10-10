@@ -16,3 +16,6 @@ esproposal.class_static_fields=enable
 esproposal.class_instance_fields=enable
 unsafe.enable_getters_and_setters=true
 module.name_mapper='/lib/' -> '/src/'
+
+[version]
+^0.55.0
