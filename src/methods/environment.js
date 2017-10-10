@@ -64,6 +64,7 @@ import type {
   BabelNodeArrayPattern,
   BabelNodeStatement,
   BabelNodeLVal,
+  BabelNodePattern,
 } from "babel-types";
 
 // ECMA262 6.2.3
