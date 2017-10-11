@@ -43,6 +43,8 @@ export type FunctionInfo = {
   usesThis: boolean,
 };
 
+export type FactoryFunctionInfo = { factoryId: BabelNodeIdentifier, functionInfo: FunctionInfo };
+
 export type ResidualFunctionBinding = {
   value: void | Value,
   modified: boolean,

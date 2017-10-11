@@ -534,6 +534,7 @@ export function SetFunctionName(
   });
 }
 
+let functionBodyUniqueTagSeed = 1;
 // ECMA262 9.2.3
 export function FunctionInitialize(
   realm: Realm,
@@ -584,6 +585,7 @@ export function FunctionInitialize(
   F.$FormalParameters = ParameterList;
 
   // 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
+  (Body: any).uniqueTag = functionBodyUniqueTagSeed++;
   F.$ECMAScriptCode = Body;
 
   // 8. Set the [[ScriptOrModule]] internal slot of F to GetActiveScriptOrModule().
