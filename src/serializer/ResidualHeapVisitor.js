@@ -115,7 +115,6 @@ export class ResidualHeapVisitor {
 
   visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
     // visit properties
-    // prototype
     if (kind !== "ReactElement") {
       for (let [symbol, propertyBinding] of obj.symbols) {
         invariant(propertyBinding);

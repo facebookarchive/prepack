@@ -11,7 +11,7 @@
 
 import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
-import { ToLength, IsArray, Get } from "../methods/index.js";
+import { ToLength, IsArray, Get, IsAccessorDescriptor } from "../methods/index.js";
 import {
   ArrayValue,
   BoundFunctionValue,
@@ -29,7 +29,12 @@ import {
   NativeFunctionValue,
   UndefinedValue,
 } from "../values/index.js";
-import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute, applyKeysToNestedArray } from "../utils/jsx";
+import {
+  convertExpressionToJSXIdentifier,
+  convertKeyValueToJSXAttribute,
+  applyKeysToNestedArray,
+  isReactElement,
+} from "../utils/jsx";
 import * as t from "babel-types";
 import type {
   BabelNodeArrayExpression,
@@ -707,6 +712,7 @@ export class ResidualHeapSerializer {
 
       if (val !== undefined) {
         let descriptor = val.descriptor;
+        invariant(!IsAccessorDescriptor(this.realm, descriptor), "expected descriptor to be a non-accessor property");
 
         if (descriptor !== undefined) {
           let descriptorValue = descriptor.value;
@@ -721,19 +727,19 @@ export class ResidualHeapSerializer {
   }
 
   _serializeValueReactElementChild(child: Value): BabelNode {
-    if (child instanceof ObjectValue && child.properties.has("$$typeof")) {
+    if (isReactElement(child)) {
       // if we know it's a ReactElement, we add the value to the serializedValues
       // and short cut to get back the JSX expression so we don't emit additional data
       // we do this to ensure child JSXElements can get keys assigned if needed
       this.serializedValues.add(child);
-      return this._serializeValueObject(child);
+      return this._serializeValueObject(((child: any): ObjectValue));
     }
     const expr = this.serializeValue(child);
 
     if (t.isArrayExpression(expr)) {
       applyKeysToNestedArray(((expr: any): BabelNodeArrayExpression), true, this.react.usedReactElementKeys);
     } else if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
-      return t.jSXText((expr: any).value + "");
+      return t.jSXText(((expr: any).value: string) + "");
     } else if (t.isJSXElement(expr)) {
       return expr;
     }
@@ -775,6 +781,7 @@ export class ResidualHeapSerializer {
       for (let [key, propertyBinding] of (propsValue: ObjectValue).properties) {
         let desc = propertyBinding.descriptor;
         if (desc === undefined) continue; // deleted
+        invariant(!IsAccessorDescriptor(this.realm, desc), "expected descriptor to be a non-accessor property");
 
         invariant(key !== "key" && key !== "ref", `"${key}" is a reserved prop name`);
 
@@ -797,11 +804,8 @@ export class ResidualHeapSerializer {
               continue;
             }
           }
-          if (childrenValue instanceof Value) {
-            children.push(this._serializeValueReactElementChild(childrenValue));
-          } else {
-            this.logger.logError(val, `JSXElement "props.children" failed to serialize due to a non-value`);
-          }
+          // otherwise it must be a value, as desc.value !== undefined.
+          children.push(this._serializeValueReactElementChild(((childrenValue: any): Value)));
           continue;
         }
         if (desc.value instanceof Value) {

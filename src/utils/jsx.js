@@ -20,6 +20,21 @@ import type {
   BabelNodeMemberExpression,
 } from "babel-types";
 import invariant from "../invariant.js";
+import { Value, ObjectValue, SymbolValue, StringValue } from "../values/index.js";
+import { Get } from "../methods/index.js";
+
+export function isReactElement(val: Value): boolean {
+  if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
+    let realm = val.$Realm;
+    let $$typeof = Get(realm, val, "$$typeof");
+    if ($$typeof instanceof SymbolValue) {
+      let existsInGlobalRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof) !== undefined;
+      let description = $$typeof.$Description;
+      return existsInGlobalRegistry && description instanceof StringValue && description.value === "react.element";
+    }
+  }
+  return false;
+}
 
 export function convertExpressionToJSXIdentifier(
   expr: BabelNodeExpression
@@ -37,8 +52,6 @@ export function convertExpressionToJSXIdentifier(
         convertExpressionToJSXIdentifier(expr.object),
         (convertExpressionToJSXIdentifier(expr.property): any)
       );
-    case "ArrowFunctionExpression":
-      return (expr: any);
     default:
       invariant(false, "Invalid JSX type");
   }

@@ -25,7 +25,6 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import FunctionalComponent from "./intrinsics/react/FunctionalComponent";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import {
@@ -178,7 +177,6 @@ export class Realm {
 
     this.react = {
       enabled: opts.reactEnabled || false,
-      componentsByName: new Map(),
       reactElementSymbol: undefined,
     };
 
@@ -215,7 +213,6 @@ export class Realm {
 
   react: {
     enabled: boolean,
-    componentsByName: Map<string, FunctionalComponent>,
     reactElementSymbol?: SymbolValue,
   };
 

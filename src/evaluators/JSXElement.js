@@ -12,6 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Reference } from "../environment.js";
+import { FatalError } from "../errors.js";
 import type {
   BabelNode,
   BabelNodeStringLiteral,
@@ -23,10 +24,19 @@ import type {
   BabelNodeJSXSpreadAttribute,
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
-import { StringValue, ConcreteValue, Value, NumberValue, ObjectValue, SymbolValue } from "../values/index.js";
+import {
+  StringValue,
+  ConcreteValue,
+  AbstractValue,
+  Value,
+  NumberValue,
+  ObjectValue,
+  SymbolValue,
+} from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../utils/jsx";
 import * as t from "babel-types";
 import {
+  Get,
   GetValue,
   ToString,
   ResolveBinding,
@@ -36,6 +46,7 @@ import {
   Set,
 } from "../methods/index.js";
 import invariant from "../invariant.js";
+import { computeBinary } from "./BinaryExpression.js";
 
 let RESERVED_PROPS = {
   key: true,
@@ -149,18 +160,14 @@ function getDefaultProps(
     name = elementType.name;
   }
   if (!isTagName(elementType) && typeof name === "string") {
-    try {
-      // find the value of "ComponentXXX.defaultProps"
-      let defaultProps = GetValue(
-        realm,
-        env.evaluate(t.memberExpression(t.identifier(name), t.identifier("defaultProps")), false)
-      );
+    // find the value of "ComponentXXX.defaultProps"
+    let defaultProps = GetValue(
+      realm,
+      env.evaluate(t.memberExpression(t.identifier(name), t.identifier("defaultProps")), false)
+    );
 
-      if (defaultProps instanceof ObjectValue) {
-        return defaultProps;
-      }
-    } catch (error) {
-      return null;
+    if (defaultProps instanceof ObjectValue) {
+      return defaultProps;
     }
   }
   return null;
@@ -224,18 +231,16 @@ function evaluateJSXAttributes(
   // defaultProps are a bit like default function arguments
   // if an actual value exists, it should overwrite the default value
   if (defaultProps !== null) {
-    for (let [key, defaultProp] of defaultProps.properties) {
-      if (defaultProp !== undefined && defaultProp.descriptor !== undefined) {
-        let defaultPropValue = defaultProp.descriptor.value;
+    for (let [key] of defaultProps.properties) {
+      let defaultPropValue = Get(realm, defaultProps, key);
 
-        if (defaultPropValue instanceof Value) {
-          if (key === "children") {
-            if (children === null) {
-              children = defaultPropValue;
-            }
-          } else {
-            attributes.set(key, defaultPropValue);
+      if (defaultPropValue instanceof Value) {
+        if (key === "children") {
+          if (children === null) {
+            children = defaultPropValue;
           }
+        } else {
+          attributes.set(key, defaultPropValue);
         }
       }
     }
@@ -266,7 +271,7 @@ function evaluateJSXAttributes(
             }
           }
         } else {
-          invariant(false, "TODO: only ObjectValue JSX Spread Attributes are supported");
+          throw new FatalError("ObjectValues are the only supported value for JSX Spread Attributes");
         }
         break;
       default:
@@ -361,8 +366,12 @@ export default function(
     ref = realm.intrinsics.null;
   }
 
+  // React uses keys to identify nodes as they get updated through the reconcilation
+  // phase. Keys are used in a map and thus need to be converted to strings
   if (key !== realm.intrinsics.null && key instanceof ConcreteValue) {
     key = new StringValue(realm, ToString(realm, key));
+  } else if (key instanceof AbstractValue) {
+    key = computeBinary(realm, "+", new StringValue(realm, ""), key);
   }
   let props = createReactProps(realm, type, attributes, children, env);
 
