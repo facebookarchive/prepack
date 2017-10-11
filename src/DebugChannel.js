@@ -44,7 +44,7 @@ export class DebugChannel {
   readIn(): string {
     let contents = "";
     while (contents.length === 0) {
-      contents = this.fs.readFileSync(this.inFilePath, "utf8").toString();
+      contents = this.fs.readFileSync(this.inFilePath, "utf8");
     }
     //clear the file
     this.fs.writeFileSync(this.inFilePath, "");

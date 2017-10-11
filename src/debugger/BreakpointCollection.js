@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { BreakpointMap } from "./BreakpointMap.js";
+import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
 
 // Storing BreakpointStores for all source files
@@ -17,11 +17,11 @@ export class BreakpointCollection {
   constructor() {
     this.breakpointMaps = new Map();
   }
-  breakpointMaps: { [string]: BreakpointMap };
+  breakpointMaps: { [string]: PerFileBreakpointMap };
 
   addBreakpoint(filePath: string, lineNum: number, columnNum: number = 0) {
     if (!(filePath in this.breakpointMaps)) {
-      this.breakpointMaps[filePath] = new BreakpointMap(filePath);
+      this.breakpointMaps[filePath] = new PerFileBreakpointMap(filePath);
     }
     let breakpointMap = this.breakpointMaps[filePath];
     breakpointMap.addBreakpoint(lineNum, columnNum);

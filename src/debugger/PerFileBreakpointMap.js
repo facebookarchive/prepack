@@ -12,8 +12,8 @@
 import { Breakpoint } from "./Breakpoint.js";
 
 // Storage for all the breakpoints in one source file
-// Each source file will be associated with one BreakpointStore
-export class BreakpointMap {
+// Each source file will be associated with one PerFileBreakpointMap
+export class PerFileBreakpointMap {
   constructor(filePath: string) {
     this.filePath = filePath;
     this.breakpoints = new Map();

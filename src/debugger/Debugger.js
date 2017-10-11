@@ -141,12 +141,13 @@ export class DebugServer {
     invariant(parts[0] === "breakpoint");
     let kind = parts[1];
     let filePath = parts[2];
-    invariant(!isNaN(parts[3]));
+
     let lineNum = parseInt(parts[3], 10);
+    invariant(!isNaN(lineNum));
     let columnNum = 0;
     if (parts.length === 5) {
-      invariant(!isNaN(parts[4]));
       columnNum = parseInt(parts[4], 10);
+      invariant(!isNaN(columnNum));
     }
 
     let result: BreakpointCommandArguments = {
