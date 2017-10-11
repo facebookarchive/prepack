@@ -148,6 +148,7 @@ export class Serializer {
         !!this.options.delayInitializations,
         residualHeapVisitor.referencedDeclaredValues,
         additionalFunctionValuesAndEffects,
+        residualHeapVisitor.additionalFunctionValueInfos,
         this.statistics
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
@@ -169,6 +170,7 @@ export class Serializer {
       !!this.options.delayInitializations,
       residualHeapVisitor.referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
+      residualHeapVisitor.additionalFunctionValueInfos,
       this.statistics
     );
 

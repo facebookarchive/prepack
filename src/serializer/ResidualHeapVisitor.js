@@ -35,7 +35,7 @@ import { Generator } from "../utils/generator.js";
 import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { ResidualFunctionBinding, FunctionInfo, FunctionInstance } from "./types.js";
+import type { ResidualFunctionBinding, FunctionInfo, AdditionalFunctionInfo, FunctionInstance } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -75,6 +75,7 @@ export class ResidualHeapVisitor {
     this.delayedVisitGeneratorEntries = [];
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
+    this.additionalFunctionValueInfos = new Map();
   }
 
   realm: Realm;
@@ -95,6 +96,7 @@ export class ResidualHeapVisitor {
   delayedVisitGeneratorEntries: Array<{| commonScope: Scope, generator: Generator, entry: GeneratorEntry |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
+  additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
 
   _withScope(scope: Scope, f: () => void) {
@@ -569,6 +571,7 @@ export class ResidualHeapVisitor {
       // Allows us to emit function declarations etc. inside of this additional
       // function instead of adding them at global scope
       this.commonScope = functionValue;
+      let modifiedBindingInfo = new Map();
       let visitPropertiesAndBindings = () => {
         for (let propertyBinding of modifiedProperties.keys()) {
           let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
@@ -582,6 +585,19 @@ export class ResidualHeapVisitor {
         invariant(result instanceof Value);
         this.visitValue(result);
       };
+      invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+      let code = functionValue.$ECMAScriptCode;
+      invariant(code != null);
+      let functionInfo = this.functionInfos.get(code);
+      invariant(functionInfo);
+      let funcInstance = this.functionInstances.get(functionValue);
+      invariant(funcInstance);
+      this.additionalFunctionValueInfos.set(functionValue, {
+        functionValue,
+        captures: functionInfo.unbound,
+        modifiedBindings: modifiedBindingInfo,
+        instance: funcInstance,
+      });
       this.visitGenerator(generator);
       this._withScope(generator, visitPropertiesAndBindings);
       this.realm.restoreBindings(modifiedBindings);
