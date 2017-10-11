@@ -17,14 +17,14 @@ import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
-import { Debugger } from "./debugger/Debugger.js";
+import { DebugServer } from "./debugger/Debugger.js";
 import { DebugChannel } from "./DebugChannel.js";
 
-export default function(opts: RealmOptions = {}, debugChannel: DebugChannel | void = undefined): Realm {
+export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {
   let r = new Realm(opts);
   if (debugChannel) {
-    if (debugChannel.checkForDebugger()) {
-      r.debuggerInstance = new Debugger(debugChannel);
+    if (debugChannel.debuggerIsAttached()) {
+      r.debuggerInstance = new DebugServer(debugChannel);
     }
   }
 

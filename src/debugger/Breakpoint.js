@@ -10,14 +10,18 @@
 /* @flow */
 
 export class Breakpoint {
-  constructor(line: number, virtual: boolean = false, enabled: boolean = true) {
+  constructor(filePath: string, line: number, column: number = 0, temporary: boolean = false, enabled: boolean = true) {
+    this.filePath = filePath;
     this.line = line;
-    this.virtual = virtual;
+    this.temporary = temporary;
     this.enabled = enabled;
+    this.column = column;
   }
+  filePath: string;
   line: number;
+  column: number;
 
-  //real breakpoint set by client or virtual one set by debugger
-  virtual: boolean;
+  //real breakpoint set by client or temporary one set by debugger
+  temporary: boolean;
   enabled: boolean;
 }

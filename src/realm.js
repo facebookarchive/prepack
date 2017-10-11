@@ -35,7 +35,7 @@ import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatem
 import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
 import { ToString } from "./methods/to.js";
-import { Debugger } from "./debugger/Debugger.js";
+import { DebugServer } from "./debugger/Debugger.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -232,7 +232,7 @@ export class Realm {
 
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
-  debuggerInstance: Debugger | void;
+  debuggerInstance: DebugServer | void;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {

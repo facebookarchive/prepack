@@ -96,8 +96,8 @@ export function getSerializerOptions({
 }
 
 export function getDebuggerOptions({
-  debugInFilePath = "./src/debugger/.sessionlogs/proxy2debugger.txt",
-  debugOutFilePath = "./src/debugger/.sessionlogs/debugger2proxy.txt",
+  debugInFilePath = "./src/debugger/.sessionlogs/adapter2engine.txt",
+  debugOutFilePath = "./src/debugger/.sessionlogs/engine2adapter.txt",
 }: PrepackOptions): DebuggerOptions {
   let result: DebuggerOptions = {
     inFilePath: debugInFilePath,

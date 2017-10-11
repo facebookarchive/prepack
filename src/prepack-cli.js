@@ -170,7 +170,7 @@ function run(
       maxStackDepth: maxStackDepth,
       timeout: timeout,
       additionalFunctions: additionalFunctions,
-      enableDebugger: false, //always turn off debugger for now
+      enableDebugger: false, //always turn off debugger until debugger is fully built
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
     },

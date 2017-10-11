@@ -50,12 +50,16 @@ export function prepackSources(
   if (options.serialize || !options.residual) {
     let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sources, options.sourceMaps);
-    if (!serialized) {
-      throw new FatalError("serializer failed");
-    }
+
+    //Turn off the debugger if there is one
     if (realm.debuggerInstance) {
       realm.debuggerInstance.shutdown();
     }
+
+    if (!serialized) {
+      throw new FatalError("serializer failed");
+    }
+
     if (!options.residual) return serialized;
     let residualSources = [
       {

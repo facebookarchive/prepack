@@ -26,7 +26,7 @@ export class DebugChannel {
   /*
   /* Only called in the beginning to check if a debugger is attached
   */
-  checkForDebugger(): boolean {
+  debuggerIsAttached(): boolean {
     let line = this.readIn();
     if (line === "Debugger Attached\n") {
       this.writeOut("Ready\n");
@@ -34,6 +34,7 @@ export class DebugChannel {
     }
     return false;
   }
+
   /* Reads in a request from the debug adapter
   /* The caller is responsible for sending a response with the appropriate
   /* contents at the right time.
@@ -41,7 +42,10 @@ export class DebugChannel {
   /* Request object based on the protocol
   */
   readIn(): string {
-    let contents = this.fs.readFileSync(this.inFilePath, "utf8").toString();
+    let contents = "";
+    while (contents.length === 0) {
+      contents = this.fs.readFileSync(this.inFilePath, "utf8").toString();
+    }
     //clear the file
     this.fs.writeFileSync(this.inFilePath, "");
     this.requestReceived = true;
@@ -57,9 +61,6 @@ export class DebugChannel {
     if (this.requestReceived) {
       this.fs.writeFileSync(this.outFilePath, contents);
       this.requestReceived = false;
-    } else {
-      //TODO: throw an appropriate error for trying to communicate with adapter
-      //without being requested.
     }
   }
 }
