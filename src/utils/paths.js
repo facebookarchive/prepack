@@ -118,6 +118,6 @@ function pushInversePathCondition(condition: Value) {
 
 function pushRefinedConditions(unrefinedConditions: Array<AbstractValue>) {
   for (let unrefinedCond of unrefinedConditions) {
-    pushPathCondition(unrefinedCond.refineWithPathCondition());
+    pushPathCondition(unrefinedCond.$Realm.simplifyAbstractValue(unrefinedCond));
   }
 }
