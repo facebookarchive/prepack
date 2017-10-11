@@ -20,6 +20,7 @@ declare module 'babel-traverse' {
     getBindingIdentifierPaths(): { [key: string]: BabelTraversePath };
     getBindingIdentifiers(): { [key: string]: BabelNodeIdentifier };
     replaceWith(node: BabelNode): void;
+    remove(): void;
     scope: BabelTraverseScope;
     node: BabelNode;
     parent: BabelNode;

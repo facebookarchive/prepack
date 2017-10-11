@@ -94,7 +94,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   obj.$DefineOwnProperty("__proto__", {
     // B.2.2.1.1
-    get: new NativeFunctionValue(realm, "TODO", "get __proto__", 0, context => {
+    get: new NativeFunctionValue(realm, undefined, "get __proto__", 0, context => {
       // 1. Let O be ? ToObject(this value).
       let O = ToObject(realm, context.throwIfNotConcrete());
 
@@ -103,7 +103,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }),
 
     // B.2.2.1.2
-    set: new NativeFunctionValue(realm, "TODO", "set __proto__", 1, (context, [proto]) => {
+    set: new NativeFunctionValue(realm, undefined, "set __proto__", 1, (context, [proto]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 

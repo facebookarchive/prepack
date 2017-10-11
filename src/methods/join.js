@@ -145,6 +145,7 @@ export function updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: Possi
   if (pnc.consequent instanceof AbruptCompletion) {
     if (pnc.alternate instanceof Value) {
       pnc.alternate = v;
+      pnc.alternateEffects[0] = v;
     } else {
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
       updatePossiblyNormalCompletionWithValue(realm, pnc.alternate, v);
@@ -152,6 +153,7 @@ export function updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: Possi
   } else {
     if (pnc.consequent instanceof Value) {
       pnc.consequent = v;
+      pnc.consequentEffects[0] = v;
     } else {
       invariant(pnc.consequent instanceof PossiblyNormalCompletion);
       updatePossiblyNormalCompletionWithValue(realm, pnc.consequent, v);
@@ -237,25 +239,35 @@ export function joinAndRemoveNestedReturnCompletions(
   if (c instanceof JoinedAbruptCompletions) {
     let c1 = joinAndRemoveNestedReturnCompletions(realm, c.consequent);
     let c2 = joinAndRemoveNestedReturnCompletions(realm, c.alternate);
+    c.consequentEffects[0] = c1;
+    c.alternateEffects[0] = c2;
     return joinResults(realm, c.joinCondition, c1, c2, c.consequentEffects, c.alternateEffects);
   }
   return c;
 }
 
-export function joinEffectsAndRemoveNestedReturnCompletions(
+export function joinEffectsAndPromoteNestedReturnCompletions(
   realm: Realm,
   c: Completion | Value,
   e: Effects,
   nested_effects?: Effects
 ): Effects {
-  if (c instanceof Value) return e;
-  if (c instanceof AbruptCompletion) {
+  if (c instanceof Value) {
+    // If not undefined, the nested effects were captured when evaluating a conditional code block that ended normally.
+    // e represent effects that were captured since reaching the join point where the normal and abrupt
+    // completions came together into the completion supplied to the outermost call to this recursive function.
+    if (nested_effects !== undefined) realm.addPriorEffects(nested_effects, e);
+    return e;
+  }
+  if (c instanceof AbruptCompletion && !(c instanceof JoinedAbruptCompletions)) {
+    // The nested effects were captured when evaluating a conditional code block that ended abruptly.
+    // An abrupt completion does not care about the effects that were collected since the join point.
     invariant(nested_effects !== undefined);
     return nested_effects;
   }
   if (c instanceof PossiblyNormalCompletion) {
-    let e1 = joinEffectsAndRemoveNestedReturnCompletions(realm, c.consequent, e, c.consequentEffects);
-    let e2 = joinEffectsAndRemoveNestedReturnCompletions(realm, c.alternate, e, c.alternateEffects);
+    let e1 = joinEffectsAndPromoteNestedReturnCompletions(realm, c.consequent, e, c.consequentEffects);
+    let e2 = joinEffectsAndPromoteNestedReturnCompletions(realm, c.alternate, e, c.alternateEffects);
     if (e1[0] instanceof AbruptCompletion) {
       if (!(e2[0] instanceof ReturnCompletion)) {
         invariant(e2[0] instanceof Value); // otherwise c cannot possibly be normal
@@ -268,7 +280,51 @@ export function joinEffectsAndRemoveNestedReturnCompletions(
       return joinEffects(realm, c.joinCondition, e1, e2);
     }
   }
-  invariant(false);
+  invariant(c instanceof JoinedAbruptCompletions);
+  // e will be ignored in the calls below since the branches are all abrupt.
+  let e1 = joinEffectsAndPromoteNestedReturnCompletions(realm, c.consequent, e, c.consequentEffects);
+  let e2 = joinEffectsAndPromoteNestedReturnCompletions(realm, c.alternate, e, c.alternateEffects);
+  let [r1, r2] = [e1[0], e2[0]];
+  if (r1 instanceof ReturnCompletion) {
+    invariant(!(r2 instanceof ReturnCompletion)); // Otherwise their values should have been joined
+    if (r2 instanceof JoinedAbruptCompletions) {
+      if (r2.consequent instanceof ReturnCompletion) {
+        let r1jr2c = joinEffects(realm, c.joinCondition, e1, r2.consequentEffects);
+        invariant(r1jr2c[0] instanceof ReturnCompletion);
+        let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, r2.joinCondition);
+        invariant(or instanceof AbstractValue);
+        return joinEffects(realm, or, r1jr2c, r2.alternateEffects);
+      }
+      if (r2.alternate instanceof ReturnCompletion) {
+        let r1jr2a = joinEffects(realm, c.joinCondition, e1, r2.alternateEffects);
+        invariant(r1jr2a[0] instanceof ReturnCompletion);
+        let notR2jc = AbstractValue.createFromUnaryOp(realm, "!", r2.joinCondition);
+        let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, notR2jc);
+        invariant(or instanceof AbstractValue);
+        return joinEffects(realm, or, r1jr2a, r2.consequentEffects);
+      }
+    }
+  } else if (r2 instanceof ReturnCompletion) {
+    invariant(!(r1 instanceof ReturnCompletion)); // Otherwise their values should have been joined
+    if (r1 instanceof JoinedAbruptCompletions) {
+      if (r1.consequent instanceof ReturnCompletion) {
+        let r2jr1c = joinEffects(realm, c.joinCondition, r1.consequentEffects, e2);
+        invariant(r2jr1c[0] instanceof ReturnCompletion);
+        let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, r1.joinCondition);
+        invariant(or instanceof AbstractValue);
+        return joinEffects(realm, or, r2jr1c, r1.alternateEffects);
+      }
+      if (r1.alternate instanceof ReturnCompletion) {
+        let r2jr1a = joinEffects(realm, c.joinCondition, r1.alternateEffects, e2);
+        let notR1jc = AbstractValue.createFromUnaryOp(realm, "!", r1.joinCondition);
+        invariant(r2jr1a[0] instanceof ReturnCompletion);
+        let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, notR1jc);
+        invariant(or instanceof AbstractValue);
+        return joinEffects(realm, or, r2jr1a, r1.consequentEffects);
+      }
+    }
+  }
+  return joinEffects(realm, c.joinCondition, e1, e2);
 }
 
 export function unbundleReturnCompletion(
@@ -276,12 +332,11 @@ export function unbundleReturnCompletion(
   c: JoinedAbruptCompletions
 ): [Effects, PossiblyNormalCompletion] {
   let empty_effects = construct_empty_effects(realm);
+  let v = realm.intrinsics.empty;
   if (c.consequent instanceof ReturnCompletion) {
-    let v = c.consequent.value;
     let pnc = new PossiblyNormalCompletion(v, c.joinCondition, v, empty_effects, c.alternate, c.alternateEffects);
     return [c.consequentEffects, pnc];
   } else if (c.alternate instanceof ReturnCompletion) {
-    let v = c.alternate.value;
     let pnc = new PossiblyNormalCompletion(v, c.joinCondition, c.consequent, c.consequentEffects, v, empty_effects);
     return [c.alternateEffects, pnc];
   } else {
@@ -346,10 +401,12 @@ function joinResults(
   }
   if (result1 instanceof ReturnCompletion && result2 instanceof ReturnCompletion) {
     let val = joinValues(realm, result1.value, result2.value, getAbstractValue);
+    invariant(val instanceof Value);
     return new ReturnCompletion(val, joinCondition.expressionLocation);
   }
   if (result1 instanceof ThrowCompletion && result2 instanceof ThrowCompletion) {
     let val = joinValues(realm, result1.value, result2.value, getAbstractValue);
+    invariant(val instanceof Value);
     return new ThrowCompletion(val, result1.location);
   }
   if (result1 instanceof AbruptCompletion && result2 instanceof AbruptCompletion) {
@@ -396,7 +453,7 @@ function joinGenerators(
 ): Generator {
   let result = new Generator(realm);
   if (!generator1.empty() || !generator2.empty()) {
-    result.body.push({
+    result.addEntry({
       args: [joinCondition],
       buildNode: function([cond], context) {
         let block1 = generator1.empty() ? null : serializeBody(generator1, context);
@@ -446,10 +503,12 @@ export function joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bin
   function getAbstractValue(v1: void | Value, v2: void | Value): Value {
     return joinValuesAsConditional(realm, joinCondition, v1, v2);
   }
-  function join(b: Binding, v1: void | Value, v2: void | Value) {
+  function join(b: Binding, v1: void | Value, v2: void | Value): Value {
     if (v1 === undefined) v1 = b.value;
     if (v2 === undefined) v2 = b.value;
-    return joinValues(realm, v1, v2, getAbstractValue);
+    let result = joinValues(realm, v1, v2, getAbstractValue);
+    invariant(result instanceof Value);
+    return result;
   }
   return joinMaps(m1, m2, join);
 }
@@ -458,10 +517,16 @@ export function joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bin
 // otherwise return getAbstractValue(v1, v2)
 export function joinValues(
   realm: Realm,
-  v1: void | Value,
-  v2: void | Value,
+  v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+  v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
   getAbstractValue: (void | Value, void | Value) => Value
-): Value {
+): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }> {
+  if (Array.isArray(v1)) {
+    invariant(Array.isArray(v2)); // This use of Array is restricted to internal properties that are always arrays
+    return joinArrays(realm, ((v1: any): Array<Value>), ((v2: any): Array<Value>), getAbstractValue);
+  }
+  invariant(v1 === undefined || v1 instanceof Value);
+  invariant(v2 === undefined || v2 instanceof Value);
   if (
     v1 !== undefined &&
     v2 !== undefined &&
@@ -473,6 +538,54 @@ export function joinValues(
   } else {
     return getAbstractValue(v1, v2);
   }
+}
+
+function joinArrays(
+  realm: Realm,
+  v1: Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+  v2: Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+  getAbstractValue: (void | Value, void | Value) => Value
+): Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }> {
+  let e = v1[0] || v2[0];
+  if (e instanceof Value) return joinArraysOfValues(realm, (v1: any), (v2: any), getAbstractValue);
+  else return joinArrayOfsMapEntries(realm, (v1: any), (v2: any), getAbstractValue);
+}
+
+function joinArrayOfsMapEntries(
+  realm: Realm,
+  a1: Array<{ $Key: void | Value, $Value: void | Value }>,
+  a2: Array<{ $Key: void | Value, $Value: void | Value }>,
+  getAbstractValue: (void | Value, void | Value) => Value
+): Array<{ $Key: void | Value, $Value: void | Value }> {
+  let empty = realm.intrinsics.empty;
+  let n = Math.max(a1.length, a2.length);
+  let result = [];
+  for (let i = 0; i < n; i++) {
+    let { $Key: key1, $Value: val1 } = a1[i] || { $Key: empty, $Value: empty };
+    let { $Key: key2, $Value: val2 } = a2[i] || { $Key: empty, $Value: empty };
+    if (key1 === undefined && key2 === undefined) {
+      result[i] = { $Key: undefined, $Value: undefined };
+    } else {
+      let key3 = getAbstractValue(key1, key2);
+      let val3 = getAbstractValue(val1, val2);
+      result[i] = { $Key: key3, $Value: val3 };
+    }
+  }
+  return result;
+}
+
+function joinArraysOfValues(
+  realm: Realm,
+  a1: Array<Value>,
+  a2: Array<Value>,
+  getAbstractValue: (void | Value, void | Value) => Value
+): Array<Value> {
+  let n = Math.max(a1.length, a2.length);
+  let result = [];
+  for (let i = 0; i < n; i++) {
+    result[i] = getAbstractValue(a1[i], a2[i]);
+  }
+  return result;
 }
 
 export function joinValuesAsConditional(
@@ -540,10 +653,27 @@ export function joinDescriptors(
   getAbstractValue: (void | Value, void | Value) => Value
 ): void | Descriptor {
   function clone_with_abstract_value(d: Descriptor) {
-    if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO: join computed properties");
+    if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO #1015: join computed properties");
     let dc = cloneDescriptor(d);
     invariant(dc !== undefined);
-    dc.value = getAbstractValue(d.value, realm.intrinsics.empty);
+    let dcValue = dc.value;
+    if (Array.isArray(dcValue)) {
+      invariant(dcValue.length > 0);
+      let elem0 = dcValue[0];
+      if (elem0 instanceof Value) {
+        dc.value = dcValue.map(e => getAbstractValue((e: any), realm.intrinsics.empty));
+      } else {
+        dc.value = dcValue.map(e => {
+          let { $Key: key1, $Value: val1 } = (e: any);
+          let key3 = getAbstractValue(key1, realm.intrinsics.empty);
+          let val3 = getAbstractValue(val1, realm.intrinsics.empty);
+          return { $Key: key3, $Value: val3 };
+        });
+      }
+    } else {
+      invariant(dcValue === undefined || dcValue instanceof Value);
+      dc.value = getAbstractValue(dcValue, realm.intrinsics.empty);
+    }
     return dc;
   }
   if (d1 === undefined) {
@@ -561,6 +691,7 @@ export function joinDescriptors(
     if (enumerable !== undefined) d3.enumerable = enumerable;
     let configurable = joinBooleans(d1.configurable, d2.configurable);
     if (configurable !== undefined) d3.configurable = configurable;
+    //TODO #1015: do not join the values if one the descriptors is a getter/setters
     if (IsDataDescriptor(realm, d1) || IsDataDescriptor(realm, d2))
       d3.value = joinValues(realm, d1.value, d2.value, getAbstractValue);
     if (d1.hasOwnProperty("get") || d2.hasOwnProperty("get"))

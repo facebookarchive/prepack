@@ -11,20 +11,30 @@
 
 import type { Intrinsics, PropertyBinding, Descriptor } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
-import { NativeFunctionValue, ECMAScriptSourceFunctionValue, FunctionValue } from "./values/index.js";
 import {
-  Value,
-  ObjectValue,
-  AbstractValue,
   AbstractObjectValue,
-  StringValue,
+  AbstractValue,
   ConcreteValue,
-  UndefinedValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  NativeFunctionValue,
+  ObjectValue,
+  ProxyValue,
+  StringValue,
   SymbolValue,
+  UndefinedValue,
+  Value,
 } from "./values/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, GetValue, Construct, ThrowIfMightHaveBeenDeleted } from "./methods/index.js";
+import {
+  cloneDescriptor,
+  Construct,
+  GetValue,
+  incorporateSavedCompletion,
+  ThrowIfMightHaveBeenDeleted,
+  ToString,
+} from "./methods/index.js";
 import type { NormalCompletion } from "./completions.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
@@ -32,8 +42,8 @@ import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
-import type { EnvironmentRecord } from "./environment.js";
 import * as t from "babel-types";
+
 import { ToString } from "./methods/to.js";
 import { DebugServer } from "./debugger/Debugger.js";
 
@@ -114,11 +124,11 @@ export class ExecutionContext {
   }
 
   suspend(): void {
-    // TODO: suspend
+    // TODO #712: suspend
   }
 
   resume(): Value {
-    // TODO: resume
+    // TODO #712: resume
     return this.realm.intrinsics.undefined;
   }
 }
@@ -146,13 +156,16 @@ export class Realm {
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
+    this.omitInvariants = !!opts.omitInvariants;
 
     this.$TemplateMap = [];
 
     if (this.useAbstractInterpretation) {
       this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
       this.pathConditions = [];
-      ObjectValue.setupTrackedPropertyAccessors();
+      ObjectValue.setupTrackedPropertyAccessors(ObjectValue.trackedPropertyNames);
+      ObjectValue.setupTrackedPropertyAccessors(NativeFunctionValue.trackedPropertyNames);
+      ObjectValue.setupTrackedPropertyAccessors(ProxyValue.trackedPropertyNames);
     }
 
     this.tracers = [];
@@ -177,6 +190,7 @@ export class Realm {
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
+  omitInvariants: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
@@ -375,6 +389,7 @@ export class Realm {
     try {
       c = f();
       if (c instanceof Reference) c = GetValue(this, c);
+      c = incorporateSavedCompletion(this, c);
 
       invariant(this.generator !== undefined);
       invariant(this.modifiedBindings !== undefined);
@@ -422,7 +437,7 @@ export class Realm {
     sc;
 
     let saved_generator = this.generator;
-    this.generator = pg.clone();
+    this.generator = pg === undefined ? pg : pg.clone();
     this.appendGenerator(sg);
     subsequentEffects[1] = pg;
     this.generator = saved_generator;
@@ -577,8 +592,8 @@ export class Realm {
 
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
-  recordModifiedBinding(binding: Binding, env: EnvironmentRecord): Binding {
-    if (env.isReadOnly) {
+  recordModifiedBinding(binding: Binding): Binding {
+    if (binding.environment.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a binding in read-only realm");
     }
@@ -601,7 +616,8 @@ export class Realm {
 
   // Record the current value of binding in this.modifiedProperties unless
   // there is already an entry for binding.
-  recordModifiedProperty(binding: PropertyBinding): void {
+  recordModifiedProperty(binding: void | PropertyBinding): void {
+    if (binding === undefined) return;
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
@@ -696,6 +712,7 @@ export class Realm {
         AbstractValue.reportIntrospectionError(abstractValue, key);
         throw new FatalError();
       }
+      invariant(value instanceof Value);
       this.rebuildObjectProperty(abstractValue, key, value, path);
     }
   }
@@ -725,7 +742,7 @@ export class Realm {
   }
 
   reportIntrospectionError(message?: void | string | StringValue) {
-    if (message === undefined) message = "TODO";
+    if (message === undefined) message = "";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
@@ -735,7 +752,7 @@ export class Realm {
 
   createErrorThrowCompletion(type: NativeFunctionValue, message?: void | string | StringValue): ThrowCompletion {
     invariant(type !== this.intrinsics.__IntrospectionError);
-    if (message === undefined) message = "TODO";
+    if (message === undefined) message = "";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
@@ -743,28 +760,12 @@ export class Realm {
   }
 
   appendGenerator(generator: Generator, leadingComment: string = ""): void {
-    let generatorBody = generator.body;
     let realmGenerator = this.generator;
     if (realmGenerator === undefined) {
-      invariant(generatorBody.length === 0);
+      invariant(generator.empty());
       return;
     }
-    let realmGeneratorBody = realmGenerator.body;
-    let i = 0;
-    if (generatorBody.length > 0 && leadingComment.length > 0) {
-      let firstEntry = generatorBody[i++];
-      let buildNode = (nodes, f) => {
-        let n = firstEntry.buildNode(nodes, f);
-        n.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-        return n;
-      };
-      realmGeneratorBody.push({
-        declared: firstEntry.declared,
-        args: firstEntry.args,
-        buildNode: buildNode,
-      });
-    }
-    for (; i < generatorBody.length; i++) realmGeneratorBody.push(generatorBody[i]);
+    realmGenerator.appendGenerator(generator, leadingComment);
   }
 
   // Pass the error to the realm's error-handler
@@ -785,21 +786,25 @@ export class Realm {
         let loc_end = diagnostic.location.end;
         msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
       }
-      switch (diagnostic.severity) {
-        case "Information":
-          console.log(`Info: ${msg}`);
-          return "Recover";
-        case "Warning":
-          console.warn(`Warn: ${msg}`);
-          return "Recover";
-        case "RecoverableError":
-          console.error(`Error: ${msg}`);
-          return "Fail";
-        case "FatalError":
-          console.error(`Fatal Error: ${msg}`);
-          return "Fail";
-        default:
-          invariant(false, "Unexpected error type");
+      try {
+        switch (diagnostic.severity) {
+          case "Information":
+            console.log(`Info: ${msg}`);
+            return "Recover";
+          case "Warning":
+            console.warn(`Warn: ${msg}`);
+            return "Recover";
+          case "RecoverableError":
+            console.error(`Error: ${msg}`);
+            return "Fail";
+          case "FatalError":
+            console.error(`Fatal Error: ${msg}`);
+            return "Fail";
+          default:
+            invariant(false, "Unexpected error type");
+        }
+      } finally {
+        console.log(diagnostic.callStack);
       }
     }
     return errorHandler(diagnostic);

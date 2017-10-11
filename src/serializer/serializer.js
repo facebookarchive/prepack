@@ -106,9 +106,7 @@ export class Serializer {
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
-    if (this.options.additionalFunctions) {
-      this.functions.checkThatFunctionsAreIndependent();
-    }
+    this.functions.checkThatFunctionsAreIndependent();
 
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
@@ -150,6 +148,7 @@ export class Serializer {
         !!this.options.delayInitializations,
         residualHeapVisitor.referencedDeclaredValues,
         additionalFunctionValuesAndEffects,
+        residualHeapVisitor.additionalFunctionValueInfos,
         this.statistics
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
@@ -171,6 +170,7 @@ export class Serializer {
       !!this.options.delayInitializations,
       residualHeapVisitor.referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
+      residualHeapVisitor.additionalFunctionValueInfos,
       this.statistics
     );
 

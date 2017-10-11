@@ -1319,10 +1319,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
       }
     }
 
-    // TODO exotic objects
-    // If obj is an exotic object (including Proxy exotic objects) whose behaviour for [[Get]], [[Set]], [[Delete]], and [[GetOwnProperty]]
-    // is not the ordinary object implementation of these internal methods.
-
     // Any integer index property of obj whose name is a nonnegative integer less than len
     for (let j = 0; j < len; j++) {
       //is a data property whose [[writable]] attribute is false.
@@ -1332,9 +1328,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
         throw Error("Implementation defined behavior : property " + j.toString() + "is non writable : ");
       }
     }
-
-    // TODO If comparefn is undefined and the application of ToString to any value passed as an argument to SortCompare modifies obj or any object on obj's prototype chain.
-    // TODO If comparefn is undefined and all applications of ToString, to any specific value passed as an argument to SortCompare, do not produce the same result.
 
     // The SortCompare abstract operation is called with two arguments x and y. It also has access to the comparefn
     // argument passed to the current invocation of the sort method. The following steps are taken:

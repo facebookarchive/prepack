@@ -62,8 +62,6 @@ import {
   HasOwnProperty,
   IsDataDescriptor,
   ThrowIfMightHaveBeenDeleted,
-  composePossiblyNormalCompletions,
-  updatePossiblyNormalCompletionWithValue,
 } from "./methods/index.js";
 import * as t from "babel-types";
 
@@ -82,8 +80,8 @@ export class EnvironmentRecord {
   }
 
   +HasBinding: (N: string) => boolean;
-  +CreateMutableBinding: (N: string, D: boolean) => Value;
-  +CreateImmutableBinding: (N: string, S: boolean) => Value;
+  +CreateMutableBinding: (N: string, D: boolean, isGlobal?: boolean) => Value;
+  +CreateImmutableBinding: (N: string, S: boolean, isGlobal?: boolean) => Value;
   +InitializeBinding: (N: string, V: Value) => Value;
   +SetMutableBinding: (N: string, V: Value, S: boolean) => Value;
   +GetBindingValue: (N: string, S: boolean) => Value;
@@ -102,6 +100,11 @@ export type Binding = {
   initialized?: boolean,
   mutable?: boolean,
   deletable?: boolean,
+  // back-references to the environment containing the binding and the key
+  // used to access this binding
+  environment: EnvironmentRecord,
+  name: string,
+  isGlobal: boolean,
 };
 
 // ECMA262 8.1.1.1
@@ -126,7 +129,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   }
 
   // ECMA262 8.1.1.1.2
-  CreateMutableBinding(N: string, D: boolean): Value {
+  CreateMutableBinding(N: string, D: boolean, isGlobal: boolean = false): Value {
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -136,21 +139,21 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(!envRec.bindings[N], `shouldn't have the binding ${N}`);
 
     // 3. Create a mutable binding in envRec for N and record that it is uninitialized. If D is true, record that the newly created binding may be deleted by a subsequent DeleteBinding call.
-    this.bindings[N] = realm.recordModifiedBinding(
-      {
-        initialized: false,
-        mutable: true,
-        deletable: D,
-      },
-      envRec
-    );
+    this.bindings[N] = realm.recordModifiedBinding({
+      initialized: false,
+      mutable: true,
+      deletable: D,
+      environment: envRec,
+      name: N,
+      isGlobal: isGlobal,
+    });
 
     // 4. Return NormalCompletion(empty).
     return realm.intrinsics.undefined;
   }
 
   // ECMA262 8.1.1.1.3
-  CreateImmutableBinding(N: string, S: boolean): Value {
+  CreateImmutableBinding(N: string, S: boolean, isGlobal: boolean = false): Value {
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -160,14 +163,14 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(!envRec.bindings[N], `shouldn't have the binding ${N}`);
 
     // 3. Create an immutable binding in envRec for N and record that it is uninitialized. If S is true, record that the newly created binding is a strict binding.
-    this.bindings[N] = realm.recordModifiedBinding(
-      {
-        initialized: false,
-        strict: S,
-        deletable: false,
-      },
-      envRec
-    );
+    this.bindings[N] = realm.recordModifiedBinding({
+      initialized: false,
+      strict: S,
+      deletable: false,
+      environment: envRec,
+      name: N,
+      isGlobal: isGlobal,
+    });
 
     // 4. Return NormalCompletion(empty).
     return realm.intrinsics.undefined;
@@ -184,7 +187,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(binding && !binding.initialized, `shouldn't have the binding ${N}`);
 
     // 3. Set the bound value for N in envRec to V.
-    this.realm.recordModifiedBinding(binding, envRec).value = V;
+    this.realm.recordModifiedBinding(binding).value = V;
 
     // 4. Record that the binding for N in envRec has been initialized.
     binding.initialized = true;
@@ -227,7 +230,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
-      realm.recordModifiedBinding(binding, envRec).value = V;
+      realm.recordModifiedBinding(binding).value = V;
     } else {
       // 6. Else,
       // a. Assert: This is an attempt to change the value of an immutable binding.
@@ -276,7 +279,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     if (!envRec.bindings[N].deletable) return false;
 
     // 4. Remove the binding for N from envRec.
-    this.realm.recordModifiedBinding(envRec.bindings[N], envRec).value = undefined;
+    this.realm.recordModifiedBinding(envRec.bindings[N]).value = undefined;
     delete envRec.bindings[N];
 
     // 5. Return true.
@@ -607,7 +610,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return DclRec.CreateMutableBinding(N, D).
-    return DclRec.CreateMutableBinding(N, D);
+    return DclRec.CreateMutableBinding(N, D, true);
   }
 
   // ECMA262 8.1.1.4.3
@@ -626,7 +629,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return DclRec.CreateImmutableBinding(N, S).
-    return DclRec.CreateImmutableBinding(N, S);
+    return DclRec.CreateImmutableBinding(N, S, true);
   }
 
   // ECMA262 8.1.1.4.4
@@ -947,7 +950,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     // 7. Perform ? DefinePropertyOrThrow(globalObject, N, desc).
     DefinePropertyOrThrow(this.realm, globalObject, N, desc);
 
-    // TODO? 8. Record that the binding for N in ObjRec has been initialized.
+    // 8. Record that the binding for N in ObjRec has been initialized.
 
     // 9. Perform ? Set(globalObject, N, V, false).
     Set(this.realm, globalObject, N, V, false);
@@ -962,36 +965,6 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 12. Return NormalCompletion(empty).
-  }
-}
-
-// ECMA262 8.1.1.5
-export class ModuleEnvironmentRecord extends DeclarativeEnvironmentRecord {
-  // ECMA262 8.1.1.3.1
-  BindThisValue(
-    V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
-  ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.2
-  HasThisBinding(): boolean {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.3
-  HasSuperBinding(): boolean {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.4
-  GetThisBinding(): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
-  }
-
-  // ECMA262 8.1.1.3.5
-  GetSuperBase(): NullValue | ObjectValue | UndefinedValue {
-    throw new FatalError("TODO: implement modules");
   }
 }
 
@@ -1258,7 +1231,8 @@ export class LexicalEnvironment {
     }
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     if (res instanceof PossiblyNormalCompletion) {
-      AbstractValue.reportIntrospectionError(res.joinCondition);
+      let error = new CompilerDiagnostic("Global code may end abruptly", res.location, "PP0016", "FatalError");
+      this.realm.handleError(error);
       throw new FatalError();
     }
     invariant(res instanceof Value || res instanceof Reference, ast.type);
@@ -1272,20 +1246,6 @@ export class LexicalEnvironment {
     let evaluator = this.realm.evaluators[(ast.type: string)];
     if (evaluator) {
       let result = evaluator(ast, strictCode, this, this.realm, metadata);
-      let context = this.realm.getRunningContext();
-      let savedCompletion = context.savedCompletion;
-      if (savedCompletion !== undefined) {
-        if (result instanceof Value) {
-          updatePossiblyNormalCompletionWithValue(this.realm, savedCompletion, result);
-          result = savedCompletion;
-        } else if (result instanceof PossiblyNormalCompletion) {
-          result = composePossiblyNormalCompletions(this.realm, savedCompletion, result);
-        } else {
-          AbstractValue.reportIntrospectionError(savedCompletion.joinCondition);
-          throw new FatalError();
-        }
-        context.savedCompletion = undefined;
-      }
       return result;
     }
 

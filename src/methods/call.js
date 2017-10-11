@@ -26,20 +26,20 @@ import {
   AbstractValue,
 } from "../values/index.js";
 import {
-  GetBase,
-  GetValue,
-  ToObjectPartial,
-  IsCallable,
-  IsPropertyReference,
-  IsPropertyKey,
+  composePossiblyNormalCompletions,
   FunctionDeclarationInstantiation,
-  NewFunctionEnvironment,
+  GetBase,
   GetIterator,
+  GetValue,
+  HasSomeCompatibleType,
+  IsCallable,
+  IsPropertyKey,
+  IsPropertyReference,
   IteratorStep,
   IteratorValue,
-  HasSomeCompatibleType,
-  composePossiblyNormalCompletions,
-  joinEffectsAndRemoveNestedReturnCompletions,
+  joinEffectsAndPromoteNestedReturnCompletions,
+  NewFunctionEnvironment,
+  ToObjectPartial,
   unbundleReturnCompletion,
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
@@ -51,6 +51,7 @@ import {
   PossiblyNormalCompletion,
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
+import { construct_empty_effects } from "../realm.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
@@ -350,47 +351,63 @@ export function OrdinaryCallEvaluateBody(
       invariant(code !== undefined);
       let context = realm.getRunningContext();
       let c = context.lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
-      let e = realm.getCapturedEffects();
-      if (e !== undefined) {
+      // We are about the leave this function and this presents a join point where all non exeptional control flows
+      // converge into a single flow using the joined effects as the new state.
+      if (c instanceof PossiblyNormalCompletion) {
+        // There were earlier, conditional exits from the function
+        // We join together the current effects with the effects of any earlier returns that are tracked in c.
+        let e = realm.getCapturedEffects();
+        invariant(e !== undefined);
         realm.stopEffectCaptureAndUndoEffects();
+        let joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
+        realm.applyEffects(joinedEffects);
+        c = joinedEffects[0];
       }
       if (c instanceof JoinedAbruptCompletions) {
-        if (e !== undefined) realm.applyEffects(e);
-        return c;
-      } else if (c instanceof PossiblyNormalCompletion) {
-        // If the abrupt part of the completion is a return completion, then the
-        // effects of its independent control path must be joined with the effects
-        // from the normal path, which is to say the currently tracked effects
-        // in the realm.
-        invariant(e !== undefined);
-        let joinedEffects = joinEffectsAndRemoveNestedReturnCompletions(realm, c, e);
+        // There are two or more returns and/or throws that unconditionally terminate the function
+        // We need to join the return flows together.
+        let e = construct_empty_effects(realm); // nothing happened since the components of c captured their effects
+        let joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
         let result = joinedEffects[0];
-        if (result instanceof JoinedAbruptCompletions) {
-          // There are throw completions that conditionally escape from the the call.
-          // We need to carry on in normal mode (after arranging to capturing effects)
-          // while stashing away the throw completions so that the next completion we return
-          // incorporates them.
-          let possiblyNormalCompletion;
-          [joinedEffects, possiblyNormalCompletion] = unbundleReturnCompletion(realm, result);
-          if (context.savedCompletion !== undefined)
-            context.savedCompletion = composePossiblyNormalCompletions(
-              realm,
-              context.savedCompletion,
-              possiblyNormalCompletion
-            );
-          else context.savedCompletion = possiblyNormalCompletion;
-          realm.captureEffects();
-          result = joinedEffects[0];
+        if (result instanceof ReturnCompletion) {
+          realm.applyEffects(joinedEffects);
+          return result.value;
         }
+        invariant(result instanceof JoinedAbruptCompletions);
+        if (!(result.consequent instanceof ReturnCompletion || result.alternate instanceof ReturnCompletion)) {
+          // Control is leaving this function only via throw completions. This is not a joint point.
+          throw result;
+        }
+        // There is a normal return exit, but also one or more throw completions.
+        // The throw completions must be extracted into a saved possibly normal completion
+        // so that the caller can pick them up in its next completion.
+        joinedEffects = extractAndSavePossiblyNormalCompletion(result, context);
+        result = joinedEffects[0];
         invariant(result instanceof ReturnCompletion);
         realm.applyEffects(joinedEffects);
         return result;
       } else {
         invariant(c instanceof Value || c instanceof AbruptCompletion);
-        if (e !== undefined) realm.applyEffects(e);
         return c;
       }
     }
+  }
+
+  function extractAndSavePossiblyNormalCompletion(c: JoinedAbruptCompletions, context: ExecutionContext) {
+    // There are throw completions that conditionally escape from the the call.
+    // We need to carry on in normal mode (after arranging to capturing effects)
+    // while stashing away the throw completions so that the next completion we return
+    // incorporates them.
+    let [joinedEffects, possiblyNormalCompletion] = unbundleReturnCompletion(realm, c);
+    if (context.savedCompletion !== undefined)
+      context.savedCompletion = composePossiblyNormalCompletions(
+        realm,
+        context.savedCompletion,
+        possiblyNormalCompletion
+      );
+    else context.savedCompletion = possiblyNormalCompletion;
+    realm.captureEffects();
+    return joinedEffects;
   }
 }
 
@@ -472,7 +489,7 @@ export function PrepareForTailCall(realm: Realm) {
   //    top of the stack becomes the running execution context.
   realm.popContext(leafContext);
 
-  // TODO 4. Assert: leafContext has no further use. It will never be activated as the running execution context.
+  // TODO #1008 4. Assert: leafContext has no further use. It will never be activated as the running execution context.
 }
 
 // ECMA262 7.3.12

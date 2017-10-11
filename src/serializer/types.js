@@ -9,9 +9,9 @@
 
 /* @flow */
 
-import { DeclarativeEnvironmentRecord } from "../environment.js";
+import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
 import { ConcreteValue, Value } from "../values/index.js";
-import type { ECMAScriptSourceFunctionValue } from "../values/index.js";
+import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm } from "../realm.js";
@@ -19,38 +19,45 @@ import invariant from "../invariant.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
+export type AdditionalFunctionInfo = {
+  functionValue: FunctionValue,
+  captures: Set<string>,
+  // TODO: use for storing modified residual function bindings (captured by other functions)
+  modifiedBindings: Map<Binding, ResidualFunctionBinding>,
+  instance: FunctionInstance,
+};
+
 export type FunctionInstance = {
-  serializedBindings: Map<string, SerializedBinding>,
-  visitedBindings: Map<string, VisitedBinding>,
+  residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
   // Optional place to put the function declaration
   preludeOverride?: Array<BabelNodeStatement>,
+  // Additional function that the function instance was declared inside of (if any)
+  containingAdditionalFunction?: FunctionValue,
   scopeInstances: Set<ScopeBinding>,
 };
 
-export type Names = { [key: string]: true };
 export type FunctionInfo = {
-  unbound: Names,
-  modified: Names,
+  unbound: Set<string>,
+  modified: Set<string>,
   usesArguments: boolean,
   usesThis: boolean,
 };
 
-export type SerializedBinding = {
+export type ResidualFunctionBinding = {
   value: void | Value,
+  modified: boolean,
+  // void means a global binding
+  declarativeEnvironmentRecord: null | DeclarativeEnvironmentRecord,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
-  serializedValue: void | BabelNodeExpression,
-  referentialized: boolean,
-  modified: boolean,
-  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord,
+  serializedValue?: void | BabelNodeExpression,
+  referentialized?: boolean,
+  // If the binding is only accessed by an additional function or nested values
+  // this field contains that additional function. (Determines what initializer
+  // to put the binding in -- global or additional function)
+  referencedOnlyFromAdditionalFunctions?: FunctionValue,
   scope?: ScopeBinding,
-};
-
-export type VisitedBinding = {
-  value: void | Value,
-  modified: boolean,
-  declarativeEnvironmentRecord?: DeclarativeEnvironmentRecord,
 };
 
 export type ScopeBinding = {
@@ -58,11 +65,12 @@ export type ScopeBinding = {
   id: number,
   initializationValues: Array<BabelNodeExpression>,
   capturedScope?: string,
+  containingAdditionalFunction: void | FunctionValue,
 };
 
 export type GeneratorBody = Array<BabelNodeStatement>;
 
-export function AreSameSerializedBindings(realm: Realm, x: SerializedBinding, y: SerializedBinding) {
+export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding, y: ResidualFunctionBinding) {
   if (x.serializedValue === y.serializedValue) return true;
   if (x.value && x.value === y.value) return true;
   if (x.value instanceof ConcreteValue && y.value instanceof ConcreteValue) {

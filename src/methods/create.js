@@ -619,7 +619,7 @@ export function ObjectCreate(
   let obj = new ObjectValue(realm);
   Object.assign(obj, internalSlotsList);
 
-  // TODO 3. Set obj's essential internal methods to the default ordinary object definitions specified in 9.1.
+  // 3. Set obj's essential internal methods to the default ordinary object definitions specified in 9.1.
 
   // 4. Set the [[Prototype]] internal slot of obj to proto.
   obj.$Prototype = proto;

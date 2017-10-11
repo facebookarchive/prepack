@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue } from "../../values/index.js";
-import { SameValuePartial, ThrowIfInternalSlotNotWritable } from "../../methods/index.js";
+import { SameValuePartial } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -40,6 +40,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 5. Let entries be the List that is S.[[WeakSetData]].
+    realm.recordModifiedProperty((S: any).$WeakSetData_binding);
     let entries = S.$WeakSetData;
     invariant(entries != null);
 
@@ -53,7 +54,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 7. Append value as the last element of entries.
-    ThrowIfInternalSlotNotWritable(realm, S, "$WeakSetData");
     entries.push(value);
 
     // 8. Return S.
@@ -83,6 +83,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (!(value instanceof ObjectValue)) return realm.intrinsics.false;
 
     // 5. Let entries be the List that is S.[[WeakSetData]].
+    realm.recordModifiedProperty((S: any).$WeakSetData_binding);
     let entries = S.$WeakSetData;
     invariant(entries != null);
 
@@ -92,8 +93,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
       // a. If e is not empty and SameValue(e, value) is true, then
       if (e !== undefined && SameValuePartial(realm, e, value) === true) {
-        ThrowIfInternalSlotNotWritable(realm, S, "$WeakSetData");
-
         // i. Replace the element of entries whose value is e with an element whose value is empty.
         entries[i] = undefined;
 

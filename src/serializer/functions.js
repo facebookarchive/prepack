@@ -16,7 +16,8 @@ import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
-import { AbstractObjectValue, FunctionValue, ObjectValue, UndefinedValue } from "../values/index.js";
+import { AbstractObjectValue, FunctionValue, ObjectValue, AbstractValue } from "../values/index.js";
+import { Get } from "../methods/index.js";
 import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
 import * as t from "babel-types";
@@ -27,22 +28,20 @@ export class Functions {
     this.functions = functions;
     this.moduleTracer = moduleTracer;
     this.writeEffects = new Map();
-    this.nameToFunctionValue = new Map();
+    this.functionExpressions = new Map();
   }
 
   realm: Realm;
   functions: ?Array<string>;
+  // maps back from FunctionValue to the expression string
+  functionExpressions: Map<FunctionValue, string>;
   moduleTracer: ModuleTracer;
-  writeEffects: Map<string, Effects>;
-  nameToFunctionValue: Map<string, FunctionValue>;
+  writeEffects: Map<FunctionValue, Effects>;
 
-  checkThatFunctionsAreIndependent() {
-    let functions = this.functions;
-    invariant(functions, "This method should only be called if initialized with defined functions");
-
+  _generateAdditionalFunctionCallsFromInput(): Array<[FunctionValue, BabelNodeCallExpression]> {
     // lookup functions
     let calls = [];
-    for (let fname of functions) {
+    for (let fname of this.functions || []) {
       let fun;
       let fnameAst = buildTemplate(fname)({}).expression;
       if (fnameAst) {
@@ -63,47 +62,100 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
-      let funcLength = fun.getLength();
-      if (funcLength && funcLength > 0) {
-        // TODO #987: Make Additional Functions work with arguments
-        throw new FatalError("TODO: implement arguments to additional functions");
-      }
-      this.nameToFunctionValue.set(fname, fun);
+      this.functionExpressions.set(fun, fname);
       let call = t.callExpression(fnameAst, []);
-      calls.push([fname, call]);
+      calls.push([fun, call]);
+    }
+    return calls;
+  }
+
+  _generateAdditionalFunctionCallsFromDirective(): Array<[FunctionValue, BabelNodeCallExpression]> {
+    let recordedAdditionalFunctions: Map<FunctionValue, string> = new Map();
+    let realm = this.realm;
+    let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
+      () => Get(realm, realm.$GlobalObject, "__additionalFunctions"),
+      realm.intrinsics.undefined,
+      false
+    );
+    invariant(globalRecordedAdditionalFunctionsMap instanceof ObjectValue);
+    for (let funcId of globalRecordedAdditionalFunctionsMap.getOwnPropertyKeysArray()) {
+      let property = globalRecordedAdditionalFunctionsMap.properties.get(funcId);
+      if (property) {
+        let funcValue = property.descriptor && property.descriptor.value;
+        if (!(funcValue instanceof FunctionValue)) {
+          invariant(funcValue instanceof AbstractValue);
+          realm.handleError(
+            new CompilerDiagnostic(
+              `Additional Function Value ${funcId} is an AbstractValue which is not allowed`,
+              undefined,
+              "PP0001",
+              "FatalError"
+            )
+          );
+          throw new FatalError("Additional Function values cannot be AbstractValues");
+        }
+        recordedAdditionalFunctions.set(funcValue, funcId);
+      }
     }
 
+    // The additional functions we registered at runtime are recorded at:
+    // global.__additionalFunctions.id
+    let calls = [];
+    for (let [funcValue, funcId] of recordedAdditionalFunctions) {
+      // TODO #987: Make Additional Functions work with arguments
+      calls.push([
+        funcValue,
+        t.callExpression(
+          t.memberExpression(
+            t.memberExpression(t.identifier("global"), t.identifier("__additionalFunctions")),
+            t.identifier(funcId)
+          ),
+          []
+        ),
+      ]);
+    }
+    return calls;
+  }
+
+  checkThatFunctionsAreIndependent() {
+    let calls = this._generateAdditionalFunctionCallsFromInput().concat(
+      this._generateAdditionalFunctionCallsFromDirective()
+    );
+
     // Get write effects of the functions
-    for (let [fname, call] of calls) {
+    for (let [funcValue, call] of calls) {
       // This may throw a FatalError if there is an unrecoverable error in the called function
       // When that happens we cannot prepack the bundle.
       // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
       let e = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
-      this.writeEffects.set(fname, e);
+      this.writeEffects.set(funcValue, e);
     }
 
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
-    for (let [fname1, call1] of calls) {
-      let e1 = this.writeEffects.get(fname1);
+    for (let [fun1, call1] of calls) {
+      // Also do argument validation here
+      let funcLength = fun1.getLength();
+      if (funcLength && funcLength > 0) {
+        // TODO #987: Make Additional Functions work with arguments
+        throw new FatalError("TODO: implement arguments to additional functions");
+      }
+      let e1 = this.writeEffects.get(fun1);
       invariant(e1 !== undefined);
+      let fun1Name = this.functionExpressions.get(fun1) || fun1.intrinsicName || "unknown";
       if (e1[0] instanceof Completion) {
         let error = new CompilerDiagnostic(
-          `Additional function ${fname1} may terminate abruptly`,
+          `Additional function ${fun1Name} may terminate abruptly`,
           e1[0].location,
           "PP1002",
           "FatalError"
         );
         this.realm.handleError(error);
         throw new FatalError();
-      } else if (!(e1[0] instanceof UndefinedValue)) {
-        // TODO #988: Make Additional Functions work with return values
-        throw new FatalError("TODO: make return values work with additional functions");
       }
-      for (let [fname2, call2] of calls) {
-        fname2; // not used
+      for (let [, call2] of calls) {
         if (call1 === call2) continue;
-        this.reportWriteConflicts(fname1, conflicts, e1[3], call1, call2);
+        this.reportWriteConflicts(fun1Name, conflicts, e1[3], call1, call2);
       }
     }
     if (conflicts.size > 0) {
@@ -113,13 +165,7 @@ export class Functions {
   }
 
   getAdditionalFunctionValuesToEffects(): Map<FunctionValue, Effects> {
-    let functionValueToEffects = new Map();
-    for (let [functionString, effects] of this.writeEffects.entries()) {
-      let funcValue = this.nameToFunctionValue.get(functionString);
-      invariant(funcValue);
-      functionValueToEffects.set(funcValue, effects);
-    }
-    return functionValueToEffects;
+    return this.writeEffects;
   }
 
   reportWriteConflicts(

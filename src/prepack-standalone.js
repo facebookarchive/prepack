@@ -122,9 +122,6 @@ export function prepackFromAst(
   let filename = options.filename || (ast.loc && ast.loc.source) || "unknown";
   let sources = [{ filePath: filename, fileContents: code }];
 
-  // TODO: Expose an option to wire an already parsed ast all the way through
-  // to the execution environment. For now, we just reparse.
-
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
   let serializer = new Serializer(realm, getSerializerOptions(options));

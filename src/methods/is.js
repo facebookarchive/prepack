@@ -190,7 +190,7 @@ export function IsArray(realm: Realm, argument: Value): boolean {
 
 // ECMA262 14.6.1
 export function IsInTailPosition(realm: Realm, node: BabelNodeCallExpression): boolean {
-  // TODO: implement tail calls
+  // TODO #1008: implement tail calls
   return false;
 }
 

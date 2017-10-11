@@ -42,7 +42,7 @@ export default class TypesDomain {
 
   // return the type of the result in the case where there is no exception
   static binaryOp(op: BabelBinaryOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
-    //todo: goto top only if op === "+"
+    //todo #999: goto top only if op === "+"
     let lType = left._type;
     let rType = right._type;
     if (lType === undefined || rType === undefined) return TypesDomain.topVal;

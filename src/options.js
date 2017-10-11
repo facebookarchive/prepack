@@ -19,6 +19,7 @@ export type RealmOptions = {
   debugNames?: boolean,
   errorHandler?: ErrorHandler,
   mathRandomSeed?: string,
+  omitInvariants?: boolean,
   uniqueSuffix?: string,
   residual?: boolean,
   serialize?: boolean,

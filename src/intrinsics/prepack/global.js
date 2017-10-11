@@ -20,6 +20,7 @@ import {
   StringValue,
   UndefinedValue,
   Value,
+  ECMAScriptSourceFunctionValue,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
@@ -118,6 +119,42 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
+  global.$DefineOwnProperty("__additionalFunctions", {
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__additionalFunctions", true),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  let uid = 0;
+  // Allows dynamically registering additional functions.
+  // WARNING: these functions will get exposed at global scope and called there.
+  // NB: If we interpret one of these calls in an evaluateForEffects context
+  //     that is not subsequently applied, the function will not be registered
+  //     (because prepack won't have a correct value for the FunctionValue itself)
+  global.$DefineOwnProperty("__registerAdditionalFunctionToPrepack", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__registerAdditionalFunctionToPrepack",
+      "__registerAdditionalFunctionToPrepack",
+      0,
+      (context, [functionValue]) => {
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        realm.assignToGlobal(
+          t.memberExpression(
+            t.memberExpression(t.identifier("global"), t.identifier("__additionalFunctions")),
+            t.identifier("" + uid++)
+          ),
+          functionValue
+        );
+        return realm.intrinsics.undefined;
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized
   global.$DefineOwnProperty("__initializedModules", {
@@ -171,7 +208,6 @@ export default function(realm: Realm): void {
   // that is computed by invoking function(arg0, arg1, ...) in the residual program and
   // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
   // The function must not have side effects, and it must not access any state (besides the supplied arguments).
-  // TODO: In some distant future, Prepack should be able to figure out automatically what computations need to remain part of the residual program.
   global.$DefineOwnProperty("__residual", {
     value: deriveNativeFunctionValue(false),
     writable: true,
@@ -188,7 +224,7 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  // TODO: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
+  // TODO #1023: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
   global.$DefineOwnProperty("__annotate", {
     value: realm.intrinsics.undefined,
     writable: true,
@@ -249,14 +285,16 @@ export default function(realm: Realm): void {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
 
-        let key = ToStringPartial(realm, propertyName);
-
         // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
         if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
           let generator = realm.generator;
           invariant(generator);
+
+          let key = ToStringPartial(realm, propertyName);
+          let propertyIdentifier = generator.getAsPropertyNameExpression(key);
+          let computed = !t.isIdentifier(propertyIdentifier);
           let condition = ([objectNode, valueNode]) =>
-            t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode);
+            t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
           if (invariantOptions) {
             let invariantOptionString = ToStringPartial(realm, invariantOptions);
             switch (invariantOptionString) {
@@ -264,7 +302,7 @@ export default function(realm: Realm): void {
                 condition = ([objectNode, valueNode]) =>
                   t.binaryExpression(
                     "===",
-                    t.memberExpression(objectNode, t.identifier(key)),
+                    t.memberExpression(objectNode, propertyIdentifier, computed),
                     t.valueToNode(undefined)
                   );
                 break;
@@ -279,7 +317,7 @@ export default function(realm: Realm): void {
           }
           if (condition)
             generator.emitInvariant([object, value, object], condition, objnode =>
-              t.memberExpression(objnode, t.identifier(key))
+              t.memberExpression(objnode, propertyIdentifier, computed)
             );
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above

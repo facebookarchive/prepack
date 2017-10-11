@@ -314,6 +314,7 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
       AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
       throw new FatalError();
     }
+    invariant(value instanceof Value);
     CreateDataProperty(realm, clone, key, InternalJSONClone(realm, value));
   }
   if (val.isPartialObject()) clone.makePartial();
@@ -334,7 +335,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
       obVal.values = new ValuesDomain(new Set([InternalCloneObject(realm, val.getTemplate())]));
       return obVal;
     }
-    // TODO: NaN and Infinity must be mapped to null.
+    // TODO #1010: NaN and Infinity must be mapped to null.
     return val;
   }
   if (
@@ -358,7 +359,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
         let P = ToString(realm, new NumberValue(realm, I));
         let newElement = Get(realm, val, P);
         if (!(newElement instanceof UndefinedValue)) {
-          // TODO: An abstract value that ultimately yields undefined should still be skipped
+          // TODO #1011: An abstract value that ultimately yields undefined should still be skipped
           CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
         }
         I += 1;
@@ -376,7 +377,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
         invariant(P instanceof StringValue);
         let newElement = Get(realm, val, P);
         if (!(newElement instanceof UndefinedValue)) {
-          // TODO: An abstract value that ultimately yields undefined should still be skipped
+          // TODO #1011: An abstract value that ultimately yields undefined should still be skipped
           CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
         }
       }
@@ -500,7 +501,7 @@ export default function(realm: Realm): ObjectValue {
     // 9. Let wrapper be ObjectCreate(%ObjectPrototype%).
     let wrapper = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-    // TODO: Make result abstract if any nested element is an abstract value.
+    // TODO #1012: Make result abstract if any nested element is an abstract value.
     if (value instanceof AbstractValue || (value instanceof ObjectValue && value.isPartialObject())) {
       // Return abstract result. This enables cloning via JSON.parse(JSON.stringify(...)).
       let clonedValue = InternalJSONClone(realm, value);

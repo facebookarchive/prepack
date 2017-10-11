@@ -25,15 +25,16 @@ import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
 import {
   AbstractValue,
-  Value,
   BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
-  ECMAScriptSourceFunctionValue,
+  NumberValue,
   ObjectValue,
   StringValue,
   SymbolValue,
-  NumberValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
 import { DefinePropertyOrThrow, NewDeclarativeEnvironment } from "./index.js";
 import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
@@ -567,6 +568,14 @@ export function FunctionInitialize(
 
   // 4. Let Strict be the value of the [[Strict]] internal slot of F.
   let Strict = F.$Strict;
+  if (!Strict) {
+    DefinePropertyOrThrow(realm, F, "caller", {
+      value: new UndefinedValue(realm),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
+  }
 
   // 5. Set the [[Environment]] internal slot of F to the value of Scope.
   F.$Environment = Scope;
@@ -627,7 +636,9 @@ export function AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm) 
     enumerable: false,
     configurable: true,
   };
-  // 3. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
+  // 3. Perform ! DefinePropertyOrThrow(F, "caller", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
+  DefinePropertyOrThrow(realm, F, "caller", desc);
+  // 4. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
   return DefinePropertyOrThrow(realm, F, "arguments", desc);
 }
 
@@ -1119,6 +1130,33 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
   }
 }
 
+export function incorporateSavedCompletion(realm: Realm, c: void | Completion | Value): Completion | Value {
+  let context = realm.getRunningContext();
+  let savedCompletion = context.savedCompletion;
+  if (savedCompletion !== undefined) {
+    context.savedCompletion = undefined;
+    if (c === undefined) return savedCompletion;
+    if (c instanceof Value) {
+      updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
+      return savedCompletion;
+    } else if (c instanceof PossiblyNormalCompletion) {
+      return composePossiblyNormalCompletions(realm, savedCompletion, c);
+    } else {
+      invariant(c instanceof AbruptCompletion);
+      let e = realm.getCapturedEffects();
+      invariant(e !== undefined);
+      realm.stopEffectCaptureAndUndoEffects();
+      e[0] = c;
+      let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
+      realm.applyEffects(joined_effects);
+      let jc = joined_effects[0];
+      invariant(jc instanceof AbruptCompletion);
+      throw jc;
+    }
+  }
+  return c;
+}
+
 export function EvaluateStatements(
   body: Array<BabelNodeStatement>,
   blockValue: void | NormalCompletion | Value,
@@ -1129,28 +1167,8 @@ export function EvaluateStatements(
   for (let node of body) {
     if (node.type !== "FunctionDeclaration") {
       let res = blockEnv.evaluateAbstractCompletion(node, strictCode);
-      let context = realm.getRunningContext();
-      let savedCompletion = context.savedCompletion;
-      if (savedCompletion !== undefined) {
-        context.savedCompletion = undefined;
-        if (res instanceof Value) res = updatePossiblyNormalCompletionWithValue(realm, savedCompletion, res);
-        else if (res instanceof PossiblyNormalCompletion)
-          res = composePossiblyNormalCompletions(realm, savedCompletion, res);
-        else {
-          invariant(res instanceof AbruptCompletion);
-          let e = realm.getCapturedEffects();
-          invariant(e !== undefined);
-          realm.stopEffectCaptureAndUndoEffects();
-          invariant(context.savedCompletion !== undefined);
-          e[0] = res;
-          let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, res, e);
-          realm.applyEffects(joined_effects);
-          res = joined_effects[0];
-          invariant(res instanceof AbruptCompletion);
-          throw res;
-        }
-      }
       invariant(!(res instanceof Reference));
+      res = incorporateSavedCompletion(realm, res);
       if (!(res instanceof EmptyValue)) {
         if (blockValue === undefined || blockValue instanceof Value) {
           if (res instanceof AbruptCompletion) throw UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty);
@@ -1161,11 +1179,18 @@ export function EvaluateStatements(
           if (res instanceof AbruptCompletion) {
             throw stopEffectCaptureAndJoinCompletions(blockValue, res, realm);
           } else {
-            if (res instanceof Value) blockValue.value = res;
-            else {
+            if (res instanceof Value) {
+              updatePossiblyNormalCompletionWithValue(realm, blockValue, res);
+            } else {
               invariant(blockValue instanceof PossiblyNormalCompletion);
               invariant(res instanceof PossiblyNormalCompletion);
+              let e = realm.getCapturedEffects();
+              invariant(e !== undefined);
+              realm.stopEffectCaptureAndUndoEffects();
+              realm.addPriorEffects(e, res.consequent instanceof Value ? res.consequentEffects : res.alternateEffects);
               blockValue = composePossiblyNormalCompletions(realm, blockValue, res);
+              realm.applyEffects(e);
+              realm.captureEffects();
             }
           }
         }

@@ -101,6 +101,7 @@ function runTest(name, code, options, args) {
   });
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
+  if (code.includes("// omit invariants")) options.omitInvariants = true;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
   if (code.includes("// throws introspection error")) {
