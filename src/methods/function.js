@@ -1184,13 +1184,7 @@ export function EvaluateStatements(
             } else {
               invariant(blockValue instanceof PossiblyNormalCompletion);
               invariant(res instanceof PossiblyNormalCompletion);
-              let e = realm.getCapturedEffects();
-              invariant(e !== undefined);
-              realm.stopEffectCaptureAndUndoEffects();
-              realm.addPriorEffects(e, res.consequent instanceof Value ? res.consequentEffects : res.alternateEffects);
               blockValue = composePossiblyNormalCompletions(realm, blockValue, res);
-              realm.applyEffects(e);
-              realm.captureEffects();
             }
           }
         }
