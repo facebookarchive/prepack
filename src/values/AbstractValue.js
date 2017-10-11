@@ -35,7 +35,7 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
-import { hashBinary, hashCall, hashString, hashTernary, hashUnary, ToBoolean } from "../methods/index.js";
+import { hashBinary, hashCall, hashString, hashTernary, hashUnary } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
@@ -359,7 +359,10 @@ export default class AbstractValue extends Value {
     }
 
     let resultTypes = TypesDomain.binaryOp(op, leftTypes, rightTypes);
-    let resultValues = ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
+    let resultValues =
+      kind === "template for property name condition"
+        ? ValuesDomain.topVal
+        : ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
     let [hash, args] = kind === undefined ? hashBinary(op, left, right) : hashCall(kind, left, right);
     let result = new AbstractValue(realm, resultTypes, resultValues, hash, args, ([x, y]) =>
       t.binaryExpression(op, x, y)
@@ -381,9 +384,9 @@ export default class AbstractValue extends Value {
       leftTypes = left.types;
       leftValues = left.values;
     } else {
+      leftTypes = new TypesDomain(left.getType());
       invariant(left instanceof ConcreteValue);
-      if (ToBoolean(realm, left)) return op === "&&" ? right : left;
-      else return this.kind === "&&" ? left : right;
+      leftValues = new ValuesDomain(left);
     }
 
     let rightTypes, rightValues;
@@ -394,15 +397,6 @@ export default class AbstractValue extends Value {
       rightTypes = new TypesDomain(right.getType());
       invariant(right instanceof ConcreteValue);
       rightValues = new ValuesDomain(right);
-    }
-
-    if (left.getType() === BooleanValue && right.getType() === BooleanValue) {
-      // (x: boolean) && true <=> x
-      // x || true <=> true
-      if (!right.mightNotBeTrue()) return op === "&&" ? left : realm.intrinsics.true;
-      // (x: boolean) && false <=> false
-      // (x: boolean) || false <=> x
-      if (!right.mightNotBeFalse()) return op === "||" ? left : realm.intrinsics.false;
     }
 
     let resultTypes = TypesDomain.logicalOp(op, leftTypes, rightTypes);
@@ -416,7 +410,7 @@ export default class AbstractValue extends Value {
     );
     result.kind = op;
     result.expressionLocation = loc;
-    return result;
+    return realm.simplifyAndRefineAbstractValue(result);
   }
 
   static createFromConditionalOp(
@@ -426,34 +420,6 @@ export default class AbstractValue extends Value {
     right: void | Value,
     loc?: ?BabelNodeSourceLocation
   ): Value {
-    // c ? x : x <=> x
-    if (left !== undefined && right !== undefined && left.equals(right)) return left;
-    // x ? x : y <=> x || y
-    if (left instanceof AbstractValue && condition.equals(left) && right)
-      return AbstractValue.createFromLogicalOp(realm, "||", left, right, loc);
-    // y ? x : y <=> y && x
-    if (right instanceof AbstractValue && condition.equals(right) && left)
-      return AbstractValue.createFromLogicalOp(realm, "&&", right, left, loc);
-    // c ? (c ? x : y) : z <=> c ? x : z
-    if (left instanceof AbstractValue && left.kind === "conditional") {
-      let [lcond, lleft] = left.args;
-      if (condition.equals(lcond)) return AbstractValue.createFromConditionalOp(realm, condition, lleft, right);
-    }
-    // c ? x : (c ? y : z) : z <=> c ? x : z
-    if (right instanceof AbstractValue && right.kind === "conditional") {
-      let [rcond, , rright] = right.args;
-      if (condition.equals(rcond)) return AbstractValue.createFromConditionalOp(realm, condition, left, rright);
-    }
-    if (
-      left !== undefined &&
-      left.getType() === BooleanValue &&
-      right !== undefined &&
-      right.getType() === BooleanValue
-    ) {
-      if (!left.mightNotBeTrue() && !right.mightNotBeFalse()) return condition;
-      if (!left.mightNotBeFalse() && !right.mightNotBeTrue())
-        return AbstractValue.createFromUnaryOp(realm, "!", condition, true, loc);
-    }
     let types = TypesDomain.joinValues(left, right);
     let values = ValuesDomain.joinValues(realm, left, right);
     let [hash, args] = hashTernary(condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined);
@@ -464,7 +430,8 @@ export default class AbstractValue extends Value {
     result.expressionLocation = loc;
     if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
     if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
-    return result;
+    if (result.mightBeEmpty) return result;
+    return realm.simplifyAndRefineAbstractValue(result);
   }
 
   static createFromUnaryOp(
@@ -473,7 +440,7 @@ export default class AbstractValue extends Value {
     operand: AbstractValue,
     prefix?: boolean,
     loc?: ?BabelNodeSourceLocation
-  ): AbstractValue {
+  ): Value {
     let resultTypes = TypesDomain.unaryOp(op);
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
     let result = new AbstractValue(realm, resultTypes, resultValues, hashUnary(op, operand), [operand], ([x]) =>
@@ -481,7 +448,7 @@ export default class AbstractValue extends Value {
     );
     result.kind = op;
     result.expressionLocation = loc;
-    return result;
+    return realm.simplifyAndRefineAbstractValue(result);
   }
 
   /* Note that the template is parameterized by the names A, B, C and so on.

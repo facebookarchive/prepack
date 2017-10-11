@@ -18,7 +18,6 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import simplifyAbstractValue from "../utils/simplifier.js";
 
 export function withPathCondition<T>(condition: AbstractValue, evaluate: () => T): T {
   let realm = condition.$Realm;
@@ -111,13 +110,15 @@ function pushInversePathCondition(condition: Value) {
     }
     let inverseCondition = AbstractValue.createFromUnaryOp(realm, "!", condition);
     pushPathCondition(inverseCondition);
-    let simplifiedInverseCondition = simplifyAbstractValue(realm, inverseCondition);
-    if (!simplifiedInverseCondition.equals(inverseCondition)) pushPathCondition(simplifiedInverseCondition);
+    if (inverseCondition instanceof AbstractValue) {
+      let simplifiedInverseCondition = realm.simplifyAndRefineAbstractCondition(inverseCondition);
+      if (!simplifiedInverseCondition.equals(inverseCondition)) pushPathCondition(simplifiedInverseCondition);
+    }
   }
 }
 
 function pushRefinedConditions(unrefinedConditions: Array<AbstractValue>) {
   for (let unrefinedCond of unrefinedConditions) {
-    pushPathCondition(unrefinedCond.$Realm.simplifyAbstractValue(unrefinedCond));
+    pushPathCondition(unrefinedCond.$Realm.simplifyAndRefineAbstractCondition(unrefinedCond));
   }
 }
