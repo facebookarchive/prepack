@@ -20,6 +20,7 @@ import {
   StringValue,
   UndefinedValue,
   Value,
+  ECMAScriptSourceFunctionValue,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
@@ -111,6 +112,42 @@ export default function(realm: Realm): void {
           if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
         return result;
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__additionalFunctions", {
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__additionalFunctions", true),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  let uid = 0;
+  // Allows dynamically registering additional functions.
+  // WARNING: these functions will get exposed at global scope and called there.
+  // NB: If we interpret one of these calls in an evaluateForEffects context
+  //     that is not subsequently applied, the function will not be registered
+  //     (because prepack won't have a correct value for the FunctionValue itself)
+  global.$DefineOwnProperty("__registerAdditionalFunctionToPrepack", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__registerAdditionalFunctionToPrepack",
+      "__registerAdditionalFunctionToPrepack",
+      0,
+      (context, [functionValue]) => {
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        realm.assignToGlobal(
+          t.memberExpression(
+            t.memberExpression(t.identifier("global"), t.identifier("__additionalFunctions")),
+            t.identifier("" + uid++)
+          ),
+          functionValue
+        );
+        return realm.intrinsics.undefined;
       }
     ),
     writable: true,
@@ -248,14 +285,16 @@ export default function(realm: Realm): void {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
 
-        let key = ToStringPartial(realm, propertyName);
-
         // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
         if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
           let generator = realm.generator;
           invariant(generator);
+
+          let key = ToStringPartial(realm, propertyName);
+          let propertyIdentifier = generator.getAsPropertyNameExpression(key);
+          let computed = !t.isIdentifier(propertyIdentifier);
           let condition = ([objectNode, valueNode]) =>
-            t.binaryExpression("!==", t.memberExpression(objectNode, t.identifier(key)), valueNode);
+            t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
           if (invariantOptions) {
             let invariantOptionString = ToStringPartial(realm, invariantOptions);
             switch (invariantOptionString) {
@@ -263,7 +302,7 @@ export default function(realm: Realm): void {
                 condition = ([objectNode, valueNode]) =>
                   t.binaryExpression(
                     "===",
-                    t.memberExpression(objectNode, t.identifier(key)),
+                    t.memberExpression(objectNode, propertyIdentifier, computed),
                     t.valueToNode(undefined)
                   );
                 break;
@@ -278,7 +317,7 @@ export default function(realm: Realm): void {
           }
           if (condition)
             generator.emitInvariant([object, value, object], condition, objnode =>
-              t.memberExpression(objnode, t.identifier(key))
+              t.memberExpression(objnode, propertyIdentifier, computed)
             );
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above

@@ -17,6 +17,7 @@ import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import { voidExpression, nullExpression } from "../utils/internalizer.js";
 import type { LocationService } from "./types.js";
+import { factorifyObjects } from "./factorify.js";
 
 // This class manages information about values
 // which are only referenced by residual functions,
@@ -116,6 +117,12 @@ export class ResidualFunctionInitializers {
 
   hasInitializerStatement(functionValue: FunctionValue): boolean {
     return !!this.functionInitializerInfos.get(functionValue);
+  }
+
+  factorifyInitializers(nameGenerator: NameGenerator) {
+    for (const initializer of this.initializers.values()) {
+      factorifyObjects(initializer.body, nameGenerator);
+    }
   }
 
   getInitializerStatement(functionValue: FunctionValue): void | BabelNodeStatement {

@@ -14,6 +14,7 @@ We actively welcome your pull requests. If you are planning on doing a larger ch
 4. Ensure the test suite passes, your code lints and typechecks. Your pull request might not get the attention it deserves if it fails in our automated continuous integration system.
 5. If you haven't already, complete the Contributor License Agreement ("CLA").
 6. Consider quashing your commits (`git rebase -i`). One intent alongside one commit makes it clearer for people to review and easier to understand your intention.
+7. The main comment of a pull request must start with a sentence to be used in release notes prefixed with "Release Note: ". If the change is negligible, say "Release Note: none".
 
 ## Copyright Notice for files
 

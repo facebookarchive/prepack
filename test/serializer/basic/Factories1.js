@@ -1,3 +1,4 @@
+// Copies of default: 2
 (function() {
   var a = {"default": 1};
   var b = {"default": 2};
