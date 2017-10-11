@@ -594,12 +594,7 @@ export function joinValuesAsConditional(
   v1: void | Value,
   v2: void | Value
 ): Value {
-  let result = AbstractValue.createFromConditionalOp(realm, condition, v1, v2);
-  if (result instanceof AbstractValue) {
-    if (v1) result.mightBeEmpty = v1.mightHaveBeenDeleted();
-    if (v2 && !result.mightBeEmpty) result.mightBeEmpty = v2.mightHaveBeenDeleted();
-  }
-  return result;
+  return AbstractValue.createFromConditionalOp(realm, condition, v1, v2);
 }
 
 export function joinPropertyBindings(

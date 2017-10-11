@@ -17,6 +17,7 @@ import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
+import simplifyAbstractValue from "./utils/simplifier.js";
 
 export default function(opts: RealmOptions = {}): Realm {
   let r = new Realm(opts);
@@ -28,6 +29,7 @@ export default function(opts: RealmOptions = {}): Realm {
   initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
   for (let name in partialEvaluators) r.partialEvaluators[name] = partialEvaluators[name];
+  r.simplifyAbstractValue = simplifyAbstractValue.bind(null, r);
   r.$GlobalEnv = NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
   return r;
 }
