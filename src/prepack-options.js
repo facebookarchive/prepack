@@ -11,6 +11,7 @@
 
 import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility } from "./options";
+import { Realm } from "./realm.js";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
