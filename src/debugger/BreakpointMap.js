@@ -30,10 +30,20 @@ export class BreakpointMap {
   }
 
   getBreakpoint(line: number, column: number = 0): void | Breakpoint {
-    let key = this._getKey(line, column);
-    if (key in this.breakpoints) {
-      return this.breakpoints[key];
+    //check for a column breakpoint first, then line breakpoint
+    if (column !== 0) {
+      let key = this._getKey(line, column);
+      if (key in this.breakpoints) {
+        return this.breakpoints[key];
+      }
     }
+    else {
+      let key = this._getKey(line, 0);
+      if (key in this.breakpoints) {
+        return this.breakpoints[key];
+      }
+    }
+
     return undefined;
   }
 
