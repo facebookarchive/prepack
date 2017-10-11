@@ -13,7 +13,7 @@ import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility } from "./options";
 
 export type PrepackOptions = {|
-  additionalGlobals?: Function,
+  additionalGlobals?: Realm => void,
   additionalFunctions?: Array<string>,
   compatibility?: Compatibility,
   debugNames?: boolean,
