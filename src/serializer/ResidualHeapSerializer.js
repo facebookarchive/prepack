@@ -755,7 +755,7 @@ export class ResidualHeapSerializer {
 
     invariant(typeValue !== null, "JSXElement type of null");
 
-    let identifier = convertExpressionToJSXIdentifier(this.serializeValue(typeValue));
+    let identifier = convertExpressionToJSXIdentifier(this.serializeValue(typeValue), true);
     let attributes = [];
     let children = [];
 

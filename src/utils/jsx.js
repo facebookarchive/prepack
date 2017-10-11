@@ -37,20 +37,36 @@ export function isReactElement(val: Value): boolean {
 }
 
 export function convertExpressionToJSXIdentifier(
-  expr: BabelNodeExpression
+  expr: BabelNodeExpression,
+  isRoot: boolean
 ): BabelNodeJSXMemberExpression | BabelNodeJSXIdentifier {
   switch (expr.type) {
     case "ThisExpression":
+      invariant(isRoot === false, `invalid conversion of root expression to JSXIdentifier for ThisExpression`);
       return t.jSXIdentifier("this");
     case "Identifier":
-      return t.jSXIdentifier(expr.name);
+      let name = expr.name;
+      invariant(
+        // ensure the 1st character of the string is uppercase
+        // for a component unless it is not the root
+        isRoot === false || (name.length > 0 && name[0] === name[0].toUpperCase()),
+        "invalid JSXIdentifer from Identifier, Identifier name must be uppercase"
+      );
+      return t.jSXIdentifier(name);
     case "StringLiteral":
-      return t.jSXIdentifier(expr.value);
+      let value = expr.value;
+      invariant(
+        // ensure the 1st character of the string is lowercase
+        // otherwise it will appear as a component
+        value.length > 0 && value[0] === value[0].toLowerCase(),
+        "invalid JSXIdentifer from string, strings must be lowercase"
+      );
+      return t.jSXIdentifier(value);
     case "MemberExpression":
       invariant(expr.computed === false, "Cannot inline computed expressions in JSX type.");
       return t.jSXMemberExpression(
-        convertExpressionToJSXIdentifier(expr.object),
-        (convertExpressionToJSXIdentifier(expr.property): any)
+        convertExpressionToJSXIdentifier(expr.object, false),
+        ((convertExpressionToJSXIdentifier(expr.property, false): any): BabelNodeJSXIdentifier)
       );
     default:
       invariant(false, "Invalid JSX type");

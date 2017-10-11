@@ -56,7 +56,7 @@ function replaceName(path, residualFunctionBinding, name, data) {
     let serializedValue = residualFunctionBinding.serializedValue;
 
     if (path.node.type === "JSXIdentifier" || path.node.type === "JSXMemberIdentifier") {
-      path.replaceWith(convertExpressionToJSXIdentifier((serializedValue: any)));
+      path.replaceWith(convertExpressionToJSXIdentifier((serializedValue: any), true));
     } else {
       path.replaceWith(serializedValue);
     }
