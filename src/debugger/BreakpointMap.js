@@ -36,8 +36,7 @@ export class BreakpointMap {
       if (key in this.breakpoints) {
         return this.breakpoints[key];
       }
-    }
-    else {
+    } else {
       let key = this._getKey(line, 0);
       if (key in this.breakpoints) {
         return this.breakpoints[key];
