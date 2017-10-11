@@ -79,7 +79,6 @@ function processError(errorOutput, error) {
   errorWikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(error.errorCode);
   errorWikiLink.text = error.errorCode;
   errorWikiLink.setAttribute('target', '_blank');
-  //console.log(JSON.stringify(error));
   // TODO: syntax errors need their location stripped
   if (error.location) {
     let errorLineLink = document.createElement('a');
