@@ -20,6 +20,9 @@ import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./
 import { SerializerStatistics } from "./types.js";
 import { getOrDefault } from "./utils.js";
 
+// Each of these will correspond to a different preludeGenerator and thus will
+// have different values available for initialization. FunctionValues should
+// only be additional functions.
 export type ReferentializationScope = FunctionValue | "GLOBAL";
 
 type ReferentializationState = {|
@@ -29,6 +32,13 @@ type ReferentializationState = {|
   serializedScopes: Map<DeclarativeEnvironmentRecord, ScopeBinding>,
 |};
 
+/*
+ * This class helps fixup names in residual functions for variables that these
+ * functions capture from parent scopes.
+ * For each ReferentializationScope it creates a _get_scope_binding function
+ * that contains the initialization for all of that scope's FunctionInstances
+ * which will contain a switch statement with all the initializations.
+ */
 export class Referentializer {
   constructor(scopeNameGenerator: NameGenerator, statistics: SerializerStatistics) {
     this.scopeNameGenerator = scopeNameGenerator;
