@@ -20,7 +20,7 @@ export class BreakpointMap {
   }
   filePath: string;
 
-  //map of line numbers to Breakpoint objects
+  //map of line:column to Breakpoint objects
   breakpoints: { [string]: Breakpoint };
 
   addBreakpoint(line: number, column: number = 0, temporary?: boolean, enabled?: boolean) {
