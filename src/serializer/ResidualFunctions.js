@@ -119,8 +119,8 @@ export class ResidualFunctions {
 
   _shouldUseFactoryFunction(funcBody: BabelNodeBlockStatement, instances: Array<FunctionInstance>) {
     function shouldInlineFunction(): boolean {
-      let shouldInline = !funcBody;
-      if (!shouldInline && funcBody.start && funcBody.end) {
+      let shouldInline = true;
+      if (funcBody.start && funcBody.end) {
         let bodySize = funcBody.end - funcBody.start;
         shouldInline = bodySize <= 30;
       }
@@ -132,7 +132,8 @@ export class ResidualFunctions {
     return !shouldInlineFunction() && instances.length > 1 && !usesArguments;
   }
 
-  _hasRewrritenFunctionInstance(
+  // Note: this function takes linear time. Please do not call it inside loop.
+  _hasRewrittenFunctionInstance(
     rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>,
     instances: Array<FunctionInstance>
   ): boolean {
@@ -148,7 +149,7 @@ export class ResidualFunctions {
 
       if (this._shouldUseFactoryFunction(functionBody, instances)) {
         // Rewritten function should never use factory function.
-        invariant(!this._hasRewrritenFunctionInstance(rewrittenAdditionalFunctions, instances));
+        invariant(!this._hasRewrittenFunctionInstance(rewrittenAdditionalFunctions, instances));
 
         const functionUniqueTag: number = (functionBody: any).uniqueTag;
         invariant(functionUniqueTag);

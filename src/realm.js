@@ -253,6 +253,10 @@ export class Realm {
   errorHandler: ?ErrorHandler;
   objectCount = 0;
   symbolCount = 867501803871088;
+  // Unique tag for identifying function body ast node. It is neeeded
+  // instead of ast node itself because we may perform ast tree deep clone
+  // during serialization which changes the ast identity.
+  functionBodyUniqueTagSeed = 1;
 
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 

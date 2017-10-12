@@ -94,7 +94,7 @@ function canShareFunctionBody(duplicateFunctionInfo: FactoryFunctionInfo): boole
   return unbound.size === 0 && modified.size === 0 && !usesThis;
 }
 
-// TODO: enhance for nested functions accessing read-only free varaibles.
+// TODO: enhance for nested functions accessing read-only free variables.
 function replaceNestedFunction(functionTag: number, path: BabelTraversePath, state: ClosureRefReplacerState) {
   const duplicateFunctionInfo = state.factoryFunctionInfos.get(functionTag);
   if (duplicateFunctionInfo && canShareFunctionBody(duplicateFunctionInfo)) {
@@ -145,7 +145,8 @@ export let ClosureRefReplacer = {
   // TODO: handle FunctionDeclaration
   FunctionExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
     if (t.isProgram((path: any).parentPath.parentPath.node)) {
-      // Skip itself.
+      // Skip root function itself.
+      // This assumes the root function is wrapped with: t.file(t.program([t.expressionStatement(rootFunction).
       return;
     }
 
