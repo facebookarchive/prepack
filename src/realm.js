@@ -43,8 +43,6 @@ import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
-
-import { ToString } from "./methods/to.js";
 import { DebugServer } from "./debugger/Debugger.js";
 
 export type Bindings = Map<Binding, void | Value>;
