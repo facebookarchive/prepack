@@ -19,6 +19,7 @@ import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/Debugger.js";
 import { DebugChannel } from "./DebugChannel.js";
+import simplifyAbstractValue from "./utils/simplifier.js";
 
 export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {
   let r = new Realm(opts);
@@ -36,6 +37,7 @@ export default function(opts: RealmOptions = {}, debugChannel: void | DebugChann
   initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
   for (let name in partialEvaluators) r.partialEvaluators[name] = partialEvaluators[name];
+  r.simplifyAbstractValue = simplifyAbstractValue.bind(null, r);
   r.$GlobalEnv = NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
   return r;
 }
