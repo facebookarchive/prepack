@@ -129,6 +129,7 @@ export class ResidualHeapSerializer {
     this.referencedDeclaredValues = referencedDeclaredValues;
     this.activeGeneratorBodies = new Map();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
+    this.additionalFunctionValueInfos = additionalFunctionValueInfos;
   }
 
   emitter: Emitter;
@@ -166,6 +167,7 @@ export class ResidualHeapSerializer {
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
+  additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
@@ -1251,8 +1253,15 @@ export class ResidualHeapSerializer {
               invariant(object instanceof ObjectValue);
               this._emitProperty(object, binding.key, binding.descriptor, true);
             }
-            // TODO #990: Fix additional functions handling of ModifiedBindings
             invariant(result instanceof Value);
+            // Handle ModifiedBindings
+            let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
+            invariant(additionalFunctionValueInfo);
+            for (let [modifiedBinding, residualBinding] of additionalFunctionValueInfo.modifiedBindings) {
+              let newVal = modifiedBinding.value;
+              invariant(newVal);
+              residualBinding.additionalValueSerialized = this.serializeValue(newVal);
+            }
             this.emitter.emit(t.returnStatement(this.serializeValue(result)));
           };
           this.currentAdditionalFunction = additionalFunctionValue;

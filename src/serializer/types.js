@@ -53,11 +53,15 @@ export type ResidualFunctionBinding = {
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
   serializedValue?: void | BabelNodeExpression,
   referentialized?: boolean,
+  scope?: ScopeBinding,
   // If the binding is only accessed by an additional function or nested values
   // this field contains that additional function. (Determines what initializer
   // to put the binding in -- global or additional function)
   referencedOnlyFromAdditionalFunctions?: FunctionValue,
-  scope?: ScopeBinding,
+  // If the binding is overwritten by an additional function, these contain the
+  // new values
+  additionalValueOverride?: Value,
+  additionalValueSerialized?: BabelNodeExpression,
 };
 
 export type ScopeBinding = {

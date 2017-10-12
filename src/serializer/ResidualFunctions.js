@@ -186,6 +186,39 @@ export class ResidualFunctions {
       }
     };
 
+    // Emit code for ModifiedBindings for residual functions
+    for (let [funcValue, funcInfo] of this.additionalFunctionValueInfos) {
+      // Add binding updates to additional functions
+      for (let [, residualBinding] of funcInfo.modifiedBindings) {
+        let scope = residualBinding.scope;
+        // TODO #989: This should probably be an invariant once captures work properly
+        if (!residualBinding.referentialized) continue;
+
+        // Find the place to emit statements to
+        let preludeOverride = rewrittenAdditionalFunctions.get(funcValue);
+        let prelude = overriddenPreludes.get(preludeOverride);
+        if (prelude === undefined) overriddenPreludes.set(preludeOverride, (prelude = []));
+
+        // binding isn't (it went through the referentializer) so setup the scope
+        if (scope) {
+          let decl = t.variableDeclaration("var", [
+            t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
+          ]);
+          let init = this.referentializer.getReferentializedScopeInitialization(scope);
+          prelude.push(decl);
+          // flow forces me to do this
+          let prelude_ = prelude;
+          init.forEach(x => prelude_.push(x));
+        }
+
+        let newValue = residualBinding.additionalValueSerialized;
+        invariant(newValue);
+        // Since residualBinding is referentialized, it should be an LVal
+        let binding_reference = ((residualBinding.serializedValue: any): BabelNodeLVal);
+        prelude.push(t.expressionStatement(t.assignmentExpression("=", binding_reference, newValue)));
+      }
+    }
+
     // Process Additional Functions
     for (let [funcValue, additionalFunctionInfo] of this.additionalFunctionValueInfos.entries()) {
       let { instance } = additionalFunctionInfo;
