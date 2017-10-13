@@ -27,7 +27,11 @@ export default function(
   startLine: number = 1
 ): BabelNodeFile {
   try {
-    let ast = parse(code, { filename, sourceType, startLine });
+    let plugins = [];
+    if (realm.react.enabled) {
+      plugins.push("jsx", "flow");
+    }
+    let ast = parse(code, { filename, sourceType, startLine, plugins });
     traverseFast(ast, node => {
       invariant(node.loc);
       node.loc.source = filename;

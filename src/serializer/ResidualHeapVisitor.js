@@ -13,7 +13,7 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Effects } from "../realm.js";
-import type { Descriptor, PropertyBinding } from "../types.js";
+import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import { IsUnresolvableReference, ToLength, ResolveBinding, HashSet, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
@@ -115,20 +115,28 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitObjectProperties(obj: ObjectValue): void {
+  visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
     // visit properties
-    for (let [symbol, propertyBinding] of obj.symbols) {
-      invariant(propertyBinding);
-      let desc = propertyBinding.descriptor;
-      if (desc === undefined) continue; //deleted
-      this.visitDescriptor(desc);
-      this.visitValue(symbol);
+    if (kind !== "ReactElement") {
+      for (let [symbol, propertyBinding] of obj.symbols) {
+        invariant(propertyBinding);
+        let desc = propertyBinding.descriptor;
+        if (desc === undefined) continue; //deleted
+        this.visitDescriptor(desc);
+        this.visitValue(symbol);
+      }
     }
 
     // visit properties
-    for (let propertyBinding of obj.properties.values()) {
-      invariant(propertyBinding);
-      this.visitObjectProperty(propertyBinding);
+    for (let [propertyBindingKey, propertyBindingValue] of obj.properties) {
+      // we don't want to the $$typeof or _owner properties
+      // as this is contained within the JSXElement, otherwise
+      // they we be need to be emitted during serialization
+      if (kind === "ReactElement" && (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner")) {
+        continue;
+      }
+      invariant(propertyBindingValue);
+      this.visitObjectProperty(propertyBindingValue);
     }
 
     // inject properties with computed names
@@ -142,7 +150,12 @@ export class ResidualHeapVisitor {
     }
 
     // prototype
-    this.visitObjectPrototype(obj);
+    if (kind !== "ReactElement") {
+      // we don't want to the ReactElement prototype visited
+      // as this is contained within the JSXElement, otherwise
+      // they we be need to be emitted during serialization
+      this.visitObjectPrototype(obj);
+    }
     if (obj instanceof FunctionValue) this.visitConstructorPrototype(obj);
   }
 
@@ -372,7 +385,8 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    this.visitObjectProperties(val);
+    let kind = val.getKind();
+    this.visitObjectProperties(val, kind);
 
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
@@ -383,12 +397,12 @@ export class ResidualHeapVisitor {
       return;
     }
 
-    let kind = val.getKind();
     switch (kind) {
       case "RegExp":
       case "Number":
       case "String":
       case "Boolean":
+      case "ReactElement":
       case "ArrayBuffer":
         return;
       case "Date":

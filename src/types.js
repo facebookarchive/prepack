@@ -275,5 +275,6 @@ export type ObjectKind =
   | "ArrayBuffer"
   | "WeakMap"
   | "WeakSet"
-  | TypedArrayKind;
+  | TypedArrayKind
+  | "ReactElement";
 // TODO #26 #712: Promises. All kinds of iterators. Generators.

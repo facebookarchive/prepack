@@ -20,6 +20,7 @@ import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics } from "./types.js";
+import type { ReactSerializerState } from "./types.js";
 import { Functions } from "./functions.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -49,6 +50,9 @@ export class Serializer {
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));
 
     this.options = serializerOptions;
+    this.react = {
+      usedReactElementKeys: new Set(),
+    };
   }
 
   realm: Realm;
@@ -57,6 +61,7 @@ export class Serializer {
   modules: Modules;
   options: SerializerOptions;
   statistics: SerializerStatistics;
+  react: ReactSerializerState;
 
   _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false) {
     let realm = this.realm;
@@ -149,7 +154,8 @@ export class Serializer {
         residualHeapVisitor.referencedDeclaredValues,
         additionalFunctionValuesAndEffects,
         residualHeapVisitor.additionalFunctionValueInfos,
-        this.statistics
+        this.statistics,
+        this.react
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -171,7 +177,8 @@ export class Serializer {
       residualHeapVisitor.referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
       residualHeapVisitor.additionalFunctionValueInfos,
-      this.statistics
+      this.statistics,
+      this.react
     );
 
     let ast = residualHeapSerializer.serialize();
