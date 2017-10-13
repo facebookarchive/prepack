@@ -34,6 +34,7 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
+import { isReactElement } from "../utils/jsx";
 import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
 import {
   joinValuesAsConditional,
@@ -319,6 +320,7 @@ export default class ObjectValue extends ConcreteValue {
     if (this.$ArrayBufferData !== undefined) return "ArrayBuffer";
     if (this.$WeakMapData !== undefined) return "WeakMap";
     if (this.$WeakSetData !== undefined) return "WeakSet";
+    if (isReactElement(this) && this.$Realm.react.enabled) return "ReactElement";
     if (this.$TypedArrayName !== undefined) return this.$TypedArrayName;
     // TODO #26 #712: Promises. All kinds of iterators. Generators.
     return "Object";
