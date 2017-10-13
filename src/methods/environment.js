@@ -1078,6 +1078,6 @@ export function KeyedBindingInitialization(
     }
 
     // 3. Return the result of performing BindingInitialization for BindingPattern passing v and environment as arguments.
-    return BindingInitialization(realm, node, v, strictCode, environment);
+    return BindingInitialization(realm, node, v, strictCode, env);
   }
 }
