@@ -866,10 +866,7 @@ export class ResidualHeapSerializer {
     let residualBindings = instance.residualFunctionBindings;
 
     let inAdditionalFunction = this.currentFunctionBody !== this.mainBody;
-    if (inAdditionalFunction) {
-      instance.preludeOverride = this.currentFunctionBody;
-      instance.containingAdditionalFunction = this.currentAdditionalFunction;
-    }
+    if (inAdditionalFunction) instance.containingAdditionalFunction = this.currentAdditionalFunction;
     let delayed = 1;
     let undelay = () => {
       if (--delayed === 0) {
@@ -886,12 +883,13 @@ export class ResidualHeapSerializer {
         serializeBindingFunc = () => {
           return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
         };
-        invariant(residualBinding.value !== undefined);
-        referencedValues.push(residualBinding.value);
-        if (inAdditionalFunction && residualBinding.value) {
-          let scopes = this.residualValues.get(val);
+        let bindingValue = residualBinding.value;
+        invariant(bindingValue !== undefined);
+        referencedValues.push(bindingValue);
+        if (inAdditionalFunction) {
+          let scopes = this.residualValues.get(bindingValue);
           invariant(scopes);
-          let { usedOnlyByAdditionalFunctions } = this._getTarget(val, scopes);
+          let { usedOnlyByAdditionalFunctions } = this._getTarget(bindingValue, scopes);
           if (usedOnlyByAdditionalFunctions)
             residualBinding.referencedOnlyFromAdditionalFunctions = this.currentAdditionalFunction;
         }

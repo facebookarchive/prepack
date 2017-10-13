@@ -31,8 +31,6 @@ export type FunctionInstance = {
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
-  // Optional place to put the function declaration
-  preludeOverride?: Array<BabelNodeStatement>,
   // Additional function that the function instance was declared inside of (if any)
   containingAdditionalFunction?: FunctionValue,
   scopeInstances: Set<ScopeBinding>,
@@ -60,7 +58,8 @@ export type ResidualFunctionBinding = {
   referencedOnlyFromAdditionalFunctions?: FunctionValue,
   // If the binding is overwritten by an additional function, these contain the
   // new values
-  additionalValueOverride?: Value,
+  // TODO #1087: make this a map and support arbitrary binding modifications
+  additionalFunctionOverridesValue?: true,
   additionalValueSerialized?: BabelNodeExpression,
 };
 

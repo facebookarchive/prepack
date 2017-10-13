@@ -124,7 +124,7 @@ export class ResidualFunctions {
 
     let functionBodies = new Map();
     // these need to get spliced in at the end
-    let overriddenPreludes = new Map();
+    let additionalFunctionPreludes = new Map();
     function getFunctionBody(instance: FunctionInstance): Array<BabelNodeStatement> {
       let b = functionBodies.get(instance);
       if (b === undefined) functionBodies.set(instance, (b = []));
@@ -132,11 +132,11 @@ export class ResidualFunctions {
     }
     let globalPrelude = this.prelude;
     function getPrelude(instance: FunctionInstance): Array<BabelNodeStatement> {
-      let preludeOverride = instance.preludeOverride;
+      let additionalFunction = instance.containingAdditionalFunction;
       let b;
-      if (preludeOverride) {
-        b = overriddenPreludes.get(preludeOverride);
-        if (b === undefined) overriddenPreludes.set(preludeOverride, (b = []));
+      if (additionalFunction) {
+        b = additionalFunctionPreludes.get(additionalFunction);
+        if (b === undefined) additionalFunctionPreludes.set(additionalFunction, (b = []));
       } else {
         b = globalPrelude;
       }
@@ -186,35 +186,39 @@ export class ResidualFunctions {
       }
     };
 
-    // Emit code for ModifiedBindings for residual functions
+    // Emit code for ModifiedBindings for additional functions
     for (let [funcValue, funcInfo] of this.additionalFunctionValueInfos) {
-      // Add binding updates to additional functions
       for (let [, residualBinding] of funcInfo.modifiedBindings) {
         let scope = residualBinding.scope;
+
         // TODO #989: This should probably be an invariant once captures work properly
+        // Currently we don't referentialize bindings in additional functions (but we
+        // do for bindings nested in additional functions)
         if (!residualBinding.referentialized) continue;
 
-        // Find the place to emit statements to
-        let preludeOverride = rewrittenAdditionalFunctions.get(funcValue);
-        let prelude = overriddenPreludes.get(preludeOverride);
-        if (prelude === undefined) overriddenPreludes.set(preludeOverride, (prelude = []));
+        // Find the proper prelude to emit to (global vs additional function's prelude)
+        let prelude = additionalFunctionPreludes.get(funcValue);
+        if (prelude === undefined) additionalFunctionPreludes.set(funcValue, (prelude = []));
 
-        // binding isn't (it went through the referentializer) so setup the scope
-        if (scope) {
+        // binding has been referentialized, so setup the scope to be able to
+        // access bindings from other __captured_scopes initializers
+        if (scope && scope.containingAdditionalFunction !== funcValue) {
           let decl = t.variableDeclaration("var", [
             t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
           ]);
           let init = this.referentializer.getReferentializedScopeInitialization(scope);
           prelude.push(decl);
           // flow forces me to do this
-          let prelude_ = prelude;
-          init.forEach(x => prelude_.push(x));
+          Array.prototype.push.apply(prelude, init);
         }
 
         let newValue = residualBinding.additionalValueSerialized;
         invariant(newValue);
-        // Since residualBinding is referentialized, it should be an LVal
         let binding_reference = ((residualBinding.serializedValue: any): BabelNodeLVal);
+        invariant(binding_reference);
+        invariant(t.isLVal(binding_reference), "Referentialized values are always LVals");
+        // This mutation is safe because it should always be either a global identifier (for global bindings)
+        // or an accessor to a referentialized value.
         prelude.push(t.expressionStatement(t.assignmentExpression("=", binding_reference, newValue)));
       }
     }
@@ -458,21 +462,23 @@ export class ResidualFunctions {
       let prelude = this.prelude;
       // Get the prelude for this additional function value
       if (referentializationScope !== "GLOBAL") {
-        let rewrittenBody = rewrittenAdditionalFunctions.get(referentializationScope);
-        prelude = overriddenPreludes.get(rewrittenBody);
+        let additionalFunction = referentializationScope;
+        prelude = additionalFunctionPreludes.get(additionalFunction);
         if (!prelude) {
           prelude = [];
-          overriddenPreludes.set(rewrittenBody, prelude);
+          additionalFunctionPreludes.set(additionalFunction, prelude);
         }
       }
       prelude.unshift(this.referentializer.createCaptureScopeAccessFunction(referentializationScope));
       prelude.unshift(this.referentializer.createCapturedScopesArrayInitialization(referentializationScope));
     }
 
-    for (let [preludeOverride, body] of overriddenPreludes.entries()) {
-      invariant(preludeOverride);
+    for (let [additionalFunction, body] of additionalFunctionPreludes.entries()) {
+      invariant(additionalFunction);
       let prelude = ((body: any): Array<BabelNodeStatement>);
-      preludeOverride.unshift(...prelude);
+      let additionalBody = rewrittenAdditionalFunctions.get(additionalFunction);
+      invariant(additionalBody);
+      additionalBody.unshift(...prelude);
     }
 
     for (let instance of this.functionInstances.reverse()) {

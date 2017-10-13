@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
+import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Effects } from "../realm.js";
@@ -583,7 +583,8 @@ export class ResidualHeapVisitor {
         }
         // Handing of ModifiedBindings
         for (let additionalBinding of modifiedBindings.keys()) {
-          let modifiedBinding: Binding = ((additionalBinding: any): Binding);
+          //let modifiedBinding: Binding = ((additionalBinding: any): Binding);
+          let modifiedBinding = additionalBinding;
           let residualBinding;
           if (modifiedBinding.isGlobal) {
             residualBinding = this.globalBindings.get(modifiedBinding.name);
@@ -593,17 +594,19 @@ export class ResidualHeapVisitor {
             let bindMap = this.declarativeEnvironmentRecordsBindings.get(containingEnv);
             if (bindMap) residualBinding = bindMap.get(modifiedBinding.name);
           }
-          // Only visit it if there is already a binding
+          // Only visit it if there is already a binding (no binding means that
+          // the additional function created the binding)
           if (residualBinding && modifiedBinding.value !== residualBinding.value) {
             let newValue = modifiedBinding.value;
             invariant(newValue);
             this.visitValue(newValue);
             residualBinding.modified = true;
+            // This should be enforced by checkThatFunctionsAreIndependent
             invariant(
-              !residualBinding.additionalValueOverride,
+              !residualBinding.additionalFunctionOverridesValue,
               "We should only have one additional function value modifying any given residual binding"
             );
-            residualBinding.additionalValueOverride = newValue;
+            residualBinding.additionalFunctionOverridesValue = true;
             modifiedBindingInfo.set(modifiedBinding, residualBinding);
           }
         }
