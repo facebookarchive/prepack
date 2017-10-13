@@ -1130,7 +1130,7 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
   }
 }
 
-export function incorporateSavedCompletion(realm: Realm, c: void | Completion | Value): Completion | Value {
+export function incorporateSavedCompletion(realm: Realm, c: void | Completion | Value): void | Completion | Value {
   let context = realm.getRunningContext();
   let savedCompletion = context.savedCompletion;
   if (savedCompletion !== undefined) {

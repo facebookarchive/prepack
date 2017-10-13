@@ -413,7 +413,9 @@ function joinResults(
     return new JoinedAbruptCompletions(realm, joinCondition, result1, e1, result2, e2);
   }
   if (result1 instanceof Value && result2 instanceof Value) {
-    return joinValues(realm, result1, result2, getAbstractValue);
+    let val = joinValues(realm, result1, result2, getAbstractValue);
+    invariant(val instanceof Value);
+    return val;
   }
   if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
     return composePossiblyNormalCompletions(realm, result1, result2);
