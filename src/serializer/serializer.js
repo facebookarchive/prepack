@@ -153,6 +153,7 @@ export class Serializer {
         !!this.options.delayInitializations,
         residualHeapVisitor.referencedDeclaredValues,
         additionalFunctionValuesAndEffects,
+        residualHeapVisitor.additionalFunctionValueInfos,
         this.statistics,
         this.react
       ).serialize();
@@ -175,6 +176,7 @@ export class Serializer {
       !!this.options.delayInitializations,
       residualHeapVisitor.referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
+      residualHeapVisitor.additionalFunctionValueInfos,
       this.statistics,
       this.react
     );

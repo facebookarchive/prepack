@@ -100,7 +100,7 @@ export function GetReferencedNamePartial(realm: Realm, V: Reference): AbstractVa
 // ECMA262 6.2.3.1
 export function GetValue(realm: Realm, V: Reference | Value): Value {
   let val = dereference(realm, V);
-  if (val instanceof AbstractValue) return val.refineWithPathCondition();
+  if (val instanceof AbstractValue) return realm.simplifyAbstractValue(val);
   return val;
 }
 
@@ -1078,6 +1078,6 @@ export function KeyedBindingInitialization(
     }
 
     // 3. Return the result of performing BindingInitialization for BindingPattern passing v and environment as arguments.
-    return BindingInitialization(realm, node, v, strictCode, environment);
+    return BindingInitialization(realm, node, v, strictCode, env);
   }
 }

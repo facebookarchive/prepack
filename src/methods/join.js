@@ -413,7 +413,9 @@ function joinResults(
     return new JoinedAbruptCompletions(realm, joinCondition, result1, e1, result2, e2);
   }
   if (result1 instanceof Value && result2 instanceof Value) {
-    return joinValues(realm, result1, result2, getAbstractValue);
+    let val = joinValues(realm, result1, result2, getAbstractValue);
+    invariant(val instanceof Value);
+    return val;
   }
   if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
     return composePossiblyNormalCompletions(realm, result1, result2);
@@ -594,12 +596,7 @@ export function joinValuesAsConditional(
   v1: void | Value,
   v2: void | Value
 ): Value {
-  let result = AbstractValue.createFromConditionalOp(realm, condition, v1, v2);
-  if (result instanceof AbstractValue) {
-    if (v1) result.mightBeEmpty = v1.mightHaveBeenDeleted();
-    if (v2 && !result.mightBeEmpty) result.mightBeEmpty = v2.mightHaveBeenDeleted();
-  }
-  return result;
+  return AbstractValue.createFromConditionalOp(realm, condition, v1, v2);
 }
 
 export function joinPropertyBindings(

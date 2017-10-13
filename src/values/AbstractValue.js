@@ -294,83 +294,6 @@ export default class AbstractValue extends Value {
     return result;
   }
 
-  // Simplify an already constructed abstract value in the light of the path conditions that apply in the
-  // context where is this value is now being used.
-  // TODO #1019: this logic largely duplicates the functionality in simplifyAbstractValue.
-  // To fix this, two thing have to happen:
-  // 1. Avoid injecting simplifier.js into the big Flow dependency cycle that includes AbstractValue. This can probably
-  //    be done by storing simplifyAbstractValue in the realm.
-  // 2. Make simplifyAbstractValue path sensitive by checking for each condition if the current path conditions
-  //   imply them and then simplifying appropriately.
-  refineWithPathCondition(): Value {
-    function pathImplies(condition: AbstractValue): boolean {
-      let path = condition.$Realm.pathConditions;
-      for (let i = path.length - 1; i >= 0; i--) {
-        let pathCondition = path[i];
-        if (pathCondition.implies(condition)) return true;
-      }
-      return false;
-    }
-
-    let realm = this.$Realm;
-    if (realm.pathConditions.length === 0) return this;
-    let op = this.kind;
-    let result = (() => {
-      if (op === "&&" || op === "||") {
-        let [left, right] = this.args;
-        invariant(left instanceof AbstractValue); // otherwise the factory would have simplified it.
-        let refinedLeft = left.refineWithPathCondition();
-        let refinedRight = right instanceof AbstractValue ? right.refineWithPathCondition() : right;
-        // todo: remove this check when there is an alternative way to indicate that an intrinsic object is nullable
-        if (!(refinedLeft instanceof AbstractObjectValue && refinedLeft.isIntrinsic())) {
-          // true && y <=> y
-          // true || y <=> true
-          if (!refinedLeft.mightNotBeTrue()) return op === "&&" ? refinedRight : refinedLeft;
-          // (x == false) && y <=> x
-          // false || y <=> y
-          if (!refinedLeft.mightNotBeFalse()) return op === "||" ? refinedRight : refinedLeft;
-        }
-        if (refinedLeft.getType() === BooleanValue && refinedRight.getType() === BooleanValue) {
-          // (x: boolean) && true <=> x
-          // x || true <=> true
-          if (!refinedRight.mightNotBeTrue()) return op === "&&" ? refinedLeft : realm.intrinsics.true;
-          // (x: boolean) && false <=> false
-          // (x: boolean) || false <=> x
-          if (!refinedRight.mightNotBeFalse()) return op === "||" ? refinedLeft : realm.intrinsics.false;
-        }
-        // return this if no refinements happened
-        if (left === refinedLeft && right === refinedRight) return this;
-        // recreate operation using refined operands
-        return AbstractValue.createFromLogicalOp(realm, op, refinedLeft, refinedRight, this.expressionLocation);
-      }
-      if (op === "!") {
-        let arg = this.args[0];
-        invariant(arg instanceof AbstractValue); // otherwise this abstract value should have been folded to a constant
-        let refinedArg = arg.refineWithPathCondition();
-        if (arg === refinedArg) return this;
-        if (!refinedArg.mightNotBeTrue()) return realm.intrinsics.false;
-        if (!refinedArg.mightNotBeFalse()) return realm.intrinsics.true;
-        invariant(refinedArg instanceof AbstractValue); // concrete values always make up their mind above
-        return AbstractValue.createFromUnaryOp(realm, op, refinedArg);
-      }
-      if (op !== "conditional") return this;
-      let [condition, trueVal, falseVal] = this.args;
-      invariant(trueVal !== undefined);
-      invariant(falseVal !== undefined);
-      invariant(condition instanceof AbstractValue);
-      let inverseCondition = AbstractValue.createFromUnaryOp(this.$Realm, "!", condition);
-      if (pathImplies(condition)) return trueVal;
-      if (pathImplies(inverseCondition)) return falseVal;
-      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", this, trueVal))) return trueVal;
-      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", this, trueVal))) return falseVal;
-      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", this, falseVal))) return trueVal;
-      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", this, falseVal))) return falseVal;
-      return this;
-    })();
-    if (result !== this && result instanceof AbstractValue) return result.refineWithPathCondition();
-    return result;
-  }
-
   throwIfNotConcrete(): ConcreteValue {
     AbstractValue.reportIntrospectionError(this);
     throw new FatalError();
@@ -539,6 +462,8 @@ export default class AbstractValue extends Value {
       kind: "conditional",
     });
     result.expressionLocation = loc;
+    if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
+    if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
     return result;
   }
 
