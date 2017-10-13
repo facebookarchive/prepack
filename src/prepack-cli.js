@@ -84,6 +84,7 @@ function run(
     serialize: false,
     residual: false,
     profile: false,
+    reactEnabled: false,
   };
 
   while (args.length) {
