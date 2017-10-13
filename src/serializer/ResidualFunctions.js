@@ -22,6 +22,7 @@ import type {
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
 } from "babel-types";
+import type { FunctionBodyAstNode } from "../types.js";
 import type { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
@@ -151,7 +152,7 @@ export class ResidualFunctions {
         // Rewritten function should never use factory function.
         invariant(!this._hasRewrittenFunctionInstance(rewrittenAdditionalFunctions, instances));
 
-        const functionUniqueTag: number = (functionBody: any).uniqueTag;
+        const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueTag;
         invariant(functionUniqueTag);
         const suffix = instances[0].functionValue.__originalName || "";
         const factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
@@ -362,7 +363,9 @@ export class ResidualFunctions {
       if (!this._shouldUseFactoryFunction(funcBody, normalInstances)) {
         naiveProcessInstances(normalInstances);
       } else if (normalInstances.length > 0) {
-        const factoryInfo = factoryFunctionInfos.get((funcBody: any).uniqueTag);
+        const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueTag;
+        invariant(functionUniqueTag);
+        const factoryInfo = factoryFunctionInfos.get(functionUniqueTag);
         invariant(factoryInfo);
         const { factoryId } = factoryInfo;
 

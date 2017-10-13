@@ -94,6 +94,11 @@ export type Descriptor = {
   set?: UndefinedValue | CallableObjectValue | AbstractValue,
 };
 
+export type FunctionBodyAstNode = {
+  // Function body ast node will have uniqueTag after interpreted.
+  uniqueTag: ?number,
+};
+
 export type PropertyBinding = {
   descriptor?: Descriptor,
   object: ObjectValue | AbstractObjectValue,

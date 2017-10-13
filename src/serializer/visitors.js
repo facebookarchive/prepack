@@ -13,9 +13,9 @@ import { Realm } from "../realm.js";
 import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeFunctionExpression } from "babel-types";
-import { BabelTraversePath } from "babel-traverse";
 import { convertExpressionToJSXIdentifier } from "../utils/jsx";
-import type { TryQuery, FunctionInfo, FactoryFunctionInfo, ResidualFunctionBinding } from "./types.js";
+import type { BabelTraversePath } from "babel-traverse";
+import type { TryQuery, FunctionInfo, FactoryFunctionInfo, FunctionBodyAstNode, ResidualFunctionBinding } from "./types.js";
 import { nullExpression } from "../utils/internalizer.js";
 
 export type ClosureRefVisitorState = {
@@ -144,14 +144,15 @@ export let ClosureRefReplacer = {
 
   // TODO: handle FunctionDeclaration
   FunctionExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
+    // BabelTraversePath is missing flow typing for "parentPath" property so cast to any.
     if (t.isProgram((path: any).parentPath.parentPath.node)) {
-      // Skip root function itself.
+      // Our goal is replacing duplicate nested function so skip root residual function itself.
       // This assumes the root function is wrapped with: t.file(t.program([t.expressionStatement(rootFunction).
       return;
     }
 
     const functionExpression: BabelNodeFunctionExpression = path.node;
-    const functionTag: number = (functionExpression.body: any).uniqueTag;
+    const functionTag = ((functionExpression.body: any): FunctionBodyAstNode).uniqueTag;
     if (!functionTag) {
       // Un-interpreted nested function.
       return;
