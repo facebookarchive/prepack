@@ -226,7 +226,9 @@ export class Generator {
     args: Array<Value>,
     kind?: string
   ): AbstractValue {
-    return this.derive(types, values, args, nodes => t.callExpression(createCallee(), nodes));
+    return this.derive(types, values, args, (nodes: any) =>
+      t.callExpression(createCallee(), nodes)
+    );
   }
 
   emitVoidExpression(
