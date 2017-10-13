@@ -710,6 +710,7 @@ export function ToPropertyKeyPartial(
 ): AbstractValue | SymbolValue | string /* but not StringValue */ {
   if (arg instanceof ConcreteValue) return ToPropertyKey(realm, arg);
   if (arg.mightNotBeString()) arg.throwIfNotConcrete();
+  invariant(arg instanceof AbstractValue);
   return arg;
 }
 

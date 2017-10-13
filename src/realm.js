@@ -343,7 +343,7 @@ export class Realm {
     return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode), state);
   }
 
-  evaluateAndRevertInGlobalEnv(func: () => void): void {
+  evaluateAndRevertInGlobalEnv(func: () => Value): void {
     this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
   }
 
@@ -386,6 +386,7 @@ export class Realm {
       c = f();
       if (c instanceof Reference) c = GetValue(this, c);
       c = incorporateSavedCompletion(this, c);
+      invariant(c !== undefined);
 
       invariant(this.generator !== undefined);
       invariant(this.modifiedBindings !== undefined);
@@ -476,10 +477,10 @@ export class Realm {
     }
     context.savedEffects = [
       this.intrinsics.undefined,
-      this.generator,
-      this.modifiedBindings,
-      this.modifiedProperties,
-      this.createdObjects,
+      (this.generator: any),
+      (this.modifiedBindings: any),
+      (this.modifiedProperties: any),
+      (this.createdObjects: any),
     ];
     this.generator = new Generator(this);
     this.modifiedBindings = new Map();

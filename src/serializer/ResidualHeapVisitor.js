@@ -644,6 +644,7 @@ export class ResidualHeapVisitor {
         });
       }
     }
+    return this.realm.intrinsics.undefined;
   }
 
   visitRoots(): void {

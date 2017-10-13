@@ -109,7 +109,7 @@ export default class TypesDomain {
   }
 
   static logicalOp(op: BabelNodeLogicalOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
-    return TypesDomain.joinValues(left, right);
+    return left.joinWith(right.getType());
   }
 
   // return the type of the result in the case where there is no exception
