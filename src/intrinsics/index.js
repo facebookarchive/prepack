@@ -460,5 +460,8 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   // 8.2.2, step 12
   AddRestrictedFunctionProperties(i.FunctionPrototype, realm);
 
+  //last step: let the realm know the intrinsics are initialized
+  realm.intrinsicsInitialized = true;
+
   return i;
 }

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, ExecutionContext } from "../realm.js";
+import { Realm, ExecutionContext, InterpreterStatistics } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { SourceFile } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
@@ -99,6 +99,7 @@ export class Serializer {
     code: string,
     map: void | SourceMap,
     statistics?: SerializerStatistics,
+    interpreterStats?: InterpreterStatistics,
     timingStats?: TimingStatistics,
   } {
     // Phase 1: Let's interpret.
@@ -188,11 +189,15 @@ export class Serializer {
       timingStats.totalTime = Date.now() - timingStats.totalTime;
     }
     invariant(!this.logger.hasErrors());
-    if (this.options.logStatistics) residualHeapSerializer.statistics.log();
+    if (this.options.logStatistics) {
+      this.realm.interpreterStats.log();
+      residualHeapSerializer.statistics.log();
+    }
     return {
       code: generated.code,
       map: generated.map,
       statistics: residualHeapSerializer.statistics,
+      interpreterStats: this.realm.interpreterStats,
       timingStats: timingStats,
     };
   }

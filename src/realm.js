@@ -76,6 +76,18 @@ export class Tracer {
   ) {}
 }
 
+export class InterpreterStatistics {
+  constructor() {
+    this.objects = 0;
+  }
+  objects: number;
+
+  log() {
+    console.log(`=== interpreter statistics`);
+    console.log(`${this.objects} objects`);
+  }
+}
+
 export class ExecutionContext {
   function: ?FunctionValue;
   caller: ?ExecutionContext;
@@ -182,6 +194,9 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
+
+    this.intrinsicsInitialized = false;
+    this.interpreterStats = new InterpreterStatistics();
   }
 
   start: number;
@@ -253,6 +268,9 @@ export class Realm {
   symbolCount = 867501803871088;
 
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
+
+  intrinsicsInitialized: boolean;
+  interpreterStats: InterpreterStatistics;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
