@@ -1226,6 +1226,9 @@ export class LexicalEnvironment {
   }
 
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
+    if (this.realm.debuggerInstance) {
+      this.realm.debuggerInstance.checkForActions(ast);
+    }
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     if (res instanceof PossiblyNormalCompletion) {
       let error = new CompilerDiagnostic("Global code may end abruptly", res.location, "PP0016", "FatalError");

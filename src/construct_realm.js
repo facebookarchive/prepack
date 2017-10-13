@@ -17,10 +17,18 @@ import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
+import { DebugServer } from "./debugger/Debugger.js";
+import { DebugChannel } from "./DebugChannel.js";
 import simplifyAbstractValue from "./utils/simplifier.js";
 
-export default function(opts: RealmOptions = {}): Realm {
+export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {
   let r = new Realm(opts);
+  if (debugChannel) {
+    if (debugChannel.debuggerIsAttached()) {
+      r.debuggerInstance = new DebugServer(debugChannel);
+    }
+  }
+
   let i = r.intrinsics;
   initializeIntrinsics(i, r);
   // TODO: Find a way to let different environments initialize their own global
