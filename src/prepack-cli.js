@@ -70,6 +70,8 @@ function run(
   let maxStackDepth: number;
   let timeout: number;
   let additionalFunctions: Array<string>;
+  let debugInFilePath: string;
+  let debugOutFilePath: string;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -169,6 +171,9 @@ function run(
       maxStackDepth: maxStackDepth,
       timeout: timeout,
       additionalFunctions: additionalFunctions,
+      enableDebugger: false, //always turn off debugger until debugger is fully built
+      debugInFilePath: debugInFilePath,
+      debugOutFilePath: debugOutFilePath,
     },
     flags
   );

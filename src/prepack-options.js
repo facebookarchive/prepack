@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions, Compatibility } from "./options";
+import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions } from "./options";
 import { Realm } from "./realm.js";
 
 export type PrepackOptions = {|
@@ -41,6 +41,9 @@ export type PrepackOptions = {|
   trace?: boolean,
   uniqueSuffix?: string,
   maxStackDepth?: number,
+  enableDebugger?: boolean,
+  debugInFilePath?: string,
+  debugOutFilePath?: string,
 |};
 
 export function getRealmOptions({
@@ -97,5 +100,16 @@ export function getSerializerOptions({
     trace,
   };
   if (additionalFunctions) result.additionalFunctions = additionalFunctions;
+  return result;
+}
+
+export function getDebuggerOptions({
+  debugInFilePath = "./src/debugger/.sessionlogs/adapter2engine.txt",
+  debugOutFilePath = "./src/debugger/.sessionlogs/engine2adapter.txt",
+}: PrepackOptions): DebuggerOptions {
+  let result: DebuggerOptions = {
+    inFilePath: debugInFilePath,
+    outFilePath: debugOutFilePath,
+  };
   return result;
 }
