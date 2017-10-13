@@ -46,6 +46,9 @@ export function prepackSources(
   realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(realmOptions, debugChannel);
   initializeGlobals(realm);
+  if (typeof options.additionalGlobals === "function") {
+    options.additionalGlobals(realm);
+  }
 
   if (options.serialize || !options.residual) {
     let serializer = new Serializer(realm, getSerializerOptions(options));

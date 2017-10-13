@@ -45,7 +45,9 @@ function serialize(realm: Realm, res: Value | AbruptCompletion): any {
   return res;
 }
 
-let realm = construct_realm();
+let realm = construct_realm({
+  reactEnabled: true,
+});
 initializeGlobals(realm);
 
 repl.start({

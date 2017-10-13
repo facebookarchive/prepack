@@ -26,6 +26,7 @@ export type RealmOptions = {
   strictlyMonotonicDateNow?: boolean,
   timeout?: number,
   maxStackDepth?: number,
+  reactEnabled?: boolean,
 };
 
 export type SerializerOptions = {
