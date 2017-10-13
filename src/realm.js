@@ -174,6 +174,11 @@ export class Realm {
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
+    this.react = {
+      enabled: opts.reactEnabled || false,
+      reactElementSymbol: undefined,
+    };
+
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
@@ -204,6 +209,11 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+
+  react: {
+    enabled: boolean,
+    reactElementSymbol?: SymbolValue,
+  };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
   compatibility: Compatibility;

@@ -62,3 +62,4 @@ export { default as VariableDeclaration } from "./VariableDeclaration.js";
 export { default as WhileStatement } from "./WhileStatement.js";
 export { default as WithStatement } from "./WithStatement.js";
 export { default as YieldExpression } from "./YieldExpression.js";
+export { default as JSXElement } from "./JSXElement.js";

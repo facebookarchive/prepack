@@ -11,8 +11,10 @@
 
 import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility } from "./options";
+import { Realm } from "./realm.js";
 
 export type PrepackOptions = {|
+  additionalGlobals?: Realm => void,
   additionalFunctions?: Array<string>,
   compatibility?: Compatibility,
   debugNames?: boolean,
@@ -27,6 +29,7 @@ export type PrepackOptions = {|
   omitInvariants?: boolean,
   outputFilename?: string,
   profile?: boolean,
+  reactEnabled?: boolean,
   residual?: boolean,
   serialize?: boolean,
   inlineExpressions?: boolean,
@@ -47,6 +50,7 @@ export function getRealmOptions({
   mathRandomSeed,
   omitInvariants = false,
   uniqueSuffix,
+  reactEnabled,
   residual,
   serialize = !residual,
   strictlyMonotonicDateNow,
@@ -60,6 +64,7 @@ export function getRealmOptions({
     mathRandomSeed,
     omitInvariants,
     uniqueSuffix,
+    reactEnabled,
     residual,
     serialize,
     strictlyMonotonicDateNow,

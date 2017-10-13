@@ -155,3 +155,7 @@ export type LocationService = {
   getLocation: Value => void | BabelNodeIdentifier,
   createLocation: () => BabelNodeIdentifier,
 };
+
+export type ReactSerializerState = {
+  usedReactElementKeys: Set<string>,
+};
