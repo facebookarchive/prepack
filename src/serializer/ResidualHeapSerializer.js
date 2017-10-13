@@ -707,7 +707,7 @@ export class ResidualHeapSerializer {
   }
 
   _getPropertyValue(properties: Map<string, any>, key: string) {
-    if (properties.has(key) === true) {
+    if (properties.has(key)) {
       let val = properties.get(key);
 
       if (val !== undefined) {

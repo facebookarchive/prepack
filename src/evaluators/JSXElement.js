@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
 import type {
   BabelNode,
@@ -25,6 +24,7 @@ import type {
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
 import {
+  ArrayValue,
   StringValue,
   ConcreteValue,
   AbstractValue,
@@ -106,7 +106,12 @@ function cleanJSXElementLiteralChild(child: string): null | string {
   return null;
 }
 
-function evaluateJSXMemberExpression(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm) {
+function evaluateJSXMemberExpression(
+  ast: BabelNode,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
   switch (ast.type) {
     case "JSXIdentifier":
       return GetValue(realm, ResolveBinding(realm, ((ast: any): BabelNodeJSXIdentifier).name, strictCode, env));
@@ -120,7 +125,7 @@ function evaluateJSXMemberExpression(ast: BabelNode, strictCode: boolean, env: L
   }
 }
 
-function evaluateJSXIdentifier(ast, strictCode, env, realm) {
+function evaluateJSXIdentifier(ast, strictCode, env, realm): Value {
   if (isTagName(ast)) {
     // special cased lower-case and custom elements
     return new StringValue(realm, ((ast: any): BabelNodeJSXIdentifier).name);
@@ -128,7 +133,7 @@ function evaluateJSXIdentifier(ast, strictCode, env, realm) {
   return evaluateJSXMemberExpression(ast, strictCode, env, realm);
 }
 
-function evaluateJSXValue(value: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm) {
+function evaluateJSXValue(value: BabelNode, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   if (value != null) {
     switch (value.type) {
       case "JSXText":
@@ -146,7 +151,7 @@ function evaluateJSXValue(value: BabelNode, strictCode: boolean, env: LexicalEnv
   invariant(false, `Null or undefined value passed when trying to evaluate JSX node value`);
 }
 
-function isTagName(ast: BabelNode) {
+function isTagName(ast: BabelNode): boolean {
   return ast.type === "JSXIdentifier" && /^[a-z]|\-/.test(((ast: any): BabelNodeJSXIdentifier).name);
 }
 
@@ -173,7 +178,12 @@ function getDefaultProps(
   return null;
 }
 
-function evaluateJSXChildren(children: Array<BabelNode>, strictCode: boolean, env: LexicalEnvironment, realm: Realm) {
+function evaluateJSXChildren(
+  children: Array<BabelNode>,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): ArrayValue | Value | null {
   if (children.length === 0) {
     return null;
   }
@@ -223,7 +233,7 @@ function evaluateJSXAttributes(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-) {
+): { attributes: Map<string, Value>, children: ArrayValue | Value | null } {
   let attributes = new Map();
   let children = evaluateJSXChildren(astChildren, strictCode, env, realm);
   let defaultProps = getDefaultProps(elementType, env, realm);
@@ -284,7 +294,7 @@ function evaluateJSXAttributes(
   };
 }
 
-function getReactElementSymbol(realm: Realm) {
+function getReactElementSymbol(realm: Realm): SymbolValue {
   let reactElementSymbol = realm.react.reactElementSymbol;
   if (reactElementSymbol !== undefined) {
     return reactElementSymbol;
@@ -328,7 +338,7 @@ function createReactProps(
   return obj;
 }
 
-function createReactElement(realm: Realm, type: Value, key: Value, ref: Value, props: ObjectValue) {
+function createReactElement(realm: Realm, type: Value, key: Value, ref: Value, props: ObjectValue): ObjectValue {
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactElementSymbol(realm));
   CreateDataPropertyOrThrow(realm, obj, "type", type);
@@ -344,7 +354,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value | Reference {
+): ObjectValue {
   invariant(realm.react.enabled, "JSXElements can only be evaluated with the reactEnabled option");
   let openingElement = ast.openingElement;
   let type = evaluateJSXIdentifier(openingElement.name, strictCode, env, realm);
@@ -368,10 +378,8 @@ export default function(
 
   // React uses keys to identify nodes as they get updated through the reconcilation
   // phase. Keys are used in a map and thus need to be converted to strings
-  if (key !== realm.intrinsics.null && key instanceof ConcreteValue) {
-    key = new StringValue(realm, ToString(realm, key));
-  } else if (key instanceof AbstractValue) {
-    key = computeBinary(realm, "+", new StringValue(realm, ""), key);
+  if (key !== realm.intrinsics.null) {
+    key = computeBinary(realm, "+", realm.intrinsics.emptyString, key);
   }
   let props = createReactProps(realm, type, attributes, children, env);
 

@@ -20,7 +20,7 @@ import type {
   BabelNodeMemberExpression,
 } from "babel-types";
 import invariant from "../invariant.js";
-import { Value, ObjectValue, SymbolValue, StringValue } from "../values/index.js";
+import { Value, ObjectValue, SymbolValue } from "../values/index.js";
 import { Get } from "../methods/index.js";
 
 export function isReactElement(val: Value): boolean {
@@ -28,9 +28,8 @@ export function isReactElement(val: Value): boolean {
     let realm = val.$Realm;
     let $$typeof = Get(realm, val, "$$typeof");
     if ($$typeof instanceof SymbolValue) {
-      let existsInGlobalRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof) !== undefined;
-      let description = $$typeof.$Description;
-      return existsInGlobalRegistry && description instanceof StringValue && description.value === "react.element";
+      let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
+      return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     }
   }
   return false;

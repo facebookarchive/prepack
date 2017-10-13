@@ -127,6 +127,9 @@ export class ResidualHeapVisitor {
 
     // visit properties
     for (let [propertyBindingKey, propertyBindingValue] of obj.properties) {
+      // we don't want to the $$typeof or _owner properties
+      // as this is contained within the JSXElement, otherwise
+      // they we be need to be emitted during serialization
       if (kind === "ReactElement" && (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner")) {
         continue;
       }
@@ -146,6 +149,9 @@ export class ResidualHeapVisitor {
 
     // prototype
     if (kind !== "ReactElement") {
+      // we don't want to the ReactElement prototype visited
+      // as this is contained within the JSXElement, otherwise
+      // they we be need to be emitted during serialization
       this.visitObjectPrototype(obj);
     }
     if (obj instanceof FunctionValue) this.visitConstructorPrototype(obj);
