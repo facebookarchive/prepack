@@ -55,7 +55,6 @@ export class Session {
       this.shutdown();
     });
     this._adapterProcess.on("exit", () => {
-      console.log("Child exiting");
       this.shutdown();
     });
     this._adapterProcess.stdout.on("data", (data: Buffer) => {
@@ -112,7 +111,7 @@ export class Session {
           this._rawData = this._rawData.slice(idx + TWO_CRLF.length);
           continue;
         }
-        // if we don't find the length we break
+        // if we don't find the length we fall through and break
       }
       break;
     }
