@@ -1,5 +1,4 @@
-// throws introspection error
-let x = __abstract("boolean", "true");
+let x = global.__abstract ? __abstract("boolean", "true") : true
 
 y = 1;
 
@@ -13,3 +12,5 @@ function g(b) {
 }
 
 z = g(x);
+
+inspect = function() { return z; }

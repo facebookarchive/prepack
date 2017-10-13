@@ -1273,6 +1273,7 @@ export class ResidualHeapSerializer {
           this.realm.restoreProperties(modifiedProperties);
         }
       }
+      return this.realm.intrinsics.undefined;
     };
     this.realm.evaluateAndRevertInGlobalEnv(processAdditionalFunctionValuesFn);
     return rewrittenAdditionalFunctions;
