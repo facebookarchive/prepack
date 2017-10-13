@@ -9,11 +9,10 @@
 
 /* @flow */
 
-import { Completion } from "../completions.js";
+import { Completion, JoinedAbruptCompletions, ThrowCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { FatalError } from "../errors.js";
-import { Value, EmptyValue } from "../values/index.js";
+import { AbstractValue, Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { FindVarScopedDeclarations } from "../methods/function.js";
 import { BoundNames } from "../methods/index.js";
@@ -21,6 +20,7 @@ import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeProgram } from "babel-types";
+import * as t from "babel-types";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(
@@ -232,12 +232,19 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       let potentialVal = env.evaluateCompletion(node, strictCode);
       if (potentialVal instanceof Completion) {
         if (!realm.useAbstractInterpretation) throw potentialVal;
-        // todo: emit code to throw exeptions at runtime
-        throw new FatalError();
+        if (potentialVal instanceof JoinedAbruptCompletions) {
+          emitConditionalThrow(potentialVal.joinCondition, potentialVal.consequent, potentialVal.alternate);
+          potentialVal = potentialVal.value;
+        } else if (potentialVal instanceof ThrowCompletion) {
+          emitThrow(potentialVal.value);
+          potentialVal = realm.intrinsics.undefined;
+        } else {
+          invariant(false); // other kinds of abrupt completions should not get this far
+        }
       }
-      if (context.savedCompletion !== undefined) {
-        // todo: emit conditional code to throw exeptions at runtime
-        throw new FatalError();
+      let sc = context.savedCompletion;
+      if (sc !== undefined) {
+        emitConditionalThrow(sc.joinCondition, sc.consequent, sc.alternate);
       }
       if (!(potentialVal instanceof EmptyValue)) val = potentialVal;
     }
@@ -251,4 +258,55 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   invariant(val === undefined || val instanceof Value);
   return val || realm.intrinsics.empty;
+
+  function emitThrow(value: Value) {
+    let generator = realm.generator;
+    invariant(generator !== undefined);
+    generator.emitStatement([value], ([argument]) => t.throwStatement(argument));
+  }
+
+  function emitConditionalThrow(
+    condition: AbstractValue,
+    trueBranch: Completion | Value,
+    falseBranch: Completion | Value
+  ) {
+    let generator = realm.generator;
+    invariant(generator !== undefined);
+    let [args, buildfunc] = deconstruct(condition, trueBranch, falseBranch);
+    generator.emitStatement(args, buildfunc);
+  }
+
+  function deconstruct(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
+    let targs;
+    let tfunc;
+    let fargs;
+    let ffunc;
+    if (trueBranch instanceof JoinedAbruptCompletions) {
+      [targs, tfunc] = deconstruct(trueBranch.joinCondition, trueBranch.consequent, trueBranch.alternate);
+    } else if (trueBranch instanceof ThrowCompletion) {
+      targs = [trueBranch.value];
+      tfunc = ([argument]) => t.throwStatement(argument);
+    } else {
+      targs = [];
+      tfunc = nodes => t.emptyStatement();
+    }
+    if (falseBranch instanceof JoinedAbruptCompletions) {
+      [fargs, ffunc] = deconstruct(falseBranch.joinCondition, falseBranch.consequent, falseBranch.alternate);
+    } else if (falseBranch instanceof ThrowCompletion) {
+      fargs = [falseBranch.value];
+      ffunc = ([argument]) => t.throwStatement(argument);
+    } else {
+      fargs = [];
+      ffunc = nodes => t.emptyStatement();
+    }
+    let args = [condition].concat(targs).concat(fargs);
+    let func = nodes => {
+      return t.ifStatement(
+        nodes[0],
+        tfunc(nodes.splice(1, targs.length)),
+        ffunc(nodes.splice(targs.length + 1, fargs.length))
+      );
+    };
+    return [args, func];
+  }
 }

@@ -209,8 +209,12 @@ function runTest(name, code, options, args) {
     let unique = 27277;
     let oldUniqueSuffix = "";
     try {
-      expected = exec(`${addedCode}\n(function () {${code} // keep newline here as code may end with comment
-}).call(this);`);
+      try {
+        expected = exec(`${addedCode}\n(function () {${code} // keep newline here as code may end with comment
+  }).call(this);`);
+      } catch (e) {
+        expected = e;
+      }
 
       let i = 0;
       let max = addedCode ? 1 : 4;
@@ -237,7 +241,11 @@ function runTest(name, code, options, args) {
           }
         }
         if (markersIssue) break;
-        actual = exec(addedCode + newCode);
+        try {
+          actual = exec(addedCode + newCode);
+        } catch (e) {
+          actual = e;
+        }
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
           break;
