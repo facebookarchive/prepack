@@ -16,9 +16,10 @@ import * as DebugProtocol from "vscode-debugprotocol";
 const TWO_CRLF = "\r\n\r\n";
 
 export class Session {
-  constructor(proc: Process, adapterPath: string) {
+  constructor(proc: Process, adapterPath: string, prepackCommand: string) {
     this._proc = proc;
     this._adapterPath = adapterPath;
+    this._prepackCommand = prepackCommand;
     this._rawData = new Buffer(0);
     this._contentLength = -1;
     this._sequenceNum = 0;
@@ -41,9 +42,11 @@ export class Session {
   _reader: readline.Interface;
   // number of invalid commands
   _invalidCount: number;
+  // command to start Prepack with
+  _prepackCommand: string;
 
   _startAdapter() {
-    let adapterArgs = [this._adapterPath];
+    let adapterArgs = [this._adapterPath, "--prepack", this._prepackCommand];
     this._adapterProcess = child_process.spawn("node", adapterArgs);
     this._proc.on("exit", () => {
       this.shutdown();
@@ -53,16 +56,20 @@ export class Session {
     });
     this._adapterProcess.on("exit", () => {
       console.log("Child exiting");
+      this.shutdown();
     });
     this._adapterProcess.stdout.on("data", (data: Buffer) => {
       this._handleData(data);
+    });
+    this._adapterProcess.stderr.on("data", (data: Buffer) => {
+      console.error(data.toString());
+      this.shutdown();
     });
   }
 
   // callback to handle data written back by the adapter
   _handleData(data: Buffer): void {
     this._rawData = Buffer.concat([this._rawData, data]);
-
     // the following code parses a message according to the protocol.
     while (this._rawData.length > 0) {
       // if we know what length we are expecting
@@ -227,6 +234,7 @@ export class Session {
 
   shutdown() {
     this._reader.close();
+    this._adapterProcess.kill();
     this._proc.exit(0);
   }
 }

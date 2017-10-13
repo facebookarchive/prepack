@@ -11,6 +11,8 @@
 
 import { DebugSession, LoggingDebugSession, InitializedEvent } from "vscode-debugadapter";
 import * as DebugProtocol from "vscode-debugprotocol";
+import child_process from "child_process";
+import Queue from "queue-fifo";
 
 class PrepackDebugSession extends LoggingDebugSession {
   /**
@@ -21,6 +23,53 @@ class PrepackDebugSession extends LoggingDebugSession {
     super("prepack");
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
+    this._readCLIParameters();
+    this._startPrepack();
+  }
+
+  _prepackCommand: string;
+  _prepackProcess: child_process.ChildProcess;
+  _messageQueue: Queue;
+
+  _readCLIParameters() {
+    let args = Array.from(process.argv);
+    args.splice(0, 2);
+    while (args.length > 0) {
+      let arg = args.shift();
+      if (arg.startsWith("--")) {
+        arg = arg.slice(2);
+        if (arg === "prepack") {
+          this._prepackCommand = args.shift();
+        }
+      } else {
+        console.error("Unknown parameter: " + arg);
+      }
+    }
+  }
+
+  // Start Prepack in a child process
+  _startPrepack() {
+    if (this._prepackCommand.length === 0) {
+      console.error("No command given to start Prepack in adapter");
+    }
+    //set up message queue
+    this._queue = new Queue();
+
+    this._prepackProcess = child_process.spawn("node", [this._prepackCommand]);
+
+    process.on("exit", () => {
+      if (this._prepackProcess) this._prepackProcess.kill();
+      process.exit();
+    });
+
+    process.on("SIGINT", () => {
+      if (this._prepackProcess) this._prepackProcess.kill();
+      process.exit();
+    });
+
+    this._prepackProcess.on("exit", () => {
+      // Prepack is finished
+    });
   }
 
   /**
