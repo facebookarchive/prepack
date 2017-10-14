@@ -31,8 +31,6 @@ export type FunctionInstance = {
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
-  // Optional place to put the function declaration
-  preludeOverride?: Array<BabelNodeStatement>,
   // Additional function that the function instance was declared inside of (if any)
   containingAdditionalFunction?: FunctionValue,
   scopeInstances: Set<ScopeBinding>,
@@ -53,11 +51,16 @@ export type ResidualFunctionBinding = {
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
   serializedValue?: void | BabelNodeExpression,
   referentialized?: boolean,
+  scope?: ScopeBinding,
   // If the binding is only accessed by an additional function or nested values
   // this field contains that additional function. (Determines what initializer
   // to put the binding in -- global or additional function)
   referencedOnlyFromAdditionalFunctions?: FunctionValue,
-  scope?: ScopeBinding,
+  // If the binding is overwritten by an additional function, these contain the
+  // new values
+  // TODO #1087: make this a map and support arbitrary binding modifications
+  additionalFunctionOverridesValue?: true,
+  additionalValueSerialized?: BabelNodeExpression,
 };
 
 export type ScopeBinding = {
