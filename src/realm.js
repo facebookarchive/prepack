@@ -243,7 +243,8 @@ export class Realm {
       metadata?: any
     ) => [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>],
   };
-  simplifyAbstractValue: AbstractValue => Value;
+  simplifyAndRefineAbstractValue: AbstractValue => Value;
+  simplifyAndRefineAbstractCondition: AbstractValue => Value;
 
   tracers: Array<Tracer>;
 

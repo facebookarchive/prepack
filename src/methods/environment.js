@@ -100,7 +100,7 @@ export function GetReferencedNamePartial(realm: Realm, V: Reference): AbstractVa
 // ECMA262 6.2.3.1
 export function GetValue(realm: Realm, V: Reference | Value): Value {
   let val = dereference(realm, V);
-  if (val instanceof AbstractValue) return realm.simplifyAbstractValue(val);
+  if (val instanceof AbstractValue) return realm.simplifyAndRefineAbstractValue(val);
   return val;
 }
 
