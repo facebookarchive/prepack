@@ -17,7 +17,11 @@ import { ToBoolean } from "../methods/index.js";
 import { Realm } from "../realm.js";
 import { AbstractObjectValue, AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
 
-export default function simplifyAbstractValue(realm: Realm, value: AbstractValue): Value {
+export default function simplifyAndRefineAbstractValue(
+  realm: Realm,
+  isCondition: boolean, // The value is only used after converting it to a Boolean
+  value: AbstractValue
+): Value {
   let savedHandler = realm.errorHandler;
   let savedIsReadOnly = realm.isReadOnly;
   realm.isReadOnly = true;
@@ -25,7 +29,7 @@ export default function simplifyAbstractValue(realm: Realm, value: AbstractValue
     realm.errorHandler = () => {
       throw new FatalError();
     };
-    return simplify(realm, value);
+    return simplify(realm, value, isCondition);
   } catch (e) {
     return value;
   } finally {
@@ -43,17 +47,22 @@ function pathImplies(condition: AbstractValue): boolean {
   return false;
 }
 
-function simplify(realm, value: Value): Value {
+function simplify(realm, value: Value, isCondition: boolean = false): Value {
   if (value instanceof ConcreteValue) return value;
   invariant(value instanceof AbstractValue);
+  let loc = value.expressionLocation;
   let op = value.kind;
   switch (op) {
-    case "!":
-      return negate(realm, value.args[0], value.expressionLocation);
+    case "!": {
+      let [x0] = value.args;
+      let x = simplify(realm, x0, true);
+      return negate(realm, x, loc, x0.equals(x) ? value : undefined);
+    }
     case "||":
     case "&&": {
-      let x = simplify(realm, value.args[0]);
-      let y = simplify(realm, value.args[1]);
+      let [x0, y0] = value.args;
+      let x = simplify(realm, x0);
+      let y = simplify(realm, y0);
       if (x instanceof AbstractValue && x.equals(y)) return x;
       // todo: remove this check when there is an alternative way to indicate that an intrinsic object is nullable
       if (!(x instanceof AbstractObjectValue && x.isIntrinsic())) {
@@ -64,7 +73,7 @@ function simplify(realm, value: Value): Value {
         // false || y <=> y
         if (!x.mightNotBeFalse()) return op === "||" ? y : x;
       }
-      if (x.getType() === BooleanValue && y.getType() === BooleanValue) {
+      if (isCondition || (x.getType() === BooleanValue && y.getType() === BooleanValue)) {
         // (x: boolean) && true <=> x
         // x || true <=> true
         if (!y.mightNotBeTrue()) return op === "&&" ? x : realm.intrinsics.true;
@@ -72,7 +81,16 @@ function simplify(realm, value: Value): Value {
         // (x: boolean) || false <=> x
         if (!y.mightNotBeFalse()) return op === "||" ? x : realm.intrinsics.false;
       }
-      return AbstractValue.createFromLogicalOp(realm, (value.kind: any), x, y, value.expressionLocation);
+      if (
+        op === "||" &&
+        y instanceof AbstractValue &&
+        y.kind === "||" &&
+        x.equals(y.args[0]) &&
+        !y.args[1].mightNotBeTrue()
+      )
+        return y;
+      if (x.equals(x0) && y.equals(y0)) return value;
+      return AbstractValue.createFromLogicalOp(realm, (value.kind: any), x, y, loc);
     }
     case "==":
     case "!=":
@@ -80,19 +98,48 @@ function simplify(realm, value: Value): Value {
     case "!==":
       return simplifyEquality(realm, value);
     case "conditional": {
-      let c = simplify(realm, value.args[0]);
-      let x = simplify(realm, value.args[1]);
-      let y = simplify(realm, value.args[2]);
+      let [c0, x0, y0] = value.args;
+      let c = simplify(realm, c0, true);
+      let cs = simplify(realm, c0);
+      let x = simplify(realm, x0);
+      let y = simplify(realm, y0);
       if (!c.mightNotBeTrue()) return x;
       if (!c.mightNotBeFalse()) return y;
       invariant(c instanceof AbstractValue);
       if (pathImplies(c)) return x;
       let notc = AbstractValue.createFromUnaryOp(realm, "!", c);
+      if (!notc.mightNotBeTrue()) return y;
+      if (!notc.mightNotBeFalse()) return x;
+      invariant(notc instanceof AbstractValue);
       if (pathImplies(notc)) return y;
       if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", value, x))) return x;
       if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", value, x))) return y;
       if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", value, y))) return x;
       if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", value, y))) return y;
+      // c ? x : x <=> x
+      if (x.equals(y)) return x;
+      // x ? x : y <=> x || y
+      if (cs.equals(x)) return AbstractValue.createFromLogicalOp(realm, "||", x, y, loc);
+      // y ? x : y <=> y && x
+      if (cs.equals(y)) return AbstractValue.createFromLogicalOp(realm, "&&", y, x, loc);
+      // c ? (c ? xx : xy) : y <=> c ? xx : y
+      if (x instanceof AbstractValue && x.kind === "conditional") {
+        let [xc, xx] = x.args;
+        if (c.equals(xc)) return AbstractValue.createFromConditionalOp(realm, c, xx, y);
+      }
+      // c ? x : (c ? y : z) : z <=> c ? x : z
+      if (y instanceof AbstractValue && y.kind === "conditional") {
+        let [yc, , z] = y.args;
+        if (c.equals(yc)) return AbstractValue.createFromConditionalOp(realm, c, x, z);
+      }
+      if (x.getType() === BooleanValue && y.getType() === BooleanValue) {
+        // c ? true : false <=> c
+        if (!x.mightNotBeTrue() && !y.mightNotBeFalse()) return c;
+        // c ? false : true <=> !c
+        if (!x.mightNotBeFalse() && !y.mightNotBeTrue())
+          return AbstractValue.createFromUnaryOp(realm, "!", c, true, loc);
+      }
+      if (c.equals(c0) && x.equals(x0) && y.equals(y0)) return value;
       return AbstractValue.createFromConditionalOp(realm, c, x, y, value.expressionLocation);
     }
     default:
@@ -140,13 +187,25 @@ function makeBoolean(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation =
   if (value instanceof ConcreteValue) return new BooleanValue(realm, ToBoolean(realm, value));
   invariant(value instanceof AbstractValue);
   let v = AbstractValue.createFromUnaryOp(realm, "!", value, true, value.expressionLocation);
+  if (v instanceof ConcreteValue) return new BooleanValue(realm, !ToBoolean(realm, v));
+  invariant(v instanceof AbstractValue);
   return AbstractValue.createFromUnaryOp(realm, "!", v, true, loc || value.expressionLocation);
 }
 
-function negate(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation = undefined): Value {
+function negate(
+  realm: Realm,
+  value: Value,
+  loc: ?BabelNodeSourceLocation = undefined,
+  unsimplifiedNegation: void | Value = undefined
+): Value {
   if (value instanceof ConcreteValue) return ValuesDomain.computeUnary(realm, "!", value);
   invariant(value instanceof AbstractValue);
-  if (value.kind === "!") return makeBoolean(realm, value.args[0]);
+  if (value.kind === "!") {
+    let [x] = value.args;
+    if (x.getType() === BooleanValue) return x;
+    if (unsimplifiedNegation !== undefined) return unsimplifiedNegation;
+    return makeBoolean(realm, x, loc);
+  }
   // todo #1001: remove this check once intrinsic objects can be properly nullable
   if (!(value instanceof AbstractObjectValue) || !value.isIntrinsic()) {
     if (!value.mightNotBeTrue()) return realm.intrinsics.false;
@@ -205,5 +264,6 @@ function negate(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation = unde
       return AbstractValue.createFromLogicalOp(realm, invertedLogicalOp, left, right, loc || value.expressionLocation);
     }
   }
+  if (unsimplifiedNegation !== undefined) return unsimplifiedNegation;
   return AbstractValue.createFromUnaryOp(realm, "!", value, true, loc || value.expressionLocation);
 }
