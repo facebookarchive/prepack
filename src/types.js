@@ -96,7 +96,7 @@ export type Descriptor = {
 
 export type FunctionBodyAstNode = {
   // Function body ast node will have uniqueTag after interpreted.
-  uniqueTag: ?number,
+  uniqueTag?: number,
 };
 
 export type PropertyBinding = {

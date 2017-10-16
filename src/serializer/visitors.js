@@ -15,7 +15,8 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeFunctionExpression } from "babel-types";
 import { convertExpressionToJSXIdentifier } from "../utils/jsx";
 import type { BabelTraversePath } from "babel-traverse";
-import type { TryQuery, FunctionInfo, FactoryFunctionInfo, FunctionBodyAstNode, ResidualFunctionBinding } from "./types.js";
+import type { FunctionBodyAstNode } from "../types.js";
+import type { TryQuery, FunctionInfo, FactoryFunctionInfo, ResidualFunctionBinding } from "./types.js";
 import { nullExpression } from "../utils/internalizer.js";
 
 export type ClosureRefVisitorState = {
@@ -144,8 +145,7 @@ export let ClosureRefReplacer = {
 
   // TODO: handle FunctionDeclaration
   FunctionExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
-    // BabelTraversePath is missing flow typing for "parentPath" property so cast to any.
-    if (t.isProgram((path: any).parentPath.parentPath.node)) {
+    if (t.isProgram(path.parentPath.parentPath.node)) {
       // Our goal is replacing duplicate nested function so skip root residual function itself.
       // This assumes the root function is wrapped with: t.file(t.program([t.expressionStatement(rootFunction).
       return;
