@@ -60,6 +60,7 @@
     "babel-types": "^6.9.0",
     "babylon": "^6.18.0",
     "base62": "^1.1.2",
+    "queue-fifo": "^0.2.3",
     "seedrandom": "^2.4.2",
     "source-map": "^0.5.6"
   },
