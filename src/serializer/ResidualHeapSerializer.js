@@ -145,6 +145,7 @@ export class ResidualHeapSerializer {
     this.referencedDeclaredValues = referencedDeclaredValues;
     this.activeGeneratorBodies = new Map();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
+    this.additionalFunctionValueInfos = additionalFunctionValueInfos;
   }
 
   emitter: Emitter;
@@ -182,7 +183,9 @@ export class ResidualHeapSerializer {
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
+  additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   react: ReactSerializerState;
+
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
@@ -994,10 +997,7 @@ export class ResidualHeapSerializer {
     let residualBindings = instance.residualFunctionBindings;
 
     let inAdditionalFunction = this.currentFunctionBody !== this.mainBody;
-    if (inAdditionalFunction) {
-      instance.preludeOverride = this.currentFunctionBody;
-      instance.containingAdditionalFunction = this.currentAdditionalFunction;
-    }
+    if (inAdditionalFunction) instance.containingAdditionalFunction = this.currentAdditionalFunction;
     let delayed = 1;
     let undelay = () => {
       if (--delayed === 0) {
@@ -1014,12 +1014,13 @@ export class ResidualHeapSerializer {
         serializeBindingFunc = () => {
           return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
         };
-        invariant(residualBinding.value !== undefined);
-        referencedValues.push(residualBinding.value);
-        if (inAdditionalFunction && residualBinding.value) {
-          let scopes = this.residualValues.get(val);
+        let bindingValue = residualBinding.value;
+        invariant(bindingValue !== undefined);
+        referencedValues.push(bindingValue);
+        if (inAdditionalFunction) {
+          let scopes = this.residualValues.get(bindingValue);
           invariant(scopes);
-          let { usedOnlyByAdditionalFunctions } = this._getTarget(val, scopes);
+          let { usedOnlyByAdditionalFunctions } = this._getTarget(bindingValue, scopes);
           if (usedOnlyByAdditionalFunctions)
             residualBinding.referencedOnlyFromAdditionalFunctions = this.currentAdditionalFunction;
         }
@@ -1383,8 +1384,15 @@ export class ResidualHeapSerializer {
               invariant(object instanceof ObjectValue);
               this._emitProperty(object, binding.key, binding.descriptor, true);
             }
-            // TODO #990: Fix additional functions handling of ModifiedBindings
             invariant(result instanceof Value);
+            // Handle ModifiedBindings
+            let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
+            invariant(additionalFunctionValueInfo);
+            for (let [modifiedBinding, residualBinding] of additionalFunctionValueInfo.modifiedBindings) {
+              let newVal = modifiedBinding.value;
+              invariant(newVal);
+              residualBinding.additionalValueSerialized = this.serializeValue(newVal);
+            }
             this.emitter.emit(t.returnStatement(this.serializeValue(result)));
           };
           this.currentAdditionalFunction = additionalFunctionValue;

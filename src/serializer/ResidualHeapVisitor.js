@@ -595,7 +595,35 @@ export class ResidualHeapVisitor {
           if (object.intrinsicName === "global") continue; // Avoid double-counting
           this.visitObjectProperty(binding);
         }
-        // TODO #990: Fix additional functions handing of ModifiedBindings
+        // Handing of ModifiedBindings
+        for (let additionalBinding of modifiedBindings.keys()) {
+          //let modifiedBinding: Binding = ((additionalBinding: any): Binding);
+          let modifiedBinding = additionalBinding;
+          let residualBinding;
+          if (modifiedBinding.isGlobal) {
+            residualBinding = this.globalBindings.get(modifiedBinding.name);
+          } else {
+            let containingEnv = modifiedBinding.environment;
+            invariant(containingEnv instanceof DeclarativeEnvironmentRecord);
+            let bindMap = this.declarativeEnvironmentRecordsBindings.get(containingEnv);
+            if (bindMap) residualBinding = bindMap.get(modifiedBinding.name);
+          }
+          // Only visit it if there is already a binding (no binding means that
+          // the additional function created the binding)
+          if (residualBinding && modifiedBinding.value !== residualBinding.value) {
+            let newValue = modifiedBinding.value;
+            invariant(newValue);
+            this.visitValue(newValue);
+            residualBinding.modified = true;
+            // This should be enforced by checkThatFunctionsAreIndependent
+            invariant(
+              !residualBinding.additionalFunctionOverridesValue,
+              "We should only have one additional function value modifying any given residual binding"
+            );
+            residualBinding.additionalFunctionOverridesValue = true;
+            modifiedBindingInfo.set(modifiedBinding, residualBinding);
+          }
+        }
         invariant(result instanceof Value);
         this.visitValue(result);
       };
