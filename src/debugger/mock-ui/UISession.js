@@ -91,7 +91,7 @@ export class UISession {
 
   _processEvent(event: DebugProtocol.Event) {
     // to be implemented
-    console.log(event)
+    console.log(event);
   }
 
   _processResponse(response: DebugProtocol.Response) {
