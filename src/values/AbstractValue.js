@@ -421,6 +421,8 @@ export default class AbstractValue extends Value {
     loc?: ?BabelNodeSourceLocation
   ): Value {
     let types = TypesDomain.joinValues(left, right);
+    if (types.getType() === NullValue) return realm.intrinsics.null;
+    if (types.getType() === UndefinedValue) return realm.intrinsics.undefined;
     let values = ValuesDomain.joinValues(realm, left, right);
     let [hash, args] = hashTernary(condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;

@@ -81,12 +81,6 @@ export class Generator {
   preludeGenerator: PreludeGenerator;
   parent: void | Generator;
 
-  clone(): Generator {
-    let result = new Generator(this.realm);
-    result._entries = this._entries.slice(0);
-    return result;
-  }
-
   getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
     // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
     let index = Number.parseInt(key, 10);
@@ -352,25 +346,17 @@ export class Generator {
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {
-    let appendEntries = other._entries;
-
-    let i = 0;
-    if (appendEntries.length > 0 && leadingComment.length > 0) {
-      let firstEntry = appendEntries[i++];
-      let buildNode = (nodes, f) => {
-        let n = firstEntry.buildNode(nodes, f);
-        n.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-        return n;
-      };
-      this.addEntry({
-        declared: firstEntry.declared,
-        args: firstEntry.args,
-        buildNode: buildNode,
-      });
-    }
-    for (; i < appendEntries.length; i++) {
-      this.addEntry(appendEntries[i]);
-    }
+    if (other.empty()) return;
+    this.addEntry({
+      args: [],
+      buildNode: function(args, context: SerializationContext) {
+        let statements = context.serializeGenerator(other);
+        let block = t.blockStatement(statements);
+        if (leadingComment.length > 0) block.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
+        return block;
+      },
+      dependencies: [other],
+    });
   }
 }
 
