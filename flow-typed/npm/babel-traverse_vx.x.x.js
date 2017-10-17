@@ -24,6 +24,7 @@ declare module 'babel-traverse' {
     scope: BabelTraverseScope;
     node: BabelNode;
     parent: BabelNode;
+    parentPath: BabelTraversePath;
   }
 
   declare export class BabelTraverseScope {
