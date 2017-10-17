@@ -33,10 +33,10 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
     logger: Logger,
     modules: Modules,
     additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>,
-    valueToReferencCount: Map<Value, number>
+    valueToEdgeRecord: Map<Value, [number, number]>
   ) {
     super(realm, logger, modules, additionalFunctionValuesAndEffects);
-    this._valueToReferencCount = valueToReferencCount;
+    this._valueToEdgeRecord = valueToEdgeRecord;
     this._lazyObjects = new Set();
     this._visitedValues = new Set();
     this._statistics = {
@@ -63,7 +63,7 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
     };
   }
 
-  _valueToReferencCount: Map<Value, number>;
+  _valueToEdgeRecord: Map<Value, [number, number]>;
   _lazyObjects: Set<Value>;
   _visitedValues: Set<Value>;
   _statistics: any;
@@ -92,13 +92,20 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
     }
   }
 
+  _processPassCheck(val: Value, childrenPassCheck: boolean): boolean {
+    const foreverObjectNames = ["runnables", "shim"];
+    const originalName = val.__originalName || "";
+    return childrenPassCheck || foreverObjectNames.indexOf(originalName) !== -1 || val instanceof FunctionValue;
+  }
+
   _postProcessValue(val: Value, childrenPassCheck: boolean): boolean {
     if (val instanceof EmptyValue || val.isIntrinsic() || ResidualHeapInspector.isLeaf(val)) {
       // Leaf should have no children.
       return true;
     }
-    let refCount = this._valueToReferencCount.get(val);
-    invariant(refCount != null);
+    let edgeRecord = this._valueToEdgeRecord.get(val);
+    invariant(edgeRecord != null);
+    const refCount = edgeRecord[0];
     if (!this._lazyObjects.has(val) && childrenPassCheck && refCount > 1) {
       ++this._statistics.trees;
       this._recordBreakNodeStatistics(val, this._statistics.breakNodes);
@@ -106,15 +113,17 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
         this._recordBreakNodeStatistics(val, this._statistics.popularBreakNodes);
       }
     }
-    if (childrenPassCheck) {
+    const passCheck = this._processPassCheck(val, childrenPassCheck);
+    if (passCheck) {
       this._lazyObjects.add(val);
     }
-    return refCount === 1 && childrenPassCheck;
+    return refCount === 1 && passCheck;
   }
 
   repotResult() {
-    invariant(this._valueToReferencCount.size >= this._lazyObjects.size);
-    this._statistics = Array.from(this._valueToReferencCount.values()).reduce((prev: any, rc) => {
+    invariant(this._valueToEdgeRecord.size >= this._lazyObjects.size);
+    this._statistics = Array.from(this._valueToEdgeRecord.values()).reduce((prev: any, edgeRecord) => {
+      let rc = edgeRecord[0];
       invariant(rc > 0);
       if (rc === 1) {
         ++prev.rc1;
@@ -126,6 +135,6 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
       return prev;
     }, this._statistics);
     console.log(`Ref count statistics: [${JSON.stringify(this._statistics)}]`);
-    console.log(`JS Heap: total[${this._valueToReferencCount.size}], lazy object[${this._lazyObjects.size}]\n`);
+    console.log(`JS Heap: total[${this._valueToEdgeRecord.size}], lazy object[${this._lazyObjects.size}]\n`);
   }
 }
