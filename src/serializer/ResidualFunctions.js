@@ -22,10 +22,11 @@ import type {
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
 } from "babel-types";
-import { NameGenerator } from "../utils/generator.js";
+import type { FunctionBodyAstNode } from "../types.js";
+import type { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { FunctionInfo, FunctionInstance, AdditionalFunctionInfo } from "./types.js";
+import type { FunctionInfo, FactoryFunctionInfo, FunctionInstance, AdditionalFunctionInfo } from "./types.js";
 import { BodyReference, AreSameResidualBinding, SerializerStatistics } from "./types.js";
 import { ClosureRefReplacer } from "./visitors.js";
 import { Modules } from "./modules.js";
@@ -115,6 +116,52 @@ export class ResidualFunctions {
 
   addFunctionUsage(val: FunctionValue, bodyReference: BodyReference) {
     if (!this.firstFunctionUsages.has(val)) this.firstFunctionUsages.set(val, bodyReference);
+  }
+
+  _shouldUseFactoryFunction(funcBody: BabelNodeBlockStatement, instances: Array<FunctionInstance>) {
+    function shouldInlineFunction(): boolean {
+      let shouldInline = true;
+      if (funcBody.start && funcBody.end) {
+        let bodySize = funcBody.end - funcBody.start;
+        shouldInline = bodySize <= 30;
+      }
+      return shouldInline;
+    }
+    let functionInfo = this.residualFunctionInfos.get(funcBody);
+    invariant(functionInfo);
+    let { usesArguments } = functionInfo;
+    return !shouldInlineFunction() && instances.length > 1 && !usesArguments;
+  }
+
+  // Note: this function takes linear time. Please do not call it inside loop.
+  _hasRewrittenFunctionInstance(
+    rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>,
+    instances: Array<FunctionInstance>
+  ): boolean {
+    return instances.find(instance => rewrittenAdditionalFunctions.has(instance.functionValue)) !== undefined;
+  }
+
+  _generateFactoryFunctionInfos(
+    rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>
+  ): Map<number, FactoryFunctionInfo> {
+    const factoryFunctionIds = new Map();
+    for (const [functionBody, instances] of this.functions) {
+      invariant(instances.length > 0);
+
+      if (this._shouldUseFactoryFunction(functionBody, instances)) {
+        // Rewritten function should never use factory function.
+        invariant(!this._hasRewrittenFunctionInstance(rewrittenAdditionalFunctions, instances));
+
+        const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueTag;
+        invariant(functionUniqueTag);
+        const suffix = instances[0].functionValue.__originalName || "";
+        const factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
+        const functionInfo = this.residualFunctionInfos.get(functionBody);
+        invariant(functionInfo);
+        factoryFunctionIds.set(functionUniqueTag, { factoryId, functionInfo });
+      }
+    }
+    return factoryFunctionIds;
   }
 
   spliceFunctions(
@@ -252,18 +299,13 @@ export class ResidualFunctions {
     }
 
     // Process normal functions
+    const factoryFunctionInfos = this._generateFactoryFunctionInfos(rewrittenAdditionalFunctions);
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
-      let { unbound, modified, usesThis, usesArguments } = functionInfo;
+      let { unbound, modified, usesThis } = functionInfo;
       let params = instances[0].functionValue.$FormalParameters;
       invariant(params !== undefined);
-
-      let shouldInline = !funcBody;
-      if (!shouldInline && funcBody.start && funcBody.end) {
-        let bodySize = funcBody.end - funcBody.start;
-        shouldInline = bodySize <= 30;
-      }
 
       // Split instances into normal or nested in an additional function
       let normalInstances = [];
@@ -304,6 +346,7 @@ export class ResidualFunctions {
             requireReturns: this.requireReturns,
             requireStatistics,
             isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
+            factoryFunctionInfos,
           });
 
           if (functionValue.$Strict) {
@@ -317,11 +360,14 @@ export class ResidualFunctions {
       };
 
       if (additionalFunctionNestedInstances.length > 0) naiveProcessInstances(additionalFunctionNestedInstances);
-      if (shouldInline || normalInstances.length === 1 || usesArguments) {
+      if (!this._shouldUseFactoryFunction(funcBody, normalInstances)) {
         naiveProcessInstances(normalInstances);
       } else if (normalInstances.length > 0) {
-        let suffix = normalInstances[0].functionValue.__originalName || "";
-        let factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
+        const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueTag;
+        invariant(functionUniqueTag);
+        const factoryInfo = factoryFunctionInfos.get(functionUniqueTag);
+        invariant(factoryInfo);
+        const { factoryId } = factoryInfo;
 
         // filter included variables to only include those that are different
         let factoryNames: Array<string> = [];
@@ -400,6 +446,7 @@ export class ResidualFunctions {
           requireReturns: this.requireReturns,
           requireStatistics,
           isRequire: this.modules.getIsRequire(factoryParams, normalInstances.map(instance => instance.functionValue)),
+          factoryFunctionInfos,
         });
 
         for (let instance of normalInstances) {
