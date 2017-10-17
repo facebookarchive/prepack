@@ -54,6 +54,5 @@ function run(process, console) {
     console.error(e);
     session.shutdown();
   }
-
 }
 run(process, console);
