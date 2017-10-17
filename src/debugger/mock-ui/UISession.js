@@ -8,22 +8,27 @@
  */
 
 /* @flow */
+
 import readline from "readline";
 import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
+import { DataHandler } from "./DataHandler.js";
 
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
 
-export class Session {
+/* Represents one debugging session in the CLI.
+ * Read in user input from the command line, parses the input into commands,
+ * sends the commands to the adapter and process any responses
+*/
+export class UISession {
   constructor(proc: Process, adapterPath: string, prepackCommand: string) {
     this._proc = proc;
     this._adapterPath = adapterPath;
     this._prepackCommand = prepackCommand;
-    this._rawData = new Buffer(0);
-    this._contentLength = -1;
     this._sequenceNum = 0;
     this._invalidCount = 0;
+    this._dataHandler = new DataHandler();
   }
   // the parent (i.e. ui) process
   _proc: Process;
@@ -32,10 +37,6 @@ export class Session {
   // the child (i.e. adapter) process
   _adapterProcess: child_process.ChildProcess;
 
-  // buffer to hold incoming data from the adapter
-  _rawData: Buffer;
-  // expected content length for a message
-  _contentLength: number;
   // id number for each message sent
   _sequenceNum: number;
   // interface to read in input from the CLI client
@@ -44,6 +45,8 @@ export class Session {
   _invalidCount: number;
   // command to start Prepack with
   _prepackCommand: string;
+  // handler for any received messages
+  _dataHandler: DataHandler;
 
   _startAdapter() {
     let adapterArgs = [this._adapterPath, "--prepack", this._prepackCommand];
@@ -58,7 +61,12 @@ export class Session {
       this.shutdown();
     });
     this._adapterProcess.stdout.on("data", (data: Buffer) => {
-      this._handleData(data);
+      //handle the received data
+      this._dataHandler.handleData(data, this._processMessage.bind(this));
+      //ask the user for the next command
+      this._reader.question("(dbg) ", (input: string) => {
+        this._dispatch(input);
+      });
     });
     this._adapterProcess.stderr.on("data", (data: Buffer) => {
       console.error(data.toString());
@@ -66,65 +74,24 @@ export class Session {
     });
   }
 
-  // callback to handle data written back by the adapter
-  _handleData(data: Buffer): void {
-    this._rawData = Buffer.concat([this._rawData, data]);
-    // the following code parses a message according to the protocol.
-    while (this._rawData.length > 0) {
-      // if we know what length we are expecting
-      if (this._contentLength >= 0) {
-        // we have enough data to check for the expected message
-        if (this._rawData.length >= this._contentLength) {
-          // first get the expected message
-          let message = this._rawData.toString("utf8", 0, this._contentLength);
-          // reduce the buffer by the message we got
-          this._rawData = this._rawData.slice(this._contentLength);
-          // reset the content length to ensure it is extracted for the next message
-          this._contentLength = -1;
-          // process the message
-          if (message.length > 0) {
-            try {
-              let msg = JSON.parse(message);
-              if (msg.type === "event") {
-                this._processEvent(msg);
-              } else if (msg.type === "response") {
-                this._processResponse(msg);
-              }
-            } catch (e) {
-              console.log("Invalid message");
-            }
-          }
-          continue; // there may be more complete messages to process
-        }
-      } else {
-        // if we don't know the length to expect, we need to extract it first
-        let idx = this._rawData.indexOf(TWO_CRLF);
-        if (idx !== -1) {
-          let header = this._rawData.toString("utf8", 0, idx);
-          let lines = header.split("\r\n");
-          for (let i = 0; i < lines.length; i++) {
-            let pair = lines[i].split(/: +/);
-            if (pair[0] === "Content-Length") {
-              this._contentLength = +pair[1];
-            }
-          }
-          this._rawData = this._rawData.slice(idx + TWO_CRLF.length);
-          continue;
-        }
-        // if we don't find the length we fall through and break
+  // called from data handler to process a received message
+  _processMessage(message: string): void {
+    try {
+      let msg = JSON.parse(message);
+      if (msg.type === "event") {
+        this._processEvent(msg);
+      } else if (msg.type === "response") {
+        this._processResponse(msg);
       }
-      break;
+    } catch (e) {
+      console.error(e);
+      console.error("Invalid message: " + message.slice(0, 1000));
     }
-
-    //ask the user for the next command
-    this._reader.question("(dbg) ", (input: string) => {
-      this._dispatch(input);
-    });
   }
 
   _processEvent(event: DebugProtocol.Event) {
     // to be implemented
-    console.log(event);
+    console.log(event)
   }
 
   _processResponse(response: DebugProtocol.Response) {
@@ -139,11 +106,15 @@ export class Session {
     let command = parts[0];
 
     // for testing purposes, init and configDone are made into user commands
-    // they can be done without user input
+    // they can be done from the adapter without user input
     if (command === "init") {
+      //format: init <clientID> <adapterID>
+      if (parts.length !== 3) return false;
       let args: DebugProtocol.InitializeRequestArguments = {
-        clientID: "CLI",
-        adapterID: "Prepack",
+        // a unique name for each UI (e.g Nuclide, VSCode, CLI)
+        clientID: parts[1],
+        // a unique name for each adapter
+        adapterID: parts[2],
         linesStartAt1: true,
         columnsStartAt1: true,
         supportsVariableType: true,
@@ -153,6 +124,8 @@ export class Session {
       };
       this._sendInitializeRequest(args);
     } else if (command === "configDone") {
+      // format: configDone
+      if (parts.length !== 1) return false;
       let args: DebugProtocol.ConfigurationDoneArguments = {};
       this._sendConfigDoneRequest(args);
     } else {
@@ -162,7 +135,7 @@ export class Session {
     return true;
   }
 
-  // parses the user input into a command and executes it if it is valid
+  // parses the user input into a command and executes it
   _dispatch(input: string) {
     if (input === "exit") {
       this.shutdown();

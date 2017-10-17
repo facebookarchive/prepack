@@ -9,11 +9,15 @@
 
 /* @flow */
 
-import { Session } from "./session.js";
+import { UISession } from "./UISession.js";
+
+/* The entry point to start up the debugger CLI
+ * Reads in command line arguments and starts up a UISession
+*/
 
 function run(process, console) {
-  let adapterPath: string = "";
-  let prepackCommand: string = "";
+  let adapterPath = "";
+  let prepackCommand = "";
 
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -43,7 +47,13 @@ function run(process, console) {
     process.exit(1);
   }
 
-  let session = new Session(process, adapterPath, prepackCommand);
-  session.serve();
+  let session = new UISession(process, adapterPath, prepackCommand);
+  try {
+    session.serve();
+  } catch (e) {
+    console.error(e);
+    session.shutdown();
+  }
+
 }
 run(process, console);
