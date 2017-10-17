@@ -112,6 +112,15 @@ export class TimingStatistics {
   serializePassTime: number;
 }
 
+export class ReactStatistics {
+  constructor() {
+    this.optimizedTrees = 0;
+    this.inlinedComponents = 0;
+  }
+  optimizedTrees: number;
+  inlinedComponents: number;
+}
+
 export class SerializerStatistics {
   constructor() {
     this.objects = 0;
@@ -124,6 +133,10 @@ export class SerializerStatistics {
     this.delayedValues = 0;
     this.acceleratedModules = 0;
     this.delayedModules = 0;
+    this.react = {
+      optimizedTrees: 0,
+      inlinedComponents: 0,
+    };
   }
   objects: number;
   objectProperties: number;
@@ -135,6 +148,10 @@ export class SerializerStatistics {
   delayedValues: number;
   acceleratedModules: number;
   delayedModules: number;
+  react: {
+    optimizedTrees: number,
+    inlinedComponents: number,
+  };
 
   log() {
     console.log(`=== serialization statistics`);

@@ -10,7 +10,9 @@
 /* @flow */
 
 import * as t from "babel-types";
+import { Realm } from "../realm.js";
 import type {
+  BabelNode,
   BabelNodeExpression,
   BabelNodeArrayExpression,
   BabelNodeJSXElement,
@@ -22,6 +24,7 @@ import type {
 import invariant from "../invariant.js";
 import { Value, ObjectValue, SymbolValue } from "../values/index.js";
 import { Get } from "../methods/index.js";
+import { IsAccessorDescriptor } from "../methods/index.js";
 
 export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
@@ -33,6 +36,10 @@ export function isReactElement(val: Value): boolean {
     }
   }
   return false;
+}
+
+export function isTagName(ast: BabelNode): boolean {
+  return ast.type === "JSXIdentifier" && /^[a-z]|\-/.test(((ast: any): BabelNodeJSXIdentifier).name);
 }
 
 export function convertExpressionToJSXIdentifier(
@@ -48,7 +55,7 @@ export function convertExpressionToJSXIdentifier(
       invariant(
         // ensure the 1st character of the string is uppercase
         // for a component unless it is not the root
-        isRoot === false || (name.length > 0 && name[0] === name[0].toUpperCase()),
+        isRoot === false || isReactComponent(name),
         "invalid JSXIdentifer from Identifier, Identifier name must be uppercase"
       );
       return t.jSXIdentifier(name);
@@ -158,4 +165,28 @@ export function applyKeysToNestedArray(
       }
     }
   }
+}
+
+export function getJSXPropertyValue(realm: Realm, properties: Map<string, any>, key: string) {
+  if (properties.has(key)) {
+    let val = properties.get(key);
+
+    if (val !== undefined) {
+      let descriptor = val.descriptor;
+      invariant(!IsAccessorDescriptor(realm, descriptor), "expected descriptor to be a non-accessor property");
+
+      if (descriptor !== undefined) {
+        let descriptorValue = descriptor.value;
+
+        if (descriptorValue !== undefined) {
+          return descriptorValue;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function isReactComponent(name) {
+  return name.length > 0 && name[0] === name[0].toUpperCase();
 }

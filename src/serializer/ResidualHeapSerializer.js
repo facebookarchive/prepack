@@ -34,6 +34,7 @@ import {
   convertKeyValueToJSXAttribute,
   applyKeysToNestedArray,
   isReactElement,
+  getJSXPropertyValue,
 } from "../utils/jsx";
 import * as t from "babel-types";
 import type {
@@ -725,26 +726,6 @@ export class ResidualHeapSerializer {
     return t.arrayExpression(initProperties);
   }
 
-  _getPropertyValue(properties: Map<string, any>, key: string) {
-    if (properties.has(key)) {
-      let val = properties.get(key);
-
-      if (val !== undefined) {
-        let descriptor = val.descriptor;
-        invariant(!IsAccessorDescriptor(this.realm, descriptor), "expected descriptor to be a non-accessor property");
-
-        if (descriptor !== undefined) {
-          let descriptorValue = descriptor.value;
-
-          if (descriptorValue !== undefined) {
-            return descriptorValue;
-          }
-        }
-      }
-    }
-    return null;
-  }
-
   _serializeValueReactElementChild(child: Value): BabelNode {
     if (isReactElement(child)) {
       // if we know it's a ReactElement, we add the value to the serializedValues
@@ -767,10 +748,10 @@ export class ResidualHeapSerializer {
 
   _serializeValueReactElement(val: ObjectValue): BabelNodeExpression {
     let objectProperties: Map<string, any> = val.properties;
-    let typeValue = this._getPropertyValue(objectProperties, "type");
-    let keyValue = this._getPropertyValue(objectProperties, "key");
-    let refValue = this._getPropertyValue(objectProperties, "ref");
-    let propsValue = this._getPropertyValue(objectProperties, "props");
+    let typeValue = getJSXPropertyValue(this.realm, objectProperties, "type");
+    let keyValue = getJSXPropertyValue(this.realm, objectProperties, "key");
+    let refValue = getJSXPropertyValue(this.realm, objectProperties, "ref");
+    let propsValue = getJSXPropertyValue(this.realm, objectProperties, "props");
 
     invariant(typeValue !== null, "JSXElement type of null");
 
@@ -808,12 +789,12 @@ export class ResidualHeapSerializer {
           let childrenValue = desc.value;
           if (childrenValue instanceof ArrayValue) {
             this.serializedValues.add(childrenValue);
-            let childrenLength = this._getPropertyValue(childrenValue.properties, "length");
+            let childrenLength = getJSXPropertyValue(this.realm, childrenValue.properties, "length");
             let childrenLengthValue = 0;
             if (childrenLength instanceof NumberValue) {
               childrenLengthValue = childrenLength.value;
               for (let i = 0; i < childrenLengthValue; i++) {
-                let child = this._getPropertyValue(childrenValue.properties, "" + i);
+                let child = getJSXPropertyValue(this.realm, childrenValue.properties, "" + i);
                 if (child instanceof Value) {
                   children.push(this._serializeValueReactElementChild(child));
                 } else {
