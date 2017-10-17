@@ -11,6 +11,8 @@
 import path from "path";
 import type { DebuggerOptions } from "./options";
 
+const TWO_DASH = "--";
+
 export class DebugChannel {
   constructor(fs: any, dbgOptions: DebuggerOptions) {
     this.inFilePath = path.join(__dirname, "../", dbgOptions.inFilePath);
@@ -42,14 +44,36 @@ export class DebugChannel {
   /* Request object based on the protocol
   */
   readIn(): string {
-    let contents = "";
-    while (contents.length === 0) {
-      contents = this.fs.readFileSync(this.inFilePath, "utf8");
+    let message = "";
+    while (true) {
+      let contents = this.fs.readFileSync(this.inFilePath, "utf8");
+
+      if (contents.length === 0) {
+        continue;
+      }
+
+      let separatorIndex = contents.indexOf(TWO_DASH);
+      if (separatorIndex === -1) {
+        continue;
+      }
+
+      let messageLength = parseInt(contents.slice(0, separatorIndex), 10);
+      if (isNaN(messageLength)) {
+        continue;
+      }
+
+      let startIndex = separatorIndex + TWO_DASH.length;
+      let endIndex = separatorIndex + TWO_DASH.length + messageLength;
+      message = contents.slice(startIndex, endIndex);
+      if (message.length < messageLength) {
+        continue;
+      }
+      break;
     }
     //clear the file
     this.fs.writeFileSync(this.inFilePath, "");
     this.requestReceived = true;
-    return contents;
+    return message;
   }
 
   /* Write out a response to the debug adapter
@@ -59,7 +83,7 @@ export class DebugChannel {
   writeOut(contents: string): void {
     //Prepack only writes back to the debug adapter in response to a request
     if (this.requestReceived) {
-      this.fs.writeFileSync(this.outFilePath, contents);
+      this.fs.writeFileSync(this.outFilePath, contents.length + TWO_DASH + contents);
       this.requestReceived = false;
     }
   }
