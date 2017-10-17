@@ -58,9 +58,9 @@ class PrepackDebugSession extends LoggingDebugSession {
       process.exit(1);
     }
     //set up message queue
-    this._queue = new Queue();
+    this._messageQueue = new Queue();
 
-    this._prepackProcess = child_process.spawn("node", [this._prepackCommand]);
+    this._prepackProcess = child_process.spawn("node", this._prepackCommand.split(" "));
 
     process.on("exit", () => {
       if (this._prepackProcess) this._prepackProcess.kill();
