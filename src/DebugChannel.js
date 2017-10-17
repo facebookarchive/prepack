@@ -51,7 +51,7 @@ export class DebugChannel {
       if (contents.length === 0) {
         continue;
       }
-
+      // format: <length>--<contents>
       let separatorIndex = contents.indexOf(TWO_DASH);
       if (separatorIndex === -1) {
         continue;

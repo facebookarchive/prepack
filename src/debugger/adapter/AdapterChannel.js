@@ -30,6 +30,7 @@ export class AdapterChannel {
         //message processor will disregard the message if there is an error
         messageProcessor(err);
       }
+      // format: <length>--<contents>
       let separatorIndex = content.indexOf(TWO_DASH);
       // if the separator is not written in yet, keep listening
       if (separatorIndex === -1) {
@@ -42,7 +43,9 @@ export class AdapterChannel {
         this.listenOnFile(messageProcessor);
         return;
       }
-      let message = content.slice(separatorIndex + TWO_DASH.length, separatorIndex + TWO_DASH.length + messageLength);
+      let startIndex = separatorIndex + TWO_DASH.length;
+      let endIndex = startIndex + messageLength;
+      let message = content.slice(startIndex, endIndex);
       // if we didn't read the whole message yet, keep listening
       if (message.length < messageLength) {
         this.listenOnFile(messageProcessor);
