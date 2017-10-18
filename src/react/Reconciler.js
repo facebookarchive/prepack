@@ -189,7 +189,7 @@ class Reconciler {
         contextName = ((componentType.$FormalParameters[1]: any): BabelNodeIdentifier).name;
       }
       invariant(
-        componentType.$FormalParameters[0].typeAnnotation,
+        componentType.$FormalParameters[1].typeAnnotation,
         `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" argument`
       );
       contextTypes = flowAnnotationToObject(componentType.$FormalParameters[1].typeAnnotation);
