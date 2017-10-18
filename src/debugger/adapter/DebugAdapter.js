@@ -63,12 +63,12 @@ class PrepackDebugSession extends LoggingDebugSession {
     this._prepackProcess = child_process.spawn("node", this._prepackCommand.split(" "));
 
     process.on("exit", () => {
-      if (this._prepackProcess) this._prepackProcess.kill();
+      this._prepackProcess.kill();
       process.exit();
     });
 
     process.on("SIGINT", () => {
-      if (this._prepackProcess) this._prepackProcess.kill();
+      this._prepackProcess.kill();
       process.exit();
     });
   }
@@ -84,7 +84,7 @@ class PrepackDebugSession extends LoggingDebugSession {
 
     response.body = response.body || {};
     response.body.supportsConfigurationDoneRequest = true;
-    //Respond back to the UI with the configurations. Will add more configurations gradually as needed.
+    // Respond back to the UI with the configurations. Will add more configurations gradually as needed.
     this.sendResponse(response);
   }
 }
