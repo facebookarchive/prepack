@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { LexicalEnvironment } from "../environment.js";
-import type { PropertyKeyValue } from "../types.js";
+import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
 import {
@@ -584,6 +584,7 @@ export function FunctionInitialize(
   F.$FormalParameters = ParameterList;
 
   // 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
+  ((Body: any): FunctionBodyAstNode).uniqueTag = realm.functionBodyUniqueTagSeed++;
   F.$ECMAScriptCode = Body;
 
   // 8. Set the [[ScriptOrModule]] internal slot of F to GetActiveScriptOrModule().
@@ -1184,13 +1185,7 @@ export function EvaluateStatements(
             } else {
               invariant(blockValue instanceof PossiblyNormalCompletion);
               invariant(res instanceof PossiblyNormalCompletion);
-              let e = realm.getCapturedEffects();
-              invariant(e !== undefined);
-              realm.stopEffectCaptureAndUndoEffects();
-              realm.addPriorEffects(e, res.consequent instanceof Value ? res.consequentEffects : res.alternateEffects);
               blockValue = composePossiblyNormalCompletions(realm, blockValue, res);
-              realm.applyEffects(e);
-              realm.captureEffects();
             }
           }
         }

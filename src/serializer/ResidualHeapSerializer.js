@@ -537,8 +537,14 @@ export class ResidualHeapSerializer {
     // We can emit the initialization of this value into the body associated with their common ancestor.
     let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), generators[0]);
     invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
-    let body =
-      commonAncestor === this.generator ? this.currentFunctionBody : this.activeGeneratorBodies.get(commonAncestor);
+    let body;
+    while (true) {
+      if (commonAncestor === this.generator) body = this.currentFunctionBody;
+      else body = this.activeGeneratorBodies.get(commonAncestor);
+      if (body !== undefined) break;
+      commonAncestor = commonAncestor.parent;
+      invariant(commonAncestor !== undefined);
+    }
     invariant(body !== undefined);
     return { body: body };
   }

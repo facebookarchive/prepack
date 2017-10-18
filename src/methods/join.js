@@ -256,7 +256,7 @@ export function joinEffectsAndPromoteNestedReturnCompletions(
     // If not undefined, the nested effects were captured when evaluating a conditional code block that ended normally.
     // e represent effects that were captured since reaching the join point where the normal and abrupt
     // completions came together into the completion supplied to the outermost call to this recursive function.
-    if (nested_effects !== undefined) realm.addPriorEffects(nested_effects, e);
+    if (nested_effects !== undefined) e = realm.composeEffects(nested_effects, e);
     return e;
   }
   if (c instanceof AbruptCompletion && !(c instanceof JoinedAbruptCompletions)) {
@@ -369,7 +369,7 @@ export function joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effe
     createdObjects.add(o);
   });
 
-  let generator = joinGenerators(realm, joinCondition, gen1, gen2, result1, result2);
+  let generator = joinGenerators(realm, joinCondition, gen1, gen2);
 
   return [result, generator, bindings, properties, createdObjects];
 }
@@ -445,15 +445,34 @@ function joinResults(
   invariant(false);
 }
 
+export function composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator {
+  let result = new Generator(realm);
+  generator1.parent = result;
+  generator2.parent = result;
+  if (!generator1.empty() || !generator2.empty()) {
+    result.addEntry({
+      args: [],
+      buildNode: function([], context) {
+        let statements = [];
+        if (!generator1.empty()) statements.push(serializeBody(generator1, context));
+        if (!generator2.empty()) statements.push(serializeBody(generator2, context));
+        return t.blockStatement(statements);
+      },
+      dependencies: [generator1, generator2],
+    });
+  }
+  return result;
+}
+
 function joinGenerators(
   realm: Realm,
   joinCondition: AbstractValue,
   generator1: Generator,
-  generator2: Generator,
-  result1: EvaluationResult,
-  result2: EvaluationResult
+  generator2: Generator
 ): Generator {
   let result = new Generator(realm);
+  generator1.parent = result;
+  generator2.parent = result;
   if (!generator1.empty() || !generator2.empty()) {
     result.addEntry({
       args: [joinCondition],

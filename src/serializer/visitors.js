@@ -12,10 +12,12 @@
 import { Realm } from "../realm.js";
 import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeCallExpression } from "babel-types";
-import { BabelTraversePath } from "babel-traverse";
 import { convertExpressionToJSXIdentifier } from "../utils/jsx";
-import type { TryQuery, FunctionInfo, ResidualFunctionBinding } from "./types.js";
+import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeFunctionExpression } from "babel-types";
+import type { BabelTraversePath } from "babel-traverse";
+import type { FunctionBodyAstNode } from "../types.js";
+import type { TryQuery, FunctionInfo, FactoryFunctionInfo, ResidualFunctionBinding } from "./types.js";
+import { nullExpression } from "../utils/internalizer.js";
 
 export type ClosureRefVisitorState = {
   tryQuery: TryQuery<*>,
@@ -30,6 +32,7 @@ export type ClosureRefReplacerState = {
   requireReturns: Map<number | string, BabelNodeExpression>,
   requireStatistics: { replaced: 0, count: 0 },
   isRequire: void | ((scope: any, node: BabelNodeCallExpression) => boolean),
+  factoryFunctionInfos: Map<number, FactoryFunctionInfo>,
 };
 
 function markVisited(node, data) {
@@ -84,6 +87,14 @@ function getLiteralTruthiness(node): { known: boolean, value?: boolean } {
   return { known: false };
 }
 
+function canShareFunctionBody(duplicateFunctionInfo: FactoryFunctionInfo): boolean {
+  // Only share function when:
+  // 1. it does not access any free variables.
+  // 2. it does not use "this".
+  const { unbound, modified, usesThis } = duplicateFunctionInfo.functionInfo;
+  return unbound.size === 0 && modified.size === 0 && !usesThis;
+}
+
 export let ClosureRefReplacer = {
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefReplacerState) {
     if (ignorePath(path)) return;
@@ -120,6 +131,28 @@ export let ClosureRefReplacer = {
         let nestedPath = ids[name];
         replaceName(nestedPath, residualFunctionBinding, name, residualFunctionBindings);
       }
+    }
+  },
+
+  // TODO: handle FunctionDeclaration.
+  // Replace "function () {}" ==> "factory_id.bind(null)".
+  FunctionExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
+    if (t.isProgram(path.parentPath.parentPath.node)) {
+      // Our goal is replacing duplicate nested function so skip root residual function itself.
+      // This assumes the root function is wrapped with: t.file(t.program([t.expressionStatement(rootFunction).
+      return;
+    }
+
+    const functionExpression: BabelNodeFunctionExpression = path.node;
+    const functionTag = ((functionExpression.body: any): FunctionBodyAstNode).uniqueTag;
+    if (!functionTag) {
+      // Un-interpreted nested function.
+      return;
+    }
+    const duplicateFunctionInfo = state.factoryFunctionInfos.get(functionTag);
+    if (duplicateFunctionInfo && canShareFunctionBody(duplicateFunctionInfo)) {
+      const { factoryId } = duplicateFunctionInfo;
+      path.replaceWith(t.callExpression(t.memberExpression(factoryId, t.identifier("bind")), [nullExpression]));
     }
   },
 

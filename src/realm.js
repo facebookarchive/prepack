@@ -29,6 +29,7 @@ import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./enviro
 import type { Binding } from "./environment.js";
 import {
   cloneDescriptor,
+  composeGenerators,
   Construct,
   GetValue,
   incorporateSavedCompletion,
@@ -253,6 +254,10 @@ export class Realm {
   errorHandler: ?ErrorHandler;
   objectCount = 0;
   symbolCount = 867501803871088;
+  // Unique tag for identifying function body ast node. It is neeeded
+  // instead of ast node itself because we may perform ast tree deep clone
+  // during serialization which changes the ast identity.
+  functionBodyUniqueTagSeed = 1;
 
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
@@ -320,9 +325,9 @@ export class Realm {
     let savedEffects = context.savedEffects;
     if (savedEffects !== undefined && this.contextStack.length > 0) {
       // when unwinding the stack after a fatal error, saved effects are not incorporated into completions
-      // and thus must be propogated to the calling context.
+      // and thus must be propagated to the calling context.
       let ctx = this.getRunningContext();
-      if (ctx.savedEffects !== undefined) this.addPriorEffects(ctx.savedEffects, savedEffects);
+      if (ctx.savedEffects !== undefined) savedEffects = this.composeEffects(ctx.savedEffects, savedEffects);
       ctx.savedEffects = savedEffects;
     }
   }
@@ -417,7 +422,7 @@ export class Realm {
         let savedEffects = context.savedEffects;
         if (savedEffects !== undefined) {
           // add prior effects that are not already present
-          this.addPriorEffects(savedEffects, result);
+          result = this.composeEffects(savedEffects, result);
           this.updateAbruptCompletions(savedEffects, c);
           context.savedEffects = undefined;
         }
@@ -440,44 +445,46 @@ export class Realm {
     }
   }
 
-  addPriorEffects(priorEffects: Effects, subsequentEffects: Effects) {
-    let [pc, pg, pb, pp, po] = priorEffects;
+  composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
+    let [, pg, pb, pp, po] = priorEffects;
     let [sc, sg, sb, sp, so] = subsequentEffects;
+    let result = construct_empty_effects(this);
+    let [, , rb, rp, ro] = result;
 
-    pc;
-    sc;
+    result[0] = sc;
 
-    let saved_generator = this.generator;
-    this.generator = pg === undefined ? pg : pg.clone();
-    this.appendGenerator(sg);
-    subsequentEffects[1] = pg;
-    this.generator = saved_generator;
+    result[1] = composeGenerators(this, pg || result[1], sg);
 
     if (pb) {
-      pb.forEach((val, key, m) => {
-        if (!sb.has(key)) sb.set(key, val);
-      });
+      pb.forEach((val, key, m) => rb.set(key, val));
     }
+    sb.forEach((val, key, m) => {
+      if (!rb.has(key)) rb.set(key, val);
+    });
+
     if (pp) {
-      pp.forEach((desc, propertyBinding, m) => {
-        if (!sp.has(propertyBinding)) sp.set(propertyBinding, desc);
-      });
+      pp.forEach((desc, propertyBinding, m) => sp.set(propertyBinding, desc));
     }
+    sp.forEach((val, key, m) => {
+      if (!rp.has(key)) rp.set(key, val);
+    });
+
     if (po) {
-      po.forEach((ob, a) => {
-        so.add(ob);
-      });
+      po.forEach((ob, a) => ro.add(ob));
     }
+    so.forEach((ob, a) => ro.add(ob));
+
+    return result;
   }
 
   updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion) {
     if (c.consequent instanceof AbruptCompletion) {
-      this.addPriorEffects(priorEffects, c.consequentEffects);
+      c.consequentEffects = this.composeEffects(priorEffects, c.consequentEffects);
       let alternate = c.alternate;
       if (alternate instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, alternate);
     } else {
       invariant(c.alternate instanceof AbruptCompletion);
-      this.addPriorEffects(priorEffects, c.alternateEffects);
+      c.alternateEffects = this.composeEffects(priorEffects, c.alternateEffects);
       let consequent = c.consequent;
       if (consequent instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, consequent);
     }
