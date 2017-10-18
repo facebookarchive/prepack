@@ -17,7 +17,7 @@ export function flowAnnotationToObject(annotation: typeAnnotation) {
     return flowAnnotationToObject(annotation.typeAnnotation);
   } else if (annotation.type === "GenericTypeAnnotation") {
     if (annotation.id.type === "Identifier") {
-      const identifier = annotation.id.name;
+      let identifier = annotation.id.name;
 
       switch (identifier) {
         case "Function":
@@ -43,7 +43,7 @@ export function flowAnnotationToObject(annotation: typeAnnotation) {
   } else if (annotation.type === "NumberTypeAnnotation") {
     return "number";
   } else if (annotation.type === "ObjectTypeAnnotation") {
-    const obj = {};
+    let obj = {};
     annotation.properties.forEach(property => {
       if (property.type === "ObjectTypeProperty") {
         if (property.key.type === "Identifier") {
@@ -56,6 +56,8 @@ export function flowAnnotationToObject(annotation: typeAnnotation) {
       }
     });
     return obj;
+  } else if (annotation.type === "AnyTypeAnnotation") {
+    return "empty";
   } else {
     invariant(false, "unknown Flow type annotation node");
   }

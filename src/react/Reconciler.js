@@ -78,7 +78,7 @@ function createObject(realm: Realm, shape: null | { [id: string]: any }, name: s
   return obj;
 }
 
-function createAbstractByType(realm: Realm, typeNameString: any, name: string) {
+function createAbstractByType(realm: Realm, typeNameString: string, name: string) {
   let type = Value.getTypeFromName(typeNameString);
   invariant(type !== undefined, "createAbstractByType() cannot be undefined");
   let value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [], name);
@@ -97,12 +97,19 @@ function _createAbstractObject(realm: Realm, name: string, properties): Abstract
   return value;
 }
 
-function createAbstractObject(realm: Realm, name: string | null, propTypes: any): ObjectValue | AbstractValue {
-  if (propTypes !== null) {
+function createAbstractObject(realm: Realm, name: string | null, objectTypes: any): ObjectValue | AbstractValue {
+  if (typeof objectTypes !== "string") {
+    invariant(
+      objectTypes === "empty",
+      `Expected an object or a string of "empty" for createAbstractObject() paramater "objectTypes"`
+    );
+    return _createAbstractObject(realm, name || "unknown", null);
+  }
+  if (objectTypes !== null) {
     let propTypeObject = {};
 
-    Object.keys(propTypes).forEach(key => {
-      let value = propTypes[key];
+    Object.keys(objectTypes).forEach(key => {
+      let value = objectTypes[key];
       let propertyName = name !== null ? `${name}.${key}` : key;
       if (typeof value === "string") {
         propTypeObject[key] = createAbstractByType(realm, value, propertyName);
@@ -163,6 +170,8 @@ class Reconciler {
   render(componentType: ECMAScriptSourceFunctionValue): Effects {
     let propTypes = null;
     let propsName = null;
+    let contextTypes = null;
+    let contextName = null;
     // we take the first "props" paramater from "function MyComponent (props, context)" and look at its name
     // if its not an Identifier, we leave propsName null so it doesn't get used to create the object
     if (componentType.$FormalParameters.length > 0) {
@@ -175,10 +184,20 @@ class Reconciler {
       );
       propTypes = flowAnnotationToObject(componentType.$FormalParameters[0].typeAnnotation);
     }
+    if (componentType.$FormalParameters.length > 1) {
+      if (t.isIdentifier(componentType.$FormalParameters[1])) {
+        contextName = ((componentType.$FormalParameters[1]: any): BabelNodeIdentifier).name;
+      }
+      invariant(
+        componentType.$FormalParameters[0].typeAnnotation,
+        `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" argument`
+      );
+      contextTypes = flowAnnotationToObject(componentType.$FormalParameters[1].typeAnnotation);
+    }
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluateForEffects(() => {
         let initialProps = createAbstractObject(this.realm, propsName, propTypes);
-        let initialContext = createObject(this.realm, null, "context");
+        let initialContext = createAbstractObject(this.realm, contextName, contextTypes);
         try {
           let { result } = this._renderAsDeepAsPossible(componentType, initialProps, initialContext, false);
           this.statistics.optimizedTrees++;
