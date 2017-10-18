@@ -27,7 +27,7 @@ export class DataHandler {
       // if we know what length we are expecting
       if (this._contentLength >= 0) {
         // we have enough data to check for the expected message
-        if (this._rawData.length >= this._contentLength) {
+        if (this._rawData.byteLength >= this._contentLength) {
           // first get the expected message
           let message = this._rawData.toString("utf8", 0, this._contentLength);
           // reduce the buffer by the message we got
@@ -47,7 +47,9 @@ export class DataHandler {
           for (let i = 0; i < lines.length; i++) {
             let pair = lines[i].split(/: +/);
             if (pair[0] === "Content-Length") {
-              this._contentLength = +pair[1];
+              this._contentLength = parseInt(pair[1], 10);
+              // reset the contentlength if it is invalid
+              if (isNaN(this._contentLength)) this._contentLength = -1;
             }
           }
           this._rawData = this._rawData.slice(idx + TWO_CRLF.length);

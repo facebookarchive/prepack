@@ -53,7 +53,7 @@ class PrepackDebugSession extends LoggingDebugSession {
 
   // Start Prepack in a child process
   _startPrepack() {
-    if (this._prepackCommand.length === 0) {
+    if (!this._prepackCommand || this._prepackCommand.length === 0) {
       console.error("No command given to start Prepack in adapter");
       process.exit(1);
     }

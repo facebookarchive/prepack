@@ -26,7 +26,7 @@ export class UISession {
     this._proc = proc;
     this._adapterPath = adapterPath;
     this._prepackCommand = prepackCommand;
-    this._sequenceNum = 0;
+    this._sequenceNum = 1;
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
   }
@@ -107,30 +107,34 @@ export class UISession {
 
     // for testing purposes, init and configDone are made into user commands
     // they can be done from the adapter without user input
-    if (command === "init") {
-      //format: init <clientID> <adapterID>
-      if (parts.length !== 3) return false;
-      let args: DebugProtocol.InitializeRequestArguments = {
-        // a unique name for each UI (e.g Nuclide, VSCode, CLI)
-        clientID: parts[1],
-        // a unique name for each adapter
-        adapterID: parts[2],
-        linesStartAt1: true,
-        columnsStartAt1: true,
-        supportsVariableType: true,
-        supportsVariablePaging: false,
-        supportsRunInTerminalRequest: false,
-        pathFormat: "path",
-      };
-      this._sendInitializeRequest(args);
-    } else if (command === "configDone") {
-      // format: configDone
-      if (parts.length !== 1) return false;
-      let args: DebugProtocol.ConfigurationDoneArguments = {};
-      this._sendConfigDoneRequest(args);
-    } else {
-      // invalid command
-      return false;
+
+    switch (command) {
+      case "init":
+        //format: init <clientID> <adapterID>
+        if (parts.length !== 3) return false;
+        let initArgs: DebugProtocol.InitializeRequestArguments = {
+          // a unique name for each UI (e.g Nuclide, VSCode, CLI)
+          clientID: parts[1],
+          // a unique name for each adapter
+          adapterID: parts[2],
+          linesStartAt1: true,
+          columnsStartAt1: true,
+          supportsVariableType: true,
+          supportsVariablePaging: false,
+          supportsRunInTerminalRequest: false,
+          pathFormat: "path",
+        };
+        this._sendInitializeRequest(initArgs);
+        break;
+      case "configDone":
+        // format: configDone
+        if (parts.length !== 1) return false;
+        let configDoneArgs: DebugProtocol.ConfigurationDoneArguments = {};
+        this._sendConfigDoneRequest(configDoneArgs);
+        break;
+      default:
+        // invalid command
+        return false;
     }
     return true;
   }
@@ -160,7 +164,6 @@ export class UISession {
 
   // tell the adapter about some configuration details
   _sendInitializeRequest(args: DebugProtocol.InitializeRequestArguments) {
-    this._sequenceNum++;
     let message = {
       type: "request",
       seq: this._sequenceNum,
@@ -173,7 +176,6 @@ export class UISession {
 
   // tell the adapter that configuration is done so it can expect other commands
   _sendConfigDoneRequest(args: DebugProtocol.ConfigurationDoneArguments) {
-    this._sequenceNum++;
     let message = {
       type: "request",
       seq: this._sequenceNum,
@@ -191,6 +193,7 @@ export class UISession {
       "Content-Length: " + Buffer.byteLength(message, "utf8") + TWO_CRLF + message,
       "utf8"
     );
+    this._sequenceNum++;
   }
 
   serve() {
