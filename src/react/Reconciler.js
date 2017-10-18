@@ -98,7 +98,7 @@ function _createAbstractObject(realm: Realm, name: string, properties): Abstract
 }
 
 function createAbstractObject(realm: Realm, name: string | null, objectTypes: any): ObjectValue | AbstractValue {
-  if (typeof objectTypes !== "string") {
+  if (typeof objectTypes === "string") {
     invariant(
       objectTypes === "empty",
       `Expected an object or a string of "empty" for createAbstractObject() paramater "objectTypes"`
