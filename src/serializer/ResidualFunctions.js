@@ -144,24 +144,29 @@ export class ResidualFunctions {
   _generateFactoryFunctionInfos(
     rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>
   ): Map<number, FactoryFunctionInfo> {
-    const factoryFunctionIds = new Map();
+    const factoryFunctionInfos = new Map();
     for (const [functionBody, instances] of this.functions) {
       invariant(instances.length > 0);
 
+      let factoryId;
+      const suffix = instances[0].functionValue.__originalName || "";
       if (this._shouldUseFactoryFunction(functionBody, instances)) {
         // Rewritten function should never use factory function.
         invariant(!this._hasRewrittenFunctionInstance(rewrittenAdditionalFunctions, instances));
-
-        const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueTag;
-        invariant(functionUniqueTag);
-        const suffix = instances[0].functionValue.__originalName || "";
-        const factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
-        const functionInfo = this.residualFunctionInfos.get(functionBody);
-        invariant(functionInfo);
-        factoryFunctionIds.set(functionUniqueTag, { factoryId, functionInfo });
+        factoryId = t.identifier(this.factoryNameGenerator.generate(suffix));
+      } else {
+        // For inline function body case, use the first function as the factory function.
+        factoryId = this.locationService.getLocation(instances[0].functionValue);
       }
+
+      const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueTag;
+      invariant(functionUniqueTag);
+
+      const functionInfo = this.residualFunctionInfos.get(functionBody);
+      invariant(functionInfo);
+      factoryFunctionInfos.set(functionUniqueTag, { factoryId, functionInfo });
     }
-    return factoryFunctionIds;
+    return factoryFunctionInfos;
   }
 
   spliceFunctions(
