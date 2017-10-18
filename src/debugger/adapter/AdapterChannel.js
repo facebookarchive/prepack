@@ -10,28 +10,28 @@
 /* @flow */
 import fs from "fs";
 
-const TWO_DASH = "--";
+const LENGTH_SEPARATOR = "--";
 
 export class AdapterChannel {
   constructor(inFilePath: string, outFilePath: string) {
-    this.inFilePath = inFilePath;
-    this.outFilePath = outFilePath;
+    this._inFilePath = inFilePath;
+    this._outFilePath = outFilePath;
   }
-  inFilePath: string;
-  outFilePath: string;
+  _inFilePath: string;
+  _outFilePath: string;
 
   writeOut(contents: string) {
-    fs.writeFileSync(this.outFilePath, contents.length + TWO_DASH + contents);
+    fs.writeFileSync(this._outFilePath, contents.length + LENGTH_SEPARATOR + contents);
   }
 
   listenOnFile(errorHandler: (err: ?ErrnoError) => void, messageProcessor: (message?: string) => void) {
-    fs.readFile(this.inFilePath, { encoding: "utf8" }, (err: ?ErrnoError, content: string) => {
+    fs.readFile(this._inFilePath, { encoding: "utf8" }, (err: ?ErrnoError, content: string) => {
       if (err) {
         errorHandler(err);
         return;
       }
       // format: <length>--<contents>
-      let separatorIndex = content.indexOf(TWO_DASH);
+      let separatorIndex = content.indexOf(LENGTH_SEPARATOR);
       // if the separator is not written in yet, keep listening
       if (separatorIndex === -1) {
         this.listenOnFile(errorHandler, messageProcessor);
@@ -43,7 +43,7 @@ export class AdapterChannel {
         this.listenOnFile(errorHandler, messageProcessor);
         return;
       }
-      let startIndex = separatorIndex + TWO_DASH.length;
+      let startIndex = separatorIndex + LENGTH_SEPARATOR.length;
       let endIndex = startIndex + messageLength;
       let message = content.slice(startIndex, endIndex);
       // if we didn't read the whole message yet, keep listening
@@ -52,7 +52,7 @@ export class AdapterChannel {
         return;
       }
       //clear the file
-      fs.writeFileSync(this.inFilePath, "");
+      fs.writeFileSync(this._inFilePath, "");
       //process the message
       messageProcessor(message);
     });

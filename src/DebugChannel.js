@@ -15,15 +15,15 @@ const TWO_DASH = "--";
 
 export class DebugChannel {
   constructor(fs: any, dbgOptions: DebuggerOptions) {
-    this.inFilePath = path.join(__dirname, "../", dbgOptions.inFilePath);
-    this.outFilePath = path.join(__dirname, "../", dbgOptions.outFilePath);
-    this.fs = fs;
-    this.requestReceived = false;
+    this._inFilePath = path.join(__dirname, "../", dbgOptions.inFilePath);
+    this._outFilePath = path.join(__dirname, "../", dbgOptions.outFilePath);
+    this._fs = fs;
+    this._requestReceived = false;
   }
-  inFilePath: string;
-  outFilePath: string;
-  fs: any;
-  requestReceived: boolean;
+  _inFilePath: string;
+  _outFilePath: string;
+  _fs: any;
+  _requestReceived: boolean;
 
   /*
   /* Only called in the beginning to check if a debugger is attached
@@ -46,7 +46,7 @@ export class DebugChannel {
   readIn(): string {
     let message = "";
     while (true) {
-      let contents = this.fs.readFileSync(this.inFilePath, "utf8");
+      let contents = this._fs.readFileSync(this._inFilePath, "utf8");
 
       if (contents.length === 0) {
         continue;
@@ -71,8 +71,8 @@ export class DebugChannel {
       break;
     }
     //clear the file
-    this.fs.writeFileSync(this.inFilePath, "");
-    this.requestReceived = true;
+    this._fs.writeFileSync(this._inFilePath, "");
+    this._requestReceived = true;
     return message;
   }
 
@@ -82,9 +82,9 @@ export class DebugChannel {
   */
   writeOut(contents: string): void {
     //Prepack only writes back to the debug adapter in response to a request
-    if (this.requestReceived) {
-      this.fs.writeFileSync(this.outFilePath, contents.length + TWO_DASH + contents);
-      this.requestReceived = false;
+    if (this._requestReceived) {
+      this._fs.writeFileSync(this._outFilePath, contents.length + TWO_DASH + contents);
+      this._requestReceived = false;
     }
   }
 }
