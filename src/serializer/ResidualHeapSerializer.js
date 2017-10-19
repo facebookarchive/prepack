@@ -1429,11 +1429,6 @@ export class ResidualHeapSerializer {
     return rewrittenAdditionalFunctions;
   }
 
-  // For overriding.
-  beforeFinalizeEmitter(): void {
-    // todo:
-  }
-
   serialize(): BabelNodeFile {
     this.generator.serialize(this._getContext());
     invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
@@ -1452,7 +1447,6 @@ export class ResidualHeapSerializer {
 
     this.modules.resolveInitializedModules();
 
-    this.beforeFinalizeEmitter();
     this.emitter.finalize();
 
     this.residualFunctions.residualFunctionInitializers.factorifyInitializers(this.factoryNameGenerator);
