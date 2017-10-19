@@ -346,36 +346,38 @@ export class ResidualHeapVisitor {
     }
 
     let residualFunctionBindings = new Map();
-    this._withScope(val, () => {
-      invariant(functionInfo);
-      for (let innerName of functionInfo.unbound) {
-        let residualFunctionBinding;
-        let doesNotMatter = true;
-        let reference = this.logger.tryQuery(
-          () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
-          undefined,
-          false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the common scope. */
-        );
-        if (
-          reference === undefined ||
-          IsUnresolvableReference(this.realm, reference) ||
-          reference.base instanceof GlobalEnvironmentRecord
-        ) {
-          residualFunctionBinding = this.visitGlobalBinding(innerName);
-        } else {
-          invariant(!IsUnresolvableReference(this.realm, reference));
-          let referencedBase = reference.base;
-          let referencedName: string = (reference.referencedName: any);
-          if (typeof referencedName !== "string") {
-            throw new FatalError("TODO: do not know how to visit reference with symbol");
+    if (!this.additionalFunctionValuesAndEffects.has(val)) {
+      this._withScope(val, () => {
+        invariant(functionInfo);
+        for (let innerName of functionInfo.unbound) {
+          let residualFunctionBinding;
+          let doesNotMatter = true;
+          let reference = this.logger.tryQuery(
+            () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
+            undefined,
+            false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the common scope. */
+          );
+          if (
+            reference === undefined ||
+            IsUnresolvableReference(this.realm, reference) ||
+            reference.base instanceof GlobalEnvironmentRecord
+          ) {
+            residualFunctionBinding = this.visitGlobalBinding(innerName);
+          } else {
+            invariant(!IsUnresolvableReference(this.realm, reference));
+            let referencedBase = reference.base;
+            let referencedName: string = (reference.referencedName: any);
+            if (typeof referencedName !== "string") {
+              throw new FatalError("TODO: do not know how to visit reference with symbol");
+            }
+            invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
+            residualFunctionBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
           }
-          invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
-          residualFunctionBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
+          residualFunctionBindings.set(innerName, residualFunctionBinding);
+          if (functionInfo.modified.has(innerName)) residualFunctionBinding.modified = true;
         }
-        residualFunctionBindings.set(innerName, residualFunctionBinding);
-        if (functionInfo.modified.has(innerName)) residualFunctionBinding.modified = true;
-      }
-    });
+      });
+    }
 
     this.functionInstances.set(val, {
       residualFunctionBindings,
