@@ -18,6 +18,8 @@ let babel = require("babel-core");
 let React = require("react");
 let ReactTestRenderer = require("react-test-renderer");
 let { Value, AbstractValue } = require("../lib/values/index.js");
+/* eslint-disable no-undef */
+let { expect, describe, it } = global;
 
 let reactTestRoot = path.join(__dirname, "../test/react/");
 let prepackOptions = {
@@ -110,6 +112,9 @@ function compileSourceWithPrepack(source) {
   let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
   // we need to make this change for the Babel createElement plugin to work
   let compiledSource = serialized.code.replace(`var _$0 = require("react");`, `var React = require("react");`);
+  if (serialized == null || serialized.reactStatistics == null) {
+    throw new Error("React test runner failed during serialization");
+  }
   return {
     // replace the code to put back the generator (Prepack doesn't serialize them yet)
     compiledSource,
@@ -122,6 +127,7 @@ function runSource(source) {
     presets: ["babel-preset-react"],
     plugins: ["transform-object-rest-spread"],
   }).code;
+  /* eslint-disable no-new-func */
   let fn = new Function("require", "module", codeAfterBabel);
   let moduleShim = { exports: null };
   let requireShim = name => {
@@ -137,14 +143,15 @@ function runSource(source) {
     module: moduleShim,
     Object,
   };
+  // $FlowFixMe flow doesn't new Function
   fn.call(global, requireShim, moduleShim);
   return moduleShim.exports;
 }
 
 async function runTest(name) {
   let source = fs.readFileSync(path.join(reactTestRoot, name)).toString();
-  let { compiledSource, statistics } = compileSourceWithPrepack(source);
-  
+  let { compiledSource } = compileSourceWithPrepack(source);
+
   let A = runSource(source);
   expect(typeof A).toBe("function");
   let B = runSource(compiledSource);
@@ -153,9 +160,11 @@ async function runTest(name) {
   let rendererA = ReactTestRenderer.create(null);
   let rendererB = ReactTestRenderer.create(null);
 
+  if (A == null || B == null) {
+    throw new Error("React test runner issue");
+  }
   // Use the original version of the test in case transforming messes it up.
   let { getTrials } = A;
-  
   // Run tests that assert the rendered output matches.
   let [nameA, valueA] = getTrials(rendererA, A);
   let [nameB, valueB] = getTrials(rendererB, B);
