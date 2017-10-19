@@ -56,6 +56,7 @@ import type {
   FunctionInstance,
   AdditionalFunctionInfo,
   ReactSerializerState,
+  EmitBody,
 } from "./types.js";
 import { TimingStatistics, SerializerStatistics } from "./types.js";
 import { Logger } from "./logger.js";
@@ -121,7 +122,7 @@ export class ResidualHeapSerializer {
         getLocation: value => this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCountOptional(value),
         createLocation: () => {
           let location = t.identifier(this.valueNameGenerator.generate("initialized"));
-          this.currentFunctionBody.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
+          this.currentFunctionBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
           return location;
         },
       },
@@ -153,10 +154,10 @@ export class ResidualHeapSerializer {
   functionInstances: Array<FunctionInstance>;
   prelude: Array<BabelNodeStatement>;
   body: Array<BabelNodeStatement>;
-  mainBody: Array<BabelNodeStatement>;
+  mainBody: EmitBody;
   // if we're in an additional function we need to access both mainBody and the
   // additional function's body which will be currentFunctionBody.
-  currentFunctionBody: Array<BabelNodeStatement>;
+  currentFunctionBody: EmitBody;
   realm: Realm;
   preludeGenerator: PreludeGenerator;
   generator: Generator;
@@ -181,7 +182,7 @@ export class ResidualHeapSerializer {
   residualFunctions: ResidualFunctions;
   delayInitializations: boolean;
   referencedDeclaredValues: Set<AbstractValue>;
-  activeGeneratorBodies: Map<Generator, Array<BabelNodeStatement>>;
+  activeGeneratorBodies: Map<Generator, EmitBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   react: ReactSerializerState;
@@ -345,14 +346,14 @@ export class ResidualHeapSerializer {
       invariant(consequent instanceof AbstractValue);
       let alternate = absVal.args[2];
       invariant(alternate instanceof AbstractValue);
-      let oldBody = this.emitter.beginEmitting("consequent", []);
+      let oldBody = this.emitter.beginEmitting("consequent", { type: "Other", entries: [] });
       this._emitPropertiesWithComputedNames(obj, consequent);
       let consequentBody = this.emitter.endEmitting("consequent", oldBody);
-      let consequentStatement = t.blockStatement(consequentBody);
-      oldBody = this.emitter.beginEmitting("alternate", []);
+      let consequentStatement = t.blockStatement(consequentBody.entries);
+      oldBody = this.emitter.beginEmitting("alternate", { type: "Other", entries: [] });
       this._emitPropertiesWithComputedNames(obj, alternate);
       let alternateBody = this.emitter.endEmitting("alternate", oldBody);
-      let alternateStatement = t.blockStatement(alternateBody);
+      let alternateStatement = t.blockStatement(alternateBody.entries);
       this.emitter.emit(t.ifStatement(serializedCond, consequentStatement, alternateStatement));
     }
   }
@@ -481,7 +482,7 @@ export class ResidualHeapSerializer {
   _getTarget(
     val: Value,
     scopes: Set<Scope>
-  ): { body: Array<BabelNodeStatement>, usedOnlyByResidualFunctions?: true, usedOnlyByAdditionalFunctions?: boolean } {
+  ): { body: EmitBody, usedOnlyByResidualFunctions?: true, usedOnlyByAdditionalFunctions?: boolean } {
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
 
@@ -528,7 +529,7 @@ export class ResidualHeapSerializer {
           functionValues,
           val
         );
-        return { body, usedOnlyByResidualFunctions: true };
+        return { body: { type: "DelayInitialization", entries: body }, usedOnlyByResidualFunctions: true };
       }
     }
 
@@ -538,14 +539,17 @@ export class ResidualHeapSerializer {
     invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
     let body;
     while (true) {
-      if (commonAncestor === this.generator) body = this.currentFunctionBody;
-      else body = this.activeGeneratorBodies.get(commonAncestor);
+      if (commonAncestor === this.generator) {
+        body = this.currentFunctionBody;
+      } else {
+        body = this.activeGeneratorBodies.get(commonAncestor);
+      }
       if (body !== undefined) break;
       commonAncestor = commonAncestor.parent;
       invariant(commonAncestor !== undefined);
     }
     invariant(body !== undefined);
-    return { body: body };
+    return { body };
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
@@ -580,7 +584,7 @@ export class ResidualHeapSerializer {
         if (init !== id) {
           if (target.usedOnlyByResidualFunctions) {
             let declar = t.variableDeclaration(bindingType ? bindingType : "var", [t.variableDeclarator(id)]);
-            this.mainBody.push(declar);
+            this.mainBody.entries.push(declar);
             let assignment = t.expressionStatement(t.assignmentExpression("=", id, init));
             this.emitter.emit(assignment);
           } else {
@@ -1274,13 +1278,13 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _withGeneratorScope(generator: Generator, callback: (Array<BabelNodeStatement>) => void): Array<BabelNodeStatement> {
-    let newBody = [];
+  _withGeneratorScope(generator: Generator, callback: EmitBody => void): Array<BabelNodeStatement> {
+    let newBody = { type: "Generator", entries: [] };
     let oldBody = this.emitter.beginEmitting(generator, newBody);
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
-    return this.emitter.endEmitting(generator, oldBody);
+    return this.emitter.endEmitting(generator, oldBody).entries;
   }
 
   _getContext(): SerializationContext {
@@ -1425,6 +1429,11 @@ export class ResidualHeapSerializer {
     return rewrittenAdditionalFunctions;
   }
 
+  // For overriding.
+  beforeFinalizeEmitter(): void {
+    // todo:
+  }
+
   serialize(): BabelNodeFile {
     this.generator.serialize(this._getContext());
     invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
@@ -1443,6 +1452,7 @@ export class ResidualHeapSerializer {
 
     this.modules.resolveInitializedModules();
 
+    this.beforeFinalizeEmitter();
     this.emitter.finalize();
 
     this.residualFunctions.residualFunctionInitializers.factorifyInitializers(this.factoryNameGenerator);
@@ -1489,7 +1499,7 @@ export class ResidualHeapSerializer {
         ])
       );
     }
-    let body = this.prelude.concat(this.emitter.getBody());
+    let body = this.prelude.concat(this.emitter.getBody().entries);
     factorifyObjects(body, this.factoryNameGenerator);
 
     let ast_body = [];
