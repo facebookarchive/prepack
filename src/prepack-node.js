@@ -18,7 +18,7 @@ import { getDebuggerOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
-import { DebugChannel } from "./DebugChannel.js";
+import { DebugChannel } from "./debugger/channel/DebugChannel.js";
 
 import fs from "fs";
 

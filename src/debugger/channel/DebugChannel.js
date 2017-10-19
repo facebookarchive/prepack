@@ -9,28 +9,34 @@
 
 /* @flow */
 import path from "path";
-import type { DebuggerOptions } from "./options";
+import invariant from "./../../invariant.js";
+import type { DebuggerOptions } from "./../../options";
+import { MessagePackager } from "./MessagePackager.js";
 
-const TWO_DASH = "--";
-
+//Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
   constructor(fs: any, dbgOptions: DebuggerOptions) {
-    this._inFilePath = path.join(__dirname, "../", dbgOptions.inFilePath);
-    this._outFilePath = path.join(__dirname, "../", dbgOptions.outFilePath);
+    this._inFilePath = path.join(__dirname, "../../../", dbgOptions.inFilePath);
+    this._outFilePath = path.join(__dirname, "../../../", dbgOptions.outFilePath);
     this._fs = fs;
     this._requestReceived = false;
+    this._packager = new MessagePackager();
   }
   _inFilePath: string;
   _outFilePath: string;
   _fs: any;
   _requestReceived: boolean;
+  // helper to package sent messages and unpackage received messages
+  _packager: MessagePackager;
 
   /*
   /* Only called in the beginning to check if a debugger is attached
   */
   debuggerIsAttached(): boolean {
-    let line = this.readIn();
-    if (line === "Debugger Attached\n") {
+    // Don't use readIn because we don't want to block if there is no debugger
+    let contents = this._fs.readFileSync(this._inFilePath, "utf8");
+    let message = this._packager.unpackage(contents);
+    if (message === "Debugger Attached\n") {
       this.writeOut("Ready\n");
       return true;
     }
@@ -44,32 +50,15 @@ export class DebugChannel {
   /* Request object based on the protocol
   */
   readIn(): string {
-    let message = "";
+    let message: null | string = null;
     while (true) {
       let contents = this._fs.readFileSync(this._inFilePath, "utf8");
-
-      if (contents.length === 0) {
-        continue;
-      }
-      // format: <length>--<contents>
-      let separatorIndex = contents.indexOf(TWO_DASH);
-      if (separatorIndex === -1) {
-        continue;
-      }
-
-      let messageLength = parseInt(contents.slice(0, separatorIndex), 10);
-      if (isNaN(messageLength)) {
-        continue;
-      }
-
-      let startIndex = separatorIndex + TWO_DASH.length;
-      let endIndex = separatorIndex + TWO_DASH.length + messageLength;
-      message = contents.slice(startIndex, endIndex);
-      if (message.length < messageLength) {
-        continue;
-      }
+      message = this._packager.unpackage(contents);
+      if (message === null) continue;
       break;
     }
+    // loop should not break when message is still null
+    invariant(message !== null);
     //clear the file
     this._fs.writeFileSync(this._inFilePath, "");
     this._requestReceived = true;
@@ -83,7 +72,7 @@ export class DebugChannel {
   writeOut(contents: string): void {
     //Prepack only writes back to the debug adapter in response to a request
     if (this._requestReceived) {
-      this._fs.writeFileSync(this._outFilePath, contents.length + TWO_DASH + contents);
+      this._fs.writeFileSync(this._outFilePath, this._packager.package(contents));
       this._requestReceived = false;
     }
   }

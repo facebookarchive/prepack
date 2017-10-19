@@ -24,7 +24,7 @@ import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
 import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 import invariant from "./invariant.js";
-import { DebugChannel } from "./DebugChannel.js";
+import { DebugChannel } from "./debugger/channel/DebugChannel.js";
 
 // IMPORTANT: This function is now deprecated and will go away in a future release.
 // Please use FatalError instead.

@@ -13,7 +13,7 @@ import type { BabelNode } from "babel-types";
 import { BreakpointCollection } from "./BreakpointCollection.js";
 import type { BreakpointCommandArguments } from "./types.js";
 import invariant from "../invariant.js";
-import { DebugChannel } from "../DebugChannel.js";
+import { DebugChannel } from "./channel/DebugChannel.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel) {
