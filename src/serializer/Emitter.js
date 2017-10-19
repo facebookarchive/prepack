@@ -45,14 +45,13 @@ import { ResidualFunctions } from "./ResidualFunctions.js";
 //    the lower body entry is finished.
 //    To this end, the emitter maintains the `_activeBodies` and `_waitingForBodies` datastructures.
 export class Emitter {
-  constructor(residualFunctions: ResidualFunctions, delayInitializations: boolean) {
+  constructor(residualFunctions: ResidualFunctions) {
     let mainBody = { type: "MainGenerator", entries: [] };
     this._waitingForValues = new Map();
     this._waitingForBodies = new Map();
     this._body = mainBody;
     this._declaredAbstractValues = new Map();
     this._residualFunctions = residualFunctions;
-    this._delayInitializations = delayInitializations;
     this._activeStack = [];
     this._activeValues = new Set();
     this._activeBodies = [mainBody];
@@ -64,7 +63,6 @@ export class Emitter {
   _activeValues: Set<Value>;
   _activeBodies: Array<EmitBody>;
   _residualFunctions: ResidualFunctions;
-  _delayInitializations: boolean;
   _waitingForValues: Map<Value, Array<{ body: EmitBody, dependencies: Array<Value>, func: () => void }>>;
   _waitingForBodies: Map<EmitBody, Array<{ dependencies: Array<Value>, func: () => void }>>;
   _declaredAbstractValues: Map<AbstractValue, Array<EmitBody>>;

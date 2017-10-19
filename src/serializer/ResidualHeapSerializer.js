@@ -135,7 +135,7 @@ export class ResidualHeapSerializer {
       additionalFunctionValueInfos,
       this.additionalFunctionValueNestedFunctions
     );
-    this.emitter = new Emitter(this.residualFunctions, delayInitializations);
+    this.emitter = new Emitter(this.residualFunctions);
     this.mainBody = this.emitter.getBody();
     this.currentFunctionBody = this.mainBody;
     this.residualHeapInspector = residualHeapInspector;
