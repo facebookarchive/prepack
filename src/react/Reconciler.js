@@ -126,36 +126,6 @@ function createAbstractObject(realm: Realm, name: string | null, objectTypes: an
   }
 }
 
-function callFunction(realm: Realm, functionValue: FunctionValue, thisArg, argsList = []) {
-  if (thisArg === undefined) {
-    thisArg = realm.intrinsics.undefined;
-  }
-  let context = new ExecutionContext();
-  context.lexicalEnvironment = realm.$GlobalEnv;
-  context.variableEnvironment = realm.$GlobalEnv;
-  context.realm = realm;
-  realm.pushContext(context);
-
-  let res;
-  try {
-    invariant(typeof functionValue.$Call === "function", "Bad function value passed to callFunction()");
-    res = functionValue.$Call(thisArg, argsList);
-  } catch (completion) {
-    if (completion instanceof AbruptCompletion) {
-      res = completion;
-    } else {
-      throw completion;
-    }
-  } finally {
-    realm.popContext(context);
-  }
-  if (res instanceof AbruptCompletion) {
-    let error = getError(realm, res);
-    throw error;
-  }
-  return GetValue(realm, res);
-}
-
 class Reconciler {
   constructor(realm: Realm, moduleTracer: ModuleTracer, statistics: ReactStatistics) {
     this.realm = realm;
@@ -232,7 +202,8 @@ class Reconciler {
       // for now we don't support class components, so we bail out
       throw new Error("Component bail out");
     } else {
-      let value = callFunction(this.realm, componentType, undefined, [props, context]);
+      invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
+      let value = componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
       return { value, commitDidMountPhase: null, childContext: context };
     }
   }

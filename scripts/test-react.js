@@ -11,13 +11,14 @@
 
 let fs = require("fs");
 let path = require("path");
-let prepackSources = require("../lib/prepack-node.js").prepackSources;
-let ObjectCreate = require("../lib/methods/index.js").ObjectCreate;
+let { prepackSources } = require("../lib/prepack-node.js");
+let { ObjectCreate } = require("../lib/methods/index.js");
 let buildExpressionTemplate = require("../lib/utils/builder.js").default;
 let babel = require("babel-core");
 let React = require("react");
 let ReactTestRenderer = require("react-test-renderer");
 let { Value, AbstractValue } = require("../lib/values/index.js");
+let { normalize } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
@@ -33,46 +34,6 @@ let prepackOptions = {
   inlineExpressions: true,
   omitInvariants: true,
 };
-
-// this will mutate the original JSON object
-function normalize(node) {
-  // we merge adjacent text nodes
-  if (Array.isArray(node)) {
-    // we create a new array rather than mutating the original
-    let arr = [];
-    let length = node.length;
-    let concatString = null;
-    let i = -1;
-    while (i++ < length) {
-      let child = node[i];
-      if (typeof child === "string" || typeof child === "number") {
-        if (concatString !== null) {
-          concatString += child;
-        } else {
-          concatString = child;
-        }
-      } else if (typeof child === "object" && child !== null) {
-        if (concatString !== null) {
-          arr.push(concatString);
-          concatString = null;
-        }
-        arr.push(normalize(child));
-      }
-    }
-    if (concatString !== null) {
-      arr.push(concatString);
-    }
-    return arr;
-  } else {
-    for (let key in node) {
-      let value = node[key];
-      if (typeof value === "object" && value !== null) {
-        node[key] = normalize(value);
-      }
-    }
-  }
-  return node;
-}
 
 function additionalGlobals(realm) {
   let global = realm.$GlobalObject;
@@ -166,17 +127,55 @@ async function runTest(name) {
   // Use the original version of the test in case transforming messes it up.
   let { getTrials } = A;
   // Run tests that assert the rendered output matches.
-  let [nameA, valueA] = getTrials(rendererA, A);
-  let [nameB, valueB] = getTrials(rendererB, B);
+  let resultA = getTrials(rendererA, A);
+  let resultB = getTrials(rendererB, B);
 
-  expect(normalize(valueB)).toEqual(normalize(valueA));
-  expect(nameB).toEqual(nameA);
+  // the test has returned many values for us to check
+  if (Array.isArray(resultA) && Array.isArray(resultA[0])) {
+    for (let i = 0; i < resultA.length; i++) {
+      let [nameA, valueA] = resultA[i];
+      let [nameB, valueB] = resultB[i];
+      expect(normalize(valueB)).toEqual(normalize(valueA));
+      expect(nameB).toEqual(nameA);
+    }
+  } else {
+    let [nameA, valueA] = resultA;
+    let [nameB, valueB] = resultB;
+    expect(normalize(valueB)).toEqual(normalize(valueA));
+    expect(nameB).toEqual(nameA);
+  }
 }
+
+// Jest tests
 
 describe("Test React", () => {
   describe("Functional component folding", () => {
     it("Simple", async () => {
       await runTest("simple.js");
+    });
+
+    it("Simple children", async () => {
+      await runTest("simple-children.js");
+    });
+
+    it("Conditional", async () => {
+      await runTest("conditional.js");
+    });
+
+    it("Key nesting", async () => {
+      await runTest("key-nesting.js");
+    });
+
+    it("Dynamic props", async () => {
+      await runTest("dynamic-props.js");
+    });
+
+    it("Return text", async () => {
+      await runTest("return-text.js");
+    });
+
+    it("Return undefined", async () => {
+      await runTest("return-undefined.js");
     });
   });
 });
