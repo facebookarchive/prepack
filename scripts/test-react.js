@@ -147,6 +147,7 @@ async function runTest(name) {
 }
 
 // Jest tests
+let originalConsoleError = console.error;
 
 describe("Test React", () => {
   describe("Functional component folding", () => {
@@ -175,7 +176,12 @@ describe("Test React", () => {
     });
 
     it("Return undefined", async () => {
+      // this test will cause a React console.error to show
+      // we monkey patch it to stop it polluting the test output
+      // with a false-negative error
+      global.console.error = () => {};
       await runTest("return-undefined.js");
+      global.console.error = originalConsoleError;
     });
   });
 });
