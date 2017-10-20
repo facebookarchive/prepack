@@ -42,6 +42,8 @@
     "test-node-cli-mode": "bash < scripts/test-node-cli-mode.sh",
     "test-std-in": "bash < scripts/test-std-in.sh",
     "test": "yarn test-residual && yarn test-serializer && yarn test-sourcemaps && yarn test-error-handler && yarn test-std-in && yarn test-test262 && yarn test-internal",
+    "test-coverage-most": "./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/multi-runner.js --dir coverage.most && ./node_modules/.bin/remap-istanbul -i coverage.most/coverage.json -o coverage-sourcemapped -t html",
+    "test-all-coverage": "./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/multi-runner.js --dir coverage.most && ./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover -- ./lib/test262-runner.js --timeout 50 --singleThreaded && ./node_modules/.bin/remap-istanbul -i coverage/coverage.json -i coverage.most/coverage.json -o coverage-sourcemapped -t html",
     "repl": "node lib/repl-cli.js",
     "prepack": "node lib/prepack-cli.js",
     "prepack-prepack": "node --stack_size=10000 --max_old_space_size=8096 ./bin/prepack.js ./lib/prepack-cli.js --out ./lib/prepack-cli.prepacked.js --compatibility node-cli --mathRandomSeed rnd",

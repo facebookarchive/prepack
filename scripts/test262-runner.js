@@ -291,7 +291,8 @@ if (!("toJSON" in Error.prototype)) {
   });
 }
 
-main();
+if (!module.parent)
+  main();
 
 function main(): number {
   try {
