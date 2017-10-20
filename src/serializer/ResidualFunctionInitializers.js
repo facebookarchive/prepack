@@ -16,7 +16,7 @@ import { NameGenerator } from "../utils/generator.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import { voidExpression, nullExpression } from "../utils/internalizer.js";
-import type { LocationService } from "./types.js";
+import type { LocationService, SerializedBody } from "./types.js";
 import { factorifyObjects } from "./factorify.js";
 
 // This class manages information about values
@@ -38,16 +38,13 @@ export class ResidualFunctionInitializers {
   }
 
   functionInitializerInfos: Map<FunctionValue, { ownId: string, initializerIds: Set<string> }>;
-  initializers: Map<string, { id: string, order: number, body: Array<BabelNodeStatement>, values: Array<Value> }>;
+  initializers: Map<string, { id: string, order: number, body: SerializedBody, values: Array<Value> }>;
   sharedInitializers: Map<string, BabelNodeStatement>;
   locationService: LocationService;
   prelude: Array<BabelNodeStatement>;
   initializerNameGenerator: NameGenerator;
 
-  registerValueOnlyReferencedByResidualFunctions(
-    functionValues: Array<FunctionValue>,
-    val: Value
-  ): Array<BabelNodeStatement> {
+  registerValueOnlyReferencedByResidualFunctions(functionValues: Array<FunctionValue>, val: Value): SerializedBody {
     invariant(functionValues.length >= 1);
     let infos = [];
     for (let functionValue of functionValues) {
@@ -63,7 +60,10 @@ export class ResidualFunctionInitializers {
     for (let info of infos) info.initializerIds.add(id);
     let initializer = this.initializers.get(id);
     if (initializer === undefined)
-      this.initializers.set(id, (initializer = { id, order: infos.length, values: [], body: [] }));
+      this.initializers.set(
+        id,
+        (initializer = { id, order: infos.length, values: [], body: { type: "DelayInitializations", entries: [] } })
+      );
     initializer.values.push(val);
     return initializer.body;
   }
@@ -71,7 +71,7 @@ export class ResidualFunctionInitializers {
   scrubFunctionInitializers() {
     // Deleting trivial entries in order to avoid creating empty initialization functions that serve no purpose.
     for (let initializer of this.initializers.values())
-      if (initializer.body.length === 0) this.initializers.delete(initializer.id);
+      if (initializer.body.entries.length === 0) this.initializers.delete(initializer.id);
     for (let [functionValue, info] of this.functionInitializerInfos) {
       for (let id of info.initializerIds) {
         let initializer = this.initializers.get(id);
@@ -121,7 +121,7 @@ export class ResidualFunctionInitializers {
 
   factorifyInitializers(nameGenerator: NameGenerator) {
     for (const initializer of this.initializers.values()) {
-      factorifyObjects(initializer.body, nameGenerator);
+      factorifyObjects(initializer.body.entries, nameGenerator);
     }
   }
 
@@ -137,7 +137,7 @@ export class ResidualFunctionInitializers {
     for (let initializerId of initializerInfo.initializerIds) {
       let initializer = this.initializers.get(initializerId);
       invariant(initializer !== undefined);
-      invariant(initializer.body.length > 0);
+      invariant(initializer.body.entries.length > 0);
       initializers.push(initializer);
     }
     // Sorting initializers by the number of scopes they are required by.
@@ -150,11 +150,11 @@ export class ResidualFunctionInitializers {
         initializedValues = initializer.values;
       }
       if (initializer === ownInitializer) {
-        initializationStatements = initializationStatements.concat(initializer.body);
+        initializationStatements = initializationStatements.concat(initializer.body.entries);
       } else {
         let ast = this.sharedInitializers.get(initializer.id);
         if (ast === undefined) {
-          ast = this._conditionalInitialization(initializer.values, initializer.body);
+          ast = this._conditionalInitialization(initializer.values, initializer.body.entries);
           // We inline compact initializers, as calling a function would introduce too much
           // overhead. To determine if an initializer is compact, we count the number of
           // nodes in the AST, and check if it exceeds a certain threshold.
