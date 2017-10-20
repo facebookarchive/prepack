@@ -503,7 +503,7 @@ export class ResidualHeapVisitor {
         if (kind !== "Object") this.logger.logError(val, `Object of kind ${kind} is not supported in residual heap.`);
         if (this.$ParameterMap !== undefined)
           this.logger.logError(val, `Arguments object is not supported in residual heap.`);
-        return false;
+        return true;
     }
   }
 

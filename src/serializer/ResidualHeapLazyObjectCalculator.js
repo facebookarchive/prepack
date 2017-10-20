@@ -26,6 +26,7 @@ import {
 } from "../values/index.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
+import { ResidualHeapDominatorGraph } from "./ResidualHeapDominatorGraph.js";
 
 export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
   constructor(
@@ -43,7 +44,9 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
       rc1: 0,
       rc2: 0,
       others: 0,
-      trees: 0,
+      breakNodeCount: 0,
+      whiteFunctionBenefit: 0,
+      breakNodeDominatorBenefit: 0,
       breakNodes: {
         func: 0,
         abstract: 0,
@@ -61,12 +64,17 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
         others: 0,
       },
     };
+    const dominatorGraph = new ResidualHeapDominatorGraph(realm, logger, modules, additionalFunctionValuesAndEffects);
+    this._immediateDominators = dominatorGraph.construct();
+    this._breakNodeImmediateDominators = new Set();
   }
 
   _valueToEdgeRecord: Map<Value, [number, number]>;
   _lazyObjects: Set<Value>;
   _visitedValues: Set<Value>;
   _statistics: any;
+  _immediateDominators: Map<Value, Value>;
+  _breakNodeImmediateDominators: Set<Value>;
 
   _mark(val: Value): boolean {
     if (this._visitedValues.has(val)) {
@@ -92,10 +100,37 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
     }
   }
 
-  _processPassCheck(val: Value, childrenPassCheck: boolean): boolean {
-    const foreverObjectNames = ["runnables", "shim"];
-    const originalName = val.__originalName || "";
-    return childrenPassCheck || foreverObjectNames.indexOf(originalName) !== -1 || val instanceof FunctionValue;
+  _processBreakNode(breakNode: Value, refCount: number) {
+    const immediateDominator = this._immediateDominators.get(breakNode);
+    if (immediateDominator != null) {
+      this._breakNodeImmediateDominators.add(immediateDominator);
+    }
+    ++this._statistics.breakNodeCount;
+    this._recordBreakNodeStatistics(breakNode, this._statistics.breakNodes);
+    if (refCount > 20) {
+      this._recordBreakNodeStatistics(breakNode, this._statistics.popularBreakNodes);
+    }
+  }
+
+  _canValueBeLazy(val: Value, childrenPassCheck: boolean): boolean {
+    //const foreverObjectNames = ["runnables", "shim"];
+    //const originalName = val.__originalName || "";
+    const isValueBreakNodeDominator = this._breakNodeImmediateDominators.has(val);
+    if (!childrenPassCheck) {
+      if (val instanceof FunctionValue) {
+        this._statistics.whiteFunctionBenefit++;
+      } else {
+        if (isValueBreakNodeDominator) {
+          this._statistics.breakNodeDominatorBenefit++;
+        }
+      }
+    }
+    return (
+      childrenPassCheck ||
+      //foreverObjectNames.indexOf(originalName) !== -1 ||
+      val instanceof FunctionValue ||
+      isValueBreakNodeDominator
+    );
   }
 
   _postProcessValue(val: Value, childrenPassCheck: boolean): boolean {
@@ -106,18 +141,15 @@ export class ResidualHeapLazyObjectCalculator extends ResidualHeapVisitor {
     let edgeRecord = this._valueToEdgeRecord.get(val);
     invariant(edgeRecord != null);
     const refCount = edgeRecord[0];
-    if (!this._lazyObjects.has(val) && childrenPassCheck && refCount > 1) {
-      ++this._statistics.trees;
-      this._recordBreakNodeStatistics(val, this._statistics.breakNodes);
-      if (refCount > 20) {
-        this._recordBreakNodeStatistics(val, this._statistics.popularBreakNodes);
+
+    const canValueBeLazy = this._canValueBeLazy(val, childrenPassCheck);
+    if (!this._lazyObjects.has(val) && canValueBeLazy) {
+      this._lazyObjects.add(val);
+      if (refCount > 1) {
+        this._processBreakNode(val, refCount);
       }
     }
-    const passCheck = this._processPassCheck(val, childrenPassCheck);
-    if (passCheck) {
-      this._lazyObjects.add(val);
-    }
-    return refCount === 1 && passCheck;
+    return refCount === 1 && canValueBeLazy;
   }
 
   repotResult() {
