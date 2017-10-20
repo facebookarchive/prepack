@@ -109,8 +109,8 @@ function runSource(source) {
   return moduleShim.exports;
 }
 
-async function runTest(name) {
-  let source = fs.readFileSync(path.join(reactTestRoot, name)).toString();
+async function runTest(directory, name) {
+  let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
   let { compiledSource } = compileSourceWithPrepack(source);
 
   let A = runSource(source);
@@ -151,28 +151,34 @@ let originalConsoleError = console.error;
 
 describe("Test React", () => {
   describe("Functional component folding", () => {
+    let directory = "functional-components";
+
     it("Simple", async () => {
-      await runTest("simple.js");
+      await runTest(directory, "simple.js");
     });
 
     it("Simple children", async () => {
-      await runTest("simple-children.js");
+      await runTest(directory, "simple-children.js");
+    });
+
+    it("Simple refs", async () => {
+      await runTest(directory, "simple-refs.js");
     });
 
     it("Conditional", async () => {
-      await runTest("conditional.js");
+      await runTest(directory, "conditional.js");
     });
 
     it("Key nesting", async () => {
-      await runTest("key-nesting.js");
+      await runTest(directory, "key-nesting.js");
     });
 
     it("Dynamic props", async () => {
-      await runTest("dynamic-props.js");
+      await runTest(directory, "dynamic-props.js");
     });
 
     it("Return text", async () => {
-      await runTest("return-text.js");
+      await runTest(directory, "return-text.js");
     });
 
     it("Return undefined", async () => {
@@ -180,7 +186,7 @@ describe("Test React", () => {
       // we monkey patch it to stop it polluting the test output
       // with a false-negative error
       global.console.error = () => {};
-      await runTest("return-undefined.js");
+      await runTest(directory, "return-undefined.js");
       global.console.error = originalConsoleError;
     });
   });
