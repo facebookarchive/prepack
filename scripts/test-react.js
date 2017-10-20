@@ -173,6 +173,7 @@ function runSource(source) {
     require: requireShim,
     module: moduleShim,
     Object,
+    String,
   };
   try {
     // $FlowFixMe flow doesn't new Function
@@ -246,6 +247,10 @@ describe("Test React", () => {
 
     it("Key nesting", async () => {
       await runTest(directory, "key-nesting.js");
+    });
+
+    it("Key nesting with updates", async () => {
+      await runTest(directory, "key-nesting-updates.js");
     });
 
     it("Dynamic props", async () => {

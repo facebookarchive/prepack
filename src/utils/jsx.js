@@ -119,7 +119,7 @@ function addKeyToElement(astElement: BabelNodeJSXElement, key) {
 // we create a unique key for each JSXElement to prevent collisions
 // otherwise React will detect a missing/conflicting key at runtime and
 // this can break the reconcilation of JSXElements in arrays
-function getUniqueJSXElementKey(index?: string, usedReactElementKeys: Set<string>) {
+export function getUniqueJSXElementKey(index?: string, usedReactElementKeys: Set<string>) {
   let key;
   do {
     key = Math.random().toString(36).replace(/[^a-z]+/g, "").substring(0, 2);

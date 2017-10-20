@@ -27,7 +27,7 @@ import { Get } from "../methods/index.js";
 import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
 import Reconciler from "../react/Reconciler.js";
-import { ReactStatistics } from "./types";
+import { ReactStatistics, type ReactSerializerState } from "./types";
 import * as t from "babel-types";
 
 export class Functions {
@@ -110,12 +110,12 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
-  checkReactRootComponents(statistics: ReactStatistics): void {
+  checkReactRootComponents(statistics: ReactStatistics, react: ReactSerializerState): void {
     let recordedReactRootComponents = this.__generateAdditionalFunctions("__reactComponentRoots");
 
     // Get write effects of the components
     for (let [funcValue] of recordedReactRootComponents) {
-      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics);
+      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react);
       invariant(
         funcValue instanceof ECMAScriptSourceFunctionValue,
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"

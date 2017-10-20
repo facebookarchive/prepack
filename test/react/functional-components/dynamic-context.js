@@ -22,7 +22,6 @@ var StatefulComponent = (function (superclass) {
   if ( superclass ) StatefulComponent.__proto__ = superclass;
   StatefulComponent.prototype = Object.create( superclass && superclass.prototype );
   StatefulComponent.prototype.constructor = StatefulComponent;
-
   StatefulComponent.prototype.getChildContext = function getChildContext () {
 		return {
 			title: "Hello world!",
@@ -30,10 +29,6 @@ var StatefulComponent = (function (superclass) {
   };
   StatefulComponent.prototype.render = function render () {
 		return <Child />;
-	};
-	StatefulComponent.prototype.getTrials = function prototype(renderer, Root) {
-		renderer.update(<Root />);
-		return ['render class component with context', renderer.toJSON()];
 	};
 	StatefulComponent.childContextTypes = {
 		title: () => {},

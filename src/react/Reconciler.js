@@ -24,23 +24,35 @@ import {
   ArrayValue,
   ObjectValue,
 } from "../values/index.js";
-import { ReactStatistics } from "../serializer/types.js";
-import { isReactElement, getJSXPropertyValue } from "../utils/jsx.js";
-import { ObjectCreate } from "../methods/index.js";
+import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
+import { isReactElement, getJSXPropertyValue, getUniqueJSXElementKey } from "../utils/jsx.js";
+import { ObjectCreate, GetValue, Get } from "../methods/index.js";
 import buildExpressionTemplate from "../utils/builder.js";
 import { ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import { flowAnnotationToObject } from "../flow/utils.js";
+import { computeBinary } from "../evaluators/BinaryExpression.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 
-function isReactClassComponent(type) {
+function isReactClassComponent(realm, type) {
   if (!(type instanceof FunctionValue)) {
     return false;
   }
-  // any ES2015 class supported for now.
-  return type.$FunctionKind === "classConstructor";
+  let prototype = Get(realm, type, "prototype");
+  if (prototype instanceof ObjectValue) {
+    return prototype.properties.has("render");
+  }
+  return false;
 }
+
+const BranchStatus = {
+  NO_BRANCH: "NO_BRANCH",
+  NEW_BRANCH: "NEW_BRANCH",
+  BRANCH: "BRANCH",
+};
+
+type BranchStatusEnum = $Keys<typeof BranchStatus>;
 
 function createObject(realm: Realm, shape: null | { [id: string]: any }, name: string | null) {
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
@@ -110,15 +122,22 @@ function createAbstractObject(realm: Realm, name: string | null, objectTypes: an
 }
 
 class Reconciler {
-  constructor(realm: Realm, moduleTracer: ModuleTracer, statistics: ReactStatistics) {
+  constructor(
+    realm: Realm,
+    moduleTracer: ModuleTracer,
+    statistics: ReactStatistics,
+    reactSerializerState: ReactSerializerState
+  ) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
     this.statistics = statistics;
+    this.reactSerializerState = reactSerializerState;
   }
 
   realm: Realm;
   moduleTracer: ModuleTracer;
   statistics: ReactStatistics;
+  reactSerializerState: ReactSerializerState;
 
   render(componentType: ECMAScriptSourceFunctionValue): Effects {
     let propTypes = null;
@@ -152,7 +171,12 @@ class Reconciler {
         let initialProps = createAbstractObject(this.realm, propsName, propTypes);
         let initialContext = createAbstractObject(this.realm, contextName, contextTypes);
         try {
-          let { result } = this._renderAsDeepAsPossible(componentType, initialProps, initialContext, false);
+          let { result } = this._renderAsDeepAsPossible(
+            componentType,
+            initialProps,
+            initialContext,
+            BranchStatus.NO_BRANCH
+          );
           this.statistics.optimizedTrees++;
           return result;
         } catch (e) {
@@ -165,10 +189,15 @@ class Reconciler {
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue,
     context: ObjectValue | AbstractValue,
-    isBranched: boolean
+    branchStatus: BranchStatusEnum
   ) {
-    let { value, commitDidMountPhase, childContext } = this._renderOneLevel(componentType, props, context, isBranched);
-    let result = this._resolveDeeply(value, childContext, isBranched);
+    let { value, commitDidMountPhase, childContext } = this._renderOneLevel(
+      componentType,
+      props,
+      context,
+      branchStatus
+    );
+    let result = this._resolveDeeply(value, childContext, branchStatus);
     return {
       result,
       childContext,
@@ -179,9 +208,9 @@ class Reconciler {
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue,
     context: ObjectValue | AbstractValue,
-    isBranched: boolean
+    branchStatus: BranchStatusEnum
   ) {
-    if (isReactClassComponent(componentType)) {
+    if (isReactClassComponent(this.realm, componentType)) {
       // for now we don't support class components, so we bail out
       throw new Error("Component bail out");
     } else {
@@ -190,7 +219,25 @@ class Reconciler {
       return { value, commitDidMountPhase: null, childContext: context };
     }
   }
-  _resolveDeeply(value: Value, context: ObjectValue | AbstractValue, isBranched: boolean) {
+  _applyBranchedLogic(value: ObjectValue) {
+    // we need to apply a key when we're branched
+    let properties = value.properties;
+    let currentKeyValue = getJSXPropertyValue(this.realm, properties, "key") || this.realm.intrinsics.null;
+    let uniqueKey = getUniqueJSXElementKey("", this.reactSerializerState.usedReactElementKeys);
+    let newKeyValue = GetValue(this.realm, this.realm.$GlobalEnv.evaluate(t.stringLiteral(uniqueKey), false));
+    if (currentKeyValue !== this.realm.intrinsics.null) {
+      newKeyValue = computeBinary(this.realm, "+", currentKeyValue, newKeyValue);
+    }
+    value.$Set("key", newKeyValue, value);
+    return value;
+  }
+  _updateBranchStatus(branchStatus: BranchStatusEnum): BranchStatusEnum {
+    if (branchStatus === BranchStatus.NEW_BRANCH) {
+      branchStatus = BranchStatus.BRANCH;
+    }
+    return branchStatus;
+  }
+  _resolveDeeply(value: Value, context: ObjectValue | AbstractValue, branchStatus: BranchStatusEnum) {
     if (
       value instanceof StringValue ||
       value instanceof NumberValue ||
@@ -202,12 +249,12 @@ class Reconciler {
       return value;
     } else if (value instanceof AbstractValue) {
       for (let i = 0; i < value.args.length; i++) {
-        value.args[i] = this._resolveDeeply(value.args[i], context, true);
+        value.args[i] = this._resolveDeeply(value.args[i], context, BranchStatus.NEW_BRANCH);
       }
       return value;
     }
     if (value instanceof ArrayValue) {
-      this._resolveFragment(value, context, isBranched);
+      this._resolveFragment(value, context, branchStatus);
       return value;
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
@@ -224,7 +271,7 @@ class Reconciler {
             invariant(childrenPropertyDescriptor, "");
             let childrenPropertyValue = childrenPropertyDescriptor.value;
             invariant(childrenPropertyValue instanceof Value, `Bad "children" prop passed in JSXElement`);
-            let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, isBranched);
+            let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus);
             childrenPropertyDescriptor.value = resolvedChildren;
           }
         }
@@ -241,27 +288,32 @@ class Reconciler {
         return value;
       }
       try {
-        let { result, commitDidMountPhase } = this._renderAsDeepAsPossible(typeValue, propsValue, context, isBranched);
-        if (result === null) {
-          return value;
-        }
-        if (result instanceof UndefinedValue) {
-          return value;
+        let { result, commitDidMountPhase } = this._renderAsDeepAsPossible(
+          typeValue,
+          propsValue,
+          context,
+          this._updateBranchStatus(branchStatus) // reduce branch status a value if possible
+        );
+        if (result === null || result instanceof UndefinedValue) {
+          return branchStatus === BranchStatus.NEW_BRANCH ? this._applyBranchedLogic(value) : value;
         }
         this.statistics.inlinedComponents++;
         if (commitDidMountPhase !== null) {
           commitDidMountPhase();
         }
+        if (branchStatus === BranchStatus.NEW_BRANCH && result instanceof ObjectValue && isReactElement(result)) {
+          return this._applyBranchedLogic(result);
+        }
         return result;
       } catch (e) {
         // a child component bailed out during component folding, so return the function value and continue
-        return value;
+        return branchStatus === BranchStatus.NEW_BRANCH ? this._applyBranchedLogic(value) : value;
       }
     } else {
       return value;
     }
   }
-  _resolveFragment(arrayValue: ArrayValue, context: ObjectValue | AbstractValue, isBranched: boolean) {
+  _resolveFragment(arrayValue: ArrayValue, context: ObjectValue | AbstractValue, branchStatus: BranchStatusEnum) {
     let lengthProperty = arrayValue.properties.get("length");
     let value;
     if (lengthProperty !== undefined) {
@@ -279,7 +331,7 @@ class Reconciler {
       invariant(elementPropertyDescriptor, `Invalid JSXElement child[${i}] descriptor`);
       let elementValue = elementPropertyDescriptor.value;
       if (elementValue instanceof Value) {
-        elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, isBranched);
+        elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, branchStatus);
       }
     }
   }
