@@ -19,6 +19,14 @@ import invariant from "../invariant.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
+// TODO: add type for additional functions.
+export type SerializedBodyType = "MainGenerator" | "Generator" | "DelayInitializations" | "ConditionalAssignmentBranch";
+
+export type SerializedBody = {
+  type: SerializedBodyType,
+  entries: Array<BabelNodeStatement>,
+};
+
 export type AdditionalFunctionInfo = {
   functionValue: FunctionValue,
   captures: Set<string>,
@@ -73,8 +81,6 @@ export type ScopeBinding = {
   containingAdditionalFunction: void | FunctionValue,
 };
 
-export type GeneratorBody = Array<BabelNodeStatement>;
-
 export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding, y: ResidualFunctionBinding) {
   if (x.serializedValue === y.serializedValue) return true;
   if (x.value && x.value === y.value) return true;
@@ -85,7 +91,7 @@ export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding,
 }
 
 export class BodyReference {
-  constructor(body: Array<BabelNodeStatement>, index: number) {
+  constructor(body: SerializedBody, index: number) {
     invariant(index >= 0);
     this.body = body;
     this.index = index;
@@ -93,7 +99,7 @@ export class BodyReference {
   isNotEarlierThan(other: BodyReference): boolean {
     return this.body === other.body && this.index >= other.index;
   }
-  body: Array<BabelNodeStatement>;
+  body: SerializedBody;
   index: number;
 }
 
