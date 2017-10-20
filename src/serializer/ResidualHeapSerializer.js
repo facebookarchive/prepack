@@ -56,7 +56,7 @@ import type {
   FunctionInstance,
   AdditionalFunctionInfo,
   ReactSerializerState,
-  EmitBody,
+  SerializedBody,
 } from "./types.js";
 import { TimingStatistics, SerializerStatistics } from "./types.js";
 import { Logger } from "./logger.js";
@@ -154,10 +154,10 @@ export class ResidualHeapSerializer {
   functionInstances: Array<FunctionInstance>;
   prelude: Array<BabelNodeStatement>;
   body: Array<BabelNodeStatement>;
-  mainBody: EmitBody;
+  mainBody: SerializedBody;
   // if we're in an additional function we need to access both mainBody and the
   // additional function's body which will be currentFunctionBody.
-  currentFunctionBody: EmitBody;
+  currentFunctionBody: SerializedBody;
   realm: Realm;
   preludeGenerator: PreludeGenerator;
   generator: Generator;
@@ -182,7 +182,7 @@ export class ResidualHeapSerializer {
   residualFunctions: ResidualFunctions;
   delayInitializations: boolean;
   referencedDeclaredValues: Set<AbstractValue>;
-  activeGeneratorBodies: Map<Generator, EmitBody>;
+  activeGeneratorBodies: Map<Generator, SerializedBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   react: ReactSerializerState;
@@ -346,11 +346,11 @@ export class ResidualHeapSerializer {
       invariant(consequent instanceof AbstractValue);
       let alternate = absVal.args[2];
       invariant(alternate instanceof AbstractValue);
-      let oldBody = this.emitter.beginEmitting("consequent", { type: "Other", entries: [] });
+      let oldBody = this.emitter.beginEmitting("consequent", { type: "ConditionalAssignmentBranch", entries: [] });
       this._emitPropertiesWithComputedNames(obj, consequent);
       let consequentBody = this.emitter.endEmitting("consequent", oldBody);
       let consequentStatement = t.blockStatement(consequentBody.entries);
-      oldBody = this.emitter.beginEmitting("alternate", { type: "Other", entries: [] });
+      oldBody = this.emitter.beginEmitting("alternate", { type: "ConditionalAssignmentBranch", entries: [] });
       this._emitPropertiesWithComputedNames(obj, alternate);
       let alternateBody = this.emitter.endEmitting("alternate", oldBody);
       let alternateStatement = t.blockStatement(alternateBody.entries);
@@ -482,7 +482,7 @@ export class ResidualHeapSerializer {
   _getTarget(
     val: Value,
     scopes: Set<Scope>
-  ): { body: EmitBody, usedOnlyByResidualFunctions?: true, usedOnlyByAdditionalFunctions?: boolean } {
+  ): { body: SerializedBody, usedOnlyByResidualFunctions?: true, usedOnlyByAdditionalFunctions?: boolean } {
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
 
@@ -529,7 +529,7 @@ export class ResidualHeapSerializer {
           functionValues,
           val
         );
-        return { body: { type: "DelayInitialization", entries: body }, usedOnlyByResidualFunctions: true };
+        return { body, usedOnlyByResidualFunctions: true };
       }
     }
 
@@ -1278,7 +1278,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _withGeneratorScope(generator: Generator, callback: EmitBody => void): Array<BabelNodeStatement> {
+  _withGeneratorScope(generator: Generator, callback: SerializedBody => void): Array<BabelNodeStatement> {
     let newBody = { type: "Generator", entries: [] };
     let oldBody = this.emitter.beginEmitting(generator, newBody);
     this.activeGeneratorBodies.set(generator, newBody);
