@@ -1,4 +1,8 @@
-var React = require('react');
+if (this.__createReactMock) {
+  var React = __createReactMock();
+} else {
+	var React = require('react');
+}
 
 function A(props) {
   return 'Hello, ';

@@ -42,6 +42,8 @@ export function flowAnnotationToObject(annotation: typeAnnotation) {
     return "string";
   } else if (annotation.type === "NumberTypeAnnotation") {
     return "number";
+  } else if (annotation.type === "FunctionTypeAnnotation") {
+    return "function";
   } else if (annotation.type === "ObjectTypeAnnotation") {
     let obj = {};
     annotation.properties.forEach(property => {

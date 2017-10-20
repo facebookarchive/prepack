@@ -1,4 +1,8 @@
-var React = require('react');
+if (this.__createReactMock) {
+  var React = __createReactMock();
+} else {
+	var React = require('react');
+}
 
 function MaybeShow(props) {
   if (props.show) {
@@ -19,5 +23,9 @@ App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
   return ['conditional render', renderer.toJSON()];
 };
+
+if (this.__registerReactComponentRoot) {
+  __registerReactComponentRoot(App);
+}
 
 module.exports = App;

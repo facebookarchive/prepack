@@ -1,4 +1,8 @@
-var React = require('react');
+if (this.__createReactMock) {
+  var React = __createReactMock();
+} else {
+	var React = require('react');
+}
 
 function Child({name}) {
 	return <span>I am a child {name}</span>;
@@ -12,7 +16,7 @@ function SettingsPane() {
   return <div key='ha'><Child name={"B"} /></div>;
 }
 
-function App(props) {
+function App(props: {switch: boolean}) {
   if (props.switch) {
     return (
       <div>
@@ -45,5 +49,9 @@ App.getTrials = function(renderer, Root) {
 	results.push(['update with different type (again)', renderer.toJSON()]);
 	return results;
 };
+
+if (this.__registerReactComponentRoot) {
+  __registerReactComponentRoot(App);
+}
 
 module.exports = App;

@@ -12,12 +12,13 @@
 let fs = require("fs");
 let path = require("path");
 let { prepackSources } = require("../lib/prepack-node.js");
-let { ObjectCreate } = require("../lib/methods/index.js");
+let { ObjectCreate, CreateDataPropertyOrThrow, GetValue } = require("../lib/methods/index.js");
 let buildExpressionTemplate = require("../lib/utils/builder.js").default;
 let babel = require("babel-core");
 let React = require("react");
+let t = require("babel-types");
 let ReactTestRenderer = require("react-test-renderer");
-let { Value, AbstractValue } = require("../lib/values/index.js");
+let { Value, AbstractValue, NativeFunctionValue, ObjectValue } = require("../lib/values/index.js");
 let { normalize } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
@@ -34,6 +35,57 @@ let prepackOptions = {
   inlineExpressions: true,
   omitInvariants: true,
 };
+
+// this a mock of React.Component, to be used for tests
+function createMockReactComponent() {
+  return t.classExpression(
+    null,
+    null,
+    t.classBody([
+      t.classMethod(
+        "constructor",
+        t.identifier("constructor"),
+        [t.identifier("props"), t.identifier("context")],
+        t.blockStatement([
+          // this.props = props
+          t.expressionStatement(
+            t.assignmentExpression(
+              "=",
+              t.memberExpression(t.thisExpression(), t.identifier("props")),
+              t.identifier("props")
+            )
+          ),
+          // this.context = context
+          t.expressionStatement(
+            t.assignmentExpression(
+              "=",
+              t.memberExpression(t.thisExpression(), t.identifier("context")),
+              t.identifier("context")
+            )
+          ),
+          // this.state = {}
+          t.expressionStatement(
+            t.assignmentExpression(
+              "=",
+              t.memberExpression(t.thisExpression(), t.identifier("state")),
+              t.objectExpression([])
+            )
+          ),
+          // this.ref = {}
+          t.expressionStatement(
+            t.assignmentExpression(
+              "=",
+              t.memberExpression(t.thisExpression(), t.identifier("refs")),
+              t.objectExpression([])
+            )
+          ),
+        ])
+      ),
+      t.classMethod("method", t.identifier("getChildContext"), [], t.blockStatement([])),
+    ]),
+    []
+  );
+}
 
 function additionalGlobals(realm) {
   let global = realm.$GlobalObject;
@@ -66,13 +118,31 @@ function additionalGlobals(realm) {
     enumerable: false,
     configurable: true,
   });
+  // apply React mock (for now just React.Component)
+  global.$DefineOwnProperty("__createReactMock", {
+    value: new NativeFunctionValue(realm, "global.__createReactMock", "__createReactMock", 0, (context, []) => {
+      let reactComponent = GetValue(realm, realm.$GlobalEnv.evaluate(createMockReactComponent(), false));
+      reactComponent.intrinsicName = "React.Component";
+      let prototypeValue = ((reactComponent: any): ObjectValue).properties.get("prototype");
+      if (prototypeValue && prototypeValue.descriptor) {
+        ((prototypeValue.descriptor.value: any): Value).intrinsicName = `React.Component.prototype`;
+      }
+      let reactValue = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      reactValue.intrinsicName = "React";
+      CreateDataPropertyOrThrow(realm, reactValue, "Component", reactComponent);
+      return reactValue;
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 }
 
 function compileSourceWithPrepack(source) {
   let code = `(function(){${source}})()`;
   let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
-  // we need to make this change for the Babel createElement plugin to work
-  let compiledSource = serialized.code.replace(`var _$0 = require("react");`, `var React = require("react");`);
+  // add the React require back in, as we've removed it with our Prepack mock
+  let compiledSource = serialized.code.replace(/_\$[\d].React/, "React = require('react');");
   if (serialized == null || serialized.reactStatistics == null) {
     throw new Error("React test runner failed during serialization");
   }
@@ -104,8 +174,13 @@ function runSource(source) {
     module: moduleShim,
     Object,
   };
-  // $FlowFixMe flow doesn't new Function
-  fn.call(global, requireShim, moduleShim);
+  try {
+    // $FlowFixMe flow doesn't new Function
+    fn.call(global, requireShim, moduleShim);
+  } catch (e) {
+    console.log(codeAfterBabel);
+    throw e;
+  }
   return moduleShim.exports;
 }
 
@@ -124,13 +199,13 @@ async function runTest(directory, name) {
   if (A == null || B == null) {
     throw new Error("React test runner issue");
   }
-  // Use the original version of the test in case transforming messes it up.
+  // // Use the original version of the test in case transforming messes it up.
   let { getTrials } = A;
-  // Run tests that assert the rendered output matches.
+  // // Run tests that assert the rendered output matches.
   let resultA = getTrials(rendererA, A);
   let resultB = getTrials(rendererB, B);
 
-  // the test has returned many values for us to check
+  // // the test has returned many values for us to check
   if (Array.isArray(resultA) && Array.isArray(resultA[0])) {
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
@@ -175,6 +250,10 @@ describe("Test React", () => {
 
     it("Dynamic props", async () => {
       await runTest(directory, "dynamic-props.js");
+    });
+
+    it("Dynamic context", async () => {
+      await runTest(directory, "dynamic-context.js");
     });
 
     it("Return text", async () => {

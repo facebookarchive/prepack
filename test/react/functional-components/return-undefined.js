@@ -1,4 +1,8 @@
-var React = require('react');
+if (this.__createReactMock) {
+  var React = __createReactMock();
+} else {
+	var React = require('react');
+}
 
 function A() {
 }
@@ -20,5 +24,9 @@ App.getTrials = function(renderer, Root) {
   }
   return ['error rendering', didError];
 };
+
+if (this.__registerReactComponentRoot) {
+  __registerReactComponentRoot(App);
+}
 
 module.exports = App;

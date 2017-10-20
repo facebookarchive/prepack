@@ -26,9 +26,7 @@ import {
 } from "../values/index.js";
 import { ReactStatistics } from "../serializer/types.js";
 import { isReactElement, getJSXPropertyValue } from "../utils/jsx.js";
-import { ExecutionContext } from "../realm.js";
-import { AbruptCompletion } from "../completions.js";
-import { GetValue, Get, ObjectCreate } from "../methods/index.js";
+import { ObjectCreate } from "../methods/index.js";
 import buildExpressionTemplate from "../utils/builder.js";
 import { ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -42,21 +40,6 @@ function isReactClassComponent(type) {
   }
   // any ES2015 class supported for now.
   return type.$FunctionKind === "classConstructor";
-}
-
-function getError(realm: Realm, completionValue: AbruptCompletion) {
-  // extract an execution error from the Prepack environment.
-  let context = new ExecutionContext();
-  realm.pushContext(context);
-  try {
-    let message = (Get(realm, (completionValue: any).value, "message"): any).value;
-    let stack = (Get(realm, (completionValue: any).value, "stack"): any).value;
-    let error = new Error("Error evaluating function");
-    error.stack = message + "\n" + stack;
-    return error;
-  } finally {
-    realm.popContext(context);
-  }
 }
 
 function createObject(realm: Realm, shape: null | { [id: string]: any }, name: string | null) {
