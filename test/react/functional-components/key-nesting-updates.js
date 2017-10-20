@@ -6,7 +6,7 @@ if (this.__createReactMock) {
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
-this.Stateful = (function (superclass) {
+var Stateful = (function (superclass) {
   function Stateful () {
 		superclass.apply(this, arguments);
 		this.state = { updated: false };
@@ -28,6 +28,10 @@ this.Stateful = (function (superclass) {
 
   return Stateful;
 }(React.Component));
+
+// a hack for now, but if we don't make this class component on the global
+// Prepack will inline it within a functional component
+this.Stateful = Stateful;
 
 function MessagePane() {
   return <div key='ha'><Stateful /></div>;

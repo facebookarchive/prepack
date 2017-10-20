@@ -142,7 +142,7 @@ function compileSourceWithPrepack(source) {
   let code = `(function(){${source}})()`;
   let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
   // add the React require back in, as we've removed it with our Prepack mock
-  let compiledSource = serialized.code.replace(/_\$[\d].React/, "React = require('react');");
+  let compiledSource = serialized.code.replace(/_\$[\d].React/, "React = require('react')");
   if (serialized == null || serialized.reactStatistics == null) {
     throw new Error("React test runner failed during serialization");
   }

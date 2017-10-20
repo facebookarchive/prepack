@@ -37,6 +37,8 @@ var StatefulComponent = (function (superclass) {
   return StatefulComponent;
 }(React.Component));
 
+this.StatefulComponent = StatefulComponent;
+
 function App() {
 	return <StatefulComponent />;
 }
