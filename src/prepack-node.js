@@ -111,7 +111,7 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
   });
   let debugChannel;
   //flag to hide the debugger for now
-  if (options.enableDebugger) {
+  if (options.enableDebugger && options.debugInFilePath && options.debugOutFilePath) {
     let debugOptions = getDebuggerOptions(options);
     debugChannel = new DebugChannel(fs, debugOptions);
   }
