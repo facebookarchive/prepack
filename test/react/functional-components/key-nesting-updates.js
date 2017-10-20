@@ -6,7 +6,7 @@ if (this.__createReactMock) {
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
-var Stateful = (function (superclass) {
+this.Stateful = (function (superclass) {
   function Stateful () {
 		superclass.apply(this, arguments);
 		this.state = { updated: false };
@@ -21,7 +21,7 @@ var Stateful = (function (superclass) {
   Stateful.prototype.render = function render () {
     return (
       <div>
-				(is update: {this.state.updated})
+        (is update: {String(this.state.updated)})
       </div>
     );
 	};
