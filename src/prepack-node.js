@@ -113,7 +113,7 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
   //flag to hide the debugger for now
   if (options.enableDebugger) {
     let debugOptions = getDebuggerOptions(options);
-    debugChannel = new DebugChannel(fs, debugOptions);
+    debugChannel = new DebugChannel(debugOptions);
   }
   return prepackSources(sourceFiles, options, debugChannel);
 }

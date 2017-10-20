@@ -15,6 +15,11 @@ const LENGTH_SEPARATOR = "--";
 
 // Package a message sent or unpackage a message received
 export class MessagePackager {
+  constructor(isAdapter: boolean) {
+    this._isAdapter = isAdapter;
+  }
+  _isAdapter: boolean;
+
   // package a message to be sent
   package(contents: string): string {
     // format: <length>--<contents>

@@ -9,14 +9,16 @@
 
 /* @flow */
 import fs from "fs";
+import type { DebuggerOptions } from "./../../options.js";
+import type { PrepackOptions } from "./../../prepack-options.js";
 import { MessagePackager } from "./MessagePackager.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
-  constructor(inFilePath: string, outFilePath: string) {
-    this._inFilePath = inFilePath;
-    this._outFilePath = outFilePath;
-    this._packager = new MessagePackager();
+  constructor(dbgOptions: DebuggerOptions) {
+    this._inFilePath = dbgOptions.inFilePath;
+    this._outFilePath = dbgOptions.outFilePath;
+    this._packager = new MessagePackager(true);
   }
   _inFilePath: string;
   _outFilePath: string;
@@ -27,7 +29,7 @@ export class AdapterChannel {
     fs.writeFileSync(this._outFilePath, this._packager.package(contents));
   }
 
-  listenOnFile(errorHandler: (err: ?ErrnoError) => void, messageProcessor: (message?: string) => void) {
+  listenOnFile(errorHandler: (err: ?ErrnoError) => void, messageProcessor: (message: string) => void) {
     fs.readFile(this._inFilePath, { encoding: "utf8" }, (err: ?ErrnoError, contents: string) => {
       if (err) {
         errorHandler(err);
@@ -43,5 +45,10 @@ export class AdapterChannel {
       //process the message
       messageProcessor(message);
     });
+  }
+
+  clean() {
+    fs.writeFileSync(this._inFilePath, "");
+    fs.writeFileSync(this._outFilePath, "");
   }
 }

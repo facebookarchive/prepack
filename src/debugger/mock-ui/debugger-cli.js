@@ -18,6 +18,8 @@ import { UISession } from "./UISession.js";
 function run(process, console) {
   let adapterPath = "";
   let prepackCommand = "";
+  let inFilePath = "";
+  let outFilePath = "";
 
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -33,10 +35,22 @@ function run(process, console) {
       adapterPath = args.shift();
     } else if (arg === "prepack") {
       prepackCommand = args.shift();
+    } else if (arg === "inFilePath") {
+      inFilePath = args.shift();
+    } else if (arg === "outFilePath") {
+      outFilePath = args.shift();
     } else {
       console.error("Unknown argument: " + arg);
       process.exit(1);
     }
+  }
+  if (inFilePath === 0) {
+    console.error("No input file path provided!");
+    process.exit(1);
+  }
+  if (outFilePath === 0) {
+    console.error("No output file path provided!");
+    process.exit(1);
   }
   if (adapterPath.length === 0) {
     console.error("No path to the debug adapter provided!");
@@ -47,7 +61,7 @@ function run(process, console) {
     process.exit(1);
   }
 
-  let session = new UISession(process, adapterPath, prepackCommand);
+  let session = new UISession(process, adapterPath, prepackCommand, inFilePath, outFilePath);
   try {
     session.serve();
   } catch (e) {

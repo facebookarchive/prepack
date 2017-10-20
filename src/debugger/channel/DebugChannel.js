@@ -12,19 +12,19 @@ import path from "path";
 import invariant from "./../../invariant.js";
 import type { DebuggerOptions } from "./../../options";
 import { MessagePackager } from "./MessagePackager.js";
+import fs from "fs";
+import { DebugMessage } from "./DebugMessage.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
-  constructor(fs: any, dbgOptions: DebuggerOptions) {
+  constructor(dbgOptions: DebuggerOptions) {
     this._inFilePath = path.join(__dirname, "../../../", dbgOptions.inFilePath);
     this._outFilePath = path.join(__dirname, "../../../", dbgOptions.outFilePath);
-    this._fs = fs;
     this._requestReceived = false;
-    this._packager = new MessagePackager();
+    this._packager = new MessagePackager(false);
   }
   _inFilePath: string;
   _outFilePath: string;
-  _fs: any;
   _requestReceived: boolean;
   // helper to package sent messages and unpackage received messages
   _packager: MessagePackager;
@@ -33,11 +33,13 @@ export class DebugChannel {
   /* Only called in the beginning to check if a debugger is attached
   */
   debuggerIsAttached(): boolean {
-    // Don't use readIn because we don't want to block if there is no debugger
-    let contents = this._fs.readFileSync(this._inFilePath, "utf8");
+    // Don't use readIn here because we don't want to block if there is no debugger
+    let contents = fs.readFileSync(this._inFilePath, "utf8");
     let message = this._packager.unpackage(contents);
-    if (message === "Debugger Attached\n") {
-      this.writeOut("Ready\n");
+    if (message === DebugMessage.DEBUGGER_ATTACHED) {
+      this._requestReceived = true;
+      fs.writeFileSync(this._inFilePath, "");
+      this.writeOut(DebugMessage.PREPACK_READY);
       return true;
     }
     return false;
@@ -52,7 +54,7 @@ export class DebugChannel {
   readIn(): string {
     let message: null | string = null;
     while (true) {
-      let contents = this._fs.readFileSync(this._inFilePath, "utf8");
+      let contents = fs.readFileSync(this._inFilePath, "utf8");
       message = this._packager.unpackage(contents);
       if (message === null) continue;
       break;
@@ -60,7 +62,7 @@ export class DebugChannel {
     // loop should not break when message is still null
     invariant(message !== null);
     //clear the file
-    this._fs.writeFileSync(this._inFilePath, "");
+    fs.writeFileSync(this._inFilePath, "");
     this._requestReceived = true;
     return message;
   }
@@ -72,7 +74,7 @@ export class DebugChannel {
   writeOut(contents: string): void {
     //Prepack only writes back to the debug adapter in response to a request
     if (this._requestReceived) {
-      this._fs.writeFileSync(this._outFilePath, this._packager.package(contents));
+      fs.writeFileSync(this._outFilePath, this._packager.package(contents));
       this._requestReceived = false;
     }
   }

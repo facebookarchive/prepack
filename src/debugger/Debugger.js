@@ -14,6 +14,7 @@ import { BreakpointCollection } from "./BreakpointCollection.js";
 import type { BreakpointCommandArguments } from "./types.js";
 import invariant from "../invariant.js";
 import { DebugChannel } from "./channel/DebugChannel.js";
+import { DebugMessage } from "./channel/DebugMessage.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel) {
@@ -21,8 +22,8 @@ export class DebugServer {
     this.previousExecutedLine = 0;
     this.previousExecutedCol = 0;
     this.channel = channel;
-    this.waitForRun(function(line) {
-      return line === "Run";
+    this.waitForRun((line: string) => {
+      return line === DebugMessage.PREPACK_RUN;
     });
   }
   // the collection of breakpoints
@@ -60,7 +61,6 @@ export class DebugServer {
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
     this.checkForBreakpoint(ast);
-
     // last step: set the current location as the previously executed line
     if (ast.loc && ast.loc.source !== null) {
       this.previousExecutedFile = ast.loc.source;
