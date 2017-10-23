@@ -9,10 +9,10 @@
 
 /* @flow */
 // This file just runs the 4 test runners in one file for coverage
-require('./test-residual.js');
+require("./test-residual.js");
 
-require('./test-runner.js');
+require("./test-runner.js");
 
-require('./generate-sourcemaps-test.js');
+require("./generate-sourcemaps-test.js");
 
-require('./test-error-handler.js');
+require("./test-error-handler.js");
