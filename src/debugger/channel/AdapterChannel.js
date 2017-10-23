@@ -10,7 +10,6 @@
 /* @flow */
 import fs from "fs";
 import type { DebuggerOptions } from "./../../options.js";
-import type { PrepackOptions } from "./../../prepack-options.js";
 import { MessagePackager } from "./MessagePackager.js";
 
 //Channel used by the debug adapter to communicate with Prepack

@@ -55,7 +55,15 @@ export class UISession {
   _dataHandler: DataHandler;
 
   _startAdapter() {
-    let adapterArgs = [this._adapterPath, "--prepack", this._prepackCommand, "--inFilePath", this._inFilePath, "--outFilePath", this._outFilePath];
+    let adapterArgs = [
+      this._adapterPath,
+      "--prepack",
+      this._prepackCommand,
+      "--inFilePath",
+      this._inFilePath,
+      "--outFilePath",
+      this._outFilePath,
+    ];
     this._adapterProcess = child_process.spawn("node", adapterArgs);
     this._proc.on("exit", () => {
       this.shutdown();
@@ -144,8 +152,8 @@ export class UISession {
         if (parts.length !== 1) return false;
         let continueArgs: DebugProtocol.ContinueArguments = {
           // Prepack will only have 1 thread, this argument will be ignored
-          threadId: 1
-        }
+          threadId: 1,
+        };
         this._sendContinueRequest(continueArgs);
         break;
       default:

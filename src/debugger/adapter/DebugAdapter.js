@@ -75,8 +75,8 @@ class PrepackDebugSession extends LoggingDebugSession {
       process.exit(1);
     }
     this._debuggerOptions = getDebuggerOptions({
-      "debugInFilePath": inFilePath,
-      "debugOutFilePath": outFilePath,
+      debugInFilePath: inFilePath,
+      debugOutFilePath: outFilePath,
     });
   }
 
@@ -95,7 +95,12 @@ class PrepackDebugSession extends LoggingDebugSession {
 
     let prepackArgs = this._prepackCommand.split(" ");
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
-    prepackArgs = prepackArgs.concat(["--debugInFilePath", this._debuggerOptions.outFilePath, "--debugOutFilePath", this._debuggerOptions.inFilePath]);
+    prepackArgs = prepackArgs.concat([
+      "--debugInFilePath",
+      this._debuggerOptions.outFilePath,
+      "--debugOutFilePath",
+      this._debuggerOptions.inFilePath,
+    ]);
     this._prepackProcess = child_process.spawn("node", prepackArgs);
 
     process.on("exit", () => {
