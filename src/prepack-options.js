@@ -12,6 +12,7 @@
 import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions } from "./options";
 import { Realm } from "./realm.js";
+import invariant from "./invariant.js";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
@@ -103,10 +104,9 @@ export function getSerializerOptions({
   return result;
 }
 
-export function getDebuggerOptions({
-  debugInFilePath = "./src/debugger/.sessionlogs/adapter2engine.txt",
-  debugOutFilePath = "./src/debugger/.sessionlogs/engine2adapter.txt",
-}: PrepackOptions): DebuggerOptions {
+export function getDebuggerOptions({ debugInFilePath, debugOutFilePath }: PrepackOptions): DebuggerOptions {
+  invariant(debugInFilePath !== undefined, "Debugger invoked without input file path");
+  invariant(debugOutFilePath !== undefined, "Debugger invoked without output file path");
   let result: DebuggerOptions = {
     inFilePath: debugInFilePath,
     outFilePath: debugOutFilePath,
