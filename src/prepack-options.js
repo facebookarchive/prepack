@@ -105,8 +105,8 @@ export function getSerializerOptions({
 }
 
 export function getDebuggerOptions({ debugInFilePath, debugOutFilePath }: PrepackOptions): DebuggerOptions {
-  // if the debugger is started, the in and out files need to be specified
-  invariant(debugInFilePath !== undefined && debugOutFilePath !== undefined);
+  invariant(debugInFilePath !== undefined, "Debugger invoked without input file path");
+  invariant(debugOutFilePath !== undefined, "Debugger invoked without output file path");
   let result: DebuggerOptions = {
     inFilePath: debugInFilePath,
     outFilePath: debugOutFilePath,
