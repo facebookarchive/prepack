@@ -12,11 +12,11 @@
 import { UISession } from "./UISession.js";
 
 type DebuggerCLIArguments = {
-  adapterPath: string;
-  prepackCommand: string;
-  inFilePath: string;
-  outFilePath: string;
-}
+  adapterPath: string,
+  prepackCommand: string,
+  inFilePath: string,
+  outFilePath: string,
+};
 
 /* The entry point to start up the debugger CLI
  * Reads in command line arguments and starts up a UISession

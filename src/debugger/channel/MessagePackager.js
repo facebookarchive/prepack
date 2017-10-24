@@ -48,7 +48,7 @@ export class MessagePackager {
     }
     let message = contents.slice(startIndex, endIndex);
     // there should only be one message in the contents at a time
-    invariant(contents.length <= startIndex + messageLength)
+    invariant(contents.length <= startIndex + messageLength);
     return message;
   }
 }
