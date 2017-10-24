@@ -31,6 +31,7 @@ export class UISession {
     this._sequenceNum = 1;
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
+    this._prepackWaiting = false;
   }
   // the parent (i.e. ui) process
   _proc: Process;
@@ -53,6 +54,7 @@ export class UISession {
   _prepackCommand: string;
   // handler for any received messages
   _dataHandler: DataHandler;
+  _prepackWaiting: boolean;
 
   _startAdapter() {
     let adapterArgs = [
@@ -75,9 +77,11 @@ export class UISession {
       //handle the received data
       this._dataHandler.handleData(data, this._processMessage.bind(this));
       //ask the user for the next command
-      this._reader.question("(dbg) ", (input: string) => {
-        this._dispatch(input);
-      });
+      if (this._prepackWaiting) {
+        this._reader.question("(dbg) ", (input: string) => {
+          this._dispatch(input);
+        });
+      }
     });
     this._adapterProcess.stderr.on("data", (data: Buffer) => {
       console.error(data.toString());
@@ -102,11 +106,12 @@ export class UISession {
 
   _processEvent(event: DebugProtocol.Event) {
     if (event.event === "output") {
-      this._uiOutput("Prepack output: " + event.body.output);
+      this._uiOutput("Prepack output:\n" + event.body.output);
     } else if (event.event === "terminated") {
       this._uiOutput("Prepack exited! Shutting down...");
       this.shutdown();
     } else if (event.event === "stopped") {
+      this._prepackWaiting = true;
       if (event.body) {
         if (event.body.reason === "entry") {
           this._uiOutput("Prepack is ready");
@@ -243,6 +248,7 @@ export class UISession {
     };
     let json = JSON.stringify(message);
     this._packageAndSend(json);
+    this._prepackWaiting = false;
   }
 
   _sendBreakpointRequest(filePath: string, line: number, column: number = 0) {
@@ -282,14 +288,10 @@ export class UISession {
   }
 
   serve() {
+    this._uiOutput("Debugger is starting up Prepack...");
     // Set up the adapter connection
     this._startAdapter();
-
     this._reader = readline.createInterface({ input: this._proc.stdin, output: this._proc.stdout });
-    // Start taking in commands and execute them
-    this._reader.question("(dbg) ", (input: string) => {
-      this._dispatch(input);
-    });
   }
 
   shutdown() {
