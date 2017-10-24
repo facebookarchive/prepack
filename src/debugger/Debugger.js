@@ -23,8 +23,8 @@ export class DebugServer {
     this.previousExecutedLine = 0;
     this.previousExecutedCol = 0;
     this.channel = channel;
-    this.waitForRun((line: string) => {
-      return line === DebugMessage.PREPACK_RUN;
+    this.waitForRun((message: string) => {
+      return message === DebugMessage.PREPACK_RUN;
     });
   }
   // the collection of breakpoints
@@ -41,10 +41,10 @@ export class DebugServer {
   */
   waitForRun(runCondition: string => boolean) {
     let blocking = true;
-    let line = "";
+    let message = "";
     while (blocking) {
-      line = this.channel.readIn().toString();
-      if (runCondition(line)) {
+      message = this.channel.readIn().toString();
+      if (runCondition(message)) {
         //The adapter gave the command to continue running
         //The caller (or someone else later) needs to send a response
         //to the adapter
@@ -54,7 +54,7 @@ export class DebugServer {
       } else {
         //The adapter gave another command so Prepack still blocks
         //but can read in other commands and respond to them
-        this.executeCommand(line);
+        this.processDebuggerCommand(message);
       }
     }
   }
@@ -116,19 +116,24 @@ export class DebugServer {
       );
 
       // Wait for the adapter to tell us to run again
-      this.waitForRun(function(line) {
-        return line === DebugMessage.PREPACK_RUN;
+      this.waitForRun(function(message) {
+        return message === DebugMessage.PREPACK_RUN;
       });
     }
   }
 
-  executeCommand(command: string) {
+  processDebuggerCommand(command: string) {
     if (command.length === 0) {
       return;
     }
     let parts = command.split(" ");
-    if (parts[0] === DebugMessage.BREAKPOINT) {
-      this.executeBreakpointCommand(this._parseBreakpointArguments(parts));
+    let prefix = parts[0];
+    switch (prefix) {
+      case DebugMessage.BREAKPOINT:
+        this.executeBreakpointCommand(this._parseBreakpointArguments(parts));
+        break;
+      default:
+        break;
     }
   }
 

@@ -9,6 +9,8 @@
 
 /* @flow */
 
+// Generated using flowgen from vscode-debugadapter npm package and modified
+
 import DebugProtocol from 'vscode-debugprotocol'
 import * as ee from 'events';
 declare module 'vscode-debugadapter' {

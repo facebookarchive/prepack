@@ -27,7 +27,7 @@ export class MessagePackager {
   }
 
   // unpackage a message received, verify it, and return it
-  // returns null if the message is only partially read
+  // returns null if no message or the message is only partially read
   // errors if the message violates the format
   unpackage(contents: string): null | string {
     // format: <length>--<contents>
@@ -42,11 +42,13 @@ export class MessagePackager {
     invariant(!isNaN(messageLength));
     let startIndex = separatorIndex + LENGTH_SEPARATOR.length;
     let endIndex = startIndex + messageLength;
-    let message = contents.slice(startIndex, endIndex);
     // if we didn't read the whole message yet --> partial read
-    if (message.length < messageLength) {
+    if (contents.length < endIndex) {
       return null;
     }
+    let message = contents.slice(startIndex, endIndex);
+    // there should only be one message in the contents at a time
+    invariant(contents.length <= startIndex + messageLength)
     return message;
   }
 }

@@ -102,16 +102,16 @@ export class UISession {
 
   _processEvent(event: DebugProtocol.Event) {
     if (event.event === "output") {
-      console.log("Prepack output:", event.body.output);
+      this._uiOutput("Prepack output: " + event.body.output);
     } else if (event.event === "terminated") {
-      console.log("Prepack exited! Shutting down...");
+      this._uiOutput("Prepack exited! Shutting down...");
       this.shutdown();
     } else if (event.event === "stopped") {
       if (event.body) {
         if (event.body.reason === "entry") {
-          console.log("Prepack is ready");
+          this._uiOutput("Prepack is ready");
         } else if (event.body.reason.startsWith("breakpoint")) {
-          console.log("Prepack stopped on: " + event.body.reason);
+          this._uiOutput("Prepack stopped on: " + event.body.reason);
         }
       }
     }
@@ -275,6 +275,10 @@ export class UISession {
       "utf8"
     );
     this._sequenceNum++;
+  }
+
+  _uiOutput(message: string) {
+    console.log(message);
   }
 
   serve() {
