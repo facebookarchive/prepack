@@ -11,6 +11,7 @@
 
 import type { BabelNode } from "babel-types";
 import { BreakpointCollection } from "./BreakpointCollection.js";
+import { Breakpoint } from "./Breakpoint.js";
 import type { BreakpointCommandArguments } from "./types.js";
 import invariant from "../invariant.js";
 import { DebugChannel } from "./channel/DebugChannel.js";
@@ -69,7 +70,8 @@ export class DebugServer {
     }
   }
 
-  proceedBreakpoint(filePath: string, lineNum: number, colNum: number): boolean {
+  // Try to find a breakpoint at the given location and check if we should stop on it
+  findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
     let breakpoint = this.breakpoints.getBreakpoint(filePath, lineNum, colNum);
     if (breakpoint && breakpoint.enabled) {
       // checking if this is the same file and line we stopped at last time
@@ -78,16 +80,24 @@ export class DebugServer {
       // breakpoint consecutively (e.g. the statement is in a loop), some other
       // ast node (e.g. block, loop) must have been checked in between so
       // previousExecutedFile and previousExecutedLine will have changed
-      if (
-        filePath === this.previousExecutedFile &&
-        lineNum === this.previousExecutedLine &&
-        colNum === this.previousExecutedCol
-      ) {
-        return false;
+      if (breakpoint.column !== 0) {
+        // this is a column breakpoint
+        if (
+          filePath === this.previousExecutedFile &&
+          lineNum === this.previousExecutedLine &&
+          colNum === this.previousExecutedCol
+        ) {
+          return null;
+        }
+      } else {
+        // this is a line breakpoint
+        if (filePath === this.previousExecutedFile && lineNum === this.previousExecutedLine) {
+          return null;
+        }
       }
-      return true;
+      return breakpoint;
     }
-    return false;
+    return null;
   }
 
   checkForBreakpoint(ast: BabelNode) {
@@ -97,16 +107,17 @@ export class DebugServer {
       if (filePath === null) return;
       let lineNum = location.start.line;
       let colNum = location.start.column;
-
       // Check whether there is a breakpoint we need to stop on here
-      if (!this.proceedBreakpoint(filePath, lineNum, colNum)) return;
-
+      let breakpoint = this.findStoppableBreakpoint(filePath, lineNum, colNum);
+      if (breakpoint === null) return;
       // Tell the adapter that Prepack has stopped on this breakpoint
-      this.channel.writeOut(`breakpoint stopped ${lineNum}:${colNum}`);
+      this.channel.writeOut(
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_STOPPED} ${breakpoint.filePath} ${breakpoint.line}:${breakpoint.column}`
+      );
 
       // Wait for the adapter to tell us to run again
       this.waitForRun(function(line) {
-        return line === "proceed";
+        return line === DebugMessage.PREPACK_RUN;
       });
     }
   }
@@ -116,29 +127,37 @@ export class DebugServer {
       return;
     }
     let parts = command.split(" ");
-    if (parts[0] === "breakpoint") {
+    if (parts[0] === DebugMessage.BREAKPOINT) {
       this.executeBreakpointCommand(this._parseBreakpointArguments(parts));
     }
   }
 
   executeBreakpointCommand(args: BreakpointCommandArguments) {
-    if (args.kind === "add") {
+    if (args.kind === DebugMessage.BREAKPOINT_ADD) {
       this.breakpoints.addBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(`added breakpoint ${args.filePath} ${args.lineNum} ${args.columnNum}`);
-    } else if (args.kind === "remove") {
+      this.channel.writeOut(
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ADD} ${args.filePath} ${args.lineNum} ${args.columnNum}`
+      );
+    } else if (args.kind === DebugMessage.BREAKPOINT_REMOVE) {
       this.breakpoints.removeBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(`removed breakpoint ${args.filePath} ${args.lineNum} ${args.columnNum}`);
-    } else if (args.kind === "enable") {
+      this.channel.writeOut(
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_REMOVE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
+      );
+    } else if (args.kind === DebugMessage.BREAKPOINT_ENABLE) {
       this.breakpoints.enableBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(`enabled breakpoint ${args.filePath} ${args.lineNum} ${args.columnNum}`);
-    } else if (args.kind === "disable") {
+      this.channel.writeOut(
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ENABLE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
+      );
+    } else if (args.kind === DebugMessage.BREAKPOINT_DISABLE) {
       this.breakpoints.disableBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(`disabled breakpoint ${args.filePath} ${args.lineNum} ${args.columnNum}`);
+      this.channel.writeOut(
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_DISABLE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
+      );
     }
   }
 
   _parseBreakpointArguments(parts: Array<string>): BreakpointCommandArguments {
-    invariant(parts[0] === "breakpoint");
+    invariant(parts[0] === DebugMessage.BREAKPOINT);
     let kind = parts[1];
     let filePath = parts[2];
 
@@ -162,6 +181,6 @@ export class DebugServer {
 
   shutdown() {
     //let the adapter know Prepack is done running
-    this.channel.writeOut("Finished");
+    this.channel.writeOut(DebugMessage.PREPACK_FINISH);
   }
 }

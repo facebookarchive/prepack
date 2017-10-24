@@ -28,6 +28,13 @@ declare module 'vscode-debugadapter' {
       event: string;
       constructor(event: string, body?: any): this
   }
+  declare export class StoppedEvent mixins Event, DebugProtocol.StoppedEvent {
+      body: {
+          reason: string,
+          threadId: number
+      };
+      constructor(reason: string, threadId: number, exception_text?: string): this
+  }
   declare export class InitializedEvent mixins Event, DebugProtocol.InitializedEvent {
       constructor(): this
   }

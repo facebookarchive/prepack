@@ -9,7 +9,14 @@
 
 /* @flow */
 
-import { DebugSession, LoggingDebugSession, InitializedEvent, OutputEvent, TerminatedEvent } from "vscode-debugadapter";
+import {
+  DebugSession,
+  LoggingDebugSession,
+  InitializedEvent,
+  OutputEvent,
+  TerminatedEvent,
+  StoppedEvent,
+} from "vscode-debugadapter";
 import * as DebugProtocol from "vscode-debugprotocol";
 import child_process from "child_process";
 import Queue from "queue-fifo";
@@ -126,9 +133,23 @@ class PrepackDebugSession extends LoggingDebugSession {
   }
 
   _processPrepackMessage(message: string) {
-    if (message === DebugMessage.PREPACK_READY) {
+    let parts = message.split(" ");
+    let prefix = parts[0];
+    if (prefix === DebugMessage.PREPACK_READY) {
       this._prepackWaiting = true;
+      this.sendEvent(new StoppedEvent("entry", 1));
       this._trySendNextRequest();
+    } else if (prefix === DebugMessage.BREAKPOINT) {
+      if (parts[1] === DebugMessage.BREAKPOINT_ADD) {
+        // Prepack acknowledged adding a breakpoint
+        this._prepackWaiting = true;
+        this._trySendNextRequest();
+      } else if (parts[1] === DebugMessage.BREAKPOINT_STOPPED) {
+        // Prepack stopped on a breakpoint
+        this._prepackWaiting = true;
+        this.sendEvent(new StoppedEvent("breakpoint " + parts.slice(2).join(" "), 1));
+        this._trySendNextRequest();
+      }
     }
   }
 
@@ -145,6 +166,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     // check that there is a message to send
     if (this._messageQueue.isEmpty()) return false;
     let request = this._messageQueue.dequeue();
+    this._adapterChannel.listenOnFile(this._handleFileReadError.bind(this), this._processPrepackMessage.bind(this));
     this._adapterChannel.writeOut(request);
     this._prepackWaiting = false;
     return true;
@@ -171,6 +193,28 @@ class PrepackDebugSession extends LoggingDebugSession {
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // queue a Run request to Prepack and try to send the next request in the queue
     this._messageQueue.enqueue(DebugMessage.PREPACK_RUN);
+    this._trySendNextRequest();
+    this.sendResponse(response);
+  }
+
+  setBreakPointsRequest(
+    response: DebugProtocol.SetBreakpointsResponse,
+    args: DebugProtocol.SetBreakpointsArguments
+  ): void {
+    if (!args.source.path || !args.breakpoints) return;
+    let filePath = args.source.path;
+
+    for (let i = 0; i < args.breakpoints.length; i++) {
+      let breakpoint = args.breakpoints[i];
+      let line = breakpoint.line;
+      let column = 0;
+      if (breakpoint.column) {
+        column = breakpoint.column;
+      }
+      this._messageQueue.enqueue(
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ADD} ${filePath} ${line} ${column}`
+      );
+    }
     this._trySendNextRequest();
     this.sendResponse(response);
   }

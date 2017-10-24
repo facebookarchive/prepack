@@ -106,6 +106,14 @@ export class UISession {
     } else if (event.event === "terminated") {
       console.log("Prepack exited! Shutting down...");
       this.shutdown();
+    } else if (event.event === "stopped") {
+      if (event.body) {
+        if (event.body.reason === "entry") {
+          console.log("Prepack is ready");
+        } else if (event.body.reason.startsWith("breakpoint")) {
+          console.log("Prepack stopped on: " + event.body.reason);
+        }
+      }
     }
   }
 
@@ -155,6 +163,21 @@ export class UISession {
           threadId: 1,
         };
         this._sendContinueRequest(continueArgs);
+        break;
+      case "breakpoint":
+        // format: breakpoint add <filePath> <line> ?<column>
+        if (parts.length !== 4 && parts.length !== 5) return false;
+        if (parts[1] === "add") {
+          let filePath = parts[2];
+          let line = parseInt(parts[3], 10);
+          if (isNaN(line)) return false;
+          let column = 0;
+          if (parts.length === 5) {
+            column = parseInt(parts[4], 10);
+            if (isNaN(column)) return false;
+          }
+          this._sendBreakpointRequest(filePath, line, column);
+        }
         break;
       default:
         // invalid command
@@ -216,6 +239,28 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "continue",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendBreakpointRequest(filePath: string, line: number, column: number = 0) {
+    let source: DebugProtocol.Source = {
+      path: filePath,
+    };
+    let breakpoint: DebugProtocol.SourceBreakpoint = {
+      line: line,
+      column: column,
+    };
+    let args: DebugProtocol.SetBreakpointsArguments = {
+      source: source,
+      breakpoints: [breakpoint],
+    };
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "setBreakpoints",
       arguments: args,
     };
     let json = JSON.stringify(message);
