@@ -10,44 +10,25 @@
 /* @flow */
 import fs from "fs";
 import type { DebuggerOptions } from "./../../options.js";
-import { MessagePackager } from "./MessagePackager.js";
+import { FileIOWrapper } from "./FileIOWrapper.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
   constructor(dbgOptions: DebuggerOptions) {
-    this._inFilePath = dbgOptions.inFilePath;
-    this._outFilePath = dbgOptions.outFilePath;
-    this._packager = new MessagePackager(true);
+    this._ioWrapper = new FileIOWrapper(true, fs, dbgOptions.inFilePath, dbgOptions.outFilePath);
   }
-  _inFilePath: string;
-  _outFilePath: string;
-  // helper to package sent messages and unpackage received messages
-  _packager: MessagePackager;
+  _ioWrapper: FileIOWrapper;
 
   writeOut(contents: string) {
-    fs.writeFileSync(this._outFilePath, this._packager.package(contents));
+    this._ioWrapper.writeOutSync(contents);
   }
 
   listenOnFile(errorHandler: (err: ?ErrnoError) => void, messageProcessor: (message: string) => void) {
-    fs.readFile(this._inFilePath, { encoding: "utf8" }, (err: ?ErrnoError, contents: string) => {
-      if (err) {
-        errorHandler(err);
-        return;
-      }
-      let message = this._packager.unpackage(contents);
-      if (message === null) {
-        this.listenOnFile(errorHandler, messageProcessor);
-        return;
-      }
-      //clear the file
-      fs.writeFileSync(this._inFilePath, "");
-      //process the message
-      messageProcessor(message);
-    });
+    this._ioWrapper.readIn(errorHandler, messageProcessor);
   }
 
   clean() {
-    fs.writeFileSync(this._inFilePath, "");
-    fs.writeFileSync(this._outFilePath, "");
+    this._ioWrapper.clearInFile();
+    this._ioWrapper.clearOutFile();
   }
 }

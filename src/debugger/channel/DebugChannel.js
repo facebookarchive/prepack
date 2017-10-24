@@ -8,39 +8,31 @@
  */
 
 /* @flow */
-import path from "path";
-import invariant from "./../../invariant.js";
-import type { DebuggerOptions } from "./../../options";
-import { MessagePackager } from "./MessagePackager.js";
+import typeof fs from "fs";
+import type { DebuggerOptions } from "./../../options.js";
+import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
-  constructor(fs: any, dbgOptions: DebuggerOptions) {
-    this._inFilePath = path.join(__dirname, "../../../", dbgOptions.inFilePath);
-    this._outFilePath = path.join(__dirname, "../../../", dbgOptions.outFilePath);
-    this._fs = fs;
+  constructor(fileSystem: fs, dbgOptions: DebuggerOptions) {
     this._requestReceived = false;
-    this._packager = new MessagePackager(false);
+    this._ioWrapper = new FileIOWrapper(false, fileSystem, dbgOptions.inFilePath, dbgOptions.outFilePath);
   }
 
   _inFilePath: string;
   _outFilePath: string;
-  _fs: any;
   _requestReceived: boolean;
-  // helper to package sent messages and unpackage received messages
-  _packager: MessagePackager;
+  _ioWrapper: FileIOWrapper;
 
   /*
   /* Only called in the beginning to check if a debugger is attached
   */
   debuggerIsAttached(): boolean {
-    // Don't use readIn here because we don't want to block if there is no debugger
-    let contents = this._fs.readFileSync(this._inFilePath, "utf8");
-    let message = this._packager.unpackage(contents);
+    let message = this._ioWrapper.readInSyncOnce();
     if (message === DebugMessage.DEBUGGER_ATTACHED) {
       this._requestReceived = true;
-      this._fs.writeFileSync(this._inFilePath, "");
+      this._ioWrapper.clearInFile();
       this.writeOut(DebugMessage.PREPACK_READY);
       return true;
     }
@@ -50,33 +42,18 @@ export class DebugChannel {
   /* Reads in a request from the debug adapter
   /* The caller is responsible for sending a response with the appropriate
   /* contents at the right time.
-  /* For now, it returns the request as a string. It will be made to return a
-  /* Request object based on the protocol
   */
   readIn(): string {
-    let message: null | string = null;
-    while (true) {
-      let contents = this._fs.readFileSync(this._inFilePath, "utf8");
-      message = this._packager.unpackage(contents);
-      if (message === null) continue;
-      break;
-    }
-    // loop should not break when message is still null
-    invariant(message !== null);
-    //clear the file
-    this._fs.writeFileSync(this._inFilePath, "");
+    let message = this._ioWrapper.readInSync();
     this._requestReceived = true;
     return message;
   }
 
-  /* Write out a response to the debug adapter
-  /* For now, it writes the response as a string. It will be made to return
-  /* a Response object based on the protocol
-  */
+  // Write out a response to the debug adapter
   writeOut(contents: string): void {
     //Prepack only writes back to the debug adapter in response to a request
     if (this._requestReceived) {
-      this._fs.writeFileSync(this._outFilePath, this._packager.package(contents));
+      this._ioWrapper.writeOutSync(contents);
       this._requestReceived = false;
     }
   }
