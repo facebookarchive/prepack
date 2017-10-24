@@ -44,18 +44,8 @@ export class DebugServer {
     let message = "";
     while (blocking) {
       message = this.channel.readIn().toString();
-      if (runCondition(message)) {
-        //The adapter gave the command to continue running
-        //The caller (or someone else later) needs to send a response
-        //to the adapter
-        //We cannot pass in the response too because it may not be ready
-        //immediately after Prepack unblocks
-        blocking = false;
-      } else {
-        //The adapter gave another command so Prepack still blocks
-        //but can read in other commands and respond to them
-        this.processDebuggerCommand(message);
-      }
+      let runStatus = this.processDebuggerCommand(message, runCondition);
+      if (runStatus) blocking = false;
     }
   }
 
@@ -116,13 +106,15 @@ export class DebugServer {
       );
 
       // Wait for the adapter to tell us to run again
-      this.waitForRun(function(message) {
+      this.waitForRun((message: string) => {
         return message === DebugMessage.PREPACK_RUN;
       });
     }
   }
 
-  processDebuggerCommand(command: string) {
+  // Process a command from a debugger. Returns whether Prepack should unblocks
+  // if it is blocked
+  processDebuggerCommand(command: string, runCondition?: string => boolean) {
     if (command.length === 0) {
       return;
     }
@@ -135,6 +127,10 @@ export class DebugServer {
       default:
         break;
     }
+    if (runCondition !== undefined) {
+      if (runCondition(command)) return true;
+    }
+    return false;
   }
 
   executeBreakpointCommand(args: BreakpointCommandArguments) {
