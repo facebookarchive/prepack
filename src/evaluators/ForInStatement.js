@@ -210,27 +210,8 @@ function emitResidualLoopIfSafe(
           }
         }
         // add loop to generator
-        generator.addEntry({
-          // duplicate args to ensure refcount > 1
-          args: [o, targetObject, sourceObject, targetObject, sourceObject],
-          buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {
-            invariant(boundName !== undefined);
-            return t.forInStatement(
-              lh,
-              obj,
-              t.blockStatement([
-                t.expressionStatement(
-                  t.assignmentExpression(
-                    "=",
-                    t.memberExpression(tgt, boundName, true),
-                    t.memberExpression(src, boundName, true)
-                  )
-                ),
-              ])
-            );
-          },
-        });
-
+        invariant(boundName != null);
+        generator.emitForInStatement(o, lh, sourceObject, targetObject, boundName);
         return realm.intrinsics.undefined;
       }
     }
