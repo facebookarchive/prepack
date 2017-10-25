@@ -209,9 +209,7 @@ class PrepackDebugSession extends LoggingDebugSession {
       if (breakpoint.column) {
         column = breakpoint.column;
       }
-      this._messageQueue.enqueue(
-        `${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`
-      );
+      this._messageQueue.enqueue(`${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`);
     }
     this._trySendNextRequest();
     this.sendResponse(response);

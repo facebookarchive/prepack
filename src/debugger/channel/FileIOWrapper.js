@@ -15,6 +15,8 @@ import { MessagePackager } from "./MessagePackager.js";
 import invariant from "../../invariant.js";
 
 export class FileIOWrapper {
+  // fs cannot be imported from anything called directly or indirectly
+  // by prepack-standalone so it needs to be passed in here
   constructor(isAdapter: boolean, fileSystem: fs, inFilePath: string, outFilePath: string) {
     // the paths are expected to be relative to Prepack top level directory
     this._fs = fileSystem;

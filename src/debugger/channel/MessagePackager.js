@@ -42,13 +42,13 @@ export class MessagePackager {
     invariant(!isNaN(messageLength));
     let startIndex = separatorIndex + LENGTH_SEPARATOR.length;
     let endIndex = startIndex + messageLength;
+    // there should only be one message in the contents at a time
+    invariant(contents.length <= startIndex + messageLength);
     // if we didn't read the whole message yet --> partial read
     if (contents.length < endIndex) {
       return null;
     }
     let message = contents.slice(startIndex, endIndex);
-    // there should only be one message in the contents at a time
-    invariant(contents.length <= startIndex + messageLength);
     return message;
   }
 }

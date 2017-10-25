@@ -10,7 +10,7 @@
 /* @flow */
 
 // More error types will be added over time
-export type DebuggerErrorType = "Invalid command" | "Invalid response"
+export type DebuggerErrorType = "Invalid command" | "Invalid response";
 
 export class DebuggerError {
   constructor(errorType: DebuggerErrorType, message: string) {
