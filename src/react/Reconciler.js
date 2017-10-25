@@ -54,13 +54,18 @@ const BranchStatus = {
 
 type BranchStatusEnum = $Keys<typeof BranchStatus>;
 
-function createObject(realm: Realm, shape: null | { [id: string]: any }, name: string | null) {
+type ObjectTypes = {
+  [key: string]: ObjectTypes | string,
+};
+
+function createObject(realm: Realm, shape: ObjectTypes | null, name: string | null) {
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   if (shape != null) {
     // to get around Flow complaining that shape could be null
     let shapeThatIsNotNull = shape;
     Object.keys(shape).forEach((id: string) => {
       let value = shapeThatIsNotNull[id];
+      invariant(value instanceof Value, "creation of object failed due to object containing non-value properties");
       obj.$Set(id, value, obj);
       if (name !== null) {
         value.intrinsicName = `${name}.${id}`;
@@ -81,10 +86,10 @@ function createAbstractByType(realm: Realm, typeNameString: string, name: string
   return value;
 }
 
-function _createAbstractObject(realm: Realm, name: string, properties): AbstractValue {
+function _createAbstractObject(realm: Realm, name: string, objectTypes: ObjectTypes | null): AbstractValue {
   let value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
   value.intrinsicName = name;
-  let template = createObject(realm, properties, name);
+  let template = createObject(realm, objectTypes, name);
   template.makePartial();
   template.makeSimple();
   value.values = new ValuesDomain(new Set([template]));
@@ -92,7 +97,11 @@ function _createAbstractObject(realm: Realm, name: string, properties): Abstract
   return value;
 }
 
-function createAbstractObject(realm: Realm, name: string | null, objectTypes: any): ObjectValue | AbstractValue {
+function createAbstractObject(
+  realm: Realm,
+  name: string | null,
+  objectTypes: ObjectTypes | null | string
+): ObjectValue | AbstractValue {
   if (typeof objectTypes === "string") {
     invariant(
       objectTypes === "empty",
@@ -104,7 +113,7 @@ function createAbstractObject(realm: Realm, name: string | null, objectTypes: an
     let propTypeObject = {};
 
     Object.keys(objectTypes).forEach(key => {
-      let value = objectTypes[key];
+      let value = ((objectTypes: any): ObjectTypes)[key];
       let propertyName = name !== null ? `${name}.${key}` : key;
       if (typeof value === "string") {
         propTypeObject[key] = createAbstractByType(realm, value, propertyName);
