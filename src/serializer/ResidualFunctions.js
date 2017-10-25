@@ -541,7 +541,7 @@ export class ResidualFunctions {
         // v8 seems to do something clever with array splicing, so this potentially
         // expensive operations seems to be actually cheap.
         Array.prototype.splice.apply(
-          insertionPoint.body,
+          insertionPoint.body.entries,
           ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>))
         );
       }
