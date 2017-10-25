@@ -10,6 +10,7 @@
 /* @flow */
 import typeof fs from "fs";
 import type { DebuggerOptions } from "./../../options.js";
+import invariant from "./../../invariant.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
 
@@ -52,9 +53,8 @@ export class DebugChannel {
   // Write out a response to the debug adapter
   writeOut(contents: string): void {
     //Prepack only writes back to the debug adapter in response to a request
-    if (this._requestReceived) {
-      this._ioWrapper.writeOutSync(contents);
-      this._requestReceived = false;
-    }
+    invariant(this._requestReceived);
+    this._ioWrapper.writeOutSync(contents);
+    this._requestReceived = false;
   }
 }

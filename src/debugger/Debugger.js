@@ -16,6 +16,7 @@ import type { BreakpointCommandArguments } from "./types.js";
 import invariant from "../invariant.js";
 import { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./channel/DebugMessage.js";
+import { DebuggerError } from "./DebuggerError.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel) {
@@ -23,9 +24,7 @@ export class DebugServer {
     this.previousExecutedLine = 0;
     this.previousExecutedCol = 0;
     this.channel = channel;
-    this.waitForRun((message: string) => {
-      return message === DebugMessage.PREPACK_RUN;
-    });
+    this.waitForRun();
   }
   // the collection of breakpoints
   breakpoints: BreakpointCollection;
@@ -39,13 +38,12 @@ export class DebugServer {
   /* runCondition: a function that determines whether the adapter has told
   /* Prepack to continue running
   */
-  waitForRun(runCondition: string => boolean) {
-    let blocking = true;
+  waitForRun() {
+    let keepRunning = false;
     let message = "";
-    while (blocking) {
+    while (!keepRunning) {
       message = this.channel.readIn().toString();
-      let runStatus = this.processDebuggerCommand(message, runCondition);
-      if (runStatus) blocking = false;
+      keepRunning = this.processDebuggerCommand(message);
     }
   }
 
@@ -106,15 +104,13 @@ export class DebugServer {
       );
 
       // Wait for the adapter to tell us to run again
-      this.waitForRun((message: string) => {
-        return message === DebugMessage.PREPACK_RUN;
-      });
+      this.waitForRun();
     }
   }
 
-  // Process a command from a debugger. Returns whether Prepack should unblocks
+  // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
-  processDebuggerCommand(command: string, runCondition?: string => boolean) {
+  processDebuggerCommand(command: string) {
     if (command.length === 0) {
       return;
     }
@@ -124,11 +120,10 @@ export class DebugServer {
       case DebugMessage.BREAKPOINT:
         this.executeBreakpointCommand(this._parseBreakpointArguments(parts));
         break;
+      case DebugMessage.PREPACK_RUN:
+        return true;
       default:
-        break;
-    }
-    if (runCondition !== undefined) {
-      if (runCondition(command)) return true;
+        throw new DebuggerError("Invalid command", "Invalid command from adapter: " + prefix);
     }
     return false;
   }
