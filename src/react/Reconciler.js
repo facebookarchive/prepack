@@ -25,7 +25,7 @@ import {
   ObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, getJSXPropertyValue, getUniqueJSXElementKey } from "../utils/jsx.js";
+import { isReactElement, getUniqueJSXElementKey } from "../utils/jsx.js";
 import { ObjectCreate, GetValue, Get } from "../methods/index.js";
 import buildExpressionTemplate from "../utils/builder.js";
 import { ValuesDomain } from "../domains/index.js";
@@ -221,8 +221,7 @@ class Reconciler {
   }
   _applyBranchedLogic(value: ObjectValue) {
     // we need to apply a key when we're branched
-    let properties = value.properties;
-    let currentKeyValue = getJSXPropertyValue(this.realm, properties, "key") || this.realm.intrinsics.null;
+    let currentKeyValue = Get(this.realm, value, "key") || this.realm.intrinsics.null;
     let uniqueKey = getUniqueJSXElementKey("", this.reactSerializerState.usedReactElementKeys);
     let newKeyValue = GetValue(this.realm, this.realm.$GlobalEnv.evaluate(t.stringLiteral(uniqueKey), false));
     if (currentKeyValue !== this.realm.intrinsics.null) {
@@ -258,10 +257,9 @@ class Reconciler {
       return value;
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
-      let properties = value.properties;
-      let typeValue = getJSXPropertyValue(this.realm, properties, "type");
-      let propsValue = getJSXPropertyValue(this.realm, properties, "props");
-      let refValue = getJSXPropertyValue(this.realm, properties, "ref");
+      let typeValue = Get(this.realm, value, "type");
+      let propsValue = Get(this.realm, value, "props");
+      let refValue = Get(this.realm, value, "ref");
       if (typeValue instanceof StringValue) {
         // terminal host component. Start evaluating its children.
         if (propsValue instanceof ObjectValue) {
