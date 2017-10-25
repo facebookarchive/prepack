@@ -135,16 +135,16 @@ class PrepackDebugSession extends LoggingDebugSession {
   _processPrepackMessage(message: string) {
     let parts = message.split(" ");
     let prefix = parts[0];
-    if (prefix === DebugMessage.PREPACK_READY) {
+    if (prefix === DebugMessage.PREPACK_READY_RESPONSE) {
       this._prepackWaiting = true;
       this.sendEvent(new StoppedEvent("entry", 1));
       this._trySendNextRequest();
     } else if (prefix === DebugMessage.BREAKPOINT) {
-      if (parts[1] === DebugMessage.BREAKPOINT_ADD) {
+      if (parts[1] === DebugMessage.BREAKPOINT_ADD_RESPONSE) {
         // Prepack acknowledged adding a breakpoint
         this._prepackWaiting = true;
         this._trySendNextRequest();
-      } else if (parts[1] === DebugMessage.BREAKPOINT_STOPPED) {
+      } else if (parts[1] === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
         // Prepack stopped on a breakpoint
         this._prepackWaiting = true;
         this.sendEvent(new StoppedEvent("breakpoint " + parts.slice(2).join(" "), 1));
@@ -192,7 +192,7 @@ class PrepackDebugSession extends LoggingDebugSession {
   */
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // queue a Run request to Prepack and try to send the next request in the queue
-    this._messageQueue.enqueue(DebugMessage.PREPACK_RUN);
+    this._messageQueue.enqueue(DebugMessage.PREPACK_RUN_COMMAND);
     this._trySendNextRequest();
     this.sendResponse(response);
   }
@@ -212,7 +212,7 @@ class PrepackDebugSession extends LoggingDebugSession {
         column = breakpoint.column;
       }
       this._messageQueue.enqueue(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ADD} ${filePath} ${line} ${column}`
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`
       );
     }
     this._trySendNextRequest();

@@ -11,14 +11,38 @@
 
 //A collection of messages used between Prepack and the debug adapter
 export class DebugMessage {
+  /* Messages from adapter to Prepack */
+  // Tell Prepack a debugger is present
   static DEBUGGER_ATTACHED: string = "DebuggerAttached";
-  static PREPACK_READY: string = "PrepackReady";
-  static PREPACK_RUN: string = "PrepackRun";
-  static PREPACK_FINISH: string = "PrepackFinish";
+  // Command Prepack to keep running
+  static PREPACK_RUN_COMMAND: string = "PrepackRun";
+  // Command to set a breakpoint
+  static BREAKPOINT_ADD_COMMAND: string = "Breakpoint-add-command";
+  // Command to remove a breakpoint
+  static BREAKPOINT_REMOVE_COMMAND: string = "Breakpoint-remove-command";
+  // Command to enable a breakpoint
+  static BREAKPOINT_ENABLE_COMMAND: string = "Breakpoint-enable-command";
+  // Command to disable a breakpoint
+  static BREAKPOINT_DISABLE_COMMAND: string = "Breakpoint-disable-command";
+
+  /* Messages from Prepack to adapter */
+  // Respond to the adapter that Prepack is ready
+  static PREPACK_READY_RESPONSE: string = "PrepackReady";
+  // Respond to the adapter that Prepack is finished
+  static PREPACK_FINISH_RESPONSE: string = "PrepackFinish";
+  // Respond to the adapter that Prepack has stopped on a breakpoint
+  static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped";
+  // Acknowledgement for setting a breakpoint
+  static BREAKPOINT_ADD_RESPONSE: string = "Breakpoint-add-response";
+  // Acknowledgement for removing a breakpoint
+  static BREAKPOINT_REMOVE_RESPONSE: string = "Breakpoint-remove-response";
+  // Acknowledgement for enabling a breakpoint
+  static BREAKPOINT_ENABLE_RESPONSE: string = "Breakpoint-enable-response";
+  // Acknoledgement for disabling a breakpoint
+  static BREAKPOINT_DISABLE_RESPONSE: string = "Breakpoint-disable-response";
+
   static BREAKPOINT: string = "Breakpoint";
-  static BREAKPOINT_ADD: string = "Breakpoint-added";
-  static BREAKPOINT_REMOVE: string = "Breakpoint-removed";
-  static BREAKPOINT_ENABLE: string = "Breakpoint-enabled";
-  static BREAKPOINT_DISABLE: string = "Breakpoint-disable";
-  static BREAKPOINT_STOPPED: string = "Breakpoint-stopped";
+
+
+
 }

@@ -34,7 +34,7 @@ export class DebugChannel {
     if (message === DebugMessage.DEBUGGER_ATTACHED) {
       this._requestReceived = true;
       this._ioWrapper.clearInFile();
-      this.writeOut(DebugMessage.PREPACK_READY);
+      this.writeOut(DebugMessage.PREPACK_READY_RESPONSE);
       return true;
     }
     return false;

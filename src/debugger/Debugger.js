@@ -100,7 +100,7 @@ export class DebugServer {
       if (breakpoint === null) return;
       // Tell the adapter that Prepack has stopped on this breakpoint
       this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_STOPPED} ${breakpoint.filePath} ${breakpoint.line}:${breakpoint.column}`
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${breakpoint.filePath} ${breakpoint.line}:${breakpoint.column}`
       );
 
       // Wait for the adapter to tell us to run again
@@ -120,7 +120,7 @@ export class DebugServer {
       case DebugMessage.BREAKPOINT:
         this.executeBreakpointCommand(this._parseBreakpointArguments(parts));
         break;
-      case DebugMessage.PREPACK_RUN:
+      case DebugMessage.PREPACK_RUN_COMMAND:
         return true;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + prefix);
@@ -129,25 +129,25 @@ export class DebugServer {
   }
 
   executeBreakpointCommand(args: BreakpointCommandArguments) {
-    if (args.kind === DebugMessage.BREAKPOINT_ADD) {
+    if (args.kind === DebugMessage.BREAKPOINT_ADD_COMMAND) {
       this.breakpoints.addBreakpoint(args.filePath, args.lineNum, args.columnNum);
       this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ADD} ${args.filePath} ${args.lineNum} ${args.columnNum}`
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ADD_RESPONSE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
       );
-    } else if (args.kind === DebugMessage.BREAKPOINT_REMOVE) {
+    } else if (args.kind === DebugMessage.BREAKPOINT_REMOVE_COMMAND) {
       this.breakpoints.removeBreakpoint(args.filePath, args.lineNum, args.columnNum);
       this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_REMOVE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_REMOVE_RESPONSE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
       );
-    } else if (args.kind === DebugMessage.BREAKPOINT_ENABLE) {
+    } else if (args.kind === DebugMessage.BREAKPOINT_ENABLE_COMMAND) {
       this.breakpoints.enableBreakpoint(args.filePath, args.lineNum, args.columnNum);
       this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ENABLE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ENABLE_RESPONSE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
       );
-    } else if (args.kind === DebugMessage.BREAKPOINT_DISABLE) {
+    } else if (args.kind === DebugMessage.BREAKPOINT_DISABLE_COMMAND) {
       this.breakpoints.disableBreakpoint(args.filePath, args.lineNum, args.columnNum);
       this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_DISABLE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
+        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_DISABLE_RESPONSE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
       );
     }
   }
@@ -177,6 +177,6 @@ export class DebugServer {
 
   shutdown() {
     //let the adapter know Prepack is done running
-    this.channel.writeOut(DebugMessage.PREPACK_FINISH);
+    this.channel.writeOut(DebugMessage.PREPACK_FINISH_RESPONSE);
   }
 }
