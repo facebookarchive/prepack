@@ -139,17 +139,15 @@ class PrepackDebugSession extends LoggingDebugSession {
       this._prepackWaiting = true;
       this.sendEvent(new StoppedEvent("entry", 1));
       this._trySendNextRequest();
-    } else if (prefix === DebugMessage.BREAKPOINT) {
-      if (parts[1] === DebugMessage.BREAKPOINT_ADD_RESPONSE) {
-        // Prepack acknowledged adding a breakpoint
-        this._prepackWaiting = true;
-        this._trySendNextRequest();
-      } else if (parts[1] === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
-        // Prepack stopped on a breakpoint
-        this._prepackWaiting = true;
-        this.sendEvent(new StoppedEvent("breakpoint " + parts.slice(2).join(" "), 1));
-        this._trySendNextRequest();
-      }
+    } else if (prefix === DebugMessage.BREAKPOINT_ADD_RESPONSE) {
+      // Prepack acknowledged adding a breakpoint
+      this._prepackWaiting = true;
+      this._trySendNextRequest();
+    } else if (prefix === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
+      // Prepack stopped on a breakpoint
+      this._prepackWaiting = true;
+      this.sendEvent(new StoppedEvent("breakpoint " + parts.slice(2).join(" "), 1));
+      this._trySendNextRequest();
     }
   }
 
@@ -212,7 +210,7 @@ class PrepackDebugSession extends LoggingDebugSession {
         column = breakpoint.column;
       }
       this._messageQueue.enqueue(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`
+        `${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`
       );
     }
     this._trySendNextRequest();

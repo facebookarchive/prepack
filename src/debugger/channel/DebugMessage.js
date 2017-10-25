@@ -41,7 +41,6 @@ export class DebugMessage {
   // Acknoledgement for disabling a breakpoint
   static BREAKPOINT_DISABLE_RESPONSE: string = "Breakpoint-disable-response";
 
-  static BREAKPOINT: string = "Breakpoint";
 
 
 

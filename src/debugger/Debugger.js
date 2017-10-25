@@ -100,7 +100,7 @@ export class DebugServer {
       if (breakpoint === null) return;
       // Tell the adapter that Prepack has stopped on this breakpoint
       this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${breakpoint.filePath} ${breakpoint.line}:${breakpoint.column}`
+        `${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${breakpoint.filePath} ${breakpoint.line}:${breakpoint.column}`
       );
 
       // Wait for the adapter to tell us to run again
@@ -117,8 +117,33 @@ export class DebugServer {
     let parts = command.split(" ");
     let prefix = parts[0];
     switch (prefix) {
-      case DebugMessage.BREAKPOINT:
-        this.executeBreakpointCommand(this._parseBreakpointArguments(parts));
+      case DebugMessage.BREAKPOINT_ADD_COMMAND:
+        let addArgs = this._parseBreakpointArguments(parts);
+        this.breakpoints.addBreakpoint(addArgs.filePath, addArgs.lineNum, addArgs.columnNum);
+        this.channel.writeOut(
+          `${DebugMessage.BREAKPOINT_ADD_RESPONSE} ${addArgs.filePath} ${addArgs.lineNum} ${addArgs.columnNum}`
+        );
+        break;
+      case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
+        let removeArgs = this._parseBreakpointArguments(parts);
+        this.breakpoints.removeBreakpoint(removeArgs.filePath, removeArgs.lineNum, removeArgs.columnNum);
+        this.channel.writeOut(
+          `${DebugMessage.BREAKPOINT_REMOVE_RESPONSE} ${removeArgs.filePath} ${removeArgs.lineNum} ${removeArgs.columnNum}`
+        );
+        break;
+      case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
+        let enableArgs = this._parseBreakpointArguments(parts);
+        this.breakpoints.enableBreakpoint(enableArgs.filePath, enableArgs.lineNum, enableArgs.columnNum);
+        this.channel.writeOut(
+          `${DebugMessage.BREAKPOINT_ENABLE_RESPONSE} ${enableArgs.filePath} ${enableArgs.lineNum} ${enableArgs.columnNum}`
+        );
+        break;
+      case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
+        let disableArgs = this._parseBreakpointArguments(parts);
+        this.breakpoints.disableBreakpoint(disableArgs.filePath, disableArgs.lineNum, disableArgs.columnNum);
+        this.channel.writeOut(
+          `${DebugMessage.BREAKPOINT_DISABLE_RESPONSE} ${disableArgs.filePath} ${disableArgs.lineNum} ${disableArgs.columnNum}`
+        );
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
         return true;
@@ -128,40 +153,15 @@ export class DebugServer {
     return false;
   }
 
-  executeBreakpointCommand(args: BreakpointCommandArguments) {
-    if (args.kind === DebugMessage.BREAKPOINT_ADD_COMMAND) {
-      this.breakpoints.addBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ADD_RESPONSE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
-      );
-    } else if (args.kind === DebugMessage.BREAKPOINT_REMOVE_COMMAND) {
-      this.breakpoints.removeBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_REMOVE_RESPONSE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
-      );
-    } else if (args.kind === DebugMessage.BREAKPOINT_ENABLE_COMMAND) {
-      this.breakpoints.enableBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_ENABLE_RESPONSE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
-      );
-    } else if (args.kind === DebugMessage.BREAKPOINT_DISABLE_COMMAND) {
-      this.breakpoints.disableBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT} ${DebugMessage.BREAKPOINT_DISABLE_RESPONSE} ${args.filePath} ${args.lineNum} ${args.columnNum}`
-      );
-    }
-  }
-
   _parseBreakpointArguments(parts: Array<string>): BreakpointCommandArguments {
-    invariant(parts[0] === DebugMessage.BREAKPOINT);
-    let kind = parts[1];
-    let filePath = parts[2];
+    let kind = parts[0];
+    let filePath = parts[1];
 
-    let lineNum = parseInt(parts[3], 10);
+    let lineNum = parseInt(parts[2], 10);
     invariant(!isNaN(lineNum));
     let columnNum = 0;
-    if (parts.length === 5) {
-      columnNum = parseInt(parts[4], 10);
+    if (parts.length === 4) {
+      columnNum = parseInt(parts[3], 10);
       invariant(!isNaN(columnNum));
     }
 
