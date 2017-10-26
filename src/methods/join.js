@@ -9,7 +9,6 @@
 
 /* @flow */
 
-import type { BabelNodeBlockStatement } from "babel-types";
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
@@ -30,11 +29,9 @@ import { Reference } from "../environment.js";
 import { cloneDescriptor, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { construct_empty_effects } from "../realm.js";
 import { Generator } from "../utils/generator.js";
-import type { SerializationContext } from "../utils/generator.js";
 import { AbstractValue, ObjectValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
-import * as t from "babel-types";
 
 export function stopEffectCaptureAndJoinCompletions(
   c1: PossiblyNormalCompletion,
@@ -450,16 +447,7 @@ export function composeGenerators(realm: Realm, generator1: Generator, generator
   generator1.parent = result;
   generator2.parent = result;
   if (!generator1.empty() || !generator2.empty()) {
-    result.addEntry({
-      args: [],
-      buildNode: function([], context) {
-        let statements = [];
-        if (!generator1.empty()) statements.push(serializeBody(generator1, context));
-        if (!generator2.empty()) statements.push(serializeBody(generator2, context));
-        return t.blockStatement(statements);
-      },
-      dependencies: [generator1, generator2],
-    });
+    result.composeGenerators(generator1, generator2);
   }
   return result;
 }
@@ -474,24 +462,9 @@ function joinGenerators(
   generator1.parent = result;
   generator2.parent = result;
   if (!generator1.empty() || !generator2.empty()) {
-    result.addEntry({
-      args: [joinCondition],
-      buildNode: function([cond], context) {
-        let block1 = generator1.empty() ? null : serializeBody(generator1, context);
-        let block2 = generator2.empty() ? null : serializeBody(generator2, context);
-        if (block1) return t.ifStatement(cond, block1, block2);
-        invariant(block2);
-        return t.ifStatement(t.unaryExpression("!", cond), block2);
-      },
-      dependencies: [generator1, generator2],
-    });
+    result.joinGenerators(joinCondition, generator1, generator2);
   }
   return result;
-}
-
-function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
-  let statements = context.serializeGenerator(generator);
-  return t.blockStatement(statements);
 }
 
 // Creates a single map that joins together maps m1 and m2 using the given join
