@@ -34,7 +34,7 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
-import { isReactElement } from "../utils/jsx";
+import { isReactElement } from "../react/utils.js";
 import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
 import {
   joinValuesAsConditional,

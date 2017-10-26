@@ -12,7 +12,7 @@
 import { Realm } from "../realm.js";
 import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
-import { convertExpressionToJSXIdentifier } from "../utils/jsx";
+import { convertExpressionToJSXIdentifier } from "../react/jsx";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeFunctionExpression } from "babel-types";
 import type { BabelTraversePath } from "babel-traverse";
 import type { FunctionBodyAstNode } from "../types.js";
