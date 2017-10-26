@@ -1,3 +1,4 @@
+// es6
 (function() {
     let a = Symbol.for("test");
     let b = Symbol.for("test");

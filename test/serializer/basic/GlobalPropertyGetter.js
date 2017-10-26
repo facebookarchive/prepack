@@ -1,3 +1,4 @@
+// es6
 // We use the name "console" because it already exists.
 // Adding a non-existing property will break our test-runner in Node 7.x.x.
 Object.defineProperty(global, "console", {

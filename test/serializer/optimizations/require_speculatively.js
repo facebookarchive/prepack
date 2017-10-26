@@ -1,3 +1,4 @@
+// es6
 // does not contain:r(0)
 // initialize more modules
 

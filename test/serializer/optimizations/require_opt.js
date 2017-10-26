@@ -1,3 +1,4 @@
+// es6
 // does not contain:(0)
 var modules = Object.create(null);
 

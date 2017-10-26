@@ -1,3 +1,4 @@
+// es6
 // delay unsupported requires
 // initialize more modules
 
