@@ -137,15 +137,19 @@ class PrepackDebugSession extends LoggingDebugSession {
     let prefix = parts[0];
     if (prefix === DebugMessage.PREPACK_READY_RESPONSE) {
       this._prepackWaiting = true;
+      // the second argument is the threadID required by the protocol, since
+      // Prepack only has one thread, this argument will be ignored
       this.sendEvent(new StoppedEvent("entry", 1));
       this._trySendNextRequest();
-    } else if (prefix === DebugMessage.BREAKPOINT_ADD_RESPONSE) {
+    } else if (prefix === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
       // Prepack acknowledged adding a breakpoint
       this._prepackWaiting = true;
       this._trySendNextRequest();
     } else if (prefix === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
       // Prepack stopped on a breakpoint
       this._prepackWaiting = true;
+      // the second argument is the threadID required by the protocol, since
+      // Prepack only has one thread, this argument will be ignored
       this.sendEvent(new StoppedEvent("breakpoint " + parts.slice(2).join(" "), 1));
       this._trySendNextRequest();
     }
@@ -202,8 +206,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     if (!args.source.path || !args.breakpoints) return;
     let filePath = args.source.path;
 
-    for (let i = 0; i < args.breakpoints.length; i++) {
-      let breakpoint = args.breakpoints[i];
+    for (const breakpoint of args.breakpoints) {
       let line = breakpoint.line;
       let column = 0;
       if (breakpoint.column) {

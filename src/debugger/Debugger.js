@@ -120,29 +120,41 @@ export class DebugServer {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         let addArgs = this._parseBreakpointArguments(parts);
         this.breakpoints.addBreakpoint(addArgs.filePath, addArgs.lineNum, addArgs.columnNum);
-        this.channel.writeOut(
-          `${DebugMessage.BREAKPOINT_ADD_RESPONSE} ${addArgs.filePath} ${addArgs.lineNum} ${addArgs.columnNum}`
+        this._sendBreakpointAcknowledge(
+          DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE,
+          addArgs.filePath,
+          addArgs.lineNum,
+          addArgs.columnNum
         );
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
         let removeArgs = this._parseBreakpointArguments(parts);
         this.breakpoints.removeBreakpoint(removeArgs.filePath, removeArgs.lineNum, removeArgs.columnNum);
-        this.channel.writeOut(
-          `${DebugMessage.BREAKPOINT_REMOVE_RESPONSE} ${removeArgs.filePath} ${removeArgs.lineNum} ${removeArgs.columnNum}`
+        this._sendBreakpointAcknowledge(
+          DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE,
+          removeArgs.filePath,
+          removeArgs.lineNum,
+          removeArgs.columnNum
         );
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
         let enableArgs = this._parseBreakpointArguments(parts);
         this.breakpoints.enableBreakpoint(enableArgs.filePath, enableArgs.lineNum, enableArgs.columnNum);
-        this.channel.writeOut(
-          `${DebugMessage.BREAKPOINT_ENABLE_RESPONSE} ${enableArgs.filePath} ${enableArgs.lineNum} ${enableArgs.columnNum}`
+        this._sendBreakpointAcknowledge(
+          DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE,
+          enableArgs.filePath,
+          enableArgs.lineNum,
+          enableArgs.columnNum
         );
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
         let disableArgs = this._parseBreakpointArguments(parts);
         this.breakpoints.disableBreakpoint(disableArgs.filePath, disableArgs.lineNum, disableArgs.columnNum);
-        this.channel.writeOut(
-          `${DebugMessage.BREAKPOINT_DISABLE_RESPONSE} ${disableArgs.filePath} ${disableArgs.lineNum} ${disableArgs.columnNum}`
+        this._sendBreakpointAcknowledge(
+          DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE,
+          disableArgs.filePath,
+          disableArgs.lineNum,
+          disableArgs.columnNum
         );
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
@@ -151,6 +163,10 @@ export class DebugServer {
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + prefix);
     }
     return false;
+  }
+
+  _sendBreakpointAcknowledge(responsePrefix: string, filePath: string, line: number, column: number) {
+    this.channel.writeOut(`${responsePrefix} ${filePath} ${line} ${column}`);
   }
 
   _parseBreakpointArguments(parts: Array<string>): BreakpointCommandArguments {

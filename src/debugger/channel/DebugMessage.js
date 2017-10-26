@@ -33,11 +33,11 @@ export class DebugMessage {
   // Respond to the adapter that Prepack has stopped on a breakpoint
   static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped";
   // Acknowledgement for setting a breakpoint
-  static BREAKPOINT_ADD_RESPONSE: string = "Breakpoint-add-response";
+  static BREAKPOINT_ADD_ACKNOWLEDGE: string = "Breakpoint-add-acknowledge";
   // Acknowledgement for removing a breakpoint
-  static BREAKPOINT_REMOVE_RESPONSE: string = "Breakpoint-remove-response";
+  static BREAKPOINT_REMOVE_ACKNOWLEDGE: string = "Breakpoint-remove-acknowledge";
   // Acknowledgement for enabling a breakpoint
-  static BREAKPOINT_ENABLE_RESPONSE: string = "Breakpoint-enable-response";
+  static BREAKPOINT_ENABLE_ACKNOWLEDGE: string = "Breakpoint-enable-acknowledge";
   // Acknoledgement for disabling a breakpoint
-  static BREAKPOINT_DISABLE_RESPONSE: string = "Breakpoint-disable-response";
+  static BREAKPOINT_DISABLE_ACKNOWLEDGE: string = "Breakpoint-disable-acknowledge";
 }
