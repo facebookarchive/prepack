@@ -25,14 +25,13 @@ import {
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
 import { isReactElement, getUniqueReactElementKey, valueIsClassComponent } from "./utils";
-import { ObjectCreate, GetValue, Get } from "../methods/index.js";
-import buildExpressionTemplate from "../utils/builder.js";
-import { ValuesDomain } from "../domains/index.js";
+import { GetValue, Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { flowAnnotationToObject } from "../flow/utils.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
+import { createAbstractObject } from "../flow/factory.js";
 
 const BranchStatus = {
   NO_BRANCH: "NO_BRANCH",
@@ -42,86 +41,10 @@ const BranchStatus = {
 
 type BranchStatusEnum = $Keys<typeof BranchStatus>;
 
-type ObjectTypes = {
-  [key: string]: ObjectTypes | string,
-};
-
 class ExpectedBailOut {
   message: string;
   constructor(message: string) {
     this.message = message;
-  }
-}
-
-function createObject(realm: Realm, shape: ObjectTypes | null, name: string | null) {
-  let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  if (shape != null) {
-    // to get around Flow complaining that shape could be null
-    let shapeThatIsNotNull = shape;
-    Object.keys(shape).forEach((id: string) => {
-      let value = shapeThatIsNotNull[id];
-      invariant(value instanceof Value, "creation of object failed due to object containing non-value properties");
-      obj.$Set(id, value, obj);
-      if (name !== null) {
-        value.intrinsicName = `${name}.${id}`;
-      }
-    });
-  }
-  if (name !== null) {
-    obj.intrinsicName = name;
-  }
-  return obj;
-}
-
-function createAbstractByType(realm: Realm, typeNameString: string, name: string) {
-  let type = Value.getTypeFromName(typeNameString);
-  invariant(type !== undefined, "createAbstractByType() cannot be undefined");
-  let value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [], name);
-  value.intrinsicName = name;
-  return value;
-}
-
-function _createAbstractObject(realm: Realm, name: string, objectTypes: ObjectTypes | null): AbstractValue {
-  let value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
-  value.intrinsicName = name;
-  let template = createObject(realm, objectTypes, name);
-  template.makePartial();
-  template.makeSimple();
-  value.values = new ValuesDomain(new Set([template]));
-  realm.rebuildNestedProperties(value, name);
-  return value;
-}
-
-function createAbstractObject(
-  realm: Realm,
-  name: string | null,
-  objectTypes: ObjectTypes | null | string
-): ObjectValue | AbstractValue {
-  if (typeof objectTypes === "string") {
-    invariant(
-      objectTypes === "empty",
-      `Expected an object or a string of "empty" for createAbstractObject() paramater "objectTypes"`
-    );
-    return _createAbstractObject(realm, name || "unknown", null);
-  }
-  if (objectTypes !== null) {
-    let propTypeObject = {};
-
-    Object.keys(objectTypes).forEach(key => {
-      let value = ((objectTypes: any): ObjectTypes)[key];
-      let propertyName = name !== null ? `${name}.${key}` : key;
-      if (typeof value === "string") {
-        propTypeObject[key] = createAbstractByType(realm, value, propertyName);
-      } else if (typeof value === "object" && value !== null) {
-        propTypeObject[key] = createAbstractObject(realm, propertyName, value);
-      } else {
-        invariant(false, `Unknown propType value of "${value}" for "${key}"`);
-      }
-    });
-
-    return _createAbstractObject(realm, name || "unknown", propTypeObject);
-  } else {
-    return _createAbstractObject(realm, name || "unknown", null);
   }
 }
 

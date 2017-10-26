@@ -24,6 +24,8 @@ export function flowAnnotationToObject(annotation: typeAnnotation) {
           return "function";
         case "Object":
           return "object";
+        case "Array":
+          return "array";
         case "any":
         case "empty":
           return "empty";
@@ -44,6 +46,8 @@ export function flowAnnotationToObject(annotation: typeAnnotation) {
     return "number";
   } else if (annotation.type === "FunctionTypeAnnotation") {
     return "function";
+  } else if (annotation.type === "ArrayTypeAnnotation") {
+    return "array";
   } else if (annotation.type === "ObjectTypeAnnotation") {
     let obj = {};
     annotation.properties.forEach(property => {
