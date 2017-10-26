@@ -29,10 +29,6 @@ var Stateful = (function (superclass) {
   return Stateful;
 }(React.Component));
 
-// a hack for now, but if we don't make this class component on the global
-// Prepack will inline it within a functional component
-this.Stateful = Stateful;
-
 function MessagePane() {
   return <div key='ha'><Stateful /></div>;
 }
