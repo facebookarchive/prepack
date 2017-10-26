@@ -91,6 +91,7 @@ export default class ObjectValue extends ConcreteValue {
     "$StringIteratorNextIndex",
     "$WeakMapData",
     "$WeakSetData",
+    "$BailOut",
   ];
 
   getTrackedPropertyNames(): Array<string> {
@@ -239,6 +240,9 @@ export default class ObjectValue extends ConcreteValue {
   // when deriving an abstract value via a generator.
   intrinsicNameGenerated: void | true;
   hashValue: void | number;
+
+  // ReactElement
+  $BailOut: void | string;
 
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();

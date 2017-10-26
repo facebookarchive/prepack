@@ -742,7 +742,11 @@ export class ResidualHeapSerializer {
       // and short cut to get back the JSX expression so we don't emit additional data
       // we do this to ensure child JSXElements can get keys assigned if needed
       this.serializedValues.add(child);
-      return this._serializeValueObject(((child: any): ObjectValue));
+      let reactChild = this._serializeValueObject(((child: any): ObjectValue));
+      if (reactChild.leadingComments !== null) {
+        return t.jSXExpressionContainer(reactChild);
+      }
+      return reactChild;
     }
     const expr = this.serializeValue(child);
 
@@ -826,7 +830,12 @@ export class ResidualHeapSerializer {
     let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
     let closingElement = t.jSXClosingElement(identifier);
 
-    return t.jSXElement(openingElement, closingElement, children, children.length === 0);
+    let jsxElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
+    // if there has been a bail-out, we create an inline BlockComment before the JSX element
+    if (val.$BailOut !== undefined) {
+      jsxElement.leadingComments = [({ type: "BlockComment", value: `${val.$BailOut}` }: any)];
+    }
+    return jsxElement;
   }
 
   _serializeValueMap(val: ObjectValue): BabelNodeExpression {

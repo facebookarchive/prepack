@@ -46,6 +46,13 @@ type ObjectTypes = {
   [key: string]: ObjectTypes | string,
 };
 
+class ExpectedBailOut {
+  message: string;
+  constructor(message: string) {
+    this.message = message;
+  }
+}
+
 function createObject(realm: Realm, shape: ObjectTypes | null, name: string | null) {
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   if (shape != null) {
@@ -209,7 +216,7 @@ class Reconciler {
   ) {
     if (valueIsClassComponent(this.realm, componentType)) {
       // for now we don't support class components, so we bail out
-      throw new Error("Component bail out");
+      throw new ExpectedBailOut("class components not yet supported");
     } else {
       invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
       let value = componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
@@ -274,6 +281,7 @@ class Reconciler {
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
+        value.$BailOut = `Bail-out: refs are not supported on <Components />`;
         return value;
       }
       if (!(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue)) {
@@ -300,7 +308,13 @@ class Reconciler {
           return this._applyBranchedLogic(result);
         }
         return result;
-      } catch (e) {
+      } catch (error) {
+        // assign a bail out message
+        if (error instanceof ExpectedBailOut) {
+          value.$BailOut = "Bail-out: " + error.message;
+        } else {
+          value.$BailOut = "Evaluation bail-out";
+        }
         // a child component bailed out during component folding, so return the function value and continue
         return branchStatus === BranchStatus.NEW_BRANCH ? this._applyBranchedLogic(value) : value;
       }
@@ -309,17 +323,9 @@ class Reconciler {
     }
   }
   _resolveFragment(arrayValue: ArrayValue, context: ObjectValue | AbstractValue, branchStatus: BranchStatusEnum) {
-    let lengthProperty = arrayValue.properties.get("length");
-    let value;
-    if (lengthProperty !== undefined) {
-      invariant(lengthProperty.descriptor, "Invalid JSXElement children length descriptor");
-      value = lengthProperty.descriptor.value;
-    }
-    invariant(
-      lengthProperty && value instanceof NumberValue,
-      "Invalid children length on JSXElement during reconcilation"
-    );
-    let length = value.value;
+    let lengthValue = Get(this.realm, arrayValue, "length");
+    invariant(lengthValue instanceof NumberValue, "Invalid children length on JSXElement during reconcilation");
+    let length = lengthValue.value;
     for (let i = 0; i < length; i++) {
       let elementProperty = arrayValue.properties.get("" + i);
       let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
