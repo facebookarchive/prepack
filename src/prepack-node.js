@@ -19,6 +19,7 @@ import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.j
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
 import { DebugChannel } from "./debugger/channel/DebugChannel.js";
+import { FileIOWrapper } from "./debugger/channel/FileIOWrapper.js";
 
 import fs from "fs";
 
@@ -113,7 +114,8 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
   //flag to hide the debugger for now
   if (options.enableDebugger) {
     let debugOptions = getDebuggerOptions(options);
-    debugChannel = new DebugChannel(fs, debugOptions);
+    let ioWrapper = new FileIOWrapper(false, fs, debugOptions.inFilePath, debugOptions.outFilePath);
+    debugChannel = new DebugChannel(ioWrapper);
   }
   return prepackSources(sourceFiles, options, debugChannel);
 }

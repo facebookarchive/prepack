@@ -8,21 +8,17 @@
  */
 
 /* @flow */
-import typeof fs from "fs";
-import type { DebuggerOptions } from "./../../options.js";
 import invariant from "./../../invariant.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
-  constructor(fileSystem: fs, dbgOptions: DebuggerOptions) {
+  constructor(ioWrapper: FileIOWrapper) {
     this._requestReceived = false;
-    this._ioWrapper = new FileIOWrapper(false, fileSystem, dbgOptions.inFilePath, dbgOptions.outFilePath);
+    this._ioWrapper = ioWrapper;
   }
 
-  _inFilePath: string;
-  _outFilePath: string;
   _requestReceived: boolean;
   _ioWrapper: FileIOWrapper;
 
