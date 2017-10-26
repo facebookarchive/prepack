@@ -16,10 +16,10 @@ let { ObjectCreate, CreateDataPropertyOrThrow, GetValue } = require("../lib/meth
 let buildExpressionTemplate = require("../lib/utils/builder.js").default;
 let babel = require("babel-core");
 let React = require("react");
-let t = require("babel-types");
 let ReactTestRenderer = require("react-test-renderer");
 let { Value, AbstractValue, NativeFunctionValue, ObjectValue } = require("../lib/values/index.js");
 let { normalize } = require("../lib/utils/json.js");
+let { createMockReactComponent } = require("../lib/react/mocks.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
@@ -35,57 +35,6 @@ let prepackOptions = {
   inlineExpressions: true,
   omitInvariants: true,
 };
-
-// this a mock of React.Component, to be used for tests
-function createMockReactComponent() {
-  return t.classExpression(
-    null,
-    null,
-    t.classBody([
-      t.classMethod(
-        "constructor",
-        t.identifier("constructor"),
-        [t.identifier("props"), t.identifier("context")],
-        t.blockStatement([
-          // this.props = props
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(t.thisExpression(), t.identifier("props")),
-              t.identifier("props")
-            )
-          ),
-          // this.context = context
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(t.thisExpression(), t.identifier("context")),
-              t.identifier("context")
-            )
-          ),
-          // this.state = {}
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(t.thisExpression(), t.identifier("state")),
-              t.objectExpression([])
-            )
-          ),
-          // this.ref = {}
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(t.thisExpression(), t.identifier("refs")),
-              t.objectExpression([])
-            )
-          ),
-        ])
-      ),
-      t.classMethod("method", t.identifier("getChildContext"), [], t.blockStatement([])),
-    ]),
-    []
-  );
-}
 
 function additionalGlobals(realm) {
   let global = realm.$GlobalObject;
@@ -249,8 +198,12 @@ describe("Test React", () => {
       await runTest(directory, "key-nesting.js");
     });
 
-    it("Key nesting with updates", async () => {
-      await runTest(directory, "key-nesting-updates.js");
+    it("Key change", async () => {
+      await runTest(directory, "key-change.js");
+    });
+
+    it("Component type change", async () => {
+      await runTest(directory, "type-change.js");
     });
 
     it("Dynamic props", async () => {
@@ -259,6 +212,10 @@ describe("Test React", () => {
 
     it("Dynamic context", async () => {
       await runTest(directory, "dynamic-context.js");
+    });
+
+    it("React.cloneElement", async () => {
+      await runTest(directory, "clone-element.js");
     });
 
     it("Return text", async () => {

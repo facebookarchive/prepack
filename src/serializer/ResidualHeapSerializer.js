@@ -33,9 +33,9 @@ import {
   convertExpressionToJSXIdentifier,
   convertKeyValueToJSXAttribute,
   applyKeysToNestedArray,
-  isReactElement,
   getJSXPropertyValue,
-} from "../utils/jsx";
+} from "../react/jsx.js";
+import { isReactElement } from "../react/utils.js";
 import * as t from "babel-types";
 import type {
   BabelNodeArrayExpression,

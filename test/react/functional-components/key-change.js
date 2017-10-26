@@ -21,6 +21,7 @@ var Stateful = (function (superclass) {
   Stateful.prototype.render = function render () {
     return (
       <div>
+        {this.props.children}
         (is update: {String(this.state.updated)})
       </div>
     );
@@ -29,46 +30,38 @@ var Stateful = (function (superclass) {
   return Stateful;
 }(React.Component));
 
-function MessagePane() {
-  return <div key='ha'><Stateful /></div>;
-}
-
-function SettingsPane() {
-  return <div key='ha'><Stateful /></div>;
-}
-
 function App(props: {switch: boolean}) {
   if (props.switch) {
     return (
       <div>
-        <MessagePane />
+        <Stateful key='hi'>Hi</Stateful>
       </div>
     );
   }
   return (
     <div>
-      <SettingsPane />
+      <Stateful key='bye'>Bye</Stateful>
     </div>
   );
 }
 
 App.getTrials = function(renderer, Root) {
-	let results = [];
+  let results = [];
   renderer.update(<Root switch={false} />);
   results.push(['mount', renderer.toJSON()]);
 
   renderer.update(<Root switch={false} />);
-  results.push(['update with same type', renderer.toJSON()]);
+  results.push(['update with same key', renderer.toJSON()]);
 
   renderer.update(<Root switch={true} />);
-  results.push(['update with different type', renderer.toJSON()]);
+  results.push(['update with different key', renderer.toJSON()]);
 
   renderer.update(<Root switch={true} />);
-  results.push(['update with same type (again)', renderer.toJSON()]);
+  results.push(['update with same key (again)', renderer.toJSON()]);
 
   renderer.update(<Root switch={false} />);
-	results.push(['update with different type (again)', renderer.toJSON()]);
-	return results;
+  results.push(['update with different key (again)', renderer.toJSON()]);
+  return results;
 };
 
 if (this.__registerReactComponentRoot) {

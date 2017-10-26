@@ -24,7 +24,7 @@ import type {
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
 import { ArrayValue, StringValue, Value, NumberValue, ObjectValue, SymbolValue } from "../values/index.js";
-import { convertJSXExpressionToIdentifier } from "../utils/jsx";
+import { convertJSXExpressionToIdentifier } from "../react/jsx";
 import * as t from "babel-types";
 import {
   Get,

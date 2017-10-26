@@ -14,7 +14,6 @@ import { ModuleTracer } from "../serializer/modules.js";
 import {
   ECMAScriptSourceFunctionValue,
   Value,
-  FunctionValue,
   UndefinedValue,
   StringValue,
   NumberValue,
@@ -25,7 +24,7 @@ import {
   ObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, getUniqueJSXElementKey } from "../utils/jsx.js";
+import { isReactElement, getUniqueReactElementKey, valueIsClassComponent } from "./utils";
 import { ObjectCreate, GetValue, Get } from "../methods/index.js";
 import buildExpressionTemplate from "../utils/builder.js";
 import { ValuesDomain } from "../domains/index.js";
@@ -34,17 +33,6 @@ import { flowAnnotationToObject } from "../flow/utils.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-
-function isReactClassComponent(realm, type) {
-  if (!(type instanceof FunctionValue)) {
-    return false;
-  }
-  let prototype = Get(realm, type, "prototype");
-  if (prototype instanceof ObjectValue) {
-    return prototype.properties.has("render");
-  }
-  return false;
-}
 
 const BranchStatus = {
   NO_BRANCH: "NO_BRANCH",
@@ -219,7 +207,7 @@ class Reconciler {
     context: ObjectValue | AbstractValue,
     branchStatus: BranchStatusEnum
   ) {
-    if (isReactClassComponent(this.realm, componentType)) {
+    if (valueIsClassComponent(this.realm, componentType)) {
       // for now we don't support class components, so we bail out
       throw new Error("Component bail out");
     } else {
@@ -231,7 +219,7 @@ class Reconciler {
   _applyBranchedLogic(value: ObjectValue) {
     // we need to apply a key when we're branched
     let currentKeyValue = Get(this.realm, value, "key") || this.realm.intrinsics.null;
-    let uniqueKey = getUniqueJSXElementKey("", this.reactSerializerState.usedReactElementKeys);
+    let uniqueKey = getUniqueReactElementKey("", this.reactSerializerState.usedReactElementKeys);
     let newKeyValue = GetValue(this.realm, this.realm.$GlobalEnv.evaluate(t.stringLiteral(uniqueKey), false));
     if (currentKeyValue !== this.realm.intrinsics.null) {
       newKeyValue = computeBinary(this.realm, "+", currentKeyValue, newKeyValue);
