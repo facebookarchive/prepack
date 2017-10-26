@@ -43,7 +43,13 @@ var optionsConfig = [
     choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"],
     defaultVal: "browser",
     description: "The target environment for Prepack"
-  }
+  },
+  {
+    type: "boolean",
+    name: "reactEnabled",
+    defaultVal: false,
+    description: "Enables experimental support for React features, such as JSX syntax."
+  },  
 ];
 
 var demos = [];
