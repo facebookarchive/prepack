@@ -48,7 +48,7 @@ var optionsConfig = [
     type: "boolean",
     name: "reactEnabled",
     defaultVal: true,
-    description: "Enables support for React JSX syntax."
+    description: "Enables support for React features, such as JSX syntax."
   },  
 ];
 
