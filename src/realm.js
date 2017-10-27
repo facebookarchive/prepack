@@ -30,13 +30,13 @@ import type { Binding } from "./environment.js";
 import {
   cloneDescriptor,
   composeGenerators,
+  composePossiblyNormalCompletions,
   Construct,
   GetValue,
   incorporateSavedCompletion,
   ThrowIfMightHaveBeenDeleted,
   ToString,
 } from "./methods/index.js";
-import type { NormalCompletion } from "./completions.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
@@ -90,6 +90,12 @@ export class ExecutionContext {
   isStrict: boolean;
   savedEffects: void | Effects;
   savedCompletion: void | PossiblyNormalCompletion;
+
+  composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
+    if (this.savedCompletion === undefined) this.savedCompletion = completion;
+    else this.savedCompletion = composePossiblyNormalCompletions(this.realm, this.savedCompletion, completion);
+    return completion.value;
+  }
 
   setCaller(context: ExecutionContext): void {
     this.caller = context;
@@ -233,7 +239,7 @@ export class Realm {
       env: LexicalEnvironment,
       realm: Realm,
       metadata?: any
-    ) => NormalCompletion | Value | Reference,
+    ) => Value | Reference,
   };
   partialEvaluators: {
     [key: string]: (
@@ -359,7 +365,7 @@ export class Realm {
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
   evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, state?: any): Effects {
-    return this.evaluateForEffects(() => env.evaluateAbstractCompletion(ast, strictCode), state);
+    return this.evaluateForEffects(() => env.evaluateCompletion(ast, strictCode), state);
   }
 
   evaluateAndRevertInGlobalEnv(func: () => Value): void {
@@ -397,50 +403,57 @@ export class Realm {
     this.generator = new Generator(this);
     this.createdObjects = new Set();
 
-    for (let t1 of this.tracers) t1.beginEvaluateForEffects(state);
-
-    let c;
     let result;
     try {
-      c = f();
-      if (c instanceof Reference) c = GetValue(this, c);
-      c = incorporateSavedCompletion(this, c);
-      invariant(c !== undefined);
+      for (let t1 of this.tracers) t1.beginEvaluateForEffects(state);
 
-      invariant(this.generator !== undefined);
-      invariant(this.modifiedBindings !== undefined);
-      invariant(this.modifiedProperties !== undefined);
-      invariant(this.createdObjects !== undefined);
-      let astGenerator = this.generator;
-      let astBindings = this.modifiedBindings;
-      let astProperties = this.modifiedProperties;
-      let astCreatedObjects = this.createdObjects;
+      let c;
+      try {
+        c = f();
+        if (c instanceof Reference) c = GetValue(this, c);
+        if (c instanceof Value || c instanceof AbruptCompletion) c = incorporateSavedCompletion(this, c);
+        invariant(c !== undefined);
 
-      // Return the captured state changes and evaluation result
-      result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
-      if (c instanceof PossiblyNormalCompletion) {
-        let savedEffects = context.savedEffects;
-        if (savedEffects !== undefined) {
-          // add prior effects that are not already present
-          result = this.composeEffects(savedEffects, result);
-          this.updateAbruptCompletions(savedEffects, c);
-          context.savedEffects = undefined;
+        invariant(this.generator !== undefined);
+        invariant(this.modifiedBindings !== undefined);
+        invariant(this.modifiedProperties !== undefined);
+        invariant(this.createdObjects !== undefined);
+        let astGenerator = this.generator;
+        let astBindings = this.modifiedBindings;
+        let astProperties = this.modifiedProperties;
+        let astCreatedObjects = this.createdObjects;
+
+        // Return the captured state changes and evaluation result
+        result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
+        if (c instanceof PossiblyNormalCompletion) {
+          let savedEffects = context.savedEffects;
+          if (savedEffects !== undefined) {
+            // add prior effects that are not already present
+            result = this.composeEffects(savedEffects, result);
+            this.updateAbruptCompletions(savedEffects, c);
+            context.savedEffects = undefined;
+          }
         }
+        return result;
+      } finally {
+        // Roll back the state changes
+        if (context.savedEffects !== undefined) {
+          this.stopEffectCaptureAndUndoEffects();
+        }
+        if (result !== undefined) {
+          this.restoreBindings(result[2]);
+          this.restoreProperties(result[3]);
+        } else {
+          this.restoreBindings(this.modifiedBindings);
+          this.restoreProperties(this.modifiedProperties);
+        }
+        context.savedEffects = savedContextEffects;
+        this.generator = saved_generator;
+        this.modifiedBindings = savedBindings;
+        this.modifiedProperties = savedProperties;
+        this.createdObjects = saved_createdObjects;
       }
-      return result;
     } finally {
-      // Roll back the state changes
-      if (context.savedEffects !== undefined) {
-        this.stopEffectCaptureAndUndoEffects();
-      }
-      this.restoreBindings(this.modifiedBindings);
-      this.restoreProperties(this.modifiedProperties);
-      context.savedEffects = savedContextEffects;
-      this.generator = saved_generator;
-      this.modifiedBindings = savedBindings;
-      this.modifiedProperties = savedProperties;
-      this.createdObjects = saved_createdObjects;
-
       for (let t2 of this.tracers) t2.endEvaluateForEffects(state, result);
     }
   }
@@ -458,16 +471,12 @@ export class Realm {
     if (pb) {
       pb.forEach((val, key, m) => rb.set(key, val));
     }
-    sb.forEach((val, key, m) => {
-      if (!rb.has(key)) rb.set(key, val);
-    });
+    sb.forEach((val, key, m) => rb.set(key, val));
 
     if (pp) {
-      pp.forEach((desc, propertyBinding, m) => sp.set(propertyBinding, desc));
+      pp.forEach((desc, propertyBinding, m) => rp.set(propertyBinding, desc));
     }
-    sp.forEach((val, key, m) => {
-      if (!rp.has(key)) rp.set(key, val);
-    });
+    sp.forEach((val, key, m) => rp.set(key, val));
 
     if (po) {
       po.forEach((ob, a) => ro.add(ob));

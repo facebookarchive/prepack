@@ -13,7 +13,6 @@ import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { FunctionEnvironmentRecord } from "../environment.js";
-import { Completion } from "../completions.js";
 import { Value, UndefinedValue, ObjectValue } from "../values/index.js";
 import {
   GetNewTarget,
@@ -55,7 +54,7 @@ export default function SuperCall(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
+): Value {
   // 1. Let newTarget be GetNewTarget().
   let newTarget = GetNewTarget(realm);
 

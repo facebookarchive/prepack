@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -20,12 +20,7 @@ import type { BabelNode, BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
 import { withPathCondition, withInversePathCondition } from "../utils/paths.js";
 
-export function evaluate(
-  ast: BabelNodeIfStatement,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): Completion | Value {
+export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   // 1. Let exprRef be the result of evaluating Expression
   let exprRef = env.evaluate(ast.test, strictCode);
   // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
@@ -51,6 +46,7 @@ export function evaluate(
     if (stmtCompletion instanceof AbruptCompletion) {
       throw stmtCompletion;
     }
+    invariant(stmtCompletion instanceof Value);
     return stmtCompletion;
   }
   invariant(exprValue instanceof AbstractValue);
@@ -63,6 +59,7 @@ export function evaluate(
     if (stmtCompletion instanceof AbruptCompletion) {
       throw stmtCompletion;
     }
+    invariant(stmtCompletion instanceof Value);
     return stmtCompletion;
   } else if (!exprValue.mightNotBeFalse()) {
     let stmtCompletion;
@@ -73,6 +70,7 @@ export function evaluate(
     if (stmtCompletion instanceof AbruptCompletion) {
       throw stmtCompletion;
     }
+    invariant(stmtCompletion instanceof Value);
     return stmtCompletion;
   } else {
     invariant(exprValue instanceof AbstractValue);
@@ -87,7 +85,7 @@ export function evaluateWithAbstractConditional(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): NormalCompletion | Value {
+): Value {
   // Evaluate consequent and alternate in sandboxes and get their effects.
   let [compl1, gen1, bindings1, properties1, createdObj1] = withPathCondition(condValue, () => {
     return realm.evaluateNodeForEffects(consequent, strictCode, env);
@@ -106,11 +104,12 @@ export function evaluateWithAbstractConditional(
     [compl2, gen2, bindings2, properties2, createdObj2]
   );
   let completion = joinedEffects[0];
-  if (completion instanceof NormalCompletion) {
+  if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
+    completion = realm.getRunningContext().composeWithSavedCompletion(completion);
     realm.captureEffects();
   }
   // Note that the effects of (non joining) abrupt branches are not included
@@ -119,6 +118,6 @@ export function evaluateWithAbstractConditional(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof NormalCompletion || completion instanceof Value);
+  invariant(completion instanceof Value);
   return completion;
 }

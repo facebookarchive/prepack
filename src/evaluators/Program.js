@@ -9,13 +9,26 @@
 
 /* @flow */
 
-import { Completion, JoinedAbruptCompletions, ThrowCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  PossiblyNormalCompletion,
+  ReturnCompletion,
+  ThrowCompletion,
+} from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
-import { FindVarScopedDeclarations } from "../methods/function.js";
-import { BoundNames } from "../methods/index.js";
+import {
+  BoundNames,
+  composePossiblyNormalCompletions,
+  FindVarScopedDeclarations,
+  incorporateSavedCompletion,
+  stopEffectCaptureJoinApplyAndReturnCompletion,
+  updatePossiblyNormalCompletionWithValue,
+} from "../methods/index.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
@@ -224,14 +237,18 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);
 
-  let context = realm.getRunningContext();
   let val;
 
   for (let node of ast.body) {
     if (node.type !== "FunctionDeclaration") {
-      let potentialVal = env.evaluateCompletion(node, strictCode);
-      if (potentialVal instanceof Completion) {
+      let potentialVal = env.evaluateCompletionDeref(node, strictCode);
+      potentialVal = incorporateSavedCompletion(realm, potentialVal);
+      if (potentialVal instanceof AbruptCompletion) {
         if (!realm.useAbstractInterpretation) throw potentialVal;
+        // We are about the leave this program and this presents a join point where all non exeptional control flows
+        // converge into a single flow using the joined effects as the new state.
+        // The call to incorporateSavedCompletion above, has already taken care of the join.
+        // What remains to be done is to emit throw statements to the generator.
         if (potentialVal instanceof JoinedAbruptCompletions) {
           emitConditionalThrow(potentialVal.joinCondition, potentialVal.consequent, potentialVal.alternate);
           potentialVal = potentialVal.value;
@@ -242,18 +259,31 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
           invariant(false); // other kinds of abrupt completions should not get this far
         }
       }
-      let sc = context.savedCompletion;
-      if (sc !== undefined) {
-        emitConditionalThrow(sc.joinCondition, sc.consequent, sc.alternate);
+      if (potentialVal !== undefined && !(potentialVal instanceof EmptyValue)) {
+        if (val instanceof PossiblyNormalCompletion) {
+          if (potentialVal instanceof PossiblyNormalCompletion) {
+            val = composePossiblyNormalCompletions(realm, val, potentialVal);
+          } else {
+            invariant(potentialVal instanceof Value);
+            updatePossiblyNormalCompletionWithValue(realm, val, potentialVal);
+          }
+        } else {
+          val = potentialVal;
+        }
       }
-      if (!(potentialVal instanceof EmptyValue)) val = potentialVal;
     }
   }
-
   let directives = ast.directives;
   if (!val && directives && directives.length) {
     let directive = directives[directives.length - 1];
     val = env.evaluate(directive, strictCode);
+  }
+
+  if (val instanceof PossiblyNormalCompletion) {
+    // There are still some conditional throws to emit and state still has to be joined in.
+    stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);
+    emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
+    val = val.value;
   }
 
   invariant(val === undefined || val instanceof Value);
