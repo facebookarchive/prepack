@@ -9,17 +9,14 @@
 
 /* @flow */
 
-import typeof fs from "fs";
+import fs from "fs";
 import path from "path";
 import { MessagePackager } from "./MessagePackager.js";
 import invariant from "../../invariant.js";
 
 export class FileIOWrapper {
-  // fs cannot be imported from anything called directly or indirectly
-  // by prepack-standalone so it needs to be passed in here
-  constructor(isAdapter: boolean, fileSystem: fs, inFilePath: string, outFilePath: string) {
+  constructor(isAdapter: boolean, inFilePath: string, outFilePath: string) {
     // the paths are expected to be relative to Prepack top level directory
-    this._fs = fileSystem;
     this._inFilePath = path.join(__dirname, "../../../", inFilePath);
     this._outFilePath = path.join(__dirname, "../../../", outFilePath);
     this._packager = new MessagePackager(isAdapter);
@@ -29,11 +26,10 @@ export class FileIOWrapper {
   _outFilePath: string;
   _packager: MessagePackager;
   _isAdapter: boolean;
-  _fs: fs;
 
   // Read in a message from the input asynchronously
   readIn(errorHandler: (err: ?ErrnoError) => void, messageProcessor: (message: string) => void) {
-    this._fs.readFile(this._inFilePath, { encoding: "utf8" }, (err: ?ErrnoError, contents: string) => {
+    fs.readFile(this._inFilePath, { encoding: "utf8" }, (err: ?ErrnoError, contents: string) => {
       if (err) {
         errorHandler(err);
         return;
@@ -44,7 +40,7 @@ export class FileIOWrapper {
         return;
       }
       //clear the file
-      this._fs.writeFileSync(this._inFilePath, "");
+      fs.writeFileSync(this._inFilePath, "");
       //process the message
       messageProcessor(message);
     });
@@ -54,7 +50,7 @@ export class FileIOWrapper {
   readInSync(): string {
     let message: null | string = null;
     while (true) {
-      let contents = this._fs.readFileSync(this._inFilePath, "utf8");
+      let contents = fs.readFileSync(this._inFilePath, "utf8");
       message = this._packager.unpackage(contents);
       if (message === null) continue;
       break;
@@ -62,27 +58,27 @@ export class FileIOWrapper {
     // loop should not break when message is still null
     invariant(message !== null);
     //clear the file
-    this._fs.writeFileSync(this._inFilePath, "");
+    fs.writeFileSync(this._inFilePath, "");
     return message;
   }
 
   // Read in a message from the input synchronously only once
   readInSyncOnce(): null | string {
-    let contents = this._fs.readFileSync(this._inFilePath, "utf8");
+    let contents = fs.readFileSync(this._inFilePath, "utf8");
     let message = this._packager.unpackage(contents);
     return message;
   }
 
   // Write out a message to the output synchronously
   writeOutSync(contents: string) {
-    this._fs.writeFileSync(this._outFilePath, this._packager.package(contents));
+    fs.writeFileSync(this._outFilePath, this._packager.package(contents));
   }
 
   clearInFile() {
-    this._fs.writeFileSync(this._inFilePath, "");
+    fs.writeFileSync(this._inFilePath, "");
   }
 
   clearOutFile() {
-    this._fs.writeFileSync(this._outFilePath, "");
+    fs.writeFileSync(this._outFilePath, "");
   }
 }

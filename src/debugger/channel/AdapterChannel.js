@@ -8,14 +8,13 @@
  */
 
 /* @flow */
-import fs from "fs";
 import type { DebuggerOptions } from "./../../options.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
   constructor(dbgOptions: DebuggerOptions) {
-    this._ioWrapper = new FileIOWrapper(true, fs, dbgOptions.inFilePath, dbgOptions.outFilePath);
+    this._ioWrapper = new FileIOWrapper(true, dbgOptions.inFilePath, dbgOptions.outFilePath);
   }
   _ioWrapper: FileIOWrapper;
 

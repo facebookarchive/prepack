@@ -14,7 +14,7 @@ import { BreakpointCollection } from "./BreakpointCollection.js";
 import { Breakpoint } from "./Breakpoint.js";
 import type { BreakpointCommandArguments } from "./types.js";
 import invariant from "../invariant.js";
-import { DebugChannel } from "./channel/DebugChannel.js";
+import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./channel/DebugMessage.js";
 import { DebuggerError } from "./DebuggerError.js";
 
