@@ -76,7 +76,7 @@ export class ResidualHeapVisitor {
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
     this.additionalFunctionValueInfos = new Map();
-    this.delayedBindingVisits = [];
+    this.delayedBindingVisits = new Map();
     this._mark = (val: Value): boolean => {
       let scopes = this.values.get(val);
       if (scopes === undefined) this.values.set(val, (scopes = new Set()));
@@ -84,6 +84,7 @@ export class ResidualHeapVisitor {
       scopes.add(this.scope);
       return true;
     };
+    this.refuseNewFunctionInstances = false;
   }
 
   realm: Realm;
@@ -106,8 +107,15 @@ export class ResidualHeapVisitor {
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
-  delayedBindingVisits: Array<() => void>;
+
+  // In the case of additional functions, we need to make sure that the bindings
+  // exist and that we have a way of visiting them from the original scope but
+  // not actually visit them until after we know which ones are used.
+  // Maps from binding to [visit-callback, delete-callback]
+  delayedBindingVisits: Map<ResidualFunctionBinding, [() => void, () => void]>;
+  // This allows for tentatively visiting values.
   _mark: Value => boolean;
+  refuseNewFunctionInstances: boolean;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -223,6 +231,20 @@ export class ResidualHeapVisitor {
     if (desc.set !== undefined) this.visitValue(desc.set);
   }
 
+  _wrapWithCurrentScopes(callback: () => void): () => void {
+    let currentCommonScope = this.commonScope;
+    let currentScope = this.scope;
+    return () => {
+      let scope = this.scope;
+      let commonScope = this.commonScope;
+      this.scope = currentScope;
+      this.commonScope = currentCommonScope;
+      callback();
+      this.scope = scope;
+      this.commonScope = commonScope;
+    };
+  }
+
   // makeCallback optionally adds a callback to delayedBindingVisits map instead of visiting
   visitDeclarativeEnvironmentRecordBinding(
     r: DeclarativeEnvironmentRecord,
@@ -247,20 +269,13 @@ export class ResidualHeapVisitor {
     invariant(value !== undefined);
     residualFunctionBinding.value = value = this._getEquivalentValue(value);
     if (deleteCallback !== undefined) {
-      let currentCommonScope = this.commonScope;
-      let currentScope = this.scope;
-      this.delayedBindingVisits.push(() => {
-        let scope = this.scope;
-        let commonScope = this.commonScope;
-        this.scope = currentScope;
-        this.commonScope = currentCommonScope;
-        invariant(value);
-        this.visitValue(value);
-        this.scope = scope;
-        this.commonScope = commonScope;
-        invariant(deleteCallback);
-        if (!this.values.has(value)) deleteCallback();
-      });
+      this.delayedBindingVisits.set(residualFunctionBinding, [
+        this._wrapWithCurrentScopes(() => {
+          invariant(value);
+          this.visitValue(value);
+        }),
+        deleteCallback,
+      ]);
     } else {
       this.visitValue(value);
     }
@@ -421,11 +436,12 @@ export class ResidualHeapVisitor {
       }
     });
 
-    this.functionInstances.set(val, {
-      residualFunctionBindings,
-      functionValue: val,
-      scopeInstances: new Set(),
-    });
+    if (!this.refuseNewFunctionInstances)
+      this.functionInstances.set(val, {
+        residualFunctionBindings,
+        functionValue: val,
+        scopeInstances: new Set(),
+      });
   }
 
   visitValueObject(val: ObjectValue): void {
@@ -636,11 +652,12 @@ export class ResidualHeapVisitor {
           if (object.refuseSerialization) continue; // modification to internal state
           if (object.intrinsicName === "global") continue; // Avoid double-counting
           this.visitObjectProperty(binding);
+          // Ensure object was marked in case the object was captured and the binding
+          // visit is being delayed.
+          this._mark(object);
         }
         // Handing of ModifiedBindings
-        for (let additionalBinding of modifiedBindings.keys()) {
-          //let modifiedBinding: Binding = ((additionalBinding: any): Binding);
-          let modifiedBinding = additionalBinding;
+        for (let modifiedBinding of modifiedBindings.keys()) {
           let residualBinding;
           if (modifiedBinding.isGlobal) {
             residualBinding = this.globalBindings.get(modifiedBinding.name);
@@ -653,6 +670,13 @@ export class ResidualHeapVisitor {
           // Only visit it if there is already a binding (no binding means that
           // the additional function created the binding)
           if (residualBinding && modifiedBinding.value !== residualBinding.value) {
+            // If there is a delayed visit, we know it's going to be used, so do the visit
+            // and delete the entry.
+            let delayedVisit = this.delayedBindingVisits.get(residualBinding);
+            if (delayedVisit) {
+              delayedVisit[0]();
+              this.delayedBindingVisits.delete(residualBinding);
+            }
             let newValue = modifiedBinding.value;
             invariant(newValue);
             this.visitValue(newValue);
@@ -703,23 +727,38 @@ export class ResidualHeapVisitor {
     return this.realm.intrinsics.undefined;
   }
 
+  _checkIfVisitWouldUpdate(visitCallback: () => void): boolean {
+    // For these delayed visits, we don't want to visit any new objects but
+    // we do want to add scopes to any previously-visited objects
+    let markedSomething = false;
+    let oldmark = this._mark;
+    let newmark = (val: Value): boolean => {
+      let scopes = this.values.get(val);
+      if (scopes === undefined) return true;
+      if (scopes.has(this.scope)) return false;
+      markedSomething = true;
+      return true;
+    };
+    this._mark = newmark;
+    this.refuseNewFunctionInstances = true;
+    visitCallback();
+    this.refuseNewFunctionInstances = false;
+    this._mark = oldmark;
+    return markedSomething;
+  }
+
   visitRoots(): void {
     let generator = this.realm.generator;
     invariant(generator);
     this.visitGenerator(generator);
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
     this.realm.evaluateAndRevertInGlobalEnv(this.visitAdditionalFunctionEffects.bind(this));
-    // For these delayed visits, we don't want to visit any new objects but
-    // we do want to add scopes to any previously-visited objects
-    this._mark = (val: Value): boolean => {
-      let scopes = this.values.get(val);
-      if (scopes === undefined) return false;
-      if (scopes.has(this.scope)) return false;
-      scopes.add(this.scope);
-      return true;
-    };
-    for (let visit of this.delayedBindingVisits) {
-      visit();
+    for (let [visit, deleteCallback] of this.delayedBindingVisits.values()) {
+      if (this._checkIfVisitWouldUpdate(visit)) {
+        visit();
+      } else {
+        deleteCallback();
+      }
     }
   }
 }

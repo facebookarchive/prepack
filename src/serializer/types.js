@@ -54,7 +54,6 @@ export type FunctionInfo = {
 export type FactoryFunctionInfo = { factoryId: BabelNodeIdentifier, functionInfo: FunctionInfo };
 
 export type ResidualFunctionBinding = {
-  // callback function is for Additional Functions only
   value: void | Value,
   modified: boolean,
   // void means a global binding
