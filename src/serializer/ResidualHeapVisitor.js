@@ -427,7 +427,9 @@ export class ResidualHeapVisitor {
             residualFunctionBinding = this.visitDeclarativeEnvironmentRecordBinding(
               referencedBase,
               referencedName,
-              () => void residualFunctionBindings.delete(referencedName)
+              () => {
+                residualFunctionBindings.delete(referencedName);
+              }
             );
           else residualFunctionBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
         }
