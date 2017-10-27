@@ -9,6 +9,8 @@
 
 /* @flow */
 
+// Generated using flowgen from vscode-debugadapter npm package and modified
+
 import DebugProtocol from 'vscode-debugprotocol'
 import * as ee from 'events';
 declare module 'vscode-debugadapter' {
@@ -28,8 +30,30 @@ declare module 'vscode-debugadapter' {
       event: string;
       constructor(event: string, body?: any): this
   }
+  declare export class StoppedEvent mixins Event, DebugProtocol.StoppedEvent {
+      body: {
+          reason: string,
+          threadId: number
+      };
+      constructor(reason: string, threadId: number, exception_text?: string): this
+  }
   declare export class InitializedEvent mixins Event, DebugProtocol.InitializedEvent {
       constructor(): this
+  }
+  declare export class TerminatedEvent mixins Event, DebugProtocol.TerminatedEvent {
+    /** Protocol: A debug adapter may set 'restart' to true (or to an arbitrary object) to request that the front end restarts the session.
+      The value is not interpreted by the client and passed unmodified as an attribute '__restart' to the launchRequest.
+      */
+      constructor(restart?: any): this
+  }
+  declare export class OutputEvent mixins Event, DebugProtocol.OutputEvent {
+      body: {
+          category: string,
+          output: string,
+          // Protocol: this can be any optional data to report
+          data?: any
+      };
+      constructor(output: string, category?: string, data?: any): this
   }
   declare export class ProtocolServer mixins ee.EventEmitter {
       constructor(): this;

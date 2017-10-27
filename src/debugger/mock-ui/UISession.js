@@ -22,18 +22,25 @@ const TWO_CRLF = "\r\n\r\n";
  * sends the commands to the adapter and process any responses
 */
 export class UISession {
-  constructor(proc: Process, adapterPath: string, prepackCommand: string) {
+  constructor(proc: Process, adapterPath: string, prepackCommand: string, inFilePath: string, outFilePath: string) {
     this._proc = proc;
     this._adapterPath = adapterPath;
     this._prepackCommand = prepackCommand;
+    this._inFilePath = inFilePath;
+    this._outFilePath = outFilePath;
     this._sequenceNum = 1;
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
+    this._prepackWaiting = false;
   }
   // the parent (i.e. ui) process
   _proc: Process;
   //path to the debug adapter
   _adapterPath: string;
+  // path to debugger input file
+  _inFilePath: string;
+  // path to debugger output file
+  _outFilePath: string;
   // the child (i.e. adapter) process
   _adapterProcess: child_process.ChildProcess;
 
@@ -47,9 +54,18 @@ export class UISession {
   _prepackCommand: string;
   // handler for any received messages
   _dataHandler: DataHandler;
+  _prepackWaiting: boolean;
 
   _startAdapter() {
-    let adapterArgs = [this._adapterPath, "--prepack", this._prepackCommand];
+    let adapterArgs = [
+      this._adapterPath,
+      "--prepack",
+      this._prepackCommand,
+      "--inFilePath",
+      this._inFilePath,
+      "--outFilePath",
+      this._outFilePath,
+    ];
     this._adapterProcess = child_process.spawn("node", adapterArgs);
     this._proc.on("exit", () => {
       this.shutdown();
@@ -57,16 +73,15 @@ export class UISession {
     this._proc.on("SIGINT", () => {
       this.shutdown();
     });
-    this._adapterProcess.on("exit", () => {
-      this.shutdown();
-    });
     this._adapterProcess.stdout.on("data", (data: Buffer) => {
       //handle the received data
       this._dataHandler.handleData(data, this._processMessage.bind(this));
       //ask the user for the next command
-      this._reader.question("(dbg) ", (input: string) => {
-        this._dispatch(input);
-      });
+      if (this._prepackWaiting) {
+        this._reader.question("(dbg) ", (input: string) => {
+          this._dispatch(input);
+        });
+      }
     });
     this._adapterProcess.stderr.on("data", (data: Buffer) => {
       console.error(data.toString());
@@ -90,8 +105,21 @@ export class UISession {
   }
 
   _processEvent(event: DebugProtocol.Event) {
-    // to be implemented
-    console.log(event);
+    if (event.event === "output") {
+      this._uiOutput("Prepack output:\n" + event.body.output);
+    } else if (event.event === "terminated") {
+      this._uiOutput("Prepack exited! Shutting down...");
+      this.shutdown();
+    } else if (event.event === "stopped") {
+      this._prepackWaiting = true;
+      if (event.body) {
+        if (event.body.reason === "entry") {
+          this._uiOutput("Prepack is ready");
+        } else if (event.body.reason.startsWith("breakpoint")) {
+          this._uiOutput("Prepack stopped on: " + event.body.reason);
+        }
+      }
+    }
   }
 
   _processResponse(response: DebugProtocol.Response) {
@@ -131,6 +159,30 @@ export class UISession {
         if (parts.length !== 1) return false;
         let configDoneArgs: DebugProtocol.ConfigurationDoneArguments = {};
         this._sendConfigDoneRequest(configDoneArgs);
+        break;
+      case "run":
+        // format: run
+        if (parts.length !== 1) return false;
+        let continueArgs: DebugProtocol.ContinueArguments = {
+          // Prepack will only have 1 thread, this argument will be ignored
+          threadId: 1,
+        };
+        this._sendContinueRequest(continueArgs);
+        break;
+      case "breakpoint":
+        // format: breakpoint add <filePath> <line> ?<column>
+        if (parts.length !== 4 && parts.length !== 5) return false;
+        if (parts[1] === "add") {
+          let filePath = parts[2];
+          let line = parseInt(parts[3], 10);
+          if (isNaN(line)) return false;
+          let column = 0;
+          if (parts.length === 5) {
+            column = parseInt(parts[4], 10);
+            if (isNaN(column)) return false;
+          }
+          this._sendBreakpointRequest(filePath, line, column);
+        }
         break;
       default:
         // invalid command
@@ -186,6 +238,41 @@ export class UISession {
     this._packageAndSend(json);
   }
 
+  // tell the adapter to continue running Prepack
+  _sendContinueRequest(args: DebugProtocol.ContinueArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "continue",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+    this._prepackWaiting = false;
+  }
+
+  _sendBreakpointRequest(filePath: string, line: number, column: number = 0) {
+    let source: DebugProtocol.Source = {
+      path: filePath,
+    };
+    let breakpoint: DebugProtocol.SourceBreakpoint = {
+      line: line,
+      column: column,
+    };
+    let args: DebugProtocol.SetBreakpointsArguments = {
+      source: source,
+      breakpoints: [breakpoint],
+    };
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "setBreakpoints",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
   // write out a message to the adapter on stdout
   _packageAndSend(message: string) {
     // format: Content-Length: <length> separator <message>
@@ -196,15 +283,15 @@ export class UISession {
     this._sequenceNum++;
   }
 
+  _uiOutput(message: string) {
+    console.log(message);
+  }
+
   serve() {
+    this._uiOutput("Debugger is starting up Prepack...");
     // Set up the adapter connection
     this._startAdapter();
-
     this._reader = readline.createInterface({ input: this._proc.stdin, output: this._proc.stdout });
-    // Start taking in commands and execute them
-    this._reader.question("(dbg) ", (input: string) => {
-      this._dispatch(input);
-    });
   }
 
   shutdown() {
