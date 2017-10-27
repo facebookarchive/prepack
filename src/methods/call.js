@@ -26,12 +26,12 @@ import {
   AbstractValue,
 } from "../values/index.js";
 import {
-  composePossiblyNormalCompletions,
   FunctionDeclarationInstantiation,
   GetBase,
   GetIterator,
   GetValue,
   HasSomeCompatibleType,
+  incorporateSavedCompletion,
   IsCallable,
   IsPropertyKey,
   IsPropertyReference,
@@ -350,32 +350,31 @@ export function OrdinaryCallEvaluateBody(
       let code = F.$ECMAScriptCode;
       invariant(code !== undefined);
       let context = realm.getRunningContext();
-      let c = context.lexicalEnvironment.evaluateAbstractCompletion(code, F.$Strict);
+      let c = context.lexicalEnvironment.evaluateCompletionDeref(code, F.$Strict);
       // We are about the leave this function and this presents a join point where all non exeptional control flows
       // converge into a single flow using the joined effects as the new state.
-      if (c instanceof PossiblyNormalCompletion) {
-        // There were earlier, conditional exits from the function
-        // We join together the current effects with the effects of any earlier returns that are tracked in c.
+      c = incorporateSavedCompletion(realm, c);
+      let joinedEffects;
+      if (c instanceof PossiblyNormalCompletion || c instanceof JoinedAbruptCompletions) {
         let e = realm.getCapturedEffects();
-        invariant(e !== undefined);
-        realm.stopEffectCaptureAndUndoEffects();
-        let joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
-        realm.applyEffects(joinedEffects);
-        c = joinedEffects[0];
+        if (e !== undefined) {
+          // There were earlier, conditional exits from the function
+          // We join together the current effects with the effects of any earlier returns that are tracked in c.
+          realm.stopEffectCaptureAndUndoEffects();
+        } else {
+          e = construct_empty_effects(realm);
+        }
+        joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
       }
-      if (c instanceof JoinedAbruptCompletions) {
-        // There are two or more returns and/or throws that unconditionally terminate the function
-        // We need to join the return flows together.
-        let e = construct_empty_effects(realm); // nothing happened since the components of c captured their effects
-        let joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
+      if (joinedEffects !== undefined) {
         let result = joinedEffects[0];
         if (result instanceof ReturnCompletion) {
           realm.applyEffects(joinedEffects);
-          return result.value;
+          return result;
         }
         invariant(result instanceof JoinedAbruptCompletions);
         if (!(result.consequent instanceof ReturnCompletion || result.alternate instanceof ReturnCompletion)) {
-          // Control is leaving this function only via throw completions. This is not a joint point.
+          realm.applyEffects(joinedEffects);
           throw result;
         }
         // There is a normal return exit, but also one or more throw completions.
@@ -399,13 +398,7 @@ export function OrdinaryCallEvaluateBody(
     // while stashing away the throw completions so that the next completion we return
     // incorporates them.
     let [joinedEffects, possiblyNormalCompletion] = unbundleReturnCompletion(realm, c);
-    if (context.savedCompletion !== undefined)
-      context.savedCompletion = composePossiblyNormalCompletions(
-        realm,
-        context.savedCompletion,
-        possiblyNormalCompletion
-      );
-    else context.savedCompletion = possiblyNormalCompletion;
+    realm.getRunningContext().composeWithSavedCompletion(possiblyNormalCompletion);
     realm.captureEffects();
     return joinedEffects;
   }

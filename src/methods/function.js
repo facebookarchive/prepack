@@ -22,7 +22,7 @@ import {
   PossiblyNormalCompletion,
 } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
-import { GlobalEnvironmentRecord, ObjectEnvironmentRecord, Reference } from "../environment.js";
+import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
   BoundFunctionValue,
@@ -46,7 +46,7 @@ import {
   composePossiblyNormalCompletions,
   joinAndRemoveNestedReturnCompletions,
   joinPossiblyNormalCompletionWithAbruptCompletion,
-  stopEffectCaptureAndJoinCompletions,
+  stopEffectCaptureJoinApplyAndReturnCompletion,
   updatePossiblyNormalCompletionWithValue,
   BoundNames,
   ContainsExpression,
@@ -695,13 +695,7 @@ function InternalCall(
     realm.popContext(calleeContext);
     invariant(realm.getRunningContext() === callerContext);
     if (calleeContext.savedCompletion !== undefined) {
-      if (callerContext.savedCompletion !== undefined)
-        callerContext.savedCompletion = composePossiblyNormalCompletions(
-          realm,
-          callerContext.savedCompletion,
-          calleeContext.savedCompletion
-        );
-      else callerContext.savedCompletion = calleeContext.savedCompletion;
+      callerContext.composeWithSavedCompletion(calleeContext.savedCompletion);
       realm.captureEffects();
     }
 
@@ -1131,7 +1125,15 @@ export function PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCall
   }
 }
 
-export function incorporateSavedCompletion(realm: Realm, c: void | Completion | Value): void | Completion | Value {
+// If c is an abrupt completion and context.savedCompletion is defined, the result is an instance of
+// JoinedAbruptCompletions and the effects that have been captured since the PossiblyNormalCompletion instance
+// in context.savedCompletion has been created, becomes the effects of the branch that terminates in c.
+// If c is a normal completion, the result is context.savedCompletion, with its value updated to c.
+// If c is undefined, the result is just context.savedCompletion.
+export function incorporateSavedCompletion(
+  realm: Realm,
+  c: void | AbruptCompletion | Value
+): void | Completion | Value {
   let context = realm.getRunningContext();
   let savedCompletion = context.savedCompletion;
   if (savedCompletion !== undefined) {
@@ -1140,19 +1142,15 @@ export function incorporateSavedCompletion(realm: Realm, c: void | Completion | 
     if (c instanceof Value) {
       updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
       return savedCompletion;
-    } else if (c instanceof PossiblyNormalCompletion) {
-      return composePossiblyNormalCompletions(realm, savedCompletion, c);
     } else {
-      invariant(c instanceof AbruptCompletion);
       let e = realm.getCapturedEffects();
       invariant(e !== undefined);
       realm.stopEffectCaptureAndUndoEffects();
-      e[0] = c;
       let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
       realm.applyEffects(joined_effects);
       let jc = joined_effects[0];
       invariant(jc instanceof AbruptCompletion);
-      throw jc;
+      return jc;
     }
   }
   return c;
@@ -1160,15 +1158,16 @@ export function incorporateSavedCompletion(realm: Realm, c: void | Completion | 
 
 export function EvaluateStatements(
   body: Array<BabelNodeStatement>,
-  blockValue: void | NormalCompletion | Value,
+  initialBlockValue: void | Value,
   strictCode: boolean,
   blockEnv: LexicalEnvironment,
   realm: Realm
-): NormalCompletion | Value {
+): Value {
+  let context = realm.getRunningContext();
+  let blockValue = initialBlockValue;
   for (let node of body) {
     if (node.type !== "FunctionDeclaration") {
-      let res = blockEnv.evaluateAbstractCompletion(node, strictCode);
-      invariant(!(res instanceof Reference));
+      let res = blockEnv.evaluateCompletionDeref(node, strictCode);
       res = incorporateSavedCompletion(realm, res);
       if (!(res instanceof EmptyValue)) {
         if (blockValue === undefined || blockValue instanceof Value) {
@@ -1178,7 +1177,7 @@ export function EvaluateStatements(
         } else {
           invariant(blockValue instanceof PossiblyNormalCompletion);
           if (res instanceof AbruptCompletion) {
-            throw stopEffectCaptureAndJoinCompletions(blockValue, res, realm);
+            throw stopEffectCaptureJoinApplyAndReturnCompletion(blockValue, res, realm);
           } else {
             if (res instanceof Value) {
               updatePossiblyNormalCompletionWithValue(realm, blockValue, res);
@@ -1194,6 +1193,8 @@ export function EvaluateStatements(
   }
 
   // 7. Return blockValue.
+  if (blockValue instanceof PossiblyNormalCompletion) blockValue = context.composeWithSavedCompletion(blockValue);
+  invariant(blockValue === undefined || blockValue instanceof Value);
   return blockValue || realm.intrinsics.empty;
 }
 

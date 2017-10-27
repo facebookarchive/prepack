@@ -311,12 +311,11 @@ export class Modules {
     this.initializedModules.clear();
     let globalInitializedModulesMap = this._getGlobalProperty("__initializedModules");
     invariant(globalInitializedModulesMap instanceof ObjectValue);
-    for (let moduleId of globalInitializedModulesMap.getOwnPropertyKeysArray()) {
+    for (let moduleId of globalInitializedModulesMap.properties.keys()) {
       let property = globalInitializedModulesMap.properties.get(moduleId);
       invariant(property);
       let moduleValue = property.descriptor && property.descriptor.value;
-      invariant(moduleValue instanceof Value);
-      this.initializedModules.set(moduleId, moduleValue);
+      if (moduleValue instanceof Value) this.initializedModules.set(moduleId, moduleValue);
     }
   }
 
@@ -420,7 +419,7 @@ export class Modules {
         let result = effects[0];
         if (result instanceof Completion) {
           console.log(`=== UNEXPECTED ERROR during ${message} ===`);
-          this.logger.logCompletion(result);
+          //this.logger.logCompletion(result);
           return undefined;
         }
 

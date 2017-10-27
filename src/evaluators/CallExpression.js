@@ -10,7 +10,7 @@
 /* @flow */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
@@ -41,7 +41,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
+): Value {
   if (ast.callee.type === "Super") {
     return SuperCall(ast.arguments, strictCode, env, realm);
   }
@@ -64,7 +64,7 @@ function callBothFunctionsAndJoinTheirEffects(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
+): Value {
   let [cond, func1, func2] = args;
   invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
   invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
@@ -85,11 +85,12 @@ function callBothFunctionsAndJoinTheirEffects(
     [compl2, gen2, bindings2, properties2, createdObj2]
   );
   let completion = joinedEffects[0];
-  if (completion instanceof NormalCompletion) {
+  if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
+    completion = realm.getRunningContext().composeWithSavedCompletion(completion);
     realm.captureEffects();
   }
 
@@ -99,7 +100,7 @@ function callBothFunctionsAndJoinTheirEffects(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof NormalCompletion || completion instanceof Value);
+  invariant(completion instanceof Value);
   return completion;
 }
 
@@ -110,7 +111,7 @@ function EvaluateCall(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
+): Value {
   function generateRuntimeCall() {
     let args = [func];
     let [thisArg, propName] = ref instanceof Reference ? [ref.base, ref.referencedName] : [];

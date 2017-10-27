@@ -81,6 +81,18 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
   consequentEffects: Effects;
   alternate: AbruptCompletion;
   alternateEffects: Effects;
+
+  containsBreakOrContinue(): boolean {
+    if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;
+    if (this.alternate instanceof BreakCompletion || this.alternate instanceof ContinueCompletion) return true;
+    if (this.consequent instanceof JoinedAbruptCompletions) {
+      if (this.consequent.containsBreakOrContinue()) return true;
+    }
+    if (this.alternate instanceof JoinedAbruptCompletions) {
+      if (this.alternate.containsBreakOrContinue()) return true;
+    }
+    return false;
+  }
 }
 
 // Possibly normal completions have to be treated like normal completions
@@ -129,4 +141,16 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   consequentEffects: Effects;
   alternate: Completion | Value;
   alternateEffects: Effects;
+
+  containsBreakOrContinue(): boolean {
+    if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;
+    if (this.alternate instanceof BreakCompletion || this.alternate instanceof ContinueCompletion) return true;
+    if (this.consequent instanceof JoinedAbruptCompletions || this.consequent instanceof PossiblyNormalCompletion) {
+      if (this.consequent.containsBreakOrContinue()) return true;
+    }
+    if (this.alternate instanceof JoinedAbruptCompletions || this.alternate instanceof PossiblyNormalCompletion) {
+      if (this.alternate.containsBreakOrContinue()) return true;
+    }
+    return false;
+  }
 }

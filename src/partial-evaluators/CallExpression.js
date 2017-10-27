@@ -22,13 +22,12 @@ import {
   GetReferencedName,
   GetThisValue,
   GetValue,
-  incorporateSavedCompletion,
   IsInTailPosition,
   IsPropertyReference,
   joinEffects,
   PerformEval,
   SameValue,
-  stopEffectCaptureAndJoinCompletions,
+  stopEffectCaptureJoinApplyAndReturnCompletion,
   unbundleNormalCompletion,
 } from "../methods/index.js";
 import { AbstractValue, BooleanValue, FunctionValue, Value } from "../values/index.js";
@@ -67,7 +66,7 @@ export default function(
     partialArgs.push((argAst: any));
     if (argValue instanceof AbruptCompletion) {
       if (completion instanceof PossiblyNormalCompletion)
-        completion = stopEffectCaptureAndJoinCompletions(completion, argValue, realm);
+        completion = stopEffectCaptureJoinApplyAndReturnCompletion(completion, argValue, realm);
       else completion = argValue;
       let resultAst = t.callExpression((calleeAst: any), partialArgs);
       return [completion, resultAst, io];
@@ -84,10 +83,9 @@ export default function(
   }
 
   let callResult = EvaluateCall(ref, func, ast, argVals, strictCode, env, realm);
-  completion = incorporateSavedCompletion(realm, completion);
   if (callResult instanceof AbruptCompletion) {
     if (completion instanceof PossiblyNormalCompletion)
-      completion = stopEffectCaptureAndJoinCompletions(completion, callResult, realm);
+      completion = stopEffectCaptureJoinApplyAndReturnCompletion(completion, callResult, realm);
     else completion = callResult;
     let resultAst = t.callExpression((calleeAst: any), partialArgs);
     return [completion, resultAst, io];
@@ -110,7 +108,7 @@ function callBothFunctionsAndJoinTheirEffects(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
+): AbruptCompletion | Value {
   let [cond, func1, func2] = funcs;
   invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
   invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
@@ -136,7 +134,7 @@ function callBothFunctionsAndJoinTheirEffects(
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    realm.captureEffects();
+    joinedCompletion = realm.getRunningContext().composeWithSavedCompletion(joinedCompletion);
   }
 
   // Note that the effects of (non joining) abrupt branches are not included
@@ -144,7 +142,7 @@ function callBothFunctionsAndJoinTheirEffects(
   realm.applyEffects(joinedEffects);
 
   // return or throw completion
-  invariant(joinedCompletion instanceof Completion || joinedCompletion instanceof Value);
+  invariant(joinedCompletion instanceof AbruptCompletion || joinedCompletion instanceof Value);
   return joinedCompletion;
 }
 
@@ -156,7 +154,7 @@ function EvaluateCall(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
+): AbruptCompletion | Value {
   if (func instanceof AbstractValue && Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
     if (func.kind === "conditional")
       return callBothFunctionsAndJoinTheirEffects(func.args, ast, argList, strictCode, env, realm);

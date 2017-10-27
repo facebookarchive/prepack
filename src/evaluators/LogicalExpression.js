@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
@@ -25,7 +25,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value | Reference {
+): Value | Reference {
   let lref = env.evaluate(ast.left, strictCode);
   let lval = GetValue(realm, lref);
 
@@ -82,11 +82,12 @@ export default function(
     );
   }
   let completion = joinedEffects[0];
-  if (completion instanceof NormalCompletion) {
+  if (completion instanceof PossiblyNormalCompletion) {
     // in this case the evaluation of ast.right may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
+    completion = realm.getRunningContext().composeWithSavedCompletion(completion);
     realm.captureEffects();
   }
   // Note that the effects of (non joining) abrupt branches are not included
@@ -95,7 +96,7 @@ export default function(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof NormalCompletion || completion instanceof Value); // references do not survive join
+  invariant(completion instanceof Value); // references do not survive join
   if (lval instanceof Value && compl2 instanceof Value) {
     // joinEffects does the right thing for the side effects of the second expression but for the result the join
     // produces a conditional expressions of the form (a ? b : a) for a && b and (a ? a : b) for a || b
