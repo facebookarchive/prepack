@@ -35,6 +35,11 @@ export class PerFileBreakpointMap {
       let key = this._getKey(line, column);
       if (key in this.breakpoints) {
         return this.breakpoints[key];
+      } else {
+        key = this._getKey(line, 0);
+        if (key in this.breakpoints) {
+          return this.breakpoints[key];
+        }
       }
     } else {
       let key = this._getKey(line, 0);

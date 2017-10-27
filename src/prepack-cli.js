@@ -140,6 +140,12 @@ function run(
           let line = args.shift();
           additionalFunctions = line.split(",");
           break;
+        case "debugInFilePath":
+          debugInFilePath = args.shift();
+          break;
+        case "debugOutFilePath":
+          debugOutFilePath = args.shift();
+          break;
         case "help":
           console.log(
             "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ]" +
