@@ -12,17 +12,18 @@
 import type { BabelNodeSourceLocation } from "babel-types";
 import type { Realm } from "../realm.js";
 import {
-  EmptyValue,
-  UndefinedValue,
-  NullValue,
+  AbstractObjectValue,
   BooleanValue,
-  StringValue,
-  SymbolValue,
+  ConcreteValue,
+  EmptyValue,
+  FunctionValue,
+  NullValue,
   NumberValue,
   ObjectValue,
-  ConcreteValue,
-  AbstractObjectValue,
-  FunctionValue,
+  PrimitiveValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
 } from "./index.js";
 import invariant from "../invariant.js";
 
@@ -191,11 +192,11 @@ export default class Value {
     invariant(false, "abstract method; please override");
   }
 
-  throwIfNotObject(): ObjectValue | AbstractObjectValue {
+  throwIfNotConcretePrimitive(): PrimitiveValue {
     invariant(false, "abstract method; please override");
   }
 
-  throwIfNotConcreteString(): StringValue {
+  throwIfNotObject(): ObjectValue | AbstractObjectValue {
     invariant(false, "abstract method; please override");
   }
 

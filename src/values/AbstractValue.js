@@ -324,6 +324,11 @@ export default class AbstractValue extends Value {
     throw new FatalError();
   }
 
+  throwIfNotConcretePrimitive(): PrimitiveValue {
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
+  }
+
   throwIfNotObject(): AbstractObjectValue {
     invariant(!(this instanceof AbstractObjectValue));
     AbstractValue.reportIntrospectionError(this);
