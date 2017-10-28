@@ -32,9 +32,6 @@ export class DebugMessage {
   static PREPACK_FINISH_RESPONSE: string = "PrepackFinish";
   // Respond to the adapter that Prepack has stopped on a breakpoint
   static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped";
-
-  // Acknowledgement for running
-  static PREPACK_RUN_ACKNOWLEDGE: string = "PrepackRun-Acknowledge";
   // Acknowledgement for setting a breakpoint
   static BREAKPOINT_ADD_ACKNOWLEDGE: string = "Breakpoint-add-acknowledge";
   // Acknowledgement for removing a breakpoint
