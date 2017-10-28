@@ -10,12 +10,16 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
+import { AbstractValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
 import { ToStringPartial, Get } from "../../methods/index.js";
+import buildExpressionTemplate from "../../utils/builder.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   return build("Error", realm, obj);
 }
+
+const tsTemplateSrc = "(A).toString()";
+const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
 
 export function build(name: string, realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.5.3.2
@@ -36,12 +40,18 @@ export function build(name: string, realm: Realm, obj: ObjectValue): void {
 
     // 3. Let name be ? Get(O, "name").
     let nameValue = Get(realm, O, "name");
+    if (nameValue instanceof AbstractValue) {
+      return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [O], tsTemplateSrc);
+    }
 
     // 4. If name is undefined, let name be "Error"; otherwise let name be ? ToString(name).
     let nameString = nameValue instanceof UndefinedValue ? "Error" : ToStringPartial(realm, nameValue);
 
     // 5. Let msg be ? Get(O, "message").
     let msg = Get(realm, O, "message");
+    if (msg instanceof AbstractValue) {
+      return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [O], tsTemplateSrc);
+    }
 
     // 6. If msg is undefined, let msg be the empty String; otherwise let msg be ? ToString(msg).
     msg = msg instanceof UndefinedValue ? "" : ToStringPartial(realm, msg);
