@@ -23,7 +23,9 @@ import Queue from "queue-fifo";
 import { AdapterChannel } from "./../channel/AdapterChannel.js";
 import type { DebuggerOptions } from "./../../options.js";
 import { getDebuggerOptions } from "./../../prepack-options.js";
+import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
+import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
@@ -97,7 +99,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this._messageQueue = new Queue();
     // set up the communication channel
     this._adapterChannel = new AdapterChannel(this._debuggerOptions);
-    this._adapterChannel.writeOut(DebugMessage.DEBUGGER_ATTACHED);
+    this._adapterChannel.writeOut(`${DebuggerConstants.DEFAULT_REQUEST_ID} ${DebugMessage.DEBUGGER_ATTACHED}`);
     this._adapterChannel.listenOnFile(this._handleFileReadError.bind(this), this._processPrepackMessage.bind(this));
 
     let prepackArgs = this._prepackCommand.split(" ");
@@ -134,7 +136,9 @@ class PrepackDebugSession extends LoggingDebugSession {
 
   _processPrepackMessage(message: string) {
     let parts = message.split(" ");
-    let prefix = parts[0];
+    let requestID = parseInt(parts[0], 10);
+    invariant(!isNaN(requestID));
+    let prefix = parts[1];
     if (prefix === DebugMessage.PREPACK_READY_RESPONSE) {
       this._prepackWaiting = true;
       // the second argument is the threadID required by the protocol, since
@@ -194,7 +198,7 @@ class PrepackDebugSession extends LoggingDebugSession {
   */
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // queue a Run request to Prepack and try to send the next request in the queue
-    this._messageQueue.enqueue(DebugMessage.PREPACK_RUN_COMMAND);
+    this._messageQueue.enqueue(`${response.request_seq} ${DebugMessage.PREPACK_RUN_COMMAND}`);
     this._trySendNextRequest();
     this.sendResponse(response);
   }
@@ -212,7 +216,9 @@ class PrepackDebugSession extends LoggingDebugSession {
       if (breakpoint.column) {
         column = breakpoint.column;
       }
-      this._messageQueue.enqueue(`${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`);
+      this._messageQueue.enqueue(
+        `${response.request_seq} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`
+      );
     }
     this._trySendNextRequest();
     this.sendResponse(response);

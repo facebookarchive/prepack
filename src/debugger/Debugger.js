@@ -23,6 +23,7 @@ export class DebugServer {
     this.breakpoints = new BreakpointCollection();
     this.previousExecutedLine = 0;
     this.previousExecutedCol = 0;
+    this.lastRunRequestID = 0;
     this.channel = channel;
     this.waitForRun();
   }
@@ -33,6 +34,7 @@ export class DebugServer {
   previousExecutedCol: number;
   // the channel to communicate with the adapter
   channel: DebugChannel;
+  lastRunRequestID: number;
 
   /* Block until adapter says to run
   /* runCondition: a function that determines whether the adapter has told
@@ -100,7 +102,8 @@ export class DebugServer {
       if (breakpoint === null) return;
       // Tell the adapter that Prepack has stopped on this breakpoint
       this.channel.writeOut(
-        `${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${breakpoint.filePath} ${breakpoint.line}:${breakpoint.column}`
+        `${this
+          .lastRunRequestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${breakpoint.filePath} ${breakpoint.line}:${breakpoint.column}`
       );
 
       // Wait for the adapter to tell us to run again
@@ -115,12 +118,17 @@ export class DebugServer {
       return;
     }
     let parts = command.split(" ");
-    let prefix = parts[0];
+    // unique ID for each request
+    let requestID = parseInt(parts[0], 10);
+    invariant(!isNaN(requestID), "Request ID must be a number");
+
+    let prefix = parts[1];
     switch (prefix) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
-        let addArgs = this._parseBreakpointArguments(parts);
+        let addArgs = this._parseBreakpointArguments(parts.slice(1));
         this.breakpoints.addBreakpoint(addArgs.filePath, addArgs.lineNum, addArgs.columnNum);
         this._sendBreakpointAcknowledge(
+          requestID,
           DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE,
           addArgs.filePath,
           addArgs.lineNum,
@@ -128,9 +136,10 @@ export class DebugServer {
         );
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
-        let removeArgs = this._parseBreakpointArguments(parts);
+        let removeArgs = this._parseBreakpointArguments(parts.slice(1));
         this.breakpoints.removeBreakpoint(removeArgs.filePath, removeArgs.lineNum, removeArgs.columnNum);
         this._sendBreakpointAcknowledge(
+          requestID,
           DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE,
           removeArgs.filePath,
           removeArgs.lineNum,
@@ -138,9 +147,10 @@ export class DebugServer {
         );
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
-        let enableArgs = this._parseBreakpointArguments(parts);
+        let enableArgs = this._parseBreakpointArguments(parts.slice(1));
         this.breakpoints.enableBreakpoint(enableArgs.filePath, enableArgs.lineNum, enableArgs.columnNum);
         this._sendBreakpointAcknowledge(
+          requestID,
           DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE,
           enableArgs.filePath,
           enableArgs.lineNum,
@@ -148,9 +158,10 @@ export class DebugServer {
         );
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
-        let disableArgs = this._parseBreakpointArguments(parts);
+        let disableArgs = this._parseBreakpointArguments(parts.slice(1));
         this.breakpoints.disableBreakpoint(disableArgs.filePath, disableArgs.lineNum, disableArgs.columnNum);
         this._sendBreakpointAcknowledge(
+          requestID,
           DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE,
           disableArgs.filePath,
           disableArgs.lineNum,
@@ -158,6 +169,7 @@ export class DebugServer {
         );
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
+        this.lastRunRequestID = requestID;
         return true;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + prefix);
@@ -165,8 +177,14 @@ export class DebugServer {
     return false;
   }
 
-  _sendBreakpointAcknowledge(responsePrefix: string, filePath: string, line: number, column: number) {
-    this.channel.writeOut(`${responsePrefix} ${filePath} ${line} ${column}`);
+  _sendBreakpointAcknowledge(
+    requestID: number,
+    responsePrefix: string,
+    filePath: string,
+    line: number,
+    column: number
+  ) {
+    this.channel.writeOut(`${requestID} ${responsePrefix} ${filePath} ${line} ${column}`);
   }
 
   _parseBreakpointArguments(parts: Array<string>): BreakpointCommandArguments {
@@ -193,6 +211,6 @@ export class DebugServer {
 
   shutdown() {
     //let the adapter know Prepack is done running
-    this.channel.writeOut(DebugMessage.PREPACK_FINISH_RESPONSE);
+    this.channel.writeOut(`${this.lastRunRequestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`);
   }
 }
