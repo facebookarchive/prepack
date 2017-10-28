@@ -12,7 +12,13 @@
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
 import { ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
-import { OrdinaryCreateFromConstructor, ToStringPartial, Get, DefinePropertyOrThrow } from "../../methods/index.js";
+import {
+  DefinePropertyOrThrow,
+  Get,
+  OrdinaryCreateFromConstructor,
+  ToStringPartial,
+  ToStringValue,
+} from "../../methods/index.js";
 import invariant from "../../invariant.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 
@@ -115,11 +121,11 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
     // 3. If message is not undefined, then
     if (!message.mightBeUndefined()) {
       // a. Let msg be ? ToString(message).
-      let msg = ToStringPartial(realm, message);
+      let msg = message.getType() === StringValue ? message : ToStringValue(realm, message);
 
       // b. Let msgDesc be the PropertyDescriptor{[[Value]]: msg, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
       let msgDesc = {
-        value: new StringValue(realm, msg),
+        value: msg,
         writable: true,
         enumerable: false,
         configurable: true,

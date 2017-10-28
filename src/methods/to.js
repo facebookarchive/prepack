@@ -679,6 +679,31 @@ export function ToStringPartial(realm: Realm, val: string | Value): string {
   return ToString(realm, typeof val === "string" ? val : val.throwIfNotConcrete());
 }
 
+export function ToStringValue(realm: Realm, val: Value): Value {
+  if (val.getType() === StringValue) return val;
+  let str;
+  if (typeof val === "string") {
+    str = val;
+  } else if (val instanceof NumberValue) {
+    str = val.value + "";
+  } else if (val instanceof UndefinedValue) {
+    str = "undefined";
+  } else if (val instanceof NullValue) {
+    str = "null";
+  } else if (val instanceof SymbolValue) {
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+  } else if (val instanceof BooleanValue) {
+    str = val.value ? "true" : "false";
+  } else if (val instanceof ObjectValue) {
+    let primValue = ToPrimitiveOrAbstract(realm, val, "string");
+    if (primValue.getType() === StringValue) return primValue;
+    str = ToStringPartial(realm, primValue);
+  } else {
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown value type, can't coerce to string");
+  }
+  return new StringValue(realm, str);
+}
+
 // ECMA262 7.1.2
 export function ToBoolean(realm: Realm, val: ConcreteValue): boolean {
   if (val instanceof BooleanValue) {
