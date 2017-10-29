@@ -164,7 +164,10 @@ class PrepackDebugSession extends LoggingDebugSession {
   }
 
   _processRequestCallback(requestID: number, message: string) {
-    invariant(requestID in this._pendingRequestCallbacks, "Request ID does not exist in pending requests: " + requestID);
+    invariant(
+      requestID in this._pendingRequestCallbacks,
+      "Request ID does not exist in pending requests: " + requestID
+    );
     let callback = this._pendingRequestCallbacks[requestID];
     callback(message);
   }
