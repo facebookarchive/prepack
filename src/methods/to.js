@@ -19,18 +19,18 @@ import { FatalError } from "../errors.js";
 import { IsCallable } from "./is.js";
 import { SameValue, SameValueZero } from "./abstract.js";
 import {
-  Value,
-  ConcreteValue,
-  PrimitiveValue,
-  UndefinedValue,
-  BooleanValue,
-  ObjectValue,
-  SymbolValue,
-  StringValue,
-  NumberValue,
-  NullValue,
-  AbstractValue,
   AbstractObjectValue,
+  AbstractValue,
+  BooleanValue,
+  ConcreteValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  PrimitiveValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
 
@@ -541,6 +541,14 @@ export function ToPrimitive(
   input: ConcreteValue,
   hint?: "default" | "string" | "number"
 ): PrimitiveValue {
+  return ToPrimitiveOrAbstract(realm, input, hint).throwIfNotConcretePrimitive();
+}
+
+export function ToPrimitiveOrAbstract(
+  realm: Realm,
+  input: ConcreteValue,
+  hint?: "default" | "string" | "number"
+): AbstractValue | PrimitiveValue {
   if (input instanceof PrimitiveValue) {
     return input;
   }
@@ -577,7 +585,7 @@ export function ToPrimitive(
   if (hint === "default") hint = "number";
 
   // 7. Return ? OrdinaryToPrimitive(input, hint).
-  return OrdinaryToPrimitive(realm, input, hint);
+  return OrdinaryToPrimitiveOrAbstract(realm, input, hint);
 }
 
 // Returns result type of ToPrimitive if it is pure (terminates, does not throw exception, does not read or write heap), otherwise undefined.
@@ -594,6 +602,14 @@ export function IsToPrimitivePure(realm: Realm, input: Value) {
 
 // ECMA262 7.1.1
 export function OrdinaryToPrimitive(realm: Realm, input: ObjectValue, hint: "string" | "number"): PrimitiveValue {
+  return OrdinaryToPrimitiveOrAbstract(realm, input, hint).throwIfNotConcretePrimitive();
+}
+
+export function OrdinaryToPrimitiveOrAbstract(
+  realm: Realm,
+  input: ObjectValue,
+  hint: "string" | "number"
+): AbstractValue | PrimitiveValue {
   let methodNames;
 
   // 1. Assert: Type(O) is Object.
@@ -620,11 +636,12 @@ export function OrdinaryToPrimitive(realm: Realm, input: ObjectValue, hint: "str
     // b. If IsCallable(method) is true, then
     if (IsCallable(realm, method)) {
       // i. Let result be ? Call(method, O).
-      let result = Call(realm, method, input).throwIfNotConcrete();
+      let result = Call(realm, method, input);
+      let resultType = result.getType();
 
       // ii. If Type(result) is not Object, return result.
-      if (!(result instanceof ObjectValue)) {
-        invariant(result instanceof PrimitiveValue);
+      if (Value.isTypeCompatibleWith(resultType, PrimitiveValue)) {
+        invariant(result instanceof AbstractValue || result instanceof PrimitiveValue);
         return result;
       }
     }

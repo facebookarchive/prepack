@@ -24,7 +24,7 @@ import {
   ToBoolean,
   ToInt32,
   ToNumber,
-  ToPrimitive,
+  ToPrimitiveOrAbstract,
   ToPropertyKey,
   ToString,
   ToUint32,
@@ -112,8 +112,12 @@ export default class ValuesDomain {
   static computeBinary(realm: Realm, op: BabelBinaryOperator, lval: ConcreteValue, rval: ConcreteValue): Value {
     if (op === "+") {
       // ECMA262 12.8.3 The Addition Operator
-      let lprim = ToPrimitive(realm, lval);
-      let rprim = ToPrimitive(realm, rval);
+      let lprim = ToPrimitiveOrAbstract(realm, lval);
+      let rprim = ToPrimitiveOrAbstract(realm, rval);
+
+      if (lprim instanceof AbstractValue || rprim instanceof AbstractValue) {
+        return AbstractValue.createFromBinaryOp(realm, op, lprim, rprim);
+      }
 
       if (lprim instanceof StringValue || rprim instanceof StringValue) {
         let lstr = ToString(realm, lprim);

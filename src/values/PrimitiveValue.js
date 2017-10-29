@@ -18,4 +18,8 @@ export default class PrimitiveValue extends ConcreteValue {
     invariant(realm, "realm required");
     super(realm, intrinsicName);
   }
+
+  throwIfNotConcretePrimitive(): PrimitiveValue {
+    return this;
+  }
 }
