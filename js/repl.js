@@ -49,7 +49,7 @@ var optionsConfig = [
     name: "reactEnabled",
     defaultVal: false,
     description: "Enables experimental support for React features, such as JSX syntax."
-  },  
+  },
 ];
 
 var demos = [];
@@ -128,6 +128,7 @@ function makeDemoSharable() {
 function compile() {
   clearTimeout(debounce);
   terminateWorker();
+  graphDiv.style.display = "none";
 
   errorOutput.innerHTML = '';
   errorOutput.style.display = 'none';
@@ -147,6 +148,7 @@ function compile() {
           code =
             '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
         }
+        graphDiv.style.display = "inline-block";
         output.setValue(code, -1);
       } else if (result.type === 'error') {
         let errors = result.data;
@@ -182,6 +184,7 @@ function compile() {
 
     worker.postMessage({code: input.getValue(), options: options});
   }, 500);
+
 }
 
 var output = createEditor(replOutput);
@@ -202,6 +205,30 @@ var optionsButton = document.querySelector('#optionsMenuButton');
 var saveButton = document.querySelector('#saveBtn');
 var deleteButton = document.querySelector('#deleteBtn');
 var storage = window.localStorage;
+
+/** graph modal **/
+var graphButton = document.querySelector('#graphBtn');
+var graphDiv = document.getElementById('graphBtn');
+
+var graphModal = document.getElementById('graphModal');
+var graphModalClose = document.getElementById('graphModalClose');
+
+function setUpModal() {
+  graphDiv.style.display = "none";
+  graphButton.onclick = () => {
+    console.log("HERE");
+    graphModal.style.display = "block";
+  };
+  graphModalClose.onclick = function() {
+    graphModal.style.display = "none";
+  }
+  window.onclick = function(event) {
+    if (event.target == graphModal) {
+          graphModal.style.display = "none";
+      }
+  }
+}
+setUpModal();
 
 function changeDemosSelect(val) {
   if (!val.value) return;
