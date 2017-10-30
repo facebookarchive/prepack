@@ -19,7 +19,7 @@ let React = require("react");
 let ReactTestRenderer = require("react-test-renderer");
 let { Value, AbstractValue, NativeFunctionValue, ObjectValue } = require("../lib/values/index.js");
 let { normalize } = require("../lib/utils/json.js");
-let { createMockReactComponent } = require("../lib/react/mocks.js");
+let { createMockReactComponent, createMockReactCloneElement } = require("../lib/react/mocks.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
@@ -70,15 +70,21 @@ function additionalGlobals(realm) {
   // apply React mock (for now just React.Component)
   global.$DefineOwnProperty("__createReactMock", {
     value: new NativeFunctionValue(realm, "global.__createReactMock", "__createReactMock", 0, (context, []) => {
+      // React object
+      let reactValue = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      reactValue.intrinsicName = "React";
+      // React.Component
       let reactComponent = GetValue(realm, realm.$GlobalEnv.evaluate(createMockReactComponent(), false));
       reactComponent.intrinsicName = "React.Component";
       let prototypeValue = ((reactComponent: any): ObjectValue).properties.get("prototype");
       if (prototypeValue && prototypeValue.descriptor) {
         ((prototypeValue.descriptor.value: any): Value).intrinsicName = `React.Component.prototype`;
       }
-      let reactValue = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      reactValue.intrinsicName = "React";
       CreateDataPropertyOrThrow(realm, reactValue, "Component", reactComponent);
+      // React.cloneElement
+      let reactCloneElement = GetValue(realm, realm.$GlobalEnv.evaluate(createMockReactCloneElement(), false));
+      reactCloneElement.intrinsicName = "React.cloneElement";
+      CreateDataPropertyOrThrow(realm, reactValue, "cloneElement", reactCloneElement);
       return reactValue;
     }),
     writable: true,

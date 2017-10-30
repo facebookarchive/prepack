@@ -9,55 +9,89 @@
 
 /* @flow */
 
-import * as t from "babel-types";
+import { parseExpression } from "babylon";
 
 // this a mock of React.Component, to be used for tests
 export function createMockReactComponent() {
-  return t.classExpression(
-    null,
-    null,
-    t.classBody([
-      t.classMethod(
-        "constructor",
-        t.identifier("constructor"),
-        [t.identifier("props"), t.identifier("context")],
-        t.blockStatement([
-          // this.props = props
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(t.thisExpression(), t.identifier("props")),
-              t.identifier("props")
-            )
-          ),
-          // this.context = context
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(t.thisExpression(), t.identifier("context")),
-              t.identifier("context")
-            )
-          ),
-          // this.state = {}
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(t.thisExpression(), t.identifier("state")),
-              t.objectExpression([])
-            )
-          ),
-          // this.ref = {}
-          t.expressionStatement(
-            t.assignmentExpression(
-              "=",
-              t.memberExpression(t.thisExpression(), t.identifier("refs")),
-              t.objectExpression([])
-            )
-          ),
-        ])
-      ),
-      t.classMethod("method", t.identifier("getChildContext"), [], t.blockStatement([])),
-    ]),
-    []
-  );
+  let componentCode = `
+    class Component {
+      constructor(props, context) {
+        this.props = props || {};
+        this.context = context || {};
+        this.refs = {};
+        this.state = {};
+      }
+      getChildContext() {}
+    }
+  `;
+  return parseExpression(componentCode, { plugins: ["flow"] });
+}
+
+// this a mock of React.Component, to be used for tests
+export function createMockReactCloneElement() {
+  let cloneElementCode = `
+  function cloneElement(element, config, children) {
+    var propName;
+    var RESERVED_PROPS = {
+      key: true,
+      ref: true,
+      __self: true,
+      __source: true,
+    };
+    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    var props = Object.assign({}, element.props);
+  
+    var key = element.key;
+    var ref = element.ref;
+    var self = element._self;
+    var source = element._source;
+    var owner = element._owner;
+  
+    if (config != null) {
+      if (config.ref !== undefined) {
+        // owner = ReactCurrentOwner.current;
+      }
+      if (config.key !== undefined) {
+        key = '' + config.key;
+      }
+      var defaultProps;
+      if (element.type && element.type.defaultProps) {
+        defaultProps = element.type.defaultProps;
+      }
+      for (propName in config) {
+        if (
+          hasOwnProperty.call(config, propName) &&
+          !RESERVED_PROPS.hasOwnProperty(propName)
+        ) {
+          if (config[propName] === undefined && defaultProps !== undefined) {
+            // Resolve default props
+            props[propName] = defaultProps[propName];
+          } else {
+            props[propName] = config[propName];
+          }
+        }
+      }
+    }
+    var childrenLength = arguments.length - 2;
+    if (childrenLength === 1) {
+      props.children = children;
+    } else if (childrenLength > 1) {
+      var childArray = Array(childrenLength);
+      for (var i = 0; i < childrenLength; i++) {
+        childArray[i] = arguments[i + 2];
+      }
+      props.children = childArray;
+    }
+  
+    return {
+      $$typeof: element.$$typeof,
+      type: element.type,
+      key: key,
+      ref: ref,
+      props: props,
+      _owner: owner,
+    };
+  }
+  `;
+  return parseExpression(cloneElementCode, { plugins: ["flow"] });
 }
