@@ -12,11 +12,11 @@
 import type { BabelNode } from "babel-types";
 import { BreakpointCollection } from "./BreakpointCollection.js";
 import { Breakpoint } from "./Breakpoint.js";
-import type { BreakpointCommandArguments } from "./types.js";
 import invariant from "../invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./channel/DebugMessage.js";
 import { DebuggerError } from "./DebuggerError.js";
+import { MessageParser } from "./channel/MessageParser.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel) {
@@ -24,6 +24,7 @@ export class DebugServer {
     this._previousExecutedLine = 0;
     this._previousExecutedCol = 0;
     this._lastRunRequestID = 0;
+    this._messageParser = new MessageParser();
     this._channel = channel;
     this.waitForRun();
   }
@@ -32,6 +33,8 @@ export class DebugServer {
   _previousExecutedFile: void | string;
   _previousExecutedLine: number;
   _previousExecutedCol: number;
+  // helper to parse messages;
+  _messageParser: MessageParser;
   // the channel to communicate with the adapter
   _channel: DebugChannel;
   _lastRunRequestID: number;
@@ -101,11 +104,12 @@ export class DebugServer {
       let breakpoint = this.findStoppableBreakpoint(filePath, lineNum, colNum);
       if (breakpoint === null) return;
       // Tell the adapter that Prepack has stopped on this breakpoint
-      this._channel.writeOut(
-        `${this
-          ._lastRunRequestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${breakpoint.filePath} ${breakpoint.line}:${breakpoint.column}`
+      this._channel.sendBreakpointStopped(
+        this._lastRunRequestID,
+        breakpoint.filePath,
+        breakpoint.line,
+        breakpoint.column
       );
-
       // Wait for the adapter to tell us to run again
       this.waitForRun();
     }
@@ -125,9 +129,9 @@ export class DebugServer {
     let prefix = parts[1];
     switch (prefix) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
-        let addArgs = this._parseBreakpointArguments(parts.slice(1));
+        let addArgs = this._messageParser.parseBreakpointArguments(parts.slice(1));
         this._breakpoints.addBreakpoint(addArgs.filePath, addArgs.lineNum, addArgs.columnNum);
-        this._sendBreakpointAcknowledge(
+        this._channel.sendBreakpointAcknowledge(
           requestID,
           DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE,
           addArgs.filePath,
@@ -136,9 +140,9 @@ export class DebugServer {
         );
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
-        let removeArgs = this._parseBreakpointArguments(parts.slice(1));
+        let removeArgs = this._messageParser.parseBreakpointArguments(parts.slice(1));
         this._breakpoints.removeBreakpoint(removeArgs.filePath, removeArgs.lineNum, removeArgs.columnNum);
-        this._sendBreakpointAcknowledge(
+        this._channel.sendBreakpointAcknowledge(
           requestID,
           DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE,
           removeArgs.filePath,
@@ -147,9 +151,9 @@ export class DebugServer {
         );
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
-        let enableArgs = this._parseBreakpointArguments(parts.slice(1));
+        let enableArgs = this._messageParser.parseBreakpointArguments(parts.slice(1));
         this._breakpoints.enableBreakpoint(enableArgs.filePath, enableArgs.lineNum, enableArgs.columnNum);
-        this._sendBreakpointAcknowledge(
+        this._channel.sendBreakpointAcknowledge(
           requestID,
           DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE,
           enableArgs.filePath,
@@ -158,9 +162,9 @@ export class DebugServer {
         );
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
-        let disableArgs = this._parseBreakpointArguments(parts.slice(1));
+        let disableArgs = this._messageParser.parseBreakpointArguments(parts.slice(1));
         this._breakpoints.disableBreakpoint(disableArgs.filePath, disableArgs.lineNum, disableArgs.columnNum);
-        this._sendBreakpointAcknowledge(
+        this._channel.sendBreakpointAcknowledge(
           requestID,
           DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE,
           disableArgs.filePath,
@@ -177,40 +181,8 @@ export class DebugServer {
     return false;
   }
 
-  _sendBreakpointAcknowledge(
-    requestID: number,
-    responsePrefix: string,
-    filePath: string,
-    line: number,
-    column: number
-  ) {
-    this._channel.writeOut(`${requestID} ${responsePrefix} ${filePath} ${line} ${column}`);
-  }
-
-  _parseBreakpointArguments(parts: Array<string>): BreakpointCommandArguments {
-    let kind = parts[0];
-    let filePath = parts[1];
-
-    let lineNum = parseInt(parts[2], 10);
-    invariant(!isNaN(lineNum));
-    let columnNum = 0;
-    if (parts.length === 4) {
-      columnNum = parseInt(parts[3], 10);
-      invariant(!isNaN(columnNum));
-    }
-
-    let result: BreakpointCommandArguments = {
-      kind: kind,
-      filePath: filePath,
-      lineNum: lineNum,
-      columnNum: columnNum,
-    };
-
-    return result;
-  }
-
   shutdown() {
     //let the adapter know Prepack is done running
-    this._channel.writeOut(`${this._lastRunRequestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`);
+    this._channel.sendPrepackFinish(this._lastRunRequestID);
   }
 }

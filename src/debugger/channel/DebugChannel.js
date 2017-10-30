@@ -11,16 +11,19 @@
 import invariant from "./../../invariant.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
+import { MessageFormatter } from "./MessageFormatter.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
   constructor(ioWrapper: FileIOWrapper) {
     this._requestReceived = false;
     this._ioWrapper = ioWrapper;
+    this._formatter = new MessageFormatter();
   }
 
   _requestReceived: boolean;
   _ioWrapper: FileIOWrapper;
+  _formatter: MessageFormatter;
 
   /*
   /* Only called in the beginning to check if a debugger is attached
@@ -57,5 +60,17 @@ export class DebugChannel {
     invariant(this._requestReceived, "Prepack writing message without being requested: " + contents);
     this._ioWrapper.writeOutSync(contents);
     this._requestReceived = false;
+  }
+
+  sendBreakpointAcknowledge(requestID: number, prefix: string, filePath: string, line: number, column: number): void {
+    this.writeOut(this._formatter.formatBreakpointAcknowledge(requestID, prefix, filePath, line, column));
+  }
+
+  sendBreakpointStopped(requestID: number, filePath: string, line: number, column: number): void {
+    this.writeOut(this._formatter.formatBreakpointStopped(requestID, filePath, line, column));
+  }
+
+  sendPrepackFinish(requestID: number): void {
+    this.writeOut(this._formatter.formatPrepackFinish(requestID));
   }
 }
