@@ -372,9 +372,9 @@ function runTest(name, code, options, args) {
   }
 }
 
-function testInferiorRepl(replPath) {
-  if (!fs.existsSync(replPath)) {
-    throw new ArgsParseError(`repl ${replPath} does not exist`);
+function prepareReplExternalSepc(procPath) {
+  if (!fs.existsSync(procPath)) {
+    throw new ArgsParseError(`runtime ${procPath} does not exist`);
   }
   // find out how to print
   let script = `
@@ -384,12 +384,12 @@ function testInferiorRepl(replPath) {
     else if (typeof('print') !== 'undefined') {
       print('print')
     }`;
-  let out = child_process.spawnSync(replPath, { input: script });
+  let out = child_process.spawnSync(procPath, { input: script });
   let output = String(out.stdout);
   if (output.trim() === "") {
-    throw new ArgsParseError(`could not figure out how to print in inferior repl ${replPath}`);
+    throw new ArgsParseError(`could not figure out how to print in inferior repl ${procPath}`);
   }
-  return { printName: output.trim(), cmd: replPath.trim() };
+  return { printName: output.trim(), cmd: procPath.trim() };
 }
 
 function run(args) {
@@ -397,7 +397,7 @@ function run(args) {
   let passed = 0;
   let total = 0;
   if (args.outOfProcessRuntime !== "") {
-    execSpec = testInferiorRepl(args.outOfProcessRuntime);
+    execSpec = prepareReplExternalSepc(args.outOfProcessRuntime);
   }
 
   for (let test of tests) {
@@ -460,7 +460,9 @@ function main(): number {
 // Helper function to provide correct usage information to the user
 function usage(): string {
   return (
-    `Usage: ${process.argv[0]} ${process.argv[1]} ` + EOL + `[--verbose] [--filter <string>] [--repl <path>] [--es5]`
+    `Usage: ${process.argv[0]} ${process.argv[1]} ` +
+    EOL +
+    `[--verbose] [--filter <string>] [--outOfProcessRuntime <path>] [--es5]`
   );
 }
 
