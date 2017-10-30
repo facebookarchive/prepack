@@ -1,3 +1,4 @@
+// es6
 // additional functions
 // does not contain:var y = 5;
 // does not contain:var y = 10;

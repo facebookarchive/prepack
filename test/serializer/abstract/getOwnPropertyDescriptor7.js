@@ -1,3 +1,4 @@
+// es6
 let nondet = global.__abstract ? __abstract("boolean", "true") : true;
 global.a = undefined;
 let descriptor;

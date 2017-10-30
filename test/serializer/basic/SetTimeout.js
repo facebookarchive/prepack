@@ -1,3 +1,4 @@
+// es6
 var st = global.setTimeout;
 global.setTimeout = function(x) {
   return st(x, y);

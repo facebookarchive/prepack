@@ -23,11 +23,14 @@ let vm = require("vm");
 let os = require("os");
 let minimist = require("minimist");
 let babel = require("babel-core");
+let child_process = require("child_process");
 const EOL = os.EOL;
+let execSpec;
 
-function transformWithBabel(code, plugins) {
+function transformWithBabel(code, plugins, presets) {
   return babel.transform(code, {
-    plugins,
+    plugins: plugins,
+    presets: presets,
   }).code;
 }
 
@@ -53,7 +56,55 @@ function search(dir, relative) {
 
 let tests = search(`${__dirname}/../test/serializer`, "test/serializer");
 
-function exec(code) {
+// run JS subprocess
+// externalSpec defines how to invoke external REPL and how to print.
+//  - cmd - cmd to execute, script is piped into this.
+//  - printName - name of function which can be used to print to stdout.
+function execExternal(externalSpec, code) {
+  // essentially the code from execInContext run through babel
+  let script = `
+  var global = this;
+  var self = this;
+  var _logOutput = "";
+  function write(prefix, values) {
+    _logOutput += "\\n" + prefix + values.join("");
+  }
+  var cachePrint = ${externalSpec.printName};
+  global.console = {}
+  global.console.log = function log() {
+      for (var _len = arguments.length, s = Array(_len), _key = 0; _key < _len; _key++) {
+        s[_key] = arguments[_key];
+      }
+      write("", s);
+    };
+    global.console.warn = function warn() {
+      for (var _len2 = arguments.length, s = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+        s[_key2] = arguments[_key2];
+      }
+      write("WARN:", s);
+    };
+    global.console.error = function error() {
+      for (var _len3 = arguments.length, s = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+        s[_key3] = arguments[_key3];
+      }
+      write("ERROR:", s);
+    };
+  try {
+    ${code}
+    cachePrint(inspect() + _logOutput);
+  } catch (e) {
+    cachePrint(e);
+  }`;
+
+  let child = child_process.spawnSync(externalSpec.cmd, { input: script });
+
+  let output = String(child.stdout);
+
+  return String(output.trim());
+}
+
+// run code in a seperate context
+function execInContext(code) {
   let script = new vm.Script(
     `var global = this; var self = this; ${code}; // keep newline here as code may end with comment
 report(inspect());`,
@@ -87,7 +138,7 @@ report(inspect());`,
       },
     },
   });
-  return result + logOutput;
+  return (result + logOutput).trim();
 }
 
 function runTest(name, code, options, args) {
@@ -223,10 +274,10 @@ function runTest(name, code, options, args) {
     }
     try {
       try {
-        expected = exec(`${addedCode}\n(function () {${expectedCode} // keep newline here as code may end with comment
+        expected = execInContext(`${addedCode}\n(function () {${expectedCode} // keep newline here as code may end with comment
   }).call(this);`);
       } catch (e) {
-        expected = e;
+        expected = "" + e;
       }
 
       let i = 0;
@@ -257,10 +308,16 @@ function runTest(name, code, options, args) {
           }
         }
         if (markersIssue) break;
+        let codeToRun = addedCode + newCode;
+        if (args.es5) {
+          codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
+        }
         try {
-          actual = exec(addedCode + newCode);
+          if (execSpec) actual = execExternal(execSpec, codeToRun);
+          else actual = execInContext(codeToRun);
         } catch (e) {
-          actual = e;
+          // always compare strings.
+          actual = "" + e;
         }
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
@@ -314,16 +371,41 @@ function runTest(name, code, options, args) {
     return false;
   }
 }
+
+function prepareReplExternalSepc(procPath) {
+  if (!fs.existsSync(procPath)) {
+    throw new ArgsParseError(`runtime ${procPath} does not exist`);
+  }
+  // find out how to print
+  let script = `
+    if (typeof (console) !== 'undefined' && console.log !== undefined) {
+      console.log('console.log')
+    }
+    else if (typeof('print') !== 'undefined') {
+      print('print')
+    }`;
+  let out = child_process.spawnSync(procPath, { input: script });
+  let output = String(out.stdout);
+  if (output.trim() === "") {
+    throw new ArgsParseError(`could not figure out how to print in inferior repl ${procPath}`);
+  }
+  return { printName: output.trim(), cmd: procPath.trim() };
+}
+
 function run(args) {
   let failed = 0;
   let passed = 0;
   let total = 0;
+  if (args.outOfProcessRuntime !== "") {
+    execSpec = prepareReplExternalSepc(args.outOfProcessRuntime);
+  }
 
   for (let test of tests) {
     // filter hidden files
     if (path.basename(test.name)[0] === ".") continue;
     if (test.name.endsWith("~")) continue;
     if (test.file.includes("// skip")) continue;
+    if (args.es5 && test.file.includes("// es6")) continue;
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
 
@@ -344,10 +426,14 @@ class ProgramArgs {
   debugNames: boolean;
   verbose: boolean;
   filter: string;
-  constructor(debugNames: boolean, verbose: boolean, filter: string) {
+  outOfProcessRuntime: string;
+  es5: boolean;
+  constructor(debugNames: boolean, verbose: boolean, filter: string, outOfProcessRuntime: string, es5: boolean) {
     this.debugNames = debugNames;
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
+    this.outOfProcessRuntime = outOfProcessRuntime;
+    this.es5 = es5;
   }
 }
 
@@ -373,7 +459,11 @@ function main(): number {
 
 // Helper function to provide correct usage information to the user
 function usage(): string {
-  return `Usage: ${process.argv[0]} ${process.argv[1]} ` + EOL + `[--verbose] [--filter <string>]`;
+  return (
+    `Usage: ${process.argv[0]} ${process.argv[1]} ` +
+    EOL +
+    `[--verbose] [--filter <string>] [--outOfProcessRuntime <path>] [--es5]`
+  );
 }
 
 // NOTE: inheriting from Error does not seem to pass through an instanceof
@@ -388,12 +478,16 @@ class ArgsParseError {
 // Parses through the command line arguments and throws errors if usage is incorrect
 function argsParse(): ProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
-    string: ["filter"],
-    boolean: ["debugNames", "verbose"],
+    string: ["filter", "outOfProcessRuntime"],
+    boolean: ["debugNames", "verbose", "es5"],
     default: {
       debugNames: false,
       verbose: false,
+      es5: false, // if true test marked as es6 only are not run
       filter: "",
+      outOfProcessRuntime: "", // if set, assumed to be a JS runtime and is used
+      // to run tests. If not a seperate node contexr is
+      // used.
     },
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
@@ -402,12 +496,24 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.verbose !== "boolean") {
     throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
   }
+  if (typeof parsedArgs.es5 !== "boolean") {
+    throw new ArgsParseError("es5 must be a boolean (either --es5 or not)");
+  }
   if (typeof parsedArgs.filter !== "string") {
     throw new ArgsParseError(
       "filter must be a string (relative path from serialize directory) (--filter abstract/Residual.js)"
     );
   }
-  let programArgs = new ProgramArgs(parsedArgs.debugNames, parsedArgs.verbose, parsedArgs.filter);
+  if (typeof parsedArgs.outOfProcessRuntime !== "string") {
+    throw new ArgsParseError("outOfProcessRuntime must be path pointing to an javascript runtime");
+  }
+  let programArgs = new ProgramArgs(
+    parsedArgs.debugNames,
+    parsedArgs.verbose,
+    parsedArgs.filter,
+    parsedArgs.outOfProcessRuntime,
+    parsedArgs.es5
+  );
   return programArgs;
 }
 

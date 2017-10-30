@@ -1,3 +1,4 @@
+// es6
 var someNumber = 5
 var someString = "hello"
 var abstractNumber = global.__abstract ? __abstract("number", "someNumber") : 5;

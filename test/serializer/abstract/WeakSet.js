@@ -1,3 +1,4 @@
+// es6
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 let bar0 = { y: 0 };
 let bar1 = { y: 1 };
