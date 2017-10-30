@@ -31,7 +31,7 @@ import { flowAnnotationToObjectTypeTemplate } from "../flow/utils.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { createAbstractObject } from "../flow/factory.js";
+import { createAbstractObject } from "../flow/abstractObjectFactories.js";
 
 const BranchStatus = {
   NO_BRANCH: "NO_BRANCH",
