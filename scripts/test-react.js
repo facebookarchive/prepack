@@ -180,6 +180,25 @@ async function runTest(directory, name) {
 // Jest tests
 let originalConsoleError = console.error;
 
+class ItemContainer extends React.Component {
+  render() {
+    let { subscribe, unsubscribe } = props.SubscriptionHandler;
+
+    return (
+      <ul>
+        { this.props.items.map( item => (
+           <ListItem 
+              key={item.uid}
+              data={item.data}
+              ref={
+                _ref => _ref ? subscribe(item.uid, _ref) : unsubscribe(item.uid, _ref)
+              }
+         ) }
+      </ul>
+    );
+  }
+}
+
 describe("Test React", () => {
   describe("Functional component folding", () => {
     let directory = "functional-components";

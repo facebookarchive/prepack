@@ -27,7 +27,7 @@ import { ReactStatistics, type ReactSerializerState } from "../serializer/types.
 import { isReactElement, getUniqueReactElementKey, valueIsClassComponent } from "./utils";
 import { GetValue, Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { flowAnnotationToObject } from "../flow/utils.js";
+import { flowAnnotationToObjectTypeTemplate } from "../flow/utils.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
@@ -81,7 +81,7 @@ class Reconciler {
         componentType.$FormalParameters[0].typeAnnotation,
         `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "props" argument`
       );
-      propTypes = flowAnnotationToObject(componentType.$FormalParameters[0].typeAnnotation);
+      propTypes = flowAnnotationToObjectTypeTemplate(componentType.$FormalParameters[0].typeAnnotation);
     }
     if (componentType.$FormalParameters.length > 1) {
       if (t.isIdentifier(componentType.$FormalParameters[1])) {
@@ -91,7 +91,7 @@ class Reconciler {
         componentType.$FormalParameters[1].typeAnnotation,
         `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" argument`
       );
-      contextTypes = flowAnnotationToObject(componentType.$FormalParameters[1].typeAnnotation);
+      contextTypes = flowAnnotationToObjectTypeTemplate(componentType.$FormalParameters[1].typeAnnotation);
     }
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluateForEffects(() => {

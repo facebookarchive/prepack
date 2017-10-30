@@ -12,9 +12,9 @@
 import type { typeAnnotation } from "babel-types";
 import invariant from "../invariant.js";
 
-export function flowAnnotationToObject(annotation: typeAnnotation) {
+export function flowAnnotationToObjectTypeTemplate(annotation: typeAnnotation) {
   if (annotation.type === "TypeAnnotation") {
-    return flowAnnotationToObject(annotation.typeAnnotation);
+    return flowAnnotationToObjectTypeTemplate(annotation.typeAnnotation);
   } else if (annotation.type === "GenericTypeAnnotation") {
     if (annotation.id.type === "Identifier") {
       let identifier = annotation.id.name;
@@ -53,7 +53,7 @@ export function flowAnnotationToObject(annotation: typeAnnotation) {
     annotation.properties.forEach(property => {
       if (property.type === "ObjectTypeProperty") {
         if (property.key.type === "Identifier") {
-          obj[property.key.name] = flowAnnotationToObject(property.value);
+          obj[property.key.name] = flowAnnotationToObjectTypeTemplate(property.value);
         } else {
           invariant(false, "only Identifier nodes are supported in ObjectTypeProperty keys");
         }
