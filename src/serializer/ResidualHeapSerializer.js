@@ -1453,7 +1453,7 @@ export class ResidualHeapSerializer {
     let { unstrictFunctionBodies, strictFunctionBodies, requireStatistics } = this.residualFunctions.spliceFunctions(
       rewrittenAdditionalFunctions
     );
-    if (requireStatistics.replaced > 0 && !this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
+    if (this.modules.moduleIds.size > 0 && !this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
       console.log(
         `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
           .size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`
