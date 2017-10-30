@@ -55,6 +55,7 @@ function runTest(name: string, code: string): boolean {
 
   let recover = code.includes("// recover-from-errors");
   let additionalFunctions = code.includes("// additional functions");
+  let delayUnsupportedRequires = code.includes("// delay unsupported requires");
 
   let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
   invariant(expectedErrors);
@@ -67,10 +68,11 @@ function runTest(name: string, code: string): boolean {
   try {
     let options = {
       internalDebug: false,
+      delayUnsupportedRequires,
       mathRandomSeed: "0",
       errorHandler: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
-      initializeMoreModules: true,
+      initializeMoreModules: false,
     };
     if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
     prepackFileSync([name], options);

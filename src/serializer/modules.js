@@ -13,7 +13,7 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
-import { IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
+import { incorporateSavedCompletion, IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
 import { AbstractValue, Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import * as t from "babel-types";
@@ -120,6 +120,17 @@ export class ModuleTracer extends Tracer {
           try {
             let value = performCall();
             this.modules.recordModuleInitialized(moduleIdValue, value);
+            let completion = incorporateSavedCompletion(realm, value);
+            if (completion instanceof PossiblyNormalCompletion) {
+              realm.stopEffectCapture();
+              let warning = new CompilerDiagnostic(
+                "Module import may fail with an exception",
+                completion.location,
+                "PP0018",
+                "Warning"
+              );
+              realm.handleError(warning);
+            }
             return value;
           } finally {
             invariant(this.requireStack.pop() === moduleIdValue);
@@ -202,14 +213,6 @@ export class ModuleTracer extends Tracer {
               }
             } while (acceleratedModuleIds.length > 0);
 
-            if (effects !== undefined) {
-              result = effects[0];
-              invariant(result instanceof Value || result instanceof Completion);
-              if (result instanceof PossiblyNormalCompletion) {
-                effects = undefined;
-              }
-            }
-
             if (effects === undefined) {
               console.log(`delaying require(${moduleIdValue})`);
               this.statistics.delayedModules = previousNumDelayedModules + 1;
@@ -242,11 +245,22 @@ export class ModuleTracer extends Tracer {
                 t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
               );
             } else {
-              invariant(result);
-              if (!(result instanceof Completion)) {
+              result = effects[0];
+              if (result instanceof Value) {
+                realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
+                this.modules.recordModuleInitialized(moduleIdValue, result);
+              } else if (result instanceof PossiblyNormalCompletion) {
+                let warning = new CompilerDiagnostic(
+                  "Module import may fail with an exception",
+                  result.location,
+                  "PP0018",
+                  "Warning"
+                );
+                realm.handleError(warning);
+                result = result.value;
+                realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
                 this.modules.recordModuleInitialized(moduleIdValue, result);
               }
-              realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
             }
           } finally {
             let popped = this.requireStack.pop();
@@ -416,14 +430,6 @@ export class Modules {
 
         let effects = realm.evaluateNodeForEffectsInGlobalEnv(node);
         realm.applyEffects(effects, message);
-        let result = effects[0];
-        if (result instanceof Completion) {
-          console.log(`=== UNEXPECTED ERROR during ${message} ===`);
-          //this.logger.logCompletion(result);
-          return undefined;
-        }
-
-        if (result instanceof Value) this.recordModuleInitialized(moduleId, result);
         return effects;
       } catch (err) {
         if (err instanceof FatalError) return undefined;

@@ -326,6 +326,12 @@ export class Realm {
   }
 
   popContext(context: ExecutionContext): void {
+    let modifiedBindings = this.modifiedBindings;
+    if (modifiedBindings !== undefined) {
+      for (let b of modifiedBindings.keys()) {
+        if (b.environment.$FunctionObject === context.function) modifiedBindings.delete(b);
+      }
+    }
     let c = this.contextStack.pop();
     invariant(c === context);
     let savedEffects = context.savedEffects;
@@ -527,6 +533,14 @@ export class Realm {
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
     return [v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects];
+  }
+
+  stopEffectCapture() {
+    let e = this.getCapturedEffects();
+    if (e !== undefined) {
+      this.stopEffectCaptureAndUndoEffects();
+      this.applyEffects(e);
+    }
   }
 
   stopEffectCaptureAndUndoEffects() {
