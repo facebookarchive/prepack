@@ -27,10 +27,15 @@ export class DebugChannel {
   */
   debuggerIsAttached(): boolean {
     let message = this._ioWrapper.readInSyncOnce();
-    if (message === DebugMessage.DEBUGGER_ATTACHED) {
+    if (message === null) return false;
+    let parts = message.split(" ");
+    let requestID = parseInt(parts[0], 10);
+    invariant(!isNaN(requestID), "Request ID must be a number");
+    let command = parts[1];
+    if (command === DebugMessage.DEBUGGER_ATTACHED) {
       this._requestReceived = true;
       this._ioWrapper.clearInFile();
-      this.writeOut(DebugMessage.PREPACK_READY_RESPONSE);
+      this.writeOut(`${requestID} ${DebugMessage.PREPACK_READY_RESPONSE}`);
       return true;
     }
     return false;
@@ -49,7 +54,7 @@ export class DebugChannel {
   // Write out a response to the debug adapter
   writeOut(contents: string): void {
     //Prepack only writes back to the debug adapter in response to a request
-    invariant(this._requestReceived);
+    invariant(this._requestReceived, "Prepack writing message without being requested: " + contents);
     this._ioWrapper.writeOutSync(contents);
     this._requestReceived = false;
   }
