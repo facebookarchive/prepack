@@ -105,7 +105,13 @@ export class UISession {
   }
 
   _processEvent(event: DebugProtocol.Event) {
-    if (event.event === "output") {
+    if (event.event === "initialized") {
+      // the adapter is ready to accept any persisted debug information
+      // (e.g. persisted breakpoints from previous sessions). the CLI
+      // does not have any persisted info, so we can send configDone immediately
+      let configDoneArgs: DebugProtocol.ConfigurationDoneArguments = {};
+      this._sendConfigDoneRequest(configDoneArgs);
+    } else if (event.event === "output") {
       this._uiOutput("Prepack output:\n" + event.body.output);
     } else if (event.event === "terminated") {
       this._uiOutput("Prepack exited! Shutting down...");
@@ -137,29 +143,6 @@ export class UISession {
     // they can be done from the adapter without user input
 
     switch (command) {
-      case "init":
-        //format: init <clientID> <adapterID>
-        if (parts.length !== 3) return false;
-        let initArgs: DebugProtocol.InitializeRequestArguments = {
-          // a unique name for each UI (e.g Nuclide, VSCode, CLI)
-          clientID: parts[1],
-          // a unique name for each adapter
-          adapterID: parts[2],
-          linesStartAt1: true,
-          columnsStartAt1: true,
-          supportsVariableType: true,
-          supportsVariablePaging: false,
-          supportsRunInTerminalRequest: false,
-          pathFormat: "path",
-        };
-        this._sendInitializeRequest(initArgs);
-        break;
-      case "configDone":
-        // format: configDone
-        if (parts.length !== 1) return false;
-        let configDoneArgs: DebugProtocol.ConfigurationDoneArguments = {};
-        this._sendConfigDoneRequest(configDoneArgs);
-        break;
       case "run":
         // format: run
         if (parts.length !== 1) return false;
@@ -291,6 +274,22 @@ export class UISession {
     this._uiOutput("Debugger is starting up Prepack...");
     // Set up the adapter connection
     this._startAdapter();
+
+    // send an initialize request to the adapter to fetch some configuration details
+    let initArgs: DebugProtocol.InitializeRequestArguments = {
+      // a unique name for each UI (e.g Nuclide, VSCode, CLI)
+      clientID: "Prepack-Debugger-CLI",
+      // a unique name for each adapter
+      adapterID: "Prepack-Debugger-Adapter",
+      linesStartAt1: true,
+      columnsStartAt1: true,
+      supportsVariableType: true,
+      supportsVariablePaging: false,
+      supportsRunInTerminalRequest: false,
+      pathFormat: "path",
+    };
+    this._sendInitializeRequest(initArgs);
+
     this._reader = readline.createInterface({ input: this._proc.stdin, output: this._proc.stdout });
   }
 
