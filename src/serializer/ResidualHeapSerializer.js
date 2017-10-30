@@ -1218,7 +1218,7 @@ export class ResidualHeapSerializer {
     ]);
   }
 
-  _serializeAbstractValue(val: AbstractValue): BabelNodeExpression {
+  _serializeAbstractValueHelper(val: AbstractValue): BabelNodeExpression {
     invariant(val.kind !== "sentinel member expression", "invariant established by visitor");
     let serializedArgs = val.args.map((abstractArg, i) => this.serializeValue(abstractArg));
     let serializedValue = val.buildNode(serializedArgs);
@@ -1227,6 +1227,22 @@ export class ResidualHeapSerializer {
       invariant(!this.preludeGenerator.derivedIds.has(id.name) || this.emitter.hasBeenDeclared(val));
     }
     return serializedValue;
+  }
+
+  _serializeAbstractValue(val: AbstractValue): void | BabelNodeExpression {
+    invariant(val.kind !== "sentinel member expression", "invariant established by visitor");
+    if (val.hasIdentifier()) {
+      return this._serializeAbstractValueHelper(val);
+    } else {
+      // This abstract value's dependencies may have been declared
+      // but still need to check it again in case their serialized bodies are in different generator scope.
+      this.emitter.emitNowOrAfterWaitingForDependencies(val.args, () => {
+        const serializedValue = this._serializeAbstractValueHelper(val);
+        let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
+        let declar = t.variableDeclaration("var", [t.variableDeclarator(uid, serializedValue)]);
+        this.emitter.emit(declar);
+      });
+    }
   }
 
   _serializeValue(val: Value): void | BabelNodeExpression {
