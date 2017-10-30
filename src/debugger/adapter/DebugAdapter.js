@@ -23,7 +23,9 @@ import Queue from "queue-fifo";
 import { AdapterChannel } from "./../channel/AdapterChannel.js";
 import type { DebuggerOptions } from "./../../options.js";
 import { getDebuggerOptions } from "./../../prepack-options.js";
+import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
+import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
@@ -39,6 +41,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.setDebuggerColumnsStartAt1(true);
 
     this._prepackWaiting = false;
+    this._pendingRequestCallbacks = new Map();
     this._readCLIParameters();
     this._startPrepack();
   }
@@ -51,6 +54,7 @@ class PrepackDebugSession extends LoggingDebugSession {
   _adapterChannel: AdapterChannel;
   _debuggerOptions: DebuggerOptions;
   _prepackWaiting: boolean;
+  _pendingRequestCallbacks: { [number]: (string) => void };
 
   _readCLIParameters() {
     let args = Array.from(process.argv);
@@ -97,7 +101,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this._messageQueue = new Queue();
     // set up the communication channel
     this._adapterChannel = new AdapterChannel(this._debuggerOptions);
-    this._adapterChannel.writeOut(DebugMessage.DEBUGGER_ATTACHED);
+    this._adapterChannel.writeOut(`${DebuggerConstants.DEFAULT_REQUEST_ID} ${DebugMessage.DEBUGGER_ATTACHED}`);
     this._adapterChannel.listenOnFile(this._handleFileReadError.bind(this), this._processPrepackMessage.bind(this));
 
     let prepackArgs = this._prepackCommand.split(" ");
@@ -134,7 +138,9 @@ class PrepackDebugSession extends LoggingDebugSession {
 
   _processPrepackMessage(message: string) {
     let parts = message.split(" ");
-    let prefix = parts[0];
+    let requestID = parseInt(parts[0], 10);
+    invariant(!isNaN(requestID));
+    let prefix = parts[1];
     if (prefix === DebugMessage.PREPACK_READY_RESPONSE) {
       this._prepackWaiting = true;
       // the second argument is the threadID required by the protocol, since
@@ -142,10 +148,12 @@ class PrepackDebugSession extends LoggingDebugSession {
       this.sendEvent(new StoppedEvent("entry", 1));
       this._trySendNextRequest();
     } else if (prefix === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
+      this._processRequestCallback(requestID, message);
       // Prepack acknowledged adding a breakpoint
       this._prepackWaiting = true;
       this._trySendNextRequest();
     } else if (prefix === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
+      this._processRequestCallback(requestID, message);
       // Prepack stopped on a breakpoint
       this._prepackWaiting = true;
       // the second argument is the threadID required by the protocol, since
@@ -153,6 +161,20 @@ class PrepackDebugSession extends LoggingDebugSession {
       this.sendEvent(new StoppedEvent("breakpoint " + parts.slice(2).join(" "), 1));
       this._trySendNextRequest();
     }
+  }
+
+  _processRequestCallback(requestID: number, message: string) {
+    invariant(
+      requestID in this._pendingRequestCallbacks,
+      "Request ID does not exist in pending requests: " + requestID
+    );
+    let callback = this._pendingRequestCallbacks[requestID];
+    callback(message);
+  }
+
+  _addRequestCallback(requestID: number, callback: string => void) {
+    invariant(!(requestID in this._pendingRequestCallbacks), "Request ID already exists in pending requests");
+    this._pendingRequestCallbacks[requestID] = callback;
   }
 
   // Error handler for errors in files from the adapter channel
@@ -186,6 +208,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     response.body = response.body || {};
     response.body.supportsConfigurationDoneRequest = true;
     // Respond back to the UI with the configurations. Will add more configurations gradually as needed.
+    // Adapter can respond immediately here because no message is sent to Prepack
     this.sendResponse(response);
   }
 
@@ -194,9 +217,12 @@ class PrepackDebugSession extends LoggingDebugSession {
   */
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // queue a Run request to Prepack and try to send the next request in the queue
-    this._messageQueue.enqueue(DebugMessage.PREPACK_RUN_COMMAND);
+    this._messageQueue.enqueue(`${response.request_seq} ${DebugMessage.PREPACK_RUN_COMMAND}`);
     this._trySendNextRequest();
-    this.sendResponse(response);
+
+    this._addRequestCallback(response.request_seq, (message: string) => {
+      this.sendResponse(response);
+    });
   }
 
   setBreakPointsRequest(
@@ -212,10 +238,14 @@ class PrepackDebugSession extends LoggingDebugSession {
       if (breakpoint.column) {
         column = breakpoint.column;
       }
-      this._messageQueue.enqueue(`${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`);
+      this._messageQueue.enqueue(
+        `${response.request_seq} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`
+      );
     }
     this._trySendNextRequest();
-    this.sendResponse(response);
+    this._addRequestCallback(response.request_seq, (message: string) => {
+      this.sendResponse(response);
+    });
   }
 }
 
