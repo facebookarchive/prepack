@@ -28,4 +28,16 @@ export class MessageFormatter {
   formatPrepackFinish(requestID: number) {
     return `${requestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`;
   }
+
+  formatDebuggerStart(requestID: number) {
+    return `${requestID} ${DebugMessage.DEBUGGER_ATTACHED}`;
+  }
+
+  formatContinueRequest(requestID: number) {
+    return `${requestID} ${DebugMessage.PREPACK_RUN_COMMAND}`;
+  }
+
+  formatSetBreakpointsRequest(requestID: number, filePath: string, line: number, column: number) {
+    return `${requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`;
+  }
 }
