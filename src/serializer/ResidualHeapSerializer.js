@@ -33,8 +33,9 @@ import {
   convertExpressionToJSXIdentifier,
   convertKeyValueToJSXAttribute,
   applyKeysToNestedArray,
-  isReactElement,
-} from "../utils/jsx";
+  getJSXPropertyValue,
+} from "../react/jsx.js";
+import { isReactElement } from "../react/utils.js";
 import * as t from "babel-types";
 import type {
   BabelNodeArrayExpression,
@@ -735,33 +736,17 @@ export class ResidualHeapSerializer {
     return t.arrayExpression(initProperties);
   }
 
-  _getPropertyValue(properties: Map<string, any>, key: string) {
-    if (properties.has(key)) {
-      let val = properties.get(key);
-
-      if (val !== undefined) {
-        let descriptor = val.descriptor;
-        invariant(!IsAccessorDescriptor(this.realm, descriptor), "expected descriptor to be a non-accessor property");
-
-        if (descriptor !== undefined) {
-          let descriptorValue = descriptor.value;
-
-          if (descriptorValue !== undefined) {
-            return descriptorValue;
-          }
-        }
-      }
-    }
-    return null;
-  }
-
   _serializeValueReactElementChild(child: Value): BabelNode {
     if (isReactElement(child)) {
       // if we know it's a ReactElement, we add the value to the serializedValues
       // and short cut to get back the JSX expression so we don't emit additional data
       // we do this to ensure child JSXElements can get keys assigned if needed
       this.serializedValues.add(child);
-      return this._serializeValueObject(((child: any): ObjectValue));
+      let reactChild = this._serializeValueObject(((child: any): ObjectValue));
+      if (reactChild.leadingComments !== null) {
+        return t.jSXExpressionContainer(reactChild);
+      }
+      return reactChild;
     }
     const expr = this.serializeValue(child);
 
@@ -777,10 +762,10 @@ export class ResidualHeapSerializer {
 
   _serializeValueReactElement(val: ObjectValue): BabelNodeExpression {
     let objectProperties: Map<string, any> = val.properties;
-    let typeValue = this._getPropertyValue(objectProperties, "type");
-    let keyValue = this._getPropertyValue(objectProperties, "key");
-    let refValue = this._getPropertyValue(objectProperties, "ref");
-    let propsValue = this._getPropertyValue(objectProperties, "props");
+    let typeValue = getJSXPropertyValue(this.realm, objectProperties, "type");
+    let keyValue = getJSXPropertyValue(this.realm, objectProperties, "key");
+    let refValue = getJSXPropertyValue(this.realm, objectProperties, "ref");
+    let propsValue = getJSXPropertyValue(this.realm, objectProperties, "props");
 
     invariant(typeValue !== null, "JSXElement type of null");
 
@@ -818,12 +803,12 @@ export class ResidualHeapSerializer {
           let childrenValue = desc.value;
           if (childrenValue instanceof ArrayValue) {
             this.serializedValues.add(childrenValue);
-            let childrenLength = this._getPropertyValue(childrenValue.properties, "length");
+            let childrenLength = getJSXPropertyValue(this.realm, childrenValue.properties, "length");
             let childrenLengthValue = 0;
             if (childrenLength instanceof NumberValue) {
               childrenLengthValue = childrenLength.value;
               for (let i = 0; i < childrenLengthValue; i++) {
-                let child = this._getPropertyValue(childrenValue.properties, "" + i);
+                let child = getJSXPropertyValue(this.realm, childrenValue.properties, "" + i);
                 if (child instanceof Value) {
                   children.push(this._serializeValueReactElementChild(child));
                 } else {
@@ -845,7 +830,12 @@ export class ResidualHeapSerializer {
     let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
     let closingElement = t.jSXClosingElement(identifier);
 
-    return t.jSXElement(openingElement, closingElement, children, children.length === 0);
+    let jsxElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
+    // if there has been a bail-out, we create an inline BlockComment before the JSX element
+    if (val.$BailOut !== undefined) {
+      jsxElement.leadingComments = [({ type: "BlockComment", value: `${val.$BailOut}` }: any)];
+    }
+    return jsxElement;
   }
 
   _serializeValueMap(val: ObjectValue): BabelNodeExpression {

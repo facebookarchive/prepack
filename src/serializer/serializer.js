@@ -19,7 +19,7 @@ import type SourceMap from "babel-generator";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics } from "./types.js";
+import { TimingStatistics, SerializerStatistics, ReactStatistics } from "./types.js";
 import type { ReactSerializerState } from "./types.js";
 import { Functions } from "./functions.js";
 import { Logger } from "./logger.js";
@@ -112,6 +112,11 @@ export class Serializer {
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
     this.functions.checkThatFunctionsAreIndependent();
+    let reactStatistics = null;
+    if (this.realm.react.enabled) {
+      reactStatistics = new ReactStatistics();
+      this.functions.checkReactRootComponents(reactStatistics, this.react);
+    }
 
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
@@ -192,6 +197,7 @@ export class Serializer {
     return {
       code: generated.code,
       map: generated.map,
+      reactStatistics,
       statistics: residualHeapSerializer.statistics,
       timingStats: timingStats,
     };

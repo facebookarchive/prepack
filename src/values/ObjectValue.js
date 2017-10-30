@@ -34,7 +34,7 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
-import { isReactElement } from "../utils/jsx";
+import { isReactElement } from "../react/utils.js";
 import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
 import {
   joinValuesAsConditional,
@@ -91,6 +91,7 @@ export default class ObjectValue extends ConcreteValue {
     "$StringIteratorNextIndex",
     "$WeakMapData",
     "$WeakSetData",
+    "$BailOut",
   ];
 
   getTrackedPropertyNames(): Array<string> {
@@ -239,6 +240,9 @@ export default class ObjectValue extends ConcreteValue {
   // when deriving an abstract value via a generator.
   intrinsicNameGenerated: void | true;
   hashValue: void | number;
+
+  // ReactElement
+  $BailOut: void | string;
 
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();

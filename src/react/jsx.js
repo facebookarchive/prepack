@@ -10,6 +10,7 @@
 /* @flow */
 
 import * as t from "babel-types";
+import { Realm } from "../realm.js";
 import type {
   BabelNodeExpression,
   BabelNodeArrayExpression,
@@ -20,20 +21,8 @@ import type {
   BabelNodeMemberExpression,
 } from "babel-types";
 import invariant from "../invariant.js";
-import { Value, ObjectValue, SymbolValue } from "../values/index.js";
-import { Get } from "../methods/index.js";
-
-export function isReactElement(val: Value): boolean {
-  if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
-    let realm = val.$Realm;
-    let $$typeof = Get(realm, val, "$$typeof");
-    if ($$typeof instanceof SymbolValue) {
-      let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
-      return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
-    }
-  }
-  return false;
-}
+import { IsAccessorDescriptor } from "../methods/index.js";
+import { isReactComponent, getUniqueReactElementKey } from "./utils";
 
 export function convertExpressionToJSXIdentifier(
   expr: BabelNodeExpression,
@@ -48,7 +37,7 @@ export function convertExpressionToJSXIdentifier(
       invariant(
         // ensure the 1st character of the string is uppercase
         // for a component unless it is not the root
-        isRoot === false || (name.length > 0 && name[0] === name[0].toUpperCase()),
+        isRoot === false || isReactComponent(name),
         "invalid JSXIdentifer from Identifier, Identifier name must be uppercase"
       );
       return t.jSXIdentifier(name);
@@ -109,21 +98,6 @@ function addKeyToElement(astElement: BabelNodeJSXElement, key) {
   }
 }
 
-// we create a unique key for each JSXElement to prevent collisions
-// otherwise React will detect a missing/conflicting key at runtime and
-// this can break the reconcilation of JSXElements in arrays
-function getUniqueJSXElementKey(index?: string, usedReactElementKeys: Set<string>) {
-  let key;
-  do {
-    key = Math.random().toString(36).replace(/[^a-z]+/g, "").substring(0, 2);
-  } while (usedReactElementKeys.has(key));
-  usedReactElementKeys.add(key);
-  if (index !== undefined) {
-    return `${key}${index}`;
-  }
-  return key;
-}
-
 export function applyKeysToNestedArray(
   expr: BabelNodeArrayExpression,
   isBase: boolean,
@@ -137,20 +111,20 @@ export function applyKeysToNestedArray(
 
       if (astElement != null) {
         if (t.isJSXElement(astElement) && isBase === false) {
-          addKeyToElement((astElement: any), getUniqueJSXElementKey("" + i, usedReactElementKeys));
+          addKeyToElement((astElement: any), getUniqueReactElementKey("" + i, usedReactElementKeys));
         } else if (t.isArrayExpression(astElement)) {
           applyKeysToNestedArray((astElement: any), false, usedReactElementKeys);
         } else if (astElement.type === "ConditionalExpression") {
           let alternate = (astElement.alternate: any);
           // it's common for conditions to be in an array, which means we need to check them for keys too
           if (t.isJSXElement(alternate.type) && isBase === false) {
-            addKeyToElement(alternate, getUniqueJSXElementKey("0" + i, usedReactElementKeys));
+            addKeyToElement(alternate, getUniqueReactElementKey("0" + i, usedReactElementKeys));
           } else if (t.isArrayExpression(alternate.type)) {
             applyKeysToNestedArray(alternate, false, usedReactElementKeys);
           }
           let consequent = (astElement.consequent: any);
           if (t.isJSXElement(consequent.type) && isBase === false) {
-            addKeyToElement(consequent, getUniqueJSXElementKey("1" + i, usedReactElementKeys));
+            addKeyToElement(consequent, getUniqueReactElementKey("1" + i, usedReactElementKeys));
           } else if (t.isArrayExpression(consequent.type)) {
             applyKeysToNestedArray(consequent, false, usedReactElementKeys);
           }
@@ -158,4 +132,24 @@ export function applyKeysToNestedArray(
       }
     }
   }
+}
+
+export function getJSXPropertyValue(realm: Realm, properties: Map<string, any>, key: string) {
+  if (properties.has(key)) {
+    let val = properties.get(key);
+
+    if (val !== undefined) {
+      let descriptor = val.descriptor;
+      invariant(!IsAccessorDescriptor(realm, descriptor), "expected descriptor to be a non-accessor property");
+
+      if (descriptor !== undefined) {
+        let descriptorValue = descriptor.value;
+
+        if (descriptorValue !== undefined) {
+          return descriptorValue;
+        }
+      }
+    }
+  }
+  return null;
 }
