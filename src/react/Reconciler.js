@@ -32,7 +32,15 @@ import { computeBinary } from "../evaluators/BinaryExpression.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { createAbstractObject } from "../flow/abstractObjectFactories.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 
+// Branch status is used for when Prepack returns an abstract value from a render
+// that results in a conditional path occuring. This can be problematic for reconcilation
+// as the reconciler then needs to understand if this is the start of a new branch, or if
+// it's actually deep into an existing branch. If it's a new branch, we need to apply
+// keys to the root JSX element so that it keeps it identity (because we're folding trees).
+// Furthermore, we also need to bail-out of folding class components where they have lifecycle
+// events, as we can't merge lifecycles of mutliple trees when branched reliably
 const BranchStatus = {
   NO_BRANCH: "NO_BRANCH",
   NEW_BRANCH: "NEW_BRANCH",
@@ -116,7 +124,14 @@ class Reconciler {
         } catch (e) {
           // if there was a bail-out on the root component in this reconcilation process, then this
           // should be an invariant as the user has explicitly asked for this component to get folded
-          invariant(false, "__registerReactComponentRoot() failed due to root component bailing out");
+          let diagnostic = new CompilerDiagnostic(
+            "__registerReactComponentRoot() failed due to root component bailing out",
+            this.realm.currentLocation,
+            "PP0019",
+            "FatalError"
+          );
+          this.realm.handleError(diagnostic);
+          throw new FatalError();
         }
       })
     );

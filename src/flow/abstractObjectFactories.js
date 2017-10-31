@@ -17,7 +17,7 @@ import { Value, AbstractValue, ObjectValue, ArrayValue } from "../values/index.j
 import invariant from "../invariant.js";
 
 type ObjectTypes = {
-  [key: string]: ObjectTypes | string,
+  [key: string | number]: ObjectTypes | string | Value,
 };
 
 export function createObject(realm: Realm, shape: ObjectTypes | null, name: string | null): ObjectValue {
@@ -90,9 +90,10 @@ export function createAbstractObject(
   }
   if (objectTypes !== null) {
     let propTypeObject = {};
-
-    Object.keys(objectTypes).forEach(key => {
-      let value = ((objectTypes: any): ObjectTypes)[key];
+    let objTypes = objectTypes;
+    invariant(objTypes);
+    Object.keys(objTypes).forEach(key => {
+      let value = objTypes[key];
       let propertyName = name !== null ? `${name}.${key}` : key;
       if (typeof value === "string") {
         if (value === "array") {
