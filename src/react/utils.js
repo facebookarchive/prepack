@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { Realm } from "../realm.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import { Value, ObjectValue, SymbolValue, FunctionValue } from "../values/index.js";
 import { Get } from "../methods/index.js";
