@@ -15,7 +15,7 @@ function A(foo) {
 	);
 }
 
-function App({rootRef}: {rootRef: Function}) {
+function App({rootRef}/*: {rootRef: Function}*/) {
   return (
     <div>
       <A rootRef={rootRef} />

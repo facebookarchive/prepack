@@ -37,7 +37,7 @@ function SettingsPane() {
   return <div key='ha'><Stateful /></div>;
 }
 
-function App(props: {switch: boolean}) {
+function App(props/*: {switch: boolean}*/) {
   if (props.switch) {
     return (
       <div>
