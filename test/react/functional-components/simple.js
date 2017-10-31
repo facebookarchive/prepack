@@ -1,7 +1,7 @@
 if (this.__createReactMock) {
   var React = __createReactMock();
 } else {
-	var React = require('react');
+  var React = require('react');
 }
 
 function A(props) {
@@ -29,7 +29,7 @@ function App() {
 App.getTrials = function(renderer, Root) {
   React.createElement("div")
   renderer.update(<Root />);
-  return ['simple render', renderer.toJSON()];
+  return [['simple render', renderer.toJSON()]];
 };
 
 if (this.__registerReactComponentRoot) {

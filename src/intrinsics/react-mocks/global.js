@@ -36,7 +36,7 @@ export default function(realm: Realm): void {
   let requireValue = AbstractValue.createFromTemplate(
     realm,
     buildExpressionTemplate("require"),
-    (type: any), // Flow complains that type of Value isn't compatible with class Value :/
+    ((type: any): typeof Value),
     [],
     "require"
   );

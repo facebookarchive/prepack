@@ -1,18 +1,20 @@
 if (this.__createReactMock) {
   var React = __createReactMock();
 } else {
-	var React = require('react');
+  var React = require('react');
 }
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
 var Stateful = (function (superclass) {
   function Stateful () {
-		superclass.apply(this, arguments);
-		this.state = { updated: false };
+    superclass.apply(this, arguments);
+    this.state = { updated: false };
   }
 
-  if ( superclass ) Stateful.__proto__ = superclass;
+  if ( superclass ) {
+    Stateful.__proto__ = superclass;
+  }
   Stateful.prototype = Object.create( superclass && superclass.prototype );
   Stateful.prototype.constructor = Stateful;
   Stateful.prototype.componentWillReceiveProps = function componentWillReceiveProps() {
@@ -25,7 +27,7 @@ var Stateful = (function (superclass) {
         (is update: {String(this.state.updated)})
       </div>
     );
-	};
+  };
 
   return Stateful;
 }(React.Component));

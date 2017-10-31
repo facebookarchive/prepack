@@ -1,7 +1,7 @@
 if (this.__createReactMock) {
   var React = __createReactMock();
 } else {
-	var React = require('react');
+  var React = require('react');
 }
 
 function MaybeShow(props) {

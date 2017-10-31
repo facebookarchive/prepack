@@ -1,18 +1,20 @@
 if (this.__createReactMock) {
   var React = __createReactMock();
 } else {
-	var React = require('react');
+  var React = require('react');
 }
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
 var Stateful = (function (superclass) {
   function Stateful () {
-		superclass.apply(this, arguments);
-		this.state = { updated: false };
+    superclass.apply(this, arguments);
+    this.state = { updated: false };
   }
 
-  if ( superclass ) Stateful.__proto__ = superclass;
+  if ( superclass ) {
+    Stateful.__proto__ = superclass;
+  }
   Stateful.prototype = Object.create( superclass && superclass.prototype );
   Stateful.prototype.constructor = Stateful;
   Stateful.prototype.componentWillReceiveProps = function componentWillReceiveProps() {
@@ -24,7 +26,7 @@ var Stateful = (function (superclass) {
         (is update: {String(this.state.updated)})
       </div>
     );
-	};
+  };
 
   return Stateful;
 }(React.Component));
@@ -53,7 +55,7 @@ function App(props/*: {switch: boolean}*/) {
 }
 
 App.getTrials = function(renderer, Root) {
-	let results = [];
+  let results = [];
   renderer.update(<Root switch={false} />);
   results.push(['mount', renderer.toJSON()]);
 
@@ -67,8 +69,8 @@ App.getTrials = function(renderer, Root) {
   results.push(['update with same type (again)', renderer.toJSON()]);
 
   renderer.update(<Root switch={false} />);
-	results.push(['update with different type (again)', renderer.toJSON()]);
-	return results;
+  results.push(['update with different type (again)', renderer.toJSON()]);
+  return results;
 };
 
 if (this.__registerReactComponentRoot) {

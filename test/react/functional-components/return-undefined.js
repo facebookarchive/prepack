@@ -1,7 +1,7 @@
 if (this.__createReactMock) {
   var React = __createReactMock();
 } else {
-	var React = require('react');
+  var React = require('react');
 }
 
 function A() {
@@ -22,7 +22,7 @@ App.getTrials = function(renderer, Root) {
   } catch (err) {
     didError = true;
   }
-  return ['error rendering', didError];
+  return [['error rendering', didError]];
 };
 
 if (this.__registerReactComponentRoot) {

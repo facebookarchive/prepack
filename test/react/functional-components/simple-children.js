@@ -19,7 +19,7 @@ function App(props: any) {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return ['simple children', renderer.toJSON()];
+  return [['simple children', renderer.toJSON()]];
 };
 
 if (this.__registerReactComponentRoot) {

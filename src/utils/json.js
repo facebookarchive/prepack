@@ -12,7 +12,7 @@ type JSONValue = Array<JSONValue> | string | number | JSON;
 type JSON = { [key: string]: JSONValue };
 
 // this will mutate the original JSON object
-export function normalize(node: JSON) {
+export function mergeAdacentJSONTextNodes(node: JSON) {
   // we merge adjacent text nodes
   if (Array.isArray(node)) {
     // we create a new array rather than mutating the original
@@ -33,7 +33,7 @@ export function normalize(node: JSON) {
           arr.push(concatString);
           concatString = null;
         }
-        arr.push(normalize(child));
+        arr.push(mergeAdacentJSONTextNodes(child));
       }
     }
     if (concatString !== null) {
@@ -44,7 +44,7 @@ export function normalize(node: JSON) {
     for (let key in node) {
       let value = node[key];
       if (typeof value === "object" && value !== null) {
-        node[key] = normalize(((value: any): JSON));
+        node[key] = mergeAdacentJSONTextNodes(((value: any): JSON));
       }
     }
   }

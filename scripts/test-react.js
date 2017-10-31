@@ -15,7 +15,7 @@ let { prepackSources } = require("../lib/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
 let ReactTestRenderer = require("react-test-renderer");
-let { normalize } = require("../lib/utils/json.js");
+let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
@@ -36,6 +36,7 @@ function compileSourceWithPrepack(source) {
   let code = `(function(){${source}})()`;
   let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
   // add the React require back in, as we've removed it with our Prepack mock
+  // the regex checks for any Prepack variable that matches "_$**any digit**.React"
   let compiledSource = serialized.code.replace(/_\$[\d].React/, "React = require('react')");
   if (serialized == null || serialized.reactStatistics == null) {
     throw new Error("React test runner failed during serialization");
@@ -101,17 +102,10 @@ async function runTest(directory, name) {
   let resultB = getTrials(rendererB, B);
 
   // // the test has returned many values for us to check
-  if (Array.isArray(resultA) && Array.isArray(resultA[0])) {
-    for (let i = 0; i < resultA.length; i++) {
-      let [nameA, valueA] = resultA[i];
-      let [nameB, valueB] = resultB[i];
-      expect(normalize(valueB)).toEqual(normalize(valueA));
-      expect(nameB).toEqual(nameA);
-    }
-  } else {
-    let [nameA, valueA] = resultA;
-    let [nameB, valueB] = resultB;
-    expect(normalize(valueB)).toEqual(normalize(valueA));
+  for (let i = 0; i < resultA.length; i++) {
+    let [nameA, valueA] = resultA[i];
+    let [nameB, valueB] = resultB[i];
+    expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
     expect(nameB).toEqual(nameA);
   }
 }
