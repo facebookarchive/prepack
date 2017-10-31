@@ -9,8 +9,10 @@
 
 /* @flow */
 import { DebugMessage } from "./DebugMessage.js";
+import type { BreakpointRequestArguments } from "./../types.js";
+import invariant from "./../../invariant.js";
 
-export class MessageFormatter {
+export class MessageHandler {
   formatBreakpointAcknowledge(
     requestID: number,
     prefix: string,
@@ -39,5 +41,26 @@ export class MessageFormatter {
 
   formatSetBreakpointsRequest(requestID: number, filePath: string, line: number, column: number) {
     return `${requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`;
+  }
+
+  parseBreakpointArguments(requestID: number, parts: Array<string>) {
+    let filePath = parts[0];
+
+    let lineNum = parseInt(parts[1], 10);
+    invariant(!isNaN(lineNum));
+    let columnNum = 0;
+    if (parts.length === 3) {
+      columnNum = parseInt(parts[2], 10);
+      invariant(!isNaN(columnNum));
+    }
+
+    let result: BreakpointRequestArguments = {
+      requestID: requestID,
+      kind: "breakpoint",
+      filePath: filePath,
+      line: lineNum,
+      column: columnNum,
+    };
+    return result;
   }
 }

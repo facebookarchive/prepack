@@ -11,8 +11,7 @@
 import invariant from "./../../invariant.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
-import { MessageFormatter } from "./MessageFormatter.js";
-import { MessageParser } from "./MessageParser.js";
+import { MessageHandler } from "./MessageHandler.js";
 import { DebuggerError } from "./../DebuggerError.js";
 import type {
   DebuggerRequest,
@@ -26,15 +25,13 @@ export class DebugChannel {
   constructor(ioWrapper: FileIOWrapper) {
     this._requestReceived = false;
     this._ioWrapper = ioWrapper;
-    this._formatter = new MessageFormatter();
-    this._parser = new MessageParser();
+    this._messageHandler = new MessageHandler();
     this._lastRunRequestID = 0;
   }
 
   _requestReceived: boolean;
   _ioWrapper: FileIOWrapper;
-  _formatter: MessageFormatter;
-  _parser: MessageParser;
+  _messageHandler: MessageHandler;
   _lastRunRequestID: number;
 
   /*
@@ -82,7 +79,7 @@ export class DebugChannel {
         args = runArgs;
         break;
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
-        args = this._parser.parseBreakpointArguments(requestID, parts.slice(2));
+        args = this._messageHandler.parseBreakpointArguments(requestID, parts.slice(2));
         break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
@@ -105,15 +102,15 @@ export class DebugChannel {
 
   sendBreakpointAcknowledge(prefix: string, args: BreakpointRequestArguments): void {
     this.writeOut(
-      this._formatter.formatBreakpointAcknowledge(args.requestID, prefix, args.filePath, args.line, args.column)
+      this._messageHandler.formatBreakpointAcknowledge(args.requestID, prefix, args.filePath, args.line, args.column)
     );
   }
 
   sendBreakpointStopped(filePath: string, line: number, column: number): void {
-    this.writeOut(this._formatter.formatBreakpointStopped(this._lastRunRequestID, filePath, line, column));
+    this.writeOut(this._messageHandler.formatBreakpointStopped(this._lastRunRequestID, filePath, line, column));
   }
 
   sendPrepackFinish(): void {
-    this.writeOut(this._formatter.formatPrepackFinish(this._lastRunRequestID));
+    this.writeOut(this._messageHandler.formatPrepackFinish(this._lastRunRequestID));
   }
 }

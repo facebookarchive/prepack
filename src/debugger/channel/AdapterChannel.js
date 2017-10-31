@@ -10,7 +10,7 @@
 /* @flow */
 import type { DebuggerOptions } from "./../../options.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
-import { MessageFormatter } from "./MessageFormatter.js";
+import { MessageHandler } from "./MessageHandler.js";
 import Queue from "queue-fifo";
 import EventEmitter from "events";
 import invariant from "./../../invariant.js";
@@ -22,7 +22,7 @@ import type { BreakpointRequestArguments } from "./../types.js";
 export class AdapterChannel {
   constructor(dbgOptions: DebuggerOptions, eventEmitter: EventEmitter) {
     this._ioWrapper = new FileIOWrapper(true, dbgOptions.inFilePath, dbgOptions.outFilePath);
-    this._formatter = new MessageFormatter();
+    this._messageHandler = new MessageHandler();
     this._queue = new Queue();
     this._pendingRequestCallbacks = new Map();
     this._eventEmitter = eventEmitter;
@@ -30,7 +30,7 @@ export class AdapterChannel {
     this.listenOnFile(this._processPrepackMessage.bind(this));
   }
   _ioWrapper: FileIOWrapper;
-  _formatter: MessageFormatter;
+  _messageHandler: MessageHandler;
   _queue: Queue;
   _pendingRequestCallbacks: { [number]: (string) => void };
   _prepackWaiting: boolean;
@@ -94,7 +94,7 @@ export class AdapterChannel {
   }
 
   queueContinueRequest(requestID: number, callback: string => void) {
-    this._queue.enqueue(this._formatter.formatContinueRequest(requestID));
+    this._queue.enqueue(this._messageHandler.formatContinueRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
@@ -106,7 +106,12 @@ export class AdapterChannel {
   ) {
     for (const breakpoint of breakpoints) {
       this._queue.enqueue(
-        this._formatter.formatSetBreakpointsRequest(requestID, breakpoint.filePath, breakpoint.line, breakpoint.column)
+        this._messageHandler.formatSetBreakpointsRequest(
+          requestID,
+          breakpoint.filePath,
+          breakpoint.line,
+          breakpoint.column
+        )
       );
     }
     this.trySendNextRequest();
@@ -118,7 +123,7 @@ export class AdapterChannel {
   }
 
   sendDebuggerStart(requestID: number) {
-    this.writeOut(this._formatter.formatDebuggerStart(requestID));
+    this.writeOut(this._messageHandler.formatDebuggerStart(requestID));
   }
 
   listenOnFile(messageProcessor: (message: string) => void) {

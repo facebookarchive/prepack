@@ -16,7 +16,6 @@ import invariant from "../invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./channel/DebugMessage.js";
 import { DebuggerError } from "./DebuggerError.js";
-import { MessageParser } from "./channel/MessageParser.js";
 import type { DebuggerRequest } from "./types.js";
 
 export class DebugServer {
@@ -25,7 +24,6 @@ export class DebugServer {
     this._previousExecutedLine = 0;
     this._previousExecutedCol = 0;
     this._lastRunRequestID = 0;
-    this._messageParser = new MessageParser();
     this._channel = channel;
     this.waitForRun();
   }
@@ -34,8 +32,6 @@ export class DebugServer {
   _previousExecutedFile: void | string;
   _previousExecutedLine: number;
   _previousExecutedCol: number;
-  // helper to parse messages;
-  _messageParser: MessageParser;
   // the channel to communicate with the adapter
   _channel: DebugChannel;
   _lastRunRequestID: number;
