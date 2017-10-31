@@ -13,8 +13,9 @@ import traverse from "babel-traverse";
 import { BabelNode } from "babel-types";
 import * as t from "babel-types";
 
-// taken directly from Babel:
+// Taken directly from Babel:
 // https://github.com/babel/babel/blob/master/packages/babel-plugin-transform-flow-strip-types/src/index.js
+// Copyright Sebastain McKenzie / Babel project (https://github.com/babel)
 export function stripFlowTypeAnnotations(ast: BabelNode): void {
   traverse(
     ast,
