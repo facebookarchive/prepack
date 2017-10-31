@@ -9,9 +9,22 @@
 
 /* @flow */
 
-export type BreakpointCommandArguments = {
-  kind: string,
+export type DebuggerRequest = {
+  command: string,
+  arguments: DebuggerRequestArguments,
+};
+
+export type DebuggerRequestArguments = BreakpointRequestArguments | RunRequestArguments;
+
+export type BreakpointRequestArguments = {
+  requestID: number,
+  kind: "breakpoint",
   filePath: string,
-  lineNum: number,
-  columnNum: number,
+  line: number,
+  column: number,
+};
+
+export type RunRequestArguments = {
+  requestID: number,
+  kind: "run",
 };

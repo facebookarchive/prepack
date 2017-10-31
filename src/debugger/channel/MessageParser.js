@@ -9,28 +9,27 @@
 
 /* @flow */
 import invariant from "./../../invariant.js";
-import type { BreakpointCommandArguments } from "./../types.js";
+import type { BreakpointRequestArguments } from "./../types.js";
 
 export class MessageParser {
-  parseBreakpointArguments(parts: Array<string>) {
-    let kind = parts[0];
-    let filePath = parts[1];
+  parseBreakpointArguments(requestID: number, parts: Array<string>) {
+    let filePath = parts[0];
 
-    let lineNum = parseInt(parts[2], 10);
+    let lineNum = parseInt(parts[1], 10);
     invariant(!isNaN(lineNum));
     let columnNum = 0;
-    if (parts.length === 4) {
-      columnNum = parseInt(parts[3], 10);
+    if (parts.length === 3) {
+      columnNum = parseInt(parts[2], 10);
       invariant(!isNaN(columnNum));
     }
 
-    let result: BreakpointCommandArguments = {
-      kind: kind,
+    let result: BreakpointRequestArguments = {
+      requestID: requestID,
+      kind: "breakpoint",
       filePath: filePath,
-      lineNum: lineNum,
-      columnNum: columnNum,
+      line: lineNum,
+      column: columnNum,
     };
-
     return result;
   }
 }
