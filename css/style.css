@@ -191,7 +191,8 @@ header, .repl-container {
 }
 /* Modal Content/Box */
 .graph-modal-content {
-    height: 50%;
+    text-align: center;
+    height: 70%;
     background-color: #fefefe;
     margin: 15% auto; /* 15% from the top and centered */
     padding: 20px;

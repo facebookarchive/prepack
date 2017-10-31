@@ -148,6 +148,28 @@ function compile() {
           code =
             '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
         }
+        var DOTstring = 'dinetwork {1 -> 1 -> 2; 2 -> 3; 2 -- 4; 2 -> 1 }';
+        var parsedData = vis.network.convertDot(DOTstring);
+        var visData = {
+          nodes: parsedData.nodes,
+          edges: parsedData.edges
+        }
+
+        var visOptions = parsedData.options;
+
+        // you can extend the options like a normal JSON variable:
+        visOptions.nodes = {
+          color: 'red'
+        }
+
+        // create a network
+        var network = new vis.Network(graphModalContents, visData, visOptions);
+        network.moveTo({
+          position: {
+            x: 100,
+            y: 100
+          }
+        });
         graphDiv.style.display = "inline-block";
         output.setValue(code, -1);
       } else if (result.type === 'error') {
@@ -211,12 +233,12 @@ var graphButton = document.querySelector('#graphBtn');
 var graphDiv = document.getElementById('graphBtn');
 
 var graphModal = document.getElementById('graphModal');
+var graphModalContents = document.getElementById('graphModalContent');
 var graphModalClose = document.getElementById('graphModalClose');
 
 function setUpModal() {
   graphDiv.style.display = "none";
   graphButton.onclick = () => {
-    console.log("HERE");
     graphModal.style.display = "block";
   };
   graphModalClose.onclick = function() {
