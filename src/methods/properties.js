@@ -9,7 +9,8 @@
 
 /* @flow */
 
-import type { Realm } from "../realm.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { construct_empty_effects, type Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
   ArrayValue,
@@ -31,42 +32,45 @@ import { FatalError } from "../errors.js";
 import { CreateIterResultObject } from "../methods/create.js";
 import invariant from "../invariant.js";
 import {
-  ObjectCreate,
-  CreateDataProperty,
+  Call,
   cloneDescriptor,
+  CreateDataProperty,
+  DefineMethod,
   equalDescriptors,
-  IsAccessorDescriptor,
-  IsPropertyKey,
-  IsUnresolvableReference,
-  IsStrictReference,
-  IsDataDescriptor,
-  IsGenericDescriptor,
-  GetGlobalObject,
+  FunctionCreate,
+  GeneratorFunctionCreate,
+  Get,
   GetBase,
+  GetGlobalObject,
   GetReferencedName,
   GetReferencedNamePartial,
   GetThisValue,
   HasPrimitiveBase,
-  Call,
+  HasSomeCompatibleType,
+  IsAccessorDescriptor,
+  IsDataDescriptor,
+  IsGenericDescriptor,
+  IsPropertyKey,
+  IsPropertyReference,
+  IsStrictReference,
+  IsUnresolvableReference,
+  joinEffects,
+  MakeConstructor,
+  MakeMethod,
+  ObjectCreate,
+  SameValue,
+  SameValuePartial,
+  SetFunctionName,
+  ToBooleanPartial,
+  ToNumber,
   ToObject,
   ToObjectPartial,
   ToPropertyDescriptor,
   ToUint32,
-  ToNumber,
-  Get,
-  SameValue,
-  SameValuePartial,
-  IsPropertyReference,
-  HasSomeCompatibleType,
-  DefineMethod,
-  SetFunctionName,
-  GeneratorFunctionCreate,
-  MakeMethod,
-  MakeConstructor,
-  FunctionCreate,
 } from "../methods/index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
+import { Path } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 
@@ -241,100 +245,153 @@ export class PropertiesImplementation {
 
       // i. Let ownDesc be the PropertyDescriptor{[[Value]]: undefined, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}.
       if (!ownDesc)
-        ownDesc = {
+        ownDesc = ({
           value: realm.intrinsics.undefined,
           writable: true,
           enumerable: true,
           configurable: true,
-        };
+        }: any);
     }
 
-    // 4. If IsDataDescriptor(ownDesc) is true, then
-    if (IsDataDescriptor(realm, ownDesc)) {
-      // a. If ownDesc.[[Writable]] is false, return false.
-      if (!ownDesc.writable && !weakDeletion) {
-        // The write will fail if the property actually exists
-        if (ownDescValue.mightHaveBeenDeleted()) {
-          // But maybe it does not and thus would succeed.
-          // Since we don't know what will happen, give up for now.
-          invariant(ownDescValue instanceof AbstractValue);
-          AbstractValue.reportIntrospectionError(ownDescValue);
-          throw new FatalError();
-        }
-        return false;
+    // joined descriptors need special treatment
+    let joinCondition = ownDesc.joinCondition;
+    if (joinCondition !== undefined) {
+      let descriptor2 = ownDesc.descriptor2;
+      ownDesc = ownDesc.descriptor1;
+      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
+        return ownDesc !== undefined
+          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()))
+          : construct_empty_effects(realm);
+      });
+      ownDesc = descriptor2;
+      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
+        return ownDesc !== undefined
+          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()))
+          : construct_empty_effects(realm);
+      });
+
+      // Join the effects, creating an abstract view of what happened, regardless
+      // of the actual value of ownDesc.joinCondition.
+      let joinedEffects = joinEffects(
+        realm,
+        joinCondition,
+        [compl1, gen1, bindings1, properties1, createdObj1],
+        [compl2, gen2, bindings2, properties2, createdObj2]
+      );
+      let completion = joinedEffects[0];
+      if (completion instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        completion = realm.composeWithSavedCompletion(completion);
       }
+      // Note that the effects of (non joining) abrupt branches are not included
+      // in joinedEffects, but are tracked separately inside completion.
+      realm.applyEffects(joinedEffects);
 
-      // b. If Type(Receiver) is not Object, return false.
-      Receiver = Receiver.throwIfNotConcrete();
-      if (!(Receiver instanceof ObjectValue)) return false;
+      // return or throw completion
+      if (completion instanceof AbruptCompletion) throw completion;
+      invariant(completion instanceof Value);
+      return ToBooleanPartial(realm, completion);
+    }
 
-      // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
-      let existingDescriptor = Receiver.$GetOwnProperty(P);
-      let existingDescValue = !existingDescriptor
-        ? realm.intrinsics.undefined
-        : existingDescriptor.value === undefined ? realm.intrinsics.undefined : existingDescriptor.value;
-      invariant(existingDescValue instanceof Value);
+    return OrdinarySetHelper();
 
-      // d. If existingDescriptor is not undefined, then
-      if (existingDescriptor !== undefined) {
-        // i. If IsAccessorDescriptor(existingDescriptor) is true, return false.
-        if (IsAccessorDescriptor(realm, existingDescriptor)) {
-          invariant(
-            !existingDescValue.mightHaveBeenDeleted(),
-            "should not fail until weak deletes of accessors are suppported"
-          );
-          return false;
-        }
-
-        // ii. If existingDescriptor.[[Writable]] is false, return false.
-        if (!existingDescriptor.writable && !(weakDeletion && existingDescriptor.configurable)) {
-          // If we are not sure the receiver actually has a property P we can't just return false here.
-          if (existingDescValue.mightHaveBeenDeleted()) {
-            invariant(existingDescValue instanceof AbstractValue);
-            AbstractValue.reportIntrospectionError(existingDescValue);
+    function OrdinarySetHelper(): boolean {
+      invariant(ownDesc !== undefined);
+      invariant(ownDescValue instanceof Value);
+      // 4. If IsDataDescriptor(ownDesc) is true, then
+      if (IsDataDescriptor(realm, ownDesc)) {
+        // a. If ownDesc.[[Writable]] is false, return false.
+        if (!ownDesc.writable && !weakDeletion) {
+          // The write will fail if the property actually exists
+          if (ownDescValue.mightHaveBeenDeleted()) {
+            // But maybe it does not and thus would succeed.
+            // Since we don't know what will happen, give up for now.
+            invariant(ownDescValue instanceof AbstractValue);
+            AbstractValue.reportIntrospectionError(ownDescValue);
             throw new FatalError();
           }
           return false;
         }
 
-        // iii. Let valueDesc be the PropertyDescriptor{[[Value]]: V}.
-        let valueDesc = { value: V };
-        if (weakDeletion) {
-          valueDesc = existingDescriptor;
-          valueDesc.value = V;
-        }
+        // b. If Type(Receiver) is not Object, return false.
+        Receiver = Receiver.throwIfNotConcrete();
+        if (!(Receiver instanceof ObjectValue)) return false;
 
-        // iv. Return ? Receiver.[[DefineOwnProperty]](P, valueDesc).
-        if (weakDeletion || existingDescValue.mightHaveBeenDeleted()) {
-          // At this point we are not actually sure that Receiver actually has
-          // a property P, however, if it has, we are sure that its a data property,
-          // and that redefining the property with valueDesc will not change the
-          // attributes of the property, so we delete it to make things nice for $DefineOwnProperty.
-          Receiver.$Delete(P);
+        // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
+        let existingDescriptor = Receiver.$GetOwnProperty(P);
+        if (existingDescriptor !== undefined) {
+          if (existingDescriptor.descriptor1 === ownDesc) existingDescriptor = ownDesc;
+          else if (existingDescriptor.descriptor2 === ownDesc) existingDescriptor = ownDesc;
         }
-        return Receiver.$DefineOwnProperty(P, valueDesc);
-      } else {
-        // e. Else Receiver does not currently have a property P,
+        let existingDescValue = !existingDescriptor
+          ? realm.intrinsics.undefined
+          : existingDescriptor.value === undefined ? realm.intrinsics.undefined : existingDescriptor.value;
+        invariant(existingDescValue instanceof Value);
 
-        // i. Return ? CreateDataProperty(Receiver, P, V).
-        return CreateDataProperty(realm, Receiver, P, V);
+        // d. If existingDescriptor is not undefined, then
+        if (existingDescriptor !== undefined) {
+          // i. If IsAccessorDescriptor(existingDescriptor) is true, return false.
+          if (IsAccessorDescriptor(realm, existingDescriptor)) {
+            invariant(
+              !existingDescValue.mightHaveBeenDeleted(),
+              "should not fail until weak deletes of accessors are suppported"
+            );
+            return false;
+          }
+
+          // ii. If existingDescriptor.[[Writable]] is false, return false.
+          if (!existingDescriptor.writable && !(weakDeletion && existingDescriptor.configurable)) {
+            // If we are not sure the receiver actually has a property P we can't just return false here.
+            if (existingDescValue.mightHaveBeenDeleted()) {
+              invariant(existingDescValue instanceof AbstractValue);
+              AbstractValue.reportIntrospectionError(existingDescValue);
+              throw new FatalError();
+            }
+            return false;
+          }
+
+          // iii. Let valueDesc be the PropertyDescriptor{[[Value]]: V}.
+          let valueDesc = { value: V };
+          if (weakDeletion) {
+            valueDesc = existingDescriptor;
+            valueDesc.value = V;
+          }
+
+          // iv. Return ? Receiver.[[DefineOwnProperty]](P, valueDesc).
+          if (weakDeletion || existingDescValue.mightHaveBeenDeleted()) {
+            // At this point we are not actually sure that Receiver actually has
+            // a property P, however, if it has, we are sure that its a data property,
+            // and that redefining the property with valueDesc will not change the
+            // attributes of the property, so we delete it to make things nice for $DefineOwnProperty.
+            Receiver.$Delete(P);
+          }
+          return Receiver.$DefineOwnProperty(P, valueDesc);
+        } else {
+          // e. Else Receiver does not currently have a property P,
+
+          // i. Return ? CreateDataProperty(Receiver, P, V).
+          return CreateDataProperty(realm, Receiver, P, V);
+        }
       }
+
+      // 5. Assert: IsAccessorDescriptor(ownDesc) is true.
+      invariant(IsAccessorDescriptor(realm, ownDesc), "expected accessor");
+
+      // 6. Let setter be ownDesc.[[Set]].
+      let setter = "set" in ownDesc ? ownDesc.set : undefined;
+
+      // 7. If setter is undefined, return false.
+      if (!setter || setter instanceof UndefinedValue) return false;
+
+      // 8. Perform ? Call(setter, Receiver, « V »).
+      Call(realm, setter.throwIfNotConcrete(), Receiver, [V]);
+
+      // 9. Return true.
+      return true;
     }
-
-    // 5. Assert: IsAccessorDescriptor(ownDesc) is true.
-    invariant(IsAccessorDescriptor(realm, ownDesc), "expected accessor");
-
-    // 6. Let setter be ownDesc.[[Set]].
-    let setter = "set" in ownDesc ? ownDesc.set : undefined;
-
-    // 7. If setter is undefined, return false.
-    if (!setter || setter instanceof UndefinedValue) return false;
-
-    // 8. Perform ? Call(setter, Receiver, « V »).
-    Call(realm, setter.throwIfNotConcrete(), Receiver, [V]);
-
-    // 9. Return true.
-    return true;
   }
 
   // ECMA262 6.2.4.4
@@ -506,6 +563,12 @@ export class PropertiesImplementation {
     if (O !== undefined) {
       invariant(P !== undefined);
       invariant(IsPropertyKey(realm, P));
+    }
+
+    if (current && current.joinCondition !== undefined) {
+      let jc = current.joinCondition;
+      if (Path.implies(jc)) current = current.descriptor1;
+      else if (!AbstractValue.createFromUnaryOp(realm, "!", jc, true).mightNotBeTrue()) current = current.descriptor2;
     }
 
     // 2. If current is undefined, then
@@ -1033,6 +1096,12 @@ export class PropertiesImplementation {
     let X = existingBinding.descriptor;
     invariant(X !== undefined);
 
+    if (X.joinCondition !== undefined) {
+      D.joinCondition = X.joinCondition;
+      D.descriptor1 = X.descriptor1;
+      D.descriptor2 = X.descriptor2;
+      return D;
+    }
     // 5. If X is a data property, then
     if (IsDataDescriptor(realm, X)) {
       let value = X.value;

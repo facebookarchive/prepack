@@ -42,6 +42,10 @@ export default function simplifyAndRefineAbstractValue(
 function simplify(realm, value: Value, isCondition: boolean = false): Value {
   if (value instanceof ConcreteValue) return value;
   invariant(value instanceof AbstractValue);
+  if (isCondition || value.getType() === BooleanValue) {
+    if (Path.implies(value)) return realm.intrinsics.true;
+    if (Path.impliesNot(value)) return realm.intrinsics.false;
+  }
   let loc = value.expressionLocation;
   let op = value.kind;
   switch (op) {
@@ -206,7 +210,7 @@ function negate(
   invariant(value instanceof AbstractValue);
   if (value.kind === "!") {
     let [x] = value.args;
-    if (x.getType() === BooleanValue) return x;
+    if (x.getType() === BooleanValue) return simplify(realm, x, true);
     if (unsimplifiedNegation !== undefined) return unsimplifiedNegation;
     return makeBoolean(realm, x, loc);
   }

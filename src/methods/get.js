@@ -9,7 +9,8 @@
 
 /* @flow */
 
-import type { Realm } from "../realm.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { construct_empty_effects, type Realm } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
 import {
   AbstractObjectValue,
@@ -30,19 +31,21 @@ import { ArrayCreate } from "./create.js";
 import { SetIntegrityLevel } from "./integrity.js";
 import { ToString } from "./to.js";
 import {
-  ToObjectPartial,
-  IsPropertyKey,
-  IsCallable,
-  IsPropertyReference,
-  IsSuperReference,
-  IsDataDescriptor,
-  IsAccessorDescriptor,
-  joinValuesAsConditional,
   Call,
   GetBase,
   GetThisEnvironment,
   HasSomeCompatibleType,
+  IsAccessorDescriptor,
+  IsCallable,
+  IsDataDescriptor,
+  IsPropertyKey,
+  IsPropertyReference,
+  IsSuperReference,
+  joinValuesAsConditional,
+  joinEffects,
+  ToObjectPartial,
 } from "./index.js";
+import { Path } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
 
@@ -98,60 +101,109 @@ export function OrdinaryGet(
 
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
   let desc = O.$GetOwnProperty(P);
-  let descValue = !desc
-    ? realm.intrinsics.undefined
-    : desc.value === undefined ? realm.intrinsics.undefined : desc.value;
-  invariant(descValue instanceof Value);
+  if (desc !== undefined && desc.joinCondition !== undefined) {
+    // joined descriptors need special treatment
+    let joinCondition = desc.joinCondition;
+    if (joinCondition !== undefined) {
+      let descriptor2 = desc.descriptor2;
+      desc = desc.descriptor1;
+      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
+        return desc !== undefined
+          ? realm.evaluateForEffects(() => OrdinaryGetHelper())
+          : construct_empty_effects(realm);
+      });
+      desc = descriptor2;
+      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
+        return desc !== undefined
+          ? realm.evaluateForEffects(() => OrdinaryGetHelper())
+          : construct_empty_effects(realm);
+      });
 
-  // 3. If desc is undefined, then
-  if (!desc || descValue.mightHaveBeenDeleted()) {
-    // a. Let parent be ? O.[[GetPrototypeOf]]().
-    let parent = O.$GetPrototypeOf();
+      // Join the effects, creating an abstract view of what happened, regardless
+      // of the actual value of ownDesc.joinCondition.
+      let joinedEffects = joinEffects(
+        realm,
+        joinCondition,
+        [compl1, gen1, bindings1, properties1, createdObj1],
+        [compl2, gen2, bindings2, properties2, createdObj2]
+      );
+      let completion = joinedEffects[0];
+      if (completion instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        completion = realm.composeWithSavedCompletion(completion);
+      }
+      // Note that the effects of (non joining) abrupt branches are not included
+      // in joinedEffects, but are tracked separately inside completion.
+      realm.applyEffects(joinedEffects);
 
-    // b. If parent is null, return undefined.
-    if (parent instanceof NullValue) {
-      // Return the property value since it is now known to be the right value
-      // even in the case when it is empty.
-      return descValue;
+      // return or throw completion
+      if (completion instanceof AbruptCompletion) throw completion;
+      invariant(completion instanceof Value);
+      return completion;
     }
+  }
 
-    // c. Return ? parent.[[Get]](P, Receiver).
-    if (descValue.mightHaveBeenDeleted() && descValue instanceof AbstractValue) {
-      // We don't know for sure that O.P does not exist.
-      let parentVal = OrdinaryGet(realm, parent, P, descValue, true);
-      if (parentVal instanceof UndefinedValue)
-        // even O.P returns undefined it is still the right value.
+  return OrdinaryGetHelper();
+
+  function OrdinaryGetHelper() {
+    let descValue = !desc
+      ? realm.intrinsics.undefined
+      : desc.value === undefined ? realm.intrinsics.undefined : desc.value;
+    invariant(descValue instanceof Value);
+
+    // 3. If desc is undefined, then
+    if (!desc || descValue.mightHaveBeenDeleted()) {
+      // a. Let parent be ? O.[[GetPrototypeOf]]().
+      let parent = O.$GetPrototypeOf();
+
+      // b. If parent is null, return undefined.
+      if (parent instanceof NullValue) {
+        // Return the property value since it is now known to be the right value
+        // even in the case when it is empty.
         return descValue;
-      // Join with parent value with descValue because the actual value will be
-      // descValue unless it is empty.
-      // Only get the parent value if it does not involve a getter call.
-      // Use a property get for the joined value since it does the check for empty.
-      let cond = AbstractValue.createFromBinaryOp(realm, "!==", descValue, realm.intrinsics.empty);
-      return joinValuesAsConditional(realm, cond, descValue, parentVal);
+      }
+
+      // c. Return ? parent.[[Get]](P, Receiver).
+      if (descValue.mightHaveBeenDeleted() && descValue instanceof AbstractValue) {
+        // We don't know for sure that O.P does not exist.
+        let parentVal = OrdinaryGet(realm, parent, P, descValue, true);
+        if (parentVal instanceof UndefinedValue)
+          // even O.P returns undefined it is still the right value.
+          return descValue;
+        // Join with parent value with descValue because the actual value will be
+        // descValue unless it is empty.
+        // Only get the parent value if it does not involve a getter call.
+        // Use a property get for the joined value since it does the check for empty.
+        let cond = AbstractValue.createFromBinaryOp(realm, "!==", descValue, realm.intrinsics.empty);
+        return joinValuesAsConditional(realm, cond, descValue, parentVal);
+      }
+      invariant(!desc || descValue instanceof EmptyValue);
+      return parent.$Get(P, Receiver);
     }
-    invariant(!desc || descValue instanceof EmptyValue);
-    return parent.$Get(P, Receiver);
+
+    // 4. If IsDataDescriptor(desc) is true, return desc.[[Value]].
+    if (IsDataDescriptor(realm, desc)) return descValue;
+    if (dataOnly) {
+      invariant(descValue instanceof AbstractValue);
+      AbstractValue.reportIntrospectionError(descValue);
+      throw new FatalError();
+    }
+
+    // 5. Assert: IsAccessorDescriptor(desc) is true.
+    invariant(IsAccessorDescriptor(realm, desc), "expected accessor descriptor");
+
+    // 6. Let getter be desc.[[Get]].
+    let getter = desc.get;
+
+    // 7. If getter is undefined, return undefined.
+    if (!getter || getter instanceof UndefinedValue) return realm.intrinsics.undefined;
+
+    // 8. Return ? Call(getter, Receiver).
+    return Call(realm, getter, Receiver);
   }
-
-  // 4. If IsDataDescriptor(desc) is true, return desc.[[Value]].
-  if (IsDataDescriptor(realm, desc)) return descValue;
-  if (dataOnly) {
-    invariant(descValue instanceof AbstractValue);
-    AbstractValue.reportIntrospectionError(descValue);
-    throw new FatalError();
-  }
-
-  // 5. Assert: IsAccessorDescriptor(desc) is true.
-  invariant(IsAccessorDescriptor(realm, desc), "expected accessor descriptor");
-
-  // 6. Let getter be desc.[[Get]].
-  let getter = desc.get;
-
-  // 7. If getter is undefined, return undefined.
-  if (!getter || getter instanceof UndefinedValue) return realm.intrinsics.undefined;
-
-  // 8. Return ? Call(getter, Receiver).
-  return Call(realm, getter, Receiver);
 }
 
 // ECMA262 8.3.6
