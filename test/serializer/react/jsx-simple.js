@@ -1,3 +1,4 @@
+// es6
 // react
 // babel:jsx
 
