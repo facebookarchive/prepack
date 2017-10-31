@@ -17,6 +17,7 @@ import {
   TerminatedEvent,
   StoppedEvent,
 } from "vscode-debugadapter";
+import EventEmitter from "events";
 import * as DebugProtocol from "vscode-debugprotocol";
 import child_process from "child_process";
 import { AdapterChannel } from "./../channel/AdapterChannel.js";
@@ -24,7 +25,7 @@ import type { DebuggerOptions } from "./../../options.js";
 import { getDebuggerOptions } from "./../../prepack-options.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
-import { DebuggerConstants } from "./../DebuggerConstants.js";
+import type { BreakpointRequestArguments } from "./../types.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
@@ -38,6 +39,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     super("prepack");
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
+    this._eventEmitter = new EventEmitter();
     this._pendingRequestCallbacks = new Map();
     this._readCLIParameters();
     this._startPrepack();
@@ -50,6 +52,7 @@ class PrepackDebugSession extends LoggingDebugSession {
   _adapterChannel: AdapterChannel;
   _debuggerOptions: DebuggerOptions;
   _prepackWaiting: boolean;
+  _eventEmitter: EventEmitter;
   _pendingRequestCallbacks: { [number]: (string) => void };
 
   _readCLIParameters() {
@@ -93,10 +96,10 @@ class PrepackDebugSession extends LoggingDebugSession {
       console.error("No command given to start Prepack in adapter");
       process.exit(1);
     }
+
+    this._registerMessageCallbacks();
     // set up the communication channel
-    this._adapterChannel = new AdapterChannel(this._debuggerOptions);
-    this._adapterChannel.sendDebuggerStart(DebuggerConstants.DEFAULT_REQUEST_ID);
-    this._adapterChannel.listenOnFile(this._processPrepackMessage.bind(this));
+    this._adapterChannel = new AdapterChannel(this._debuggerOptions, this._eventEmitter);
 
     let prepackArgs = this._prepackCommand.split(" ");
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
@@ -130,40 +133,13 @@ class PrepackDebugSession extends LoggingDebugSession {
     });
   }
 
-  _processPrepackMessage(message: string) {
-    let parts = message.split(" ");
-    let requestID = parseInt(parts[0], 10);
-    invariant(!isNaN(requestID));
-    let prefix = parts[1];
-    if (prefix === DebugMessage.PREPACK_READY_RESPONSE) {
-      this._adapterChannel.setPrepackWaiting(true);
-      // the second argument is the threadID required by the protocol, since
-      // Prepack only has one thread, this argument will be ignored
+  _registerMessageCallbacks() {
+    this._eventEmitter.addListener(DebugMessage.PREPACK_READY_RESPONSE, () => {
       this.sendEvent(new StoppedEvent("entry", 1));
-      this._adapterChannel.trySendNextRequest(this._processPrepackMessage.bind(this));
-    } else if (prefix === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
-      this._processRequestCallback(requestID, message);
-      // Prepack acknowledged adding a breakpoint
-      this._adapterChannel.setPrepackWaiting(true);
-      this._adapterChannel.trySendNextRequest(this._processPrepackMessage.bind(this));
-    } else if (prefix === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
-      this._processRequestCallback(requestID, message);
-      // Prepack stopped on a breakpoint
-      this._adapterChannel.setPrepackWaiting(true);
-      // the second argument is the threadID required by the protocol, since
-      // Prepack only has one thread, this argument will be ignored
-      this.sendEvent(new StoppedEvent("breakpoint " + parts.slice(2).join(" "), 1));
-      this._adapterChannel.trySendNextRequest(this._processPrepackMessage.bind(this));
-    }
-  }
-
-  _processRequestCallback(requestID: number, message: string) {
-    invariant(
-      requestID in this._pendingRequestCallbacks,
-      "Request ID does not exist in pending requests: " + requestID
-    );
-    let callback = this._pendingRequestCallbacks[requestID];
-    callback(message);
+    });
+    this._eventEmitter.addListener(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, (description: string) => {
+      this.sendEvent(new StoppedEvent("breakpoint " + description, 1));
+    });
   }
 
   _addRequestCallback(requestID: number, callback: string => void) {
@@ -192,10 +168,7 @@ class PrepackDebugSession extends LoggingDebugSession {
   */
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // queue a Run request to Prepack and try to send the next request in the queue
-    this._adapterChannel.queueContinueRequest(response.request_seq);
-    this._adapterChannel.trySendNextRequest(this._processPrepackMessage.bind(this));
-
-    this._addRequestCallback(response.request_seq, (message: string) => {
+    this._adapterChannel.queueContinueRequest(response.request_seq, (message: string) => {
       this.sendResponse(response);
     });
   }
@@ -206,17 +179,23 @@ class PrepackDebugSession extends LoggingDebugSession {
   ): void {
     if (!args.source.path || !args.breakpoints) return;
     let filePath = args.source.path;
-
+    let breakpointInfos = [];
     for (const breakpoint of args.breakpoints) {
       let line = breakpoint.line;
       let column = 0;
       if (breakpoint.column) {
         column = breakpoint.column;
       }
-      this._adapterChannel.queueSetBreakpointsRequest(response.request_seq, filePath, line, column);
+      let breakpointInfo: BreakpointRequestArguments = {
+        kind: "breakpoint",
+        requestID: response.request_seq,
+        filePath: filePath,
+        line: line,
+        column: column,
+      };
+      breakpointInfos.push(breakpointInfo);
     }
-    this._adapterChannel.trySendNextRequest(this._processPrepackMessage.bind(this));
-    this._addRequestCallback(response.request_seq, (message: string) => {
+    this._adapterChannel.queueSetBreakpointsRequest(response.request_seq, breakpointInfos, (message: string) => {
       this.sendResponse(response);
     });
   }
