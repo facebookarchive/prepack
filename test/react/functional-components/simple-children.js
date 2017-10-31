@@ -23,8 +23,7 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__registerReactComponentRoot) {
-  // to be used when component folding is added in separate PR
-  // __registerReactComponentRoot(App);
+  __registerReactComponentRoot(App);
 }
 
 module.exports = App;

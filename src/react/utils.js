@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
-import { Value, ObjectValue, SymbolValue } from "../values/index.js";
+import { Value, ObjectValue, SymbolValue, FunctionValue } from "../values/index.js";
 import { Get } from "../methods/index.js";
 
 export function isReactElement(val: Value): boolean {
@@ -31,6 +31,17 @@ export function isTagName(ast: BabelNode): boolean {
 
 export function isReactComponent(name: string) {
   return name.length > 0 && name[0] === name[0].toUpperCase();
+}
+
+export function valueIsClassComponent(realm: Realm, value: Value) {
+  if (!(value instanceof FunctionValue)) {
+    return false;
+  }
+  let prototype = Get(realm, value, "prototype");
+  if (prototype instanceof ObjectValue) {
+    return prototype.properties.has("render");
+  }
+  return false;
 }
 
 // we create a unique key for each JSXElement to prevent collisions

@@ -32,7 +32,7 @@ var Stateful = (function (superclass) {
   return Stateful;
 }(React.Component));
 
-function App(props/*: {switch: boolean}*/) {
+function App(props: {switch: boolean}) {
   if (props.switch) {
     return (
       <div>
@@ -67,8 +67,7 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__registerReactComponentRoot) {
-  // to be used when component folding is added in separate PR
-  // __registerReactComponentRoot(App);
+  __registerReactComponentRoot(App);
 }
 
 module.exports = App;

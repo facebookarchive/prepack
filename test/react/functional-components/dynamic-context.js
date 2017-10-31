@@ -8,7 +8,7 @@ function SubChild(props, context) {
   return <span>The context title is: {context.title}</span>;
 }
 
-function Child(props: any, context/*: {title: string}*/) {
+function Child(props: any, context: {title: string}) {
   return <span><SubChild /></span>;
 }
 
@@ -49,8 +49,7 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__registerReactComponentRoot) {
-  // to be used when component folding is added in separate PR
-  // __registerReactComponentRoot(App);
+  __registerReactComponentRoot(App);
 }
 
 module.exports = App;

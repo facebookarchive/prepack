@@ -828,7 +828,13 @@ export class ResidualHeapSerializer {
     let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
     let closingElement = t.jSXClosingElement(identifier);
 
-    return t.jSXElement(openingElement, closingElement, children, children.length === 0);
+    let jsxElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
+    // if there has been a bail-out, we create an inline BlockComment node before the JSX element
+    if (val.$BailOut !== undefined) {
+      // $BailOut contains an optional string of what to print out in the comment
+      jsxElement.leadingComments = [({ type: "BlockComment", value: `${val.$BailOut}` }: any)];
+    }
+    return jsxElement;
   }
 
   _serializeValueMap(val: ObjectValue): BabelNodeExpression {
