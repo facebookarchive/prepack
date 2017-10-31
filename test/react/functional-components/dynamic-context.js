@@ -49,7 +49,7 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(App);
+  __registerReactComponentRoot(Child);
 }
 
 module.exports = App;
