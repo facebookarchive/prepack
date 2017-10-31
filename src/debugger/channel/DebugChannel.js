@@ -13,12 +13,7 @@ import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
 import { MessageHandler } from "./MessageHandler.js";
 import { DebuggerError } from "./../DebuggerError.js";
-import type {
-  DebuggerRequest,
-  DebuggerRequestArguments,
-  BreakpointRequestArguments,
-  RunRequestArguments,
-} from "./../types.js";
+import type { DebuggerRequest, DebuggerRequestArguments, BreakpointArguments, RunArguments } from "./../types.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
@@ -72,7 +67,7 @@ export class DebugChannel {
     switch (command) {
       case DebugMessage.PREPACK_RUN_COMMAND:
         this._lastRunRequestID = requestID;
-        let runArgs: RunRequestArguments = {
+        let runArgs: RunArguments = {
           kind: "run",
           requestID: requestID,
         };
@@ -100,14 +95,21 @@ export class DebugChannel {
     this._requestReceived = false;
   }
 
-  sendBreakpointAcknowledge(prefix: string, args: BreakpointRequestArguments): void {
+  sendBreakpointAcknowledge(prefix: string, args: BreakpointArguments): void {
     this.writeOut(
       this._messageHandler.formatBreakpointAcknowledge(args.requestID, prefix, args.filePath, args.line, args.column)
     );
   }
 
   sendBreakpointStopped(filePath: string, line: number, column: number): void {
-    this.writeOut(this._messageHandler.formatBreakpointStopped(this._lastRunRequestID, filePath, line, column));
+    let breakpointInfo: BreakpointArguments = {
+      requestID: this._lastRunRequestID,
+      kind: "breakpoint",
+      filePath: filePath,
+      line: line,
+      column: column,
+    };
+    this.writeOut(this._messageHandler.formatBreakpointStopped(breakpointInfo));
   }
 
   sendPrepackFinish(): void {

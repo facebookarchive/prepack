@@ -14,9 +14,9 @@ export type DebuggerRequest = {
   arguments: DebuggerRequestArguments,
 };
 
-export type DebuggerRequestArguments = BreakpointRequestArguments | RunRequestArguments;
+export type DebuggerRequestArguments = BreakpointArguments | RunArguments;
 
-export type BreakpointRequestArguments = {
+export type BreakpointArguments = {
   requestID: number,
   kind: "breakpoint",
   filePath: string,
@@ -24,7 +24,7 @@ export type BreakpointRequestArguments = {
   column: number,
 };
 
-export type RunRequestArguments = {
+export type RunArguments = {
   requestID: number,
   kind: "run",
 };

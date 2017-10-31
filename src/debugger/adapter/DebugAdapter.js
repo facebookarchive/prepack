@@ -25,7 +25,7 @@ import type { DebuggerOptions } from "./../../options.js";
 import { getDebuggerOptions } from "./../../prepack-options.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
-import type { BreakpointRequestArguments } from "./../types.js";
+import type { BreakpointArguments } from "./../types.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
@@ -187,7 +187,7 @@ class PrepackDebugSession extends LoggingDebugSession {
       if (breakpoint.column) {
         column = breakpoint.column;
       }
-      let breakpointInfo: BreakpointRequestArguments = {
+      let breakpointInfo: BreakpointArguments = {
         kind: "breakpoint",
         requestID: response.request_seq,
         filePath: filePath,

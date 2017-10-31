@@ -16,7 +16,7 @@ import EventEmitter from "events";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./DebugMessage.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
-import type { BreakpointRequestArguments } from "./../types.js";
+import type { BreakpointArguments } from "./../types.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
@@ -99,20 +99,9 @@ export class AdapterChannel {
     this._addRequestCallback(requestID, callback);
   }
 
-  queueSetBreakpointsRequest(
-    requestID: number,
-    breakpoints: Array<BreakpointRequestArguments>,
-    callback: string => void
-  ) {
+  queueSetBreakpointsRequest(requestID: number, breakpoints: Array<BreakpointArguments>, callback: string => void) {
     for (const breakpoint of breakpoints) {
-      this._queue.enqueue(
-        this._messageHandler.formatSetBreakpointsRequest(
-          requestID,
-          breakpoint.filePath,
-          breakpoint.line,
-          breakpoint.column
-        )
-      );
+      this._queue.enqueue(this._messageHandler.formatSetBreakpointsRequest(breakpoint));
     }
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);

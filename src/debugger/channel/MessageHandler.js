@@ -9,7 +9,7 @@
 
 /* @flow */
 import { DebugMessage } from "./DebugMessage.js";
-import type { BreakpointRequestArguments } from "./../types.js";
+import type { BreakpointArguments } from "./../types.js";
 import invariant from "./../../invariant.js";
 
 export class MessageHandler {
@@ -23,27 +23,27 @@ export class MessageHandler {
     return `${requestID} ${prefix} ${filePath} ${line} ${column}`;
   }
 
-  formatBreakpointStopped(requestID: number, filePath: string, line: number, column: number): string {
-    return `${requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${filePath} ${line}:${column}`;
+  formatBreakpointStopped(args: BreakpointArguments): string {
+    return `${args.requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line}:${args.column}`;
   }
 
-  formatPrepackFinish(requestID: number) {
+  formatPrepackFinish(requestID: number): string {
     return `${requestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`;
   }
 
-  formatDebuggerStart(requestID: number) {
+  formatDebuggerStart(requestID: number): string {
     return `${requestID} ${DebugMessage.DEBUGGER_ATTACHED}`;
   }
 
-  formatContinueRequest(requestID: number) {
+  formatContinueRequest(requestID: number): string {
     return `${requestID} ${DebugMessage.PREPACK_RUN_COMMAND}`;
   }
 
-  formatSetBreakpointsRequest(requestID: number, filePath: string, line: number, column: number) {
-    return `${requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${filePath} ${line} ${column}`;
+  formatSetBreakpointsRequest(args: BreakpointArguments): string {
+    return `${args.requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${args.filePath} ${args.line} ${args.column}`;
   }
 
-  parseBreakpointArguments(requestID: number, parts: Array<string>) {
+  parseBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
     let filePath = parts[0];
 
     let lineNum = parseInt(parts[1], 10);
@@ -54,7 +54,7 @@ export class MessageHandler {
       invariant(!isNaN(columnNum));
     }
 
-    let result: BreakpointRequestArguments = {
+    let result: BreakpointArguments = {
       requestID: requestID,
       kind: "breakpoint",
       filePath: filePath,
