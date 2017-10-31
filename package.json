@@ -96,8 +96,6 @@
     "madge": "^1.6.0",
     "minimist": "^1.2.0",
     "prettier": "1.5.2",
-    "react": "^16.0.0",
-    "react-test-renderer": "^16.0.0",
     "remap-istanbul": "^0.9.1",
     "source-map-support": "^0.4.6",
     "uglify-js": "^2.6.2",
