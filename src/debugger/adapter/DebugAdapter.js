@@ -26,6 +26,7 @@ import { getDebuggerOptions } from "./../../prepack-options.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
 import type { BreakpointRequestArguments } from "./../types.js";
+import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
@@ -135,10 +136,10 @@ class PrepackDebugSession extends LoggingDebugSession {
 
   _registerMessageCallbacks() {
     this._eventEmitter.addListener(DebugMessage.PREPACK_READY_RESPONSE, () => {
-      this.sendEvent(new StoppedEvent("entry", 1));
+      this.sendEvent(new StoppedEvent("entry", DebuggerConstants.PREPACK_THREAD_ID));
     });
     this._eventEmitter.addListener(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, (description: string) => {
-      this.sendEvent(new StoppedEvent("breakpoint " + description, 1));
+      this.sendEvent(new StoppedEvent("breakpoint " + description, DebuggerConstants.PREPACK_THREAD_ID));
     });
   }
 

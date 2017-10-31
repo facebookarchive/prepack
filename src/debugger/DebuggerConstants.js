@@ -14,4 +14,9 @@ export class DebuggerConstants {
   // corresponding command from the UI. Currently, this is only used on starting
   // up Prepack
   static DEFAULT_REQUEST_ID: number = 0;
+
+  // some requests/responses require a thread ID according to vscode protocol
+  // since Prepack only has 1 thread, we use this constant where a thread ID
+  // is required
+  static PREPACK_THREAD_ID: number = 1;
 }
