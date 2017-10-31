@@ -1,5 +1,5 @@
 // es6
-// does not contain:(0)
+// does not contain:require(0)
 var modules = Object.create(null);
 
 __d = define;

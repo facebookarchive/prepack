@@ -266,8 +266,7 @@ export class Generator {
       // duplicate args to ensure refcount > 1
       args: [o, targetObject, sourceObject, targetObject, sourceObject],
       buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {
-        invariant(boundName !== undefined);
-        return t.forInStatement(
+        const forInLoopStatement = t.forInStatement(
           lh,
           obj,
           t.blockStatement([
@@ -280,6 +279,10 @@ export class Generator {
             ),
           ])
         );
+        if (this.realm.lazyObjectsRuntime) {
+          forInLoopStatement.leadingComments = [({ type: "BlockComment", value: "force hydrate lazy objects" }: any)];
+        }
+        return forInLoopStatement;
       },
     });
   }
@@ -289,7 +292,8 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |},
+    forceHydrateLazyObjects: boolean = false
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
@@ -302,15 +306,20 @@ export class Generator {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>) =>
-        t.variableDeclaration("var", [
+      buildNode: (nodes: Array<BabelNodeExpression>) => {
+        const statement = t.variableDeclaration("var", [
           t.variableDeclarator(
             id,
             (buildNode_: any) instanceof Function
               ? ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes)
               : ((buildNode_: any): BabelNodeExpression)
           ),
-        ]),
+        ]);
+        if (forceHydrateLazyObjects && this.realm.lazyObjectsRuntime) {
+          statement.leadingComments = [({ type: "BlockComment", value: "force hydrate lazy objects" }: any)];
+        }
+        return statement;
+      },
     });
     let type = types.getType();
     res.intrinsicName = id.name;

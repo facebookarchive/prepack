@@ -153,6 +153,7 @@ export class Realm {
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.omitInvariants = !!opts.omitInvariants;
+    this.lazyObjectsRuntime = opts.lazyObjectsRuntime;
 
     this.$TemplateMap = [];
 
@@ -210,6 +211,7 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+  lazyObjectsRuntime: void | string;
 
   react: {
     enabled: boolean,
