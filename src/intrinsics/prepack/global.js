@@ -14,6 +14,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BooleanValue,
+  ConcreteValue,
   FunctionValue,
   NativeFunctionValue,
   ObjectValue,
@@ -72,7 +73,35 @@ export default function(realm: Realm): void {
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
-    value: new NativeFunctionValue(
+    value: createAbstract(),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__abstractOrNull", {
+    value: createAbstract(realm.intrinsics.null),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__abstractOrNullOrUndefined", {
+    value: createAbstract(realm.intrinsics.null, realm.intrinsics.undefined),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__abstractOrUndefined", {
+    value: createAbstract(realm.intrinsics.undefined),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  function createAbstract(...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
+    return new NativeFunctionValue(
       realm,
       "global.__abstract",
       "__abstract",
@@ -111,13 +140,13 @@ export default function(realm: Realm): void {
           template.makePartial();
           if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
+
+        if (additionalValues.length > 0)
+          result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
         return result;
       }
-    ),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+    );
+  }
 
   global.$DefineOwnProperty("__additionalFunctions", {
     value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__additionalFunctions", true),
