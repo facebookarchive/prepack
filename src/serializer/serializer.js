@@ -112,6 +112,9 @@ export class Serializer {
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
     this.functions.checkThatFunctionsAreIndependent();
+    if (this.realm.react.enabled) {
+      this.functions.checkReactRootComponents(this.react);
+    }
 
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();

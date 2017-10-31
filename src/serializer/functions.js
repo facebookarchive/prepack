@@ -20,6 +20,7 @@ import { AbstractObjectValue, FunctionValue, ObjectValue, AbstractValue } from "
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
+import { type ReactSerializerState } from "./types";
 import * as t from "babel-types";
 
 export class Functions {
@@ -69,11 +70,13 @@ export class Functions {
     return calls;
   }
 
-  _generateAdditionalFunctionCallsFromDirective(): Array<[FunctionValue, BabelNodeCallExpression]> {
+  // __reactComponentRoots
+
+  __generateAdditionalFunctions(globalKey: string) {
     let recordedAdditionalFunctions: Map<FunctionValue, string> = new Map();
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
-      () => Get(realm, realm.$GlobalObject, "__additionalFunctions"),
+      () => Get(realm, realm.$GlobalObject, globalKey),
       realm.intrinsics.undefined,
       false
     );
@@ -97,6 +100,15 @@ export class Functions {
         recordedAdditionalFunctions.set(funcValue, funcId);
       }
     }
+    return recordedAdditionalFunctions;
+  }
+
+  checkReactRootComponents(react: ReactSerializerState): void {
+    throw new FatalError("TODO: implement functional component folding");
+  }
+
+  _generateAdditionalFunctionCallsFromDirective(): Array<[FunctionValue, BabelNodeCallExpression]> {
+    let recordedAdditionalFunctions = this.__generateAdditionalFunctions("__additionalFunctions");
 
     // The additional functions we registered at runtime are recorded at:
     // global.__additionalFunctions.id
@@ -127,6 +139,9 @@ export class Functions {
       // This may throw a FatalError if there is an unrecoverable error in the called function
       // When that happens we cannot prepack the bundle.
       // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
+
+      // TODO check if the function is a React component
+      // for now we do this on all functions
       let e = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
       this.writeEffects.set(funcValue, e);
     }
