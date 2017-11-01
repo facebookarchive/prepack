@@ -10,7 +10,7 @@
 /* @flow */
 import type { DebuggerOptions } from "./../../options.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
-import { MessageHandler } from "./MessageHandler.js";
+import { MessageMarshaller } from "./MessageMarshaller.js";
 import Queue from "queue-fifo";
 import EventEmitter from "events";
 import invariant from "./../../invariant.js";
@@ -20,17 +20,17 @@ import type { BreakpointArguments } from "./../types.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
-  constructor(dbgOptions: DebuggerOptions, eventEmitter: EventEmitter) {
+  constructor(dbgOptions: DebuggerOptions) {
     this._ioWrapper = new FileIOWrapper(true, dbgOptions.inFilePath, dbgOptions.outFilePath);
-    this._messageHandler = new MessageHandler();
+    this._marshaller = new MessageMarshaller();
     this._queue = new Queue();
     this._pendingRequestCallbacks = new Map();
-    this._eventEmitter = eventEmitter;
+    this._eventEmitter = new EventEmitter();
     this.sendDebuggerStart(DebuggerConstants.DEFAULT_REQUEST_ID);
     this.listenOnFile(this._processPrepackMessage.bind(this));
   }
   _ioWrapper: FileIOWrapper;
-  _messageHandler: MessageHandler;
+  _marshaller: MessageMarshaller;
   _queue: Queue;
   _pendingRequestCallbacks: { [number]: (string) => void };
   _prepackWaiting: boolean;
@@ -93,15 +93,19 @@ export class AdapterChannel {
     callback(message);
   }
 
-  queueContinueRequest(requestID: number, callback: string => void) {
-    this._queue.enqueue(this._messageHandler.formatContinueRequest(requestID));
+  registerChannelEvent(event: string, listener: (message: string) => void) {
+    this._eventEmitter.addListener(event, listener);
+  }
+
+  run(requestID: number, callback: string => void) {
+    this._queue.enqueue(this._marshaller.marshallContinueRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  queueSetBreakpointsRequest(requestID: number, breakpoints: Array<BreakpointArguments>, callback: string => void) {
+  setBreakpoints(requestID: number, breakpoints: Array<BreakpointArguments>, callback: string => void) {
     for (const breakpoint of breakpoints) {
-      this._queue.enqueue(this._messageHandler.formatSetBreakpointsRequest(breakpoint));
+      this._queue.enqueue(this._marshaller.marshallSetBreakpointsRequest(breakpoint));
     }
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
@@ -112,7 +116,7 @@ export class AdapterChannel {
   }
 
   sendDebuggerStart(requestID: number) {
-    this.writeOut(this._messageHandler.formatDebuggerStart(requestID));
+    this.writeOut(this._marshaller.marshallDebuggerStart(requestID));
   }
 
   listenOnFile(messageProcessor: (message: string) => void) {

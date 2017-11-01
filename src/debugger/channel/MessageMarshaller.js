@@ -12,8 +12,8 @@ import { DebugMessage } from "./DebugMessage.js";
 import type { BreakpointArguments } from "./../types.js";
 import invariant from "./../../invariant.js";
 
-export class MessageHandler {
-  formatBreakpointAcknowledge(
+export class MessageMarshaller {
+  marshallBreakpointAcknowledge(
     requestID: number,
     prefix: string,
     filePath: string,
@@ -23,27 +23,27 @@ export class MessageHandler {
     return `${requestID} ${prefix} ${filePath} ${line} ${column}`;
   }
 
-  formatBreakpointStopped(args: BreakpointArguments): string {
+  marshallBreakpointStopped(args: BreakpointArguments): string {
     return `${args.requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line}:${args.column}`;
   }
 
-  formatPrepackFinish(requestID: number): string {
+  marshallPrepackFinish(requestID: number): string {
     return `${requestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`;
   }
 
-  formatDebuggerStart(requestID: number): string {
+  marshallDebuggerStart(requestID: number): string {
     return `${requestID} ${DebugMessage.DEBUGGER_ATTACHED}`;
   }
 
-  formatContinueRequest(requestID: number): string {
+  marshallContinueRequest(requestID: number): string {
     return `${requestID} ${DebugMessage.PREPACK_RUN_COMMAND}`;
   }
 
-  formatSetBreakpointsRequest(args: BreakpointArguments): string {
+  marshallSetBreakpointsRequest(args: BreakpointArguments): string {
     return `${args.requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${args.filePath} ${args.line} ${args.column}`;
   }
 
-  parseBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
+  unmarshallBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
     let filePath = parts[0];
 
     let lineNum = parseInt(parts[1], 10);

@@ -11,7 +11,7 @@
 import invariant from "./../../invariant.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
-import { MessageHandler } from "./MessageHandler.js";
+import { MessageMarshaller } from "./MessageMarshaller.js";
 import { DebuggerError } from "./../DebuggerError.js";
 import type { DebuggerRequest, DebuggerRequestArguments, BreakpointArguments, RunArguments } from "./../types.js";
 
@@ -20,13 +20,13 @@ export class DebugChannel {
   constructor(ioWrapper: FileIOWrapper) {
     this._requestReceived = false;
     this._ioWrapper = ioWrapper;
-    this._messageHandler = new MessageHandler();
+    this._marshaller = new MessageMarshaller();
     this._lastRunRequestID = 0;
   }
 
   _requestReceived: boolean;
   _ioWrapper: FileIOWrapper;
-  _messageHandler: MessageHandler;
+  _marshaller: MessageMarshaller;
   _lastRunRequestID: number;
 
   /*
@@ -74,7 +74,7 @@ export class DebugChannel {
         args = runArgs;
         break;
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
-        args = this._messageHandler.parseBreakpointArguments(requestID, parts.slice(2));
+        args = this._marshaller.unmarshallBreakpointArguments(requestID, parts.slice(2));
         break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
@@ -97,7 +97,7 @@ export class DebugChannel {
 
   sendBreakpointAcknowledge(prefix: string, args: BreakpointArguments): void {
     this.writeOut(
-      this._messageHandler.formatBreakpointAcknowledge(args.requestID, prefix, args.filePath, args.line, args.column)
+      this._marshaller.marshallBreakpointAcknowledge(args.requestID, prefix, args.filePath, args.line, args.column)
     );
   }
 
@@ -109,10 +109,10 @@ export class DebugChannel {
       line: line,
       column: column,
     };
-    this.writeOut(this._messageHandler.formatBreakpointStopped(breakpointInfo));
+    this.writeOut(this._marshaller.marshallBreakpointStopped(breakpointInfo));
   }
 
   sendPrepackFinish(): void {
-    this.writeOut(this._messageHandler.formatPrepackFinish(this._lastRunRequestID));
+    this.writeOut(this._marshaller.marshallPrepackFinish(this._lastRunRequestID));
   }
 }

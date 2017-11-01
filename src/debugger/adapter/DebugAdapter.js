@@ -17,7 +17,6 @@ import {
   TerminatedEvent,
   StoppedEvent,
 } from "vscode-debugadapter";
-import EventEmitter from "events";
 import * as DebugProtocol from "vscode-debugprotocol";
 import child_process from "child_process";
 import { AdapterChannel } from "./../channel/AdapterChannel.js";
@@ -40,7 +39,6 @@ class PrepackDebugSession extends LoggingDebugSession {
     super("prepack");
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
-    this._eventEmitter = new EventEmitter();
     this._pendingRequestCallbacks = new Map();
     this._readCLIParameters();
     this._startPrepack();
@@ -53,7 +51,6 @@ class PrepackDebugSession extends LoggingDebugSession {
   _adapterChannel: AdapterChannel;
   _debuggerOptions: DebuggerOptions;
   _prepackWaiting: boolean;
-  _eventEmitter: EventEmitter;
   _pendingRequestCallbacks: { [number]: (string) => void };
 
   _readCLIParameters() {
@@ -98,9 +95,9 @@ class PrepackDebugSession extends LoggingDebugSession {
       process.exit(1);
     }
 
-    this._registerMessageCallbacks();
     // set up the communication channel
-    this._adapterChannel = new AdapterChannel(this._debuggerOptions, this._eventEmitter);
+    this._adapterChannel = new AdapterChannel(this._debuggerOptions);
+    this._registerMessageCallbacks();
 
     let prepackArgs = this._prepackCommand.split(" ");
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
@@ -135,10 +132,10 @@ class PrepackDebugSession extends LoggingDebugSession {
   }
 
   _registerMessageCallbacks() {
-    this._eventEmitter.addListener(DebugMessage.PREPACK_READY_RESPONSE, () => {
+    this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (message: string) => {
       this.sendEvent(new StoppedEvent("entry", DebuggerConstants.PREPACK_THREAD_ID));
     });
-    this._eventEmitter.addListener(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, (description: string) => {
+    this._adapterChannel.registerChannelEvent(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, (description: string) => {
       this.sendEvent(new StoppedEvent("breakpoint " + description, DebuggerConstants.PREPACK_THREAD_ID));
     });
   }
@@ -168,8 +165,8 @@ class PrepackDebugSession extends LoggingDebugSession {
    * Request Prepack to continue running when it is stopped
   */
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
-    // queue a Run request to Prepack and try to send the next request in the queue
-    this._adapterChannel.queueContinueRequest(response.request_seq, (message: string) => {
+    // send a Run request to Prepack and try to send the next request
+    this._adapterChannel.run(response.request_seq, (message: string) => {
       this.sendResponse(response);
     });
   }
@@ -196,7 +193,7 @@ class PrepackDebugSession extends LoggingDebugSession {
       };
       breakpointInfos.push(breakpointInfo);
     }
-    this._adapterChannel.queueSetBreakpointsRequest(response.request_seq, breakpointInfos, (message: string) => {
+    this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (message: string) => {
       this.sendResponse(response);
     });
   }
