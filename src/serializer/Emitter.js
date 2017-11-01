@@ -144,13 +144,14 @@ export class Emitter {
   _processValue(value: Value) {
     let a = this._waitingForValues.get(value);
     if (a === undefined) return;
-    let oldBody = this._body;
+    let currentBody = this._body;
     while (a.length > 0) {
       let { body, dependencies, func } = a.shift();
-      if (body !== oldBody) {
+      // If body is not generator body no need to wait for it.
+      if (this._isGeneratorBody(body) && body !== currentBody) {
         this._emitAfterWaitingForGeneratorBody(body, dependencies, func);
       } else {
-        this.emitNowOrAfterWaitingForDependencies(dependencies, func);
+        this.emitNowOrAfterWaitingForDependencies(dependencies, func, body);
       }
     }
     this._waitingForValues.delete(value);
@@ -268,17 +269,33 @@ export class Emitter {
     invariant(this._activeValues.has(value));
     return condition ? value : undefined;
   }
-  emitAfterWaiting(delayReason: void | Value | SerializedBody, dependencies: Array<Value>, func: () => void) {
+  emitAfterWaiting(
+    delayReason: void | Value | SerializedBody,
+    dependencies: Array<Value>,
+    func: () => void,
+    targetBody?: SerializedBody
+  ) {
     if (!delayReason) {
-      func();
-    } else if (delayReason instanceof Value) {
-      this._emitAfterWaitingForValue(delayReason, dependencies, func);
-    } else if (this._isGeneratorBody(delayReason)) {
-      // delayReason is a generator body.
-      this._emitAfterWaitingForGeneratorBody(delayReason, dependencies, func);
+      if (targetBody === undefined || targetBody === this._body) {
+        // Emit into current body.
+        func();
+      } else {
+        invariant(!this._isGeneratorBody(targetBody));
+        const oldBody = this.beginEmitting(targetBody.type, targetBody);
+        func();
+        this.endEmitting(targetBody.type, oldBody);
+      }
     } else {
-      // Unknown delay reason.
-      invariant(false);
+      invariant(targetBody === undefined || targetBody === this._body);
+      if (delayReason instanceof Value) {
+        this._emitAfterWaitingForValue(delayReason, dependencies, func);
+      } else if (this._isGeneratorBody(delayReason)) {
+        // delayReason is a generator body.
+        this._emitAfterWaitingForGeneratorBody(delayReason, dependencies, func);
+      } else {
+        // Unknown delay reason.
+        invariant(false);
+      }
     }
   }
   _emitAfterWaitingForValue(reason: Value, dependencies: Array<Value>, func: () => void) {
@@ -298,9 +315,9 @@ export class Emitter {
     if (b === undefined) this._waitingForBodies.set(reason, (b = []));
     b.push({ dependencies, func });
   }
-  emitNowOrAfterWaitingForDependencies(dependencies: Array<Value>, func: () => void) {
+  emitNowOrAfterWaitingForDependencies(dependencies: Array<Value>, func: () => void, targetBody?: SerializedBody) {
     invariant(!this._finalized);
-    this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func);
+    this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func, targetBody);
   }
   _cloneGeneratorStack() {
     return this._activeBodies.slice();
