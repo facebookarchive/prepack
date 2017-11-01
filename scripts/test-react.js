@@ -166,7 +166,11 @@ describe("Test React", () => {
       // we monkey patch it to stop it polluting the test output
       // with a false-negative error
       global.console.error = () => {};
-      await runTest(directory, "return-undefined.js");
+      try {
+        await runTest(directory, "return-undefined.js");
+      } catch (e) {
+        global.console.error = originalConsoleError;
+      }
       global.console.error = originalConsoleError;
     });
   });
