@@ -29,6 +29,7 @@ import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
+import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
 import * as t from "babel-types";
 
 export class Serializer {
@@ -156,7 +157,7 @@ export class Serializer {
         residualHeapVisitor.values,
         residualHeapVisitor.functionInstances,
         residualHeapVisitor.functionInfos,
-        !!this.options.delayInitializations,
+        this.options,
         residualHeapVisitor.referencedDeclaredValues,
         additionalFunctionValuesAndEffects,
         residualHeapVisitor.additionalFunctionValueInfos,
@@ -170,7 +171,8 @@ export class Serializer {
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
-    let residualHeapSerializer = new ResidualHeapSerializer(
+    const TargetSerializer = this.options.lazyObjectsRuntime != null ? LazyObjectsSerializer : ResidualHeapSerializer;
+    let residualHeapSerializer = new TargetSerializer(
       this.realm,
       this.logger,
       this.modules,
@@ -179,7 +181,7 @@ export class Serializer {
       residualHeapVisitor.values,
       residualHeapVisitor.functionInstances,
       residualHeapVisitor.functionInfos,
-      !!this.options.delayInitializations,
+      this.options,
       residualHeapVisitor.referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
       residualHeapVisitor.additionalFunctionValueInfos,

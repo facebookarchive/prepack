@@ -17,6 +17,7 @@ import invariant from "./invariant.js";
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
   additionalFunctions?: Array<string>,
+  lazyObjectsRuntime?: string,
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
@@ -50,6 +51,7 @@ export type PrepackOptions = {|
 export function getRealmOptions({
   compatibility = "browser",
   debugNames = false,
+  lazyObjectsRuntime,
   errorHandler,
   mathRandomSeed,
   omitInvariants = false,
@@ -64,6 +66,7 @@ export function getRealmOptions({
   return {
     compatibility,
     debugNames,
+    lazyObjectsRuntime,
     errorHandler,
     mathRandomSeed,
     omitInvariants,
@@ -79,6 +82,7 @@ export function getRealmOptions({
 
 export function getSerializerOptions({
   additionalFunctions,
+  lazyObjectsRuntime,
   delayInitializations = false,
   delayUnsupportedRequires = false,
   internalDebug = false,
@@ -101,6 +105,9 @@ export function getSerializerOptions({
     trace,
   };
   if (additionalFunctions) result.additionalFunctions = additionalFunctions;
+  if (lazyObjectsRuntime !== undefined) {
+    result.lazyObjectsRuntime = lazyObjectsRuntime;
+  }
   return result;
 }
 
