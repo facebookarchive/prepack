@@ -168,10 +168,9 @@ describe("Test React", () => {
       global.console.error = () => {};
       try {
         await runTest(directory, "return-undefined.js");
-      } catch (e) {
+      } finally {
         global.console.error = originalConsoleError;
       }
-      global.console.error = originalConsoleError;
     });
   });
 });
