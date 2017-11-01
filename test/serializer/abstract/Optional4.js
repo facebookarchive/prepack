@@ -1,4 +1,4 @@
-var g = global.__abstract ? __abstract("function", "null") : null;
+var g = global.__abstractOrNull ? __abstractOrNull("function", "null") : null;
 z = g && g();
 
 inspect = function() { return "" + z }
