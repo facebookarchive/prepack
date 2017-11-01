@@ -24,6 +24,8 @@ export class DebugMessage {
   static BREAKPOINT_ENABLE_COMMAND: string = "Breakpoint-enable-command";
   // Command to disable a breakpoint
   static BREAKPOINT_DISABLE_COMMAND: string = "Breakpoint-disable-command";
+  // Command to fetch stack frames
+  static STACKFRAMES_COMMAND: string = "Stackframes-command";
 
   /* Messages from Prepack to adapter */
   // Respond to the adapter that Prepack is ready

@@ -105,8 +105,14 @@ export class AdapterChannel {
 
   setBreakpoints(requestID: number, breakpoints: Array<BreakpointArguments>, callback: string => void) {
     for (const breakpoint of breakpoints) {
-      this._queue.enqueue(this._marshaller.marshallSetBreakpointsRequest(breakpoint));
+      this._queue.enqueue(this._marshaller.marshallSetBreakpointsRequest(requestID, breakpoint));
     }
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  getStackFrames(requestID: number, callback: string => void) {
+    this._queue.enqueue(this._marshaller.marshallStackFramesRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }

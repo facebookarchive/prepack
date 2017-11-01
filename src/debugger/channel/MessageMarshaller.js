@@ -23,8 +23,8 @@ export class MessageMarshaller {
     return `${requestID} ${prefix} ${filePath} ${line} ${column}`;
   }
 
-  marshallBreakpointStopped(args: BreakpointArguments): string {
-    return `${args.requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line}:${args.column}`;
+  marshallBreakpointStopped(requestID: number, args: BreakpointArguments): string {
+    return `${requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line}:${args.column}`;
   }
 
   marshallPrepackFinish(requestID: number): string {
@@ -39,8 +39,12 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.PREPACK_RUN_COMMAND}`;
   }
 
-  marshallSetBreakpointsRequest(args: BreakpointArguments): string {
-    return `${args.requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${args.filePath} ${args.line} ${args.column}`;
+  marshallSetBreakpointsRequest(requestID: number, args: BreakpointArguments): string {
+    return `${requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${args.filePath} ${args.line} ${args.column}`;
+  }
+
+  marshallStackFramesRequest(requestID: number): string {
+    return `${requestID} ${DebugMessage.STACKFRAMES_COMMAND}`;
   }
 
   unmarshallBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
@@ -55,7 +59,6 @@ export class MessageMarshaller {
     }
 
     let result: BreakpointArguments = {
-      requestID: requestID,
       kind: "breakpoint",
       filePath: filePath,
       line: lineNum,

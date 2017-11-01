@@ -197,6 +197,15 @@ class PrepackDebugSession extends LoggingDebugSession {
       this.sendResponse(response);
     });
   }
+
+  stackTraceRequest(
+    response: DebugProtocol.StackTraceResponse,
+    args: DebugProtocol.StackTraceArguments
+  ): void {
+    this._adapterChannel.getStackFrames(response.request_seq, (message: string) => {
+      this.sendResponse(response);
+    });
+  }
 }
 
 DebugSession.run(PrepackDebugSession);

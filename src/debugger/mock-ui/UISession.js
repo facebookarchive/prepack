@@ -13,7 +13,7 @@ import readline from "readline";
 import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
-
+import { DebuggerConstants } from "./../DebuggerConstants";
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
 
@@ -148,7 +148,7 @@ export class UISession {
         if (parts.length !== 1) return false;
         let continueArgs: DebugProtocol.ContinueArguments = {
           // Prepack will only have 1 thread, this argument will be ignored
-          threadId: 1,
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
         };
         this._sendContinueRequest(continueArgs);
         break;
@@ -166,6 +166,14 @@ export class UISession {
           }
           this._sendBreakpointRequest(filePath, line, column);
         }
+        break;
+      case "stackframes":
+        // format: stackFrames
+        let stackFrameArgs: DebugProtocol.StackTraceArguments = {
+          // Prepack will only have 1 thread, this argument will be ignored
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        }
+        this._sendStackFramesRequest(stackFrameArgs);
         break;
       default:
         // invalid command
@@ -250,6 +258,17 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "setBreakpoints",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStackFramesRequest(args: DebugProtocol.StackTraceArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "stackTrace",
       arguments: args,
     };
     let json = JSON.stringify(message);

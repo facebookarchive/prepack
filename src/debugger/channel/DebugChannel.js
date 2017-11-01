@@ -13,7 +13,7 @@ import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
 import { MessageMarshaller } from "./MessageMarshaller.js";
 import { DebuggerError } from "./../DebuggerError.js";
-import type { DebuggerRequest, DebuggerRequestArguments, BreakpointArguments, RunArguments } from "./../types.js";
+import type { DebuggerRequest, DebuggerRequestArguments, BreakpointArguments, RunArguments, StackframeArguments } from "./../types.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
@@ -69,18 +69,24 @@ export class DebugChannel {
         this._lastRunRequestID = requestID;
         let runArgs: RunArguments = {
           kind: "run",
-          requestID: requestID,
         };
         args = runArgs;
         break;
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         args = this._marshaller.unmarshallBreakpointArguments(requestID, parts.slice(2));
         break;
+      case DebugMessage.STACKFRAMES_COMMAND:
+        let stackFrameArgs: StackframeArguments = {
+          kind: "stackframe",
+        }
+        args = stackFrameArgs;
+        break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
     invariant(args !== undefined);
     let result: DebuggerRequest = {
+      id: requestID,
       command: command,
       arguments: args,
     };
@@ -95,21 +101,20 @@ export class DebugChannel {
     this._requestReceived = false;
   }
 
-  sendBreakpointAcknowledge(prefix: string, args: BreakpointArguments): void {
+  sendBreakpointAcknowledge(prefix: string, requestID: number, args: BreakpointArguments): void {
     this.writeOut(
-      this._marshaller.marshallBreakpointAcknowledge(args.requestID, prefix, args.filePath, args.line, args.column)
+      this._marshaller.marshallBreakpointAcknowledge(requestID, prefix, args.filePath, args.line, args.column)
     );
   }
 
   sendBreakpointStopped(filePath: string, line: number, column: number): void {
     let breakpointInfo: BreakpointArguments = {
-      requestID: this._lastRunRequestID,
       kind: "breakpoint",
       filePath: filePath,
       line: line,
       column: column,
     };
-    this.writeOut(this._marshaller.marshallBreakpointStopped(breakpointInfo));
+    this.writeOut(this._marshaller.marshallBreakpointStopped(this._lastRunRequestID, breakpointInfo));
   }
 
   sendPrepackFinish(): void {
