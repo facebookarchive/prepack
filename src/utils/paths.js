@@ -9,14 +9,7 @@
 
 /* @flow */
 
-import {
-  AbstractObjectValue,
-  AbstractValue,
-  ConcreteValue,
-  NullValue,
-  UndefinedValue,
-  Value,
-} from "../values/index.js";
+import { AbstractValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
 import invariant from "../invariant.js";
 
 export function withPathCondition<T>(condition: AbstractValue, evaluate: () => T): T {
@@ -80,8 +73,7 @@ function pushPathCondition(condition: Value) {
 
 // An inverse path condition is an abstract value that is known to be false in a particular code path
 function pushInversePathCondition(condition: Value) {
-  // it is mistake to assert that true is false (but special case intrinsic objects until there is a better story)
-  if (condition instanceof AbstractObjectValue && condition.isIntrinsic()) return;
+  // it is mistake to assert that true is false.
   invariant(condition.mightNotBeTrue());
   if (condition instanceof ConcreteValue) return;
   invariant(condition instanceof AbstractValue);
