@@ -1238,6 +1238,8 @@ export class ResidualHeapSerializer {
       // but still need to check it again in case their serialized bodies are in different generator scope.
       this.emitter.emitNowOrAfterWaitingForDependencies(val.args, () => {
         const serializedValue = this._serializeAbstractValueHelper(val);
+        // Fetch the previous assigned identifier by residualHeapValueIdentifiers.setIdentifier()
+        // before _serializeAbstractValue() is called.
         let uid = this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
         let declar = t.variableDeclaration("var", [t.variableDeclarator(uid, serializedValue)]);
         this.emitter.emit(declar);
