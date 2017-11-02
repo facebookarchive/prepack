@@ -83,6 +83,7 @@ export function ClassDefinitionEvaluation(
 
   let protoParent;
   let constructorParent;
+  let superTypeParameters;
   // 5. If ClassHeritage opt is not present, then
   let ClassHeritage = ast.superClass;
   if (!ClassHeritage) {
@@ -155,6 +156,10 @@ export function ClassDefinitionEvaluation(
   // 7. Let proto be ObjectCreate(protoParent).
   let proto = ObjectCreate(realm, protoParent);
 
+  // react. Check the Flow class paramater annotations, stored in "superTypeParameters"
+  if (realm.react.enabled && ast.superTypeParameters) {
+    proto.$SuperTypeParameters = ast.superTypeParameters;
+  }
   let constructor;
   let ClassBody: Array<BabelNodeClassMethod> = [];
   for (let elem of ast.body.body) {

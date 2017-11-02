@@ -52,6 +52,7 @@ import {
   ThrowIfMightHaveBeenDeleted,
 } from "../methods/index.js";
 import invariant from "../invariant.js";
+import type { typeAnnotation } from "babel-types";
 
 export default class ObjectValue extends ConcreteValue {
   constructor(
@@ -91,6 +92,7 @@ export default class ObjectValue extends ConcreteValue {
     "$StringIteratorNextIndex",
     "$WeakMapData",
     "$WeakSetData",
+    "$SuperTypeParameters",
   ];
 
   getTrackedPropertyNames(): Array<string> {
@@ -171,6 +173,9 @@ export default class ObjectValue extends ConcreteValue {
   $SetNextIndex: void | number;
   $IteratedSet: void | ObjectValue | UndefinedValue;
   $SetData: void | Array<void | Value>;
+
+  // react
+  $SuperTypeParameters: void | typeAnnotation;
 
   // map
   $MapIterationKind: void | IterationKind;
