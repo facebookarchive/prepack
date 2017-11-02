@@ -221,9 +221,7 @@ export function IsIdentifierRef(realm: Realm, node: BabelNodeLVal): boolean {
     case "Identifier":
       return true;
     // ECMA262 12.3.1.4 Static Semantics: IsIdentifierRef
-    case "CallExpression":
     case "MemberExpression":
-    case "NewExpression":
       return false;
     default:
       throw Error("Unexpected AST form : " + node.type);
@@ -247,7 +245,6 @@ export function IsFunctionDefinition(realm: Realm, node: BabelNodeExpression): b
     case "RegExpLiteral":
     case "ArrayExpression":
     case "ObjectExpression":
-    case "RegularExpressionLiteral":
     case "TemplateLiteral":
     case "ConditionalExpression":
       return false;

@@ -1,6 +1,6 @@
 machine:
   node:
-    version: 7.9.0
+    version: 8.8.1
   environment:
     PATH: "${PATH}:${HOME}/${CIRCLE_PROJECT_REPONAME}/node_modules/.bin"
 
@@ -22,7 +22,6 @@ test:
     - yarn depcheck
     - yarn test-serializer-with-coverage
     - yarn test-sourcemaps
-    - yarn test-node-cli-mode
     - yarn test-std-in
     - yarn test-residual
     - yarn test-test262 -- --statusFile $CIRCLE_ARTIFACTS/test262-status.txt --timeout 120 --cpuScale 0.25 --verbose:
