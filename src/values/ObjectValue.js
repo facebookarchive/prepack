@@ -91,7 +91,6 @@ export default class ObjectValue extends ConcreteValue {
     "$StringIteratorNextIndex",
     "$WeakMapData",
     "$WeakSetData",
-    "$BailOut",
   ];
 
   getTrackedPropertyNames(): Array<string> {
@@ -242,7 +241,7 @@ export default class ObjectValue extends ConcreteValue {
   hashValue: void | number;
 
   // ReactElement
-  $BailOut: void | string | AbstractValue;
+  $BailOut: void | string;
 
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();

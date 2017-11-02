@@ -306,7 +306,12 @@ class Reconciler {
   _assignBailOutMessage(value: ObjectValue, message: string): void {
     // $BailOut is a field on ObjectValue that allows us to specify a message
     // that gets serialized as a comment node during the ReactElement serialization stage
-    value.$BailOut = message;
+    if (value.$BailOut !== undefined) {
+      // merge bail out messages if one already exists
+      value.$BailOut += `, ${message}`;
+    } else {
+      value.$BailOut = message;
+    }
   }
   _resolveFragment(arrayValue: ArrayValue, context: ObjectValue | AbstractValue, branchStatus: BranchStatusEnum) {
     let lengthValue = Get(this.realm, arrayValue, "length");
