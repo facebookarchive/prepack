@@ -14,6 +14,7 @@ import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
 import { DebuggerConstants } from "./../DebuggerConstants";
+
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
 
@@ -129,8 +130,21 @@ export class UISession {
   }
 
   _processResponse(response: DebugProtocol.Response) {
-    // to be implemented
-    console.log(response);
+    if (response.command === "stackTrace") {
+      //flow doesn't have type refinement for interfaces, so must do a cast here
+      this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
+    }
+  }
+
+  _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {
+    let frames = response.body.stackFrames;
+    for (const frame of frames) {
+      if (frame.source && frame.source.path) {
+        this._uiOutput(`${frame.id}: ${frame.name} ${frame.source.path} ${frame.line}:${frame.column}`);
+      } else {
+        this._uiOutput(`${frame.id}: ${frame.name} unknown source`);
+      }
+    }
   }
 
   // execute a command if it is valid
@@ -172,7 +186,7 @@ export class UISession {
         let stackFrameArgs: DebugProtocol.StackTraceArguments = {
           // Prepack will only have 1 thread, this argument will be ignored
           threadId: DebuggerConstants.PREPACK_THREAD_ID,
-        }
+        };
         this._sendStackFramesRequest(stackFrameArgs);
         break;
       default:

@@ -13,7 +13,14 @@ import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
 import { MessageMarshaller } from "./MessageMarshaller.js";
 import { DebuggerError } from "./../DebuggerError.js";
-import type { DebuggerRequest, DebuggerRequestArguments, BreakpointArguments, RunArguments, StackframeArguments } from "./../types.js";
+import type {
+  DebuggerRequest,
+  DebuggerRequestArguments,
+  BreakpointArguments,
+  RunArguments,
+  StackframeArguments,
+  Stackframe,
+} from "./../types.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
@@ -78,7 +85,7 @@ export class DebugChannel {
       case DebugMessage.STACKFRAMES_COMMAND:
         let stackFrameArgs: StackframeArguments = {
           kind: "stackframe",
-        }
+        };
         args = stackFrameArgs;
         break;
       default:
@@ -115,6 +122,10 @@ export class DebugChannel {
       column: column,
     };
     this.writeOut(this._marshaller.marshallBreakpointStopped(this._lastRunRequestID, breakpointInfo));
+  }
+
+  sendStackframeResponse(requestID: number, stackframes: Array<Stackframe>): void {
+    this.writeOut(this._marshaller.marshallStackFramesResponse(requestID, stackframes));
   }
 
   sendPrepackFinish(): void {

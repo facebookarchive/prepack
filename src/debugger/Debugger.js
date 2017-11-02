@@ -142,7 +142,7 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        this.processStackframesCommand(args);
+        this.processStackframesCommand(requestID, args);
         break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
@@ -150,11 +150,13 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(args: StackframeArguments) {
+  processStackframesCommand(requestID: number, args: StackframeArguments) {
     let frameInfos: Array<Stackframe> = [];
-    let frame = this._realm.getRunningContext();
     let loc = this._realm.currentLocation;
-    while (frame) {
+
+    // iterate the stack starting from most recent context
+    for (let i = this._realm.contextStack.length - 1; i >= 0; i--) {
+      let frame = this._realm.contextStack[i];
       let functionName = "(anonymous function)";
       if (frame.function && frame.function.__originalName) {
         functionName = frame.function.__originalName;
@@ -168,16 +170,16 @@ export class DebugServer {
         column = loc.start.column;
       }
       let frameInfo: Stackframe = {
+        id: this._realm.contextStack.length - 1 - i,
         functionName: functionName,
         fileName: fileName,
         line: line,
         column: column,
-      }
+      };
       frameInfos.push(frameInfo);
       loc = frame.loc;
-      frame = frame.caller;
     }
-    console.log(frameInfos);
+    this._channel.sendStackframeResponse(requestID, frameInfos);
   }
 
   shutdown() {

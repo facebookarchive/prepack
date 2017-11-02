@@ -24,7 +24,7 @@ import type { DebuggerOptions } from "./../../options.js";
 import { getDebuggerOptions } from "./../../prepack-options.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
-import type { BreakpointArguments } from "./../types.js";
+import type { BreakpointArguments, DebuggerResponse } from "./../types.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
@@ -132,11 +132,17 @@ class PrepackDebugSession extends LoggingDebugSession {
   }
 
   _registerMessageCallbacks() {
-    this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (message: string) => {
+    this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (result: DebuggerResponse) => {
       this.sendEvent(new StoppedEvent("entry", DebuggerConstants.PREPACK_THREAD_ID));
     });
-    this._adapterChannel.registerChannelEvent(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, (description: string) => {
-      this.sendEvent(new StoppedEvent("breakpoint " + description, DebuggerConstants.PREPACK_THREAD_ID));
+    this._adapterChannel.registerChannelEvent(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, (result: DebuggerResponse) => {
+      invariant(result.kind === "breakpoint-stopped");
+      this.sendEvent(
+        new StoppedEvent(
+          "breakpoint " + `${result.filePath} ${result.line}:${result.column}`,
+          DebuggerConstants.PREPACK_THREAD_ID
+        )
+      );
     });
   }
 
@@ -166,7 +172,7 @@ class PrepackDebugSession extends LoggingDebugSession {
   */
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // send a Run request to Prepack and try to send the next request
-    this._adapterChannel.run(response.request_seq, (message: string) => {
+    this._adapterChannel.run(response.request_seq, (result: DebuggerResponse) => {
       this.sendResponse(response);
     });
   }
@@ -193,16 +199,32 @@ class PrepackDebugSession extends LoggingDebugSession {
       };
       breakpointInfos.push(breakpointInfo);
     }
-    this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (message: string) => {
+    this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (result: DebuggerResponse) => {
       this.sendResponse(response);
     });
   }
 
-  stackTraceRequest(
-    response: DebugProtocol.StackTraceResponse,
-    args: DebugProtocol.StackTraceArguments
-  ): void {
-    this._adapterChannel.getStackFrames(response.request_seq, (message: string) => {
+  stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): void {
+    this._adapterChannel.getStackFrames(response.request_seq, (result: DebuggerResponse) => {
+      invariant(result.kind === "stackframe");
+      let frameInfos = result.stackframes;
+      let frames: Array<DebugProtocol.StackFrame> = [];
+      for (const frameInfo of frameInfos) {
+        let source: DebugProtocol.Source = {
+          path: frameInfo.fileName,
+        };
+        let frame: DebugProtocol.StackFrame = {
+          id: frameInfo.id,
+          name: frameInfo.functionName,
+          source: source,
+          line: frameInfo.line,
+          column: frameInfo.column,
+        };
+        frames.push(frame);
+      }
+      response.body = {
+        stackFrames: frames,
+      };
       this.sendResponse(response);
     });
   }

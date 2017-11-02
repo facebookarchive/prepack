@@ -30,11 +30,37 @@ export type RunArguments = {
 
 export type StackframeArguments = {
   kind: "stackframe",
-}
+};
 
 export type Stackframe = {
+  id: number,
   fileName: string,
   line: number,
   column: number,
   functionName: string,
-}
+};
+export type DebuggerResponse = ReadyResponse | BreakpointAddResponse | BreakpointStoppedResponse | StackframeResponse;
+
+export type ReadyResponse = {
+  id: number,
+  kind: "ready",
+};
+
+export type StackframeResponse = {
+  id: number,
+  kind: "stackframe",
+  stackframes: Array<Stackframe>,
+};
+
+export type BreakpointAddResponse = {
+  id: number,
+  kind: "breakpoint-add",
+};
+
+export type BreakpointStoppedResponse = {
+  id: number,
+  kind: "breakpoint-stopped",
+  filePath: string,
+  line: number,
+  column: number,
+};

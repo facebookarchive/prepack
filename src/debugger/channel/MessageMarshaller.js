@@ -9,8 +9,16 @@
 
 /* @flow */
 import { DebugMessage } from "./DebugMessage.js";
-import type { BreakpointArguments } from "./../types.js";
+import type {
+  BreakpointArguments,
+  Stackframe,
+  StackframeResponse,
+  BreakpointAddResponse,
+  BreakpointStoppedResponse,
+  ReadyResponse,
+} from "./../types.js";
 import invariant from "./../../invariant.js";
+import { DebuggerError } from "./../DebuggerError.js";
 
 export class MessageMarshaller {
   marshallBreakpointAcknowledge(
@@ -24,7 +32,7 @@ export class MessageMarshaller {
   }
 
   marshallBreakpointStopped(requestID: number, args: BreakpointArguments): string {
-    return `${requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line}:${args.column}`;
+    return `${requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line} ${args.column}`;
   }
 
   marshallPrepackFinish(requestID: number): string {
@@ -47,6 +55,10 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.STACKFRAMES_COMMAND}`;
   }
 
+  marshallStackFramesResponse(requestID: number, stackframes: Array<Stackframe>) {
+    return `${requestID} ${DebugMessage.STACKFRAMES_RESPONSE} ${JSON.stringify(stackframes)}`;
+  }
+
   unmarshallBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
     let filePath = parts[0];
 
@@ -63,6 +75,61 @@ export class MessageMarshaller {
       filePath: filePath,
       line: lineNum,
       column: columnNum,
+    };
+    return result;
+  }
+
+  unmarshallStackframesResponse(requestID: number, responseBody: string): StackframeResponse {
+    try {
+      let frames = JSON.parse(responseBody);
+      invariant(Array.isArray(frames), "Stack frames is not an array");
+      for (const frame of frames) {
+        invariant(frame.hasOwnProperty("id"), "Stack frame is missing id");
+        invariant(frame.hasOwnProperty("fileName"), "Stack frame is missing filename");
+        invariant(frame.hasOwnProperty("line"), "Stack frame is missing line number");
+        invariant(frame.hasOwnProperty("column"), "Stack frame is missing column number");
+        invariant(frame.hasOwnProperty("functionName"), "Stack frame is missing function name");
+      }
+      let result: StackframeResponse = {
+        id: requestID,
+        kind: "stackframe",
+        stackframes: frames,
+      };
+      return result;
+    } catch (e) {
+      throw new DebuggerError("Invalid response", e.message);
+    }
+  }
+
+  unmarshallBreakpointAddResponse(requestID: number): BreakpointAddResponse {
+    let result: BreakpointAddResponse = {
+      id: requestID,
+      kind: "breakpoint-add",
+    };
+    return result;
+  }
+
+  unmarshallBreakpointStoppedResponse(requestID: number, parts: Array<string>): BreakpointStoppedResponse {
+    invariant(parts.length === 3, "Incorrect number of arguments in breakpoint stopped response");
+    let filePath = parts[0];
+    let line = parseInt(parts[1], 10);
+    invariant(!isNaN(line), "Invalid line number");
+    let column = parseInt(parts[2], 10);
+    invariant(!isNaN(column), "Invalid column number");
+    let result: BreakpointStoppedResponse = {
+      id: requestID,
+      kind: "breakpoint-stopped",
+      filePath: filePath,
+      line: line,
+      column: column,
+    };
+    return result;
+  }
+
+  unmarshallReadyResponse(requestID: number): ReadyResponse {
+    let result: ReadyResponse = {
+      id: requestID,
+      kind: "ready",
     };
     return result;
   }
