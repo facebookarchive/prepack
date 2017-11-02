@@ -15,7 +15,7 @@ import { ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import { ToBoolean } from "../methods/index.js";
 import { Realm } from "../realm.js";
-import { AbstractObjectValue, AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
+import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,
@@ -64,15 +64,12 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       let x = simplify(realm, x0);
       let y = simplify(realm, y0);
       if (x instanceof AbstractValue && x.equals(y)) return x;
-      // todo: remove this check when there is an alternative way to indicate that an intrinsic object is nullable
-      if (!(x instanceof AbstractObjectValue && x.isIntrinsic())) {
-        // true && y <=> y
-        // true || y <=> true
-        if (!x.mightNotBeTrue()) return op === "&&" ? y : x;
-        // (x == false) && y <=> x
-        // false || y <=> y
-        if (!x.mightNotBeFalse()) return op === "||" ? y : x;
-      }
+      // true && y <=> y
+      // true || y <=> true
+      if (!x.mightNotBeTrue()) return op === "&&" ? y : x;
+      // (x == false) && y <=> x
+      // false || y <=> y
+      if (!x.mightNotBeFalse()) return op === "||" ? y : x;
       if (isCondition || (x.getType() === BooleanValue && y.getType() === BooleanValue)) {
         // (x: boolean) && true <=> x
         // x || true <=> true
@@ -142,6 +139,21 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       if (c.equals(c0) && x.equals(x0) && y.equals(y0)) return value;
       return AbstractValue.createFromConditionalOp(realm, c, x, y, value.expressionLocation);
     }
+    case "abstractConcreteUnion": {
+      // The union of an abstract value with one or more concrete values.
+      if (realm.pathConditions.length === 0) return value;
+      let [abstractValue, ...concreteValues] = value.args;
+      invariant(abstractValue instanceof AbstractValue);
+      let remainingConcreteValues = [];
+      for (let concreteValue of concreteValues) {
+        if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", value, concreteValue))) continue;
+        if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", value, concreteValue))) return concreteValue;
+        remainingConcreteValues.push(concreteValue);
+      }
+      if (remainingConcreteValues.length === 0) return abstractValue;
+      if (remainingConcreteValues.length === concreteValues.length) return value;
+      return AbstractValue.createAbstractConcreteUnion(realm, abstractValue, ...remainingConcreteValues);
+    }
     default:
       return value;
   }
@@ -206,11 +218,8 @@ function negate(
     if (unsimplifiedNegation !== undefined) return unsimplifiedNegation;
     return makeBoolean(realm, x, loc);
   }
-  // todo #1001: remove this check once intrinsic objects can be properly nullable
-  if (!(value instanceof AbstractObjectValue) || !value.isIntrinsic()) {
-    if (!value.mightNotBeTrue()) return realm.intrinsics.false;
-    if (!value.mightNotBeFalse()) return realm.intrinsics.true;
-  }
+  if (!value.mightNotBeTrue()) return realm.intrinsics.false;
+  if (!value.mightNotBeFalse()) return realm.intrinsics.true;
   // If NaN is not an issue, invert binary ops
   if (value.args.length === 2 && !value.args[0].mightBeNumber() && !value.args[1].mightBeNumber()) {
     let invertedComparison;

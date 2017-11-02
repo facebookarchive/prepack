@@ -72,8 +72,10 @@ export function flowAnnotationToObjectTypeTemplate(annotation: typeAnnotation) {
   }
 }
 
-// taken directly from Babel:
-// https://github.com/babel/babel/blob/master/packages/babel-plugin-transform-flow-strip-types/src/index.js
+// Taken directly from Babel:
+// https://github.com/babel/babel/blob/cde005422701a69ff21044c138c29a5ad23b6d0a/packages/babel-plugin-transform-flow-strip-types/src/index.js#L32-L107
+// Copyright 2015-present Sebastian McKenzie / Babel project (https://github.com/babel)
+// only the lines reflected in the above were used
 export function stripFlowTypeAnnotations(ast: BabelNode): void {
   traverse(
     ast,

@@ -116,7 +116,11 @@ export class Serializer {
     let reactStatistics = null;
     if (this.realm.react.enabled) {
       reactStatistics = new ReactStatistics();
+<<<<<<< HEAD
       this.functions.checkReactRootComponents(reactStatistics, this.react);
+=======
+      this.functions.checkReactRootComponents(this.react);
+>>>>>>> upstream/master
     }
 
     if (this.options.initializeMoreModules) {

@@ -40,7 +40,11 @@ function SettingsPane() {
   return <Stateful>Bye</Stateful>;
 }
 
+<<<<<<< HEAD
 function App(props: {switch: boolean}) {
+=======
+function App(props/*: {switch: boolean}*/) {
+>>>>>>> upstream/master
   if (props.switch) {
     return (
       <div>
