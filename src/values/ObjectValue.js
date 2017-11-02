@@ -92,7 +92,6 @@ export default class ObjectValue extends ConcreteValue {
     "$StringIteratorNextIndex",
     "$WeakMapData",
     "$WeakSetData",
-    "$SuperTypeParameters",
   ];
 
   getTrackedPropertyNames(): Array<string> {
