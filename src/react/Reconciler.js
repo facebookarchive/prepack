@@ -61,6 +61,84 @@ class ExpectedBailOut {
   }
 }
 
+function getInitialProps(realm: Realm, componentType: ECMAScriptSourceFunctionValue): ObjectValue | AbstractValue {
+  let propsName = null;
+  let propTypes = null;
+  if (valueIsClassComponent(realm, componentType)) {
+    // it's a class component, so we need to check the type on for props of the component prototype
+    // as we don't support class components yet, throw a fatal error
+    let diagnostic = new CompilerDiagnostic(
+      `__registerReactComponentRoot() failed due to root component being a class component`,
+      realm.currentLocation,
+      "PP0022",
+      "FatalError"
+    );
+    realm.handleError(diagnostic);
+    throw new FatalError();
+  } else {
+    // otherwise it's a functional component, where the first paramater of the function is "props" (if it exists)
+    if (componentType.$FormalParameters.length > 0) {
+      let firstParam = componentType.$FormalParameters[0];
+      if (t.isIdentifier(firstParam)) {
+        propsName = ((firstParam: any): BabelNodeIdentifier).name;
+      }
+      let propsTypeAnnotation = firstParam.typeAnnotation !== undefined && firstParam.typeAnnotation;
+      // we expect that if there's a props paramater, it should always have Flow annotations
+      if (!propsTypeAnnotation) {
+        let diagnostic = new CompilerDiagnostic(
+          `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "props" paramater`,
+          realm.currentLocation,
+          "PP0020",
+          "FatalError"
+        );
+        realm.handleError(diagnostic);
+        throw new FatalError();
+      }
+      propTypes = flowAnnotationToObjectTypeTemplate(propsTypeAnnotation);
+    }
+  }
+  return createAbstractObject(realm, propsName, propTypes);
+}
+
+function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunctionValue): ObjectValue | AbstractValue {
+  let contextName = null;
+  let contextTypes = null;
+  if (valueIsClassComponent(realm, componentType)) {
+    // it's a class component, so we need to check the type on for context of the component prototype
+    // as we don't support class components yet, throw a fatal error
+    let diagnostic = new CompilerDiagnostic(
+      `__registerReactComponentRoot() failed due to root component being a class component`,
+      realm.currentLocation,
+      "PP0022",
+      "FatalError"
+    );
+    realm.handleError(diagnostic);
+    throw new FatalError();
+  } else {
+    // otherwise it's a functional component, where the second paramater of the function is "context" (if it exists)
+    if (componentType.$FormalParameters.length > 1) {
+      let secondParam = componentType.$FormalParameters[1];
+      if (t.isIdentifier(secondParam)) {
+        contextName = ((secondParam: any): BabelNodeIdentifier).name;
+      }
+      let contextTypeAnnotation = secondParam.typeAnnotation !== undefined && secondParam.typeAnnotation;
+      // we expect that if there's a context param, it should always have Flow annotations
+      if (!contextTypeAnnotation) {
+        let diagnostic = new CompilerDiagnostic(
+          `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" paramater`,
+          realm.currentLocation,
+          "PP0021",
+          "FatalError"
+        );
+        realm.handleError(diagnostic);
+        throw new FatalError();
+      }
+      contextTypes = flowAnnotationToObjectTypeTemplate(contextTypeAnnotation);
+    }
+  }
+  return createAbstractObject(realm, contextName, contextTypes);
+}
+
 class Reconciler {
   constructor(
     realm: Realm,
@@ -80,54 +158,16 @@ class Reconciler {
   reactSerializerState: ReactSerializerState;
 
   render(componentType: ECMAScriptSourceFunctionValue): Effects {
-    let propTypes = null;
-    let propsName = null;
-    let contextTypes = null;
-    let contextName = null;
-    // we take the first "props" paramater from "function MyComponent (props, context)" and look at its name
-    // if its not an Identifier, we leave propsName null so it doesn't get used to create the object
-    if (componentType.$FormalParameters.length > 0) {
-      let firstParam = componentType.$FormalParameters[0];
-      if (t.isIdentifier(firstParam)) {
-        propsName = ((firstParam: any): BabelNodeIdentifier).name;
-      }
-      let propsTypeAnnotation = firstParam.typeAnnotation !== undefined && firstParam.typeAnnotation;
-      // we expect that if there's a props argument, it should always have Flow annotations
-      if (!propsTypeAnnotation) {
-        let diagnostic = new CompilerDiagnostic(
-          `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "props" argument`,
-          this.realm.currentLocation,
-          "PP0020",
-          "FatalError"
-        );
-        this.realm.handleError(diagnostic);
-        throw new FatalError();
-      }
-      propTypes = flowAnnotationToObjectTypeTemplate(propsTypeAnnotation);
-    }
-    if (componentType.$FormalParameters.length > 1) {
-      let secondParam = componentType.$FormalParameters[1];
-      if (t.isIdentifier(secondParam)) {
-        contextName = ((secondParam: any): BabelNodeIdentifier).name;
-      }
-      let contextTypeAnnotation = secondParam.typeAnnotation !== undefined && secondParam.typeAnnotation;
-      // we expect that if there's a context argument, it should always have Flow annotations
-      if (!contextTypeAnnotation) {
-        let diagnostic = new CompilerDiagnostic(
-          `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" argument`,
-          this.realm.currentLocation,
-          "PP0021",
-          "FatalError"
-        );
-        this.realm.handleError(diagnostic);
-        throw new FatalError();
-      }
-      contextTypes = flowAnnotationToObjectTypeTemplate(contextTypeAnnotation);
-    }
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluateForEffects(() => {
-        let initialProps = createAbstractObject(this.realm, propsName, propTypes);
-        let initialContext = createAbstractObject(this.realm, contextName, contextTypes);
+        // initialProps and initialContext are created from Flow types from:
+        // - if a functional component, the 1st and 2nd paramater of function
+        // - if a class component, use this.props and this.context
+        // if there are no Flow types for props or context, we will throw a
+        // FatalError, unless it's a functional component that has no paramater
+        // i.e let MyComponent = () => <div>Hello world</div>
+        let initialProps = getInitialProps(this.realm, componentType);
+        let initialContext = getInitialContext(this.realm, componentType);
         try {
           let { result } = this._renderAsDeepAsPossible(
             componentType,
