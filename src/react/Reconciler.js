@@ -93,7 +93,7 @@ class Reconciler {
       }
       let propsTypeAnnotation = firstParam.typeAnnotation !== undefined && firstParam.typeAnnotation;
       // we expect that if there's a props argument, it should always have Flow annotations
-      if (propsTypeAnnotation === undefined) {
+      if (!propsTypeAnnotation) {
         let diagnostic = new CompilerDiagnostic(
           `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "props" argument`,
           this.realm.currentLocation,
@@ -112,7 +112,7 @@ class Reconciler {
       }
       let contextTypeAnnotation = secondParam.typeAnnotation !== undefined && secondParam.typeAnnotation;
       // we expect that if there's a context argument, it should always have Flow annotations
-      if (contextTypeAnnotation === undefined) {
+      if (!contextTypeAnnotation) {
         let diagnostic = new CompilerDiagnostic(
           `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" argument`,
           this.realm.currentLocation,
