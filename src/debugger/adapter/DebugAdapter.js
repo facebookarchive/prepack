@@ -203,7 +203,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     let thread: DebugProtocol.Thread = {
       id: DebuggerConstants.PREPACK_THREAD_ID,
       name: "main",
-    }
+    };
     response.body = {
       threads: [thread],
     };
