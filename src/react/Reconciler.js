@@ -152,20 +152,17 @@ class Reconciler {
         } catch (error) {
           // if there was a bail-out on the root component in this reconcilation process, then this
           // should be an invariant as the user has explicitly asked for this component to get folded
-          let message;
           if (error instanceof ExpectedBailOut) {
-            message = "bail-out: " + error.message;
-          } else {
-            message = "evaluation bail-out";
+            let diagnostic = new CompilerDiagnostic(
+              `__registerReactComponentRoot() failed due to - ${error.message}`,
+              this.realm.currentLocation,
+              "PP0019",
+              "FatalError"
+            );
+            this.realm.handleError(diagnostic);
+            throw new FatalError();
           }
-          let diagnostic = new CompilerDiagnostic(
-            `__registerReactComponentRoot() failed due to - ${message}`,
-            this.realm.currentLocation,
-            "PP0019",
-            "FatalError"
-          );
-          this.realm.handleError(diagnostic);
-          throw new FatalError();
+          throw error;
         }
       })
     );
