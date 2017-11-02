@@ -78,14 +78,7 @@ function getInitialProps(realm: Realm, componentType: ECMAScriptSourceFunctionVa
       let propsTypeAnnotation = firstParam.typeAnnotation !== undefined && firstParam.typeAnnotation;
       // we expect that if there's a props paramater, it should always have Flow annotations
       if (!propsTypeAnnotation) {
-        let diagnostic = new CompilerDiagnostic(
-          `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "props" paramater`,
-          realm.currentLocation,
-          "PP0020",
-          "FatalError"
-        );
-        realm.handleError(diagnostic);
-        throw new FatalError();
+        throw new ExpectedBailOut(`root component missing Flow type annotations for the "props" paramater`);
       }
       propTypes = flowAnnotationToObjectTypeTemplate(propsTypeAnnotation);
     }
@@ -110,14 +103,7 @@ function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunction
       let contextTypeAnnotation = secondParam.typeAnnotation !== undefined && secondParam.typeAnnotation;
       // we expect that if there's a context param, it should always have Flow annotations
       if (!contextTypeAnnotation) {
-        let diagnostic = new CompilerDiagnostic(
-          `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" paramater`,
-          realm.currentLocation,
-          "PP0021",
-          "FatalError"
-        );
-        realm.handleError(diagnostic);
-        throw new FatalError();
+        throw new ExpectedBailOut(`root component missing Flow type annotations for the "context" paramater`);
       }
       contextTypes = flowAnnotationToObjectTypeTemplate(contextTypeAnnotation);
     }
