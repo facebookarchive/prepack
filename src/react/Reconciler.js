@@ -25,7 +25,7 @@ import {
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
 import { isReactElement, getUniqueReactElementKey, valueIsClassComponent } from "./utils";
-import { GetValue, Get } from "../methods/index.js";
+import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { flowAnnotationToObjectTypeTemplate } from "../flow/utils.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
@@ -87,26 +87,42 @@ class Reconciler {
     // we take the first "props" paramater from "function MyComponent (props, context)" and look at its name
     // if its not an Identifier, we leave propsName null so it doesn't get used to create the object
     if (componentType.$FormalParameters.length > 0) {
-      if (t.isIdentifier(componentType.$FormalParameters[0])) {
-        propsName = ((componentType.$FormalParameters[0]: any): BabelNodeIdentifier).name;
+      let firstParam = componentType.$FormalParameters[0];
+      if (t.isIdentifier(firstParam)) {
+        propsName = ((firstParam: any): BabelNodeIdentifier).name;
       }
+      let propsTypeAnnotation = firstParam.typeAnnotation !== undefined && firstParam.typeAnnotation;
       // we expect that if there's a props argument, it should always have Flow annotations
-      invariant(
-        componentType.$FormalParameters[0].typeAnnotation,
-        `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "props" argument`
-      );
-      propTypes = flowAnnotationToObjectTypeTemplate(componentType.$FormalParameters[0].typeAnnotation);
+      if (propsTypeAnnotation === undefined) {
+        let diagnostic = new CompilerDiagnostic(
+          `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "props" argument`,
+          this.realm.currentLocation,
+          "PP0020",
+          "FatalError"
+        );
+        this.realm.handleError(diagnostic);
+        throw new FatalError();
+      }
+      propTypes = flowAnnotationToObjectTypeTemplate(propsTypeAnnotation);
     }
     if (componentType.$FormalParameters.length > 1) {
-      if (t.isIdentifier(componentType.$FormalParameters[1])) {
-        contextName = ((componentType.$FormalParameters[1]: any): BabelNodeIdentifier).name;
+      let secondParam = componentType.$FormalParameters[1];
+      if (t.isIdentifier(secondParam)) {
+        contextName = ((secondParam: any): BabelNodeIdentifier).name;
       }
+      let contextTypeAnnotation = secondParam.typeAnnotation !== undefined && secondParam.typeAnnotation;
       // we expect that if there's a context argument, it should always have Flow annotations
-      invariant(
-        componentType.$FormalParameters[1].typeAnnotation,
-        `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" argument`
-      );
-      contextTypes = flowAnnotationToObjectTypeTemplate(componentType.$FormalParameters[1].typeAnnotation);
+      if (contextTypeAnnotation === undefined) {
+        let diagnostic = new CompilerDiagnostic(
+          `__registerReactComponentRoot() failed due to root component missing Flow type annotations for the "context" argument`,
+          this.realm.currentLocation,
+          "PP0021",
+          "FatalError"
+        );
+        this.realm.handleError(diagnostic);
+        throw new FatalError();
+      }
+      contextTypes = flowAnnotationToObjectTypeTemplate(contextTypeAnnotation);
     }
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluateForEffects(() => {
@@ -174,7 +190,7 @@ class Reconciler {
     // we need to apply a key when we're branched
     let currentKeyValue = Get(this.realm, value, "key") || this.realm.intrinsics.null;
     let uniqueKey = getUniqueReactElementKey("", this.reactSerializerState.usedReactElementKeys);
-    let newKeyValue = GetValue(this.realm, this.realm.$GlobalEnv.evaluate(t.stringLiteral(uniqueKey), false));
+    let newKeyValue = new StringValue(this.realm, uniqueKey);
     if (currentKeyValue !== this.realm.intrinsics.null) {
       newKeyValue = computeBinary(this.realm, "+", currentKeyValue, newKeyValue);
     }
@@ -217,11 +233,14 @@ class Reconciler {
           let childrenProperty = propsValue.properties.get("children");
           if (childrenProperty) {
             let childrenPropertyDescriptor = childrenProperty.descriptor;
-            invariant(childrenPropertyDescriptor, "");
-            let childrenPropertyValue = childrenPropertyDescriptor.value;
-            invariant(childrenPropertyValue instanceof Value, `Bad "children" prop passed in JSXElement`);
-            let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus);
-            childrenPropertyDescriptor.value = resolvedChildren;
+            // if the descriptor is undefined, the property is likely deleted, if it exists
+            // proceed to resolve the children
+            if (childrenPropertyDescriptor !== undefined) {
+              let childrenPropertyValue = childrenPropertyDescriptor.value;
+              invariant(childrenPropertyValue instanceof Value, `Bad "children" prop passed in JSXElement`);
+              let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus);
+              childrenPropertyDescriptor.value = resolvedChildren;
+            }
           }
         }
         return value;
@@ -270,7 +289,7 @@ class Reconciler {
     }
   }
   _assignBailOutMessage(value: ObjectValue, message: string): void {
-    // $BailOut is a field on ObjectValue that allows us to specifiy a message
+    // $BailOut is a field on ObjectValue that allows us to specify a message
     // that gets serialized as a comment node during the ReactElement serialization stage
     value.$BailOut = message;
   }
