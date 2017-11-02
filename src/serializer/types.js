@@ -120,6 +120,15 @@ export class TimingStatistics {
   serializePassTime: number;
 }
 
+export class ReactStatistics {
+  constructor() {
+    this.optimizedTrees = 0;
+    this.inlinedComponents = 0;
+  }
+  optimizedTrees: number;
+  inlinedComponents: number;
+}
+
 export class SerializerStatistics {
   constructor() {
     this.objects = 0;

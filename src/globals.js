@@ -13,11 +13,16 @@ import type { Realm } from "./realm.js";
 import initializePrepackGlobals from "./intrinsics/prepack/global.js";
 import initializeDOMGlobals from "./intrinsics/dom/global.js";
 import initializeReactNativeGlobals from "./intrinsics/react-native/global.js";
+import initializeReactMocks from "./intrinsics/react-mocks/global.js";
 
 export default function(realm: Realm): Realm {
   initializePrepackGlobals(realm);
   if (realm.isCompatibleWith("browser")) {
     initializeDOMGlobals(realm);
+  }
+  if (realm.isCompatibleWith("react-mocks")) {
+    initializeDOMGlobals(realm);
+    initializeReactMocks(realm);
   }
   if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     initializeReactNativeGlobals(realm);
