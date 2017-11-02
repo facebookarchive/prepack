@@ -83,7 +83,6 @@ export function ClassDefinitionEvaluation(
 
   let protoParent;
   let constructorParent;
-  let superTypeParameters;
   // 5. If ClassHeritage opt is not present, then
   let ClassHeritage = ast.superClass;
   if (!ClassHeritage) {
