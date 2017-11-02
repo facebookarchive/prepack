@@ -67,14 +67,7 @@ function getInitialProps(realm: Realm, componentType: ECMAScriptSourceFunctionVa
   if (valueIsClassComponent(realm, componentType)) {
     // it's a class component, so we need to check the type on for props of the component prototype
     // as we don't support class components yet, throw a fatal error
-    let diagnostic = new CompilerDiagnostic(
-      `__registerReactComponentRoot() failed due to root component being a class component`,
-      realm.currentLocation,
-      "PP0022",
-      "FatalError"
-    );
-    realm.handleError(diagnostic);
-    throw new FatalError();
+    throw new ExpectedBailOut("class components not yet supported");
   } else {
     // otherwise it's a functional component, where the first paramater of the function is "props" (if it exists)
     if (componentType.$FormalParameters.length > 0) {
@@ -106,14 +99,7 @@ function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunction
   if (valueIsClassComponent(realm, componentType)) {
     // it's a class component, so we need to check the type on for context of the component prototype
     // as we don't support class components yet, throw a fatal error
-    let diagnostic = new CompilerDiagnostic(
-      `__registerReactComponentRoot() failed due to root component being a class component`,
-      realm.currentLocation,
-      "PP0022",
-      "FatalError"
-    );
-    realm.handleError(diagnostic);
-    throw new FatalError();
+    throw new ExpectedBailOut("class components not yet supported");
   } else {
     // otherwise it's a functional component, where the second paramater of the function is "context" (if it exists)
     if (componentType.$FormalParameters.length > 1) {
@@ -166,9 +152,9 @@ class Reconciler {
         // if there are no Flow types for props or context, we will throw a
         // FatalError, unless it's a functional component that has no paramater
         // i.e let MyComponent = () => <div>Hello world</div>
-        let initialProps = getInitialProps(this.realm, componentType);
-        let initialContext = getInitialContext(this.realm, componentType);
         try {
+          let initialProps = getInitialProps(this.realm, componentType);
+          let initialContext = getInitialContext(this.realm, componentType);
           let { result } = this._renderAsDeepAsPossible(
             componentType,
             initialProps,
@@ -177,11 +163,17 @@ class Reconciler {
           );
           this.statistics.optimizedTrees++;
           return result;
-        } catch (e) {
+        } catch (error) {
           // if there was a bail-out on the root component in this reconcilation process, then this
           // should be an invariant as the user has explicitly asked for this component to get folded
+          let message;
+          if (error instanceof ExpectedBailOut) {
+            message = "bail-out: " + error.message;
+          } else {
+            message = "evaluation bail-out";
+          }
           let diagnostic = new CompilerDiagnostic(
-            "__registerReactComponentRoot() failed due to root component bailing out",
+            `__registerReactComponentRoot() failed due to - ${message}`,
             this.realm.currentLocation,
             "PP0019",
             "FatalError"
