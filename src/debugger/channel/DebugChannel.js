@@ -108,9 +108,9 @@ export class DebugChannel {
     this._requestReceived = false;
   }
 
-  sendBreakpointAcknowledge(prefix: string, requestID: number, args: BreakpointArguments): void {
+  sendBreakpointAcknowledge(messageType: string, requestID: number, args: BreakpointArguments): void {
     this.writeOut(
-      this._marshaller.marshallBreakpointAcknowledge(requestID, prefix, args.filePath, args.line, args.column)
+      this._marshaller.marshallBreakpointAcknowledge(requestID, messageType, args.filePath, args.line, args.column)
     );
   }
 

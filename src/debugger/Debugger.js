@@ -17,7 +17,7 @@ import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./channel/DebugMessage.js";
 import { DebuggerError } from "./DebuggerError.js";
 import type { DebuggerRequest, StackframeArguments, Stackframe } from "./types.js";
-import { Realm } from "./../realm.js";
+import type { Realm } from "./../realm.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {

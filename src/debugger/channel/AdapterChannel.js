@@ -46,27 +46,27 @@ export class AdapterChannel {
     let parts = message.split(" ");
     let requestID = parseInt(parts[0], 10);
     invariant(!isNaN(requestID));
-    let prefix = parts[1];
-    if (prefix === DebugMessage.PREPACK_READY_RESPONSE) {
+    let messageType = parts[1];
+    if (messageType === DebugMessage.PREPACK_READY_RESPONSE) {
       let result = this._marshaller.unmarshallReadyResponse(requestID);
       this._prepackWaiting = true;
       this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE, result);
       this.trySendNextRequest();
-    } else if (prefix === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
+    } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
       let result = this._marshaller.unmarshallBreakpointAddResponse(requestID);
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, result);
       // Prepack acknowledged adding a breakpoint
       this._prepackWaiting = true;
       this._processRequestCallback(requestID, result);
       this.trySendNextRequest();
-    } else if (prefix === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
+    } else if (messageType === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
       let result = this._marshaller.unmarshallBreakpointStoppedResponse(requestID, parts.slice(2));
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, result);
       // Prepack stopped on a breakpoint
       this._prepackWaiting = true;
       this._processRequestCallback(requestID, result);
       this.trySendNextRequest();
-    } else if (prefix === DebugMessage.STACKFRAMES_RESPONSE) {
+    } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
       let result = this._marshaller.unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
       this._prepackWaiting = true;
       this._processRequestCallback(requestID, result);
