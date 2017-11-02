@@ -28,97 +28,65 @@ import type { BabelNodeTryStatement } from "babel-types";
 import invariant from "../invariant.js";
 
 export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
-  let completions = [];
-
   let blockRes = env.evaluateCompletionDeref(ast.block, strictCode);
-  blockRes = incorporateSavedCompletion(realm, blockRes);
-  if (blockRes instanceof PossiblyNormalCompletion) {
-    // The current state may have advanced since the time control forked into the various paths recorded in blockRes.
-    // Update the normal path and restore the global state to what it was at the time of the fork.
-    let subsequentEffects = realm.getCapturedEffects(blockRes.value);
-    invariant(subsequentEffects !== undefined);
-    realm.stopEffectCaptureAndUndoEffects();
-    updatePossiblyNormalCompletionWithSubsequentEffects(realm, blockRes, subsequentEffects);
-  }
 
-  if (ast.handler) {
+  let handlerRes = blockRes;
+  let handler = ast.handler;
+  if (handler) {
+    // The start of the catch handler is a join point where all throw completions come together
+    blockRes = incorporateSavedCompletion(realm, blockRes);
     if (blockRes instanceof ThrowCompletion) {
-      blockRes = env.evaluateCompletionDeref(ast.handler, strictCode, blockRes);
+      handlerRes = env.evaluateCompletionDeref(handler, strictCode, blockRes);
+      // Note: The handler may have introduced new forks
     } else if (blockRes instanceof JoinedAbruptCompletions || blockRes instanceof PossiblyNormalCompletion) {
+      if (blockRes instanceof PossiblyNormalCompletion) {
+        // Nothing has been joined and we are going to keep it that way.
+        // The current state may have advanced since the time control forked into the various paths recorded in blockRes.
+        // Update the normal path and restore the global state to what it was at the time of the fork.
+        let subsequentEffects = realm.getCapturedEffects(blockRes, blockRes.value);
+        invariant(subsequentEffects !== undefined);
+        realm.stopEffectCaptureAndUndoEffects(blockRes);
+        updatePossiblyNormalCompletionWithSubsequentEffects(realm, blockRes, subsequentEffects);
+      }
+      // All of the forked threads of control are now joined together and the global state reflects their joint effects
       let handlerEffects = composeNestedThrowEffectsWithHandler(blockRes);
-      blockRes = handlerEffects[0];
-      // If there is a normal execution path following the handler, we need to update the current state
-      if (blockRes instanceof Value || blockRes instanceof PossiblyNormalCompletion) realm.applyEffects(handlerEffects);
+      handlerRes = handlerEffects[0];
+      if (handlerRes instanceof Value) {
+        // This can happen if all of the abrupt completions in blockRes were throw completions
+        // and if the handler does not introduce any abrupt completions of its own.
+        realm.applyEffects(handlerEffects);
+        // The global state is now all joined up
+      } else {
+        // more than thread of control leaves the handler
+        // The effects of each thread is tracked in handlerRes
+      }
+    } else {
+      // The handler is not invoked, so just carry on.
     }
   }
-  completions.unshift(blockRes);
 
+  let finalizerRes = handlerRes;
   if (ast.finalizer) {
+    // The start of the finalizer is a join point where all threads of control come together.
+    // However, we choose to keep the threads unjoined and to apply the finalizer separately to each thread.
     if (blockRes instanceof PossiblyNormalCompletion || blockRes instanceof JoinedAbruptCompletions) {
-      completions.unshift(composeNestedEffectsWithFinalizer(blockRes));
+      // The current global state is a the point of the fork that led to blockRes
+      // All subsequent effects are kept inside the branches of blockRes.
+      let finalizerEffects = composeNestedEffectsWithFinalizer(blockRes);
+      finalizerRes = finalizerEffects[0];
+      // The result may become abrupt because of the finalizer, but it cannot become normal.
+      invariant(!(finalizerRes instanceof Value));
     } else {
-      completions.unshift(env.evaluateCompletion(ast.finalizer, strictCode));
+      // A single thread of control has produced a normal blockRes and the global state is up to date.
+      finalizerRes = env.evaluateCompletion(ast.finalizer, strictCode);
     }
   }
 
-  // Restart effect capture if one of the paths may continue
-  if (blockRes instanceof PossiblyNormalCompletion) realm.captureEffects();
-
-  // use the last completion record
-  for (let completion of completions) {
-    if (completion instanceof AbruptCompletion) throw completion;
-  }
-
-  if (ast.finalizer) {
-    completions.shift();
-  }
-
-  // otherwise use the last returned value
-  for (let completion of completions) {
-    if (completion instanceof PossiblyNormalCompletion)
-      completion = realm.getRunningContext().composeWithSavedCompletion(completion);
-    if (completion instanceof Value) return (UpdateEmpty(realm, completion, realm.intrinsics.undefined): any);
-  }
-
-  invariant(false);
-
-  // The finalizer is not a join point, so update each path in the completion separately.
-  function composeNestedEffectsWithFinalizer(
-    c: PossiblyNormalCompletion | JoinedAbruptCompletions,
-    priorEffects: Array<Effects> = []
-  ) {
-    priorEffects.push(c.consequentEffects);
-    let consequent = c.consequent;
-    if (consequent instanceof PossiblyNormalCompletion || consequent instanceof JoinedAbruptCompletions) {
-      composeNestedEffectsWithFinalizer(consequent, priorEffects);
-    } else {
-      c.consequentEffects = realm.evaluateForEffects(() => {
-        for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
-        invariant(ast.finalizer);
-        return env.evaluateCompletionDeref(ast.finalizer, strictCode);
-      });
-      let fc = c.consequentEffects[0];
-      // If the finalizer had an abrupt completion, it overrides the try-block's completion.
-      if (fc instanceof AbruptCompletion) c.consequent = fc;
-      else c.consequentEffects[0] = consequent;
-    }
-    priorEffects.pop();
-    priorEffects.push(c.alternateEffects);
-    let alternate = c.alternate;
-    if (alternate instanceof PossiblyNormalCompletion || alternate instanceof JoinedAbruptCompletions) {
-      composeNestedEffectsWithFinalizer(alternate, priorEffects);
-    } else {
-      c.alternateEffects = realm.evaluateForEffects(() => {
-        for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
-        invariant(ast.finalizer);
-        return env.evaluateCompletionDeref(ast.finalizer, strictCode);
-      });
-      let fc = c.alternateEffects[0];
-      // If the finalizer had an abrupt completion, it overrides the try-block's completion.
-      if (fc instanceof AbruptCompletion) c.alternate = fc;
-      else c.alternateEffects[0] = alternate;
-    }
-  }
+  if (finalizerRes instanceof AbruptCompletion) throw finalizerRes;
+  if (finalizerRes instanceof PossiblyNormalCompletion) realm.composeWithSavedCompletion(finalizerRes);
+  if (handlerRes instanceof PossiblyNormalCompletion) handlerRes = handlerRes.value;
+  if (handlerRes instanceof Value) return (UpdateEmpty(realm, handlerRes, realm.intrinsics.undefined): any);
+  throw handlerRes;
 
   // The handler is a potential join point for all throw completions, but is easier to not do the join here because
   // it is tricky to join the joined and composed result of the throw completions with the non exceptional completions.
@@ -153,6 +121,45 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         invariant(ast.handler);
         return env.evaluateCompletionDeref(ast.handler, strictCode, alternate);
       });
+    }
+    priorEffects.pop();
+    return joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
+  }
+
+  // The finalizer is not a join point, so update each path in the completion separately.
+  // Things are complicated because the finalizer may turn normal completions into abrupt completions.
+  // When this happens the container has to change its type.
+  // We do this by call joinEffects to create a new container at every level of the recursion.
+  function composeNestedEffectsWithFinalizer(
+    c: PossiblyNormalCompletion | JoinedAbruptCompletions,
+    priorEffects: Array<Effects> = []
+  ): Effects {
+    let consequent = c.consequent;
+    let consequentEffects = c.consequentEffects;
+    priorEffects.push(consequentEffects);
+    if (consequent instanceof JoinedAbruptCompletions || consequent instanceof PossiblyNormalCompletion) {
+      consequentEffects = composeNestedThrowEffectsWithHandler(consequent, priorEffects);
+    } else {
+      consequentEffects = realm.evaluateForEffects(() => {
+        for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
+        invariant(ast.finalizer);
+        return env.evaluateCompletionDeref(ast.finalizer, strictCode);
+      });
+      if (!(consequentEffects[0] instanceof AbruptCompletion)) consequentEffects[0] = consequent;
+    }
+    priorEffects.pop();
+    let alternate = c.alternate;
+    let alternateEffects = c.alternateEffects;
+    priorEffects.push(alternateEffects);
+    if (alternate instanceof PossiblyNormalCompletion || alternate instanceof JoinedAbruptCompletions) {
+      alternateEffects = composeNestedThrowEffectsWithHandler(alternate, priorEffects);
+    } else {
+      alternateEffects = realm.evaluateForEffects(() => {
+        for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
+        invariant(ast.finalizer);
+        return env.evaluateCompletionDeref(ast.finalizer, strictCode);
+      });
+      if (!(alternateEffects[0] instanceof AbruptCompletion)) alternateEffects[0] = alternate;
     }
     priorEffects.pop();
     return joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
