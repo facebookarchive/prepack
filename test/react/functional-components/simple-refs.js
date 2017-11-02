@@ -15,11 +15,7 @@ function A(foo) {
   );
 }
 
-<<<<<<< HEAD
 function App({rootRef}: {rootRef: Function}) {
-=======
-function App({rootRef}/*: {rootRef: Function}*/) {
->>>>>>> upstream/master
   return (
     <div>
       <A rootRef={rootRef} />
@@ -41,12 +37,7 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__registerReactComponentRoot) {
-<<<<<<< HEAD
   __registerReactComponentRoot(App);
-=======
-  // to be used when component folding is added in separate PR
-  // __registerReactComponentRoot(App);
->>>>>>> upstream/master
 }
 
 module.exports = App;

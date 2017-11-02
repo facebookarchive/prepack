@@ -8,11 +8,7 @@ function SubChild(props, context) {
   return <span>The context title is: {context.title}</span>;
 }
 
-<<<<<<< HEAD
 function Child(props: any, context: {title: string}) {
-=======
-function Child(props: any, context/*: {title: string}*/) {
->>>>>>> upstream/master
   return <span><SubChild /></span>;
 }
 
@@ -53,12 +49,7 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__registerReactComponentRoot) {
-<<<<<<< HEAD
   __registerReactComponentRoot(Child);
-=======
-  // to be used when component folding is added in separate PR
-  // __registerReactComponentRoot(App);
->>>>>>> upstream/master
 }
 
 module.exports = App;
