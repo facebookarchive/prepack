@@ -145,7 +145,7 @@ describe("Test React", () => {
       await runTest(directory, "type-change.js");
     });
 
-    it.only("Component type same", async () => {
+    it("Component type same", async () => {
       await runTest(directory, "type-same.js");
     });
 
