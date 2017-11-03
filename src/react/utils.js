@@ -49,9 +49,11 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
   if (!(value instanceof FunctionValue)) {
     return false;
   }
-  let prototype = Get(realm, value, "prototype");
-  if (prototype instanceof ObjectValue) {
-    return prototype.properties.has("render");
+  if (value.$Prototype instanceof ObjectValue) {
+    let prototype = Get(realm, value.$Prototype, "prototype");
+    if (prototype instanceof ObjectValue) {
+      return prototype.properties.has("isReactComponent");
+    }
   }
   return false;
 }

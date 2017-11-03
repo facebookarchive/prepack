@@ -24,6 +24,9 @@ let reactCode = `
         this.refs = {};
         this.state = {};
       }
+      isReactComponent() { 
+        return true;
+      }
       getChildContext() {}
     },
     createElement: function() {
