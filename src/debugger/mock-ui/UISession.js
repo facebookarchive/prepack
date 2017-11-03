@@ -129,8 +129,15 @@ export class UISession {
   }
 
   _processResponse(response: DebugProtocol.Response) {
-    // to be implemented
-    console.log(response);
+    if (response.command === "threads") {
+      this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
+    }
+  }
+
+  _processThreadsResponse(response: DebugProtocol.ThreadsResponse) {
+    for (const thread of response.body.threads) {
+      this._uiOutput(`${thread.id}: ${thread.name}`);
+    }
   }
 
   // execute a command if it is valid
@@ -166,6 +173,10 @@ export class UISession {
           }
           this._sendBreakpointRequest(filePath, line, column);
         }
+        break;
+      case "threads":
+        if (parts.length !== 1) return false;
+        this._sendThreadsRequest();
         break;
       default:
         // invalid command
@@ -251,6 +262,16 @@ export class UISession {
       seq: this._sequenceNum,
       command: "setBreakpoints",
       arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendThreadsRequest() {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "threads",
     };
     let json = JSON.stringify(message);
     this._packageAndSend(json);
