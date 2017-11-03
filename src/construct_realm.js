@@ -25,7 +25,7 @@ export default function(opts: RealmOptions = {}, debugChannel: void | DebugChann
   let r = new Realm(opts);
   if (debugChannel) {
     if (debugChannel.debuggerIsAttached()) {
-      r.debuggerInstance = new DebugServer(debugChannel);
+      r.debuggerInstance = new DebugServer(debugChannel, r);
     }
   }
 

@@ -16,7 +16,7 @@ import EventEmitter from "events";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./DebugMessage.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
-import type { BreakpointArguments } from "./../types.js";
+import type { BreakpointArguments, DebuggerResponse } from "./../types.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
@@ -32,7 +32,7 @@ export class AdapterChannel {
   _ioWrapper: FileIOWrapper;
   _marshaller: MessageMarshaller;
   _queue: Queue;
-  _pendingRequestCallbacks: { [number]: (string) => void };
+  _pendingRequestCallbacks: { [number]: (DebuggerResponse) => void };
   _prepackWaiting: boolean;
   _eventEmitter: EventEmitter;
 
@@ -46,22 +46,30 @@ export class AdapterChannel {
     let parts = message.split(" ");
     let requestID = parseInt(parts[0], 10);
     invariant(!isNaN(requestID));
-    let prefix = parts[1];
-    if (prefix === DebugMessage.PREPACK_READY_RESPONSE) {
+    let messageType = parts[1];
+    if (messageType === DebugMessage.PREPACK_READY_RESPONSE) {
+      let result = this._marshaller.unmarshallReadyResponse(requestID);
       this._prepackWaiting = true;
-      this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE);
+      this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE, result);
       this.trySendNextRequest();
-    } else if (prefix === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
-      this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, message);
+    } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
+      let dbgResponse = this._marshaller.unmarshallBreakpointAddResponse(requestID);
+      this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, dbgResponse);
       // Prepack acknowledged adding a breakpoint
       this._prepackWaiting = true;
-      this._processRequestCallback(requestID, message);
+      this._processRequestCallback(requestID, dbgResponse);
       this.trySendNextRequest();
-    } else if (prefix === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
-      this._eventEmitter.emit(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, parts.slice(2).join(" "));
+    } else if (messageType === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
+      let dbgResponse = this._marshaller.unmarshallBreakpointStoppedResponse(requestID, parts.slice(2));
+      this._eventEmitter.emit(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, dbgResponse);
       // Prepack stopped on a breakpoint
       this._prepackWaiting = true;
-      this._processRequestCallback(requestID, message);
+      this._processRequestCallback(requestID, dbgResponse);
+      this.trySendNextRequest();
+    } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
+      let dbgResponse = this._marshaller.unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
+      this._prepackWaiting = true;
+      this._processRequestCallback(requestID, dbgResponse);
       this.trySendNextRequest();
     }
   }
@@ -79,34 +87,40 @@ export class AdapterChannel {
     return true;
   }
 
-  _addRequestCallback(requestID: number, callback: string => void) {
+  _addRequestCallback(requestID: number, callback: DebuggerResponse => void) {
     invariant(!(requestID in this._pendingRequestCallbacks), "Request ID already exists in pending requests");
     this._pendingRequestCallbacks[requestID] = callback;
   }
 
-  _processRequestCallback(requestID: number, message: string) {
+  _processRequestCallback(requestID: number, response: DebuggerResponse) {
     invariant(
       requestID in this._pendingRequestCallbacks,
       "Request ID does not exist in pending requests: " + requestID
     );
     let callback = this._pendingRequestCallbacks[requestID];
-    callback(message);
+    callback(response);
   }
 
-  registerChannelEvent(event: string, listener: (message: string) => void) {
+  registerChannelEvent(event: string, listener: (response: DebuggerResponse) => void) {
     this._eventEmitter.addListener(event, listener);
   }
 
-  run(requestID: number, callback: string => void) {
+  run(requestID: number, callback: DebuggerResponse => void) {
     this._queue.enqueue(this._marshaller.marshallContinueRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  setBreakpoints(requestID: number, breakpoints: Array<BreakpointArguments>, callback: string => void) {
+  setBreakpoints(requestID: number, breakpoints: Array<BreakpointArguments>, callback: DebuggerResponse => void) {
     for (const breakpoint of breakpoints) {
-      this._queue.enqueue(this._marshaller.marshallSetBreakpointsRequest(breakpoint));
+      this._queue.enqueue(this._marshaller.marshallSetBreakpointsRequest(requestID, breakpoint));
     }
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  getStackFrames(requestID: number, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallStackFramesRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }

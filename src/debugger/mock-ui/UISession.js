@@ -13,6 +13,7 @@ import readline from "readline";
 import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
+import { DebuggerConstants } from "./../DebuggerConstants";
 
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
@@ -131,6 +132,20 @@ export class UISession {
   _processResponse(response: DebugProtocol.Response) {
     if (response.command === "threads") {
       this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
+    } else if (response.command === "stackTrace") {
+      //flow doesn't have type refinement for interfaces, so must do a cast here
+      this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
+    }
+  }
+
+  _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {
+    let frames = response.body.stackFrames;
+    for (const frame of frames) {
+      if (frame.source && frame.source.path) {
+        this._uiOutput(`${frame.id}: ${frame.name} ${frame.source.path} ${frame.line}:${frame.column}`);
+      } else {
+        this._uiOutput(`${frame.id}: ${frame.name} unknown source`);
+      }
     }
   }
 
@@ -155,7 +170,7 @@ export class UISession {
         if (parts.length !== 1) return false;
         let continueArgs: DebugProtocol.ContinueArguments = {
           // Prepack will only have 1 thread, this argument will be ignored
-          threadId: 1,
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
         };
         this._sendContinueRequest(continueArgs);
         break;
@@ -173,6 +188,14 @@ export class UISession {
           }
           this._sendBreakpointRequest(filePath, line, column);
         }
+        break;
+      case "stackframes":
+        // format: stackFrames
+        let stackFrameArgs: DebugProtocol.StackTraceArguments = {
+          // Prepack will only have 1 thread, this argument will be ignored
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStackFramesRequest(stackFrameArgs);
         break;
       case "threads":
         if (parts.length !== 1) return false;
@@ -261,6 +284,17 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "setBreakpoints",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStackFramesRequest(args: DebugProtocol.StackTraceArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "stackTrace",
       arguments: args,
     };
     let json = JSON.stringify(message);

@@ -24,14 +24,20 @@ export class DebugMessage {
   static BREAKPOINT_ENABLE_COMMAND: string = "Breakpoint-enable-command";
   // Command to disable a breakpoint
   static BREAKPOINT_DISABLE_COMMAND: string = "Breakpoint-disable-command";
+  // Command to fetch stack frames
+  static STACKFRAMES_COMMAND: string = "Stackframes-command";
 
-  /* Messages from Prepack to adapter */
+  /* Messages from Prepack to adapter with requested information */
   // Respond to the adapter that Prepack is ready
   static PREPACK_READY_RESPONSE: string = "PrepackReady";
   // Respond to the adapter that Prepack is finished
   static PREPACK_FINISH_RESPONSE: string = "PrepackFinish";
   // Respond to the adapter that Prepack has stopped on a breakpoint
-  static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped";
+  static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped-response";
+  // Respond to the adapter with the request stackframes
+  static STACKFRAMES_RESPONSE: string = "Stackframes-response";
+
+  /* Messages from Prepack to adapter to acknowledge having received the request */
   // Acknowledgement for setting a breakpoint
   static BREAKPOINT_ADD_ACKNOWLEDGE: string = "Breakpoint-add-acknowledge";
   // Acknowledgement for removing a breakpoint
