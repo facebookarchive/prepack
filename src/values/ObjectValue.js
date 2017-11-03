@@ -241,7 +241,7 @@ export default class ObjectValue extends ConcreteValue {
   hashValue: void | number;
 
   // ReactElement
-  $BailOut: void | string;
+  $BailOutReason: void | string;
 
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();

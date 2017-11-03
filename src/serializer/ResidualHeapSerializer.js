@@ -830,9 +830,9 @@ export class ResidualHeapSerializer {
 
     let jsxElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
     // if there has been a bail-out, we create an inline BlockComment node before the JSX element
-    if (val.$BailOut !== undefined) {
-      // $BailOut contains an optional string of what to print out in the comment
-      jsxElement.leadingComments = [({ type: "BlockComment", value: `${val.$BailOut}` }: any)];
+    if (val.$BailOutReason !== undefined) {
+      // $BailOutReason contains an optional string of what to print out in the comment
+      jsxElement.leadingComments = [({ type: "BlockComment", value: `${val.$BailOutReason}` }: any)];
     }
     return jsxElement;
   }

@@ -51,7 +51,7 @@ type BranchStatusEnum = $Keys<typeof BranchStatus>;
 
 // ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
 // allowing the reconcilation to continue on other branches of the tree, the message
-// given to ExpectedBailOut will be assigned to the value.$BailOut property and serialized
+// given to ExpectedBailOut will be assigned to the value.$BailOutReason property and serialized
 // as a comment in the output source to give the user hints as to what they need to do
 // to fix the bail-out case
 class ExpectedBailOut {
@@ -304,13 +304,13 @@ class Reconciler {
     }
   }
   _assignBailOutMessage(value: ObjectValue, message: string): void {
-    // $BailOut is a field on ObjectValue that allows us to specify a message
+    // $BailOutReason is a field on ObjectValue that allows us to specify a message
     // that gets serialized as a comment node during the ReactElement serialization stage
-    if (value.$BailOut !== undefined) {
+    if (value.$BailOutReason !== undefined) {
       // merge bail out messages if one already exists
-      value.$BailOut += `, ${message}`;
+      value.$BailOutReason += `, ${message}`;
     } else {
-      value.$BailOut = message;
+      value.$BailOutReason = message;
     }
   }
   _resolveFragment(arrayValue: ArrayValue, context: ObjectValue | AbstractValue, branchStatus: BranchStatusEnum) {
