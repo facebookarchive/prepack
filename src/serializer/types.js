@@ -20,7 +20,12 @@ import invariant from "../invariant.js";
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
 // TODO: add type for additional functions.
-export type SerializedBodyType = "MainGenerator" | "Generator" | "DelayInitializations" | "ConditionalAssignmentBranch";
+export type SerializedBodyType =
+  | "MainGenerator"
+  | "Generator"
+  | "DelayInitializations"
+  | "ConditionalAssignmentBranch"
+  | "LazyObjectInitializer";
 
 export type SerializedBody = {
   type: SerializedBodyType,
