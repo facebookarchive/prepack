@@ -46,10 +46,8 @@ export default function(
   }
   invariant(lval instanceof AbstractValue);
 
-  if (!lval.isIntrinsic()) {
-    if (!lval.mightNotBeFalse()) return ast.operator === "||" ? env.evaluate(ast.right, strictCode) : lval;
-    if (!lval.mightNotBeTrue()) return ast.operator === "&&" ? env.evaluate(ast.right, strictCode) : lval;
-  }
+  if (!lval.mightNotBeFalse()) return ast.operator === "||" ? env.evaluate(ast.right, strictCode) : lval;
+  if (!lval.mightNotBeTrue()) return ast.operator === "&&" ? env.evaluate(ast.right, strictCode) : lval;
 
   // Create empty effects for the case where ast.right is not evaluated
   let [compl1, gen1, bindings1, properties1, createdObj1] = construct_empty_effects(realm);

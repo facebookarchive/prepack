@@ -130,7 +130,9 @@ export class UISession {
   }
 
   _processResponse(response: DebugProtocol.Response) {
-    if (response.command === "stackTrace") {
+    if (response.command === "threads") {
+      this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
+    } else if (response.command === "stackTrace") {
       //flow doesn't have type refinement for interfaces, so must do a cast here
       this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
     }
@@ -144,6 +146,11 @@ export class UISession {
       } else {
         this._uiOutput(`${frame.id}: ${frame.name} unknown source`);
       }
+  }
+
+  _processThreadsResponse(response: DebugProtocol.ThreadsResponse) {
+    for (const thread of response.body.threads) {
+      this._uiOutput(`${thread.id}: ${thread.name}`);
     }
   }
 
@@ -188,6 +195,10 @@ export class UISession {
           threadId: DebuggerConstants.PREPACK_THREAD_ID,
         };
         this._sendStackFramesRequest(stackFrameArgs);
+        break;
+      case "threads":
+        if (parts.length !== 1) return false;
+        this._sendThreadsRequest();
         break;
       default:
         // invalid command
@@ -284,6 +295,16 @@ export class UISession {
       seq: this._sequenceNum,
       command: "stackTrace",
       arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendThreadsRequest() {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "threads",
     };
     let json = JSON.stringify(message);
     this._packageAndSend(json);

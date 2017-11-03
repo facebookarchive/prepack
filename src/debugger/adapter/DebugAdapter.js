@@ -233,6 +233,18 @@ class PrepackDebugSession extends LoggingDebugSession {
       this.sendResponse(response);
     });
   }
+
+  threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+    // There will only be 1 thread, so respond immediately
+    let thread: DebugProtocol.Thread = {
+      id: DebuggerConstants.PREPACK_THREAD_ID,
+      name: "main",
+    };
+    response.body = {
+      threads: [thread],
+    };
+    this.sendResponse(response);
+  }
 }
 
 DebugSession.run(PrepackDebugSession);
