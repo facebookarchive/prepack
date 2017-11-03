@@ -10,14 +10,14 @@
 /* @flow */
 
 export type DebuggerRequest = {
+  id: number,
   command: string,
   arguments: DebuggerRequestArguments,
 };
 
-export type DebuggerRequestArguments = BreakpointArguments | RunArguments;
+export type DebuggerRequestArguments = BreakpointArguments | RunArguments | StackframeArguments;
 
 export type BreakpointArguments = {
-  requestID: number,
   kind: "breakpoint",
   filePath: string,
   line: number,
@@ -25,6 +25,44 @@ export type BreakpointArguments = {
 };
 
 export type RunArguments = {
-  requestID: number,
   kind: "run",
+};
+
+export type StackframeArguments = {
+  kind: "stackframe",
+};
+
+export type Stackframe = {
+  id: number,
+  fileName: string,
+  line: number,
+  column: number,
+  functionName: string,
+};
+
+export type DebuggerResponse = {
+  id: number,
+  result: DebuggerResponseResult,
+};
+
+export type DebuggerResponseResult = ReadyResult | StackframeResult | BreakpointAddResult | BreakpointStoppedResult;
+
+export type ReadyResult = {
+  kind: "ready",
+};
+
+export type StackframeResult = {
+  kind: "stackframe",
+  stackframes: Array<Stackframe>,
+};
+
+export type BreakpointAddResult = {
+  kind: "breakpoint-add",
+};
+
+export type BreakpointStoppedResult = {
+  kind: "breakpoint-stopped",
+  filePath: string,
+  line: number,
+  column: number,
 };
