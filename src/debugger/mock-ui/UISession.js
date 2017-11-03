@@ -146,6 +146,7 @@ export class UISession {
       } else {
         this._uiOutput(`${frame.id}: ${frame.name} unknown source`);
       }
+    }
   }
 
   _processThreadsResponse(response: DebugProtocol.ThreadsResponse) {
