@@ -154,7 +154,8 @@ export class DebugServer {
     let frameInfos: Array<Stackframe> = [];
     let loc = this._realm.currentLocation;
 
-    // iterate the stack starting from most recent context
+    // the UI displays the current frame as index 0, so we iterate backwards
+    // from the current frame
     for (let i = this._realm.contextStack.length - 1; i >= 0; i--) {
       let frame = this._realm.contextStack[i];
       let functionName = "(anonymous function)";

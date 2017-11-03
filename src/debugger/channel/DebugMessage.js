@@ -27,7 +27,7 @@ export class DebugMessage {
   // Command to fetch stack frames
   static STACKFRAMES_COMMAND: string = "Stackframes-command";
 
-  /* Messages from Prepack to adapter */
+  /* Messages from Prepack to adapter with requested information */
   // Respond to the adapter that Prepack is ready
   static PREPACK_READY_RESPONSE: string = "PrepackReady";
   // Respond to the adapter that Prepack is finished
@@ -36,6 +36,8 @@ export class DebugMessage {
   static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped-response";
   // Respond to the adapter with the request stackframes
   static STACKFRAMES_RESPONSE: string = "Stackframes-response";
+
+  /* Messages from Prepack to adapter to acknowledge having received the request */
   // Acknowledgement for setting a breakpoint
   static BREAKPOINT_ADD_ACKNOWLEDGE: string = "Breakpoint-add-acknowledge";
   // Acknowledgement for removing a breakpoint
