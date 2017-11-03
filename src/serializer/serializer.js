@@ -188,7 +188,7 @@ export class Serializer {
     );
 
     let ast = residualHeapSerializer.serialize();
-    if (this.realm.react.enabled) {
+    if (this.realm.react.enabled && this.realm.react.flowRequired) {
       stripFlowTypeAnnotations(ast);
     }
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
