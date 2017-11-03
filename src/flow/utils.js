@@ -15,7 +15,11 @@ import traverse from "babel-traverse";
 import { BabelNode } from "babel-types";
 import * as t from "babel-types";
 
-export function flowAnnotationToObjectTypeTemplate(annotation: typeAnnotation) {
+export type ObjectTypeTemplate = {
+  [key: string]: string | ObjectTypeTemplate,
+};
+
+export function flowAnnotationToObjectTypeTemplate(annotation: typeAnnotation): string | ObjectTypeTemplate {
   if (annotation.type === "TypeAnnotation") {
     return flowAnnotationToObjectTypeTemplate(annotation.typeAnnotation);
   } else if (annotation.type === "GenericTypeAnnotation") {

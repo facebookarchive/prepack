@@ -41,13 +41,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 // keys to the root JSX element so that it keeps it identity (because we're folding trees).
 // Furthermore, we also need to bail-out of folding class components where they have lifecycle
 // events, as we can't merge lifecycles of mutliple trees when branched reliably
-const BranchStatus = {
-  NO_BRANCH: "NO_BRANCH",
-  NEW_BRANCH: "NEW_BRANCH",
-  BRANCH: "BRANCH",
-};
-
-type BranchStatusEnum = $Keys<typeof BranchStatus>;
+type BranchStatusEnum = "NO_BRANCH" | "NEW_BRANCH" | "BRANCH";
 
 // ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
 // allowing the reconcilation to continue on other branches of the tree, the message
@@ -131,6 +125,9 @@ class Reconciler {
 
   render(componentType: ECMAScriptSourceFunctionValue): Effects {
     return this.realm.wrapInGlobalEnv(() =>
+      // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
+      // than newly created ones. Then log those to the error logger. That'll help us track violations in
+      // components. :)
       this.realm.evaluateForEffects(() => {
         // initialProps and initialContext are created from Flow types from:
         // - if a functional component, the 1st and 2nd paramater of function
@@ -141,12 +138,7 @@ class Reconciler {
         try {
           let initialProps = getInitialProps(this.realm, componentType);
           let initialContext = getInitialContext(this.realm, componentType);
-          let { result } = this._renderAsDeepAsPossible(
-            componentType,
-            initialProps,
-            initialContext,
-            BranchStatus.NO_BRANCH
-          );
+          let { result } = this._renderAsDeepAsPossible(componentType, initialProps, initialContext, "NO_BRANCH");
           this.statistics.optimizedTrees++;
           return result;
         } catch (error) {
@@ -173,17 +165,11 @@ class Reconciler {
     context: ObjectValue | AbstractValue,
     branchStatus: BranchStatusEnum
   ) {
-    let { value, commitDidMountPhase, childContext } = this._renderOneLevel(
-      componentType,
-      props,
-      context,
-      branchStatus
-    );
+    let { value, childContext } = this._renderOneLevel(componentType, props, context, branchStatus);
     let result = this._resolveDeeply(value, childContext, branchStatus);
     return {
       result,
       childContext,
-      commitDidMountPhase,
     };
   }
   _renderOneLevel(
@@ -198,7 +184,7 @@ class Reconciler {
     } else {
       invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
       let value = componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
-      return { value, commitDidMountPhase: null, childContext: context };
+      return { value, childContext: context };
     }
   }
   _applyBranchedLogic(value: ObjectValue) {
@@ -209,12 +195,14 @@ class Reconciler {
     if (currentKeyValue !== this.realm.intrinsics.null) {
       newKeyValue = computeBinary(this.realm, "+", currentKeyValue, newKeyValue);
     }
+    // TODO: This might not be safe in DEV because these objects are frozen (Object.freeze).
+    // We should probably go behind the scenes in this case to by-pass that.
     value.$Set("key", newKeyValue, value);
     return value;
   }
   _updateBranchStatus(branchStatus: BranchStatusEnum): BranchStatusEnum {
-    if (branchStatus === BranchStatus.NEW_BRANCH) {
-      branchStatus = BranchStatus.BRANCH;
+    if (branchStatus === "NEW_BRANCH") {
+      branchStatus = "BRANCH";
     }
     return branchStatus;
   }
@@ -229,11 +217,13 @@ class Reconciler {
       // terminal values
       return value;
     } else if (value instanceof AbstractValue) {
+      // TODO investigate what other kinds might be safe to deeply resolve
       for (let i = 0; i < value.args.length; i++) {
-        value.args[i] = this._resolveDeeply(value.args[i], context, BranchStatus.NEW_BRANCH);
+        value.args[i] = this._resolveDeeply(value.args[i], context, "NEW_BRANCH");
       }
       return value;
     }
+    // TODO investigate what about other iterables type objects
     if (value instanceof ArrayValue) {
       this._resolveFragment(value, context, branchStatus);
       return value;
@@ -266,26 +256,29 @@ class Reconciler {
         return value;
       }
       if (!(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue)) {
+        this._assignBailOutMessage(
+          value,
+          `Bail-out: props on <Component /> was not not an ObjectValue or an AbstractValue`
+        );
         return value;
       }
       if (!(typeValue instanceof ECMAScriptSourceFunctionValue)) {
+        this._assignBailOutMessage(value, `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`);
         return value;
       }
       try {
-        let { result, commitDidMountPhase } = this._renderAsDeepAsPossible(
+        let { result } = this._renderAsDeepAsPossible(
           typeValue,
           propsValue,
           context,
           this._updateBranchStatus(branchStatus) // reduce branch status a value if possible
         );
-        if (result === null || result instanceof UndefinedValue) {
-          return branchStatus === BranchStatus.NEW_BRANCH ? this._applyBranchedLogic(value) : value;
+        if (result instanceof UndefinedValue) {
+          this._assignBailOutMessage(value, `Bail-out: undefined was returned from render`);
+          return branchStatus === "NEW_BRANCH" ? this._applyBranchedLogic(value) : value;
         }
         this.statistics.inlinedComponents++;
-        if (commitDidMountPhase !== null) {
-          commitDidMountPhase();
-        }
-        if (branchStatus === BranchStatus.NEW_BRANCH && result instanceof ObjectValue && isReactElement(result)) {
+        if (branchStatus === "NEW_BRANCH" && result instanceof ObjectValue && isReactElement(result)) {
           return this._applyBranchedLogic(result);
         }
         return result;
@@ -293,14 +286,16 @@ class Reconciler {
         // assign a bail out message
         if (error instanceof ExpectedBailOut) {
           this._assignBailOutMessage(value, "Bail-out: " + error.message);
-        } else {
+        } else if (error instanceof FatalError) {
           this._assignBailOutMessage(value, "Evaluation bail-out");
+        } else {
+          throw error;
         }
         // a child component bailed out during component folding, so return the function value and continue
-        return branchStatus === BranchStatus.NEW_BRANCH ? this._applyBranchedLogic(value) : value;
+        return branchStatus === "NEW_BRANCH" ? this._applyBranchedLogic(value) : value;
       }
     } else {
-      return value;
+      throw new ExpectedBailOut("unsupported value type during reconcilation");
     }
   }
   _assignBailOutMessage(value: ObjectValue, message: string): void {

@@ -15,12 +15,9 @@ import { ObjectCreate, ArrayCreate } from "../methods/index.js";
 import { ValuesDomain } from "../domains/index.js";
 import { Value, AbstractValue, ObjectValue, ArrayValue } from "../values/index.js";
 import invariant from "../invariant.js";
+import { type ObjectTypeTemplate } from "./utils.js";
 
-type ObjectTypes = {
-  [key: string | number]: ObjectTypes | string | Value,
-};
-
-export function createObject(realm: Realm, shape: ObjectTypes | null, name: string | null): ObjectValue {
+export function createObject(realm: Realm, shape: ObjectTypeTemplate | null, name: string | null): ObjectValue {
   let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   if (shape != null) {
     // to get around Flow complaining that shape could be null
@@ -62,7 +59,11 @@ function _createAbstractArray(realm: Realm, name: string | null): AbstractValue 
   return value;
 }
 
-function _createAbstractObject(realm: Realm, name: string | null, objectTypes: ObjectTypes | null): AbstractValue {
+function _createAbstractObject(
+  realm: Realm,
+  name: string | null,
+  objectTypes: ObjectTypeTemplate | null
+): AbstractValue {
   if (name === null) {
     name = "unknown";
   }
@@ -79,7 +80,7 @@ function _createAbstractObject(realm: Realm, name: string | null, objectTypes: O
 export function createAbstractObject(
   realm: Realm,
   name: string | null,
-  objectTypes: ObjectTypes | null | string
+  objectTypes: ObjectTypeTemplate | null | string
 ): ObjectValue | AbstractValue {
   if (typeof objectTypes === "string") {
     invariant(
