@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Intrinsics, PropertyBinding, Descriptor } from "./types.js";
+import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -44,7 +44,6 @@ import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
-import { DebugServer } from "./debugger/Debugger.js";
 
 export type Bindings = Map<Binding, void | Value>;
 export type EvaluationResult = Completion | Reference | Value;
@@ -267,7 +266,7 @@ export class Realm {
 
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
-  debuggerInstance: DebugServer | void;
+  debuggerInstance: DebugServerType | void;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
