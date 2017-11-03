@@ -45,10 +45,7 @@ export function createArray(realm: Realm, name: string | null): ArrayValue {
   return ((obj: any): ArrayValue);
 }
 
-function _createAbstractArray(realm: Realm, name: string | null): AbstractValue {
-  if (name === null) {
-    name = "unknown";
-  }
+function _createAbstractArray(realm: Realm, name: string): AbstractValue {
   let value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ArrayValue, [], name);
   value.intrinsicName = name;
   let template = createArray(realm, name);
