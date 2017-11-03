@@ -24,31 +24,22 @@ import {
   ObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, getUniqueReactElementKey, valueIsClassComponent } from "./utils";
+import { isReactElement, valueIsClassComponent, mapOverArrayValue } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { flowAnnotationToObjectTypeTemplate } from "../flow/utils.js";
-import { computeBinary } from "../evaluators/BinaryExpression.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { createAbstractObject } from "../flow/abstractObjectFactories.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-
-// Branch status is used for when Prepack returns an abstract value from a render
-// that results in a conditional path occuring. This can be problematic for reconcilation
-// as the reconciler then needs to understand if this is the start of a new branch, or if
-// it's actually deep into an existing branch. If it's a new branch, we need to apply
-// keys to the root JSX element so that it keeps it identity (because we're folding trees).
-// Furthermore, we also need to bail-out of folding class components where they have lifecycle
-// events, as we can't merge lifecycles of mutliple trees when branched reliably
-type BranchStatusEnum = "NO_BRANCH" | "NEW_BRANCH" | "BRANCH";
+import { BranchState, type BranchStatusEnum } from "./branching.js";
 
 // ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
 // allowing the reconcilation to continue on other branches of the tree, the message
 // given to ExpectedBailOut will be assigned to the value.$BailOutReason property and serialized
 // as a comment in the output source to give the user hints as to what they need to do
 // to fix the bail-out case
-class ExpectedBailOut {
+export class ExpectedBailOut {
   message: string;
   constructor(message: string) {
     this.message = message;
@@ -105,7 +96,7 @@ function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunction
   return createAbstractObject(realm, contextName, contextTypes);
 }
 
-class Reconciler {
+export class Reconciler {
   constructor(
     realm: Realm,
     moduleTracer: ModuleTracer,
@@ -138,7 +129,7 @@ class Reconciler {
         try {
           let initialProps = getInitialProps(this.realm, componentType);
           let initialContext = getInitialContext(this.realm, componentType);
-          let { result } = this._renderAsDeepAsPossible(componentType, initialProps, initialContext, "NO_BRANCH");
+          let { result } = this._renderAsDeepAsPossible(componentType, initialProps, initialContext, "NO_BRANCH", null);
           this.statistics.optimizedTrees++;
           return result;
         } catch (error) {
@@ -163,10 +154,11 @@ class Reconciler {
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue,
     context: ObjectValue | AbstractValue,
-    branchStatus: BranchStatusEnum
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
   ) {
-    let { value, childContext } = this._renderOneLevel(componentType, props, context, branchStatus);
-    let result = this._resolveDeeply(value, childContext, branchStatus);
+    let { value, childContext } = this._renderOneLevel(componentType, props, context);
+    let result = this._resolveDeeply(value, childContext, branchStatus, branchState);
     return {
       result,
       childContext,
@@ -175,8 +167,7 @@ class Reconciler {
   _renderOneLevel(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue,
-    context: ObjectValue | AbstractValue,
-    branchStatus: BranchStatusEnum
+    context: ObjectValue | AbstractValue
   ) {
     if (valueIsClassComponent(this.realm, componentType)) {
       // for now we don't support class components, so we throw a ExpectedBailOut
@@ -187,26 +178,12 @@ class Reconciler {
       return { value, childContext: context };
     }
   }
-  _applyBranchedLogic(value: ObjectValue) {
-    // we need to apply a key when we're branched
-    let currentKeyValue = Get(this.realm, value, "key") || this.realm.intrinsics.null;
-    let uniqueKey = getUniqueReactElementKey("", this.reactSerializerState.usedReactElementKeys);
-    let newKeyValue = new StringValue(this.realm, uniqueKey);
-    if (currentKeyValue !== this.realm.intrinsics.null) {
-      newKeyValue = computeBinary(this.realm, "+", currentKeyValue, newKeyValue);
-    }
-    // TODO: This might not be safe in DEV because these objects are frozen (Object.freeze).
-    // We should probably go behind the scenes in this case to by-pass that.
-    value.$Set("key", newKeyValue, value);
-    return value;
-  }
-  _updateBranchStatus(branchStatus: BranchStatusEnum): BranchStatusEnum {
-    if (branchStatus === "NEW_BRANCH") {
-      branchStatus = "BRANCH";
-    }
-    return branchStatus;
-  }
-  _resolveDeeply(value: Value, context: ObjectValue | AbstractValue, branchStatus: BranchStatusEnum) {
+  _resolveDeeply(
+    value: Value,
+    context: ObjectValue | AbstractValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
+  ) {
     if (
       value instanceof StringValue ||
       value instanceof NumberValue ||
@@ -217,21 +194,28 @@ class Reconciler {
       // terminal values
       return value;
     } else if (value instanceof AbstractValue) {
-      // TODO investigate what other kinds might be safe to deeply resolve
-      for (let i = 0; i < value.args.length; i++) {
-        value.args[i] = this._resolveDeeply(value.args[i], context, "NEW_BRANCH");
+      let length = value.args.length;
+      if (length > 0) {
+        let newBranchState = new BranchState();
+        // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
+        for (let i = 0; i < length; i++) {
+          value.args[i] = this._resolveDeeply(value.args[i], context, "NEW_BRANCH", newBranchState);
+        }
+        newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
       }
       return value;
     }
     // TODO investigate what about other iterables type objects
     if (value instanceof ArrayValue) {
-      this._resolveFragment(value, context, branchStatus);
+      this._resolveFragment(value, context, branchStatus, branchState);
       return value;
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
-      let typeValue = Get(this.realm, value, "type");
-      let propsValue = Get(this.realm, value, "props");
-      let refValue = Get(this.realm, value, "ref");
+      // we call value reactElement, to make it clearer what we're dealing with in this block
+      let reactElement = value;
+      let typeValue = Get(this.realm, reactElement, "type");
+      let propsValue = Get(this.realm, reactElement, "props");
+      let refValue = Get(this.realm, reactElement, "ref");
       if (typeValue instanceof StringValue) {
         // terminal host component. Start evaluating its children.
         if (propsValue instanceof ObjectValue) {
@@ -243,85 +227,89 @@ class Reconciler {
             if (childrenPropertyDescriptor !== undefined) {
               let childrenPropertyValue = childrenPropertyDescriptor.value;
               invariant(childrenPropertyValue instanceof Value, `Bad "children" prop passed in JSXElement`);
-              let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus);
+              let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus, branchState);
               childrenPropertyDescriptor.value = resolvedChildren;
             }
           }
         }
-        return value;
+        return reactElement;
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
-        this._assignBailOutMessage(value, `Bail-out: refs are not supported on <Components />`);
-        return value;
+        this._assignBailOutMessage(reactElement, `Bail-out: refs are not supported on <Components />`);
+        return reactElement;
       }
       if (!(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue)) {
         this._assignBailOutMessage(
-          value,
+          reactElement,
           `Bail-out: props on <Component /> was not not an ObjectValue or an AbstractValue`
         );
-        return value;
+        return reactElement;
       }
       if (!(typeValue instanceof ECMAScriptSourceFunctionValue)) {
-        this._assignBailOutMessage(value, `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`);
-        return value;
+        this._assignBailOutMessage(
+          reactElement,
+          `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`
+        );
+        return reactElement;
       }
       try {
         let { result } = this._renderAsDeepAsPossible(
           typeValue,
           propsValue,
           context,
-          this._updateBranchStatus(branchStatus) // reduce branch status a value if possible
+          branchStatus === "NEW_BRANCH" ? "BRANCH" : branchStatus,
+          null
         );
         if (result instanceof UndefinedValue) {
-          this._assignBailOutMessage(value, `Bail-out: undefined was returned from render`);
-          return branchStatus === "NEW_BRANCH" ? this._applyBranchedLogic(value) : value;
+          this._assignBailOutMessage(reactElement, `Bail-out: undefined was returned from render`);
+          if (branchStatus === "NEW_BRANCH" && branchState) {
+            return branchState.captureBranchedReactElement(typeValue, reactElement);
+          }
+          return reactElement;
         }
         this.statistics.inlinedComponents++;
-        if (branchStatus === "NEW_BRANCH" && result instanceof ObjectValue && isReactElement(result)) {
-          return this._applyBranchedLogic(result);
+        if (branchStatus === "NEW_BRANCH" && branchState) {
+          return branchState.captureBranchedReactElement(typeValue, result);
         }
         return result;
       } catch (error) {
         // assign a bail out message
         if (error instanceof ExpectedBailOut) {
-          this._assignBailOutMessage(value, "Bail-out: " + error.message);
+          this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
         } else if (error instanceof FatalError) {
-          this._assignBailOutMessage(value, "Evaluation bail-out");
+          this._assignBailOutMessage(reactElement, "Evaluation bail-out");
         } else {
           throw error;
         }
         // a child component bailed out during component folding, so return the function value and continue
-        return branchStatus === "NEW_BRANCH" ? this._applyBranchedLogic(value) : value;
+        if (branchStatus === "NEW_BRANCH" && branchState) {
+          return branchState.captureBranchedReactElement(typeValue, reactElement);
+        }
+        return reactElement;
       }
     } else {
       throw new ExpectedBailOut("unsupported value type during reconcilation");
     }
   }
-  _assignBailOutMessage(value: ObjectValue, message: string): void {
+  _assignBailOutMessage(reactElement: ObjectValue, message: string): void {
     // $BailOutReason is a field on ObjectValue that allows us to specify a message
     // that gets serialized as a comment node during the ReactElement serialization stage
-    if (value.$BailOutReason !== undefined) {
+    if (reactElement.$BailOutReason !== undefined) {
       // merge bail out messages if one already exists
-      value.$BailOutReason += `, ${message}`;
+      reactElement.$BailOutReason += `, ${message}`;
     } else {
-      value.$BailOutReason = message;
+      reactElement.$BailOutReason = message;
     }
   }
-  _resolveFragment(arrayValue: ArrayValue, context: ObjectValue | AbstractValue, branchStatus: BranchStatusEnum) {
-    let lengthValue = Get(this.realm, arrayValue, "length");
-    invariant(lengthValue instanceof NumberValue, "Invalid children length on JSXElement during reconcilation");
-    let length = lengthValue.value;
-    for (let i = 0; i < length; i++) {
-      let elementProperty = arrayValue.properties.get("" + i);
-      let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
-      invariant(elementPropertyDescriptor, `Invalid JSXElement child[${i}] descriptor`);
-      let elementValue = elementPropertyDescriptor.value;
-      if (elementValue instanceof Value) {
-        elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, branchStatus);
-      }
-    }
+  _resolveFragment(
+    arrayValue: ArrayValue,
+    context: ObjectValue | AbstractValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
+  ) {
+    mapOverArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
+      elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, branchStatus, branchState);
+    });
   }
 }
-
-export default Reconciler;

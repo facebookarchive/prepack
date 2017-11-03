@@ -145,6 +145,10 @@ describe("Test React", () => {
       await runTest(directory, "type-change.js");
     });
 
+    it.only("Component type same", async () => {
+      await runTest(directory, "type-same.js");
+    });
+
     it("Dynamic props", async () => {
       await runTest(directory, "dynamic-props.js");
     });
