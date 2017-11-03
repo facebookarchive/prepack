@@ -1,8 +1,6 @@
-if (this.__createReactMock) {
-  var React = __createReactMock();
-} else {
-  var React = require('react');
-}
+var React = require('react');
+// the JSX transform converts to React, so we need to add it back in
+this['React'] = React;
 
 function SubChild(props, context) {
   return <span>The context title is: {context.title}</span>;

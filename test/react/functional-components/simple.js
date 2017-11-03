@@ -1,8 +1,6 @@
-if (this.__createReactMock) {
-  var React = __createReactMock();
-} else {
-  var React = require('react');
-}
+var React = require('react');
+// the JSX transform converts to React, so we need to add it back in
+this['React'] = React;
 
 function A(props) {
   return <div>Hello {props.x}</div>;
@@ -27,7 +25,6 @@ function App() {
 }
 
 App.getTrials = function(renderer, Root) {
-  React.createElement("div")
   renderer.update(<Root />);
   return [['simple render', renderer.toJSON()]];
 };

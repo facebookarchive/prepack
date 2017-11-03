@@ -11,7 +11,15 @@
 
 import { Realm } from "../realm.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
-import { Value, NumberValue, ObjectValue, SymbolValue, FunctionValue, StringValue } from "../values/index.js";
+import {
+  Value,
+  NumberValue,
+  ObjectValue,
+  SymbolValue,
+  FunctionValue,
+  StringValue,
+  ArrayValue,
+} from "../values/index.js";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { type ReactSerializerState } from "../serializer/types.js";

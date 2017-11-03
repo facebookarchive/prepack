@@ -35,15 +35,11 @@ let prepackOptions = {
 function compileSourceWithPrepack(source) {
   let code = `(function(){${source}})()`;
   let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
-  // add the React require back in, as we've removed it with our Prepack mock
-  // the regex checks for any Prepack variable that matches "_$**any digit**.React"
-  let compiledSource = serialized.code.replace(/_\$[\d].React/, "React = require('react')");
   if (serialized == null || serialized.reactStatistics == null) {
     throw new Error("React test runner failed during serialization");
   }
   return {
-    // replace the code to put back the generator (Prepack doesn't serialize them yet)
-    compiledSource,
+    compiledSource: serialized.code,
     statistics: serialized.reactStatistics,
   };
 }
