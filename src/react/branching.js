@@ -90,7 +90,7 @@ export class BranchState {
       }
     }
   }
-  captureBranchedReactElement(type: StringValue | ECMAScriptSourceFunctionValue, value: Value): Value {
+  captureBranchedValue(type: StringValue | ECMAScriptSourceFunctionValue, value: Value): Value {
     this._branchesToValidate.push({ type, value });
     return value;
   }

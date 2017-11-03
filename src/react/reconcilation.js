@@ -264,13 +264,13 @@ export class Reconciler {
         if (result instanceof UndefinedValue) {
           this._assignBailOutMessage(reactElement, `Bail-out: undefined was returned from render`);
           if (branchStatus === "NEW_BRANCH" && branchState) {
-            return branchState.captureBranchedReactElement(typeValue, reactElement);
+            return branchState.captureBranchedValue(typeValue, reactElement);
           }
           return reactElement;
         }
         this.statistics.inlinedComponents++;
         if (branchStatus === "NEW_BRANCH" && branchState) {
-          return branchState.captureBranchedReactElement(typeValue, result);
+          return branchState.captureBranchedValue(typeValue, result);
         }
         return result;
       } catch (error) {
@@ -284,7 +284,7 @@ export class Reconciler {
         }
         // a child component bailed out during component folding, so return the function value and continue
         if (branchStatus === "NEW_BRANCH" && branchState) {
-          return branchState.captureBranchedReactElement(typeValue, reactElement);
+          return branchState.captureBranchedValue(typeValue, reactElement);
         }
         return reactElement;
       }
