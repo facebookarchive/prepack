@@ -183,6 +183,7 @@ export class Realm {
 
     this.react = {
       enabled: opts.reactEnabled || false,
+      flowRequired: true,
       reactElementSymbol: undefined,
     };
 
@@ -219,6 +220,7 @@ export class Realm {
 
   react: {
     enabled: boolean,
+    flowRequired: boolean,
     reactElementSymbol?: SymbolValue,
   };
 
