@@ -39,26 +39,28 @@ export type Stackframe = {
   column: number,
   functionName: string,
 };
-export type DebuggerResponse = ReadyResponse | BreakpointAddResponse | BreakpointStoppedResponse | StackframeResponse;
 
-export type ReadyResponse = {
+export type DebuggerResponse = {
   id: number,
+  result: DebuggerResponseResult,
+};
+
+export type DebuggerResponseResult = ReadyResult | StackframeResult | BreakpointAddResult | BreakpointStoppedResult;
+
+export type ReadyResult = {
   kind: "ready",
 };
 
-export type StackframeResponse = {
-  id: number,
+export type StackframeResult = {
   kind: "stackframe",
   stackframes: Array<Stackframe>,
 };
 
-export type BreakpointAddResponse = {
-  id: number,
+export type BreakpointAddResult = {
   kind: "breakpoint-add",
 };
 
-export type BreakpointStoppedResponse = {
-  id: number,
+export type BreakpointStoppedResult = {
   kind: "breakpoint-stopped",
   filePath: string,
   line: number,

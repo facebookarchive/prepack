@@ -12,10 +12,11 @@ import { DebugMessage } from "./DebugMessage.js";
 import type {
   BreakpointArguments,
   Stackframe,
-  StackframeResponse,
-  BreakpointAddResponse,
-  BreakpointStoppedResponse,
-  ReadyResponse,
+  DebuggerResponse,
+  StackframeResult,
+  BreakpointAddResult,
+  BreakpointStoppedResult,
+  ReadyResult,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -79,7 +80,7 @@ export class MessageMarshaller {
     return result;
   }
 
-  unmarshallStackframesResponse(requestID: number, responseBody: string): StackframeResponse {
+  unmarshallStackframesResponse(requestID: number, responseBody: string): DebuggerResponse {
     try {
       let frames = JSON.parse(responseBody);
       invariant(Array.isArray(frames), "Stack frames is not an array");
@@ -90,47 +91,59 @@ export class MessageMarshaller {
         invariant(frame.hasOwnProperty("column"), "Stack frame is missing column number");
         invariant(frame.hasOwnProperty("functionName"), "Stack frame is missing function name");
       }
-      let result: StackframeResponse = {
-        id: requestID,
+      let result: StackframeResult = {
         kind: "stackframe",
         stackframes: frames,
       };
-      return result;
+      let dbgResponse: DebuggerResponse = {
+        id: requestID,
+        result: result,
+      };
+      return dbgResponse;
     } catch (e) {
       throw new DebuggerError("Invalid response", e.message);
     }
   }
 
-  unmarshallBreakpointAddResponse(requestID: number): BreakpointAddResponse {
-    let result: BreakpointAddResponse = {
-      id: requestID,
+  unmarshallBreakpointAddResponse(requestID: number): DebuggerResponse {
+    let result: BreakpointAddResult = {
       kind: "breakpoint-add",
     };
-    return result;
+    let dbgResponse: DebuggerResponse = {
+      id: requestID,
+      result: result,
+    };
+    return dbgResponse;
   }
 
-  unmarshallBreakpointStoppedResponse(requestID: number, parts: Array<string>): BreakpointStoppedResponse {
+  unmarshallBreakpointStoppedResponse(requestID: number, parts: Array<string>): DebuggerResponse {
     invariant(parts.length === 3, "Incorrect number of arguments in breakpoint stopped response");
     let filePath = parts[0];
     let line = parseInt(parts[1], 10);
     invariant(!isNaN(line), "Invalid line number");
     let column = parseInt(parts[2], 10);
     invariant(!isNaN(column), "Invalid column number");
-    let result: BreakpointStoppedResponse = {
-      id: requestID,
+    let result: BreakpointStoppedResult = {
       kind: "breakpoint-stopped",
       filePath: filePath,
       line: line,
       column: column,
     };
-    return result;
+    let dbgResponse: DebuggerResponse = {
+      id: requestID,
+      result: result,
+    };
+    return dbgResponse;
   }
 
-  unmarshallReadyResponse(requestID: number): ReadyResponse {
-    let result: ReadyResponse = {
-      id: requestID,
+  unmarshallReadyResponse(requestID: number): DebuggerResponse {
+    let result: ReadyResult = {
       kind: "ready",
     };
-    return result;
+    let dbgResponse: DebuggerResponse = {
+      id: requestID,
+      result: result,
+    };
+    return dbgResponse;
   }
 }

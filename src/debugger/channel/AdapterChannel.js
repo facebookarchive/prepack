@@ -53,23 +53,23 @@ export class AdapterChannel {
       this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE, result);
       this.trySendNextRequest();
     } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
-      let result = this._marshaller.unmarshallBreakpointAddResponse(requestID);
-      this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, result);
+      let dbgResponse = this._marshaller.unmarshallBreakpointAddResponse(requestID);
+      this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, dbgResponse);
       // Prepack acknowledged adding a breakpoint
       this._prepackWaiting = true;
-      this._processRequestCallback(requestID, result);
+      this._processRequestCallback(requestID, dbgResponse);
       this.trySendNextRequest();
     } else if (messageType === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
-      let result = this._marshaller.unmarshallBreakpointStoppedResponse(requestID, parts.slice(2));
-      this._eventEmitter.emit(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, result);
+      let dbgResponse = this._marshaller.unmarshallBreakpointStoppedResponse(requestID, parts.slice(2));
+      this._eventEmitter.emit(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, dbgResponse);
       // Prepack stopped on a breakpoint
       this._prepackWaiting = true;
-      this._processRequestCallback(requestID, result);
+      this._processRequestCallback(requestID, dbgResponse);
       this.trySendNextRequest();
     } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
-      let result = this._marshaller.unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
+      let dbgResponse = this._marshaller.unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
       this._prepackWaiting = true;
-      this._processRequestCallback(requestID, result);
+      this._processRequestCallback(requestID, dbgResponse);
       this.trySendNextRequest();
     }
   }
@@ -92,16 +92,16 @@ export class AdapterChannel {
     this._pendingRequestCallbacks[requestID] = callback;
   }
 
-  _processRequestCallback(requestID: number, result: DebuggerResponse) {
+  _processRequestCallback(requestID: number, response: DebuggerResponse) {
     invariant(
       requestID in this._pendingRequestCallbacks,
       "Request ID does not exist in pending requests: " + requestID
     );
     let callback = this._pendingRequestCallbacks[requestID];
-    callback(result);
+    callback(response);
   }
 
-  registerChannelEvent(event: string, listener: (result: DebuggerResponse) => void) {
+  registerChannelEvent(event: string, listener: (response: DebuggerResponse) => void) {
     this._eventEmitter.addListener(event, listener);
   }
 
