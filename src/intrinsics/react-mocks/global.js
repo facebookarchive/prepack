@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, Value, StringValue, ObjectValue } from "../../values/index.js";
+import { AbstractValue, NativeFunctionValue, Value, StringValue } from "../../values/index.js";
 import { ObjectCreate } from "../../methods/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import { createMockReact } from "./mocks.js";
