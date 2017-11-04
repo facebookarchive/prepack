@@ -39,7 +39,6 @@ class PrepackDebugSession extends LoggingDebugSession {
     super("prepack");
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
-    this._pendingRequestCallbacks = new Map();
   }
 
   _prepackCommand: string;
@@ -49,7 +48,6 @@ class PrepackDebugSession extends LoggingDebugSession {
   _adapterChannel: AdapterChannel;
   _debuggerOptions: DebuggerOptions;
   _prepackWaiting: boolean;
-  _pendingRequestCallbacks: { [number]: (string) => void };
 
   // Start Prepack in a child process
   _startPrepack() {
@@ -111,11 +109,6 @@ class PrepackDebugSession extends LoggingDebugSession {
         );
       }
     );
-  }
-
-  _addRequestCallback(requestID: number, callback: string => void) {
-    invariant(!(requestID in this._pendingRequestCallbacks), "Request ID already exists in pending requests");
-    this._pendingRequestCallbacks[requestID] = callback;
   }
 
   /**

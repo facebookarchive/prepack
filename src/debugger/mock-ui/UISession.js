@@ -59,15 +59,7 @@ export class UISession {
   _prepackWaiting: boolean;
 
   _startAdapter() {
-    let adapterArgs = [
-      this._adapterPath,
-      "--prepack",
-      this._prepackCommand,
-      "--inFilePath",
-      this._inFilePath,
-      "--outFilePath",
-      this._outFilePath,
-    ];
+    let adapterArgs = [this._adapterPath];
     this._adapterProcess = child_process.spawn("node", adapterArgs);
     this._proc.on("exit", () => {
       this.shutdown();
