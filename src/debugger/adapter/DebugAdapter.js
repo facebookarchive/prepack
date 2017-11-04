@@ -24,7 +24,7 @@ import type { DebuggerOptions } from "./../../options.js";
 import { getDebuggerOptions } from "./../../prepack-options.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
-import type { BreakpointArguments, DebuggerResponse } from "./../types.js";
+import type { BreakpointArguments, DebuggerResponse, LaunchRequestArguments } from "./../types.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
@@ -40,8 +40,6 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
     this._pendingRequestCallbacks = new Map();
-    this._readCLIParameters();
-    this._startPrepack();
   }
 
   _prepackCommand: string;
@@ -53,41 +51,6 @@ class PrepackDebugSession extends LoggingDebugSession {
   _prepackWaiting: boolean;
   _pendingRequestCallbacks: { [number]: (string) => void };
 
-  _readCLIParameters() {
-    let args = Array.from(process.argv);
-    args.splice(0, 2);
-    let inFilePath;
-    let outFilePath;
-    while (args.length > 0) {
-      let arg = args.shift();
-      if (arg.startsWith("--")) {
-        arg = arg.slice(2);
-        if (arg === "prepack") {
-          this._prepackCommand = args.shift();
-        } else if (arg === "inFilePath") {
-          inFilePath = args.shift();
-        } else if (arg === "outFilePath") {
-          outFilePath = args.shift();
-        }
-      } else {
-        console.error("Unknown parameter: " + arg);
-        process.exit(1);
-      }
-    }
-    if (!inFilePath || inFilePath.length === 0) {
-      console.error("No debugger input file given");
-      process.exit(1);
-    }
-    if (!outFilePath || outFilePath.length === 0) {
-      console.error("No debugger output file given");
-      process.exit(1);
-    }
-    this._debuggerOptions = getDebuggerOptions({
-      debugInFilePath: inFilePath,
-      debugOutFilePath: outFilePath,
-    });
-  }
-
   // Start Prepack in a child process
   _startPrepack() {
     if (!this._prepackCommand || this._prepackCommand.length === 0) {
@@ -96,16 +59,16 @@ class PrepackDebugSession extends LoggingDebugSession {
     }
 
     // set up the communication channel
-    this._adapterChannel = new AdapterChannel(this._debuggerOptions);
+    this._adapterChannel = new AdapterChannel(this._inFilePath, this._outFilePath);
     this._registerMessageCallbacks();
 
     let prepackArgs = this._prepackCommand.split(" ");
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
     prepackArgs = prepackArgs.concat([
       "--debugInFilePath",
-      this._debuggerOptions.outFilePath,
+      this._outFilePath,
       "--debugOutFilePath",
-      this._debuggerOptions.inFilePath,
+      this._inFilePath,
     ]);
     this._prepackProcess = child_process.spawn("node", prepackArgs);
 
@@ -169,6 +132,13 @@ class PrepackDebugSession extends LoggingDebugSession {
     // Respond back to the UI with the configurations. Will add more configurations gradually as needed.
     // Adapter can respond immediately here because no message is sent to Prepack
     this.sendResponse(response);
+  }
+
+  launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
+    this._prepackCommand = args.prepackCommand,
+    this._inFilePath = args.inFilePath,
+    this._outFilePath = args.outFilePath,
+    this._startPrepack();
   }
 
   /**

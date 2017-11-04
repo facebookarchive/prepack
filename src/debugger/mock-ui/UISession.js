@@ -14,6 +14,7 @@ import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
 import { DebuggerConstants } from "./../DebuggerConstants";
+import { LaunchRequestArguments } from "./../types.js";
 
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
@@ -130,12 +131,23 @@ export class UISession {
   }
 
   _processResponse(response: DebugProtocol.Response) {
-    if (response.command === "threads") {
+    if (response.command === "initialize") {
+      this._processInitializeResponse(((response: any): DebugProtocol.InitializeResponse));
+    } else if (response.command === "threads") {
       this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
     } else if (response.command === "stackTrace") {
       //flow doesn't have type refinement for interfaces, so must do a cast here
       this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
     }
+  }
+
+  _processInitializeResponse(response: DebugProtocol.InitializeResponse) {
+    let launchArgs: LaunchRequestArguments = {
+      prepackCommand: this._prepackCommand,
+      inFilePath: this._inFilePath,
+      outFilePath: this._outFilePath,
+    }
+    this._sendLaunchRequest(launchArgs);
   }
 
   _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {
@@ -237,6 +249,18 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "initialize",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  // tell the adapter to start Prepack
+  _sendLaunchRequest(args: DebugProtocol.InitializeRequestArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "launch",
       arguments: args,
     };
     let json = JSON.stringify(message);
