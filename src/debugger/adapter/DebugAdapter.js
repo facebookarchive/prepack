@@ -24,7 +24,7 @@ import type { DebuggerOptions } from "./../../options.js";
 import { getDebuggerOptions } from "./../../prepack-options.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
-import type { BreakpointArguments, DebuggerResponse, LaunchRequestArguments } from "./../types.js";
+import type { BreakpointArguments, DebuggerResponse, LaunchRequestArguments, PrepackLaunchArguments } from "./../types.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
@@ -48,49 +48,6 @@ class PrepackDebugSession extends LoggingDebugSession {
   _adapterChannel: AdapterChannel;
   _debuggerOptions: DebuggerOptions;
   _prepackWaiting: boolean;
-
-  // Start Prepack in a child process
-  _startPrepack() {
-    if (!this._prepackCommand || this._prepackCommand.length === 0) {
-      console.error("No command given to start Prepack in adapter");
-      process.exit(1);
-    }
-
-    // set up the communication channel
-    this._adapterChannel = new AdapterChannel(this._inFilePath, this._outFilePath);
-    this._registerMessageCallbacks();
-
-    let prepackArgs = this._prepackCommand.split(" ");
-    // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
-    prepackArgs = prepackArgs.concat([
-      "--debugInFilePath",
-      this._outFilePath,
-      "--debugOutFilePath",
-      this._inFilePath,
-    ]);
-    this._prepackProcess = child_process.spawn("node", prepackArgs);
-
-    process.on("exit", () => {
-      this._prepackProcess.kill();
-      this._adapterChannel.clean();
-      process.exit();
-    });
-
-    process.on("SIGINT", () => {
-      this._prepackProcess.kill();
-      process.exit();
-    });
-
-    this._prepackProcess.stdout.on("data", (data: Buffer) => {
-      let outputEvent = new OutputEvent(data.toString(), "stdout");
-      this.sendEvent(outputEvent);
-    });
-
-    this._prepackProcess.on("exit", () => {
-      this.sendEvent(new TerminatedEvent());
-      process.exit();
-    });
-  }
 
   _registerMessageCallbacks() {
     this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
@@ -128,10 +85,29 @@ class PrepackDebugSession extends LoggingDebugSession {
   }
 
   launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
-    this._prepackCommand = args.prepackCommand,
-    this._inFilePath = args.inFilePath,
-    this._outFilePath = args.outFilePath,
-    this._startPrepack();
+    this._prepackCommand = args.prepackCommand;
+    this._inFilePath = args.inFilePath;
+    this._outFilePath = args.outFilePath;
+    // set up the communication channel
+    this._adapterChannel = new AdapterChannel(this._inFilePath, this._outFilePath);
+    this._registerMessageCallbacks();
+    let launchArgs: PrepackLaunchArguments = {
+      kind: "launch",
+      prepackCommand: args.prepackCommand,
+      inFilePath: args.inFilePath,
+      outFilePath: args.outFilePath,
+      outputCallback: (data: Buffer) => {
+        let outputEvent = new OutputEvent(data.toString(), "stdout");
+        this.sendEvent(outputEvent);
+      },
+      exitCallback: () => {
+        this.sendEvent(new TerminatedEvent());
+        process.exit();
+      },
+    };
+    this._adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
   }
 
   /**

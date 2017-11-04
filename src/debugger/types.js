@@ -18,6 +18,15 @@ export type DebuggerRequest = {
 
 export type DebuggerRequestArguments = BreakpointArguments | RunArguments | StackframeArguments;
 
+export type PrepackLaunchArguments = {
+  kind: "launch",
+  prepackCommand: string,
+  inFilePath: string,
+  outFilePath: string,
+  outputCallback: Buffer => void,
+  exitCallback: () => void,
+};
+
 export type BreakpointArguments = {
   kind: "breakpoint",
   filePath: string,

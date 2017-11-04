@@ -16,7 +16,8 @@ import EventEmitter from "events";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./DebugMessage.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
-import type { BreakpointArguments, DebuggerResponse } from "./../types.js";
+import child_process from "child_process";
+import type { BreakpointArguments, DebuggerResponse, PrepackLaunchArguments } from "./../types.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
@@ -26,8 +27,6 @@ export class AdapterChannel {
     this._queue = new Queue();
     this._pendingRequestCallbacks = new Map();
     this._eventEmitter = new EventEmitter();
-    this.sendDebuggerStart(DebuggerConstants.DEFAULT_REQUEST_ID);
-    this.listenOnFile(this._processPrepackMessage.bind(this));
   }
   _ioWrapper: FileIOWrapper;
   _marshaller: MessageMarshaller;
@@ -35,6 +34,7 @@ export class AdapterChannel {
   _pendingRequestCallbacks: { [number]: (DebuggerResponse) => void };
   _prepackWaiting: boolean;
   _eventEmitter: EventEmitter;
+  _prepackProcess: child_process.ChildProcess;
 
   // Error handler for errors in files from the adapter channel
   _handleFileReadError(err: ?ErrnoError) {
@@ -103,6 +103,42 @@ export class AdapterChannel {
 
   registerChannelEvent(event: string, listener: (response: DebuggerResponse) => void) {
     this._eventEmitter.addListener(event, listener);
+  }
+
+  launch(requestID: number, args: PrepackLaunchArguments, callback: DebuggerResponse => void) {
+    if (!args.prepackCommand || args.prepackCommand.length === 0) {
+      console.error("No command given to start Prepack in adapter");
+      process.exit(1);
+    }
+
+    this.sendDebuggerStart(requestID);
+    this.listenOnFile(this._processPrepackMessage.bind(this));
+
+    let prepackArgs = args.prepackCommand.split(" ");
+    // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
+    prepackArgs = prepackArgs.concat([
+      "--debugInFilePath",
+      args.outFilePath,
+      "--debugOutFilePath",
+      args.inFilePath,
+    ]);
+    this._prepackProcess = child_process.spawn("node", prepackArgs);
+
+    process.on("exit", () => {
+      this._prepackProcess.kill();
+      this.clean();
+      process.exit();
+    });
+
+    process.on("SIGINT", () => {
+      this._prepackProcess.kill();
+      process.exit();
+    });
+
+    this._prepackProcess.stdout.on("data", args.outputCallback);
+
+    this._prepackProcess.on("exit", args.exitCallback);
+    this._addRequestCallback(requestID, callback);
   }
 
   run(requestID: number, callback: DebuggerResponse => void) {
