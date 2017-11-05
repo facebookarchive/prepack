@@ -34,6 +34,7 @@ export class UISession {
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
     this._prepackWaiting = false;
+    this._prepackLaunched = false;
   }
   // the parent (i.e. ui) process
   _proc: Process;
@@ -56,7 +57,10 @@ export class UISession {
   _prepackCommand: string;
   // handler for any received messages
   _dataHandler: DataHandler;
+  // flag whether Prepack is waiting for a command
   _prepackWaiting: boolean;
+  // flag whether Prepack has been launched
+  _prepackLaunched: boolean;
 
   _startAdapter() {
     let adapterArgs = [this._adapterPath];
@@ -70,12 +74,6 @@ export class UISession {
     this._adapterProcess.stdout.on("data", (data: Buffer) => {
       //handle the received data
       this._dataHandler.handleData(data, this._processMessage.bind(this));
-      //ask the user for the next command
-      if (this._prepackWaiting) {
-        this._reader.question("(dbg) ", (input: string) => {
-          this._dispatch(input);
-        });
-      }
     });
     this._adapterProcess.stderr.on("data", (data: Buffer) => {
       console.error(data.toString());
@@ -96,6 +94,12 @@ export class UISession {
       console.error(e);
       console.error("Invalid message: " + message.slice(0, 1000));
     }
+    //ask the user for the next command
+    if (this._prepackLaunched && this._prepackWaiting) {
+      this._reader.question("(dbg) ", (input: string) => {
+        this._dispatch(input);
+      });
+    }
   }
 
   _processEvent(event: DebugProtocol.Event) {
@@ -115,6 +119,11 @@ export class UISession {
       if (event.body) {
         if (event.body.reason === "entry") {
           this._uiOutput("Prepack is ready");
+          this._prepackLaunched = true;
+          // start reading requests from the user
+          this._reader.question("(dbg) ", (input: string) => {
+            this._dispatch(input);
+          });
         } else if (event.body.reason.startsWith("breakpoint")) {
           this._uiOutput("Prepack stopped on: " + event.body.reason);
         }
@@ -138,7 +147,7 @@ export class UISession {
       prepackCommand: this._prepackCommand,
       inFilePath: this._inFilePath,
       outFilePath: this._outFilePath,
-    }
+    };
     this._sendLaunchRequest(launchArgs);
   }
 
@@ -248,7 +257,7 @@ export class UISession {
   }
 
   // tell the adapter to start Prepack
-  _sendLaunchRequest(args: DebugProtocol.InitializeRequestArguments) {
+  _sendLaunchRequest(args: DebugProtocol.LaunchRequestArguments) {
     let message = {
       type: "request",
       seq: this._sequenceNum,

@@ -18,13 +18,15 @@ import {
   StoppedEvent,
 } from "vscode-debugadapter";
 import * as DebugProtocol from "vscode-debugprotocol";
-import child_process from "child_process";
 import { AdapterChannel } from "./../channel/AdapterChannel.js";
-import type { DebuggerOptions } from "./../../options.js";
-import { getDebuggerOptions } from "./../../prepack-options.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
-import type { BreakpointArguments, DebuggerResponse, LaunchRequestArguments, PrepackLaunchArguments } from "./../types.js";
+import type {
+  BreakpointArguments,
+  DebuggerResponse,
+  LaunchRequestArguments,
+  PrepackLaunchArguments,
+} from "./../types.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
@@ -40,14 +42,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
   }
-
-  _prepackCommand: string;
-  _inFilePath: string;
-  _outFilePath: string;
-  _prepackProcess: child_process.ChildProcess;
   _adapterChannel: AdapterChannel;
-  _debuggerOptions: DebuggerOptions;
-  _prepackWaiting: boolean;
 
   _registerMessageCallbacks() {
     this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
@@ -85,11 +80,8 @@ class PrepackDebugSession extends LoggingDebugSession {
   }
 
   launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
-    this._prepackCommand = args.prepackCommand;
-    this._inFilePath = args.inFilePath;
-    this._outFilePath = args.outFilePath;
     // set up the communication channel
-    this._adapterChannel = new AdapterChannel(this._inFilePath, this._outFilePath);
+    this._adapterChannel = new AdapterChannel(args.inFilePath, args.outFilePath);
     this._registerMessageCallbacks();
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",

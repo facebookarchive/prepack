@@ -78,7 +78,8 @@ export type BreakpointStoppedResult = {
 };
 
 export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
+  noDebug?: boolean,
   prepackCommand: string,
   inFilePath: string,
   outFilePath: string,
-};
+}

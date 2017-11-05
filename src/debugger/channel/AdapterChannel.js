@@ -8,14 +8,12 @@
  */
 
 /* @flow */
-import type { DebuggerOptions } from "./../../options.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { MessageMarshaller } from "./MessageMarshaller.js";
 import Queue from "queue-fifo";
 import EventEmitter from "events";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./DebugMessage.js";
-import { DebuggerConstants } from "./../DebuggerConstants.js";
 import child_process from "child_process";
 import type { BreakpointArguments, DebuggerResponse, PrepackLaunchArguments } from "./../types.js";
 
@@ -116,12 +114,7 @@ export class AdapterChannel {
 
     let prepackArgs = args.prepackCommand.split(" ");
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
-    prepackArgs = prepackArgs.concat([
-      "--debugInFilePath",
-      args.outFilePath,
-      "--debugOutFilePath",
-      args.inFilePath,
-    ]);
+    prepackArgs = prepackArgs.concat(["--debugInFilePath", args.outFilePath, "--debugOutFilePath", args.inFilePath]);
     this._prepackProcess = child_process.spawn("node", prepackArgs);
 
     process.on("exit", () => {
