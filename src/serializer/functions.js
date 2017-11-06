@@ -26,7 +26,8 @@ import {
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
-import { type ReactSerializerState } from "./types";
+import { ReactStatistics, type ReactSerializerState } from "./types";
+import { Reconciler } from "../react/reconcilation.js";
 import * as t from "babel-types";
 
 export class Functions {
@@ -109,16 +110,17 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
-  checkReactRootComponents(react: ReactSerializerState): void {
+  checkReactRootComponents(statistics: ReactStatistics, react: ReactSerializerState): void {
     let recordedReactRootComponents = this.__generateAdditionalFunctions("__reactComponentRoots");
 
     // Get write effects of the components
     for (let [funcValue] of recordedReactRootComponents) {
+      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react);
       invariant(
         funcValue instanceof ECMAScriptSourceFunctionValue,
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
-      throw new FatalError("TODO: implement functional component folding");
+      this.writeEffects.set(funcValue, reconciler.render(funcValue));
     }
   }
 

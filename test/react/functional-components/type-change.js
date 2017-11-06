@@ -1,8 +1,6 @@
-if (this.__createReactMock) {
-  var React = __createReactMock();
-} else {
-  var React = require('react');
-}
+var React = require('react');
+// the JSX transform converts to React, so we need to add it back in
+this['React'] = React;
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
@@ -40,7 +38,7 @@ function SettingsPane() {
   return <Stateful>Bye</Stateful>;
 }
 
-function App(props/*: {switch: boolean}*/) {
+function App(props: {switch: boolean}) {
   if (props.switch) {
     return (
       <div>
@@ -75,8 +73,7 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__registerReactComponentRoot) {
-  // to be used when component folding is added in separate PR
-  // __registerReactComponentRoot(App);
+  __registerReactComponentRoot(App);
 }
 
 module.exports = App;
