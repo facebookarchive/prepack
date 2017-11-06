@@ -155,6 +155,10 @@ export function ClassDefinitionEvaluation(
   // 7. Let proto be ObjectCreate(protoParent).
   let proto = ObjectCreate(realm, protoParent);
 
+  // react. Check the Flow class paramater annotations, stored in "superTypeParameters"
+  if (realm.react.enabled && realm.react.flowRequired && ast.superTypeParameters) {
+    proto.$SuperTypeParameters = ast.superTypeParameters;
+  }
   let constructor;
   let ClassBody: Array<BabelNodeClassMethod> = [];
   for (let elem of ast.body.body) {
