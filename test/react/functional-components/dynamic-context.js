@@ -1,14 +1,12 @@
-if (this.__createReactMock) {
-  var React = __createReactMock();
-} else {
-  var React = require('react');
-}
+var React = require('react');
+// the JSX transform converts to React, so we need to add it back in
+this['React'] = React;
 
 function SubChild(props, context) {
   return <span>The context title is: {context.title}</span>;
 }
 
-function Child(props: any, context/*: {title: string}*/) {
+function Child(props: any, context: {title: string}) {
   return <span><SubChild /></span>;
 }
 
@@ -49,8 +47,7 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__registerReactComponentRoot) {
-  // to be used when component folding is added in separate PR
-  // __registerReactComponentRoot(App);
+  __registerReactComponentRoot(Child);
 }
 
 module.exports = App;

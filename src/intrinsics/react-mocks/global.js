@@ -10,10 +10,11 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, ObjectValue, Value } from "../../values/index.js";
-import { ObjectCreate, CreateDataPropertyOrThrow, GetValue } from "../../methods/index.js";
+import { AbstractValue, NativeFunctionValue, Value, StringValue } from "../../values/index.js";
+import { ObjectCreate } from "../../methods/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
-import { createMockReactComponent, createMockReactCloneElement } from "./mocks.js";
+import { createMockReact } from "./mocks.js";
+import invariant from "../../invariant";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
@@ -31,41 +32,25 @@ export default function(realm: Realm): void {
     enumerable: false,
     configurable: true,
   });
-  // require("SomeModule") support (makes them abstract)
-  let type = Value.getTypeFromName("function");
-  let requireValue = AbstractValue.createFromTemplate(
-    realm,
-    buildExpressionTemplate("require"),
-    ((type: any): typeof Value),
-    [],
-    "require"
-  );
-  requireValue.intrinsicName = "require";
-  global.$DefineOwnProperty("require", {
-    value: requireValue,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+
   // apply React mock (for now just React.Component)
-  global.$DefineOwnProperty("__createReactMock", {
-    value: new NativeFunctionValue(realm, "global.__createReactMock", "__createReactMock", 0, (context, []) => {
-      // React object
-      let reactValue = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      reactValue.intrinsicName = "React";
-      // React.Component
-      let reactComponent = GetValue(realm, realm.$GlobalEnv.evaluate(createMockReactComponent(), false));
-      reactComponent.intrinsicName = "React.Component";
-      let prototypeValue = ((reactComponent: any): ObjectValue).properties.get("prototype");
-      if (prototypeValue && prototypeValue.descriptor) {
-        ((prototypeValue.descriptor.value: any): Value).intrinsicName = `React.Component.prototype`;
+  global.$DefineOwnProperty("require", {
+    value: new NativeFunctionValue(realm, "global.require", "require", 0, (context, [requireNameVal]) => {
+      invariant(requireNameVal instanceof StringValue);
+      if (requireNameVal.value === "react" || requireNameVal.value === "React") {
+        return createMockReact(realm);
       }
-      CreateDataPropertyOrThrow(realm, reactValue, "Component", reactComponent);
-      // React.cloneElement
-      let reactCloneElement = GetValue(realm, realm.$GlobalEnv.evaluate(createMockReactCloneElement(), false));
-      reactCloneElement.intrinsicName = "React.cloneElement";
-      CreateDataPropertyOrThrow(realm, reactValue, "cloneElement", reactCloneElement);
-      return reactValue;
+      let requireName = `require("${requireNameVal.value}")`;
+      let type = Value.getTypeFromName("function");
+      let requireValue = AbstractValue.createFromTemplate(
+        realm,
+        buildExpressionTemplate(requireName),
+        ((type: any): typeof Value),
+        [],
+        requireName
+      );
+      requireValue.intrinsicName = requireName;
+      return requireValue;
     }),
     writable: true,
     enumerable: false,

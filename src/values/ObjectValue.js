@@ -244,6 +244,9 @@ export default class ObjectValue extends ConcreteValue {
   intrinsicNameGenerated: void | true;
   hashValue: void | number;
 
+  // ReactElement
+  $BailOutReason: void | string;
+
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();
   }
