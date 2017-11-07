@@ -8,7 +8,9 @@
  */
 
 /* @flow */
+
 import type { LexicalEnvironment } from "./../environment.js";
+import * as DebugProtocol from "vscode-debugprotocol";
 export type DebuggerRequest = {
   id: number,
   command: string,
@@ -16,6 +18,15 @@ export type DebuggerRequest = {
 };
 
 export type DebuggerRequestArguments = BreakpointArguments | RunArguments | StackframeArguments | ScopesArguments;
+
+export type PrepackLaunchArguments = {
+  kind: "launch",
+  prepackCommand: string,
+  inFilePath: string,
+  outFilePath: string,
+  outputCallback: Buffer => void,
+  exitCallback: () => void,
+};
 
 export type BreakpointArguments = {
   kind: "breakpoint",
@@ -76,7 +87,6 @@ export type BreakpointStoppedResult = {
   line: number,
   column: number,
 };
-
 export type Scope = {
   name: string,
   variablesReference: number,
@@ -90,3 +100,9 @@ export type ScopesResult = {
 
 // any object that can contain a collection of variables
 export type VariableContainer = LexicalEnvironment;
+export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
+  noDebug?: boolean,
+  prepackCommand: string,
+  inFilePath: string,
+  outFilePath: string,
+}
