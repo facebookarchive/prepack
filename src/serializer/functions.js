@@ -28,6 +28,7 @@ import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
 import { ReactStatistics, type ReactSerializerState } from "./types";
 import { Reconciler } from "../react/reconcilation.js";
+import { valueIsClassComponent } from "../react/utils.js";
 import * as t from "babel-types";
 
 export class Functions {
@@ -114,13 +115,22 @@ export class Functions {
     let recordedReactRootComponents = this.__generateAdditionalFunctions("__reactComponentRoots");
 
     // Get write effects of the components
-    for (let [funcValue] of recordedReactRootComponents) {
+    for (let [componentType] of recordedReactRootComponents) {
       let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react);
       invariant(
-        funcValue instanceof ECMAScriptSourceFunctionValue,
+        componentType instanceof ECMAScriptSourceFunctionValue,
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
-      this.writeEffects.set(funcValue, reconciler.render(funcValue));
+      let result = reconciler.render(componentType);
+      if (valueIsClassComponent(this.realm, componentType)) {
+        let prototype = Get(this.realm, componentType, "prototype");
+        invariant(prototype instanceof ObjectValue);
+        let renderMethod = Get(this.realm, prototype, "render");
+        invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
+        this.writeEffects.set(renderMethod, result);
+      } else {
+        this.writeEffects.set(componentType, result);
+      }
     }
   }
 

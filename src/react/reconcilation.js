@@ -27,12 +27,9 @@ import { ReactStatistics, type ReactSerializerState } from "../serializer/types.
 import { isReactElement, valueIsClassComponent, mapOverArrayValue } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { flowAnnotationToObjectTypeTemplate } from "../flow/utils.js";
-import * as t from "babel-types";
-import type { BabelNodeIdentifier } from "babel-types";
-import { createAbstractObject } from "../flow/abstractObjectFactories.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
+import { getInitialProps, getInitialContext, createClassInstance } from "./components.js";
 
 // ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
 // allowing the reconcilation to continue on other branches of the tree, the message
@@ -44,56 +41,6 @@ export class ExpectedBailOut {
   constructor(message: string) {
     this.message = message;
   }
-}
-
-function getInitialProps(realm: Realm, componentType: ECMAScriptSourceFunctionValue): ObjectValue | AbstractValue {
-  let propsName = null;
-  let propTypes = null;
-  if (valueIsClassComponent(realm, componentType)) {
-    // it's a class component, so we need to check the type on for props of the component prototype
-    // as we don't support class components yet, throw a fatal error
-    throw new ExpectedBailOut("class components not yet supported");
-  } else {
-    // otherwise it's a functional component, where the first paramater of the function is "props" (if it exists)
-    if (componentType.$FormalParameters.length > 0) {
-      let firstParam = componentType.$FormalParameters[0];
-      if (t.isIdentifier(firstParam)) {
-        propsName = ((firstParam: any): BabelNodeIdentifier).name;
-      }
-      let propsTypeAnnotation = firstParam.typeAnnotation !== undefined && firstParam.typeAnnotation;
-      // we expect that if there's a props paramater, it should always have Flow annotations
-      if (!propsTypeAnnotation) {
-        throw new ExpectedBailOut(`root component missing Flow type annotations for the "props" paramater`);
-      }
-      propTypes = flowAnnotationToObjectTypeTemplate(propsTypeAnnotation);
-    }
-  }
-  return createAbstractObject(realm, propsName, propTypes);
-}
-
-function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunctionValue): ObjectValue | AbstractValue {
-  let contextName = null;
-  let contextTypes = null;
-  if (valueIsClassComponent(realm, componentType)) {
-    // it's a class component, so we need to check the type on for context of the component prototype
-    // as we don't support class components yet, throw a fatal error
-    throw new ExpectedBailOut("class components not yet supported");
-  } else {
-    // otherwise it's a functional component, where the second paramater of the function is "context" (if it exists)
-    if (componentType.$FormalParameters.length > 1) {
-      let secondParam = componentType.$FormalParameters[1];
-      if (t.isIdentifier(secondParam)) {
-        contextName = ((secondParam: any): BabelNodeIdentifier).name;
-      }
-      let contextTypeAnnotation = secondParam.typeAnnotation !== undefined && secondParam.typeAnnotation;
-      // we expect that if there's a context param, it should always have Flow annotations
-      if (!contextTypeAnnotation) {
-        throw new ExpectedBailOut(`root component missing Flow type annotations for the "context" paramater`);
-      }
-      contextTypes = flowAnnotationToObjectTypeTemplate(contextTypeAnnotation);
-    }
-  }
-  return createAbstractObject(realm, contextName, contextTypes);
 }
 
 export class Reconciler {
@@ -129,7 +76,7 @@ export class Reconciler {
         try {
           let initialProps = getInitialProps(this.realm, componentType);
           let initialContext = getInitialContext(this.realm, componentType);
-          let { result } = this._renderAsDeepAsPossible(componentType, initialProps, initialContext, "NO_BRANCH", null);
+          let { result } = this._renderComponent(componentType, initialProps, initialContext, "ROOT", null);
           this.statistics.optimizedTrees++;
           return result;
         } catch (error) {
@@ -150,33 +97,34 @@ export class Reconciler {
       })
     );
   }
-  _renderAsDeepAsPossible(
+  _renderComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue,
     context: ObjectValue | AbstractValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
-    let { value, childContext } = this._renderOneLevel(componentType, props, context);
-    let result = this._resolveDeeply(value, childContext, branchStatus, branchState);
-    return {
-      result,
-      childContext,
-    };
-  }
-  _renderOneLevel(
-    componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractValue,
-    context: ObjectValue | AbstractValue
-  ) {
+    let value;
+    let childContext = context;
     if (valueIsClassComponent(this.realm, componentType)) {
-      // for now we don't support class components, so we throw a ExpectedBailOut
-      throw new ExpectedBailOut("class components not yet supported");
+      if (branchStatus !== "ROOT") {
+        throw new ExpectedBailOut("only class components at the root of __registerReactComponentRoot() are supported");
+      }
+      let { instance } = createClassInstance(this.realm, componentType, props, context);
+      let renderMethod = Get(this.realm, instance, "render");
+      invariant(
+        renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
+        "Expected render method to be a FunctionValue with $Call method"
+      );
+      value = renderMethod.$Call(instance, [props, context]);
     } else {
       invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
-      let value = componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
-      return { value, childContext: context };
+      value = componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
     }
+    return {
+      result: this._resolveDeeply(value, context, branchStatus === "ROOT" ? "NO_BRANCH" : branchStatus, branchState),
+      childContext,
+    };
   }
   _resolveDeeply(
     value: Value,
@@ -254,7 +202,7 @@ export class Reconciler {
         return reactElement;
       }
       try {
-        let { result } = this._renderAsDeepAsPossible(
+        let { result } = this._renderComponent(
           typeValue,
           propsValue,
           context,

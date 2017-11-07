@@ -1,0 +1,105 @@
+/**
+ * Copyright (c) 2017-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+/* @flow */
+
+import { Realm } from "../realm.js";
+import { ECMAScriptSourceFunctionValue, AbstractValue, ObjectValue } from "../values/index.js";
+import { flowAnnotationToObjectTypeTemplate } from "../flow/utils.js";
+import * as t from "babel-types";
+import type { BabelNodeIdentifier } from "babel-types";
+import { createAbstractObject } from "../flow/abstractObjectFactories.js";
+import { valueIsClassComponent } from "./utils";
+import { ExpectedBailOut } from "./reconcilation.js";
+import { Construct, Get } from "../methods/index.js";
+import invariant from "../invariant.js";
+
+export function getInitialProps(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue
+): ObjectValue | AbstractValue {
+  let propsName = null;
+  let propTypes = null;
+  if (valueIsClassComponent(realm, componentType)) {
+    // it's a class component, so we need to check the type on for props of the component prototype
+    let superTypeParameters = componentType.$SuperTypeParameters;
+
+    if (superTypeParameters !== undefined) {
+      throw new ExpectedBailOut("props on class components not yet supported");
+    }
+  } else {
+    // otherwise it's a functional component, where the first paramater of the function is "props" (if it exists)
+    if (componentType.$FormalParameters.length > 0) {
+      let firstParam = componentType.$FormalParameters[0];
+      if (t.isIdentifier(firstParam)) {
+        propsName = ((firstParam: any): BabelNodeIdentifier).name;
+      }
+      let propsTypeAnnotation = firstParam.typeAnnotation !== undefined && firstParam.typeAnnotation;
+      // we expect that if there's a props paramater, it should always have Flow annotations
+      if (!propsTypeAnnotation) {
+        throw new ExpectedBailOut(`root component missing Flow type annotations for the "props" paramater`);
+      }
+      propTypes = flowAnnotationToObjectTypeTemplate(propsTypeAnnotation);
+    }
+  }
+  return createAbstractObject(realm, propsName, propTypes);
+}
+
+export function getInitialContext(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue
+): ObjectValue | AbstractValue {
+  let contextName = null;
+  let contextTypes = null;
+  if (valueIsClassComponent(realm, componentType)) {
+    // it's a class component, so we need to check the type on for context of the component prototype
+    let superTypeParameters = componentType.$SuperTypeParameters;
+
+    if (superTypeParameters !== undefined) {
+      throw new ExpectedBailOut("context on class components not yet supported");
+    }
+  } else {
+    // otherwise it's a functional component, where the second paramater of the function is "context" (if it exists)
+    if (componentType.$FormalParameters.length > 1) {
+      let secondParam = componentType.$FormalParameters[1];
+      if (t.isIdentifier(secondParam)) {
+        contextName = ((secondParam: any): BabelNodeIdentifier).name;
+      }
+      let contextTypeAnnotation = secondParam.typeAnnotation !== undefined && secondParam.typeAnnotation;
+      // we expect that if there's a context param, it should always have Flow annotations
+      if (!contextTypeAnnotation) {
+        throw new ExpectedBailOut(`root component missing Flow type annotations for the "context" paramater`);
+      }
+      contextTypes = flowAnnotationToObjectTypeTemplate(contextTypeAnnotation);
+    }
+  }
+  return createAbstractObject(realm, contextName, contextTypes);
+}
+
+export function createClassInstance(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue,
+  props: ObjectValue | AbstractValue,
+  context: ObjectValue | AbstractValue
+) {
+  let componentPrototype = Get(realm, componentType, "prototype");
+  invariant(componentPrototype instanceof ObjectValue);
+  // we get the constructor
+  let constructor = Get(realm, componentPrototype, "constructor");
+  // then delete it
+  componentPrototype.properties.delete("constructor");
+  // then create an instance without the user constructor (to prevent Prepack errors)
+  let instance = Construct(realm, componentType, [props, context]);
+  // then re-add it
+  componentPrototype.properties.set("constructor", constructor);
+
+  return {
+    instance,
+  };
+}

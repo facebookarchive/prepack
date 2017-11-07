@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { parseExpression } from "babylon";
-import { ObjectValue } from "../../values/index.js";
+import { ObjectValue, ECMAScriptFunctionValue } from "../../values/index.js";
 import { Get, GetValue } from "../../methods/index.js";
 import invariant from "../../invariant";
 
@@ -105,6 +105,8 @@ export function createMockReact(realm: Realm): ObjectValue {
 
   let reactComponentValue = Get(realm, reactValue, "Component");
   reactComponentValue.intrinsicName = `require("react").Component`;
+  invariant(reactComponentValue instanceof ECMAScriptFunctionValue);
+  reactComponentValue.$FunctionKind = "normal";
   invariant(reactComponentValue instanceof ObjectValue);
 
   let reactComponentPrototypeValue = Get(realm, reactComponentValue, "prototype");

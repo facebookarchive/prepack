@@ -172,5 +172,9 @@ describe("Test React", () => {
         global.console.error = originalConsoleError;
       }
     });
+
+    it("Class component as root", async () => {
+      await runTest(directory, "class-root.js");
+    });
   });
 });
