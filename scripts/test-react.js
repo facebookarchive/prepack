@@ -176,5 +176,9 @@ describe("Test React", () => {
     it("Class component as root", async () => {
       await runTest(directory, "class-root.js");
     });
+
+    it("Class component as root with props", async () => {
+      await runTest(directory, "class-root-with-props.js");
+    });
   });
 });

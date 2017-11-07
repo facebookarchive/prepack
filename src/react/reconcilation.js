@@ -116,7 +116,7 @@ export class Reconciler {
         renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
         "Expected render method to be a FunctionValue with $Call method"
       );
-      value = renderMethod.$Call(instance, [props, context]);
+      value = renderMethod.$Call(instance, []);
     } else {
       invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
       value = componentType.$Call(this.realm.intrinsics.undefined, [props, context]);

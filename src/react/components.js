@@ -17,7 +17,7 @@ import type { BabelNodeIdentifier } from "babel-types";
 import { createAbstractObject } from "../flow/abstractObjectFactories.js";
 import { valueIsClassComponent } from "./utils";
 import { ExpectedBailOut } from "./reconcilation.js";
-import { Construct, Get } from "../methods/index.js";
+import { Construct, Get, Set } from "../methods/index.js";
 import invariant from "../invariant.js";
 
 export function getInitialProps(
@@ -29,6 +29,7 @@ export function getInitialProps(
   if (valueIsClassComponent(realm, componentType)) {
     // it's a class component, so we need to check the type on for props of the component prototype
     let superTypeParameters = componentType.$SuperTypeParameters;
+    propsName = "this.props";
 
     if (superTypeParameters !== undefined) {
       throw new ExpectedBailOut("props on class components not yet supported");
@@ -60,6 +61,7 @@ export function getInitialContext(
   if (valueIsClassComponent(realm, componentType)) {
     // it's a class component, so we need to check the type on for context of the component prototype
     let superTypeParameters = componentType.$SuperTypeParameters;
+    contextName = "this.context";
 
     if (superTypeParameters !== undefined) {
       throw new ExpectedBailOut("context on class components not yet supported");
@@ -97,8 +99,11 @@ export function createClassInstance(
   // then create an instance without the user constructor (to prevent Prepack errors)
   let instance = Construct(realm, componentType, [props, context]);
   // then re-add it
-  componentPrototype.properties.set("constructor", constructor);
-
+  Set(realm, instance, "constructor", constructor, true);
+  // assign props
+  Set(realm, instance, "props", props, true);
+  // assign context
+  Set(realm, instance, "context", context, true);
   return {
     instance,
   };
