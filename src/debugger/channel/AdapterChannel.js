@@ -105,7 +105,6 @@ export class AdapterChannel {
 
   launch(requestID: number, args: PrepackLaunchArguments, callback: DebuggerResponse => void) {
     if (!args.prepackCommand || args.prepackCommand.length === 0) {
-      console.error("No command given to start Prepack in adapter");
       process.exit(1);
     }
 
