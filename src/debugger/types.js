@@ -8,14 +8,14 @@
  */
 
 /* @flow */
-
+import type { LexicalEnvironment } from "./../environment.js";
 export type DebuggerRequest = {
   id: number,
   command: string,
   arguments: DebuggerRequestArguments,
 };
 
-export type DebuggerRequestArguments = BreakpointArguments | RunArguments | StackframeArguments;
+export type DebuggerRequestArguments = BreakpointArguments | RunArguments | StackframeArguments | ScopesArguments;
 
 export type BreakpointArguments = {
   kind: "breakpoint",
@@ -39,6 +39,11 @@ export type Stackframe = {
   column: number,
   functionName: string,
 };
+
+export type ScopesArguments = {
+  kind: "scopes",
+  frameId: number,
+}
 
 export type DebuggerResponse = {
   id: number,
@@ -66,3 +71,6 @@ export type BreakpointStoppedResult = {
   line: number,
   column: number,
 };
+
+// any object that can contain a collection of variables
+export type VariableContainer = LexicalEnvironment;

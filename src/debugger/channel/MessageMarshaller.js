@@ -11,6 +11,7 @@
 import { DebugMessage } from "./DebugMessage.js";
 import type {
   BreakpointArguments,
+  ScopesArguments,
   Stackframe,
   DebuggerResponse,
   StackframeResult,
@@ -56,8 +57,12 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.STACKFRAMES_COMMAND}`;
   }
 
-  marshallStackFramesResponse(requestID: number, stackframes: Array<Stackframe>) {
+  marshallStackFramesResponse(requestID: number, stackframes: Array<Stackframe>): string {
     return `${requestID} ${DebugMessage.STACKFRAMES_RESPONSE} ${JSON.stringify(stackframes)}`;
+  }
+
+  marshallScopesRequest(requestID: number, frameId: number): string {
+    return `${requestID} ${DebugMessage.SCOPES_COMMAND} ${frameId}`;
   }
 
   unmarshallBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
@@ -76,6 +81,16 @@ export class MessageMarshaller {
       filePath: filePath,
       line: lineNum,
       column: columnNum,
+    };
+    return result;
+  }
+
+  unmarshallScopesArguments(requestID: number, frameIdString: string): ScopesArguments {
+    let frameId = parseInt(frameIdString, 10);
+    invariant(!isNaN(frameId));
+    let result: ScopesArguments = {
+      kind: "scopes",
+      frameId: frameId,
     };
     return result;
   }

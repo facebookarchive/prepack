@@ -88,6 +88,9 @@ export class DebugChannel {
         };
         args = stackFrameArgs;
         break;
+      case DebugMessage.SCOPES_COMMAND:
+        args = this._marshaller.unmarshallScopesArguments(requestID, parts[2]);
+        break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }

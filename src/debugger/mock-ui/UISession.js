@@ -201,6 +201,15 @@ export class UISession {
         if (parts.length !== 1) return false;
         this._sendThreadsRequest();
         break;
+      case "scopes":
+        if (parts.length !== 2) return false;
+        let frameId = parseInt(parts[1], 10);
+        if (isNaN(frameId)) return false;
+        let scopesArgs: DebugProtocol.ScopesArguments = {
+          frameId: frameId,
+        }
+        this._sendScopesRequest(scopesArgs);
+        break;
       default:
         // invalid command
         return false;
@@ -306,6 +315,17 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "threads",
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendScopesRequest(args: DebugProtocol.ScopesArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "scopes",
+      arguments: args,
     };
     let json = JSON.stringify(message);
     this._packageAndSend(json);

@@ -245,6 +245,13 @@ class PrepackDebugSession extends LoggingDebugSession {
     };
     this.sendResponse(response);
   }
+
+  scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments): void {
+    //console.error(args.frameId);
+    this._adapterChannel.getScopes(response.request_seq, args.frameId, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
+  }
 }
 
 DebugSession.run(PrepackDebugSession);
