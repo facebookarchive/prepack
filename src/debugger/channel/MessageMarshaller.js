@@ -18,6 +18,8 @@ import type {
   BreakpointAddResult,
   BreakpointStoppedResult,
   ReadyResult,
+  Scope,
+  ScopesResult,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -65,6 +67,10 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.SCOPES_COMMAND} ${frameId}`;
   }
 
+  marshallScopesResponse(requestID: number, scopes: Array<Scope>): string {
+    return `${requestID} ${DebugMessage.SCOPES_RESPONSE} ${JSON.stringify(scopes)}`;
+  }
+
   unmarshallBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
     let filePath = parts[0];
 
@@ -109,6 +115,29 @@ export class MessageMarshaller {
       let result: StackframeResult = {
         kind: "stackframe",
         stackframes: frames,
+      };
+      let dbgResponse: DebuggerResponse = {
+        id: requestID,
+        result: result,
+      };
+      return dbgResponse;
+    } catch (e) {
+      throw new DebuggerError("Invalid response", e.message);
+    }
+  }
+
+  unmarshallScopesResponse(requestID: number, responseBody: string): DebuggerResponse {
+    try {
+      let scopes = JSON.parse(responseBody);
+      invariant(Array.isArray(scopes), "Scopes is not an array");
+      for (const scope of scopes) {
+        invariant(scope.hasOwnProperty("name"), "Scope is missing name");
+        invariant(scope.hasOwnProperty("variablesReference"), "Scope is missing variablesReference");
+        invariant(scope.hasOwnProperty("expensive"), "Scope is missing expensive");
+      }
+      let result: ScopesResult = {
+        kind: "scopes",
+        scopes: scopes,
       };
       let dbgResponse: DebuggerResponse = {
         id: requestID,

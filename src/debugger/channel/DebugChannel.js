@@ -20,6 +20,7 @@ import type {
   RunArguments,
   StackframeArguments,
   Stackframe,
+  Scope,
 } from "./../types.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
@@ -129,6 +130,10 @@ export class DebugChannel {
 
   sendStackframeResponse(requestID: number, stackframes: Array<Stackframe>): void {
     this.writeOut(this._marshaller.marshallStackFramesResponse(requestID, stackframes));
+  }
+
+  sendScopesResponse(requestID: number, scopes: Array<Scope>): void {
+    this.writeOut(this._marshaller.marshallScopesResponse(requestID, scopes));
   }
 
   sendPrepackFinish(): void {

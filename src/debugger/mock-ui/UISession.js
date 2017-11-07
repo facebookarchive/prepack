@@ -135,6 +135,15 @@ export class UISession {
     } else if (response.command === "stackTrace") {
       //flow doesn't have type refinement for interfaces, so must do a cast here
       this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
+    } else if (response.command === "scopes") {
+      this._processScopesResponse(((response: any): DebugProtocol.ScopesResponse));
+    }
+  }
+
+  _processScopesResponse(response: DebugProtocol.ScopesResponse) {
+    let scopes = response.body.scopes;
+    for (const scope of scopes) {
+      this._uiOutput(`${scope.name} ${scope.variablesReference}`);
     }
   }
 
@@ -207,7 +216,7 @@ export class UISession {
         if (isNaN(frameId)) return false;
         let scopesArgs: DebugProtocol.ScopesArguments = {
           frameId: frameId,
-        }
+        };
         this._sendScopesRequest(scopesArgs);
         break;
       default:

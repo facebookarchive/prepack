@@ -43,14 +43,19 @@ export type Stackframe = {
 export type ScopesArguments = {
   kind: "scopes",
   frameId: number,
-}
+};
 
 export type DebuggerResponse = {
   id: number,
   result: DebuggerResponseResult,
 };
 
-export type DebuggerResponseResult = ReadyResult | StackframeResult | BreakpointAddResult | BreakpointStoppedResult;
+export type DebuggerResponseResult =
+  | ReadyResult
+  | StackframeResult
+  | BreakpointAddResult
+  | BreakpointStoppedResult
+  | ScopesResult;
 
 export type ReadyResult = {
   kind: "ready",
@@ -70,6 +75,17 @@ export type BreakpointStoppedResult = {
   filePath: string,
   line: number,
   column: number,
+};
+
+export type Scope = {
+  name: string,
+  variablesReference: number,
+  expensive: boolean,
+};
+
+export type ScopesResult = {
+  kind: "scopes",
+  scopes: Array<Scope>,
 };
 
 // any object that can contain a collection of variables

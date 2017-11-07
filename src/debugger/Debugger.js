@@ -16,7 +16,14 @@ import invariant from "../invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./channel/DebugMessage.js";
 import { DebuggerError } from "./DebuggerError.js";
-import type { DebuggerRequest, StackframeArguments, ScopesArguments, Stackframe, VariableContainer } from "./types.js";
+import type {
+  DebuggerRequest,
+  StackframeArguments,
+  ScopesArguments,
+  Stackframe,
+  VariableContainer,
+  Scope,
+} from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
 import { Handles } from "vscode-debugadapter";
@@ -204,8 +211,24 @@ export class DebugServer {
     if (context.variableEnvironment) {
       // get a new mapping for this collection of variables
       let variableRef = this._variableMapping.create(context.variableEnvironment);
-      scopes.push()
+      let scope: Scope = {
+        name: "Locals",
+        variablesReference: variableRef,
+        expensive: false,
+      };
+      scopes.push(scope);
     }
+    if (context.lexicalEnvironment) {
+      // get a new mapping for this collection of variables
+      let variableRef = this._variableMapping.create(context.variableEnvironment);
+      let scope: Scope = {
+        name: "Globals",
+        variablesReference: variableRef,
+        expensive: false,
+      };
+      scopes.push(scope);
+    }
+    this._channel.sendScopesResponse(requestID, scopes);
   }
 
   shutdown() {

@@ -38,6 +38,8 @@ export class DebugMessage {
   static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped-response";
   // Respond to the adapter with the request stackframes
   static STACKFRAMES_RESPONSE: string = "Stackframes-response";
+  // Respond to the adapter with the requested scopes
+  static SCOPES_RESPONSE: string = "Scopes-response";
 
   /* Messages from Prepack to adapter to acknowledge having received the request */
   // Acknowledgement for setting a breakpoint

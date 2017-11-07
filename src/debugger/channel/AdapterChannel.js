@@ -71,6 +71,11 @@ export class AdapterChannel {
       this._prepackWaiting = true;
       this._processRequestCallback(requestID, dbgResponse);
       this.trySendNextRequest();
+    } else if (messageType === DebugMessage.SCOPES_RESPONSE) {
+      let dbgResponse = this._marshaller.unmarshallScopesResponse(requestID, parts.slice(2).join(" "));
+      this._prepackWaiting = true;
+      this._processRequestCallback(requestID, dbgResponse);
+      this.trySendNextRequest();
     }
   }
 
