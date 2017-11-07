@@ -32,7 +32,6 @@ import { CompilerDiagnostic, FatalError } from "./errors.js";
 import { defaultOptions } from "./options";
 import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
-import { Value } from "./values/index.js";
 import {
   AbstractValue,
   NullValue,
@@ -44,6 +43,7 @@ import {
   AbstractObjectValue,
   StringValue,
   UndefinedValue,
+  Value,
 } from "./values/index.js";
 import generate from "babel-generator";
 import parse from "./utils/parse.js";
@@ -52,8 +52,16 @@ import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
 import { Environment, Properties, To } from "./singletons.js";
 import * as t from "babel-types";
+import { TypesDomain, ValuesDomain } from "./domains/index.js";
 
 const sourceMap = require("source-map");
+
+export function deriveGetBinding(realm: Realm, binding: Binding) {
+  let types = new TypesDomain(Value);
+  let values = ValuesDomain.topVal;
+  invariant(realm.generator !== undefined);
+  return realm.generator.derive(types, values, [], [binding], ([expr]) => expr);
+}
 
 // ECMA262 8.1.1
 export class EnvironmentRecord {
@@ -95,6 +103,8 @@ export type Binding = {
   isGlobal: boolean,
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
+  isTainted: boolean,
+  initialValue?: Value,
 };
 
 // ECMA262 8.1.1.1
@@ -140,6 +150,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      isTainted: false,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -165,6 +176,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      isTainted: false,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -226,6 +238,10 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
+      if (binding.isTainted) {
+        invariant(realm.generator);
+        realm.generator.emitBindingAssignment(binding, V);
+      }
       realm.recordModifiedBinding(binding).value = V;
     } else {
       // 6. Else,
@@ -259,6 +275,9 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return the value currently bound to N in envRec.
+    if (binding.isTainted && !binding.value) {
+      binding.value = deriveGetBinding(realm, binding);
+    }
     invariant(binding.value);
     return binding.value;
   }

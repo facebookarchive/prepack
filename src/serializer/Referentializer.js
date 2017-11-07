@@ -177,7 +177,6 @@ export class Referentializer {
               // TODO #989: Fix additional functions and referentialization
               throw new FatalError("TODO: implement referentialization for prepacked functions");
             }
-
             if (this._options.simpleClosures) {
               // When simpleClosures is enabled, then space for captured mutable bindings is allocated upfront.
               let serializedBindingId = t.identifier(this._referentializedNameGenerator.generate(name));

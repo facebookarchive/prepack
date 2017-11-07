@@ -182,6 +182,7 @@ export class Serializer {
         residualHeapVisitor.referencedDeclaredValues,
         additionalFunctionValuesAndEffects,
         residualHeapVisitor.additionalFunctionValueInfos,
+        residualHeapVisitor.declarativeEnvironmentRecordsBindings,
         this.statistics,
         this.react
       ).serialize();
@@ -206,6 +207,7 @@ export class Serializer {
       residualHeapVisitor.referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
       residualHeapVisitor.additionalFunctionValueInfos,
+      residualHeapVisitor.declarativeEnvironmentRecordsBindings,
       this.statistics,
       this.react
     );

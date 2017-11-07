@@ -95,7 +95,7 @@ function InternalSetProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, 
 function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, oldDesc?: Descriptor) {
   let generator = realm.generator;
   if (!generator) return;
-  if (!O.isIntrinsic()) return;
+  if (!O.isIntrinsic() && !O.isTaintedObject()) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
   invariant(typeof P === "string");
@@ -1093,7 +1093,7 @@ export class PropertiesImplementation {
       if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
         let realmGenerator = realm.generator;
         invariant(realmGenerator);
-        value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
+        value = realmGenerator.derive(value.types, value.values, value.args, [], value.getBuildNode(), {
           kind: "resolved",
         });
         InternalSetProperty(realm, O, P, {

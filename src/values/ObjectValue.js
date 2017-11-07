@@ -61,6 +61,7 @@ export default class ObjectValue extends ConcreteValue {
     this.$Prototype = proto || realm.intrinsics.null;
     this.$Extensible = realm.intrinsics.true;
     this._isPartial = realm.intrinsics.false;
+    this._isTainted = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
@@ -69,6 +70,7 @@ export default class ObjectValue extends ConcreteValue {
 
   static trackedPropertyNames = [
     "_isPartial",
+    "_isTainted",
     "_isSimple",
     "$ArrayIteratorNextIndex",
     "$DateValue",
@@ -95,7 +97,11 @@ export default class ObjectValue extends ConcreteValue {
   setupBindings(propertyNames: Array<string>) {
     for (let propName of propertyNames) {
       let desc = { writeable: true, value: undefined };
-      (this: any)[propName + "_binding"] = { descriptor: desc, object: this, key: propName };
+      (this: any)[propName + "_binding"] = {
+        descriptor: desc,
+        object: this,
+        key: propName,
+      };
     }
   }
 
@@ -224,6 +230,9 @@ export default class ObjectValue extends ConcreteValue {
   // partial objects
   _isPartial: BooleanValue;
 
+  // tainted objects
+  _isTainted: BooleanValue;
+
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
   _isSimple: BooleanValue;
@@ -284,6 +293,19 @@ export default class ObjectValue extends ConcreteValue {
 
   isPartialObject(): boolean {
     return this._isPartial.value;
+  }
+
+  makeTainted(): void {
+    this._isTainted = this.$Realm.intrinsics.true;
+    // Clear all properties. This object is now completely unknown.
+    this.properties.clear(); // TODO: Track that this happens so that it can be undone by evaluateForEffects
+    // TODO: Clear symbol properties, prototype and other fields as well.
+    this.makePartial();
+    this.makeSimple(); // TODO: Don't assume it is once property access no longer fatal.
+  }
+
+  isTaintedObject(): boolean {
+    return this._isTainted.value;
   }
 
   isSimpleObject(): boolean {

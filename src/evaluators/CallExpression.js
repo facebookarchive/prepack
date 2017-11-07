@@ -15,16 +15,16 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { Value } from "../values/index.js";
-import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue, ObjectValue } from "../values/index.js";
+import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment, Functions, Join } from "../singletons.js";
+import { taintImpureValue } from "../utils/taint.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
   GetThisValue,
   IsInTailPosition,
   SameValue,
-  TestIntegrityLevel,
 } from "../methods/index.js";
 import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../invariant.js";
@@ -113,14 +113,8 @@ function EvaluateCall(
     if (propName !== undefined && typeof propName !== "string") args.push(propName);
     args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
     for (let arg of args) {
-      if (arg !== func && arg instanceof ObjectValue && !TestIntegrityLevel(realm, arg, "frozen")) {
-        let diag = new CompilerDiagnostic(
-          "Unfrozen object leaked before end of global code",
-          ast.loc,
-          "PP0017",
-          "RecoverableError"
-        );
-        if (realm.handleError(diag) !== "Recover") throw new FatalError();
+      if (arg !== func) {
+        taintImpureValue(realm, arg, ast);
       }
     }
     return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {

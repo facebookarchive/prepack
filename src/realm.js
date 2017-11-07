@@ -45,6 +45,8 @@ export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 export type CreatedObjects = Set<ObjectValue>;
 export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
+export type ImpureObjects = Set<ObjectValue>;
+
 export class Tracer {
   beginEvaluateForEffects(state: any) {}
   endEvaluateForEffects(state: any, effects: void | Effects) {}
@@ -197,6 +199,7 @@ export class Realm {
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
+  impureObjects: void | ImpureObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
@@ -391,6 +394,23 @@ export class Realm {
 
   deleteGlobalBinding(name: string) {
     this.$GlobalEnv.environmentRecord.DeleteBinding(name);
+  }
+
+  // Evaluate a context as if it won't have any side-effects outside of any objects
+  // that it created itself. This promises that any abstract functions inside of it
+  // also won't have effects on any objects or bindings that weren't created in this
+  // call.
+  evaluatePure<T>(f: () => T) {
+    let savedImpureObjects = this.impureObjects;
+    // Track all objects (including function closures) created during
+    // this call. This will be used to make the assumption that every
+    // *other* object is unchange (pure).
+    this.impureObjects = new Set();
+    try {
+      return f();
+    } finally {
+      this.impureObjects = savedImpureObjects;
+    }
   }
 
   // Evaluate the given ast in a sandbox and return the evaluation results
@@ -859,6 +879,9 @@ export class Realm {
   recordNewObject(object: ObjectValue): void {
     if (this.createdObjects !== undefined) {
       this.createdObjects.add(object);
+    }
+    if (this.impureObjects !== undefined) {
+      this.impureObjects.add(object);
     }
   }
 
