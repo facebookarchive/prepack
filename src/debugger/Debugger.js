@@ -26,7 +26,7 @@ import type {
 } from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
-import { Handles } from "vscode-debugadapter";
+import { ReferenceMap } from "./ReferenceMap.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
@@ -36,7 +36,7 @@ export class DebugServer {
     this._lastRunRequestID = 0;
     this._channel = channel;
     this._realm = realm;
-    this._variableMapping = new Handles();
+    this._variableMapping = new ReferenceMap(0);
     this.waitForRun();
   }
   // the collection of breakpoints
@@ -48,7 +48,7 @@ export class DebugServer {
   _channel: DebugChannel;
   _lastRunRequestID: number;
   _realm: Realm;
-  _variableMapping: Handles<VariableContainer>;
+  _variableMapping: ReferenceMap<VariableContainer>;
   /* Block until adapter says to run
   /* runCondition: a function that determines whether the adapter has told
   /* Prepack to continue running
@@ -210,7 +210,7 @@ export class DebugServer {
     let scopes = [];
     if (context.variableEnvironment) {
       // get a new mapping for this collection of variables
-      let variableRef = this._variableMapping.create(context.variableEnvironment);
+      let variableRef = this._variableMapping.add(context.variableEnvironment);
       let scope: Scope = {
         name: "Locals",
         variablesReference: variableRef,
@@ -220,7 +220,7 @@ export class DebugServer {
     }
     if (context.lexicalEnvironment) {
       // get a new mapping for this collection of variables
-      let variableRef = this._variableMapping.create(context.variableEnvironment);
+      let variableRef = this._variableMapping.add(context.variableEnvironment);
       let scope: Scope = {
         name: "Globals",
         variablesReference: variableRef,
