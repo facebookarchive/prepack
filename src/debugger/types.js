@@ -8,6 +8,7 @@
  */
 
 /* @flow */
+import * as DebugProtocol from "vscode-debugprotocol";
 
 export type DebuggerRequest = {
   id: number,
@@ -16,6 +17,15 @@ export type DebuggerRequest = {
 };
 
 export type DebuggerRequestArguments = BreakpointArguments | RunArguments | StackframeArguments;
+
+export type PrepackLaunchArguments = {
+  kind: "launch",
+  prepackCommand: string,
+  inFilePath: string,
+  outFilePath: string,
+  outputCallback: Buffer => void,
+  exitCallback: () => void,
+};
 
 export type BreakpointArguments = {
   kind: "breakpoint",
@@ -66,3 +76,10 @@ export type BreakpointStoppedResult = {
   line: number,
   column: number,
 };
+
+export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
+  noDebug?: boolean,
+  prepackCommand: string,
+  inFilePath: string,
+  outFilePath: string,
+}
