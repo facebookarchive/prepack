@@ -14,6 +14,7 @@ import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
 import { DebuggerConstants } from "./../DebuggerConstants";
+import { LaunchRequestArguments } from "./../types.js";
 
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
@@ -33,6 +34,7 @@ export class UISession {
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
     this._prepackWaiting = false;
+    this._prepackLaunched = false;
   }
   // the parent (i.e. ui) process
   _proc: Process;
@@ -55,18 +57,13 @@ export class UISession {
   _prepackCommand: string;
   // handler for any received messages
   _dataHandler: DataHandler;
+  // flag whether Prepack is waiting for a command
   _prepackWaiting: boolean;
+  // flag whether Prepack has been launched
+  _prepackLaunched: boolean;
 
   _startAdapter() {
-    let adapterArgs = [
-      this._adapterPath,
-      "--prepack",
-      this._prepackCommand,
-      "--inFilePath",
-      this._inFilePath,
-      "--outFilePath",
-      this._outFilePath,
-    ];
+    let adapterArgs = [this._adapterPath];
     this._adapterProcess = child_process.spawn("node", adapterArgs);
     this._proc.on("exit", () => {
       this.shutdown();
@@ -77,12 +74,6 @@ export class UISession {
     this._adapterProcess.stdout.on("data", (data: Buffer) => {
       //handle the received data
       this._dataHandler.handleData(data, this._processMessage.bind(this));
-      //ask the user for the next command
-      if (this._prepackWaiting) {
-        this._reader.question("(dbg) ", (input: string) => {
-          this._dispatch(input);
-        });
-      }
     });
     this._adapterProcess.stderr.on("data", (data: Buffer) => {
       console.error(data.toString());
@@ -103,6 +94,12 @@ export class UISession {
       console.error(e);
       console.error("Invalid message: " + message.slice(0, 1000));
     }
+    //ask the user for the next command
+    if (this._prepackLaunched && this._prepackWaiting) {
+      this._reader.question("(dbg) ", (input: string) => {
+        this._dispatch(input);
+      });
+    }
   }
 
   _processEvent(event: DebugProtocol.Event) {
@@ -122,6 +119,11 @@ export class UISession {
       if (event.body) {
         if (event.body.reason === "entry") {
           this._uiOutput("Prepack is ready");
+          this._prepackLaunched = true;
+          // start reading requests from the user
+          this._reader.question("(dbg) ", (input: string) => {
+            this._dispatch(input);
+          });
         } else if (event.body.reason.startsWith("breakpoint")) {
           this._uiOutput("Prepack stopped on: " + event.body.reason);
         }
@@ -130,12 +132,23 @@ export class UISession {
   }
 
   _processResponse(response: DebugProtocol.Response) {
-    if (response.command === "threads") {
+    if (response.command === "initialize") {
+      this._processInitializeResponse(((response: any): DebugProtocol.InitializeResponse));
+    } else if (response.command === "threads") {
       this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
     } else if (response.command === "stackTrace") {
       //flow doesn't have type refinement for interfaces, so must do a cast here
       this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
     }
+  }
+
+  _processInitializeResponse(response: DebugProtocol.InitializeResponse) {
+    let launchArgs: LaunchRequestArguments = {
+      prepackCommand: this._prepackCommand,
+      inFilePath: this._inFilePath,
+      outFilePath: this._outFilePath,
+    };
+    this._sendLaunchRequest(launchArgs);
   }
 
   _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {
@@ -237,6 +250,18 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "initialize",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  // tell the adapter to start Prepack
+  _sendLaunchRequest(args: DebugProtocol.LaunchRequestArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "launch",
       arguments: args,
     };
     let json = JSON.stringify(message);
