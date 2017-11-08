@@ -216,10 +216,4 @@ declare module 'vscode-debugadapter' {
       sendResponse(response: DebugProtocol.Response): void;
       dispatchRequest(request: DebugProtocol.Request): void
   }
-  declare export class Handles<T>{
-      constructor(startHandle?: number): this;
-      reset(): void;
-      create(value: T): number;
-      get(handle: number, dflt?: T): T
-  }
 }
