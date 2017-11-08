@@ -14,7 +14,7 @@
 // specifies fetching variable collections via unique IDs
 export class ReferenceMap<T> {
   constructor() {
-    this._mapping = []
+    this._mapping = [];
   }
   _mapping: Array<T>;
 
