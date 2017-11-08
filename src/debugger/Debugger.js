@@ -16,8 +16,17 @@ import invariant from "../invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./channel/DebugMessage.js";
 import { DebuggerError } from "./DebuggerError.js";
-import type { DebuggerRequest, StackframeArguments, Stackframe } from "./types.js";
+import type {
+  DebuggerRequest,
+  StackframeArguments,
+  ScopesArguments,
+  Stackframe,
+  VariableContainer,
+  Scope,
+} from "./types.js";
 import type { Realm } from "./../realm.js";
+import { ExecutionContext } from "./../realm.js";
+import { ReferenceMap } from "./ReferenceMap.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
@@ -27,6 +36,7 @@ export class DebugServer {
     this._lastRunRequestID = 0;
     this._channel = channel;
     this._realm = realm;
+    this._variableMapping = new ReferenceMap();
     this.waitForRun();
   }
   // the collection of breakpoints
@@ -38,7 +48,7 @@ export class DebugServer {
   _channel: DebugChannel;
   _lastRunRequestID: number;
   _realm: Realm;
-
+  _variableMapping: ReferenceMap<VariableContainer>;
   /* Block until adapter says to run
   /* runCondition: a function that determines whether the adapter has told
   /* Prepack to continue running
@@ -144,6 +154,10 @@ export class DebugServer {
         invariant(args.kind === "stackframe");
         this.processStackframesCommand(requestID, args);
         break;
+      case DebugMessage.SCOPES_COMMAND:
+        invariant(args.kind === "scopes");
+        this.processScopesCommand(requestID, args);
+        break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
@@ -181,6 +195,40 @@ export class DebugServer {
       loc = frame.loc;
     }
     this._channel.sendStackframeResponse(requestID, frameInfos);
+  }
+
+  processScopesCommand(requestID: number, args: ScopesArguments) {
+    // first check that frameId is in the valid range
+    if (args.frameId < 0 || args.frameId >= this._realm.contextStack.length) {
+      throw new DebuggerError("Invalid command", "Invalid frame id for scopes request: " + args.frameId);
+    }
+    // here the frameId is in reverse order of the contextStack, ie frameId 0
+    // refers to last element of contextStack
+    let stackIndex = this._realm.contextStack.length - 1 - args.frameId;
+    let context = this._realm.contextStack[stackIndex];
+    invariant(context instanceof ExecutionContext);
+    let scopes = [];
+    if (context.variableEnvironment) {
+      // get a new mapping for this collection of variables
+      let variableRef = this._variableMapping.add(context.variableEnvironment);
+      let scope: Scope = {
+        name: "Locals",
+        variablesReference: variableRef,
+        expensive: false,
+      };
+      scopes.push(scope);
+    }
+    if (context.lexicalEnvironment) {
+      // get a new mapping for this collection of variables
+      let variableRef = this._variableMapping.add(context.variableEnvironment);
+      let scope: Scope = {
+        name: "Globals",
+        variablesReference: variableRef,
+        expensive: false,
+      };
+      scopes.push(scope);
+    }
+    this._channel.sendScopesResponse(requestID, scopes);
   }
 
   shutdown() {

@@ -11,12 +11,15 @@
 import { DebugMessage } from "./DebugMessage.js";
 import type {
   BreakpointArguments,
+  ScopesArguments,
   Stackframe,
   DebuggerResponse,
   StackframeResult,
   BreakpointAddResult,
   BreakpointStoppedResult,
   ReadyResult,
+  Scope,
+  ScopesResult,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -56,8 +59,16 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.STACKFRAMES_COMMAND}`;
   }
 
-  marshallStackFramesResponse(requestID: number, stackframes: Array<Stackframe>) {
+  marshallStackFramesResponse(requestID: number, stackframes: Array<Stackframe>): string {
     return `${requestID} ${DebugMessage.STACKFRAMES_RESPONSE} ${JSON.stringify(stackframes)}`;
+  }
+
+  marshallScopesRequest(requestID: number, frameId: number): string {
+    return `${requestID} ${DebugMessage.SCOPES_COMMAND} ${frameId}`;
+  }
+
+  marshallScopesResponse(requestID: number, scopes: Array<Scope>): string {
+    return `${requestID} ${DebugMessage.SCOPES_RESPONSE} ${JSON.stringify(scopes)}`;
   }
 
   unmarshallBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
@@ -80,6 +91,16 @@ export class MessageMarshaller {
     return result;
   }
 
+  unmarshallScopesArguments(requestID: number, frameIdString: string): ScopesArguments {
+    let frameId = parseInt(frameIdString, 10);
+    invariant(!isNaN(frameId));
+    let result: ScopesArguments = {
+      kind: "scopes",
+      frameId: frameId,
+    };
+    return result;
+  }
+
   unmarshallStackframesResponse(requestID: number, responseBody: string): DebuggerResponse {
     try {
       let frames = JSON.parse(responseBody);
@@ -94,6 +115,29 @@ export class MessageMarshaller {
       let result: StackframeResult = {
         kind: "stackframe",
         stackframes: frames,
+      };
+      let dbgResponse: DebuggerResponse = {
+        id: requestID,
+        result: result,
+      };
+      return dbgResponse;
+    } catch (e) {
+      throw new DebuggerError("Invalid response", e.message);
+    }
+  }
+
+  unmarshallScopesResponse(requestID: number, responseBody: string): DebuggerResponse {
+    try {
+      let scopes = JSON.parse(responseBody);
+      invariant(Array.isArray(scopes), "Scopes is not an array");
+      for (const scope of scopes) {
+        invariant(scope.hasOwnProperty("name"), "Scope is missing name");
+        invariant(scope.hasOwnProperty("variablesReference"), "Scope is missing variablesReference");
+        invariant(scope.hasOwnProperty("expensive"), "Scope is missing expensive");
+      }
+      let result: ScopesResult = {
+        kind: "scopes",
+        scopes: scopes,
       };
       let dbgResponse: DebuggerResponse = {
         id: requestID,

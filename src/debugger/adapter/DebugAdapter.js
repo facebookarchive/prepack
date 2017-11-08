@@ -176,6 +176,27 @@ class PrepackDebugSession extends LoggingDebugSession {
     };
     this.sendResponse(response);
   }
+
+  scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments): void {
+    this._adapterChannel.getScopes(response.request_seq, args.frameId, (dbgResponse: DebuggerResponse) => {
+      let result = dbgResponse.result;
+      invariant(result.kind === "scopes");
+      let scopeInfos = result.scopes;
+      let scopes: Array<DebugProtocol.Scope> = [];
+      for (const scopeInfo of scopeInfos) {
+        let scope: DebugProtocol.Scope = {
+          name: scopeInfo.name,
+          variablesReference: scopeInfo.variablesReference,
+          expensive: scopeInfo.expensive,
+        };
+        scopes.push(scope);
+      }
+      response.body = {
+        scopes: scopes,
+      };
+      this.sendResponse(response);
+    });
+  }
 }
 
 DebugSession.run(PrepackDebugSession);
