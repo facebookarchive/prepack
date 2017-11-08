@@ -13,25 +13,17 @@
 // Used to store references to variable collections since DebugProtocol
 // specifies fetching variable collections via unique IDs
 export class ReferenceMap<T> {
-  constructor(start: number) {
-    this._start = start;
-    this._counter = start;
-    this._mapping = new Map();
+  constructor() {
+    this._mapping = []
   }
-  _start: number;
-  _counter: number;
-  _mapping: { [number]: T };
+  _mapping: Array<T>;
 
   add(value: T): number {
-    this._counter += 1;
-    this._mapping[this._counter] = value;
-    return this._counter;
+    this._mapping.push(value);
+    return this._mapping.length - 1;
   }
 
   get(reference: number): void | T {
-    if (reference in this._mapping) {
-      return this._mapping[reference];
-    }
-    return undefined;
+    return this._mapping[reference];
   }
 }
