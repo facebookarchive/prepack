@@ -54,14 +54,11 @@ import {
   HasProperty,
   Get,
   GetValue,
-  PutValue,
-  DefinePropertyOrThrow,
-  Set,
   IsExtensible,
   HasOwnProperty,
   IsDataDescriptor,
-  ThrowIfMightHaveBeenDeleted,
 } from "./methods/index.js";
+import { Properties } from "./singletons.js";
 import * as t from "babel-types";
 
 const sourceMap = require("source-map");
@@ -366,7 +363,7 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
     // 4. Return ? DefinePropertyOrThrow(bindings, N, PropertyDescriptor{[[Value]]: undefined, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: configValue}).
     return new BooleanValue(
       realm,
-      DefinePropertyOrThrow(realm, bindings, N, {
+      Properties.DefinePropertyOrThrow(realm, bindings, N, {
         value: realm.intrinsics.undefined,
         writable: true,
         enumerable: true,
@@ -404,7 +401,7 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
     let bindings = envRec.object;
 
     // 3. Return ? Set(bindings, N, V, S).
-    return new BooleanValue(realm, Set(realm, bindings, N, V, S));
+    return new BooleanValue(realm, Properties.Set(realm, bindings, N, V, S));
   }
 
   // ECMA262 8.1.1.2.6
@@ -816,7 +813,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 5. If existingProp is undefined, return false.
     if (!existingProp) return false;
-    ThrowIfMightHaveBeenDeleted(existingProp.value);
+    Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
 
     // 6. If existingProp.[[Configurable]] is true, return false.
     if (existingProp.configurable) return false;
@@ -866,7 +863,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 5. If existingProp is undefined, return ? IsExtensible(globalObject).
     if (!existingProp) return IsExtensible(realm, globalObject);
-    ThrowIfMightHaveBeenDeleted(existingProp.value);
+    Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
 
     // 6. If existingProp.[[Configurable]] is true, return true.
     if (existingProp.configurable) return true;
@@ -941,18 +938,18 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
       desc = { value: V, writable: true, enumerable: true, configurable: D };
     } else {
       // 6. Else,
-      ThrowIfMightHaveBeenDeleted(existingProp.value);
+      Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
       // a. Let desc be the PropertyDescriptor{[[Value]]: V }.
       desc = { value: V };
     }
 
     // 7. Perform ? DefinePropertyOrThrow(globalObject, N, desc).
-    DefinePropertyOrThrow(this.realm, globalObject, N, desc);
+    Properties.DefinePropertyOrThrow(this.realm, globalObject, N, desc);
 
     // 8. Record that the binding for N in ObjRec has been initialized.
 
     // 9. Perform ? Set(globalObject, N, V, false).
-    Set(this.realm, globalObject, N, V, false);
+    Properties.Set(this.realm, globalObject, N, V, false);
 
     // 10. Let varDeclaredNames be envRec.[[VarNames]].
     let varDeclaredNames = envRec.$VarNames;
@@ -980,7 +977,7 @@ export class LexicalEnvironment {
 
   assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value) {
     let globalValue = this.evaluate(globalAst, false);
-    PutValue(this.realm, globalValue, rvalue);
+    Properties.PutValue(this.realm, globalValue, rvalue);
   }
 
   partiallyEvaluateCompletionDeref(

@@ -20,7 +20,7 @@ import { Invoke, Call } from "../methods/call.js";
 import { CreateArrayFromList } from "../methods/create.js";
 import { IsCallable, IsConstructor, IsPromise } from "../methods/is.js";
 import { IteratorStep, IteratorValue } from "../methods/iterator.js";
-import { ThrowIfInternalSlotNotWritable } from "../methods/properties.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 // ECMA262 8.4.1
@@ -383,11 +383,11 @@ export function PerformPromiseThen(
   // 7. If the value of promise's [[PromiseState]] internal slot is "pending", then
   if (promise.$PromiseState === "pending") {
     // a. Append fulfillReaction as the last element of the List that is the value of promise's [[PromiseFulfillReactions]] internal slot.
-    ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseFulfillReactions");
+    Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseFulfillReactions");
     invariant(promise.$PromiseFulfillReactions);
     promise.$PromiseFulfillReactions.push(fulfillReaction);
     // b. Append rejectReaction as the last element of the List that is the value of promise's [[PromiseRejectReactions]] internal slot.
-    ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseRejectReactions");
+    Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseRejectReactions");
     invariant(promise.$PromiseRejectReactions);
     promise.$PromiseRejectReactions.push(rejectReaction);
   } else if (promise.$PromiseState === "fulfilled") {
@@ -412,7 +412,7 @@ export function PerformPromiseThen(
   }
 
   // 10. Set promise's [[PromiseIsHandled]] internal slot to true.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseIsHandled").$PromiseIsHandled = true;
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseIsHandled").$PromiseIsHandled = true;
 
   // 11. Return resultCapability.[[Promise]].
   invariant(resultCapability.promise instanceof ObjectValue);
@@ -565,16 +565,24 @@ export function FulfillPromise(realm: Realm, promise: ObjectValue, value: Value)
   invariant(reactions);
 
   // 3. Set promise.[[PromiseResult]] to value.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseResult").$PromiseResult = value;
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseResult").$PromiseResult = value;
 
   // 4. Set promise.[[PromiseFulfillReactions]] to undefined.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseFulfillReactions").$PromiseFulfillReactions = undefined;
+  Properties.ThrowIfInternalSlotNotWritable(
+    realm,
+    promise,
+    "$PromiseFulfillReactions"
+  ).$PromiseFulfillReactions = undefined;
 
   // 5. Set promise.[[PromiseRejectReactions]] to undefined.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseRejectReactions").$PromiseRejectReactions = undefined;
+  Properties.ThrowIfInternalSlotNotWritable(
+    realm,
+    promise,
+    "$PromiseRejectReactions"
+  ).$PromiseRejectReactions = undefined;
 
   // 6. Set promise.[[PromiseState]] to "fulfilled".
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseState").$PromiseState = "fulfilled";
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseState").$PromiseState = "fulfilled";
 
   // 7. Return TriggerPromiseReactions(reactions, value).
   return TriggerPromiseReactions(realm, reactions, value);
@@ -590,16 +598,24 @@ export function RejectPromise(realm: Realm, promise: ObjectValue, reason: Value)
   invariant(reactions);
 
   // 3. Set promise.[[PromiseResult]] to reason.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseResult").$PromiseResult = reason;
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseResult").$PromiseResult = reason;
 
   // 4. Set promise.[[PromiseFulfillReactions]] to undefined.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseFulfillReactions").$PromiseFulfillReactions = undefined;
+  Properties.ThrowIfInternalSlotNotWritable(
+    realm,
+    promise,
+    "$PromiseFulfillReactions"
+  ).$PromiseFulfillReactions = undefined;
 
   // 5. Set promise.[[PromiseRejectReactions]] to undefined.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseRejectReactions").$PromiseRejectReactions = undefined;
+  Properties.ThrowIfInternalSlotNotWritable(
+    realm,
+    promise,
+    "$PromiseRejectReactions"
+  ).$PromiseRejectReactions = undefined;
 
   // 6. Set promise.[[PromiseState]] to "rejected".
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseState").$PromiseState = "rejected";
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseState").$PromiseState = "rejected";
 
   // 7. If promise.[[PromiseIsHandled]] is false, perform HostPromiseRejectionTracker(promise, "reject").
   if (promise.$PromiseIsHandled === false) HostPromiseRejectionTracker(realm, promise, "reject");

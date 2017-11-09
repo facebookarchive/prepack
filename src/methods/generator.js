@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import { AbruptCompletion } from "../completions.js";
 import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
 import { CreateIterResultObject } from "../methods/create.js";
-import { ThrowIfInternalSlotNotWritable } from "../methods/properties.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeBlockStatement } from "babel-types";
 
@@ -112,7 +112,7 @@ export function GeneratorResume(realm: Realm, generator: Value, value: Value): V
   methodContext.suspend();
 
   // 7. Set generator.[[GeneratorState]] to "executing".
-  ThrowIfInternalSlotNotWritable(realm, generator, "$GeneratorState").$GeneratorState = "executing";
+  Properties.ThrowIfInternalSlotNotWritable(realm, generator, "$GeneratorState").$GeneratorState = "executing";
 
   // 8. Push genContext onto the execution context stack; genContext is now the running execution context.
   realm.pushContext(genContext);

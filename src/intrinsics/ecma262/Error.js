@@ -12,13 +12,8 @@
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
 import { ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
-import {
-  DefinePropertyOrThrow,
-  Get,
-  OrdinaryCreateFromConstructor,
-  ToStringPartial,
-  ToStringValue,
-} from "../../methods/index.js";
+import { Get, OrdinaryCreateFromConstructor, ToStringPartial, ToStringValue } from "../../methods/index.js";
+import { Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 
@@ -116,7 +111,7 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
       configurable: true,
       writable: true,
     };
-    DefinePropertyOrThrow(realm, O, "stack", stackDesc);
+    Properties.DefinePropertyOrThrow(realm, O, "stack", stackDesc);
 
     // 3. If message is not undefined, then
     if (!message.mightBeUndefined()) {
@@ -132,7 +127,7 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
       };
 
       // c. Perform ! DefinePropertyOrThrow(O, "message", msgDesc).
-      DefinePropertyOrThrow(realm, O, "message", msgDesc);
+      Properties.DefinePropertyOrThrow(realm, O, "message", msgDesc);
     } else {
       message.throwIfNotConcrete();
     }

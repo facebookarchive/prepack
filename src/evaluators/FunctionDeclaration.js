@@ -15,7 +15,7 @@ import type { Value } from "../values/index.js";
 import { SetFunctionName, FunctionCreate, GeneratorFunctionCreate } from "../methods/function.js";
 import { MakeConstructor } from "../methods/construct.js";
 import { ObjectCreate } from "../methods/create.js";
-import { DefinePropertyOrThrow } from "../methods/properties.js";
+import { Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionDeclaration } from "babel-types";
@@ -46,7 +46,7 @@ export default function(
     let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
 
     // 5. Perform DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-    DefinePropertyOrThrow(realm, F, "prototype", {
+    Properties.DefinePropertyOrThrow(realm, F, "prototype", {
       value: prototype,
       writable: true,
       configurable: false,

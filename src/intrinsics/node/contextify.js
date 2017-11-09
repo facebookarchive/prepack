@@ -22,15 +22,8 @@ import {
   StringValue,
   UndefinedValue,
 } from "../../values/index.js";
-import {
-  DefinePropertyOrThrow,
-  Set,
-  Get,
-  GetFunctionRealm,
-  ToBoolean,
-  ToInteger,
-  ToString,
-} from "../../methods/index.js";
+import { Get, GetFunctionRealm, ToBoolean, ToInteger, ToString } from "../../methods/index.js";
+import { Properties } from "../../singletons.js";
 import parse from "../../utils/parse.js";
 import type { BabelNodeFile } from "babel-types";
 
@@ -132,11 +125,11 @@ export default function(realm: Realm): ObjectValue {
     let self = new ObjectValue(realm, proto, intrinsicConstructor);
 
     if (cachedDataBuf.length) {
-      Set(realm, obj, "cachedDataRejected", realm.intrinsics.true, true);
+      Properties.Set(realm, obj, "cachedDataRejected", realm.intrinsics.true, true);
     }
 
     if (produceCachedData) {
-      Set(realm, obj, "cachedDataProduced", realm.intrinsics.false, true);
+      Properties.Set(realm, obj, "cachedDataProduced", realm.intrinsics.false, true);
     }
 
     let ast;
@@ -163,13 +156,13 @@ export default function(realm: Realm): ObjectValue {
     0,
     runInDebugContextImpl
   );
-  Set(realm, obj, "runInDebugContext", runInDebugContext, true);
+  Properties.Set(realm, obj, "runInDebugContext", runInDebugContext, true);
 
   let makeContext = new NativeFunctionValue(realm, `${intrinsicName}.makeContext`, "makeContext", 0, makeContextImpl);
-  Set(realm, obj, "makeContext", makeContext, true);
+  Properties.Set(realm, obj, "makeContext", makeContext, true);
 
   let isContext = new NativeFunctionValue(realm, `${intrinsicName}.isContext`, "isContext", 0, isContextImpl);
-  Set(realm, obj, "isContext", isContext, true);
+  Properties.Set(realm, obj, "isContext", isContext, true);
 
   let ContextifyScript = new NativeFunctionValue(
     realm,
@@ -179,7 +172,7 @@ export default function(realm: Realm): ObjectValue {
     ContextifyScriptConstructor,
     true
   );
-  Set(realm, obj, "ContextifyScript", ContextifyScript, true);
+  Properties.Set(realm, obj, "ContextifyScript", ContextifyScript, true);
 
   // ContextifyScript.prototype
 
@@ -221,7 +214,7 @@ export default function(realm: Realm): ObjectValue {
     let line = lines[errorLocation.loc.line - 1] || "";
     let arrow = " ".repeat(errorLocation.loc.column) + "^";
     let decoratedStack = `${errorLocation.filename}:${errorLocation.loc.line}\n${line}\n${arrow}\n${stack.value}`;
-    Set(realm, error, "stack", new StringValue(realm, decoratedStack), false);
+    Properties.Set(realm, error, "stack", new StringValue(realm, decoratedStack), false);
 
     errorLocation.stackDecorated = true;
   }
@@ -401,14 +394,14 @@ export default function(realm: Realm): ObjectValue {
   ContextifyScriptPrototype.defineNativeMethod("runInContext", 2, runInContext);
   ContextifyScriptPrototype.defineNativeMethod("runInThisContext", 1, runInThisContext);
 
-  DefinePropertyOrThrow(realm, ContextifyScript, "prototype", {
+  Properties.DefinePropertyOrThrow(realm, ContextifyScript, "prototype", {
     value: ContextifyScriptPrototype,
     writable: true,
     enumerable: false,
     configurable: false,
   });
 
-  DefinePropertyOrThrow(realm, ContextifyScriptPrototype, "constructor", {
+  Properties.DefinePropertyOrThrow(realm, ContextifyScriptPrototype, "constructor", {
     value: ContextifyScript,
     writable: true,
     enumerable: false,

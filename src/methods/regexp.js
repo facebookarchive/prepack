@@ -13,12 +13,12 @@ import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
 import { NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
 import { ArrayCreate, OrdinaryCreateFromConstructor, CreateDataProperty } from "./create.js";
-import { DefinePropertyOrThrow, Set } from "./properties.js";
 import { ToString, ToStringPartial, ToLength } from "./to.js";
 import { Get } from "./get.js";
 import { IsCallable } from "./is.js";
 import { Call } from "./call.js";
 import { HasCompatibleType, HasSomeCompatibleType } from "./has.js";
+import { Properties } from "../singletons.js";
 
 // ECMA262 21.2.3.2.3
 export function RegExpCreate(realm: Realm, P: ?Value, F: ?Value): ObjectValue {
@@ -41,7 +41,7 @@ export function RegExpAlloc(realm: Realm, newTarget: ObjectValue): ObjectValue {
 
   // 2. Perform ! DefinePropertyOrThrow(obj, "lastIndex", PropertyDescriptor {[[Writable]]: true,
   //    [[Enumerable]]: false, [[Configurable]]: false}).
-  DefinePropertyOrThrow(realm, obj, "lastIndex", {
+  Properties.DefinePropertyOrThrow(realm, obj, "lastIndex", {
     writable: true,
     enumerable: false,
     configurable: false,
@@ -140,7 +140,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
   }
 
   // 12. Perform ? Set(obj, "lastIndex", 0, true).
-  Set(realm, obj, "lastIndex", realm.intrinsics.zero, true);
+  Properties.Set(realm, obj, "lastIndex", realm.intrinsics.zero, true);
 
   // 13. Return obj.
   return obj;
@@ -229,7 +229,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
     // a. If lastIndex > length, then
     if (lastIndex > length) {
       // i. Perform ? Set(R, "lastIndex", 0, true).
-      Set(realm, R, "lastIndex", realm.intrinsics.zero, true);
+      Properties.Set(realm, R, "lastIndex", realm.intrinsics.zero, true);
       // ii. Return null.
       return realm.intrinsics.null;
     }
@@ -242,7 +242,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
       // i. If sticky is true, then
       if (sticky) {
         // 1. Perform ? Set(R, "lastIndex", 0, true).
-        Set(realm, R, "lastIndex", realm.intrinsics.zero, true);
+        Properties.Set(realm, R, "lastIndex", realm.intrinsics.zero, true);
 
         // 2. Return null.
         return realm.intrinsics.null;
@@ -275,7 +275,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
   // 15. If global is true or sticky is true, then
   if (global === true || sticky === true) {
     // a. Perform ? Set(R, "lastIndex", e, true).
-    Set(realm, R, "lastIndex", new NumberValue(realm, e), true);
+    Properties.Set(realm, R, "lastIndex", new NumberValue(realm, e), true);
   }
 
   // 16. Let n be the length of r's captures List. (This is the same value as 21.2.2.1's NcapturingParens.)

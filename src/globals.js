@@ -14,7 +14,6 @@ import initializePrepackGlobals from "./intrinsics/prepack/global.js";
 import initializeDOMGlobals from "./intrinsics/dom/global.js";
 import initializeReactNativeGlobals from "./intrinsics/react-native/global.js";
 import initializeReactMocks from "./intrinsics/react-mocks/global.js";
-import initializeSingletons from "./initialize-singletons.js";
 
 export default function(realm: Realm): Realm {
   initializePrepackGlobals(realm);
@@ -28,6 +27,5 @@ export default function(realm: Realm): Realm {
   if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     initializeReactNativeGlobals(realm);
   }
-  initializeSingletons();
   return realm;
 }

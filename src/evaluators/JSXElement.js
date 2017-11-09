@@ -33,8 +33,8 @@ import {
   ArrayCreate,
   CreateDataPropertyOrThrow,
   ObjectCreate,
-  Set,
 } from "../methods/index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { computeBinary } from "./BinaryExpression.js";
 
@@ -212,7 +212,7 @@ function evaluateJSXChildren(
     return lastChildValue;
   }
 
-  Set(realm, array, "length", new NumberValue(realm, dynamicChildrenLength), false);
+  Properties.Set(realm, array, "length", new NumberValue(realm, dynamicChildrenLength), false);
   return array;
 }
 

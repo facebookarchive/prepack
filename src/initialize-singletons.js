@@ -11,7 +11,9 @@
 
 import * as Singletons from "./singletons.js";
 import { PathImplementation } from "./utils/paths.js";
+import { PropertiesImplementation } from "./methods/properties.js";
 
 export default function() {
   Singletons.setPath(new PathImplementation());
+  Singletons.setProperties((new PropertiesImplementation(): any));
 }

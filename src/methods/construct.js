@@ -21,9 +21,9 @@ import {
 } from "../values/index.js";
 import { IsConstructor, IsStatic } from "./is.js";
 import { ObjectCreate } from "./create.js";
-import { DefinePropertyOrThrow } from "./properties.js";
 import { Get } from "./get.js";
 import { HasSomeCompatibleType } from "./has.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeClassMethod } from "babel-types";
 
@@ -55,7 +55,7 @@ export function MakeConstructor(
     prototype.originalConstructor = F;
 
     // b. Perform ! DefinePropertyOrThrow(prototype, "constructor", PropertyDescriptor{[[Value]]: F, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: true }).
-    DefinePropertyOrThrow(realm, prototype, "constructor", {
+    Properties.DefinePropertyOrThrow(realm, prototype, "constructor", {
       value: F,
       writable: writablePrototype,
       enumerable: false,
@@ -64,7 +64,7 @@ export function MakeConstructor(
   }
 
   // 6. Perform ! DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: false}).
-  DefinePropertyOrThrow(realm, F, "prototype", {
+  Properties.DefinePropertyOrThrow(realm, F, "prototype", {
     value: prototype,
     writable: writablePrototype,
     enumerable: false,
