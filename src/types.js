@@ -289,3 +289,9 @@ export type DebugServerType = {
   checkForActions: BabelNode => void,
   shutdown: () => void,
 };
+
+export type PathType = {
+  implies(condition: AbstractValue): boolean,
+  withCondition<T>(condition: AbstractValue, evaluate: () => T): T,
+  withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T,
+};
