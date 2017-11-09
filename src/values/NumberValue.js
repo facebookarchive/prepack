@@ -42,4 +42,8 @@ export default class NumberValue extends PrimitiveValue {
   _serialize(): number {
     return this.value;
   }
+
+  toDisplayString(): string {
+    return this.value.toString();
+  }
 }

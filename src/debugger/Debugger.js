@@ -21,12 +21,12 @@ import type {
   StackframeArguments,
   ScopesArguments,
   Stackframe,
-  VariableContainer,
   Scope,
+  VariablesArguments,
 } from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
-import { ReferenceMap } from "./ReferenceMap.js";
+import { VariableFactory } from "./VariableFactory.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
@@ -36,7 +36,7 @@ export class DebugServer {
     this._lastRunRequestID = 0;
     this._channel = channel;
     this._realm = realm;
-    this._variableMapping = new ReferenceMap();
+    this._variableFactory = new VariableFactory();
     this.waitForRun();
   }
   // the collection of breakpoints
@@ -48,7 +48,7 @@ export class DebugServer {
   _channel: DebugChannel;
   _lastRunRequestID: number;
   _realm: Realm;
-  _variableMapping: ReferenceMap<VariableContainer>;
+  _variableFactory: VariableFactory;
   /* Block until adapter says to run
   /* runCondition: a function that determines whether the adapter has told
   /* Prepack to continue running
@@ -158,6 +158,10 @@ export class DebugServer {
         invariant(args.kind === "scopes");
         this.processScopesCommand(requestID, args);
         break;
+      case DebugMessage.VARIABLES_COMMAND:
+        invariant(args.kind === "variables");
+        this.processVariablesCommand(requestID, args);
+        break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
@@ -210,7 +214,7 @@ export class DebugServer {
     let scopes = [];
     if (context.variableEnvironment) {
       // get a new mapping for this collection of variables
-      let variableRef = this._variableMapping.add(context.variableEnvironment);
+      let variableRef = this._variableFactory.createReference(context.variableEnvironment);
       let scope: Scope = {
         name: "Locals",
         variablesReference: variableRef,
@@ -220,7 +224,7 @@ export class DebugServer {
     }
     if (context.lexicalEnvironment) {
       // get a new mapping for this collection of variables
-      let variableRef = this._variableMapping.add(context.variableEnvironment);
+      let variableRef = this._variableFactory.createReference(context.lexicalEnvironment);
       let scope: Scope = {
         name: "Globals",
         variablesReference: variableRef,
@@ -229,6 +233,11 @@ export class DebugServer {
       scopes.push(scope);
     }
     this._channel.sendScopesResponse(requestID, scopes);
+  }
+
+  processVariablesCommand(requestID: number, args: VariablesArguments) {
+    let variables = this._variableFactory.getVariablesByReference(args.variablesReference);
+    this._channel.sendVariablesResponse(requestID, variables);
   }
 
   shutdown() {

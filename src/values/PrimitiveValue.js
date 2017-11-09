@@ -22,4 +22,8 @@ export default class PrimitiveValue extends ConcreteValue {
   throwIfNotConcretePrimitive(): PrimitiveValue {
     return this;
   }
+
+  toDisplayString(): string {
+    invariant(false, "abstract method; please override");
+  }
 }

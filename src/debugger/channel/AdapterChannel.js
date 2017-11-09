@@ -74,6 +74,11 @@ export class AdapterChannel {
       this._prepackWaiting = true;
       this._processRequestCallback(requestID, dbgResponse);
       this.trySendNextRequest();
+    } else if (messageType === DebugMessage.VARIABLES_RESPONSE) {
+      let dbgResponse = this._marshaller.unmarshallVariablesResponse(requestID, parts.slice(2).join(" "));
+      this._prepackWaiting = true;
+      this._processRequestCallback(requestID, dbgResponse);
+      this.trySendNextRequest();
     }
   }
 
@@ -160,6 +165,12 @@ export class AdapterChannel {
 
   getScopes(requestID: number, frameId: number, callback: DebuggerResponse => void) {
     this._queue.enqueue(this._marshaller.marshallScopesRequest(requestID, frameId));
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  getVariables(requestID: number, variablesReference: number, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallVariablesRequest(requestID, variablesReference));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }

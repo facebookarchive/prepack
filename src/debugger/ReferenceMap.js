@@ -14,9 +14,11 @@
 // specifies fetching variable collections via unique IDs
 export class ReferenceMap<T> {
   constructor() {
-    this._mapping = [];
+    // index 0 is reserved for indicating there are no nested variables so we
+    // don't let any defined value occupy it here
+    this._mapping = [undefined];
   }
-  _mapping: Array<T>;
+  _mapping: Array<void | T>;
 
   add(value: T): number {
     this._mapping.push(value);
