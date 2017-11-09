@@ -13,7 +13,6 @@ import type { BabelNodeBlockStatement } from "babel-types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
-import { NormalCompletion } from "../completions.js";
 import { StringValue, Value } from "../values/index.js";
 import { EvaluateStatements, NewDeclarativeEnvironment, BlockDeclarationInstantiation } from "../methods/index.js";
 
@@ -23,7 +22,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): NormalCompletion | Value {
+): Value {
   // 1. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 
@@ -38,7 +37,7 @@ export default function(
 
   try {
     // 5. Let blockValue be the result of evaluating StatementList.
-    let blockValue: void | NormalCompletion | Value;
+    let blockValue: void | Value;
 
     if (ast.directives) {
       for (let directive of ast.directives) {

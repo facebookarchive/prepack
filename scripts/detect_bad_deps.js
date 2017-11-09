@@ -41,7 +41,7 @@ exec("flow check --profile", function(error, stdout, stderr) {
     process.exit(1);
   }
   console.log("Biggest cycle: " + cycle_len);
-  let MAX_CYCLE_LEN = 59;
+  let MAX_CYCLE_LEN = 61;
   if (cycle_len > MAX_CYCLE_LEN) {
     console.log("Error: You increased cycle length from the previous high of " + MAX_CYCLE_LEN);
     process.exit(1);

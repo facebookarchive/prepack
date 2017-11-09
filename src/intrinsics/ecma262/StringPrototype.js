@@ -29,6 +29,12 @@ import {
 import { SplitMatch, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasSomeCompatibleType } from "../../methods/has.js";
 import invariant from "../../invariant.js";
+import buildExpressionTemplate from "../../utils/builder.js";
+
+const sliceTemplateSrc = "(A).slice(B,C)";
+const sliceTemplate = buildExpressionTemplate(sliceTemplateSrc);
+const splitTemplateSrc = "(A).split(B,C)";
+const splitTemplate = buildExpressionTemplate(splitTemplateSrc);
 
 export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   // ECMA262 21.1.3
@@ -579,6 +585,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
 
+    if (O instanceof AbstractValue && O.getType() === StringValue) {
+      return AbstractValue.createFromTemplate(realm, sliceTemplate, StringValue, [O, start, end], sliceTemplateSrc);
+    }
+
     // 2. Let S be ? ToString(O).
     let S = ToString(realm, O.throwIfNotConcrete());
 
@@ -608,6 +618,16 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   obj.defineNativeMethod("split", 2, (context, [separator, limit]) => {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
+
+    if (O instanceof AbstractValue && O.getType() === StringValue) {
+      return AbstractValue.createFromTemplate(
+        realm,
+        splitTemplate,
+        StringValue,
+        [O, separator, limit],
+        splitTemplateSrc
+      );
+    }
 
     // 2. If separator is neither undefined nor null, then
     if (!HasSomeCompatibleType(separator, UndefinedValue, NullValue)) {

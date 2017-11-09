@@ -1,3 +1,4 @@
+// es6
 var modules = Object.create(null);
 
 __d = define;

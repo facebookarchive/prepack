@@ -20,7 +20,12 @@ import invariant from "../invariant.js";
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
 
 // TODO: add type for additional functions.
-export type SerializedBodyType = "MainGenerator" | "Generator" | "DelayInitializations" | "ConditionalAssignmentBranch";
+export type SerializedBodyType =
+  | "MainGenerator"
+  | "Generator"
+  | "DelayInitializations"
+  | "ConditionalAssignmentBranch"
+  | "LazyObjectInitializer";
 
 export type SerializedBody = {
   type: SerializedBodyType,
@@ -118,6 +123,15 @@ export class TimingStatistics {
   deepTraversalTime: number;
   referenceCountsTime: number;
   serializePassTime: number;
+}
+
+export class ReactStatistics {
+  constructor() {
+    this.optimizedTrees = 0;
+    this.inlinedComponents = 0;
+  }
+  optimizedTrees: number;
+  inlinedComponents: number;
 }
 
 export class SerializerStatistics {

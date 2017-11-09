@@ -517,7 +517,7 @@ export function SymbolDescriptiveString(realm: Realm, sym: SymbolValue): string 
 }
 
 // ECMA262 6.2.2.5
-export function UpdateEmpty(realm: Realm, completionRecord: Value | Completion, value: Value): Value | Completion {
+export function UpdateEmpty(realm: Realm, completionRecord: Completion | Value, value: Value): Completion | Value {
   // 1. Assert: If completionRecord.[[Type]] is either return or throw, then completionRecord.[[Value]] is not empty.
   if (completionRecord instanceof ReturnCompletion || completionRecord instanceof ThrowCompletion) {
     invariant(completionRecord.value, "expected completion record to have a value");

@@ -1,3 +1,4 @@
+// es6
 (function() {
   var myObj = {};
   var fooSym = Symbol('foo');

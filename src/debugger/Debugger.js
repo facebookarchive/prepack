@@ -11,66 +11,71 @@
 
 import type { BabelNode } from "babel-types";
 import { BreakpointCollection } from "./BreakpointCollection.js";
-import type { BreakpointCommandArguments } from "./types.js";
+import { Breakpoint } from "./Breakpoint.js";
 import invariant from "../invariant.js";
-import { DebugChannel } from "../DebugChannel.js";
+import type { DebugChannel } from "./channel/DebugChannel.js";
+import { DebugMessage } from "./channel/DebugMessage.js";
+import { DebuggerError } from "./DebuggerError.js";
+import type {
+  DebuggerRequest,
+  StackframeArguments,
+  ScopesArguments,
+  Stackframe,
+  VariableContainer,
+  Scope,
+} from "./types.js";
+import type { Realm } from "./../realm.js";
+import { ExecutionContext } from "./../realm.js";
+import { ReferenceMap } from "./ReferenceMap.js";
 
 export class DebugServer {
-  constructor(channel: DebugChannel) {
-    this.breakpoints = new BreakpointCollection();
-    this.previousExecutedLine = 0;
-    this.previousExecutedCol = 0;
-    this.channel = channel;
-    this.waitForRun(function(line) {
-      return line === "Run";
-    });
+  constructor(channel: DebugChannel, realm: Realm) {
+    this._breakpoints = new BreakpointCollection();
+    this._previousExecutedLine = 0;
+    this._previousExecutedCol = 0;
+    this._lastRunRequestID = 0;
+    this._channel = channel;
+    this._realm = realm;
+    this._variableMapping = new ReferenceMap();
+    this.waitForRun();
   }
   // the collection of breakpoints
-  breakpoints: BreakpointCollection;
-  previousExecutedFile: void | string;
-  previousExecutedLine: number;
-  previousExecutedCol: number;
+  _breakpoints: BreakpointCollection;
+  _previousExecutedFile: void | string;
+  _previousExecutedLine: number;
+  _previousExecutedCol: number;
   // the channel to communicate with the adapter
-  channel: DebugChannel;
-
+  _channel: DebugChannel;
+  _lastRunRequestID: number;
+  _realm: Realm;
+  _variableMapping: ReferenceMap<VariableContainer>;
   /* Block until adapter says to run
   /* runCondition: a function that determines whether the adapter has told
   /* Prepack to continue running
   */
-  waitForRun(runCondition: string => boolean) {
-    let blocking = true;
-    let line = "";
-    while (blocking) {
-      line = this.channel.readIn().toString();
-      if (runCondition(line)) {
-        //The adapter gave the command to continue running
-        //The caller (or someone else later) needs to send a response
-        //to the adapter
-        //We cannot pass in the response too because it may not be ready
-        //immediately after Prepack unblocks
-        blocking = false;
-      } else {
-        //The adapter gave another command so Prepack still blocks
-        //but can read in other commands and respond to them
-        this.executeCommand(line);
-      }
+  waitForRun() {
+    let keepRunning = false;
+    let request;
+    while (!keepRunning) {
+      request = this._channel.readIn();
+      keepRunning = this.processDebuggerCommand(request);
     }
   }
 
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
     this.checkForBreakpoint(ast);
-
     // last step: set the current location as the previously executed line
     if (ast.loc && ast.loc.source !== null) {
-      this.previousExecutedFile = ast.loc.source;
-      this.previousExecutedLine = ast.loc.start.line;
-      this.previousExecutedCol = ast.loc.start.column;
+      this._previousExecutedFile = ast.loc.source;
+      this._previousExecutedLine = ast.loc.start.line;
+      this._previousExecutedCol = ast.loc.start.column;
     }
   }
 
-  proceedBreakpoint(filePath: string, lineNum: number, colNum: number): boolean {
-    let breakpoint = this.breakpoints.getBreakpoint(filePath, lineNum, colNum);
+  // Try to find a breakpoint at the given location and check if we should stop on it
+  findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
+    let breakpoint = this._breakpoints.getBreakpoint(filePath, lineNum, colNum);
     if (breakpoint && breakpoint.enabled) {
       // checking if this is the same file and line we stopped at last time
       // if so, we should skip it this time
@@ -78,16 +83,24 @@ export class DebugServer {
       // breakpoint consecutively (e.g. the statement is in a loop), some other
       // ast node (e.g. block, loop) must have been checked in between so
       // previousExecutedFile and previousExecutedLine will have changed
-      if (
-        filePath === this.previousExecutedFile &&
-        lineNum === this.previousExecutedLine &&
-        colNum === this.previousExecutedCol
-      ) {
-        return false;
+      if (breakpoint.column !== 0) {
+        // this is a column breakpoint
+        if (
+          filePath === this._previousExecutedFile &&
+          lineNum === this._previousExecutedLine &&
+          colNum === this._previousExecutedCol
+        ) {
+          return null;
+        }
+      } else {
+        // this is a line breakpoint
+        if (filePath === this._previousExecutedFile && lineNum === this._previousExecutedLine) {
+          return null;
+        }
       }
-      return true;
+      return breakpoint;
     }
-    return false;
+    return null;
   }
 
   checkForBreakpoint(ast: BabelNode) {
@@ -97,71 +110,129 @@ export class DebugServer {
       if (filePath === null) return;
       let lineNum = location.start.line;
       let colNum = location.start.column;
-
       // Check whether there is a breakpoint we need to stop on here
-      if (!this.proceedBreakpoint(filePath, lineNum, colNum)) return;
-
+      let breakpoint = this.findStoppableBreakpoint(filePath, lineNum, colNum);
+      if (breakpoint === null) return;
       // Tell the adapter that Prepack has stopped on this breakpoint
-      this.channel.writeOut(`breakpoint stopped ${lineNum}:${colNum}`);
-
+      this._channel.sendBreakpointStopped(breakpoint.filePath, breakpoint.line, breakpoint.column);
       // Wait for the adapter to tell us to run again
-      this.waitForRun(function(line) {
-        return line === "proceed";
-      });
+      this.waitForRun();
     }
   }
 
-  executeCommand(command: string) {
-    if (command.length === 0) {
-      return;
+  // Process a command from a debugger. Returns whether Prepack should unblock
+  // if it is blocked
+  processDebuggerCommand(request: DebuggerRequest) {
+    let requestID = request.id;
+    let command = request.command;
+    let args = request.arguments;
+    switch (command) {
+      case DebugMessage.BREAKPOINT_ADD_COMMAND:
+        invariant(args.kind === "breakpoint");
+        this._breakpoints.addBreakpoint(args.filePath, args.line, args.column);
+        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
+        break;
+      case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
+        invariant(args.kind === "breakpoint");
+        this._breakpoints.removeBreakpoint(args.filePath, args.line, args.column);
+        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
+        break;
+      case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
+        invariant(args.kind === "breakpoint");
+        this._breakpoints.enableBreakpoint(args.filePath, args.line, args.column);
+        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
+        break;
+      case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
+        invariant(args.kind === "breakpoint");
+        this._breakpoints.disableBreakpoint(args.filePath, args.line, args.column);
+        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
+        break;
+      case DebugMessage.PREPACK_RUN_COMMAND:
+        invariant(args.kind === "run");
+        return true;
+      case DebugMessage.STACKFRAMES_COMMAND:
+        invariant(args.kind === "stackframe");
+        this.processStackframesCommand(requestID, args);
+        break;
+      case DebugMessage.SCOPES_COMMAND:
+        invariant(args.kind === "scopes");
+        this.processScopesCommand(requestID, args);
+        break;
+      default:
+        throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
-    let parts = command.split(" ");
-    if (parts[0] === "breakpoint") {
-      this.executeBreakpointCommand(this._parseBreakpointArguments(parts));
-    }
+    return false;
   }
 
-  executeBreakpointCommand(args: BreakpointCommandArguments) {
-    if (args.kind === "add") {
-      this.breakpoints.addBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(`added breakpoint ${args.filePath} ${args.lineNum} ${args.columnNum}`);
-    } else if (args.kind === "remove") {
-      this.breakpoints.removeBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(`removed breakpoint ${args.filePath} ${args.lineNum} ${args.columnNum}`);
-    } else if (args.kind === "enable") {
-      this.breakpoints.enableBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(`enabled breakpoint ${args.filePath} ${args.lineNum} ${args.columnNum}`);
-    } else if (args.kind === "disable") {
-      this.breakpoints.disableBreakpoint(args.filePath, args.lineNum, args.columnNum);
-      this.channel.writeOut(`disabled breakpoint ${args.filePath} ${args.lineNum} ${args.columnNum}`);
+  processStackframesCommand(requestID: number, args: StackframeArguments) {
+    let frameInfos: Array<Stackframe> = [];
+    let loc = this._realm.currentLocation;
+
+    // the UI displays the current frame as index 0, so we iterate backwards
+    // from the current frame
+    for (let i = this._realm.contextStack.length - 1; i >= 0; i--) {
+      let frame = this._realm.contextStack[i];
+      let functionName = "(anonymous function)";
+      if (frame.function && frame.function.__originalName) {
+        functionName = frame.function.__originalName;
+      }
+      let fileName = "unknown";
+      let line = 0;
+      let column = 0;
+      if (loc && loc.source) {
+        fileName = loc.source;
+        line = loc.start.line;
+        column = loc.start.column;
+      }
+      let frameInfo: Stackframe = {
+        id: this._realm.contextStack.length - 1 - i,
+        functionName: functionName,
+        fileName: fileName,
+        line: line,
+        column: column,
+      };
+      frameInfos.push(frameInfo);
+      loc = frame.loc;
     }
+    this._channel.sendStackframeResponse(requestID, frameInfos);
   }
 
-  _parseBreakpointArguments(parts: Array<string>): BreakpointCommandArguments {
-    invariant(parts[0] === "breakpoint");
-    let kind = parts[1];
-    let filePath = parts[2];
-
-    let lineNum = parseInt(parts[3], 10);
-    invariant(!isNaN(lineNum));
-    let columnNum = 0;
-    if (parts.length === 5) {
-      columnNum = parseInt(parts[4], 10);
-      invariant(!isNaN(columnNum));
+  processScopesCommand(requestID: number, args: ScopesArguments) {
+    // first check that frameId is in the valid range
+    if (args.frameId < 0 || args.frameId >= this._realm.contextStack.length) {
+      throw new DebuggerError("Invalid command", "Invalid frame id for scopes request: " + args.frameId);
     }
-
-    let result: BreakpointCommandArguments = {
-      kind: kind,
-      filePath: filePath,
-      lineNum: lineNum,
-      columnNum: columnNum,
-    };
-
-    return result;
+    // here the frameId is in reverse order of the contextStack, ie frameId 0
+    // refers to last element of contextStack
+    let stackIndex = this._realm.contextStack.length - 1 - args.frameId;
+    let context = this._realm.contextStack[stackIndex];
+    invariant(context instanceof ExecutionContext);
+    let scopes = [];
+    if (context.variableEnvironment) {
+      // get a new mapping for this collection of variables
+      let variableRef = this._variableMapping.add(context.variableEnvironment);
+      let scope: Scope = {
+        name: "Locals",
+        variablesReference: variableRef,
+        expensive: false,
+      };
+      scopes.push(scope);
+    }
+    if (context.lexicalEnvironment) {
+      // get a new mapping for this collection of variables
+      let variableRef = this._variableMapping.add(context.variableEnvironment);
+      let scope: Scope = {
+        name: "Globals",
+        variablesReference: variableRef,
+        expensive: false,
+      };
+      scopes.push(scope);
+    }
+    this._channel.sendScopesResponse(requestID, scopes);
   }
 
   shutdown() {
     //let the adapter know Prepack is done running
-    this.channel.writeOut("Finished");
+    this._channel.sendPrepackFinish();
   }
 }

@@ -14,6 +14,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BooleanValue,
+  ConcreteValue,
   FunctionValue,
   NativeFunctionValue,
   ObjectValue,
@@ -72,7 +73,35 @@ export default function(realm: Realm): void {
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
-    value: new NativeFunctionValue(
+    value: createAbstract(),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__abstractOrNull", {
+    value: createAbstract(realm.intrinsics.null),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__abstractOrNullOrUndefined", {
+    value: createAbstract(realm.intrinsics.null, realm.intrinsics.undefined),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__abstractOrUndefined", {
+    value: createAbstract(realm.intrinsics.undefined),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  function createAbstract(...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
+    return new NativeFunctionValue(
       realm,
       "global.__abstract",
       "__abstract",
@@ -111,13 +140,13 @@ export default function(realm: Realm): void {
           template.makePartial();
           if (nameString) realm.rebuildNestedProperties(result, nameString);
         }
+
+        if (additionalValues.length > 0)
+          result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
         return result;
       }
-    ),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+    );
+  }
 
   global.$DefineOwnProperty("__additionalFunctions", {
     value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__additionalFunctions", true),
@@ -126,7 +155,7 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  let uid = 0;
+  let additonalFunctionUid = 0;
   // Allows dynamically registering additional functions.
   // WARNING: these functions will get exposed at global scope and called there.
   // NB: If we interpret one of these calls in an evaluateForEffects context
@@ -143,7 +172,7 @@ export default function(realm: Realm): void {
         realm.assignToGlobal(
           t.memberExpression(
             t.memberExpression(t.identifier("global"), t.identifier("__additionalFunctions")),
-            t.identifier("" + uid++)
+            t.identifier("" + additonalFunctionUid++)
           ),
           functionValue
         );
@@ -154,6 +183,39 @@ export default function(realm: Realm): void {
     enumerable: false,
     configurable: true,
   });
+
+  if (realm.react.enabled) {
+    global.$DefineOwnProperty("__reactComponentRoots", {
+      value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__reactComponentRoots", true),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
+    let reactComponentRootUid = 0;
+    // this is almost a copy of the additionalFunctions code above
+    global.$DefineOwnProperty("__registerReactComponentRoot", {
+      value: new NativeFunctionValue(
+        realm,
+        "global.__registerReactComponentRoot",
+        "__registerReactComponentRoot",
+        0,
+        (context, [functionValue]) => {
+          invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+          realm.assignToGlobal(
+            t.memberExpression(
+              t.memberExpression(t.identifier("global"), t.identifier("__reactComponentRoots")),
+              t.identifier("" + reactComponentRootUid++)
+            ),
+            functionValue
+          );
+          return realm.intrinsics.undefined;
+        }
+      ),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
+  }
 
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized

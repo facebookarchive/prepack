@@ -1,3 +1,4 @@
+// es6
 let a = {a:1};
 let b = {b:3};
 let c = {c:5};

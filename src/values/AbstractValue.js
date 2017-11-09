@@ -177,6 +177,12 @@ export default class AbstractValue extends Value {
     // Neither this nor val is a known value, so we need to some reasoning based on the structure
     if (this.equals(val)) return true; // x => x regardless of its value
     if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
+    // x => x !== null && x !== undefined
+    if (val instanceof AbstractValue && val.kind === "!==") {
+      let [x, y] = val.args;
+      if (this.equals(x)) return y instanceof NullValue || y instanceof UndefinedValue;
+      if (this.equals(y)) return x instanceof NullValue || x instanceof UndefinedValue;
+    }
     return false;
   }
 
@@ -320,6 +326,11 @@ export default class AbstractValue extends Value {
   }
 
   throwIfNotConcreteObject(): ObjectValue {
+    AbstractValue.reportIntrospectionError(this);
+    throw new FatalError();
+  }
+
+  throwIfNotConcretePrimitive(): PrimitiveValue {
     AbstractValue.reportIntrospectionError(this);
     throw new FatalError();
   }
@@ -531,6 +542,31 @@ export default class AbstractValue extends Value {
     } else {
       return realm.generator.derive(types, values, args, buildFunction);
     }
+  }
+
+  // Creates a union of an abstract value with one or more concrete values.
+  // The build node for the abstract values becomes the build node for the union.
+  // Use this only to allow instrinsic abstract objects to be null and/or undefined.
+  static createAbstractConcreteUnion(realm: Realm, ...elements: Array<Value>) {
+    let concreteValues: Array<ConcreteValue> = (elements.filter(e => e instanceof ConcreteValue): any);
+    invariant(concreteValues.length > 0 && concreteValues.length === elements.length - 1);
+    let concreteSet = new Set(concreteValues);
+    let abstractValue = elements.find(e => e instanceof AbstractValue);
+    invariant(abstractValue instanceof AbstractValue);
+    let values;
+    if (!abstractValue.values.isTop()) {
+      abstractValue.values.getElements().forEach(v => concreteSet.add(v));
+      values = new ValuesDomain(concreteSet);
+    } else {
+      values = ValuesDomain.topVal;
+    }
+    let types = TypesDomain.topVal;
+    let [hash, operands] = hashCall("union", ...elements);
+    let result = new AbstractValue(realm, types, values, hash, operands, abstractValue._buildNode, {
+      kind: "abstractConcreteUnion",
+    });
+    result.expressionLocation = realm.currentLocation;
+    return result;
   }
 
   static generateErrorInformationForAbstractVal(val: AbstractValue): string {

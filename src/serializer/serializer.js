@@ -17,9 +17,10 @@ import { Generator } from "../utils/generator.js";
 import generate from "babel-generator";
 import type SourceMap from "babel-generator";
 import traverseFast from "../utils/traverse-fast.js";
+import { stripFlowTypeAnnotations } from "../flow/utils.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics } from "./types.js";
+import { TimingStatistics, SerializerStatistics, ReactStatistics } from "./types.js";
 import type { ReactSerializerState } from "./types.js";
 import { Functions } from "./functions.js";
 import { Logger } from "./logger.js";
@@ -28,6 +29,7 @@ import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
+import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
 import * as t from "babel-types";
 
 export class Serializer {
@@ -112,6 +114,11 @@ export class Serializer {
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
     this.functions.checkThatFunctionsAreIndependent();
+    let reactStatistics = null;
+    if (this.realm.react.enabled) {
+      reactStatistics = new ReactStatistics();
+      this.functions.checkReactRootComponents(reactStatistics, this.react);
+    }
 
     if (this.options.initializeMoreModules) {
       if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
@@ -150,7 +157,7 @@ export class Serializer {
         residualHeapVisitor.values,
         residualHeapVisitor.functionInstances,
         residualHeapVisitor.functionInfos,
-        !!this.options.delayInitializations,
+        this.options,
         residualHeapVisitor.referencedDeclaredValues,
         additionalFunctionValuesAndEffects,
         residualHeapVisitor.additionalFunctionValueInfos,
@@ -164,7 +171,8 @@ export class Serializer {
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
-    let residualHeapSerializer = new ResidualHeapSerializer(
+    const TargetSerializer = this.options.lazyObjectsRuntime != null ? LazyObjectsSerializer : ResidualHeapSerializer;
+    let residualHeapSerializer = new TargetSerializer(
       this.realm,
       this.logger,
       this.modules,
@@ -173,7 +181,7 @@ export class Serializer {
       residualHeapVisitor.values,
       residualHeapVisitor.functionInstances,
       residualHeapVisitor.functionInfos,
-      !!this.options.delayInitializations,
+      this.options,
       residualHeapVisitor.referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
       residualHeapVisitor.additionalFunctionValueInfos,
@@ -182,6 +190,9 @@ export class Serializer {
     );
 
     let ast = residualHeapSerializer.serialize();
+    if (this.realm.react.enabled && this.realm.react.flowRequired) {
+      stripFlowTypeAnnotations(ast);
+    }
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
     if (timingStats !== undefined) {
       timingStats.serializePassTime = Date.now() - timingStats.serializePassTime;
@@ -192,6 +203,7 @@ export class Serializer {
     return {
       code: generated.code,
       map: generated.map,
+      reactStatistics,
       statistics: residualHeapSerializer.statistics,
       timingStats: timingStats,
     };

@@ -1,20 +1,10 @@
+// es6
 // react
 // babel:jsx
 
-function MyComponent(props) {
-  return <span>{props.title}</span>;
+function MyComponent() {
+  // ...
 }
-MyComponent.defaultProps = {
-  title: 'Hello world',
-  children: 'No children!',
-};
-
-function ChildComponent(props) {
-  return <span>{props.title}</span>;
-}
-ChildComponent.defaultProps = {
-  title: 'I am a child',
-};
 
 function createElement(type, options, ...children) {
   let key = null;
@@ -52,10 +42,8 @@ global.React = {
   createElement,
 };
 
-global.reactElement = (
-  <MyComponent>
-    <ChildComponent title={"I am a child (overwritten)"} />
-  </MyComponent>
-);
+global.reactElement = createElement('div', null, createElement(MyComponent, {
+  foo: 'bar'
+}, 'Hello world'));
 
 inspect = function() { return reactElement; }

@@ -24,6 +24,7 @@ import type {
   AbstractObjectValue,
 } from "./values/index.js";
 import { ObjectValue } from "./values/index.js";
+import { BabelNode } from "babel-types";
 
 export const ElementSize = {
   Float32: 4,
@@ -283,3 +284,8 @@ export type ObjectKind =
   | TypedArrayKind
   | "ReactElement";
 // TODO #26 #712: Promises. All kinds of iterators. Generators.
+
+export type DebugServerType = {
+  checkForActions: BabelNode => void,
+  shutdown: () => void,
+};

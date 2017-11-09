@@ -34,7 +34,7 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
-import { isReactElement } from "../utils/jsx";
+import { isReactElement } from "../react/utils.js";
 import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
 import {
   joinValuesAsConditional,
@@ -52,6 +52,7 @@ import {
   ThrowIfMightHaveBeenDeleted,
 } from "../methods/index.js";
 import invariant from "../invariant.js";
+import type { typeAnnotation } from "babel-types";
 
 export default class ObjectValue extends ConcreteValue {
   constructor(
@@ -172,6 +173,9 @@ export default class ObjectValue extends ConcreteValue {
   $IteratedSet: void | ObjectValue | UndefinedValue;
   $SetData: void | Array<void | Value>;
 
+  // react
+  $SuperTypeParameters: void | typeAnnotation;
+
   // map
   $MapIterationKind: void | IterationKind;
   $MapNextIndex: void | NumberValue;
@@ -239,6 +243,9 @@ export default class ObjectValue extends ConcreteValue {
   // when deriving an abstract value via a generator.
   intrinsicNameGenerated: void | true;
   hashValue: void | number;
+
+  // ReactElement
+  $BailOutReason: void | string;
 
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();

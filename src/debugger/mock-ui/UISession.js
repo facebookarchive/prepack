@@ -13,6 +13,8 @@ import readline from "readline";
 import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
+import { DebuggerConstants } from "./../DebuggerConstants";
+import { LaunchRequestArguments } from "./../types.js";
 
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
@@ -22,18 +24,26 @@ const TWO_CRLF = "\r\n\r\n";
  * sends the commands to the adapter and process any responses
 */
 export class UISession {
-  constructor(proc: Process, adapterPath: string, prepackCommand: string) {
+  constructor(proc: Process, adapterPath: string, prepackCommand: string, inFilePath: string, outFilePath: string) {
     this._proc = proc;
     this._adapterPath = adapterPath;
     this._prepackCommand = prepackCommand;
+    this._inFilePath = inFilePath;
+    this._outFilePath = outFilePath;
     this._sequenceNum = 1;
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
+    this._prepackWaiting = false;
+    this._prepackLaunched = false;
   }
   // the parent (i.e. ui) process
   _proc: Process;
   //path to the debug adapter
   _adapterPath: string;
+  // path to debugger input file
+  _inFilePath: string;
+  // path to debugger output file
+  _outFilePath: string;
   // the child (i.e. adapter) process
   _adapterProcess: child_process.ChildProcess;
 
@@ -47,9 +57,13 @@ export class UISession {
   _prepackCommand: string;
   // handler for any received messages
   _dataHandler: DataHandler;
+  // flag whether Prepack is waiting for a command
+  _prepackWaiting: boolean;
+  // flag whether Prepack has been launched
+  _prepackLaunched: boolean;
 
   _startAdapter() {
-    let adapterArgs = [this._adapterPath, "--prepack", this._prepackCommand];
+    let adapterArgs = [this._adapterPath];
     this._adapterProcess = child_process.spawn("node", adapterArgs);
     this._proc.on("exit", () => {
       this.shutdown();
@@ -57,16 +71,9 @@ export class UISession {
     this._proc.on("SIGINT", () => {
       this.shutdown();
     });
-    this._adapterProcess.on("exit", () => {
-      this.shutdown();
-    });
     this._adapterProcess.stdout.on("data", (data: Buffer) => {
       //handle the received data
       this._dataHandler.handleData(data, this._processMessage.bind(this));
-      //ask the user for the next command
-      this._reader.question("(dbg) ", (input: string) => {
-        this._dispatch(input);
-      });
     });
     this._adapterProcess.stderr.on("data", (data: Buffer) => {
       console.error(data.toString());
@@ -87,16 +94,87 @@ export class UISession {
       console.error(e);
       console.error("Invalid message: " + message.slice(0, 1000));
     }
+    //ask the user for the next command
+    if (this._prepackLaunched && this._prepackWaiting) {
+      this._reader.question("(dbg) ", (input: string) => {
+        this._dispatch(input);
+      });
+    }
   }
 
   _processEvent(event: DebugProtocol.Event) {
-    // to be implemented
-    console.log(event);
+    if (event.event === "initialized") {
+      // the adapter is ready to accept any persisted debug information
+      // (e.g. persisted breakpoints from previous sessions). the CLI
+      // does not have any persisted info, so we can send configDone immediately
+      let configDoneArgs: DebugProtocol.ConfigurationDoneArguments = {};
+      this._sendConfigDoneRequest(configDoneArgs);
+    } else if (event.event === "output") {
+      this._uiOutput("Prepack output:\n" + event.body.output);
+    } else if (event.event === "terminated") {
+      this._uiOutput("Prepack exited! Shutting down...");
+      this.shutdown();
+    } else if (event.event === "stopped") {
+      this._prepackWaiting = true;
+      if (event.body) {
+        if (event.body.reason === "entry") {
+          this._uiOutput("Prepack is ready");
+          this._prepackLaunched = true;
+          // start reading requests from the user
+          this._reader.question("(dbg) ", (input: string) => {
+            this._dispatch(input);
+          });
+        } else if (event.body.reason.startsWith("breakpoint")) {
+          this._uiOutput("Prepack stopped on: " + event.body.reason);
+        }
+      }
+    }
   }
 
   _processResponse(response: DebugProtocol.Response) {
-    // to be implemented
-    console.log(response);
+    if (response.command === "initialize") {
+      this._processInitializeResponse(((response: any): DebugProtocol.InitializeResponse));
+    } else if (response.command === "threads") {
+      this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
+    } else if (response.command === "stackTrace") {
+      //flow doesn't have type refinement for interfaces, so must do a cast here
+      this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
+    } else if (response.command === "scopes") {
+      this._processScopesResponse(((response: any): DebugProtocol.ScopesResponse));
+    }
+  }
+
+  _processScopesResponse(response: DebugProtocol.ScopesResponse) {
+    let scopes = response.body.scopes;
+    for (const scope of scopes) {
+      this._uiOutput(`${scope.name} ${scope.variablesReference}`);
+    }
+  }
+
+  _processInitializeResponse(response: DebugProtocol.InitializeResponse) {
+    let launchArgs: LaunchRequestArguments = {
+      prepackCommand: this._prepackCommand,
+      inFilePath: this._inFilePath,
+      outFilePath: this._outFilePath,
+    };
+    this._sendLaunchRequest(launchArgs);
+  }
+
+  _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {
+    let frames = response.body.stackFrames;
+    for (const frame of frames) {
+      if (frame.source && frame.source.path) {
+        this._uiOutput(`${frame.id}: ${frame.name} ${frame.source.path} ${frame.line}:${frame.column}`);
+      } else {
+        this._uiOutput(`${frame.id}: ${frame.name} unknown source`);
+      }
+    }
+  }
+
+  _processThreadsResponse(response: DebugProtocol.ThreadsResponse) {
+    for (const thread of response.body.threads) {
+      this._uiOutput(`${thread.id}: ${thread.name}`);
+    }
   }
 
   // execute a command if it is valid
@@ -109,28 +187,50 @@ export class UISession {
     // they can be done from the adapter without user input
 
     switch (command) {
-      case "init":
-        //format: init <clientID> <adapterID>
-        if (parts.length !== 3) return false;
-        let initArgs: DebugProtocol.InitializeRequestArguments = {
-          // a unique name for each UI (e.g Nuclide, VSCode, CLI)
-          clientID: parts[1],
-          // a unique name for each adapter
-          adapterID: parts[2],
-          linesStartAt1: true,
-          columnsStartAt1: true,
-          supportsVariableType: true,
-          supportsVariablePaging: false,
-          supportsRunInTerminalRequest: false,
-          pathFormat: "path",
-        };
-        this._sendInitializeRequest(initArgs);
-        break;
-      case "configDone":
-        // format: configDone
+      case "run":
+        // format: run
         if (parts.length !== 1) return false;
-        let configDoneArgs: DebugProtocol.ConfigurationDoneArguments = {};
-        this._sendConfigDoneRequest(configDoneArgs);
+        let continueArgs: DebugProtocol.ContinueArguments = {
+          // Prepack will only have 1 thread, this argument will be ignored
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendContinueRequest(continueArgs);
+        break;
+      case "breakpoint":
+        // format: breakpoint add <filePath> <line> ?<column>
+        if (parts.length !== 4 && parts.length !== 5) return false;
+        if (parts[1] === "add") {
+          let filePath = parts[2];
+          let line = parseInt(parts[3], 10);
+          if (isNaN(line)) return false;
+          let column = 0;
+          if (parts.length === 5) {
+            column = parseInt(parts[4], 10);
+            if (isNaN(column)) return false;
+          }
+          this._sendBreakpointRequest(filePath, line, column);
+        }
+        break;
+      case "stackframes":
+        // format: stackFrames
+        let stackFrameArgs: DebugProtocol.StackTraceArguments = {
+          // Prepack will only have 1 thread, this argument will be ignored
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStackFramesRequest(stackFrameArgs);
+        break;
+      case "threads":
+        if (parts.length !== 1) return false;
+        this._sendThreadsRequest();
+        break;
+      case "scopes":
+        if (parts.length !== 2) return false;
+        let frameId = parseInt(parts[1], 10);
+        if (isNaN(frameId)) return false;
+        let scopesArgs: DebugProtocol.ScopesArguments = {
+          frameId: frameId,
+        };
+        this._sendScopesRequest(scopesArgs);
         break;
       default:
         // invalid command
@@ -174,12 +274,91 @@ export class UISession {
     this._packageAndSend(json);
   }
 
+  // tell the adapter to start Prepack
+  _sendLaunchRequest(args: DebugProtocol.LaunchRequestArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "launch",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
   // tell the adapter that configuration is done so it can expect other commands
   _sendConfigDoneRequest(args: DebugProtocol.ConfigurationDoneArguments) {
     let message = {
       type: "request",
       seq: this._sequenceNum,
       command: "configurationDone",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  // tell the adapter to continue running Prepack
+  _sendContinueRequest(args: DebugProtocol.ContinueArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "continue",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+    this._prepackWaiting = false;
+  }
+
+  _sendBreakpointRequest(filePath: string, line: number, column: number = 0) {
+    let source: DebugProtocol.Source = {
+      path: filePath,
+    };
+    let breakpoint: DebugProtocol.SourceBreakpoint = {
+      line: line,
+      column: column,
+    };
+    let args: DebugProtocol.SetBreakpointsArguments = {
+      source: source,
+      breakpoints: [breakpoint],
+    };
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "setBreakpoints",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStackFramesRequest(args: DebugProtocol.StackTraceArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "stackTrace",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendThreadsRequest() {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "threads",
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendScopesRequest(args: DebugProtocol.ScopesArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "scopes",
       arguments: args,
     };
     let json = JSON.stringify(message);
@@ -196,15 +375,31 @@ export class UISession {
     this._sequenceNum++;
   }
 
+  _uiOutput(message: string) {
+    console.log(message);
+  }
+
   serve() {
+    this._uiOutput("Debugger is starting up Prepack...");
     // Set up the adapter connection
     this._startAdapter();
 
+    // send an initialize request to the adapter to fetch some configuration details
+    let initArgs: DebugProtocol.InitializeRequestArguments = {
+      // a unique name for each UI (e.g Nuclide, VSCode, CLI)
+      clientID: "Prepack-Debugger-CLI",
+      // a unique name for each adapter
+      adapterID: "Prepack-Debugger-Adapter",
+      linesStartAt1: true,
+      columnsStartAt1: true,
+      supportsVariableType: true,
+      supportsVariablePaging: false,
+      supportsRunInTerminalRequest: false,
+      pathFormat: "path",
+    };
+    this._sendInitializeRequest(initArgs);
+
     this._reader = readline.createInterface({ input: this._proc.stdin, output: this._proc.stdout });
-    // Start taking in commands and execute them
-    this._reader.question("(dbg) ", (input: string) => {
-      this._dispatch(input);
-    });
   }
 
   shutdown() {

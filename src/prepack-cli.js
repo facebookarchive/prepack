@@ -44,6 +44,7 @@ function run(
     --maxStackDepth          Specify the maximum call stack depth.
     --timeout                The amount of time in seconds until Prepack should time out.
     --additionalFunctions    Additional functions that should be prepacked (comma separated).
+    --lazyObjectsRuntime     Enable lazy objects feature and specify the JS runtime that support this feature.
     --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
                              Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
     --speculate              Enable speculative initialization of modules (for the module system Prepack has builtin
@@ -70,6 +71,7 @@ function run(
   let maxStackDepth: number;
   let timeout: number;
   let additionalFunctions: Array<string>;
+  let lazyObjectsRuntime: string;
   let debugInFilePath: string;
   let debugOutFilePath: string;
   let flags = {
@@ -140,9 +142,18 @@ function run(
           let line = args.shift();
           additionalFunctions = line.split(",");
           break;
+        case "debugInFilePath":
+          debugInFilePath = args.shift();
+          break;
+        case "debugOutFilePath":
+          debugOutFilePath = args.shift();
+          break;
+        case "lazyObjectsRuntime":
+          lazyObjectsRuntime = args.shift();
+          break;
         case "help":
           console.log(
-            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ]" +
+            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ] [ --lazyObjectsRuntime lazyObjectsRuntimeName]" +
               Object.keys(flags).map(s => "[ --" + s + "]").join(" ") +
               "\n" +
               HELP_STR
@@ -171,12 +182,22 @@ function run(
       maxStackDepth: maxStackDepth,
       timeout: timeout,
       additionalFunctions: additionalFunctions,
+      lazyObjectsRuntime: lazyObjectsRuntime,
       enableDebugger: false, //always turn off debugger until debugger is fully built
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
     },
     flags
   );
+  if (
+    lazyObjectsRuntime &&
+    (resolvedOptions.additionalFunctions || resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)
+  ) {
+    console.error(
+      "lazy objects feature is incompatible with additionalFunctions, delayInitializations and inlineExpressions options"
+    );
+    process.exit(1);
+  }
 
   let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
   function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {

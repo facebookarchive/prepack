@@ -1,3 +1,4 @@
+// es6
 let a = {a:1};
 let b = {b:2};
 var m = new WeakSet([a, b]);

@@ -18,14 +18,14 @@ import * as partialEvaluators from "./partial-evaluators/index.js";
 import { NewGlobalEnvironment } from "./methods/index.js";
 import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/Debugger.js";
-import { DebugChannel } from "./DebugChannel.js";
+import type { DebugChannel } from "./debugger/channel/DebugChannel.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
 
 export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {
   let r = new Realm(opts);
   if (debugChannel) {
     if (debugChannel.debuggerIsAttached()) {
-      r.debuggerInstance = new DebugServer(debugChannel);
+      r.debuggerInstance = new DebugServer(debugChannel, r);
     }
   }
 

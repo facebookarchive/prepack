@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.11-alpha.0",
+  "version": "0.2.12-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -41,7 +41,8 @@
     "test-error-handler-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -o coverage-sourcemapped.error -t html",
     "test-node-cli-mode": "bash < scripts/test-node-cli-mode.sh",
     "test-std-in": "bash < scripts/test-std-in.sh",
-    "test": "yarn test-residual && yarn test-serializer && yarn test-sourcemaps && yarn test-error-handler && yarn test-std-in && yarn test-test262 && yarn test-internal",
+    "test-react": "jest scripts/test-react",
+    "test": "yarn test-residual && yarn test-serializer && yarn test-sourcemaps && yarn test-error-handler && yarn test-std-in && yarn test-test262 && yarn test-react && yarn test-internal",
     "test-coverage-most": "./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/multi-runner.js --dir coverage.most && ./node_modules/.bin/remap-istanbul -i coverage.most/coverage.json -o coverage-sourcemapped -t html",
     "test-all-coverage": "./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/multi-runner.js --dir coverage.most && ./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover -- ./lib/test262-runner.js --timeout 50 --singleThreaded && ./node_modules/.bin/remap-istanbul -i coverage/coverage.json -i coverage.most/coverage.json -o coverage-sourcemapped -t html",
     "repl": "node lib/repl-cli.js",
@@ -84,16 +85,19 @@
     "eslint-plugin-flowtype": "^2.20.0",
     "eslint-plugin-header": "^1.0.0",
     "eslint-plugin-prettier": "^2.1.2",
-    "flow-bin": "^0.54.0",
+    "flow-bin": "^0.58.0",
     "graceful-fs": "^4.1.11",
     "invariant": "^2.2.0",
     "istanbul": "^0.4.5",
+    "jest": "^21.2.1",
     "js-yaml": "^3.6.1",
     "jsdom": "^9.2.1",
     "kcheck": "^2.0.0",
     "madge": "^1.6.0",
     "minimist": "^1.2.0",
     "prettier": "1.5.2",
+    "react": "^16.0.0",
+    "react-test-renderer": "^16.0.0",
     "remap-istanbul": "^0.9.1",
     "source-map-support": "^0.4.6",
     "uglify-js": "^2.6.2",
@@ -106,5 +110,10 @@
     "prepack"
   ],
   "license": "BSD-3-Clause",
-  "author": "Facebook"
+  "author": "Facebook",
+  "jest": {
+    "testMatch": [
+      "**/scripts/test-react.js"
+    ]
+  }
 }

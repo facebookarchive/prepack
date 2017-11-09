@@ -25,7 +25,6 @@ import {
   AbruptCompletion,
   Completion,
   JoinedAbruptCompletions,
-  NormalCompletion,
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
@@ -1023,7 +1022,10 @@ export class LexicalEnvironment {
     try {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion) {
+      if (
+        (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion) &&
+        err.containsBreakOrContinue()
+      ) {
         AbstractValue.reportIntrospectionError(err.joinCondition);
         throw new FatalError();
       }
@@ -1230,16 +1232,11 @@ export class LexicalEnvironment {
       this.realm.debuggerInstance.checkForActions(ast);
     }
     let res = this.evaluateAbstract(ast, strictCode, metadata);
-    if (res instanceof PossiblyNormalCompletion) {
-      let error = new CompilerDiagnostic("Global code may end abruptly", res.location, "PP0016", "FatalError");
-      this.realm.handleError(error);
-      throw new FatalError();
-    }
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;
   }
 
-  evaluateAbstract(ast: BabelNode, strictCode: boolean, metadata?: any): NormalCompletion | Value | Reference {
+  evaluateAbstract(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
     this.realm.currentLocation = ast.loc;
     this.realm.testTimeout();
 

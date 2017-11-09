@@ -1,3 +1,4 @@
+// es6
 // does contain:keep me
 (function() {
     let f = function() { /* keep me */ };

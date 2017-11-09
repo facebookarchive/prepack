@@ -12,16 +12,17 @@
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
 import {
-  Value,
+  AbstractObjectValue,
   AbstractValue,
   BoundFunctionValue,
-  NumberValue,
-  ProxyValue,
-  UndefinedValue,
-  StringValue,
-  ObjectValue,
+  EmptyValue,
   NullValue,
-  AbstractObjectValue,
+  NumberValue,
+  ObjectValue,
+  ProxyValue,
+  StringValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
@@ -115,9 +116,8 @@ export function OrdinaryGet(
     }
 
     // c. Return ? parent.[[Get]](P, Receiver).
-    if (descValue.mightHaveBeenDeleted()) {
+    if (descValue.mightHaveBeenDeleted() && descValue instanceof AbstractValue) {
       // We don't know for sure that O.P does not exist.
-      invariant(descValue instanceof AbstractValue);
       let parentVal = OrdinaryGet(realm, parent, P, descValue, true);
       if (parentVal instanceof UndefinedValue)
         // even O.P returns undefined it is still the right value.
@@ -129,7 +129,7 @@ export function OrdinaryGet(
       let cond = AbstractValue.createFromBinaryOp(realm, "!==", descValue, realm.intrinsics.empty);
       return joinValuesAsConditional(realm, cond, descValue, parentVal);
     }
-    invariant(!desc);
+    invariant(!desc || descValue instanceof EmptyValue);
     return parent.$Get(P, Receiver);
   }
 

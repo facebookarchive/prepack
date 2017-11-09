@@ -15,6 +15,7 @@ import {
   NullValue,
   NumberValue,
   ObjectValue,
+  PrimitiveValue,
   StringValue,
   BooleanValue,
   SymbolValue,
@@ -104,6 +105,10 @@ export default class ConcreteValue extends Value {
 
   throwIfNotConcreteObject(): ObjectValue {
     return this.throwIfNotObject();
+  }
+
+  throwIfNotConcretePrimitive(): PrimitiveValue {
+    invariant(false, "expected this to be a primitive value if concrete");
   }
 
   throwIfNotObject(): ObjectValue {
