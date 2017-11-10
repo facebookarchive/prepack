@@ -38,9 +38,9 @@ export function stopEffectCaptureJoinApplyAndReturnCompletion(
   c2: AbruptCompletion,
   realm: Realm
 ): AbruptCompletion {
-  let e = realm.getCapturedEffects();
+  let e = realm.getCapturedEffects(c1);
   invariant(e !== undefined);
-  realm.stopEffectCaptureAndUndoEffects();
+  realm.stopEffectCaptureAndUndoEffects(c1);
   let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, c1, c2, e);
   realm.applyEffects(joined_effects);
   let result = joined_effects[0];
@@ -52,7 +52,7 @@ export function unbundleNormalCompletion(
   completionOrValue: Completion | Value | Reference
 ): [void | NormalCompletion, Value | Reference] {
   let completion, value;
-  if (completionOrValue instanceof NormalCompletion) {
+  if (completionOrValue instanceof PossiblyNormalCompletion) {
     completion = completionOrValue;
     value = completionOrValue.value;
   } else {
@@ -89,49 +89,60 @@ export function composePossiblyNormalCompletions(
   pnc: PossiblyNormalCompletion,
   c: PossiblyNormalCompletion
 ): PossiblyNormalCompletion {
-  let empty_effects = construct_empty_effects(realm);
   if (pnc.consequent instanceof AbruptCompletion) {
     if (pnc.alternate instanceof Value) {
+      let [, g, b, p, o] = pnc.alternateEffects;
+      let newAlternateEffects = [c, g, b, p, o];
       return new PossiblyNormalCompletion(
         c.value,
         pnc.joinCondition,
         pnc.consequent,
         pnc.consequentEffects,
         c,
-        empty_effects
+        newAlternateEffects,
+        pnc.savedEffects
       );
     }
     invariant(pnc.alternate instanceof PossiblyNormalCompletion);
     let new_alternate = composePossiblyNormalCompletions(realm, pnc.alternate, c);
+    let [, g, b, p, o] = pnc.alternateEffects;
+    let newAlternateEffects = [new_alternate, g, b, p, o];
     return new PossiblyNormalCompletion(
       new_alternate.value,
       pnc.joinCondition,
       pnc.consequent,
       pnc.consequentEffects,
       new_alternate,
-      empty_effects
+      newAlternateEffects,
+      pnc.savedEffects
     );
   } else {
     invariant(pnc.alternate instanceof AbruptCompletion);
     if (pnc.consequent instanceof Value) {
+      let [, g, b, p, o] = pnc.consequentEffects;
+      let newConsequentEffects = [c, g, b, p, o];
       return new PossiblyNormalCompletion(
         c.value,
         pnc.joinCondition,
         c,
-        empty_effects,
+        newConsequentEffects,
         pnc.alternate,
-        pnc.alternateEffects
+        pnc.alternateEffects,
+        pnc.savedEffects
       );
     }
     invariant(pnc.consequent instanceof PossiblyNormalCompletion);
     let new_consequent = composePossiblyNormalCompletions(realm, pnc.consequent, c);
+    let [, g, b, p, o] = pnc.consequentEffects;
+    let newConsequentEffects = [new_consequent, g, b, p, o];
     return new PossiblyNormalCompletion(
       new_consequent.value,
       pnc.joinCondition,
       new_consequent,
-      empty_effects,
+      newConsequentEffects,
       pnc.alternate,
-      pnc.alternateEffects
+      pnc.alternateEffects,
+      pnc.savedEffects
     );
   }
 }
@@ -382,6 +393,32 @@ export function unbundleReturnCompletion(
   }
 }
 
+export function removeNormalEffects(realm: Realm, c: PossiblyNormalCompletion): Effects {
+  if (c.consequent instanceof AbruptCompletion) {
+    if (c.alternate instanceof Value) {
+      let result = c.alternateEffects;
+      c.alternateEffects = construct_empty_effects(realm);
+      return result;
+    } else {
+      invariant(c.alternate instanceof PossiblyNormalCompletion);
+      let result = realm.composeEffects(c.alternateEffects, removeNormalEffects(realm, c.alternate));
+      c.alternateEffects = construct_empty_effects(realm);
+      return result;
+    }
+  } else {
+    if (c.consequent instanceof Value) {
+      let result = c.consequentEffects;
+      c.consequentEffects = construct_empty_effects(realm);
+      return result;
+    } else {
+      invariant(c.consequent instanceof PossiblyNormalCompletion);
+      let result = realm.composeEffects(c.consequentEffects, removeNormalEffects(realm, c.consequent));
+      c.consequentEffects = construct_empty_effects(realm);
+      return result;
+    }
+  }
+}
+
 export function joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects {
   let [result1, gen1, bindings1, properties1, createdObj1] = e1;
   let [result2, gen2, bindings2, properties2, createdObj2] = e2;
@@ -460,15 +497,23 @@ function joinResults(
   }
   if (result1 instanceof AbruptCompletion) {
     let value = result2;
-    if (result2 instanceof Completion) value = result2.value;
+    let savedEffects;
+    if (result2 instanceof PossiblyNormalCompletion) {
+      value = result2.value;
+      savedEffects = result2.savedEffects;
+    }
     invariant(value instanceof Value);
-    return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2);
+    return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2, savedEffects);
   }
   if (result2 instanceof AbruptCompletion) {
     let value = result1;
-    if (result1 instanceof Completion) value = result1.value;
+    let savedEffects;
+    if (result1 instanceof PossiblyNormalCompletion) {
+      value = result1.value;
+      savedEffects = result1.savedEffects;
+    }
     invariant(value instanceof Value);
-    return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2);
+    return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2, savedEffects);
   }
   if (result1 instanceof PossiblyNormalCompletion) {
     invariant(result2 instanceof Value);

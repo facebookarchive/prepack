@@ -18,13 +18,15 @@ import {
   StoppedEvent,
 } from "vscode-debugadapter";
 import * as DebugProtocol from "vscode-debugprotocol";
-import child_process from "child_process";
 import { AdapterChannel } from "./../channel/AdapterChannel.js";
-import type { DebuggerOptions } from "./../../options.js";
-import { getDebuggerOptions } from "./../../prepack-options.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
-import type { BreakpointArguments, DebuggerResponse } from "./../types.js";
+import type {
+  BreakpointArguments,
+  DebuggerResponse,
+  LaunchRequestArguments,
+  PrepackLaunchArguments,
+} from "./../types.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
@@ -39,97 +41,8 @@ class PrepackDebugSession extends LoggingDebugSession {
     super("prepack");
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
-    this._pendingRequestCallbacks = new Map();
-    this._readCLIParameters();
-    this._startPrepack();
   }
-
-  _prepackCommand: string;
-  _inFilePath: string;
-  _outFilePath: string;
-  _prepackProcess: child_process.ChildProcess;
   _adapterChannel: AdapterChannel;
-  _debuggerOptions: DebuggerOptions;
-  _prepackWaiting: boolean;
-  _pendingRequestCallbacks: { [number]: (string) => void };
-
-  _readCLIParameters() {
-    let args = Array.from(process.argv);
-    args.splice(0, 2);
-    let inFilePath;
-    let outFilePath;
-    while (args.length > 0) {
-      let arg = args.shift();
-      if (arg.startsWith("--")) {
-        arg = arg.slice(2);
-        if (arg === "prepack") {
-          this._prepackCommand = args.shift();
-        } else if (arg === "inFilePath") {
-          inFilePath = args.shift();
-        } else if (arg === "outFilePath") {
-          outFilePath = args.shift();
-        }
-      } else {
-        console.error("Unknown parameter: " + arg);
-        process.exit(1);
-      }
-    }
-    if (!inFilePath || inFilePath.length === 0) {
-      console.error("No debugger input file given");
-      process.exit(1);
-    }
-    if (!outFilePath || outFilePath.length === 0) {
-      console.error("No debugger output file given");
-      process.exit(1);
-    }
-    this._debuggerOptions = getDebuggerOptions({
-      debugInFilePath: inFilePath,
-      debugOutFilePath: outFilePath,
-    });
-  }
-
-  // Start Prepack in a child process
-  _startPrepack() {
-    if (!this._prepackCommand || this._prepackCommand.length === 0) {
-      console.error("No command given to start Prepack in adapter");
-      process.exit(1);
-    }
-
-    // set up the communication channel
-    this._adapterChannel = new AdapterChannel(this._debuggerOptions);
-    this._registerMessageCallbacks();
-
-    let prepackArgs = this._prepackCommand.split(" ");
-    // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
-    prepackArgs = prepackArgs.concat([
-      "--debugInFilePath",
-      this._debuggerOptions.outFilePath,
-      "--debugOutFilePath",
-      this._debuggerOptions.inFilePath,
-    ]);
-    this._prepackProcess = child_process.spawn("node", prepackArgs);
-
-    process.on("exit", () => {
-      this._prepackProcess.kill();
-      this._adapterChannel.clean();
-      process.exit();
-    });
-
-    process.on("SIGINT", () => {
-      this._prepackProcess.kill();
-      process.exit();
-    });
-
-    this._prepackProcess.stdout.on("data", (data: Buffer) => {
-      let outputEvent = new OutputEvent(data.toString(), "stdout");
-      this.sendEvent(outputEvent);
-    });
-
-    this._prepackProcess.on("exit", () => {
-      this.sendEvent(new TerminatedEvent());
-      process.exit();
-    });
-  }
 
   _registerMessageCallbacks() {
     this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
@@ -150,11 +63,6 @@ class PrepackDebugSession extends LoggingDebugSession {
     );
   }
 
-  _addRequestCallback(requestID: number, callback: string => void) {
-    invariant(!(requestID in this._pendingRequestCallbacks), "Request ID already exists in pending requests");
-    this._pendingRequestCallbacks[requestID] = callback;
-  }
-
   /**
    * The 'initialize' request is the first request called by the UI
    * to interrogate the features the debug adapter provides.
@@ -169,6 +77,29 @@ class PrepackDebugSession extends LoggingDebugSession {
     // Respond back to the UI with the configurations. Will add more configurations gradually as needed.
     // Adapter can respond immediately here because no message is sent to Prepack
     this.sendResponse(response);
+  }
+
+  launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
+    // set up the communication channel
+    this._adapterChannel = new AdapterChannel(args.inFilePath, args.outFilePath);
+    this._registerMessageCallbacks();
+    let launchArgs: PrepackLaunchArguments = {
+      kind: "launch",
+      prepackCommand: args.prepackCommand,
+      inFilePath: args.inFilePath,
+      outFilePath: args.outFilePath,
+      outputCallback: (data: Buffer) => {
+        let outputEvent = new OutputEvent(data.toString(), "stdout");
+        this.sendEvent(outputEvent);
+      },
+      exitCallback: () => {
+        this.sendEvent(new TerminatedEvent());
+        process.exit();
+      },
+    };
+    this._adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
   }
 
   /**
@@ -244,6 +175,27 @@ class PrepackDebugSession extends LoggingDebugSession {
       threads: [thread],
     };
     this.sendResponse(response);
+  }
+
+  scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments): void {
+    this._adapterChannel.getScopes(response.request_seq, args.frameId, (dbgResponse: DebuggerResponse) => {
+      let result = dbgResponse.result;
+      invariant(result.kind === "scopes");
+      let scopeInfos = result.scopes;
+      let scopes: Array<DebugProtocol.Scope> = [];
+      for (const scopeInfo of scopeInfos) {
+        let scope: DebugProtocol.Scope = {
+          name: scopeInfo.name,
+          variablesReference: scopeInfo.variablesReference,
+          expensive: scopeInfo.expensive,
+        };
+        scopes.push(scope);
+      }
+      response.body = {
+        scopes: scopes,
+      };
+      this.sendResponse(response);
+    });
   }
 }
 

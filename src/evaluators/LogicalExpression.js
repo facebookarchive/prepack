@@ -85,8 +85,7 @@ export default function(
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    completion = realm.getRunningContext().composeWithSavedCompletion(completion);
-    realm.captureEffects();
+    completion = realm.composeWithSavedCompletion(completion);
   }
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.

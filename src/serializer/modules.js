@@ -120,9 +120,11 @@ export class ModuleTracer extends Tracer {
           try {
             let value = performCall();
             this.modules.recordModuleInitialized(moduleIdValue, value);
+            // Make this into a join point by suppressing the conditional exception.
+            // TODO: delete this code and let the caller deal with the conditional exception.
             let completion = incorporateSavedCompletion(realm, value);
             if (completion instanceof PossiblyNormalCompletion) {
-              realm.stopEffectCapture();
+              realm.stopEffectCapture(completion);
               let warning = new CompilerDiagnostic(
                 "Module import may fail with an exception",
                 completion.location,
@@ -448,7 +450,7 @@ export class Modules {
       let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
       if (effects === undefined) continue;
       let result = effects[0];
-      invariant(result instanceof Value);
+      if (!(result instanceof Value)) continue; // module might throw
       count++;
       this.initializedModules.set(moduleId, result);
     }
