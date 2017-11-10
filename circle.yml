@@ -24,6 +24,7 @@ test:
     - yarn test-sourcemaps
     - yarn test-std-in
     - yarn test-residual
+    - yarn test-react
     - yarn test-test262 -- --statusFile $CIRCLE_ARTIFACTS/test262-status.txt --timeout 120 --cpuScale 0.25 --verbose:
         timeout: 1800
   post:
