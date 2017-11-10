@@ -20,9 +20,8 @@ import {
   HasOwnProperty,
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
-  SetFunctionName,
 } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "babel-types";
 import { computeBinary } from "./BinaryExpression.js";
@@ -66,7 +65,7 @@ export default function(
         // ii. If hasNameProperty is false, perform SetFunctionName(rval, GetReferencedName(lref)).
         if (!hasNameProperty) {
           invariant(lref instanceof Reference);
-          SetFunctionName(realm, rval, GetReferencedName(realm, lref));
+          Functions.SetFunctionName(realm, rval, GetReferencedName(realm, lref));
         }
       }
       // f. Perform ? PutValue(lref, rval).

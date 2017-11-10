@@ -16,7 +16,6 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
 import {
   ObjectCreate,
-  SetFunctionName,
   GetValue,
   CreateDataPropertyOrThrow,
   IsAnonymousFunctionDefinition,
@@ -24,7 +23,7 @@ import {
   ToPropertyKey,
   ToString,
 } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type {
   BabelNodeObjectExpression,
@@ -105,7 +104,7 @@ export default function(
 
         // b. If hasNameProperty is false, perform SetFunctionName(propValue, propKey).
         invariant(!hasNameProperty); // No expression that passes through IsAnonymousFunctionDefinition can have it here
-        SetFunctionName(realm, propValue, propKey);
+        Functions.SetFunctionName(realm, propValue, propKey);
       }
 
       // 6. Assert: enumerable is true.

@@ -27,13 +27,12 @@ import {
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
   HasOwnProperty,
-  SetFunctionName,
   GetReferencedName,
   ArrayCreate,
   CreateDataProperty,
   GetV,
 } from "./index.js";
-import { Properties } from "../singletons.js";
+import { Functions, Properties } from "../singletons.js";
 import type { BabelNodeLVal, BabelNodeArrayPattern, BabelNodeObjectPattern } from "babel-types";
 
 // ECMA262 12.15.5.2
@@ -266,7 +265,7 @@ export function IteratorDestructuringAssignmentEvaluation(
         // not be called with a value.
         invariant(lref instanceof Reference);
 
-        SetFunctionName(realm, v, GetReferencedName(realm, lref));
+        Functions.SetFunctionName(realm, v, GetReferencedName(realm, lref));
       }
     }
 
@@ -453,7 +452,7 @@ export function KeyedDestructuringAssignmentEvaluation(
       // not be called with a value.
       invariant(lref instanceof Reference);
 
-      SetFunctionName(realm, rhsValue, GetReferencedName(realm, lref));
+      Functions.SetFunctionName(realm, rhsValue, GetReferencedName(realm, lref));
     }
   }
 

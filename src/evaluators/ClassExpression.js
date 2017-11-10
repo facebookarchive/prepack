@@ -13,8 +13,9 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import type { BabelNodeClassExpression } from "babel-types";
-import { HasOwnProperty, SetFunctionName } from "../methods/index.js";
+import { HasOwnProperty } from "../methods/index.js";
 import { ClassDefinitionEvaluation } from "./ClassDeclaration";
+import { Functions } from "../singletons.js";
 
 // ECMA262 14.5.16
 export default function(
@@ -44,7 +45,7 @@ export default function(
     // c. If hasNameProperty is false, then
     if (!hasNameProperty) {
       // i. Perform SetFunctionName(value, className).
-      SetFunctionName(realm, value, className);
+      Functions.SetFunctionName(realm, value, className);
     }
   }
 
