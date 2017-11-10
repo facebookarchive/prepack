@@ -32,10 +32,10 @@ import {
   composeGenerators,
   composePossiblyNormalCompletions,
   Construct,
-  GetValue,
   incorporateSavedCompletion,
   ThrowIfMightHaveBeenDeleted,
   ToString,
+  updatePossiblyNormalCompletionWithSubsequentEffects,
 } from "./methods/index.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
@@ -87,14 +87,6 @@ export class ExecutionContext {
   lexicalEnvironment: LexicalEnvironment;
   isReadOnly: boolean;
   isStrict: boolean;
-  savedEffects: void | Effects;
-  savedCompletion: void | PossiblyNormalCompletion;
-
-  composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
-    if (this.savedCompletion === undefined) this.savedCompletion = completion;
-    else this.savedCompletion = composePossiblyNormalCompletions(this.realm, this.savedCompletion, completion);
-    return completion.value;
-  }
 
   setCaller(context: ExecutionContext): void {
     this.caller = context;
@@ -207,6 +199,7 @@ export class Realm {
   createdObjects: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
+  savedCompletion: void | PossiblyNormalCompletion;
 
   // A list of abstract conditions that are known to be true in the current execution path.
   // For example, the abstract condition of an if statement is known to be true inside its true branch.
@@ -335,14 +328,6 @@ export class Realm {
     }
     let c = this.contextStack.pop();
     invariant(c === context);
-    let savedEffects = context.savedEffects;
-    if (savedEffects !== undefined && this.contextStack.length > 0) {
-      // when unwinding the stack after a fatal error, saved effects are not incorporated into completions
-      // and thus must be propagated to the calling context.
-      let ctx = this.getRunningContext();
-      if (ctx.savedEffects !== undefined) savedEffects = this.composeEffects(ctx.savedEffects, savedEffects);
-      ctx.savedEffects = savedEffects;
-    }
   }
 
   wrapInGlobalEnv<T>(callback: () => T): T {
@@ -372,7 +357,7 @@ export class Realm {
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
   evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, state?: any): Effects {
-    return this.evaluateForEffects(() => env.evaluateCompletion(ast, strictCode), state);
+    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state);
   }
 
   evaluateAndRevertInGlobalEnv(func: () => Value): void {
@@ -399,16 +384,15 @@ export class Realm {
     return [effects, nodeAst, nodeIO];
   }
 
-  evaluateForEffects(f: () => Completion | Value | Reference, state: any): Effects {
+  evaluateForEffects(f: () => Completion | Value, state: any): Effects {
     // Save old state and set up empty state for ast
-    let context = this.getRunningContext();
-    let savedContextEffects = context.savedEffects;
-    context.savedEffects = undefined;
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
+    let saved_completion = this.savedCompletion;
     this.generator = new Generator(this);
     this.createdObjects = new Set();
+    this.savedCompletion = undefined; // while in this call, we only explore the normal path.
 
     let result;
     try {
@@ -417,9 +401,18 @@ export class Realm {
       let c;
       try {
         c = f();
-        if (c instanceof Reference) c = GetValue(this, c);
+        // This is join point for the normal branch of a PossiblyNormalCompletion.
         if (c instanceof Value || c instanceof AbruptCompletion) c = incorporateSavedCompletion(this, c);
         invariant(c !== undefined);
+        if (c instanceof PossiblyNormalCompletion) {
+          // The current state may have advanced since the time control forked into the various paths recorded in c.
+          // Update the normal path and restore the global state to what it was at the time of the fork.
+          let subsequentEffects = this.getCapturedEffects(c, c.value);
+          invariant(subsequentEffects !== undefined);
+          this.stopEffectCaptureAndUndoEffects(c);
+          updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
+          this.savedCompletion = undefined;
+        }
 
         invariant(this.generator !== undefined);
         invariant(this.modifiedBindings !== undefined);
@@ -432,21 +425,10 @@ export class Realm {
 
         // Return the captured state changes and evaluation result
         result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
-        if (c instanceof PossiblyNormalCompletion) {
-          let savedEffects = context.savedEffects;
-          if (savedEffects !== undefined) {
-            // add prior effects that are not already present
-            result = this.composeEffects(savedEffects, result);
-            this.updateAbruptCompletions(savedEffects, c);
-            context.savedEffects = undefined;
-          }
-        }
         return result;
       } finally {
         // Roll back the state changes
-        if (context.savedEffects !== undefined) {
-          this.stopEffectCaptureAndUndoEffects();
-        }
+        if (this.savedCompletion !== undefined) this.stopEffectCaptureAndUndoEffects(this.savedCompletion);
         if (result !== undefined) {
           this.restoreBindings(result[2]);
           this.restoreProperties(result[3]);
@@ -454,11 +436,11 @@ export class Realm {
           this.restoreBindings(this.modifiedBindings);
           this.restoreProperties(this.modifiedProperties);
         }
-        context.savedEffects = savedContextEffects;
         this.generator = saved_generator;
         this.modifiedBindings = savedBindings;
         this.modifiedProperties = savedProperties;
         this.createdObjects = saved_createdObjects;
+        this.savedCompletion = saved_completion;
       }
     } finally {
       for (let t2 of this.tracers) t2.endEvaluateForEffects(state, result);
@@ -506,13 +488,22 @@ export class Realm {
     }
   }
 
-  captureEffects() {
-    let context = this.getRunningContext();
-    if (context.savedEffects !== undefined) {
-      // Already called captureEffects in this context, just carry on
+  composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
+    if (this.savedCompletion === undefined) {
+      this.savedCompletion = completion;
+      this.captureEffects(completion);
+    } else {
+      this.savedCompletion = composePossiblyNormalCompletions(this, this.savedCompletion, completion);
+    }
+    return completion.value;
+  }
+
+  captureEffects(completion: PossiblyNormalCompletion) {
+    if (completion.savedEffects !== undefined) {
+      // Already called captureEffects, just carry on
       return;
     }
-    context.savedEffects = [
+    completion.savedEffects = [
       this.intrinsics.undefined,
       (this.generator: any),
       (this.modifiedBindings: any),
@@ -525,9 +516,8 @@ export class Realm {
     this.createdObjects = new Set();
   }
 
-  getCapturedEffects(v?: Value): void | Effects {
-    let context = this.getRunningContext();
-    if (context.savedEffects === undefined) return undefined;
+  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value): void | Effects {
+    if (completion.savedEffects === undefined) return undefined;
     if (v === undefined) v = this.intrinsics.undefined;
     invariant(this.generator !== undefined);
     invariant(this.modifiedBindings !== undefined);
@@ -536,38 +526,36 @@ export class Realm {
     return [v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects];
   }
 
-  stopEffectCapture() {
-    let e = this.getCapturedEffects();
+  stopEffectCapture(completion: PossiblyNormalCompletion) {
+    let e = this.getCapturedEffects(completion);
     if (e !== undefined) {
-      this.stopEffectCaptureAndUndoEffects();
+      this.stopEffectCaptureAndUndoEffects(completion);
       this.applyEffects(e);
     }
   }
 
-  stopEffectCaptureAndUndoEffects() {
+  stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion) {
     // Roll back the state changes
     this.restoreBindings(this.modifiedBindings);
     this.restoreProperties(this.modifiedProperties);
 
     // Restore saved state
-    let context = this.getRunningContext();
-    if (context.savedEffects !== undefined) {
-      let [c, g, b, p, o] = context.savedEffects;
+    if (completion.savedEffects !== undefined) {
+      let [c, g, b, p, o] = completion.savedEffects;
       c;
-      context.savedEffects = undefined;
+      completion.savedEffects = undefined;
       this.generator = g;
       this.modifiedBindings = b;
       this.modifiedProperties = p;
       this.createdObjects = o;
+    } else {
+      invariant(false);
     }
   }
 
   // Apply the given effects to the global state
   applyEffects(effects: Effects, leadingComment: string = "") {
-    let [completion, generator, bindings, properties, createdObjects] = effects;
-
-    // ignore completion
-    completion;
+    let [, generator, bindings, properties, createdObjects] = effects;
 
     // Add generated code for property modifications
     this.appendGenerator(generator, leadingComment);
