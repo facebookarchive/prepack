@@ -1,6 +1,6 @@
 // does not contain:eliminate
 // contains:preserve
-// conains:do
+// contains:do
 (function () {
   let f = false;
   let t = true;
