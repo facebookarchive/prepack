@@ -355,16 +355,18 @@ export function OrdinaryCallEvaluateBody(
       // converge into a single flow using the joined effects as the new state.
       c = incorporateSavedCompletion(realm, c);
       let joinedEffects;
-      if (c instanceof PossiblyNormalCompletion || c instanceof JoinedAbruptCompletions) {
-        let e = realm.getCapturedEffects();
+      if (c instanceof PossiblyNormalCompletion) {
+        let e = realm.getCapturedEffects(c);
         if (e !== undefined) {
           // There were earlier, conditional exits from the function
           // We join together the current effects with the effects of any earlier returns that are tracked in c.
-          realm.stopEffectCaptureAndUndoEffects();
+          realm.stopEffectCaptureAndUndoEffects(c);
         } else {
           e = construct_empty_effects(realm);
         }
         joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
+      } else if (c instanceof JoinedAbruptCompletions) {
+        joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, construct_empty_effects(realm));
       }
       if (joinedEffects !== undefined) {
         let result = joinedEffects[0];
@@ -380,7 +382,7 @@ export function OrdinaryCallEvaluateBody(
         // There is a normal return exit, but also one or more throw completions.
         // The throw completions must be extracted into a saved possibly normal completion
         // so that the caller can pick them up in its next completion.
-        joinedEffects = extractAndSavePossiblyNormalCompletion(result, context);
+        joinedEffects = extractAndSavePossiblyNormalCompletion(result);
         result = joinedEffects[0];
         invariant(result instanceof ReturnCompletion);
         realm.applyEffects(joinedEffects);
@@ -392,14 +394,13 @@ export function OrdinaryCallEvaluateBody(
     }
   }
 
-  function extractAndSavePossiblyNormalCompletion(c: JoinedAbruptCompletions, context: ExecutionContext) {
+  function extractAndSavePossiblyNormalCompletion(c: JoinedAbruptCompletions) {
     // There are throw completions that conditionally escape from the the call.
     // We need to carry on in normal mode (after arranging to capturing effects)
     // while stashing away the throw completions so that the next completion we return
     // incorporates them.
     let [joinedEffects, possiblyNormalCompletion] = unbundleReturnCompletion(realm, c);
-    realm.getRunningContext().composeWithSavedCompletion(possiblyNormalCompletion);
-    realm.captureEffects();
+    realm.composeWithSavedCompletion(possiblyNormalCompletion);
     return joinedEffects;
   }
 }
