@@ -15,7 +15,8 @@ import type { Descriptor, PropertyKeyValue } from "../types.js";
 import { AbstractValue, ObjectValue, StringValue, Value } from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { IsDataDescriptor, joinValuesAsConditional, cloneDescriptor, equalDescriptors } from "../methods/index.js";
+import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
+import { Join } from "../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -153,7 +154,7 @@ export default class AbstractObjectValue extends AbstractValue {
         invariant(d1Value === undefined || d1Value instanceof Value);
         let d2Value = d2.value;
         invariant(d2Value === undefined || d2Value instanceof Value);
-        desc.value = joinValuesAsConditional(this.$Realm, cond, d1Value, d2Value);
+        desc.value = Join.joinValuesAsConditional(this.$Realm, cond, d1Value, d2Value);
       }
       return desc;
     } else {
@@ -178,7 +179,7 @@ export default class AbstractObjectValue extends AbstractValue {
             if (!IsDataDescriptor(this.$Realm, desc)) continue;
             // values may be different
             let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-            desc.value = joinValuesAsConditional(this.$Realm, cond, d.value, desc.value);
+            desc.value = Join.joinValuesAsConditional(this.$Realm, cond, d.value, desc.value);
           }
         }
       }
@@ -230,7 +231,7 @@ export default class AbstractObjectValue extends AbstractValue {
         let dval = d === undefined || d.vale === undefined ? this.$Realm.intrinsics.empty : d.value;
         invariant(dval instanceof Value);
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-        desc.value = joinValuesAsConditional(this.$Realm, cond, new_val, dval);
+        desc.value = Join.joinValuesAsConditional(this.$Realm, cond, new_val, dval);
         if (cv.$DefineOwnProperty(P, desc)) {
           sawTrue = true;
         } else sawFalse = true;
@@ -308,7 +309,7 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       invariant(d1val instanceof Value);
       invariant(d2val instanceof Value);
-      return joinValuesAsConditional(this.$Realm, cond, d1val, d2val);
+      return Join.joinValuesAsConditional(this.$Realm, cond, d1val, d2val);
     } else {
       let result;
       for (let cv of elements) {
@@ -323,7 +324,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (result === undefined) result = cvVal;
         else {
           let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-          result = joinValuesAsConditional(this.$Realm, cond, cvVal, result);
+          result = Join.joinValuesAsConditional(this.$Realm, cond, cvVal, result);
         }
       }
       invariant(result !== undefined);
@@ -352,7 +353,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (result === undefined) result = cvVal;
         else {
           let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-          result = joinValuesAsConditional(this.$Realm, cond, cvVal, result);
+          result = Join.joinValuesAsConditional(this.$Realm, cond, cvVal, result);
         }
       }
       invariant(result !== undefined);
@@ -388,7 +389,7 @@ export default class AbstractObjectValue extends AbstractValue {
         }
         let oldVal = d === undefined ? this.$Realm.intrinsics.empty : d.value;
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-        let v = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+        let v = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
         if (cv.$Set(P, v, cv)) sawTrue = true;
         else sawFalse = true;
       }
@@ -420,7 +421,7 @@ export default class AbstractObjectValue extends AbstractValue {
         invariant(cv instanceof ObjectValue);
         let oldVal = this.$GetPartial(P, Receiver);
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-        let v = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+        let v = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
         cv.$SetPartial(P, v, cv);
       }
       return true;
@@ -454,7 +455,7 @@ export default class AbstractObjectValue extends AbstractValue {
           throw new FatalError();
         }
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-        let v = joinValuesAsConditional(this.$Realm, cond, this.$Realm.intrinsics.empty, d.value);
+        let v = Join.joinValuesAsConditional(this.$Realm, cond, this.$Realm.intrinsics.empty, d.value);
         if (cv.$Set(P, v, cv)) sawTrue = true;
         else sawFalse = true;
       }

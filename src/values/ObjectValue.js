@@ -37,7 +37,6 @@ import {
 import { isReactElement } from "../react/utils.js";
 import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
 import {
-  joinValuesAsConditional,
   IsDataDescriptor,
   OrdinaryOwnPropertyKeys,
   OrdinaryGet,
@@ -45,7 +44,7 @@ import {
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
 } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Join, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
 
@@ -557,7 +556,7 @@ export default class ObjectValue extends ConcreteValue {
         undefined,
         "check for known property"
       );
-      result = joinValuesAsConditional(this.$Realm, cond, val, result);
+      result = Join.joinValuesAsConditional(this.$Realm, cond, val, result);
     }
     return result;
   }
@@ -625,7 +624,7 @@ export default class ObjectValue extends ConcreteValue {
       if (!(V instanceof UndefinedValue)) {
         // join V with undefined, using a property name test as the condition
         let cond = createTemplate(this.$Realm, P);
-        newVal = joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
+        newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
       }
       prop.descriptor = {
         writable: true,
@@ -640,7 +639,7 @@ export default class ObjectValue extends ConcreteValue {
       let newVal = oldVal;
       if (!(V instanceof UndefinedValue)) {
         let cond = createTemplate(this.$Realm, P);
-        newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+        newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
       }
       desc.value = newVal;
     }
@@ -654,7 +653,7 @@ export default class ObjectValue extends ConcreteValue {
         invariant(oldVal instanceof Value); // otherwise this is not simple
       }
       let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
-      let newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+      let newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
       Properties.OrdinarySet(this.$Realm, this, key, newVal, Receiver);
     }
 

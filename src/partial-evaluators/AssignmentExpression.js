@@ -24,14 +24,8 @@ import { AbruptCompletion, Completion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { BooleanValue, ConcreteValue, NullValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
-import {
-  IsAnonymousFunctionDefinition,
-  IsIdentifierRef,
-  HasOwnProperty,
-  composeNormalCompletions,
-  unbundleNormalCompletion,
-} from "../methods/index.js";
-import { Environment, Functions, Properties } from "../singletons.js";
+import { IsAnonymousFunctionDefinition, IsIdentifierRef, HasOwnProperty } from "../methods/index.js";
+import { Environment, Functions, Join, Properties } from "../singletons.js";
 
 import * as t from "babel-types";
 import invariant from "../invariant.js";
@@ -57,7 +51,7 @@ export default function(
       // b. ReturnIfAbrupt(lref).
       if (lref instanceof AbruptCompletion) return [lref, (last: any), lio];
       let leftCompletion;
-      [leftCompletion, lref] = unbundleNormalCompletion(lref);
+      [leftCompletion, lref] = Join.unbundleNormalCompletion(lref);
 
       // c. Let rref be the result of evaluating AssignmentExpression.
       // d. Let rval be ? GetValue(rref).
@@ -67,7 +61,7 @@ export default function(
         return [rval, t.assignmentExpression(ast.operator, (last: any), (rast: any)), io];
       }
       let rightCompletion;
-      [rightCompletion, rval] = unbundleNormalCompletion(rval);
+      [rightCompletion, rval] = Join.unbundleNormalCompletion(rval);
       invariant(rval instanceof Value);
 
       // e. If IsAnonymousFunctionDefinition(AssignmentExpression) and IsIdentifierRef of LeftHandSideExpression are both true, then
@@ -92,7 +86,7 @@ export default function(
 
       // g. Return rval.
       let resultAst = t.assignmentExpression(ast.operator, (last: any), (rast: any));
-      rval = composeNormalCompletions(leftCompletion, rightCompletion, rval, realm);
+      rval = Join.composeNormalCompletions(leftCompletion, rightCompletion, rval, realm);
       return [rval, resultAst, io];
     }
     throw new FatalError("Patterns aren't supported yet");
@@ -110,7 +104,7 @@ export default function(
   let [lref, last, lio] = env.partiallyEvaluateCompletion(LeftHandSideExpression, strictCode);
   if (lref instanceof AbruptCompletion) return [lref, (last: any), lio];
   let leftCompletion;
-  [leftCompletion, lref] = unbundleNormalCompletion(lref);
+  [leftCompletion, lref] = Join.unbundleNormalCompletion(lref);
 
   // 2. Let lval be ? GetValue(lref).
   let lval = Environment.GetValue(realm, lref);
@@ -123,7 +117,7 @@ export default function(
     return [rval, t.assignmentExpression(ast.operator, (last: any), (rast: any)), io];
   }
   let rightCompletion;
-  [rightCompletion, rval] = unbundleNormalCompletion(rval);
+  [rightCompletion, rval] = Join.unbundleNormalCompletion(rval);
   invariant(rval instanceof Value);
 
   // 5. Let op be the @ where AssignmentOperator is @=.

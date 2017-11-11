@@ -39,15 +39,10 @@ import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMap
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
-import {
-  joinAndRemoveNestedReturnCompletions,
-  joinPossiblyNormalCompletionWithAbruptCompletion,
-  UpdateEmpty,
-  updatePossiblyNormalCompletionWithValue,
-} from "../methods/index.js";
+import { UpdateEmpty } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
-import { Environment, Properties } from "../singletons.js";
+import { Environment, Join, Properties } from "../singletons.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -128,7 +123,7 @@ function InternalCall(
     return result.value;
   }
   if (result instanceof JoinedAbruptCompletions) {
-    result = joinAndRemoveNestedReturnCompletions(realm, result);
+    result = Join.joinAndRemoveNestedReturnCompletions(realm, result);
   }
 
   // 10. ReturnIfAbrupt(result).  or if possibly abrupt
@@ -1122,13 +1117,13 @@ export class FunctionImplementation {
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;
       if (c instanceof Value) {
-        updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
+        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
         return savedCompletion;
       } else {
         let e = realm.getCapturedEffects(savedCompletion);
         invariant(e !== undefined);
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
-        let joined_effects = joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
+        let joined_effects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
         realm.applyEffects(joined_effects);
         let jc = joined_effects[0];
         invariant(jc instanceof AbruptCompletion);

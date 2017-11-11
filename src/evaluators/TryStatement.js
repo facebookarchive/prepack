@@ -17,8 +17,8 @@ import {
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "../completions.js";
-import { joinEffects, UpdateEmpty, updatePossiblyNormalCompletionWithSubsequentEffects } from "../methods/index.js";
-import { Functions } from "../singletons.js";
+import { UpdateEmpty } from "../methods/index.js";
+import { Functions, Join } from "../singletons.js";
 import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
 import invariant from "../invariant.js";
@@ -42,7 +42,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         let subsequentEffects = realm.getCapturedEffects(blockRes, blockRes.value);
         invariant(subsequentEffects !== undefined);
         realm.stopEffectCaptureAndUndoEffects(blockRes);
-        updatePossiblyNormalCompletionWithSubsequentEffects(realm, blockRes, subsequentEffects);
+        Join.updatePossiblyNormalCompletionWithSubsequentEffects(realm, blockRes, subsequentEffects);
       }
       // All of the forked threads of control are now joined together and the global state reflects their joint effects
       let handlerEffects = composeNestedThrowEffectsWithHandler(blockRes);
@@ -119,7 +119,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       });
     }
     priorEffects.pop();
-    return joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
+    return Join.joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
   }
 
   // The finalizer is not a join point, so update each path in the completion separately.
@@ -158,6 +158,6 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       if (!(alternateEffects[0] instanceof AbruptCompletion)) alternateEffects[0] = alternate;
     }
     priorEffects.pop();
-    return joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
+    return Join.joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
   }
 }

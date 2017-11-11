@@ -44,7 +44,6 @@ import {
   IsDataDescriptor,
   IsGenericDescriptor,
   IsPropertyKey,
-  joinEffects,
   MakeConstructor,
   ObjectCreate,
   SameValue,
@@ -58,7 +57,7 @@ import {
 } from "../methods/index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
-import { Environment, Functions, Path } from "../singletons.js";
+import { Environment, Functions, Join, Path } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 
@@ -260,7 +259,7 @@ export class PropertiesImplementation {
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
-      let joinedEffects = joinEffects(
+      let joinedEffects = Join.joinEffects(
         realm,
         joinCondition,
         [compl1, gen1, bindings1, properties1, createdObj1],

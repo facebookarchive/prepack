@@ -15,9 +15,10 @@ import type { Realm } from "../realm.js";
 
 import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
-import { joinEffects, UpdateEmpty } from "../methods/index.js";
+import { UpdateEmpty } from "../methods/index.js";
 import { AbstractValue, Value } from "../values/index.js";
 import { construct_empty_effects } from "../realm.js";
+import { Join } from "../singletons.js";
 
 import * as t from "babel-types";
 import invariant from "../invariant.js";
@@ -76,7 +77,7 @@ export default function(
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of exprValue.
-  let joinedEffects = joinEffects(
+  let joinedEffects = Join.joinEffects(
     realm,
     exprValue,
     [conCompl, gen1, bindings1, properties1, createdObj1],

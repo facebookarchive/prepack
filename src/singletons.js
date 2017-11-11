@@ -9,10 +9,11 @@
 
 /* @flow */
 
-import type { EnvironmentType, FunctionType, PathType, PropertiesType } from "./types.js";
+import type { EnvironmentType, FunctionType, JoinType, PathType, PropertiesType } from "./types.js";
 
 export let Environment: EnvironmentType = (null: any);
 export let Functions: FunctionType = (null: any);
+export let Join: JoinType = (null: any);
 export let Path: PathType = (null: any);
 export let Properties: PropertiesType = (null: any);
 
@@ -22,6 +23,10 @@ export function setEnvironment(singleton: EnvironmentType) {
 
 export function setFunctions(singleton: FunctionType) {
   Functions = singleton;
+}
+
+export function setJoin(singleton: JoinType) {
+  Join = singleton;
 }
 
 export function setPath(singleton: PathType) {
