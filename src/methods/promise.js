@@ -17,10 +17,9 @@ import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
 import { Get } from "../methods/get.js";
 import { Invoke, Call } from "../methods/call.js";
-import { CreateArrayFromList } from "../methods/create.js";
 import { IsCallable, IsConstructor, IsPromise } from "../methods/is.js";
 import { IteratorStep, IteratorValue } from "../methods/iterator.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 // ECMA262 8.4.1
@@ -160,7 +159,7 @@ function createResolveElementFunction(realm) {
       // 10. If remainingElementsCount.[[Value]] is 0, then
       if (remainingElementsCount.value === 0) {
         // a. Let valuesArray be CreateArrayFromList(values).
-        let valuesArray = CreateArrayFromList(realm, values);
+        let valuesArray = Create.CreateArrayFromList(realm, values);
 
         // b. Return ? Call(promiseCapability.[[Resolve]], undefined, « valuesArray »).
         Call(realm, promiseCapability.resolve, realm.intrinsics.undefined, [valuesArray]);
@@ -226,7 +225,7 @@ export function PerformPromiseAll(
       // iii. If remainingElementsCount.[[Value]] is 0, then
       if (remainingElementsCount.value === 0) {
         // 1. Let valuesArray be CreateArrayFromList(values).
-        let valuesArray = CreateArrayFromList(realm, values);
+        let valuesArray = Create.CreateArrayFromList(realm, values);
 
         // 2. Perform ? Call(resultCapability.[[Resolve]], undefined, « valuesArray »).
         Call(realm, resultCapability.resolve, realm.intrinsics.undefined, [valuesArray]);

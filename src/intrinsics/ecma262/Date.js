@@ -12,7 +12,7 @@
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NativeFunctionValue, NumberValue, StringValue, ObjectValue } from "../../values/index.js";
 import { ToInteger, ToNumber, ToPrimitive } from "../../methods/to.js";
-import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import { MakeTime, MakeDate, MakeDay, TimeClip, UTC, ToDateString, thisTimeValue } from "../../methods/date.js";
 import { FatalError } from "../../errors.js";
 import invariant from "../../invariant.js";
@@ -91,7 +91,7 @@ export default function(realm: Realm): NativeFunctionValue {
         let finalDate = MakeDate(realm, MakeDay(realm, yr, m, dt), MakeTime(realm, h, min, s, milli));
 
         // j. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%DatePrototype%", « [[DateValue]] »).
-        let O = OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
+        let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
 
         // k. Set the [[DateValue]] internal slot of O to TimeClip(UTC(finalDate)).
         O.$DateValue = TimeClip(realm, UTC(realm, finalDate));
@@ -145,7 +145,7 @@ export default function(realm: Realm): NativeFunctionValue {
         }
 
         // c. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%DatePrototype%", « [[DateValue]] »).
-        let O = OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
+        let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
 
         // d. Set the [[DateValue]] internal slot of O to TimeClip(tv).
         O.$DateValue = TimeClip(realm, tv);
@@ -172,7 +172,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // 3. If NewTarget is not undefined, then
       if (NewTarget) {
         // a. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%DatePrototype%", « [[DateValue]] »).
-        let O = OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
+        let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
 
         // b. Set the [[DateValue]] internal slot of O to the time value (UTC) identifying the current time.
         O.$DateValue = getCurrentTime();

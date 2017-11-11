@@ -11,13 +11,11 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
-import { StringValue, NumberValue } from "../values/index.js";
+import { StringValue, NumberValue, Value } from "../values/index.js";
 import { GetIterator } from "../methods/index.js";
-import { ArrayCreate, CreateDataProperty } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { IteratorStep, IteratorValue } from "../methods/iterator.js";
-import { Environment, Properties } from "../singletons.js";
+import { Create, Environment, Properties } from "../singletons.js";
 import type { BabelNodeArrayExpression } from "babel-types";
 
 // ECMA262 2.2.5.3
@@ -28,7 +26,7 @@ export default function(
   realm: Realm
 ): Value {
   // 1. Let array be ArrayCreate(0).
-  let array = ArrayCreate(realm, 0);
+  let array = Create.ArrayCreate(realm, 0);
 
   // 2. Let len be the result of performing ArrayAccumulation for ElementList with arguments array and 0.
   let elements = ast.elements || [];
@@ -64,7 +62,7 @@ export default function(
         let nextValue = IteratorValue(realm, next);
 
         // d. Let status be CreateDataProperty(array, ToString(ToUint32(nextIndex)), nextValue).
-        let status = CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), nextValue);
+        let status = Create.CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), nextValue);
 
         // e. Assert: status is true.
         invariant(status === true);
@@ -84,7 +82,7 @@ export default function(
       let initValue = Environment.GetValue(realm, initResult);
 
       // 6. Let created be CreateDataProperty(array, ToString(ToUint32(postIndex+padding)), initValue).
-      let created = CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), initValue);
+      let created = Create.CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), initValue);
 
       // 7. Assert: created is true.
       invariant(created === true, "expected data property creation");

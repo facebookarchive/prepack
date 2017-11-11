@@ -30,17 +30,13 @@ import {
   EnumerableOwnProperties,
   GetOwnPropertyKeys,
   Get,
-  CreateArrayFromList,
-  CreateDataProperty,
-  ObjectCreate,
-  OrdinaryCreateFromConstructor,
   RequireObjectCoercible,
   SameValuePartial,
   TestIntegrityLevel,
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Properties as Props } from "../../singletons.js";
+import { Create, Properties as Props } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -49,12 +45,12 @@ export default function(realm: Realm): NativeFunctionValue {
     // 1. If NewTarget is neither undefined nor the active function, then
     if (NewTarget && NewTarget !== func) {
       // a. Return ? OrdinaryCreateFromConstructor(NewTarget, "%ObjectPrototype%").
-      return OrdinaryCreateFromConstructor(realm, NewTarget, "ObjectPrototype");
+      return Create.OrdinaryCreateFromConstructor(realm, NewTarget, "ObjectPrototype");
     }
 
     // 2. If value is null, undefined or not supplied, return ObjectCreate(%ObjectPrototype%).
     if (HasSomeCompatibleType(value, NullValue, UndefinedValue)) {
-      return ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      return Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     }
 
     // 3. Return ToObject(value).
@@ -139,7 +135,7 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 2. Let obj be ObjectCreate(O).
-    let obj = ObjectCreate(realm, ((O.throwIfNotConcrete(): any): ObjectValue | NullValue));
+    let obj = Create.ObjectCreate(realm, ((O.throwIfNotConcrete(): any): ObjectValue | NullValue));
 
     // 3. If Properties is not undefined, then
     if (!Properties.mightBeUndefined()) {
@@ -227,7 +223,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let ownKeys = obj.$OwnPropertyKeys();
 
     // 3. Let descriptors be ! ObjectCreate(%ObjectPrototype%).
-    let descriptors = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    let descriptors = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
     // 4. Repeat, for each element key of ownKeys in List order,
     for (let key of ownKeys) {
@@ -239,7 +235,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let descriptor = Props.FromPropertyDescriptor(realm, desc);
 
       // c. If descriptor is not undefined, perform ! CreateDataProperty(descriptors, key, descriptor).
-      if (!(descriptor instanceof UndefinedValue)) CreateDataProperty(realm, descriptors, key, descriptor);
+      if (!(descriptor instanceof UndefinedValue)) Create.CreateDataProperty(realm, descriptors, key, descriptor);
     }
 
     // 5. Return descriptors.
@@ -306,7 +302,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let nameList = EnumerableOwnProperties(realm, obj, "key");
 
     // 3. Return CreateArrayFromList(nameList).
-    return CreateArrayFromList(realm, nameList);
+    return Create.CreateArrayFromList(realm, nameList);
   });
 
   // ECMA262 9.1.2.16
@@ -318,7 +314,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let nameList = EnumerableOwnProperties(realm, obj, "value");
 
     // 3. Return CreateArrayFromList(nameList).
-    return CreateArrayFromList(realm, nameList);
+    return Create.CreateArrayFromList(realm, nameList);
   });
 
   // ECMA262 19.1.2.17
@@ -330,7 +326,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let nameList = EnumerableOwnProperties(realm, obj, "key+value");
 
     // 3. Return CreateArrayFromList(nameList).
-    return CreateArrayFromList(realm, nameList);
+    return Create.CreateArrayFromList(realm, nameList);
   });
 
   // ECMA262 19.1.2.18

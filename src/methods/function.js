@@ -35,14 +35,13 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
-import { Environment, Join, Properties } from "../singletons.js";
+import { Create, Environment, Join, Properties } from "../singletons.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -204,7 +203,7 @@ function InternalConstruct(
   // 5. If kind is "base", then
   if (thisArgument === undefined && kind === "base") {
     // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%ObjectPrototype%").
-    thisArgument = OrdinaryCreateFromConstructor(realm, newTarget, "ObjectPrototype");
+    thisArgument = Create.OrdinaryCreateFromConstructor(realm, newTarget, "ObjectPrototype");
   }
 
   // Tracing: Give all registered tracers a chance to detour, wrapping around each other if needed.
@@ -504,13 +503,13 @@ export class FunctionImplementation {
       // a. If strict is true or if simpleParameterList is false, then
       if (strict === true || simpleParameterList === false) {
         // i. Let ao be CreateUnmappedArgumentsObject(argumentsList).
-        ao = CreateUnmappedArgumentsObject(realm, argumentsList);
+        ao = Create.CreateUnmappedArgumentsObject(realm, argumentsList);
       } else {
         // b. Else,
         // i. NOTE mapped argument object is only provided for non-strict functions that don't have a rest parameter, any parameter default value initializers, or any destructured parameters.
         // ii. Let ao be CreateMappedArgumentsObject(func, formals, argumentsList, envRec).
         invariant(formals !== undefined);
-        ao = CreateMappedArgumentsObject(realm, func, formals, argumentsList, envRec);
+        ao = Create.CreateMappedArgumentsObject(realm, func, formals, argumentsList, envRec);
       }
 
       // c. If strict is true, then

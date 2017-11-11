@@ -776,3 +776,79 @@ export type JoinType = {
     d2: void | Descriptor
   ): void | Descriptor,
 };
+
+export type CreateType = {
+  // ECMA262 9.4.3.3
+  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue): ObjectValue,
+
+  // B.2.3.2.1
+  CreateHTML(realm: Realm, string: Value, tag: string, attribute: string, value: string | Value): StringValue,
+
+  // ECMA262 9.4.4.8.1
+  MakeArgGetter(realm: Realm, name: string, env: EnvironmentRecord): NativeFunctionValue,
+
+  // ECMA262 9.4.4.8.1
+  MakeArgSetter(realm: Realm, name: string, env: EnvironmentRecord): NativeFunctionValue,
+
+  // ECMA262 21.1.5.1
+  CreateStringIterator(realm: Realm, string: StringValue): ObjectValue,
+
+  // ECMA262 9.4.2.3
+  ArraySpeciesCreate(realm: Realm, originalArray: ObjectValue, length: number): ObjectValue,
+
+  // ECMA262 7.4.7
+  CreateIterResultObject(realm: Realm, value: Value, done: boolean): ObjectValue,
+
+  // ECMA262 22.1.5.1
+  CreateArrayIterator(realm: Realm, array: ObjectValue, kind: IterationKind): ObjectValue,
+
+  // ECMA262 9.4.2.2
+  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): ArrayValue,
+
+  // ECMA262 7.3.16
+  CreateArrayFromList(realm: Realm, elems: Array<Value>): ArrayValue,
+
+  // ECMA262 9.4.4.7
+  CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array<Value>): ObjectValue,
+
+  // ECMA262 9.4.4.8
+  CreateMappedArgumentsObject(
+    realm: Realm,
+    func: FunctionValue,
+    formals: Array<BabelNodeLVal>,
+    argumentsList: Array<Value>,
+    env: EnvironmentRecord
+  ): ObjectValue,
+
+  // ECMA262 7.3.4
+  CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,
+
+  // ECMA262 7.3.5
+  CreateMethodProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,
+
+  // ECMA262 7.3.6
+  CreateDataPropertyOrThrow(realm: Realm, O: Value, P: PropertyKeyValue, V: Value): boolean,
+
+  // ECMA262 9.1.12
+  ObjectCreate(realm: Realm, proto: ObjectValue | NullValue, internalSlotsList?: { [key: string]: void }): ObjectValue,
+
+  // ECMA262 9.1.13
+  OrdinaryCreateFromConstructor(
+    realm: Realm,
+    constructor: ObjectValue,
+    intrinsicDefaultProto: string,
+    internalSlotsList?: { [key: string]: void }
+  ): ObjectValue,
+
+  // ECMA262 7.3.17
+  CreateListFromArrayLike(realm: Realm, obj: Value, elementTypes?: Array<string>): Array<Value>,
+
+  // ECMA262 19.2.1.1.1
+  CreateDynamicFunction(
+    realm: Realm,
+    constructor: ObjectValue,
+    newTarget: void | ObjectValue,
+    kind: "normal" | "generator",
+    args: Array<Value>
+  ): Value,
+};

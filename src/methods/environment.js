@@ -48,12 +48,10 @@ import {
   IteratorStep,
   IteratorValue,
   IteratorClose,
-  CreateDataProperty,
-  ArrayCreate,
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
 } from "./index.js";
-import { Functions, Properties } from "../singletons.js";
+import { Create, Functions, Properties } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeVariableDeclaration,
@@ -799,7 +797,7 @@ export class EnvironmentImplementation {
       let lhs = this.ResolveBinding(realm, restEl.argument.name, strictCode, environment);
 
       // 2. Let A be ArrayCreate(0).
-      let A = ArrayCreate(realm, 0);
+      let A = Create.ArrayCreate(realm, 0);
 
       // 3. Let n be 0.
       let n = 0;
@@ -860,7 +858,7 @@ export class EnvironmentImplementation {
         }
 
         // f. Let status be CreateDataProperty(A, ! ToString(n), nextValue).
-        let status = CreateDataProperty(realm, A, n.toString(), nextValue);
+        let status = Create.CreateDataProperty(realm, A, n.toString(), nextValue);
 
         // g. Assert: status is true.
         invariant(status, "expected to create data property");
@@ -871,7 +869,7 @@ export class EnvironmentImplementation {
     } else if (restEl) {
       invariant(restEl.argument.type === "ArrayPattern" || restEl.argument.type === "ObjectPattern");
       // 1. Let A be ArrayCreate(0).
-      let A = ArrayCreate(realm, 0);
+      let A = Create.ArrayCreate(realm, 0);
 
       // 2. Let n be 0.
       let n = 0;
@@ -926,7 +924,7 @@ export class EnvironmentImplementation {
         }
 
         // f. Let status be CreateDataProperty(A, ! ToString(n), nextValue).
-        let status = CreateDataProperty(realm, A, n.toString(), nextValue);
+        let status = Create.CreateDataProperty(realm, A, n.toString(), nextValue);
 
         // g. Assert: status is true.
         invariant(status, "expected to create data property");

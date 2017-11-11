@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import { FatalError } from "../errors.js";
 import { Value, StringValue, NumberValue, ObjectValue } from "../values/index.js";
-import { CreateArrayFromList } from "../methods/index.js";
+import { Create } from "../singletons.js";
 
 export default function convert(realm: Realm, val: any): Value {
   if (typeof val === "number") {
@@ -28,7 +28,7 @@ export default function convert(realm: Realm, val: any): Value {
   } else if (val === false) {
     return realm.intrinsics.false;
   } else if (Array.isArray(val)) {
-    return CreateArrayFromList(realm, val.map(item => convert(realm, item)));
+    return Create.CreateArrayFromList(realm, val.map(item => convert(realm, item)));
   } else if (typeof val === "object") {
     let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 

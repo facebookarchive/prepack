@@ -26,11 +26,9 @@ import {
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
   HasOwnProperty,
-  ArrayCreate,
-  CreateDataProperty,
   GetV,
 } from "./index.js";
-import { Environment, Functions, Properties } from "../singletons.js";
+import { Create, Environment, Functions, Properties } from "../singletons.js";
 import type { BabelNodeLVal, BabelNodeArrayPattern, BabelNodeObjectPattern } from "babel-types";
 
 // ECMA262 12.15.5.2
@@ -295,7 +293,7 @@ export function IteratorDestructuringAssignmentEvaluation(
     }
 
     // 2. Let A be ArrayCreate(0).
-    let A = ArrayCreate(realm, 0);
+    let A = Create.ArrayCreate(realm, 0);
 
     // 3. Let n be 0.
     let n = 0;
@@ -334,7 +332,7 @@ export function IteratorDestructuringAssignmentEvaluation(
         }
 
         // iv. Let status be CreateDataProperty(A, ! ToString(n), nextValue).
-        let status = CreateDataProperty(realm, A, n.toString(), nextValue);
+        let status = Create.CreateDataProperty(realm, A, n.toString(), nextValue);
 
         // v. Assert: status is true.
         invariant(status, "expected to create data property");

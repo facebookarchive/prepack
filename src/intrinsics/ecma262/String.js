@@ -12,16 +12,18 @@
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue, StringValue, SymbolValue } from "../../values/index.js";
 import {
+  Get,
+  GetPrototypeFromConstructor,
+  SymbolDescriptiveString,
+  ToInteger,
+  ToLength,
+  ToNumber,
+  ToObjectPartial,
   ToString,
   ToStringPartial,
   ToUint16,
-  ToNumber,
-  ToInteger,
-  ToObjectPartial,
-  ToLength,
-} from "../../methods/to.js";
-import { Get } from "../../methods/get.js";
-import { GetPrototypeFromConstructor, SymbolDescriptiveString, StringCreate } from "../../methods/index.js";
+} from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -47,7 +49,7 @@ export default function(realm: Realm): NativeFunctionValue {
     if (!NewTarget) return s;
 
     // 4. Return ? StringCreate(s, ? GetPrototypeFromConstructor(NewTarget, "%StringPrototype%")).
-    return StringCreate(realm, s, GetPrototypeFromConstructor(realm, NewTarget, "StringPrototype"));
+    return Create.StringCreate(realm, s, GetPrototypeFromConstructor(realm, NewTarget, "StringPrototype"));
   });
 
   // ECMA262 21.1.2.1 ( ..._codeUnits_ )
