@@ -24,8 +24,8 @@ export type PrepackLaunchArguments = {
   prepackRuntime: string,
   prepackArguments: Array<string>,
   sourceFile: string,
-  inFilePath: string,
-  outFilePath: string,
+  debugInFilePath: string,
+  debugOutFilePath: string,
   outputCallback: Buffer => void,
   exitCallback: () => void,
 };

@@ -61,11 +61,11 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
       process.exit(1);
     }
   }
-  if (debugInFilePath === 0) {
+  if (debugInFilePath.length === 0) {
     console.error("No debugger input file path provided!");
     process.exit(1);
   }
-  if (debugOutFilePath === 0) {
+  if (debugOutFilePath.length === 0) {
     console.error("No debugger output file path provided!");
     process.exit(1);
   }

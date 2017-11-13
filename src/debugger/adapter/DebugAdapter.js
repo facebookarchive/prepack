@@ -85,11 +85,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this._registerMessageCallbacks();
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",
-      prepackRuntime: args.prepackRuntime,
-      sourceFile: args.sourceFile,
-      prepackArguments: args.prepackArguments,
-      inFilePath: args.debugInFilePath,
-      outFilePath: args.debugOutFilePath,
+      ...args,
       outputCallback: (data: Buffer) => {
         let outputEvent = new OutputEvent(data.toString(), "stdout");
         this.sendEvent(outputEvent);

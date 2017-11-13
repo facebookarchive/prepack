@@ -116,9 +116,9 @@ export class AdapterChannel {
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
     prepackCommand = prepackCommand.concat([
       "--debugInFilePath",
-      args.outFilePath,
+      args.debugOutFilePath,
       "--debugOutFilePath",
-      args.inFilePath,
+      args.debugInFilePath,
     ]);
     // the runtime can be `prepack` or `node <script>`
     let runtime = "prepack";
