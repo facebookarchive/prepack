@@ -15,7 +15,6 @@ import { FatalError } from "../errors.js";
 import type { Value } from "../values/index.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 import {
-  PutValue,
   GetValue,
   ResolveBinding,
   InitializeReferencedBinding,
@@ -24,6 +23,7 @@ import {
   SetFunctionName,
   BindingInitialization,
 } from "../methods/index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeVariableDeclaration } from "babel-types";
 
@@ -129,7 +129,7 @@ export default function(
       }
 
       // 6. Return ? PutValue(lhs, value).
-      PutValue(realm, lhs, value);
+      Properties.PutValue(realm, lhs, value);
     } else if ((declar.id.type === "ObjectPattern" || declar.id.type === "ArrayPattern") && Initializer) {
       // 1. Let rhs be the result of evaluating Initializer.
       let rhs = env.evaluate(Initializer, strictCode);

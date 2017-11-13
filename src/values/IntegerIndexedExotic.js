@@ -12,12 +12,12 @@
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
 import { ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "../values/index.js";
-import { OrdinaryGetOwnProperty, OrdinaryDefineOwnProperty, OrdinarySet } from "../methods/properties.js";
 import { CanonicalNumericIndexString, ToString } from "../methods/to.js";
 import { IsInteger, IsArrayIndex, IsAccessorDescriptor, IsDetachedBuffer, IsPropertyKey } from "../methods/is.js";
 import { OrdinaryGet } from "../methods/get.js";
 import { OrdinaryHasProperty } from "../methods/has.js";
 import { IntegerIndexedElementSet, IntegerIndexedElementGet } from "../methods/typedarray.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant";
 
 export default class IntegerIndexedExotic extends ObjectValue {
@@ -61,7 +61,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
       }
     }
     // 4. Return OrdinaryGetOwnProperty(O, P).
-    return OrdinaryGetOwnProperty(this.$Realm, O, P);
+    return Properties.OrdinaryGetOwnProperty(this.$Realm, O, P);
   }
 
   // ECMA262 9.4.5.2
@@ -182,7 +182,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     }
 
     // 4. Return ! OrdinaryDefineOwnProperty(O, P, Desc).
-    return OrdinaryDefineOwnProperty(this.$Realm, O, P, Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, O, P, Desc);
   }
 
   // ECMA262 9.4.5.4
@@ -234,7 +234,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     }
 
     // 3. Return ? OrdinarySet(O, P, V, Receiver).
-    return OrdinarySet(this.$Realm, O, P, V, Receiver);
+    return Properties.OrdinarySet(this.$Realm, O, P, V, Receiver);
   }
 
   // ECMA262 9.4.5.6

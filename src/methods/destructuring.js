@@ -29,11 +29,11 @@ import {
   HasOwnProperty,
   SetFunctionName,
   GetReferencedName,
-  PutValue,
   ArrayCreate,
   CreateDataProperty,
   GetV,
 } from "./index.js";
+import { Properties } from "../singletons.js";
 import type { BabelNodeLVal, BabelNodeArrayPattern, BabelNodeObjectPattern } from "babel-types";
 
 // ECMA262 12.15.5.2
@@ -271,7 +271,7 @@ export function IteratorDestructuringAssignmentEvaluation(
     }
 
     // 8. Return ? PutValue(lref, v).
-    PutValue(realm, lref, v);
+    Properties.PutValue(realm, lref, v);
     continue;
   }
 
@@ -357,7 +357,7 @@ export function IteratorDestructuringAssignmentEvaluation(
       invariant(lref);
 
       // a. Return ? PutValue(lref, A).
-      PutValue(realm, lref, A);
+      Properties.PutValue(realm, lref, A);
     } else {
       // 6. Let nestedAssignmentPattern be the parse of the source text corresponding to DestructuringAssignmentTarget using either AssignmentPattern or AssignmentPattern[Yield] as the goal symbol depending upon whether this AssignmentElement has the [Yield] parameter.
       let nestedAssignmentPattern = DestructuringAssignmentTarget;
@@ -458,5 +458,5 @@ export function KeyedDestructuringAssignmentEvaluation(
   }
 
   // 7. Return ? PutValue(lref, rhsValue).
-  return PutValue(realm, lref, rhsValue);
+  return Properties.PutValue(realm, lref, rhsValue);
 }

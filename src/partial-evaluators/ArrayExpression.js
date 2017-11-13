@@ -22,9 +22,9 @@ import {
   GetMethod,
   IteratorStep,
   IteratorValue,
-  Set,
 } from "../methods/index.js";
 import { AbstractValue, NumberValue, ObjectValue, StringValue, Value } from "../values/index.js";
+import { Properties } from "../singletons.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -152,7 +152,7 @@ export default function(
   // 3. ReturnIfAbrupt(len).
 
   // 4. Perform Set(array, "length", ToUint32(len), false).
-  Set(realm, array, "length", new NumberValue(realm, nextIndex), false);
+  Properties.Set(realm, array, "length", new NumberValue(realm, nextIndex), false);
 
   // 5. NOTE: The above Set cannot fail because of the nature of the object returned by ArrayCreate.
 

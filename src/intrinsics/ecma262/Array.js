@@ -32,10 +32,10 @@ import {
   IsArray,
   IsConstructor,
   IsCallable,
-  Set,
 } from "../../methods/index.js";
 import { ToString, ToUint32, ToObject, ToLength } from "../../methods/to.js";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
+import { Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -97,7 +97,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 8. Perform ! Set(array, "length", intLen, true).
-      Set(realm, array, "length", new NumberValue(realm, intLen), true);
+      Properties.Set(realm, array, "length", new NumberValue(realm, intLen), true);
 
       // 9. Return array.
       return array;
@@ -201,7 +201,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 8. Perform ? Set(A, "length", len, true).
-      Set(realm, A, "length", new NumberValue(realm, len), true);
+      Properties.Set(realm, A, "length", new NumberValue(realm, len), true);
 
       // 9. Return A.
       return A;
@@ -278,7 +278,7 @@ export default function(realm: Realm): NativeFunctionValue {
           // iv. If next is false, then
           if (next === false) {
             // 1. Perform ? Set(A, "length", k, true).
-            Set(realm, A, "length", new NumberValue(realm, k), true);
+            Properties.Set(realm, A, "length", new NumberValue(realm, k), true);
 
             // 2. Return A.
             return A;
@@ -377,7 +377,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 13. Perform ? Set(A, "length", len, true).
-      Set(realm, A, "length", new NumberValue(realm, len), true);
+      Properties.Set(realm, A, "length", new NumberValue(realm, len), true);
 
       // 14. Return A.
       return A;

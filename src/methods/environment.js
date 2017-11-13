@@ -42,7 +42,6 @@ import {
   GetV,
   GetThisValue,
   ToObjectPartial,
-  PutValue,
   RequireObjectCoercible,
   HasSomeCompatibleType,
   GetIterator,
@@ -55,6 +54,7 @@ import {
   HasOwnProperty,
   SetFunctionName,
 } from "./index.js";
+import { Properties } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeVariableDeclaration,
@@ -735,7 +735,7 @@ export function IteratorBindingInitialization(
 
       // 6. If environment is undefined, return ? PutValue(lhs, v).
       if (!environment) {
-        PutValue(realm, lhs, v);
+        Properties.PutValue(realm, lhs, v);
         continue;
       }
 
@@ -845,7 +845,7 @@ export function IteratorBindingInitialization(
       if (iteratorRecord.$Done === true) {
         // i. If environment is undefined, return ? PutValue(lhs, A).
         if (!environment) {
-          PutValue(realm, lhs, A);
+          Properties.PutValue(realm, lhs, A);
           break;
         }
 
@@ -972,7 +972,7 @@ export function InitializeBoundName(realm: Realm, name: string, value: Value, en
     let lhs = ResolveBinding(realm, name, false);
 
     // b. Return ? PutValue(lhs, value).
-    return PutValue(realm, lhs, value);
+    return Properties.PutValue(realm, lhs, value);
   }
 }
 
@@ -1058,7 +1058,7 @@ export function KeyedBindingInitialization(
     }
 
     // 5. If environment is undefined, return ? PutValue(lhs, v).
-    if (!environment) return PutValue(realm, lhs, v);
+    if (!environment) return Properties.PutValue(realm, lhs, v);
 
     // 6. Return InitializeReferencedBinding(lhs, v).
     return InitializeReferencedBinding(realm, lhs, v);

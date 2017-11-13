@@ -13,7 +13,7 @@ import invariant from "../../invariant.js";
 import { FatalError } from "../../errors.js";
 import type { Realm } from "../../realm.js";
 import { type Value, BooleanValue, ObjectValue, NumberValue, StringValue } from "../../values/index.js";
-import { DefinePropertyOrThrow } from "../../methods/index.js";
+import { Properties } from "../../singletons.js";
 
 export function getNodeBufferFromTypedArray(realm: Realm, value: ObjectValue): Uint8Array {
   let buffer = value.$ViewedArrayBuffer;
@@ -88,5 +88,5 @@ export function copyProperty(realm: Realm, originalObject: {}, realmObject: Obje
     configurable: !!desc.configurable,
     enumerable: !!desc.enumerable,
   };
-  DefinePropertyOrThrow(realm, realmObject, name, newDesc);
+  Properties.DefinePropertyOrThrow(realm, realmObject, name, newDesc);
 }

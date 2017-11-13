@@ -33,7 +33,6 @@ import {
   composePossiblyNormalCompletions,
   Construct,
   incorporateSavedCompletion,
-  ThrowIfMightHaveBeenDeleted,
   ToString,
   updatePossiblyNormalCompletionWithSubsequentEffects,
 } from "./methods/index.js";
@@ -42,6 +41,7 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
+import { Properties } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -737,7 +737,7 @@ export class Realm {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
       invariant(binding.descriptor !== undefined);
       let value = binding.descriptor.value;
-      ThrowIfMightHaveBeenDeleted(value);
+      Properties.ThrowIfMightHaveBeenDeleted(value);
       if (value === undefined) {
         AbstractValue.reportIntrospectionError(abstractValue, key);
         throw new FatalError();

@@ -28,14 +28,12 @@ import invariant from "../invariant.js";
 import {
   InitializeReferencedBinding,
   GetValue,
-  PutValue,
   IteratorStep,
   IteratorValue,
   NewDeclarativeEnvironment,
   ResolveBinding,
   IteratorClose,
   ToObjectPartial,
-  EnumerateObjectProperties,
   UpdateEmpty,
   BoundNames,
   BindingInitialization,
@@ -43,6 +41,7 @@ import {
   GetIterator,
   IsDestructuring,
 } from "../methods/index.js";
+import { Properties } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeForOfStatement,
@@ -113,7 +112,7 @@ export function ForInOfHeadEvaluation(
   expr: BabelNode,
   iterationKind: IterationKind,
   strictCode: boolean
-) {
+): ObjectValue | AbstractObjectValue {
   // 1. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 
@@ -166,7 +165,7 @@ export function ForInOfHeadEvaluation(
     if (obj.isPartialObject() || obj instanceof AbstractObjectValue) {
       return obj;
     } else {
-      return EnumerateObjectProperties(realm, obj);
+      return Properties.EnumerateObjectProperties(realm, obj);
     }
   } else {
     // 8. Else,
@@ -287,7 +286,7 @@ export function ForInOfBodyEvaluation(
           // iii. Else,
           // 1. Let status be PutValue(lhsRef, nextValue).
           invariant(lhsRef !== undefined);
-          status = PutValue(realm, lhsRef, nextValue);
+          status = Properties.PutValue(realm, lhsRef, nextValue);
         }
       } else {
         // g. Else,

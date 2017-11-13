@@ -23,7 +23,7 @@ import {
 import { SpeciesConstructor } from "../../methods/construct.js";
 import { ToIndexPartial, ToLength, ToString, ToObjectPartial } from "../../methods/to.js";
 import { Get, GetMethod } from "../../methods/get.js";
-import { Set } from "../../methods/properties.js";
+import { Properties } from "../../singletons.js";
 import { IterableToList } from "../../methods/iterator.js";
 import { IsDetachedBuffer, IsConstructor, IsCallable } from "../../methods/is.js";
 import { Call } from "../../methods/call.js";
@@ -107,7 +107,7 @@ export default function(realm: Realm): NativeFunctionValue {
         }
 
         // v. Perform ? Set(targetObj, Pk, mappedValue, true).
-        Set(realm, targetObj, Pk, mappedValue, true);
+        Properties.Set(realm, targetObj, Pk, mappedValue, true);
 
         // vi. Increase k by 1.
         k = k + 1;
@@ -153,7 +153,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // e. Perform ? Set(targetObj, Pk, mappedValue, true).
-      Set(realm, targetObj, Pk, mappedValue, true);
+      Properties.Set(realm, targetObj, Pk, mappedValue, true);
 
       // f. Increase k by 1.
       k = k + 1;
@@ -195,7 +195,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let Pk = ToString(realm, new NumberValue(realm, k));
 
       // c. Perform ? Set(newObj, Pk, kValue, true).
-      Set(realm, newObj, Pk, kValue, true);
+      Properties.Set(realm, newObj, Pk, kValue, true);
 
       // d. Increase k by 1.
       k = k + 1;
@@ -440,7 +440,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
           let kValue = values.shift();
 
           // iii. Perform ? Set(O, Pk, kValue, true).
-          Set(realm, O, Pk, kValue, true);
+          Properties.Set(realm, O, Pk, kValue, true);
 
           // iv. Increase k by 1.
           k = k + 1;
@@ -476,7 +476,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
         let kValue = Get(realm, arrayLike, Pk);
 
         // c. Perform ? Set(O, Pk, kValue, true).
-        Set(realm, O, Pk, kValue, true);
+        Properties.Set(realm, O, Pk, kValue, true);
 
         // d. Increase k by 1.
         k += 1;

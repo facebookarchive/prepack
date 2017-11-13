@@ -32,7 +32,6 @@ import {
   IsArray,
   IsCallable,
   ObjectCreate,
-  ThrowIfMightHaveBeenDeleted,
   ToInteger,
   ToLength,
   ToNumber,
@@ -42,6 +41,7 @@ import {
 import { InternalizeJSONProperty } from "../../methods/json.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
+import { Properties } from "../../singletons.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
@@ -309,7 +309,7 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
     if (binding === undefined || binding.descriptor === undefined) continue; // deleted
     invariant(binding.descriptor !== undefined);
     let value = binding.descriptor.value;
-    ThrowIfMightHaveBeenDeleted(value);
+    Properties.ThrowIfMightHaveBeenDeleted(value);
     if (value === undefined) {
       AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
       throw new FatalError();

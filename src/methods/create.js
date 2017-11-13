@@ -28,13 +28,13 @@ import {
   ArgumentsExotic,
 } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "./get.js";
-import { DefinePropertyOrThrow, OrdinaryDefineOwnProperty } from "./properties.js";
 import { IsConstructor, IsPropertyKey, IsArray } from "./is.js";
 import { Type, SameValue, RequireObjectCoercible } from "./abstract.js";
 import { ToStringPartial, ToLength } from "./to.js";
 import { Get, GetFunctionRealm } from "./get.js";
 import { Construct, MakeConstructor } from "./construct.js";
 import { FunctionAllocate, FunctionInitialize, SetFunctionName } from "./function.js";
+import { Properties } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -68,7 +68,7 @@ export function StringCreate(realm: Realm, value: StringValue, prototype: Object
   let length = value.value.length;
 
   // 10. Perform ! DefinePropertyOrThrow(S, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
-  DefinePropertyOrThrow(realm, S, "length", {
+  Properties.DefinePropertyOrThrow(realm, S, "length", {
     value: new NumberValue(realm, length),
     writable: false,
     enumerable: false,
@@ -312,7 +312,7 @@ export function ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): 
   A.setExtensible(true);
 
   // 10. Perform ! OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-  OrdinaryDefineOwnProperty(realm, A, "length", {
+  Properties.OrdinaryDefineOwnProperty(realm, A, "length", {
     value: new NumberValue(realm, length),
     writable: true,
     enumerable: false,
@@ -363,7 +363,7 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
 
   // 4. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len,
   //    [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-  DefinePropertyOrThrow(realm, obj, "length", {
+  Properties.DefinePropertyOrThrow(realm, obj, "length", {
     value: new NumberValue(realm, len),
     writable: true,
     enumerable: false,
@@ -387,7 +387,7 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
 
   // 7. Perform ! DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor {[[Value]]:
   //    %ArrayProto_values%, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-  DefinePropertyOrThrow(realm, obj, realm.intrinsics.SymbolIterator, {
+  Properties.DefinePropertyOrThrow(realm, obj, realm.intrinsics.SymbolIterator, {
     value: realm.intrinsics.ArrayProto_values,
     writable: true,
     enumerable: false,
@@ -396,7 +396,7 @@ export function CreateUnmappedArgumentsObject(realm: Realm, argumentsList: Array
 
   // 8. Perform ! DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Get]]:
   // %ThrowTypeError%, [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
-  DefinePropertyOrThrow(realm, obj, "callee", {
+  Properties.DefinePropertyOrThrow(realm, obj, "callee", {
     get: realm.intrinsics.ThrowTypeError,
     set: realm.intrinsics.ThrowTypeError,
     enumerable: false,
@@ -478,7 +478,7 @@ export function CreateMappedArgumentsObject(
 
   // 18. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len,
   //     [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-  DefinePropertyOrThrow(realm, obj, "length", {
+  Properties.DefinePropertyOrThrow(realm, obj, "length", {
     value: new NumberValue(realm, len),
     writable: true,
     enumerable: false,
@@ -526,7 +526,7 @@ export function CreateMappedArgumentsObject(
 
   // 22. Perform ! DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor {[[Value]]:
   //     %ArrayProto_values%, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-  DefinePropertyOrThrow(realm, obj, realm.intrinsics.SymbolIterator, {
+  Properties.DefinePropertyOrThrow(realm, obj, realm.intrinsics.SymbolIterator, {
     value: realm.intrinsics.ArrayProto_values,
     writable: true,
     enumerable: false,
@@ -535,7 +535,7 @@ export function CreateMappedArgumentsObject(
 
   // 23. Perform ! DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Value]]:
   //     func, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-  DefinePropertyOrThrow(realm, obj, "callee", {
+  Properties.DefinePropertyOrThrow(realm, obj, "callee", {
     value: func,
     writable: true,
     enumerable: false,
@@ -850,7 +850,7 @@ export function CreateDynamicFunction(
     prototype.originalConstructor = F;
 
     // b. Perform DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-    DefinePropertyOrThrow(realm, F, "prototype", {
+    Properties.DefinePropertyOrThrow(realm, F, "prototype", {
       value: prototype,
       writable: true,
       enumerable: false,

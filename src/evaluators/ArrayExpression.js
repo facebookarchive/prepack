@@ -14,10 +14,10 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { StringValue, NumberValue } from "../values/index.js";
 import { GetIterator, GetValue } from "../methods/index.js";
-import { Set } from "../methods/index.js";
 import { ArrayCreate, CreateDataProperty } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { IteratorStep, IteratorValue } from "../methods/iterator.js";
+import { Properties } from "../singletons.js";
 import type { BabelNodeArrayExpression } from "babel-types";
 
 // ECMA262 2.2.5.3
@@ -95,7 +95,7 @@ export default function(
   // 3. ReturnIfAbrupt(len).
 
   // 4. Perform Set(array, "length", ToUint32(len), false).
-  Set(realm, array, "length", new NumberValue(realm, nextIndex), false);
+  Properties.Set(realm, array, "length", new NumberValue(realm, nextIndex), false);
 
   // 5. NOTE: The above Set cannot fail because of the nature of the object returned by ArrayCreate.
 

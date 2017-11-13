@@ -12,10 +12,10 @@
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
 import { ObjectValue, NumberValue, StringValue } from "../values/index.js";
-import { OrdinaryGetOwnProperty, ThrowIfMightHaveBeenDeleted } from "../methods/properties.js";
 import { CanonicalNumericIndexString } from "../methods/to.js";
 import { IsInteger, IsArrayIndex } from "../methods/is.js";
 import { ToString, ToInteger } from "../methods/to.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant";
 
 export default class StringExotic extends ObjectValue {
@@ -28,11 +28,11 @@ export default class StringExotic extends ObjectValue {
     // 1. Assert: IsPropertyKey(P) is true.
 
     // 2. Let desc be OrdinaryGetOwnProperty(S, P).
-    let desc = OrdinaryGetOwnProperty(this.$Realm, this, P);
+    let desc = Properties.OrdinaryGetOwnProperty(this.$Realm, this, P);
 
     // 3. If desc is not undefined, return desc.
     if (desc !== undefined) {
-      ThrowIfMightHaveBeenDeleted(desc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(desc.value);
       return desc;
     }
 

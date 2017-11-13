@@ -17,7 +17,7 @@ import { SpeciesConstructor } from "../methods/construct.js";
 import { IsConstructor } from "../methods/index.js";
 import { ToIndexPartial, ToBooleanPartial, ToNumber, ElementConv } from "./to.js";
 import { IsDetachedBuffer } from "../methods/is.js";
-import { ThrowIfInternalSlotNotWritable } from "../methods/properties.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { ElementSize } from "../types.js";
 
@@ -123,10 +123,10 @@ export function DetachArrayBuffer(realm: Realm, arrayBuffer: ObjectValue): NullV
   );
 
   // 2. Set arrayBuffer.[[ArrayBufferData]] to null.
-  ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData = null;
+  Properties.ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData = null;
 
   // 3. Set arrayBuffer.[[ArrayBufferByteLength]] to 0.
-  ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferByteLength").$ArrayBufferByteLength = 0;
+  Properties.ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferByteLength").$ArrayBufferByteLength = 0;
 
   // 4. Return NormalCompletion(null).
   return realm.intrinsics.null;
@@ -424,7 +424,7 @@ export function SetValueInBuffer(
   invariant(typeof value === "number");
 
   // 5. Let block be arrayBuffer.[[ArrayBufferData]].
-  let block = ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData;
+  let block = Properties.ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData;
 
   // 6. Assert: block is not undefined.
   invariant(block instanceof Uint8Array);
