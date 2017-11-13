@@ -26,7 +26,7 @@ import type {
 } from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
-import { VariableFactory } from "./VariableFactory.js";
+import { VariableManager } from "./VariableManager.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
@@ -36,7 +36,7 @@ export class DebugServer {
     this._lastRunRequestID = 0;
     this._channel = channel;
     this._realm = realm;
-    this._variableFactory = new VariableFactory();
+    this._variableManager = new VariableManager();
     this.waitForRun();
   }
   // the collection of breakpoints
@@ -48,7 +48,7 @@ export class DebugServer {
   _channel: DebugChannel;
   _lastRunRequestID: number;
   _realm: Realm;
-  _variableFactory: VariableFactory;
+  _variableManager: VariableManager;
   /* Block until adapter says to run
   /* runCondition: a function that determines whether the adapter has told
   /* Prepack to continue running
@@ -149,6 +149,7 @@ export class DebugServer {
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
         invariant(args.kind === "run");
+        this._doPreRunActions();
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
@@ -214,7 +215,7 @@ export class DebugServer {
     let scopes = [];
     if (context.variableEnvironment) {
       // get a new mapping for this collection of variables
-      let variableRef = this._variableFactory.createReference(context.variableEnvironment);
+      let variableRef = this._variableManager.getReferenceForValue(context.variableEnvironment);
       let scope: Scope = {
         name: "Locals",
         variablesReference: variableRef,
@@ -224,7 +225,7 @@ export class DebugServer {
     }
     if (context.lexicalEnvironment) {
       // get a new mapping for this collection of variables
-      let variableRef = this._variableFactory.createReference(context.lexicalEnvironment);
+      let variableRef = this._variableManager.getReferenceForValue(context.lexicalEnvironment);
       let scope: Scope = {
         name: "Globals",
         variablesReference: variableRef,
@@ -236,8 +237,14 @@ export class DebugServer {
   }
 
   processVariablesCommand(requestID: number, args: VariablesArguments) {
-    let variables = this._variableFactory.getVariablesByReference(args.variablesReference);
+    let variables = this._variableManager.getVariablesByReference(args.variablesReference);
     this._channel.sendVariablesResponse(requestID, variables);
+  }
+
+  // actions that need to happen before Prepack can resume
+  _doPreRunActions() {
+    // resets the variable manager
+    this._variableManager.clean();
   }
 
   shutdown() {

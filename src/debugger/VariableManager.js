@@ -14,16 +14,35 @@ import { ReferenceMap } from "./ReferenceMap.js";
 import { LexicalEnvironment, DeclarativeEnvironmentRecord } from "./../environment.js";
 import { Value, ConcreteValue, PrimitiveValue } from "./../values/index.js";
 
-export class VariableFactory {
+// This class manages the handling of variable requests in the debugger
+// The DebugProtocol specifies collections of variables are to be fetched using a
+// unique reference ID called a variablesReference. This class can generate new
+// variablesReferences to pass to the UI and then perform lookups for those
+// variablesReferences when they are requested.
+export class VariableManager {
   constructor() {
+    this._containerCache = new Map();
     this._referenceMap = new ReferenceMap();
   }
+  // cache for created references
+  _containerCache: Map<VariableContainer, number>;
+  // map for looking up references
   _referenceMap: ReferenceMap<VariableContainer>;
 
-  createReference(value: VariableContainer): number {
-    return this._referenceMap.add(value);
+  // Given a container, either returns a cached reference for that container if
+  // it exists or return a new reference
+  getReferenceForValue(value: VariableContainer): number {
+    let cachedRef = this._containerCache.get(value);
+    if (cachedRef) {
+      return cachedRef;
+    }
+
+    let varRef = this._referenceMap.add(value);
+    this._containerCache.set(value, varRef);
+    return varRef;
   }
 
+  // The entry point for retrieving a collection of variables by a reference
   getVariablesByReference(reference: number): Array<Variable> {
     let container = this._referenceMap.get(reference);
     if (!container) return [];
@@ -72,5 +91,10 @@ export class VariableFactory {
       return value.toDisplayString();
     }
     return "to be supported";
+  }
+
+  clean() {
+    this._containerCache = new Map();
+    this._referenceMap.clean();
   }
 }
