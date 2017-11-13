@@ -143,7 +143,9 @@ export default class AbstractValue extends Value {
 
     return (
       this === x ||
-      (x instanceof AbstractValue &&
+      (!(this: any).dontCSE &&
+        x instanceof AbstractValue &&
+        !(x: any).dontCSE &&
         this.kind === x.kind &&
         this.hashValue === x.hashValue &&
         ((this.intrinsicName && this.intrinsicName.length > 0 && this.intrinsicName === x.intrinsicName) ||

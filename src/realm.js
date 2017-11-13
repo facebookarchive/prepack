@@ -715,6 +715,7 @@ export class Realm {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.args = [object];
       propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
+      (propertyValue: any).dontCSE = true;
       this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
     }
   }
