@@ -120,12 +120,12 @@ export class AdapterChannel {
       "--debugOutFilePath",
       args.debugInFilePath,
     ]);
-    // the runtime can be `prepack` or `node <script>`
+
     let runtime = "prepack";
-    if (args.prepackRuntime.startsWith("node")) {
-      let parts = args.prepackRuntime.split(" ");
+    if (args.prepackRuntime.length > 0) {
+      // user specified a Prepack path
       runtime = "node";
-      prepackCommand = parts.slice(1).concat(prepackCommand);
+      prepackCommand = [args.prepackRuntime].concat(prepackCommand);
     }
     this._prepackProcess = child_process.spawn(runtime, prepackCommand);
 
