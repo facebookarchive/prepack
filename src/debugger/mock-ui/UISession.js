@@ -16,6 +16,15 @@ import { DataHandler } from "./DataHandler.js";
 import { DebuggerConstants } from "./../DebuggerConstants";
 import { LaunchRequestArguments } from "./../types.js";
 
+export type DebuggerCLIArguments = {
+  adapterPath: string,
+  prepackRuntime: string,
+  sourceFile: string,
+  prepackArguments: Array<string>,
+  debugInFilePath: string,
+  debugOutFilePath: string,
+};
+
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
 
@@ -24,12 +33,14 @@ const TWO_CRLF = "\r\n\r\n";
  * sends the commands to the adapter and process any responses
 */
 export class UISession {
-  constructor(proc: Process, adapterPath: string, prepackCommand: string, inFilePath: string, outFilePath: string) {
+  constructor(proc: Process, args: DebuggerCLIArguments) {
     this._proc = proc;
-    this._adapterPath = adapterPath;
-    this._prepackCommand = prepackCommand;
-    this._inFilePath = inFilePath;
-    this._outFilePath = outFilePath;
+    this._adapterPath = args.adapterPath;
+    this._prepackRuntime = args.prepackRuntime;
+    this._sourceFile = args.sourceFile;
+    this._prepackArguments = args.prepackArguments;
+    this._inFilePath = args.debugInFilePath;
+    this._outFilePath = args.debugOutFilePath;
     this._sequenceNum = 1;
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
@@ -53,8 +64,12 @@ export class UISession {
   _reader: readline.Interface;
   // number of invalid commands
   _invalidCount: number;
-  // command to start Prepack with
-  _prepackCommand: string;
+  // Prepack runtime command (e.g. lib/prepack-cli.js)
+  _prepackRuntime: string;
+  // input source file to Prepack
+  _sourceFile: string;
+  // arguments to start Prepack with
+  _prepackArguments: Array<string>;
   // handler for any received messages
   _dataHandler: DataHandler;
   // flag whether Prepack is waiting for a command
@@ -153,9 +168,11 @@ export class UISession {
 
   _processInitializeResponse(response: DebugProtocol.InitializeResponse) {
     let launchArgs: LaunchRequestArguments = {
-      prepackCommand: this._prepackCommand,
-      inFilePath: this._inFilePath,
-      outFilePath: this._outFilePath,
+      prepackRuntime: this._prepackRuntime,
+      sourceFile: this._sourceFile,
+      prepackArguments: this._prepackArguments,
+      debugInFilePath: this._inFilePath,
+      debugOutFilePath: this._outFilePath,
     };
     this._sendLaunchRequest(launchArgs);
   }

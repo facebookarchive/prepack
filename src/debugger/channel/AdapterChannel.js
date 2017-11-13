@@ -109,17 +109,25 @@ export class AdapterChannel {
   }
 
   launch(requestID: number, args: PrepackLaunchArguments, callback: DebuggerResponse => void) {
-    if (!args.prepackCommand || args.prepackCommand.length === 0) {
-      process.exit(1);
-    }
-
     this.sendDebuggerStart(requestID);
     this.listenOnFile(this._processPrepackMessage.bind(this));
 
-    let prepackArgs = args.prepackCommand.split(" ");
+    let prepackCommand = [args.sourceFile].concat(args.prepackArguments);
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
-    prepackArgs = prepackArgs.concat(["--debugInFilePath", args.outFilePath, "--debugOutFilePath", args.inFilePath]);
-    this._prepackProcess = child_process.spawn("node", prepackArgs);
+    prepackCommand = prepackCommand.concat([
+      "--debugInFilePath",
+      args.debugOutFilePath,
+      "--debugOutFilePath",
+      args.debugInFilePath,
+    ]);
+
+    let runtime = "prepack";
+    if (args.prepackRuntime.length > 0) {
+      // user specified a Prepack path
+      runtime = "node";
+      prepackCommand = [args.prepackRuntime].concat(prepackCommand);
+    }
+    this._prepackProcess = child_process.spawn(runtime, prepackCommand);
 
     process.on("exit", () => {
       this._prepackProcess.kill();

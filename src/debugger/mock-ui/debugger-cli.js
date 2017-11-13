@@ -10,21 +10,14 @@
 /* @flow */
 
 import { UISession } from "./UISession.js";
-
-type DebuggerCLIArguments = {
-  adapterPath: string,
-  prepackCommand: string,
-  inFilePath: string,
-  outFilePath: string,
-};
-
+import type { DebuggerCLIArguments } from "./UISession.js";
 /* The entry point to start up the debugger CLI
  * Reads in command line arguments and starts up a UISession
 */
 
 function run(process, console) {
   let args = readCLIArguments(process, console);
-  let session = new UISession(process, args.adapterPath, args.prepackCommand, args.inFilePath, args.outFilePath);
+  let session = new UISession(process, args);
   try {
     session.serve();
   } catch (e) {
@@ -35,9 +28,11 @@ function run(process, console) {
 
 function readCLIArguments(process, console): DebuggerCLIArguments {
   let adapterPath = "";
-  let prepackCommand = "";
-  let inFilePath = "";
-  let outFilePath = "";
+  let prepackRuntime = "";
+  let prepackArguments = [];
+  let sourceFile = "";
+  let debugInFilePath = "";
+  let debugOutFilePath = "";
 
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -51,38 +46,47 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
     arg = arg.slice(2);
     if (arg === "adapterPath") {
       adapterPath = args.shift();
-    } else if (arg === "prepack") {
-      prepackCommand = args.shift();
-    } else if (arg === "inFilePath") {
-      inFilePath = args.shift();
-    } else if (arg === "outFilePath") {
-      outFilePath = args.shift();
+    } else if (arg === "prepackRuntime") {
+      prepackRuntime = args.shift();
+    } else if (arg === "prepackArguments") {
+      prepackArguments = args.shift().split(" ");
+    } else if (arg === "sourceFile") {
+      sourceFile = args.shift();
+    } else if (arg === "debugInFilePath") {
+      debugInFilePath = args.shift();
+    } else if (arg === "debugOutFilePath") {
+      debugOutFilePath = args.shift();
     } else {
       console.error("Unknown argument: " + arg);
       process.exit(1);
     }
   }
-  if (inFilePath === 0) {
-    console.error("No input file path provided!");
+  if (debugInFilePath.length === 0) {
+    console.error("No debugger input file path provided!");
     process.exit(1);
   }
-  if (outFilePath === 0) {
-    console.error("No output file path provided!");
+  if (debugOutFilePath.length === 0) {
+    console.error("No debugger output file path provided!");
     process.exit(1);
   }
   if (adapterPath.length === 0) {
     console.error("No path to the debug adapter provided!");
     process.exit(1);
   }
-  if (prepackCommand.length === 0) {
-    console.error("No command given to start Prepack");
+  if (prepackRuntime.length === 0) {
+    console.error("No Prepack runtime given to start Prepack");
     process.exit(1);
+  }
+  if (sourceFile.length === 0) {
+    console.error("No source code input file provided");
   }
   let result: DebuggerCLIArguments = {
     adapterPath: adapterPath,
-    prepackCommand: prepackCommand,
-    inFilePath: inFilePath,
-    outFilePath: outFilePath,
+    prepackRuntime: prepackRuntime,
+    prepackArguments: prepackArguments,
+    sourceFile: sourceFile,
+    debugInFilePath: debugInFilePath,
+    debugOutFilePath: debugOutFilePath,
   };
   return result;
 }

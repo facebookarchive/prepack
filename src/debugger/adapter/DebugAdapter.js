@@ -81,13 +81,11 @@ class PrepackDebugSession extends LoggingDebugSession {
 
   launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
     // set up the communication channel
-    this._adapterChannel = new AdapterChannel(args.inFilePath, args.outFilePath);
+    this._adapterChannel = new AdapterChannel(args.debugInFilePath, args.debugOutFilePath);
     this._registerMessageCallbacks();
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",
-      prepackCommand: args.prepackCommand,
-      inFilePath: args.inFilePath,
-      outFilePath: args.outFilePath,
+      ...args,
       outputCallback: (data: Buffer) => {
         let outputEvent = new OutputEvent(data.toString(), "stdout");
         this.sendEvent(outputEvent);
