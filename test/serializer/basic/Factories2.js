@@ -1,3 +1,4 @@
+// skip lazy objects
 // Copies of default: 2
 (function() {
   var a = {"default": 1, foo: 11};
