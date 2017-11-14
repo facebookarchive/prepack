@@ -20,6 +20,9 @@ import type {
   ReadyResult,
   Scope,
   ScopesResult,
+  Variable,
+  VariablesArguments,
+  VariablesResult,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -71,6 +74,14 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.SCOPES_RESPONSE} ${JSON.stringify(scopes)}`;
   }
 
+  marshallVariablesRequest(requestID: number, variablesReference: number): string {
+    return `${requestID} ${DebugMessage.VARIABLES_COMMAND} ${variablesReference}`;
+  }
+
+  marshallVariablesResponse(requestID: number, variables: Array<Variable>): string {
+    return `${requestID} ${DebugMessage.VARIABLES_RESPONSE} ${JSON.stringify(variables)}`;
+  }
+
   unmarshallBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
     let filePath = parts[0];
 
@@ -97,6 +108,16 @@ export class MessageMarshaller {
     let result: ScopesArguments = {
       kind: "scopes",
       frameId: frameId,
+    };
+    return result;
+  }
+
+  unmarshallVariablesArguments(requestID: number, varRefString: string): VariablesArguments {
+    let varRef = parseInt(varRefString, 10);
+    invariant(!isNaN(varRef));
+    let result: VariablesArguments = {
+      kind: "variables",
+      variablesReference: varRef,
     };
     return result;
   }
@@ -138,6 +159,29 @@ export class MessageMarshaller {
       let result: ScopesResult = {
         kind: "scopes",
         scopes: scopes,
+      };
+      let dbgResponse: DebuggerResponse = {
+        id: requestID,
+        result: result,
+      };
+      return dbgResponse;
+    } catch (e) {
+      throw new DebuggerError("Invalid response", e.message);
+    }
+  }
+
+  unmarshallVariablesResponse(requestID: number, responseBody: string): DebuggerResponse {
+    try {
+      let variables = JSON.parse(responseBody);
+      invariant(Array.isArray(variables), "Variables is not an array");
+      for (const variable of variables) {
+        invariant(variable.hasOwnProperty("name"));
+        invariant(variable.hasOwnProperty("value"));
+        invariant(variable.hasOwnProperty("variablesReference"));
+      }
+      let result: VariablesResult = {
+        kind: "variables",
+        variables: variables,
       };
       let dbgResponse: DebuggerResponse = {
         id: requestID,

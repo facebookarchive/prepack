@@ -27,4 +27,8 @@ export default class NullValue extends PrimitiveValue {
   mightBeFalse(): boolean {
     return true;
   }
+
+  toDisplayValue(): string {
+    return "null";
+  }
 }

@@ -195,6 +195,31 @@ class PrepackDebugSession extends LoggingDebugSession {
       this.sendResponse(response);
     });
   }
+
+  variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
+    this._adapterChannel.getVariables(
+      response.request_seq,
+      args.variablesReference,
+      (dbgResponse: DebuggerResponse) => {
+        let result = dbgResponse.result;
+        invariant(result.kind === "variables");
+        let variableInfos = result.variables;
+        let variables: Array<DebugProtocol.Variable> = [];
+        for (const varInfo of variableInfos) {
+          let variable: DebugProtocol.Variable = {
+            name: varInfo.name,
+            value: varInfo.value,
+            variablesReference: varInfo.variablesReference,
+          };
+          variables.push(variable);
+        }
+        response.body = {
+          variables: variables,
+        };
+        this.sendResponse(response);
+      }
+    );
+  }
 }
 
 DebugSession.run(PrepackDebugSession);

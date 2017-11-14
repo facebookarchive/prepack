@@ -27,4 +27,8 @@ export default class UndefinedValue extends PrimitiveValue {
   mightBeFalse(): boolean {
     return true;
   }
+
+  toDisplayString(): string {
+    return "undefined";
+  }
 }

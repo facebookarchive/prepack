@@ -14,16 +14,24 @@
 // specifies fetching variable collections via unique IDs
 export class ReferenceMap<T> {
   constructor() {
-    this._mapping = [];
+    this._counter = 0;
+    this._mapping = new Map();
   }
-  _mapping: Array<T>;
+  _counter: number;
+  _mapping: { [number]: T };
 
   add(value: T): number {
-    this._mapping.push(value);
-    return this._mapping.length - 1;
+    this._counter++;
+    this._mapping[this._counter] = value;
+    return this._counter;
   }
 
   get(reference: number): void | T {
     return this._mapping[reference];
+  }
+
+  clean() {
+    this._counter = 0;
+    this._mapping = new Map();
   }
 }
