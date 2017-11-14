@@ -1,4 +1,5 @@
 // es6
+// skip lazy objects
 // delay unsupported requires
 
 var modules = Object.create(null);
