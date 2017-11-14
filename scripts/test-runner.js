@@ -104,7 +104,7 @@ function execExternal(externalSpec, code) {
   return String(output.trim());
 }
 
-function argumentCodeWithLazyObjectSupport(code) {
+function augmentCodeWithLazyObjectSupport(code) {
   const mockLazyObjectsSupport = `
     var ${LAZY_OBJECTS_RUNTIME_NAME} = {
       _lazyObjectIds: new Map(),
@@ -343,7 +343,7 @@ function runTest(name, code, options, args) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
         try {
-          codeToRun = argumentCodeWithLazyObjectSupport(codeToRun);
+          codeToRun = augmentCodeWithLazyObjectSupport(codeToRun);
           if (execSpec) actual = execExternal(execSpec, codeToRun);
           else actual = execInContext(codeToRun);
         } catch (e) {
