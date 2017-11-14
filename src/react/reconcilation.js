@@ -110,12 +110,15 @@ export class Reconciler {
       if (branchStatus !== "ROOT") {
         throw new ExpectedBailOut("only class components at the root of __registerReactComponentRoot() are supported");
       }
-      let { instance } = createClassInstance(this.realm, componentType, props, context);
+      // create a new instance of this React class component
+      let instance = createClassInstance(this.realm, componentType, props, context);
+      // get the "render" method off the instance
       let renderMethod = Get(this.realm, instance, "render");
       invariant(
         renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
         "Expected render method to be a FunctionValue with $Call method"
       );
+      // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
       value = renderMethod.$Call(instance, []);
     } else {
       invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
