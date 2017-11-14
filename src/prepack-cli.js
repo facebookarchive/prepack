@@ -85,6 +85,7 @@ function run(
     delayInitializations: false,
     delayUnsupportedRequires: false,
     internalDebug: false,
+    debugScopes: false,
     serialize: false,
     residual: false,
     profile: false,

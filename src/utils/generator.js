@@ -81,12 +81,14 @@ export class Generator {
     this.parent = realm.generator;
     this.realm = realm;
     this._entries = [];
+    this.id = realm.nextGeneratorId++;
   }
 
   realm: Realm;
   _entries: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
   parent: void | Generator;
+  id: number;
 
   getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
     // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
