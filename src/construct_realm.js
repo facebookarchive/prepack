@@ -10,6 +10,7 @@
 /* @flow */
 
 import { Realm } from "./realm.js";
+import initializeSingletons from "./initialize-singletons.js";
 import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import initializeGlobal from "./intrinsics/ecma262/global.js";
 import type { RealmOptions } from "./options.js";
@@ -22,6 +23,7 @@ import type { DebugChannel } from "./debugger/channel/DebugChannel.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
 
 export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {
+  initializeSingletons();
   let r = new Realm(opts);
   if (debugChannel) {
     if (debugChannel.debuggerIsAttached()) {

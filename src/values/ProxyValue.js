@@ -18,12 +18,7 @@ import { SameValue, SameValuePartial, SamePropertyKey } from "../methods/abstrac
 import { GetMethod } from "../methods/get.js";
 import { CreateListFromArrayLike } from "../methods/create.js";
 import { IsExtensible, IsPropertyKey, IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
-import {
-  FromPropertyDescriptor,
-  CompletePropertyDescriptor,
-  IsCompatiblePropertyDescriptor,
-  ThrowIfMightHaveBeenDeleted,
-} from "../methods/properties.js";
+import { Properties } from "../singletons.js";
 import { Call } from "../methods/call.js";
 
 function FindPropertyKey(realm: Realm, keys: Array<PropertyKeyValue>, key: PropertyKeyValue): number {
@@ -305,7 +300,7 @@ export default class ProxyValue extends ObjectValue {
     if (trapResultObj instanceof UndefinedValue) {
       // a. If targetDesc is undefined, return undefined.
       if (!targetDesc) return undefined;
-      ThrowIfMightHaveBeenDeleted(targetDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(targetDesc.value);
 
       // b. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
       if (!targetDesc.configurable) {
@@ -334,10 +329,10 @@ export default class ProxyValue extends ObjectValue {
     let resultDesc = ToPropertyDescriptor(realm, trapResultObj);
 
     // 14. Call CompletePropertyDescriptor(resultDesc).
-    CompletePropertyDescriptor(realm, resultDesc);
+    Properties.CompletePropertyDescriptor(realm, resultDesc);
 
     // 15. Let valid be IsCompatiblePropertyDescriptor(extensibleTarget, resultDesc, targetDesc).
-    let valid = IsCompatiblePropertyDescriptor(realm, extensibleTarget, resultDesc, targetDesc);
+    let valid = Properties.IsCompatiblePropertyDescriptor(realm, extensibleTarget, resultDesc, targetDesc);
 
     // 16. If valid is false, throw a TypeError exception.
     if (!valid) {
@@ -389,7 +384,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let descObj be FromPropertyDescriptor(Desc).
-    let descObj = FromPropertyDescriptor(realm, Desc);
+    let descObj = Properties.FromPropertyDescriptor(realm, Desc);
 
     // 9. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P, descObj »)).
     let booleanTrapResult = ToBooleanPartial(
@@ -429,10 +424,10 @@ export default class ProxyValue extends ObjectValue {
       }
     } else {
       // 16. Else targetDesc is not undefined,
-      ThrowIfMightHaveBeenDeleted(targetDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(targetDesc.value);
 
       // a. If IsCompatiblePropertyDescriptor(extensibleTarget, Desc, targetDesc) is false, throw a TypeError exception.
-      if (!IsCompatiblePropertyDescriptor(realm, extensibleTarget, Desc, targetDesc)) {
+      if (!Properties.IsCompatiblePropertyDescriptor(realm, extensibleTarget, Desc, targetDesc)) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
 
@@ -490,7 +485,7 @@ export default class ProxyValue extends ObjectValue {
 
       // b. If targetDesc is not undefined, then
       if (targetDesc) {
-        ThrowIfMightHaveBeenDeleted(targetDesc.value);
+        Properties.ThrowIfMightHaveBeenDeleted(targetDesc.value);
 
         // i. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
         if (!targetDesc.configurable) {
@@ -554,7 +549,7 @@ export default class ProxyValue extends ObjectValue {
 
     // 10. If targetDesc is not undefined, then
     if (targetDesc) {
-      ThrowIfMightHaveBeenDeleted(targetDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(targetDesc.value);
 
       // a. If IsDataDescriptor(targetDesc) is true and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is false, then
       if (IsDataDescriptor(realm, targetDesc) && targetDesc.configurable === false && targetDesc.writable === false) {
@@ -629,7 +624,7 @@ export default class ProxyValue extends ObjectValue {
 
     // 11. If targetDesc is not undefined, then
     if (targetDesc) {
-      ThrowIfMightHaveBeenDeleted(targetDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(targetDesc.value);
 
       // a. If IsDataDescriptor(targetDesc) is true and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is false, then
       if (IsDataDescriptor(realm, targetDesc) && !targetDesc.configurable && !targetDesc.writable) {
@@ -700,7 +695,7 @@ export default class ProxyValue extends ObjectValue {
 
     // 11. If targetDesc is undefined, return true.
     if (!targetDesc) return true;
-    ThrowIfMightHaveBeenDeleted(targetDesc.value);
+    Properties.ThrowIfMightHaveBeenDeleted(targetDesc.value);
 
     // 12. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
     if (!targetDesc.configurable) {
@@ -769,7 +764,7 @@ export default class ProxyValue extends ObjectValue {
     for (let key of targetKeys) {
       // a. Let desc be ? target.[[GetOwnProperty]](key).
       let desc = target.$GetOwnProperty(key);
-      if (desc) ThrowIfMightHaveBeenDeleted(desc.value);
+      if (desc) Properties.ThrowIfMightHaveBeenDeleted(desc.value);
 
       // b. If desc is not undefined and desc.[[Configurable]] is false, then
       if (desc && desc.configurable === false) {

@@ -11,13 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, ObjectValue, StringValue, NumberValue } from "../../values/index.js";
-import {
-  Call,
-  CreateSetIterator,
-  IsCallable,
-  SameValueZeroPartial,
-  ThrowIfMightHaveBeenDeleted,
-} from "../../methods/index.js";
+import { Call, CreateSetIterator, IsCallable, SameValueZeroPartial } from "../../methods/index.js";
+import { Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -250,7 +245,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.2.3.8
   let valuesPropertyDescriptor = obj.$GetOwnProperty("values");
   invariant(valuesPropertyDescriptor);
-  ThrowIfMightHaveBeenDeleted(valuesPropertyDescriptor.value);
+  Properties.ThrowIfMightHaveBeenDeleted(valuesPropertyDescriptor.value);
   obj.defineNativeProperty("keys", undefined, valuesPropertyDescriptor);
 
   // ECMA262 23.2.3.11

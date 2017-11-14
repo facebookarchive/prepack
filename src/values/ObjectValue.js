@@ -39,18 +39,13 @@ import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./in
 import {
   joinValuesAsConditional,
   IsDataDescriptor,
-  OrdinarySetPrototypeOf,
-  OrdinaryDefineOwnProperty,
-  OrdinaryDelete,
   OrdinaryOwnPropertyKeys,
-  OrdinaryGetOwnProperty,
   OrdinaryGet,
   OrdinaryHasProperty,
-  OrdinarySet,
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
-  ThrowIfMightHaveBeenDeleted,
 } from "../methods/index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
 
@@ -432,7 +427,7 @@ export default class ObjectValue extends ConcreteValue {
     for (let [key, propertyBinding] of this.properties) {
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; // deleted
-      ThrowIfMightHaveBeenDeleted(desc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(desc.value);
       let serializedDesc: any = { enumerable: desc.enumerable, configurable: desc.configurable };
       if (desc.value) {
         serializedDesc.writable = desc.writable;
@@ -457,7 +452,7 @@ export default class ObjectValue extends ConcreteValue {
   // ECMA262 9.1.2
   $SetPrototypeOf(V: ObjectValue | NullValue): boolean {
     // 1. Return ! OrdinarySetPrototypeOf(O, V).
-    return OrdinarySetPrototypeOf(this.$Realm, this, V);
+    return Properties.OrdinarySetPrototypeOf(this.$Realm, this, V);
   }
 
   // ECMA262 9.1.3
@@ -475,13 +470,13 @@ export default class ObjectValue extends ConcreteValue {
   // ECMA262 9.1.5
   $GetOwnProperty(P: PropertyKeyValue): Descriptor | void {
     // 1. Return ! OrdinaryGetOwnProperty(O, P).
-    return OrdinaryGetOwnProperty(this.$Realm, this, P);
+    return Properties.OrdinaryGetOwnProperty(this.$Realm, this, P);
   }
 
   // ECMA262 9.1.6
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
     // 1. Return ? OrdinaryDefineOwnProperty(O, P, Desc).
-    return OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc);
   }
 
   // ECMA262 9.1.7
@@ -586,7 +581,7 @@ export default class ObjectValue extends ConcreteValue {
   // ECMA262 9.1.9
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     // 1. Return ? OrdinarySet(O, P, V, Receiver).
-    return OrdinarySet(this.$Realm, this, P, V, Receiver);
+    return Properties.OrdinarySet(this.$Realm, this, P, V, Receiver);
   }
 
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
@@ -658,7 +653,7 @@ export default class ObjectValue extends ConcreteValue {
       }
       let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
       let newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
-      OrdinarySet(this.$Realm, this, key, newVal, Receiver);
+      Properties.OrdinarySet(this.$Realm, this, key, newVal, Receiver);
     }
 
     return true;
@@ -673,7 +668,7 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     // 1. Return ? OrdinaryDelete(O, P).
-    return OrdinaryDelete(this.$Realm, this, P);
+    return Properties.OrdinaryDelete(this.$Realm, this, P);
   }
 
   // ECMA262 9.1.11

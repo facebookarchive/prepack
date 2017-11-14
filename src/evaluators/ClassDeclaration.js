@@ -35,10 +35,10 @@ import {
   ConstructorMethod,
   GetValue,
   IsStatic,
-  PropertyDefinitionEvaluation,
   InitializeBoundName,
   NonConstructorMethodDefinitions,
 } from "../methods/index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 function EvaluateClassHeritage(
@@ -239,11 +239,11 @@ export function ClassDefinitionEvaluation(
       // a. If IsStatic of m is false, then
       if (!IsStatic(m)) {
         // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments proto and false.
-        PropertyDefinitionEvaluation(realm, m, proto, env, strictCode, false);
+        Properties.PropertyDefinitionEvaluation(realm, m, proto, (env: any), strictCode, false);
       } else {
         // Else,
         // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments F and false.
-        PropertyDefinitionEvaluation(realm, m, F, env, strictCode, false);
+        Properties.PropertyDefinitionEvaluation(realm, m, F, (env: any), strictCode, false);
       }
       // c. If status is an abrupt completion, then
       // i. Set the running execution context's LexicalEnvironment to lex.

@@ -10,21 +10,24 @@
 /* @flow */
 
 import type {
-  NumberValue,
+  AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   BooleanValue,
-  NativeFunctionValue,
+  EmptyValue,
   FunctionValue,
+  NativeFunctionValue,
+  NullValue,
+  NumberValue,
   StringValue,
   SymbolValue,
   UndefinedValue,
-  NullValue,
-  EmptyValue,
   Value,
-  AbstractObjectValue,
 } from "./values/index.js";
+import { LexicalEnvironment, Reference } from "./environment.js";
 import { ObjectValue } from "./values/index.js";
-import { BabelNode } from "babel-types";
+import type { BabelNode, BabelNodeClassMethod, BabelNodeObjectMethod } from "babel-types";
+import { Realm } from "./realm.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -288,4 +291,88 @@ export type ObjectKind =
 export type DebugServerType = {
   checkForActions: BabelNode => void,
   shutdown: () => void,
+};
+
+export type PathType = {
+  implies(condition: AbstractValue): boolean,
+  withCondition<T>(condition: AbstractValue, evaluate: () => T): T,
+  withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T,
+};
+
+export type PropertiesType = {
+  // ECMA262 9.1.9.1
+  OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean,
+
+  // ECMA262 6.2.4.4
+  FromPropertyDescriptor(realm: Realm, Desc: ?Descriptor): Value,
+
+  //
+  OrdinaryDelete(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean,
+
+  // ECMA262 7.3.8
+  DeletePropertyOrThrow(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean,
+
+  // ECMA262 6.2.4.6
+  CompletePropertyDescriptor(realm: Realm, Desc: Descriptor): Descriptor,
+
+  // ECMA262 9.1.6.2
+  IsCompatiblePropertyDescriptor(realm: Realm, extensible: boolean, Desc: Descriptor, current: ?Descriptor): boolean,
+
+  // ECMA262 9.1.6.3
+  ValidateAndApplyPropertyDescriptor(
+    realm: Realm,
+    O: void | ObjectValue,
+    P: void | PropertyKeyValue,
+    extensible: boolean,
+    Desc: Descriptor,
+    current: ?Descriptor
+  ): boolean,
+
+  // ECMA262 9.1.6.1
+  OrdinaryDefineOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, Desc: Descriptor): boolean,
+
+  // ECMA262 19.1.2.3.1
+  ObjectDefineProperties(realm: Realm, O: Value, Properties: Value): ObjectValue | AbstractObjectValue,
+
+  // ECMA262 7.3.3
+  Set(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue, V: Value, Throw: boolean): boolean,
+
+  // ECMA262 7.3.7
+  DefinePropertyOrThrow(
+    realm: Realm,
+    O: ObjectValue | AbstractObjectValue,
+    P: PropertyKeyValue,
+    desc: Descriptor
+  ): boolean,
+
+  // ECMA262 6.2.3.2
+  PutValue(realm: Realm, V: Value | Reference, W: Value): void | boolean | Value,
+
+  // ECMA262 9.4.2.4
+  ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor): boolean,
+
+  // ECMA262 9.1.5.1
+  OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void,
+
+  // ECMA262 9.1.2.1
+  OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectValue | NullValue): boolean,
+
+  // ECMA262 13.7.5.15
+  EnumerateObjectProperties(realm: Realm, O: ObjectValue): ObjectValue,
+
+  ThrowIfMightHaveBeenDeleted(
+    value: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+  ): void,
+
+  ThrowIfInternalSlotNotWritable<T: ObjectValue>(realm: Realm, object: T, key: string): T,
+
+  // ECMA 14.3.9
+  PropertyDefinitionEvaluation(
+    realm: Realm,
+    MethodDefinition: BabelNodeObjectMethod | BabelNodeClassMethod,
+    object: ObjectValue,
+    env: LexicalEnvironment,
+    strictCode: boolean,
+    enumerable: boolean
+  ): boolean,
 };

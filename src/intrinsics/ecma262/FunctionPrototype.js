@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { BoundFunctionCreate, SetFunctionName } from "../../methods/function.js";
-import { DefinePropertyOrThrow } from "../../methods/properties.js";
+import { Properties } from "../../singletons.js";
 import {
   AbstractValue,
   BooleanValue,
@@ -131,7 +131,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 8. Perform ! DefinePropertyOrThrow(F, "length", PropertyDescriptor {[[Value]]: L, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-    DefinePropertyOrThrow(realm, F, "length", {
+    Properties.DefinePropertyOrThrow(realm, F, "length", {
       value: new NumberValue(realm, L),
       writable: false,
       enumerable: false,

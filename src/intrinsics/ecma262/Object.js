@@ -36,15 +36,11 @@ import {
   OrdinaryCreateFromConstructor,
   RequireObjectCoercible,
   SameValuePartial,
-  Set,
-  ObjectDefineProperties,
-  DefinePropertyOrThrow,
-  FromPropertyDescriptor,
   TestIntegrityLevel,
   SetIntegrityLevel,
   HasSomeCompatibleType,
-  ThrowIfMightHaveBeenDeleted,
 } from "../../methods/index.js";
+import { Properties as Props } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -119,13 +115,13 @@ export default function(realm: Realm): NativeFunctionValue {
 
         // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
         if (desc && desc.enumerable) {
-          ThrowIfMightHaveBeenDeleted(desc.value);
+          Props.ThrowIfMightHaveBeenDeleted(desc.value);
 
           // 1. Let propValue be ? Get(from, nextKey).
           let propValue = Get(realm, frm, nextKey);
 
           // 2. Perform ? Set(to, nextKey, propValue, true).
-          Set(realm, to, nextKey, propValue, true);
+          Props.Set(realm, to, nextKey, propValue, true);
         }
       }
     }
@@ -148,7 +144,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 3. If Properties is not undefined, then
     if (!Properties.mightBeUndefined()) {
       // a. Return ? ObjectDefineProperties(obj, Properties).
-      return ObjectDefineProperties(realm, obj, Properties);
+      return Props.ObjectDefineProperties(realm, obj, Properties);
     }
     Properties.throwIfNotConcrete();
 
@@ -159,7 +155,7 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.3
   func.defineNativeMethod("defineProperties", 2, (context, [O, Properties]) => {
     // 1. Return ? ObjectDefineProperties(O, Properties).
-    return ObjectDefineProperties(realm, O, Properties);
+    return Props.ObjectDefineProperties(realm, O, Properties);
   });
 
   // ECMA262 19.1.2.4
@@ -177,7 +173,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let desc = ToPropertyDescriptor(realm, Attributes);
 
     // 4. Perform ? DefinePropertyOrThrow(O, key, desc).
-    DefinePropertyOrThrow(realm, (O: any), key, desc);
+    Props.DefinePropertyOrThrow(realm, (O: any), key, desc);
 
     // 4. Return O.
     return O;
@@ -213,7 +209,7 @@ export default function(realm: Realm): NativeFunctionValue {
     let desc = obj.$GetOwnProperty(key);
 
     // 4. Return FromPropertyDescriptor(desc).
-    return FromPropertyDescriptor(realm, desc);
+    return Props.FromPropertyDescriptor(realm, desc);
   });
 
   // ECMA262 19.1.2.7
@@ -237,10 +233,10 @@ export default function(realm: Realm): NativeFunctionValue {
     for (let key of ownKeys) {
       // a. Let desc be ? obj.[[GetOwnProperty]](key).
       let desc = obj.$GetOwnProperty(key);
-      if (desc !== undefined) ThrowIfMightHaveBeenDeleted(desc.value);
+      if (desc !== undefined) Props.ThrowIfMightHaveBeenDeleted(desc.value);
 
       // b. Let descriptor be ! FromPropertyDescriptor(desc).
-      let descriptor = FromPropertyDescriptor(realm, desc);
+      let descriptor = Props.FromPropertyDescriptor(realm, desc);
 
       // c. If descriptor is not undefined, perform ! CreateDataProperty(descriptors, key, descriptor).
       if (!(descriptor instanceof UndefinedValue)) CreateDataProperty(realm, descriptors, key, descriptor);

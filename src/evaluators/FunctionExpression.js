@@ -15,7 +15,7 @@ import type { Value } from "../values/index.js";
 import { NewDeclarativeEnvironment, SetFunctionName, FunctionCreate, MakeConstructor } from "../methods/index.js";
 import { ObjectCreate } from "../methods/create.js";
 import { GeneratorFunctionCreate } from "../methods/function.js";
-import { DefinePropertyOrThrow } from "../methods/properties.js";
+import { Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionExpression } from "babel-types";
@@ -59,7 +59,7 @@ export default function(
       prototype.originalConstructor = closure;
 
       // 9. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-      DefinePropertyOrThrow(realm, closure, "prototype", {
+      Properties.DefinePropertyOrThrow(realm, closure, "prototype", {
         value: prototype,
         writable: true,
         enumerable: false,
@@ -126,7 +126,7 @@ export default function(
       prototype.originalConstructor = closure;
 
       // 5. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-      DefinePropertyOrThrow(realm, closure, "prototype", {
+      Properties.DefinePropertyOrThrow(realm, closure, "prototype", {
         value: prototype,
         writable: true,
         enumerable: false,

@@ -21,9 +21,11 @@ export type DebuggerRequestArguments = BreakpointArguments | RunArguments | Stac
 
 export type PrepackLaunchArguments = {
   kind: "launch",
-  prepackCommand: string,
-  inFilePath: string,
-  outFilePath: string,
+  prepackRuntime: string,
+  prepackArguments: Array<string>,
+  sourceFile: string,
+  debugInFilePath: string,
+  debugOutFilePath: string,
   outputCallback: Buffer => void,
   exitCallback: () => void,
 };
@@ -102,7 +104,9 @@ export type ScopesResult = {
 export type VariableContainer = LexicalEnvironment;
 export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   noDebug?: boolean,
-  prepackCommand: string,
-  inFilePath: string,
-  outFilePath: string,
+  sourceFile: string,
+  prepackRuntime: string,
+  prepackArguments: Array<string>,
+  debugInFilePath: string,
+  debugOutFilePath: string,
 }
