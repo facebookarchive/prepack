@@ -42,4 +42,8 @@ export default class BooleanValue extends PrimitiveValue {
   _serialize(): boolean {
     return this.value;
   }
+
+  toDisplayString(): string {
+    return this.value.toString();
+  }
 }

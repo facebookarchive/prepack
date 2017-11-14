@@ -156,6 +156,8 @@ export class UISession {
       this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
     } else if (response.command === "scopes") {
       this._processScopesResponse(((response: any): DebugProtocol.ScopesResponse));
+    } else if (response.command === "variables") {
+      this._processVariablesResponse(((response: any): DebugProtocol.VariablesResponse));
     }
   }
 
@@ -191,6 +193,17 @@ export class UISession {
   _processThreadsResponse(response: DebugProtocol.ThreadsResponse) {
     for (const thread of response.body.threads) {
       this._uiOutput(`${thread.id}: ${thread.name}`);
+    }
+  }
+
+  _processVariablesResponse(response: DebugProtocol.VariablesResponse) {
+    for (const variable of response.body.variables) {
+      if (variable.variablesReference === 0) {
+        // 0 means there are not more nested variables to return
+        this._uiOutput(`${variable.name}: ${variable.value}`);
+      } else {
+        this._uiOutput(`${variable.name}: ${variable.value} ${variable.variablesReference}`);
+      }
     }
   }
 
@@ -248,6 +261,15 @@ export class UISession {
           frameId: frameId,
         };
         this._sendScopesRequest(scopesArgs);
+        break;
+      case "variables":
+        if (parts.length !== 2) return false;
+        let varRef = parseInt(parts[1], 10);
+        if (isNaN(varRef)) return false;
+        let variableArgs: DebugProtocol.VariablesArguments = {
+          variablesReference: varRef,
+        };
+        this._sendVariablesRequest(variableArgs);
         break;
       default:
         // invalid command
@@ -376,6 +398,17 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "scopes",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendVariablesRequest(args: DebugProtocol.VariablesArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "variables",
       arguments: args,
     };
     let json = JSON.stringify(message);

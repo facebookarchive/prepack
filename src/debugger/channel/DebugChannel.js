@@ -21,6 +21,7 @@ import type {
   StackframeArguments,
   Stackframe,
   Scope,
+  Variable,
 } from "./../types.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
@@ -92,6 +93,9 @@ export class DebugChannel {
       case DebugMessage.SCOPES_COMMAND:
         args = this._marshaller.unmarshallScopesArguments(requestID, parts[2]);
         break;
+      case DebugMessage.VARIABLES_COMMAND:
+        args = this._marshaller.unmarshallVariablesArguments(requestID, parts[2]);
+        break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
@@ -134,6 +138,10 @@ export class DebugChannel {
 
   sendScopesResponse(requestID: number, scopes: Array<Scope>): void {
     this.writeOut(this._marshaller.marshallScopesResponse(requestID, scopes));
+  }
+
+  sendVariablesResponse(requestID: number, variables: Array<Variable>): void {
+    this.writeOut(this._marshaller.marshallVariablesResponse(requestID, variables));
   }
 
   sendPrepackFinish(): void {

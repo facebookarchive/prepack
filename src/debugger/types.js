@@ -17,7 +17,12 @@ export type DebuggerRequest = {
   arguments: DebuggerRequestArguments,
 };
 
-export type DebuggerRequestArguments = BreakpointArguments | RunArguments | StackframeArguments | ScopesArguments;
+export type DebuggerRequestArguments =
+  | BreakpointArguments
+  | RunArguments
+  | StackframeArguments
+  | ScopesArguments
+  | VariablesArguments;
 
 export type PrepackLaunchArguments = {
   kind: "launch",
@@ -58,6 +63,11 @@ export type ScopesArguments = {
   frameId: number,
 };
 
+export type VariablesArguments = {
+  kind: "variables",
+  variablesReference: number,
+};
+
 export type DebuggerResponse = {
   id: number,
   result: DebuggerResponseResult,
@@ -68,7 +78,8 @@ export type DebuggerResponseResult =
   | StackframeResult
   | BreakpointAddResult
   | BreakpointStoppedResult
-  | ScopesResult;
+  | ScopesResult
+  | VariablesResult;
 
 export type ReadyResult = {
   kind: "ready",
@@ -98,6 +109,17 @@ export type Scope = {
 export type ScopesResult = {
   kind: "scopes",
   scopes: Array<Scope>,
+};
+
+export type Variable = {
+  name: string,
+  value: string,
+  variablesReference: number,
+};
+
+export type VariablesResult = {
+  kind: "variables",
+  variables: Array<Variable>,
 };
 
 // any object that can contain a collection of variables
