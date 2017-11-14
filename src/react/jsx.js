@@ -12,15 +12,13 @@
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
-  BabelNodeArrayExpression,
-  BabelNodeJSXElement,
   BabelNodeJSXMemberExpression,
   BabelNodeJSXIdentifier,
   BabelNodeIdentifier,
   BabelNodeMemberExpression,
 } from "babel-types";
 import invariant from "../invariant.js";
-import { isReactComponent, getUniqueReactElementKey } from "./utils";
+import { isReactComponent } from "./utils";
 
 export function convertExpressionToJSXIdentifier(
   expr: BabelNodeExpression,
