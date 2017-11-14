@@ -1280,10 +1280,12 @@ export class ResidualHeapSerializer {
         let value = this.realm.getGlobalLetBinding(boundName);
         // Check for let binding vs global property
         if (value) {
-          let id = this.serializeValue(value, true, "let");
+          let rval = residualFunctionBinding.value;
+          invariant(rval !== undefined && value.equals(rval));
+          let id = this.serializeValue(rval, true, "let");
           // increment ref count one more time as the value has been
           // referentialized (stored in a variable) by serializeValue
-          this.residualHeapValueIdentifiers.incrementReferenceCount(value);
+          this.residualHeapValueIdentifiers.incrementReferenceCount(rval);
           residualFunctionBinding.serializedValue = id;
         } else {
           residualFunctionBinding.serializedValue = this.preludeGenerator.globalReference(boundName);
