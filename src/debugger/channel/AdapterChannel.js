@@ -51,7 +51,7 @@ export class AdapterChannel {
       this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE, result);
       this.trySendNextRequest();
     } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
-      let dbgResponse = this._marshaller.unmarshallBreakpointAddResponse(requestID);
+      let dbgResponse = this._marshaller.unmarshallBreakpointAddResponse(requestID, parts.slice(2));
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, dbgResponse);
       // Prepack acknowledged adding a breakpoint
       this._prepackWaiting = true;

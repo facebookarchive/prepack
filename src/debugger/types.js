@@ -94,6 +94,9 @@ export type StackframeResult = {
 
 export type BreakpointAddResult = {
   kind: "breakpoint-add",
+  filePath: string,
+  line: number,
+  column: number,
 };
 
 export type BreakpointStoppedResult = {

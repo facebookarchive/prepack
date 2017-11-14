@@ -193,9 +193,18 @@ export class MessageMarshaller {
     }
   }
 
-  unmarshallBreakpointAddResponse(requestID: number): DebuggerResponse {
+  unmarshallBreakpointAddResponse(requestID: number, parts: Array<string>): DebuggerResponse {
+    invariant(parts.length === 3, "Incorrect number of arguments in breakpoint stopped response");
+    let filePath = parts[0];
+    let line = parseInt(parts[1], 10);
+    invariant(!isNaN(line), "Invalid line number");
+    let column = parseInt(parts[2], 10);
+    invariant(!isNaN(column), "Invalid column number");
     let result: BreakpointAddResult = {
       kind: "breakpoint-add",
+      filePath: filePath,
+      line: line,
+      column: column,
     };
     let dbgResponse: DebuggerResponse = {
       id: requestID,

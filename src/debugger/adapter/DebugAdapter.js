@@ -68,6 +68,7 @@ class PrepackDebugSession extends LoggingDebugSession {
    * to interrogate the features the debug adapter provides.
    */
   initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
+    debugger;
     // Let the UI know that we can start accepting breakpoint requests.
     // The UI will end the configuration sequence by calling 'configurationDone' request.
     this.sendEvent(new InitializedEvent());
@@ -117,6 +118,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     if (!args.source.path || !args.breakpoints) return;
     let filePath = args.source.path;
     let breakpointInfos = [];
+    debugger;
     for (const breakpoint of args.breakpoints) {
       let line = breakpoint.line;
       let column = 0;
@@ -133,6 +135,20 @@ class PrepackDebugSession extends LoggingDebugSession {
       breakpointInfos.push(breakpointInfo);
     }
     this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (dbgResponse: DebuggerResponse) => {
+      let result = dbgResponse.result;
+      invariant(result.kind === "breakpoint-add");
+      let source: DebugProtocol.Source = {
+        path: result.filePath,
+      }
+      let breakpoint: DebugProtocol.Breakpoint = {
+        verified: true,
+        source: source,
+        line: result.line,
+        column: result.column,
+      };
+      response.body = {
+        breakpoints: [breakpoint],
+      };
       this.sendResponse(response);
     });
   }
