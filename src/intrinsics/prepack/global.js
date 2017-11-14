@@ -128,9 +128,11 @@ export default function(realm: Realm): void {
             if (locString !== undefined) break;
           }
           let locVal = new StringValue(realm, locString || "(unknown location)");
-          result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], throwTemplateSrc);
+          let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
+          result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
         } else {
-          result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(nameString), type, [], nameString);
+          let kind = "__abstract_" + nameString; // assume name is unique TODO #1155: check this
+          result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(nameString), type, [], kind);
           result.intrinsicName = nameString;
         }
 
