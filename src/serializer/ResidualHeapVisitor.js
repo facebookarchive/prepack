@@ -482,9 +482,11 @@ export class ResidualHeapVisitor {
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existance as templates for abstract objects (TODO #882).
-      this._withScope(this.commonScope, () => {
-        this._mark(val);
-      });
+      if (val.isTemplate) this._mark(val);
+      else
+        this._withScope(this.commonScope, () => {
+          this._mark(val);
+        });
     } else if (val instanceof EmptyValue) {
       this._mark(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {

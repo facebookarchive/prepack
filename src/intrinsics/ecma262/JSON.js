@@ -319,6 +319,7 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
   }
   if (val.isPartialObject()) clone.makePartial();
   if (val.isSimpleObject()) clone.makeSimple();
+  (clone: any).isTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
   return clone;
 }
 
