@@ -169,6 +169,28 @@ export class ResidualFunctions {
     return factoryFunctionInfos;
   }
 
+  // Preserve residual functions' ordering from original source code.
+  // This is necessary to prevent unexpected code locality issues.
+  // [Algorithm] sort function based on following criterias:
+  // 1. source file alphabetically.
+  // 2. start line number.
+  // 3. start column number.
+  _sortFunctionByOriginalOrdering(functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]>): void {
+    functionEntries.sort((funcA, funcB) => {
+      const funcALocation = funcA[0].loc;
+      const funcBLocation = funcB[0].loc;
+      invariant(funcALocation && funcBLocation);
+      invariant(funcALocation.source && funcBLocation.source);
+      if (funcALocation.source !== funcBLocation.source) {
+        return funcALocation.source.localeCompare(funcBLocation.source);
+      } else if (funcALocation.start.line !== funcBLocation.start.line) {
+        return funcALocation.start.line - funcBLocation.start.line;
+      } else {
+        return funcALocation.start.column - funcBLocation.start.column;
+      }
+    });
+  }
+
   spliceFunctions(
     rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>
   ): ResidualFunctionsResult {
@@ -200,6 +222,7 @@ export class ResidualFunctions {
     let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(
       this.functions.entries()
     );
+    this._sortFunctionByOriginalOrdering(functionEntries);
     this.statistics.functions = functionEntries.length;
     let unstrictFunctionBodies = [];
     let strictFunctionBodies = [];
