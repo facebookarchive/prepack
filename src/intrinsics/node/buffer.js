@@ -13,8 +13,9 @@ import invariant from "../../invariant.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NumberValue, NativeFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
-import { Set, ToInteger } from "../../methods/index.js";
+import { ToInteger } from "../../methods/index.js";
 import { getNodeBufferFromTypedArray } from "./utils.js";
+import { Properties } from "../../singletons.js";
 
 declare var process: any;
 
@@ -58,7 +59,7 @@ export default function(realm: Realm): ObjectValue {
         let wrapper = new NativeFunctionValue(realm, "Buffer.prototype." + name, name, 0, (context, args) => {
           throw new FatalError("TODO: " + name);
         });
-        Set(realm, proto, name, wrapper, true);
+        Properties.Set(realm, proto, name, wrapper, true);
       }
 
       // utf8Slice is used to read source code.
@@ -69,7 +70,7 @@ export default function(realm: Realm): ObjectValue {
         let utf8String = nativeBufferPrototype.utf8Slice.apply(self, decodedArgs);
         return new StringValue(realm, utf8String);
       });
-      Set(realm, proto, "utf8Slice", utf8Slice, true);
+      Properties.Set(realm, proto, "utf8Slice", utf8Slice, true);
 
       // copy has recently moved from the prototype to the instance upstream.
       let copy = new NativeFunctionValue(realm, "Buffer.prototype.copy", "copy", 0, (context, args) => {
@@ -86,13 +87,13 @@ export default function(realm: Realm): ObjectValue {
         let bytesCopied = nativeBufferPrototype.copy.apply(self, decodedArgs);
         return new NumberValue(realm, bytesCopied);
       });
-      Set(realm, proto, "copy", copy, true);
+      Properties.Set(realm, proto, "copy", copy, true);
 
       // TODO: Set up more methods on the prototype and bindingObject
       return realm.intrinsics.undefined;
     }
   );
-  Set(realm, obj, "setupBufferJS", setupBufferJS, true);
+  Properties.Set(realm, obj, "setupBufferJS", setupBufferJS, true);
 
   let createFromString = new NativeFunctionValue(
     realm,
@@ -103,7 +104,7 @@ export default function(realm: Realm): ObjectValue {
       throw new FatalError("TODO");
     }
   );
-  Set(realm, obj, "createFromString", createFromString, true);
+  Properties.Set(realm, obj, "createFromString", createFromString, true);
 
   let simpleWrapperNames = [
     "byteLengthUtf8",
@@ -134,11 +135,11 @@ export default function(realm: Realm): ObjectValue {
     let wrapper = new NativeFunctionValue(realm, intrinsicName + "." + name, name, 0, (context, args) => {
       throw new FatalError("TODO");
     });
-    Set(realm, obj, name, wrapper, true);
+    Properties.Set(realm, obj, name, wrapper, true);
   }
 
-  Set(realm, obj, "kMaxLength", new NumberValue(realm, nativeBuffer.kMaxLength), true);
-  Set(realm, obj, "kStringMaxLength", new NumberValue(realm, nativeBuffer.kStringMaxLength), true);
+  Properties.Set(realm, obj, "kMaxLength", new NumberValue(realm, nativeBuffer.kMaxLength), true);
+  Properties.Set(realm, obj, "kStringMaxLength", new NumberValue(realm, nativeBuffer.kStringMaxLength), true);
 
   return obj;
 }

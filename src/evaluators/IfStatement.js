@@ -18,7 +18,7 @@ import { Reference } from "../environment.js";
 import { GetValue, joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.js";
 import type { BabelNode, BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
-import { withPathCondition, withInversePathCondition } from "../utils/paths.js";
+import { Path } from "../singletons.js";
 
 export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   // 1. Let exprRef be the result of evaluating Expression
@@ -87,11 +87,11 @@ export function evaluateWithAbstractConditional(
   realm: Realm
 ): Value {
   // Evaluate consequent and alternate in sandboxes and get their effects.
-  let [compl1, gen1, bindings1, properties1, createdObj1] = withPathCondition(condValue, () => {
+  let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(condValue, () => {
     return realm.evaluateNodeForEffects(consequent, strictCode, env);
   });
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] = withInversePathCondition(condValue, () => {
+  let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(condValue, () => {
     return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
   });
 

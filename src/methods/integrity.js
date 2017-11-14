@@ -11,8 +11,8 @@
 
 import type { Realm } from "../realm.js";
 import { ObjectValue } from "../values/index.js";
-import { IsExtensible, IsDataDescriptor, IsAccessorDescriptor, ThrowIfMightHaveBeenDeleted } from "./index.js";
-import { DefinePropertyOrThrow } from "./properties.js";
+import { IsExtensible, IsDataDescriptor, IsAccessorDescriptor } from "./index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 type IntegrityLevels = "sealed" | "frozen";
@@ -48,7 +48,7 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
     // a. Repeat for each element k of keys,
     for (let k of keys) {
       // i. Perform ? DefinePropertyOrThrow(O, k, PropertyDescriptor{[[Configurable]]: false}).
-      DefinePropertyOrThrow(realm, O, k, {
+      Properties.DefinePropertyOrThrow(realm, O, k, {
         configurable: false,
       });
     }
@@ -61,7 +61,7 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
 
       // ii. If currentDesc is not undefined, then
       if (currentDesc) {
-        ThrowIfMightHaveBeenDeleted(currentDesc.value);
+        Properties.ThrowIfMightHaveBeenDeleted(currentDesc.value);
         let desc;
 
         // 1. If IsAccessorDescriptor(currentDesc) is true, then
@@ -75,7 +75,7 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
         }
 
         // 3. Perform ? DefinePropertyOrThrow(O, k, desc).
-        DefinePropertyOrThrow(realm, O, k, desc);
+        Properties.DefinePropertyOrThrow(realm, O, k, desc);
       }
     }
   }
@@ -110,7 +110,7 @@ export function TestIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrit
 
     // b. If currentDesc is not undefined, then
     if (currentDesc) {
-      ThrowIfMightHaveBeenDeleted(currentDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(currentDesc.value);
 
       // i. If currentDesc.[[Configurable]] is true, return false.
       if (currentDesc.configurable === true) return false;

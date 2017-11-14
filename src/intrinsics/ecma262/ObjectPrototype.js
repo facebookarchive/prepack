@@ -15,7 +15,7 @@ import { ToPropertyKey, ToObject, ToObjectPartial } from "../../methods/to.js";
 import { SameValuePartial, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { Invoke } from "../../methods/call.js";
-import { ThrowIfMightHaveBeenDeleted } from "../../methods/index.js";
+import { Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -68,7 +68,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 4. If desc is undefined, return false.
     if (!desc) return realm.intrinsics.false;
-    ThrowIfMightHaveBeenDeleted(desc.value);
+    Properties.ThrowIfMightHaveBeenDeleted(desc.value);
 
     // 5. Return the value of desc.[[Enumerable]].
     return desc.enumerable === undefined ? realm.intrinsics.undefined : new BooleanValue(realm, desc.enumerable);

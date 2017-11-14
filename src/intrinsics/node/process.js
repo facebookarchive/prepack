@@ -23,16 +23,9 @@ import {
   ObjectValue,
   StringValue,
 } from "../../values/index.js";
-import {
-  Get,
-  DefinePropertyOrThrow,
-  OrdinaryDelete,
-  OrdinaryDefineOwnProperty,
-  ToString,
-  ToInteger,
-  ToBoolean,
-} from "../../methods/index.js";
+import { Get, ToString, ToInteger, ToBoolean } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
+import { Properties } from "../../singletons.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import initializeBuffer from "./buffer.js";
 import initializeContextify from "./contextify.js";
@@ -52,7 +45,7 @@ function initializeTimerWrap(realm) {
       return realm.intrinsics.undefined;
     }
   );
-  OrdinaryDefineOwnProperty(realm, obj, "Timer", {
+  Properties.OrdinaryDefineOwnProperty(realm, obj, "Timer", {
     value: constructor,
     writable: true,
     enumerable: true,
@@ -91,7 +84,7 @@ function initializeTTYWrap(realm) {
       return new ObjectValue(realm, proto, `new (process.binding('tty_wrap').TTY)(${fd}, ${value.toString()})`);
     }
   );
-  OrdinaryDefineOwnProperty(realm, obj, "TTY", {
+  Properties.OrdinaryDefineOwnProperty(realm, obj, "TTY", {
     value: constructor,
     writable: true,
     enumerable: true,
@@ -119,7 +112,7 @@ function initializeTTYWrap(realm) {
     return realm.intrinsics.undefined;
   });
 
-  DefinePropertyOrThrow(realm, constructor, "prototype", {
+  Properties.DefinePropertyOrThrow(realm, constructor, "prototype", {
     value: TTYPrototype,
     writable: true,
     enumerable: false,
@@ -174,7 +167,7 @@ function initializeSignalWrap(realm) {
       return realm.intrinsics.undefined;
     }
   );
-  OrdinaryDefineOwnProperty(realm, obj, "Signal", {
+  Properties.OrdinaryDefineOwnProperty(realm, obj, "Signal", {
     value: constructor,
     writable: true,
     enumerable: true,
@@ -199,7 +192,7 @@ function initializeSignalWrap(realm) {
     return realm.intrinsics.undefined;
   });
 
-  DefinePropertyOrThrow(realm, constructor, "prototype", {
+  Properties.DefinePropertyOrThrow(realm, constructor, "prototype", {
     value: SignalPrototype,
     writable: true,
     enumerable: false,
@@ -223,7 +216,7 @@ function initializeStreamWrap(realm) {
       return realm.intrinsics.undefined;
     }
   );
-  OrdinaryDefineOwnProperty(realm, obj, "WriteWrap", {
+  Properties.OrdinaryDefineOwnProperty(realm, obj, "WriteWrap", {
     value: constructor,
     writable: true,
     enumerable: true,
@@ -240,7 +233,7 @@ function initializeStreamWrap(realm) {
     return realm.intrinsics.undefined;
   });
 
-  DefinePropertyOrThrow(realm, constructor, "prototype", {
+  Properties.DefinePropertyOrThrow(realm, constructor, "prototype", {
     value: WriteWrapPrototype,
     writable: true,
     enumerable: false,
@@ -248,7 +241,7 @@ function initializeStreamWrap(realm) {
   });
 
   let ShutdownWrap = createAbstractValue(realm, FunctionValue, "process.binding('stream_wrap').ShutdownWrap");
-  DefinePropertyOrThrow(realm, obj, "ShutdownWrap", {
+  Properties.DefinePropertyOrThrow(realm, obj, "ShutdownWrap", {
     value: ShutdownWrap,
     writable: true,
     configurable: true,
@@ -262,7 +255,7 @@ function initializeStreamWrap(realm) {
 function initializeFSEvent(realm) {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.binding('fs_event_wrap')");
   let FSEvent = createAbstractValue(realm, FunctionValue, "process.binding('fs_event_wrap').FSEvent");
-  DefinePropertyOrThrow(realm, obj, "FSEvent", {
+  Properties.DefinePropertyOrThrow(realm, obj, "FSEvent", {
     value: FSEvent,
     writable: true,
     configurable: true,
@@ -311,7 +304,7 @@ function createIntrinsicArrayValue(realm, intrinsicName) {
   // Like ArrayCreate but accepts an intrinsic name.
   let obj = new ArrayValue(realm, intrinsicName);
   obj.setExtensible(true);
-  OrdinaryDefineOwnProperty(realm, obj, "length", {
+  Properties.OrdinaryDefineOwnProperty(realm, obj, "length", {
     value: realm.intrinsics.zero,
     writable: true,
     enumerable: false,
@@ -537,7 +530,7 @@ export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
   }
 
   let argv0 = new StringValue(realm, process.argv0, "process.argv0");
-  DefinePropertyOrThrow(realm, obj, "argv0", {
+  Properties.DefinePropertyOrThrow(realm, obj, "argv0", {
     value: argv0,
     writable: false,
     configurable: true,
@@ -546,21 +539,21 @@ export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
 
   let argv = createAbstractValue(realm, ObjectValue, "process.argv");
 
-  DefinePropertyOrThrow(realm, argv, "0", {
+  Properties.DefinePropertyOrThrow(realm, argv, "0", {
     value: argv0,
     writable: true,
     configurable: true,
     enumerable: true,
   });
 
-  DefinePropertyOrThrow(realm, argv, "1", {
+  Properties.DefinePropertyOrThrow(realm, argv, "1", {
     value: new StringValue(realm, processArgv[1]),
     writable: true,
     configurable: true,
     enumerable: true,
   });
 
-  DefinePropertyOrThrow(realm, argv, "indexOf", {
+  Properties.DefinePropertyOrThrow(realm, argv, "indexOf", {
     value: new NativeFunctionValue(realm, "process.argv.indexOf", "indexOf", 0, (context, args) => {
       return realm.intrinsics.false;
     }),
@@ -577,7 +570,7 @@ export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
 
   let env = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process.env");
   // TODO: This abstract value doesn't work with a conditional for some reason.
-  DefinePropertyOrThrow(realm, env, "NODE_NO_WARNINGS", {
+  Properties.DefinePropertyOrThrow(realm, env, "NODE_NO_WARNINGS", {
     value: new StringValue(realm, "0", "process.env.NODE_NO_WARNINGS"),
     writable: true,
     configurable: true,
@@ -601,21 +594,21 @@ export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
   // TODO: The generated code needs to either always invoke this (make it
   // abstract) or, if we assume it has been done, it doesn't need to delete it.
   obj.defineNativeMethod("_setupProcessObject", 1, (self, [pushValueToArray]) => {
-    OrdinaryDelete(realm, obj, "_setupProcessObject");
+    Properties.OrdinaryDelete(realm, obj, "_setupProcessObject");
     return realm.intrinsics.undefined;
   });
 
   // This method injects a generic global promise reject callback. In real
   // environment we'd want to call this at rejections but we can safely skip it.
   obj.defineNativeMethod("_setupPromises", 1, (self, [promiseRejectCallback]) => {
-    OrdinaryDelete(realm, obj, "_setupPromises");
+    Properties.OrdinaryDelete(realm, obj, "_setupPromises");
     return realm.intrinsics.undefined;
   });
 
   // TODO: Support Promises. Set up a micro task runner and invoke the
   // tickCallback as needed.
   obj.defineNativeMethod("_setupNextTick", 1, (self, [tickCallback, runMicrotasks]) => {
-    OrdinaryDelete(realm, obj, "_setupNextTick");
+    Properties.OrdinaryDelete(realm, obj, "_setupNextTick");
     let runMicrotasksCallback = new NativeFunctionValue(
       realm,
       "(function() { throw new Error('TODO runMicrotasks not reachable') })",
@@ -626,7 +619,7 @@ export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
         return realm.intrinsics.undefined;
       }
     );
-    OrdinaryDefineOwnProperty(realm, runMicrotasks, "runMicrotasks", {
+    Properties.OrdinaryDefineOwnProperty(realm, runMicrotasks, "runMicrotasks", {
       value: runMicrotasksCallback,
       writable: true,
       enumerable: true,
@@ -637,13 +630,13 @@ export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
       realm.intrinsics.ObjectPrototype,
       "(function() { throw new Error('TODO tickInfo is not reachable in the host environment') })"
     );
-    OrdinaryDefineOwnProperty(realm, tickInfo, "0", {
+    Properties.OrdinaryDefineOwnProperty(realm, tickInfo, "0", {
       value: realm.intrinsics.zero,
       writable: true,
       enumerable: true,
       configurable: true,
     });
-    OrdinaryDefineOwnProperty(realm, tickInfo, "1", {
+    Properties.OrdinaryDefineOwnProperty(realm, tickInfo, "1", {
       value: realm.intrinsics.zero,
       writable: true,
       enumerable: true,

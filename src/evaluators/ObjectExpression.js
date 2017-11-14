@@ -21,10 +21,10 @@ import {
   CreateDataPropertyOrThrow,
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
-  PropertyDefinitionEvaluation,
   ToPropertyKey,
   ToString,
 } from "../methods/index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type {
   BabelNodeObjectExpression,
@@ -124,7 +124,7 @@ export default function(
       }
     } else {
       invariant(prop.type === "ObjectMethod");
-      PropertyDefinitionEvaluation(realm, prop, obj, env, strictCode, true);
+      Properties.PropertyDefinitionEvaluation(realm, prop, obj, (env: any), strictCode, true);
     }
   }
 

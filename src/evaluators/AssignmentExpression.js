@@ -20,9 +20,9 @@ import {
   HasOwnProperty,
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
-  PutValue,
   SetFunctionName,
 } from "../methods/index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "babel-types";
 import { computeBinary } from "./BinaryExpression.js";
@@ -70,7 +70,7 @@ export default function(
         }
       }
       // f. Perform ? PutValue(lref, rval).
-      PutValue(realm, lref, rval);
+      Properties.PutValue(realm, lref, rval);
       // g. Return rval.
       return rval;
     }
@@ -108,7 +108,7 @@ export default function(
   // 6. Let r be the result of applying op to lval and rval as if evaluating the expression lval op rval.
   let r = GetValue(realm, computeBinary(realm, op, lval, rval, ast.left.loc, ast.right.loc));
   // 7. Perform ? PutValue(lref, r).
-  PutValue(realm, lref, r);
+  Properties.PutValue(realm, lref, r);
   // 8. Return r.
   return r;
 }

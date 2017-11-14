@@ -12,10 +12,11 @@
 import invariant from "../../invariant.js";
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NumberValue, ObjectValue, StringValue } from "../../values/index.js";
-import { DefinePropertyOrThrow, ToString, ToNumber } from "../../methods/index.js";
+import { ToString, ToNumber } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import { getNodeBufferFromTypedArray } from "./utils.js";
+import { Properties } from "../../singletons.js";
 
 declare var process: any;
 
@@ -85,7 +86,7 @@ export default function(realm: Realm): ObjectValue {
   let val = AbstractValue.createFromTemplate(realm, FSReqWrapTemplate, ObjectValue, [], FSReqWrapTemplateSrc);
   val.values = new ValuesDomain(new Set([new ObjectValue(realm)]));
   val.intrinsicName = FSReqWrapTemplateSrc;
-  DefinePropertyOrThrow(realm, obj, "FSReqWrap", {
+  Properties.DefinePropertyOrThrow(realm, obj, "FSReqWrap", {
     value: val,
     writable: true,
     configurable: true,

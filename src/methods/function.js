@@ -35,7 +35,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { DefinePropertyOrThrow, NewDeclarativeEnvironment } from "./index.js";
+import { NewDeclarativeEnvironment } from "./index.js";
 import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
@@ -52,6 +52,7 @@ import {
 } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
+import { Properties } from "../singletons.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -523,7 +524,7 @@ export function SetFunctionName(
   }
 
   // 6. Return ! DefinePropertyOrThrow(F, "name", PropertyDescriptor{[[Value]]: name, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-  return DefinePropertyOrThrow(realm, F, "name", {
+  return Properties.DefinePropertyOrThrow(realm, F, "name", {
     value: name,
     enumerable: false,
     writable: false,
@@ -556,7 +557,7 @@ export function FunctionInitialize(
   }
 
   // 3. Perform ! DefinePropertyOrThrow(F, "length", PropertyDescriptor{[[Value]]: len, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-  DefinePropertyOrThrow(realm, F, "length", {
+  Properties.DefinePropertyOrThrow(realm, F, "length", {
     value: new NumberValue(realm, len),
     writable: false,
     enumerable: false,
@@ -566,7 +567,7 @@ export function FunctionInitialize(
   // 4. Let Strict be the value of the [[Strict]] internal slot of F.
   let Strict = F.$Strict;
   if (!Strict) {
-    DefinePropertyOrThrow(realm, F, "caller", {
+    Properties.DefinePropertyOrThrow(realm, F, "caller", {
       value: new UndefinedValue(realm),
       writable: true,
       enumerable: false,
@@ -635,9 +636,9 @@ export function AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm) 
     configurable: true,
   };
   // 3. Perform ! DefinePropertyOrThrow(F, "caller", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
-  DefinePropertyOrThrow(realm, F, "caller", desc);
+  Properties.DefinePropertyOrThrow(realm, F, "caller", desc);
   // 4. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
-  return DefinePropertyOrThrow(realm, F, "arguments", desc);
+  return Properties.DefinePropertyOrThrow(realm, F, "arguments", desc);
 }
 
 // ECMA262 9.2.1
@@ -1235,7 +1236,7 @@ export function FunctionCreate(
   // Note: "arguments" ***MUST NOT*** be set if the function is in strict mode or is an arrow, method, constructor, or generator function.
   //   See 16.2 "Forbidden Extensions"
   if (!Strict && kind === "normal") {
-    DefinePropertyOrThrow(realm, F, "arguments", {
+    Properties.DefinePropertyOrThrow(realm, F, "arguments", {
       value: realm.intrinsics.undefined,
       enumerable: false,
       writable: true,
