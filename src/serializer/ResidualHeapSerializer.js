@@ -29,15 +29,10 @@ import {
   NativeFunctionValue,
   UndefinedValue,
 } from "../values/index.js";
-import {
-  convertExpressionToJSXIdentifier,
-  convertKeyValueToJSXAttribute,
-  applyKeysToNestedArray,
-} from "../react/jsx.js";
+import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { isReactElement } from "../react/utils.js";
 import * as t from "babel-types";
 import type {
-  BabelNodeArrayExpression,
   BabelNodeExpression,
   BabelNodeStatement,
   BabelNodeIdentifier,
@@ -744,16 +739,14 @@ export class ResidualHeapSerializer {
       // we do this to ensure child JSXElements can get keys assigned if needed
       this.serializedValues.add(child);
       let reactChild = this._serializeValueObject(((child: any): ObjectValue));
-      if (reactChild.leadingComments !== null) {
+      if (reactChild.leadingComments != null) {
         return t.jSXExpressionContainer(reactChild);
       }
       return reactChild;
     }
     const expr = this.serializeValue(child);
 
-    if (t.isArrayExpression(expr)) {
-      applyKeysToNestedArray(((expr: any): BabelNodeArrayExpression), true, this.react.usedReactElementKeys);
-    } else if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
+    if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
       return t.jSXText(((expr: any).value: string) + "");
     } else if (t.isJSXElement(expr)) {
       return expr;

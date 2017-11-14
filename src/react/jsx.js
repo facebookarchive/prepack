@@ -12,15 +12,13 @@
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
-  BabelNodeArrayExpression,
-  BabelNodeJSXElement,
   BabelNodeJSXMemberExpression,
   BabelNodeJSXIdentifier,
   BabelNodeIdentifier,
   BabelNodeMemberExpression,
 } from "babel-types";
 import invariant from "../invariant.js";
-import { isReactComponent, getUniqueReactElementKey } from "./utils";
+import { isReactComponent } from "./utils";
 
 export function convertExpressionToJSXIdentifier(
   expr: BabelNodeExpression,
@@ -77,57 +75,4 @@ export function convertJSXExpressionToIdentifier(
 
 export function convertKeyValueToJSXAttribute(key: string, expr: BabelNodeExpression) {
   return t.jSXAttribute(t.jSXIdentifier(key), expr.type === "StringLiteral" ? expr : t.jSXExpressionContainer(expr));
-}
-
-function addKeyToElement(astElement: BabelNodeJSXElement, key) {
-  let astAttributes = astElement.openingElement.attributes;
-  let existingKey = null;
-
-  for (let i = 0; i < astAttributes.length; i++) {
-    let astAttribute = astAttributes[i];
-
-    if (t.isJSXAttribute(astAttribute) && t.isJSXIdentifier(astAttribute.name) && astAttribute.name.name === "key") {
-      existingKey = astAttribute.value;
-      break;
-    }
-  }
-  if (existingKey === null) {
-    astAttributes.push(t.jSXAttribute(t.jSXIdentifier("key"), t.stringLiteral(key)));
-  }
-}
-
-export function applyKeysToNestedArray(
-  expr: BabelNodeArrayExpression,
-  isBase: boolean,
-  usedReactElementKeys: Set<string>
-): void {
-  let astElements = expr.elements;
-
-  if (Array.isArray(astElements)) {
-    for (let i = 0; i < astElements.length; i++) {
-      let astElement = astElements[i];
-
-      if (astElement != null) {
-        if (t.isJSXElement(astElement) && isBase === false) {
-          addKeyToElement((astElement: any), getUniqueReactElementKey("" + i, usedReactElementKeys));
-        } else if (t.isArrayExpression(astElement)) {
-          applyKeysToNestedArray((astElement: any), false, usedReactElementKeys);
-        } else if (astElement.type === "ConditionalExpression") {
-          let alternate = (astElement.alternate: any);
-          // it's common for conditions to be in an array, which means we need to check them for keys too
-          if (t.isJSXElement(alternate.type) && isBase === false) {
-            addKeyToElement(alternate, getUniqueReactElementKey("0" + i, usedReactElementKeys));
-          } else if (t.isArrayExpression(alternate.type)) {
-            applyKeysToNestedArray(alternate, false, usedReactElementKeys);
-          }
-          let consequent = (astElement.consequent: any);
-          if (t.isJSXElement(consequent.type) && isBase === false) {
-            addKeyToElement(consequent, getUniqueReactElementKey("1" + i, usedReactElementKeys));
-          } else if (t.isArrayExpression(consequent.type)) {
-            applyKeysToNestedArray(consequent, false, usedReactElementKeys);
-          }
-        }
-      }
-    }
-  }
 }
