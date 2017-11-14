@@ -33,7 +33,7 @@ export class VariableManager {
   // it exists or return a new reference
   getReferenceForValue(value: VariableContainer): number {
     let cachedRef = this._containerCache.get(value);
-    if (cachedRef) {
+    if (cachedRef !== undefined) {
       return cachedRef;
     }
 
@@ -49,6 +49,7 @@ export class VariableManager {
     if (container instanceof LexicalEnvironment) {
       return this._getVariablesFromEnv(container);
     }
+    // TODO: implement retrieving variables for other types of containers
     return [];
   }
 
@@ -57,6 +58,7 @@ export class VariableManager {
     if (envRecord instanceof DeclarativeEnvironmentRecord) {
       return this._getVariablesFromDeclarativeEnv(envRecord);
     }
+    // TODO: implement retrieving variables for other kinds of environment records
     return [];
   }
 

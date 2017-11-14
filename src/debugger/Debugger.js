@@ -149,7 +149,7 @@ export class DebugServer {
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
         invariant(args.kind === "run");
-        this._doPreRunActions();
+        this._onDebuggeeResume();
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
@@ -242,7 +242,7 @@ export class DebugServer {
   }
 
   // actions that need to happen before Prepack can resume
-  _doPreRunActions() {
+  _onDebuggeeResume() {
     // resets the variable manager
     this._variableManager.clean();
   }
