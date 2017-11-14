@@ -171,7 +171,7 @@ function execInContext(code) {
 }
 
 function runTest(name, code, options, args) {
-  console.log(chalk.inverse(name) + " " + util.inspect(options));
+  console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
   let compileJSXWithBabel = code.includes("// babel:jsx");
