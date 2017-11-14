@@ -133,6 +133,14 @@ describe("Test React", () => {
       await runTest(directory, "key-nesting.js");
     });
 
+    it("Key nesting 2", async () => {
+      await runTest(directory, "key-nesting-2.js");
+    });
+
+    it("Key nesting 3", async () => {
+      await runTest(directory, "key-nesting-3.js");
+    });
+
     it("Key change", async () => {
       await runTest(directory, "key-change.js");
     });
