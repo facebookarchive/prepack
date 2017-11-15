@@ -187,7 +187,7 @@ describe("Test React", () => {
     });
 
     it("Class component as root with multiple render methods", async () => {
-      await runTest(directory, "class-root-render-methods.js");
+      await runTest(directory, "class-root-with-render-methods.js");
     });
 
     it("Class component as root with props", async () => {
@@ -196,6 +196,10 @@ describe("Test React", () => {
 
     it("Class component as root with state", async () => {
       await runTest(directory, "class-root-with-state.js");
+    });
+
+    it("Class component as root with refs", async () => {
+      await runTest(directory, "class-root-with-refs.js");
     });
 
     it("Class component as root with instance variables", async () => {
