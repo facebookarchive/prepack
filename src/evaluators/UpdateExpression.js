@@ -13,9 +13,10 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { Add, GetValue, ToNumber, PutValue, IsToNumberPure } from "../methods/index.js";
+import { Add, GetValue, ToNumber, IsToNumberPure } from "../methods/index.js";
 import { AbstractValue, NumberValue } from "../values/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 export default function(
@@ -44,7 +45,7 @@ export default function(
     invariant(ast.operator === "++" || ast.operator === "--"); // As per BabelNodeUpdateExpression
     let op = ast.operator === "++" ? "+" : "-";
     let newAbstractValue = AbstractValue.createFromBinaryOp(realm, op, oldExpr, new NumberValue(realm, 1), ast.loc);
-    PutValue(realm, expr, newAbstractValue);
+    Properties.PutValue(realm, expr, newAbstractValue);
     if (ast.prefix) {
       return newAbstractValue;
     } else {
@@ -61,7 +62,7 @@ export default function(
       let newValue = Add(realm, oldValue, 1);
 
       // 4. Perform ? PutValue(expr, newValue).
-      PutValue(realm, expr, newValue);
+      Properties.PutValue(realm, expr, newValue);
 
       // 5. Return newValue.
       return newValue;
@@ -72,7 +73,7 @@ export default function(
       let newValue = Add(realm, oldValue, -1);
 
       // 4. Perform ? PutValue(expr, newValue).
-      PutValue(realm, expr, newValue);
+      Properties.PutValue(realm, expr, newValue);
 
       // 5. Return newValue.
       return newValue;
@@ -86,7 +87,7 @@ export default function(
       let newValue = Add(realm, oldValue, 1);
 
       // 4. Perform ? PutValue(lhs, newValue).
-      PutValue(realm, expr, newValue);
+      Properties.PutValue(realm, expr, newValue);
 
       // 5. Return oldValue.
       return new NumberValue(realm, oldValue);
@@ -97,7 +98,7 @@ export default function(
       let newValue = Add(realm, oldValue, -1);
 
       // 4. Perform ? PutValue(lhs, newValue).
-      PutValue(realm, expr, newValue);
+      Properties.PutValue(realm, expr, newValue);
 
       // 5. Return oldValue.
       return new NumberValue(realm, oldValue);

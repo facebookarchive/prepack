@@ -173,15 +173,40 @@ export default class AbstractValue extends Value {
     return this._buildNode && this._buildNode.type === "Identifier";
   }
 
+  // this => val. A false value does not imply that !(this => val).
   implies(val: Value): boolean {
-    // Neither this nor val is a known value, so we need to some reasoning based on the structure
     if (this.equals(val)) return true; // x => x regardless of its value
+    if (!this.mightNotBeFalse()) return true; // false => val
     if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
-    // x => x !== null && x !== undefined
-    if (val instanceof AbstractValue && val.kind === "!==") {
-      let [x, y] = val.args;
-      if (this.equals(x)) return y instanceof NullValue || y instanceof UndefinedValue;
-      if (this.equals(y)) return x instanceof NullValue || x instanceof UndefinedValue;
+    if (val instanceof AbstractValue) {
+      // Neither this (x) nor val (y) is a known value, so we need to some reasoning based on the structure
+      // x => !y if y => !x
+      if (val.kind === "!") {
+        let [y] = val.args;
+        invariant(y instanceof AbstractValue);
+        return y.impliesNot(this);
+      }
+      // x => x !== null && x !== undefined
+      if (val.kind === "!==") {
+        let [x, y] = val.args;
+        if (this.equals(x)) return y instanceof NullValue || y instanceof UndefinedValue;
+        if (this.equals(y)) return x instanceof NullValue || x instanceof UndefinedValue;
+      }
+    }
+    return false;
+  }
+
+  // this => !val. A false value does not imply that !(this => !val).
+  impliesNot(val: Value): boolean {
+    if (this.equals(val)) return false; // x => x regardless of its value, hence x => !val is false
+    if (!this.mightNotBeFalse()) return true; // false => !val
+    if (!val.mightNotBeFalse()) return true; // x => !false regardless of the value of x
+    if (val instanceof AbstractValue) {
+      // !x => !y if y => x
+      if (this.kind === "!") {
+        let [x] = this.args;
+        return val.implies(x);
+      }
     }
     return false;
   }
@@ -516,7 +541,8 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |},
+    forceHydrateLazyObjects: boolean = false
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
@@ -525,7 +551,7 @@ export default class AbstractValue extends Value {
     let args = temp.args;
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
-    return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
+    return realm.generator.derive(types, values, args, buildNode_, optionalArgs, forceHydrateLazyObjects);
   }
 
   static createTemporalFromBuildFunction(

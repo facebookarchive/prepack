@@ -26,6 +26,10 @@ export class DebugMessage {
   static BREAKPOINT_DISABLE_COMMAND: string = "Breakpoint-disable-command";
   // Command to fetch stack frames
   static STACKFRAMES_COMMAND: string = "Stackframes-command";
+  // Command to fetch scopes
+  static SCOPES_COMMAND: string = "Scopes-command";
+  // Command to fetch variables
+  static VARIABLES_COMMAND: string = "Variables-command";
 
   /* Messages from Prepack to adapter with requested information */
   // Respond to the adapter that Prepack is ready
@@ -36,6 +40,10 @@ export class DebugMessage {
   static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped-response";
   // Respond to the adapter with the request stackframes
   static STACKFRAMES_RESPONSE: string = "Stackframes-response";
+  // Respond to the adapter with the requested scopes
+  static SCOPES_RESPONSE: string = "Scopes-response";
+  // Respond to the adapter with the requested variables
+  static VARIABLES_RESPONSE: string = "Variables-response";
 
   /* Messages from Prepack to adapter to acknowledge having received the request */
   // Acknowledgement for setting a breakpoint

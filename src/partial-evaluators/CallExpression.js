@@ -25,11 +25,11 @@ import {
   IsInTailPosition,
   IsPropertyReference,
   joinEffects,
-  PerformEval,
   SameValue,
   stopEffectCaptureJoinApplyAndReturnCompletion,
   unbundleNormalCompletion,
 } from "../methods/index.js";
+import { Functions } from "../singletons.js";
 import { AbstractValue, BooleanValue, FunctionValue, Value } from "../values/index.js";
 
 import * as t from "babel-types";
@@ -96,7 +96,7 @@ export default function(
   invariant(completion === undefined || completion instanceof PossiblyNormalCompletion);
   completion = composeNormalCompletions(completion, callCompletion, callResult, realm);
   if (completion instanceof PossiblyNormalCompletion) {
-    realm.captureEffects();
+    realm.captureEffects(completion);
   }
   return [completion, t.callExpression((calleeAst: any), partialArgs), io];
 }
@@ -134,7 +134,7 @@ function callBothFunctionsAndJoinTheirEffects(
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    joinedCompletion = realm.getRunningContext().composeWithSavedCompletion(joinedCompletion);
+    joinedCompletion = realm.composeWithSavedCompletion(joinedCompletion);
   }
 
   // Note that the effects of (non joining) abrupt branches are not included
@@ -187,7 +187,7 @@ function EvaluateCall(
       let evalRealm = realm;
 
       // vi. Return ? PerformEval(evalText, evalRealm, strictCaller, true).
-      return PerformEval(realm, evalText, evalRealm, strictCaller, true);
+      return Functions.PerformEval(realm, evalText, evalRealm, strictCaller, true);
     }
   }
 

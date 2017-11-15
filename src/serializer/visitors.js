@@ -210,16 +210,6 @@ export let ClosureRefReplacer = {
       }
     },
   },
-
-  DoWhileStatement: {
-    exit: function(path: BabelTraversePath, state: ClosureRefReplacerState) {
-      let node = path.node;
-      let testTruthiness = getLiteralTruthiness(node.test);
-      if (testTruthiness.known && !testTruthiness.value) {
-        path.replaceWith(node.body);
-      }
-    },
-  },
 };
 
 function visitName(path, state, name, modified) {

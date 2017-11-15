@@ -23,22 +23,20 @@ import type {
 import parse from "../utils/parse.js";
 import {
   HasOwnProperty,
-  SetFunctionName,
   IsConstructor,
   Get,
   MakeConstructor,
   CreateMethodProperty,
-  DefineMethod,
   NewDeclarativeEnvironment,
   MakeClassConstructor,
   ObjectCreate,
   ConstructorMethod,
   GetValue,
   IsStatic,
-  PropertyDefinitionEvaluation,
   InitializeBoundName,
   NonConstructorMethodDefinitions,
 } from "../methods/index.js";
+import { Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 function EvaluateClassHeritage(
@@ -204,7 +202,7 @@ export function ClassDefinitionEvaluation(
   let F;
   try {
     // 12. Let constructorInfo be the result of performing DefineMethod for constructor with arguments proto and constructorParent as the optional functionPrototype argument.
-    let constructorInfo = DefineMethod(realm, constructor, proto, env, strictCode, constructorParent);
+    let constructorInfo = Functions.DefineMethod(realm, constructor, proto, env, strictCode, constructorParent);
 
     // 13. Assert: constructorInfo is not an abrupt completion.
 
@@ -239,11 +237,11 @@ export function ClassDefinitionEvaluation(
       // a. If IsStatic of m is false, then
       if (!IsStatic(m)) {
         // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments proto and false.
-        PropertyDefinitionEvaluation(realm, m, proto, env, strictCode, false);
+        Properties.PropertyDefinitionEvaluation(realm, m, proto, (env: any), strictCode, false);
       } else {
         // Else,
         // Let status be the result of performing PropertyDefinitionEvaluation for m with arguments F and false.
-        PropertyDefinitionEvaluation(realm, m, F, env, strictCode, false);
+        Properties.PropertyDefinitionEvaluation(realm, m, F, (env: any), strictCode, false);
       }
       // c. If status is an abrupt completion, then
       // i. Set the running execution context's LexicalEnvironment to lex.
@@ -287,7 +285,7 @@ function BindingClassDeclarationEvaluation(
 
     // 6. If hasNameProperty is false, then perform SetFunctionName(value, className).
     if (hasNameProperty === false) {
-      SetFunctionName(realm, value, className);
+      Functions.SetFunctionName(realm, value, className);
     }
 
     // 7. Let env be the running execution context’s LexicalEnvironment.

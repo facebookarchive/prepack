@@ -12,10 +12,9 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { SetFunctionName, FunctionCreate, GeneratorFunctionCreate } from "../methods/function.js";
 import { MakeConstructor } from "../methods/construct.js";
 import { ObjectCreate } from "../methods/create.js";
-import { DefinePropertyOrThrow } from "../methods/properties.js";
+import { Functions, Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionDeclaration } from "babel-types";
@@ -40,20 +39,20 @@ export default function(
     }
 
     // 3. Let F be GeneratorFunctionCreate(Normal, FormalParameters, GeneratorBody, scope, strict).
-    let F = GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, env, strict);
+    let F = Functions.GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, env, strict);
 
     // 4. Let prototype be ObjectCreate(%GeneratorPrototype%).
     let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
 
     // 5. Perform DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-    DefinePropertyOrThrow(realm, F, "prototype", {
+    Properties.DefinePropertyOrThrow(realm, F, "prototype", {
       value: prototype,
       writable: true,
       configurable: false,
     });
 
     // 6. Perform SetFunctionName(F, name).
-    SetFunctionName(realm, F, name);
+    Functions.SetFunctionName(realm, F, name);
 
     // 7 .Return F.
     return F;
@@ -70,14 +69,14 @@ export default function(
     }
 
     // 3. Let F be FunctionCreate(Normal, FormalParameters, FunctionBody, scope, strict).
-    let F = FunctionCreate(realm, "normal", ast.params, ast.body, env, strict);
+    let F = Functions.FunctionCreate(realm, "normal", ast.params, ast.body, env, strict);
     if (ast.id && ast.id.name) F.__originalName = ast.id.name;
 
     // 4. Perform MakeConstructor(F).
     MakeConstructor(realm, F);
 
     // 5. Perform SetFunctionName(F, name).
-    SetFunctionName(realm, F, name);
+    Functions.SetFunctionName(realm, F, name);
 
     // 6. Return F.
     return F;

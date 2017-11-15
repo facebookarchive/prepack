@@ -32,7 +32,6 @@ import {
   IsArray,
   IsCallable,
   ObjectCreate,
-  ThrowIfMightHaveBeenDeleted,
   ToInteger,
   ToLength,
   ToNumber,
@@ -42,6 +41,7 @@ import {
 import { InternalizeJSONProperty } from "../../methods/json.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
+import { Properties } from "../../singletons.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
@@ -309,7 +309,7 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
     if (binding === undefined || binding.descriptor === undefined) continue; // deleted
     invariant(binding.descriptor !== undefined);
     let value = binding.descriptor.value;
-    ThrowIfMightHaveBeenDeleted(value);
+    Properties.ThrowIfMightHaveBeenDeleted(value);
     if (value === undefined) {
       AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
       throw new FatalError();
@@ -319,6 +319,7 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
   }
   if (val.isPartialObject()) clone.makePartial();
   if (val.isSimpleObject()) clone.makeSimple();
+  clone.isTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
   return clone;
 }
 
@@ -505,9 +506,16 @@ export default function(realm: Realm): ObjectValue {
     if (value instanceof AbstractValue || (value instanceof ObjectValue && value.isPartialObject())) {
       // Return abstract result. This enables cloning via JSON.parse(JSON.stringify(...)).
       let clonedValue = InternalJSONClone(realm, value);
-      let result = AbstractValue.createTemporalFromTemplate(realm, JSONStringify, StringValue, [clonedValue], {
-        kind: "JSON.stringify(...)",
-      });
+      let result = AbstractValue.createTemporalFromTemplate(
+        realm,
+        JSONStringify,
+        StringValue,
+        [clonedValue],
+        {
+          kind: "JSON.stringify(...)",
+        },
+        true
+      );
       if (clonedValue instanceof ObjectValue) {
         let iName = result.intrinsicName;
         invariant(iName);

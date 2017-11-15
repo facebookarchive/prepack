@@ -54,6 +54,7 @@ function search(dir, relative) {
   return tests;
 }
 
+const LAZY_OBJECTS_RUNTIME_NAME = "LazyObjectsRuntime";
 let tests = search(`${__dirname}/../test/serializer`, "test/serializer");
 
 // run JS subprocess
@@ -103,21 +104,49 @@ function execExternal(externalSpec, code) {
   return String(output.trim());
 }
 
+function augmentCodeWithLazyObjectSupport(code) {
+  const mockLazyObjectsSupport = `
+    var ${LAZY_OBJECTS_RUNTIME_NAME} = {
+      _lazyObjectIds: new Map(),
+      _callback: null,
+      setLazyObjectInitializer: function(callback) {
+        this._callback = callback;
+      },
+      createLazyObject: function(id) {
+        var obj = {};
+        this._lazyObjectIds.set(obj, id);
+        return obj;
+      },
+      hydrateAllObjects: function() {
+        for (const [lazyObj, id] of this._lazyObjectIds) {
+          this._callback(lazyObj, id);
+        }
+        this._lazyObjectIds.clear();
+      }
+    };
+  `;
+  const hydrateLazyObjectsCall = `${LAZY_OBJECTS_RUNTIME_NAME}.hydrateAllObjects();`;
+  code = code.replace("/*force hydrate lazy objects*/", hydrateLazyObjectsCall);
+  return `${mockLazyObjectsSupport}
+    ${code}; // keep newline here as code may end with comment
+    ${hydrateLazyObjectsCall}`;
+}
+
 // run code in a seperate context
 function execInContext(code) {
   let script = new vm.Script(
-    `var global = this; var self = this; ${code}; // keep newline here as code may end with comment
-report(inspect());`,
+    `var global = this;
+    var self = this;
+    ${code}
+    report(inspect());`,
     { cachedDataProduced: false }
   );
-
   let result = "";
   let logOutput = "";
 
   function write(prefix, values) {
     logOutput += "\n" + prefix + values.join("");
   }
-
   script.runInNewContext({
     setTimeout: setTimeout,
     setInterval: setInterval,
@@ -180,6 +209,7 @@ function runTest(name, code, options, args) {
         delayUnsupportedRequires,
         internalDebug: true,
         additionalFunctions: options.additionalFunctions,
+        lazyObjectsRuntime: options.lazyObjectsRuntime,
       };
       let serializer = new Serializer(realm, serializerOptions);
       let sources = [{ filePath: name, fileContents: code }];
@@ -313,6 +343,7 @@ function runTest(name, code, options, args) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
         try {
+          codeToRun = augmentCodeWithLazyObjectSupport(codeToRun);
           if (execSpec) actual = execExternal(execSpec, codeToRun);
           else actual = execInContext(codeToRun);
         } catch (e) {
@@ -408,10 +439,22 @@ function run(args) {
     if (args.es5 && test.file.includes("// es6")) continue;
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
+    // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
+    const skipLazyObjects =
+      test.file.includes("// skip lazy objects") ||
+      test.name.includes("additional-functions") ||
+      test.name.includes("react");
 
-    for (let [delayInitializations, inlineExpressions] of [[false, false], [true, true]]) {
+    for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime] of [
+      [false, false, undefined],
+      [true, true, undefined],
+      [false, false, LAZY_OBJECTS_RUNTIME_NAME],
+    ]) {
+      if (skipLazyObjects && lazyObjectsRuntime) {
+        continue;
+      }
       total++;
-      let options = { delayInitializations, inlineExpressions };
+      let options = { delayInitializations, inlineExpressions, lazyObjectsRuntime };
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
     }

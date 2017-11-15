@@ -11,8 +11,9 @@
 
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
-import { Get, ToObject, CreateArrayFromList, IsArrayIndex, ThrowIfMightHaveBeenDeleted } from "./index.js";
+import { Get, ToObject, CreateArrayFromList, IsArrayIndex } from "./index.js";
 import { StringValue, ObjectValue, Value, ArrayValue } from "../values/index.js";
+import { Properties } from "../singletons.js";
 
 import invariant from "../invariant.js";
 
@@ -88,7 +89,7 @@ export function EnumerableOwnProperties(realm: Realm, O: ObjectValue, kind: stri
 
       // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
       if (desc && desc.enumerable) {
-        ThrowIfMightHaveBeenDeleted(desc.value);
+        Properties.ThrowIfMightHaveBeenDeleted(desc.value);
 
         // 1. If kind is "key", append key to properties.
         if (kind === "key") {

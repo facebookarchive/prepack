@@ -44,4 +44,13 @@ export default class SymbolValue extends PrimitiveValue {
   _serialize(): Symbol {
     return Symbol(this.$Description);
   }
+
+  toDisplayString(): string {
+    if (this.$Description) {
+      if (this.$Description instanceof PrimitiveValue) {
+        return `Symbol(${this.$Description.toDisplayString()})`;
+      }
+    }
+    return "Symbol(to be supported)";
+  }
 }

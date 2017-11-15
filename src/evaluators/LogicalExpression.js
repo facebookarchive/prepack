@@ -18,7 +18,7 @@ import { Reference } from "../environment.js";
 import { GetValue, joinEffects, ToBoolean } from "../methods/index.js";
 import type { BabelNodeLogicalExpression } from "babel-types";
 import invariant from "../invariant.js";
-import { withPathCondition, withInversePathCondition } from "../utils/paths.js";
+import { Path } from "../singletons.js";
 
 export default function(
   ast: BabelNodeLogicalExpression,
@@ -54,7 +54,7 @@ export default function(
   compl1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
-  let wrapper = ast.operator === "&&" ? withPathCondition : withInversePathCondition;
+  let wrapper = ast.operator === "&&" ? Path.withCondition : Path.withInverseCondition;
   let [compl2, gen2, bindings2, properties2, createdObj2] = wrapper(lval, () =>
     realm.evaluateNodeForEffects(ast.right, strictCode, env)
   );
@@ -85,8 +85,7 @@ export default function(
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    completion = realm.getRunningContext().composeWithSavedCompletion(completion);
-    realm.captureEffects();
+    completion = realm.composeWithSavedCompletion(completion);
   }
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.

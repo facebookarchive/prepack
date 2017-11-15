@@ -1,3 +1,4 @@
+// skip lazy objects
 // Copies of void 0:1
 // do not inline expressions
 (function() {

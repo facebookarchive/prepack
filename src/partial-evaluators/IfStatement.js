@@ -13,7 +13,7 @@ import type { BabelNodeIfStatement, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
-import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { joinEffects, UpdateEmpty } from "../methods/index.js";
 import { AbstractValue, Value } from "../values/index.js";
@@ -31,7 +31,7 @@ export default function(
   let [exprValue, exprAst, exprIO] = env.partiallyEvaluateCompletionDeref(ast.test, strictCode);
   if (exprValue instanceof AbruptCompletion) return [exprValue, t.expressionStatement((exprAst: any)), exprIO];
   let completion;
-  if (exprValue instanceof NormalCompletion) {
+  if (exprValue instanceof PossiblyNormalCompletion) {
     completion = exprValue;
     exprValue = completion.value;
   }
@@ -83,12 +83,12 @@ export default function(
     [altCompl, gen2, bindings2, properties2, createdObj2]
   );
   completion = joinedEffects[0];
-  if (completion instanceof NormalCompletion) {
+  if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    realm.captureEffects();
+    realm.captureEffects(completion);
   }
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.

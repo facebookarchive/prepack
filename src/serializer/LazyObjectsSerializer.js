@@ -83,7 +83,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       statistics,
       react
     );
-    this._lazyObjectIdSeed = 0;
+    this._lazyObjectIdSeed = 1;
     this._valueLazyIds = new Map();
     this._lazyObjectInitializers = new Map();
     this._callbackLazyObjectParam = t.identifier("obj");

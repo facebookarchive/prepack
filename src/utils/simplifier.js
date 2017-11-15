@@ -16,6 +16,7 @@ import invariant from "../invariant.js";
 import { ToBoolean } from "../methods/index.js";
 import { Realm } from "../realm.js";
 import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
+import { Path } from "../singletons.js";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,
@@ -38,18 +39,13 @@ export default function simplifyAndRefineAbstractValue(
   }
 }
 
-function pathImplies(condition: AbstractValue): boolean {
-  let path = condition.$Realm.pathConditions;
-  for (let i = path.length - 1; i >= 0; i--) {
-    let pathCondition = path[i];
-    if (pathCondition.implies(condition)) return true;
-  }
-  return false;
-}
-
 function simplify(realm, value: Value, isCondition: boolean = false): Value {
   if (value instanceof ConcreteValue) return value;
   invariant(value instanceof AbstractValue);
+  if (isCondition || value.getType() === BooleanValue) {
+    if (Path.implies(value)) return realm.intrinsics.true;
+    if (Path.impliesNot(value)) return realm.intrinsics.false;
+  }
   let loc = value.expressionLocation;
   let op = value.kind;
   switch (op) {
@@ -103,16 +99,16 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       if (!c.mightNotBeTrue()) return x;
       if (!c.mightNotBeFalse()) return y;
       invariant(c instanceof AbstractValue);
-      if (pathImplies(c)) return x;
+      if (Path.implies(c)) return x;
       let notc = AbstractValue.createFromUnaryOp(realm, "!", c);
       if (!notc.mightNotBeTrue()) return y;
       if (!notc.mightNotBeFalse()) return x;
       invariant(notc instanceof AbstractValue);
-      if (pathImplies(notc)) return y;
-      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", value, x))) return x;
-      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", value, x))) return y;
-      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", value, y))) return x;
-      if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", value, y))) return y;
+      if (Path.implies(notc)) return y;
+      if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, x))) return x;
+      if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, x))) return y;
+      if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, y))) return x;
+      if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, y))) return y;
       // c ? x : x <=> x
       if (x.equals(y)) return x;
       // x ? x : y <=> x || y
@@ -146,8 +142,8 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       invariant(abstractValue instanceof AbstractValue);
       let remainingConcreteValues = [];
       for (let concreteValue of concreteValues) {
-        if (pathImplies(AbstractValue.createFromBinaryOp(realm, "!==", value, concreteValue))) continue;
-        if (pathImplies(AbstractValue.createFromBinaryOp(realm, "===", value, concreteValue))) return concreteValue;
+        if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, concreteValue))) continue;
+        if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, concreteValue))) return concreteValue;
         remainingConcreteValues.push(concreteValue);
       }
       if (remainingConcreteValues.length === 0) return abstractValue;
@@ -214,7 +210,7 @@ function negate(
   invariant(value instanceof AbstractValue);
   if (value.kind === "!") {
     let [x] = value.args;
-    if (x.getType() === BooleanValue) return x;
+    if (x.getType() === BooleanValue) return simplify(realm, x, true);
     if (unsimplifiedNegation !== undefined) return unsimplifiedNegation;
     return makeBoolean(realm, x, loc);
   }

@@ -10,21 +10,33 @@
 /* @flow */
 
 import type {
-  NumberValue,
+  AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   BooleanValue,
-  NativeFunctionValue,
+  ECMAScriptFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  EmptyValue,
   FunctionValue,
+  NativeFunctionValue,
+  NullValue,
+  NumberValue,
   StringValue,
   SymbolValue,
   UndefinedValue,
-  NullValue,
-  EmptyValue,
   Value,
-  AbstractObjectValue,
 } from "./values/index.js";
+import { AbruptCompletion, Completion, NormalCompletion } from "./completions.js";
+import { LexicalEnvironment, Reference } from "./environment.js";
 import { ObjectValue } from "./values/index.js";
-import { BabelNode } from "babel-types";
+import type {
+  BabelNode,
+  BabelNodeBlockStatement,
+  BabelNodeClassMethod,
+  BabelNodeLVal,
+  BabelNodeObjectMethod,
+} from "babel-types";
+import { Realm } from "./realm.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -93,6 +105,13 @@ export type Descriptor = {
 
   get?: UndefinedValue | CallableObjectValue | AbstractValue,
   set?: UndefinedValue | CallableObjectValue | AbstractValue,
+
+  // Only used if the result of a join of two descriptors is not a data descriptor with identical attribute values.
+  // When present, any update to the property must produce effects that are the join of updating both desriptors,
+  // using joinCondition as the condition of the join.
+  joinCondition?: AbstractValue,
+  descriptor1?: Descriptor,
+  descriptor2?: Descriptor,
 };
 
 export type FunctionBodyAstNode = {
@@ -288,4 +307,213 @@ export type ObjectKind =
 export type DebugServerType = {
   checkForActions: BabelNode => void,
   shutdown: () => void,
+};
+
+export type PathType = {
+  implies(condition: AbstractValue): boolean,
+  impliesNot(condition: AbstractValue): boolean,
+  withCondition<T>(condition: AbstractValue, evaluate: () => T): T,
+  withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T,
+};
+
+export type PropertiesType = {
+  // ECMA262 9.1.9.1
+  OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean,
+
+  // ECMA262 6.2.4.4
+  FromPropertyDescriptor(realm: Realm, Desc: ?Descriptor): Value,
+
+  //
+  OrdinaryDelete(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean,
+
+  // ECMA262 7.3.8
+  DeletePropertyOrThrow(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean,
+
+  // ECMA262 6.2.4.6
+  CompletePropertyDescriptor(realm: Realm, Desc: Descriptor): Descriptor,
+
+  // ECMA262 9.1.6.2
+  IsCompatiblePropertyDescriptor(realm: Realm, extensible: boolean, Desc: Descriptor, current: ?Descriptor): boolean,
+
+  // ECMA262 9.1.6.3
+  ValidateAndApplyPropertyDescriptor(
+    realm: Realm,
+    O: void | ObjectValue,
+    P: void | PropertyKeyValue,
+    extensible: boolean,
+    Desc: Descriptor,
+    current: ?Descriptor
+  ): boolean,
+
+  // ECMA262 9.1.6.1
+  OrdinaryDefineOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, Desc: Descriptor): boolean,
+
+  // ECMA262 19.1.2.3.1
+  ObjectDefineProperties(realm: Realm, O: Value, Properties: Value): ObjectValue | AbstractObjectValue,
+
+  // ECMA262 7.3.3
+  Set(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue, V: Value, Throw: boolean): boolean,
+
+  // ECMA262 7.3.7
+  DefinePropertyOrThrow(
+    realm: Realm,
+    O: ObjectValue | AbstractObjectValue,
+    P: PropertyKeyValue,
+    desc: Descriptor
+  ): boolean,
+
+  // ECMA262 6.2.3.2
+  PutValue(realm: Realm, V: Value | Reference, W: Value): void | boolean | Value,
+
+  // ECMA262 9.4.2.4
+  ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor): boolean,
+
+  // ECMA262 9.1.5.1
+  OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void,
+
+  // ECMA262 9.1.2.1
+  OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectValue | NullValue): boolean,
+
+  // ECMA262 13.7.5.15
+  EnumerateObjectProperties(realm: Realm, O: ObjectValue): ObjectValue,
+
+  ThrowIfMightHaveBeenDeleted(
+    value: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+  ): void,
+
+  ThrowIfInternalSlotNotWritable<T: ObjectValue>(realm: Realm, object: T, key: string): T,
+
+  // ECMA 14.3.9
+  PropertyDefinitionEvaluation(
+    realm: Realm,
+    MethodDefinition: BabelNodeObjectMethod | BabelNodeClassMethod,
+    object: ObjectValue,
+    env: LexicalEnvironment,
+    strictCode: boolean,
+    enumerable: boolean
+  ): boolean,
+};
+
+export type FunctionType = {
+  FindVarScopedDeclarations(ast_node: BabelNode): Array<BabelNode>,
+
+  // ECMA262 9.2.12
+  FunctionDeclarationInstantiation(
+    realm: Realm,
+    func: ECMAScriptSourceFunctionValue,
+    argumentsList: Array<Value>
+  ): EmptyValue,
+
+  // ECMA262 9.2.11
+  SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyValue | AbstractValue, prefix?: string): boolean,
+
+  // ECMA262 9.2.3
+  FunctionInitialize(
+    realm: Realm,
+    F: ECMAScriptSourceFunctionValue,
+    kind: "normal" | "method" | "arrow",
+    ParameterList: Array<BabelNodeLVal>,
+    Body: BabelNodeBlockStatement,
+    Scope: LexicalEnvironment
+  ): ECMAScriptSourceFunctionValue,
+
+  // ECMA262 9.2.6
+  GeneratorFunctionCreate(
+    realm: Realm,
+    kind: "normal" | "method",
+    ParameterList: Array<BabelNodeLVal>,
+    Body: BabelNodeBlockStatement,
+    Scope: LexicalEnvironment,
+    Strict: boolean
+  ): ECMAScriptSourceFunctionValue,
+
+  // ECMA262 9.2.7
+  AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm): boolean,
+
+  // ECMA262 9.2.1
+  $Call(realm: Realm, F: ECMAScriptFunctionValue, thisArgument: Value, argsList: Array<Value>): Value,
+
+  // ECMA262 9.2.2
+  $Construct(
+    realm: Realm,
+    F: ECMAScriptFunctionValue,
+    argumentsList: Array<Value>,
+    newTarget: ObjectValue
+  ): ObjectValue,
+
+  // ECMA262 9.2.3
+  FunctionAllocate(
+    realm: Realm,
+    functionPrototype: ObjectValue,
+    strict: boolean,
+    functionKind: "normal" | "non-constructor" | "generator"
+  ): ECMAScriptSourceFunctionValue,
+
+  // ECMA262 9.4.1.3
+  BoundFunctionCreate(
+    realm: Realm,
+    targetFunction: ObjectValue,
+    boundThis: Value,
+    boundArgs: Array<Value>
+  ): ObjectValue,
+
+  // ECMA262 18.2.1.1
+  PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCaller: boolean, direct: boolean): Value,
+
+  // If c is an abrupt completion and realm.savedCompletion is defined, the result is an instance of
+  // JoinedAbruptCompletions and the effects that have been captured since the PossiblyNormalCompletion instance
+  // in realm.savedCompletion has been created, becomes the effects of the branch that terminates in c.
+  // If c is a normal completion, the result is realm.savedCompletion, with its value updated to c.
+  // If c is undefined, the result is just realm.savedCompletion.
+  // Call this only when a join point has been reached.
+  incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value,
+
+  EvaluateStatements(
+    body: Array<BabelNodeStatement>,
+    initialBlockValue: void | Value,
+    strictCode: boolean,
+    blockEnv: LexicalEnvironment,
+    realm: Realm
+  ): Value,
+
+  PartiallyEvaluateStatements(
+    body: Array<BabelNodeStatement>,
+    blockValue: void | NormalCompletion | Value,
+    strictCode: boolean,
+    blockEnv: LexicalEnvironment,
+    realm: Realm
+  ): [Completion | Value, Array<BabelNodeStatement>],
+
+  // ECMA262 9.2.5
+  FunctionCreate(
+    realm: Realm,
+    kind: "normal" | "arrow" | "method",
+    ParameterList: Array<BabelNodeLVal>,
+    Body: BabelNodeBlockStatement,
+    Scope: LexicalEnvironment,
+    Strict: boolean,
+    prototype?: ObjectValue
+  ): ECMAScriptSourceFunctionValue,
+
+  // ECMA262 18.2.1.2
+  EvalDeclarationInstantiation(
+    realm: Realm,
+    body: BabelNodeBlockStatement,
+    varEnv: LexicalEnvironment,
+    lexEnv: LexicalEnvironment,
+    strict: boolean
+  ): Value,
+
+  // ECMA 9.2.10
+  MakeMethod(realm: Realm, F: ECMAScriptSourceFunctionValue, homeObject: ObjectValue): Value,
+
+  // ECMA 14.3.8
+  DefineMethod(
+    realm: Realm,
+    prop: BabelNodeObjectMethod | BabelNodeClassMethod,
+    obj: ObjectValue,
+    env: LexicalEnvironment,
+    strictCode: boolean,
+    functionPrototype?: ObjectValue
+  ): { $Key: PropertyKeyValue, $Closure: ECMAScriptSourceFunctionValue },
 };

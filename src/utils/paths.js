@@ -12,29 +12,49 @@
 import { AbstractValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
 import invariant from "../invariant.js";
 
-export function withPathCondition<T>(condition: AbstractValue, evaluate: () => T): T {
-  let realm = condition.$Realm;
-  let savedPath = realm.pathConditions;
-  realm.pathConditions = [];
-  try {
-    pushPathCondition(condition);
-    pushRefinedConditions(savedPath);
-    return evaluate();
-  } finally {
-    realm.pathConditions = savedPath;
+export class PathImplementation {
+  implies(condition: AbstractValue): boolean {
+    let path = condition.$Realm.pathConditions;
+    for (let i = path.length - 1; i >= 0; i--) {
+      let pathCondition = path[i];
+      if (pathCondition.implies(condition)) return true;
+    }
+    return false;
   }
-}
 
-export function withInversePathCondition<T>(condition: AbstractValue, evaluate: () => T): T {
-  let realm = condition.$Realm;
-  let savedPath = realm.pathConditions;
-  realm.pathConditions = [];
-  try {
-    pushInversePathCondition(condition);
-    pushRefinedConditions(savedPath);
-    return evaluate();
-  } finally {
-    realm.pathConditions = savedPath;
+  impliesNot(condition: AbstractValue): boolean {
+    let path = condition.$Realm.pathConditions;
+    for (let i = path.length - 1; i >= 0; i--) {
+      let pathCondition = path[i];
+      if (pathCondition.impliesNot(condition)) return true;
+    }
+    return false;
+  }
+
+  withCondition<T>(condition: AbstractValue, evaluate: () => T): T {
+    let realm = condition.$Realm;
+    let savedPath = realm.pathConditions;
+    realm.pathConditions = [];
+    try {
+      pushPathCondition(condition);
+      pushRefinedConditions(savedPath);
+      return evaluate();
+    } finally {
+      realm.pathConditions = savedPath;
+    }
+  }
+
+  withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T {
+    let realm = condition.$Realm;
+    let savedPath = realm.pathConditions;
+    realm.pathConditions = [];
+    try {
+      pushInversePathCondition(condition);
+      pushRefinedConditions(savedPath);
+      return evaluate();
+    } finally {
+      realm.pathConditions = savedPath;
+    }
   }
 }
 

@@ -25,7 +25,6 @@ import {
 } from "../../methods/to.js";
 import { Call, Invoke } from "../../methods/call.js";
 import { Get } from "../../methods/get.js";
-import { Set, DeletePropertyOrThrow } from "../../methods/properties.js";
 import { HasProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { IsDetachedBuffer, IsCallable } from "../../methods/is.js";
 import {
@@ -39,6 +38,7 @@ import {
 import { CreateArrayIterator } from "../../methods/create.js";
 import { SetValueInBuffer, GetValueFromBuffer, CloneArrayBuffer } from "../../methods/arraybuffer.js";
 import { SameValue, SameValueZeroPartial, StrictEqualityComparisonPartial } from "../../methods/abstract.js";
+import { Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -208,11 +208,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // i. Let fromVal be ? Get(O, fromKey).
         let fromVal = Get(realm, O, fromKey);
         // ii. Perform ? Set(O, toKey, fromVal, true).
-        Set(realm, O, toKey, fromVal, true);
+        Properties.Set(realm, O, toKey, fromVal, true);
       } else {
         // e. Else fromPresent is false,
         // i. Perform ? DeletePropertyOrThrow(O, toKey).
-        DeletePropertyOrThrow(realm, O, toKey);
+        Properties.DeletePropertyOrThrow(realm, O, toKey);
       }
 
       // f. Let from be from + direction.
@@ -323,7 +323,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let Pk = new StringValue(realm, k + "");
 
       // b. Perform ? Set(O, Pk, value, true).
-      Set(realm, O, Pk, value, true);
+      Properties.Set(realm, O, Pk, value, true);
 
       // c. Increase k by 1.
       k++;
@@ -396,7 +396,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 12. For each element e of kept
     for (let e of kept) {
       // a. Perform ! Set(A, ! ToString(n), e, true).
-      Set(realm, A, new StringValue(realm, ToString(realm, new NumberValue(realm, n))), e, true);
+      Properties.Set(realm, A, new StringValue(realm, ToString(realm, new NumberValue(realm, n))), e, true);
 
       // b. Increment n by 1.
       n = n + 1;
@@ -855,7 +855,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let mappedValue = Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]);
 
       // d. Perform ? Set(A, Pk, mappedValue, true).
-      Set(realm, A, Pk, mappedValue, true);
+      Properties.Set(realm, A, Pk, mappedValue, true);
 
       // e. Increase k by 1.
       k = k + 1;
@@ -1100,28 +1100,28 @@ export default function(realm: Realm, obj: ObjectValue): void {
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
-        Set(realm, O, lowerP, upperValue, true);
+        Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
-        Set(realm, O, upperP, lowerValue, true);
+        Properties.Set(realm, O, upperP, lowerValue, true);
       } else if (!lowerExists && upperExists) {
         // i. Else if lowerExists is false and upperExists is true, then
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
-        Set(realm, O, lowerP, upperValue, true);
+        Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? DeletePropertyOrThrow(O, upperP).
-        DeletePropertyOrThrow(realm, O, upperP);
+        Properties.DeletePropertyOrThrow(realm, O, upperP);
       } else if (lowerExists && !upperExists) {
         // j. Else if lowerExists is true and upperExists is false, then
         invariant(lowerValue, "expected lower value to exist");
 
         // i. Perform ? DeletePropertyOrThrow(O, lowerP).
-        DeletePropertyOrThrow(realm, O, lowerP);
+        Properties.DeletePropertyOrThrow(realm, O, lowerP);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
-        Set(realm, O, upperP, lowerValue, true);
+        Properties.Set(realm, O, upperP, lowerValue, true);
       } else {
         // k. Else both lowerExists and upperExists are false,
         // i. No action is required.
@@ -1455,7 +1455,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // iii. Perform ! Set(A, ! ToString(n), kValue).
-        Set(realm, A, ToString(realm, new NumberValue(realm, n)), kValue, true);
+        Properties.Set(realm, A, ToString(realm, new NumberValue(realm, n)), kValue, true);
 
         // iv. Increase k by 1.
         k += 1;

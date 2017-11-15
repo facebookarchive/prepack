@@ -14,6 +14,16 @@ import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
 import { DebuggerConstants } from "./../DebuggerConstants";
+import { LaunchRequestArguments } from "./../types.js";
+
+export type DebuggerCLIArguments = {
+  adapterPath: string,
+  prepackRuntime: string,
+  sourceFile: string,
+  prepackArguments: Array<string>,
+  debugInFilePath: string,
+  debugOutFilePath: string,
+};
 
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";
@@ -23,16 +33,19 @@ const TWO_CRLF = "\r\n\r\n";
  * sends the commands to the adapter and process any responses
 */
 export class UISession {
-  constructor(proc: Process, adapterPath: string, prepackCommand: string, inFilePath: string, outFilePath: string) {
+  constructor(proc: Process, args: DebuggerCLIArguments) {
     this._proc = proc;
-    this._adapterPath = adapterPath;
-    this._prepackCommand = prepackCommand;
-    this._inFilePath = inFilePath;
-    this._outFilePath = outFilePath;
+    this._adapterPath = args.adapterPath;
+    this._prepackRuntime = args.prepackRuntime;
+    this._sourceFile = args.sourceFile;
+    this._prepackArguments = args.prepackArguments;
+    this._inFilePath = args.debugInFilePath;
+    this._outFilePath = args.debugOutFilePath;
     this._sequenceNum = 1;
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
     this._prepackWaiting = false;
+    this._prepackLaunched = false;
   }
   // the parent (i.e. ui) process
   _proc: Process;
@@ -51,22 +64,21 @@ export class UISession {
   _reader: readline.Interface;
   // number of invalid commands
   _invalidCount: number;
-  // command to start Prepack with
-  _prepackCommand: string;
+  // Prepack runtime command (e.g. lib/prepack-cli.js)
+  _prepackRuntime: string;
+  // input source file to Prepack
+  _sourceFile: string;
+  // arguments to start Prepack with
+  _prepackArguments: Array<string>;
   // handler for any received messages
   _dataHandler: DataHandler;
+  // flag whether Prepack is waiting for a command
   _prepackWaiting: boolean;
+  // flag whether Prepack has been launched
+  _prepackLaunched: boolean;
 
   _startAdapter() {
-    let adapterArgs = [
-      this._adapterPath,
-      "--prepack",
-      this._prepackCommand,
-      "--inFilePath",
-      this._inFilePath,
-      "--outFilePath",
-      this._outFilePath,
-    ];
+    let adapterArgs = [this._adapterPath];
     this._adapterProcess = child_process.spawn("node", adapterArgs);
     this._proc.on("exit", () => {
       this.shutdown();
@@ -77,12 +89,6 @@ export class UISession {
     this._adapterProcess.stdout.on("data", (data: Buffer) => {
       //handle the received data
       this._dataHandler.handleData(data, this._processMessage.bind(this));
-      //ask the user for the next command
-      if (this._prepackWaiting) {
-        this._reader.question("(dbg) ", (input: string) => {
-          this._dispatch(input);
-        });
-      }
     });
     this._adapterProcess.stderr.on("data", (data: Buffer) => {
       console.error(data.toString());
@@ -103,6 +109,12 @@ export class UISession {
       console.error(e);
       console.error("Invalid message: " + message.slice(0, 1000));
     }
+    //ask the user for the next command
+    if (this._prepackLaunched && this._prepackWaiting) {
+      this._reader.question("(dbg) ", (input: string) => {
+        this._dispatch(input);
+      });
+    }
   }
 
   _processEvent(event: DebugProtocol.Event) {
@@ -122,6 +134,11 @@ export class UISession {
       if (event.body) {
         if (event.body.reason === "entry") {
           this._uiOutput("Prepack is ready");
+          this._prepackLaunched = true;
+          // start reading requests from the user
+          this._reader.question("(dbg) ", (input: string) => {
+            this._dispatch(input);
+          });
         } else if (event.body.reason.startsWith("breakpoint")) {
           this._uiOutput("Prepack stopped on: " + event.body.reason);
         }
@@ -130,12 +147,36 @@ export class UISession {
   }
 
   _processResponse(response: DebugProtocol.Response) {
-    if (response.command === "threads") {
+    if (response.command === "initialize") {
+      this._processInitializeResponse(((response: any): DebugProtocol.InitializeResponse));
+    } else if (response.command === "threads") {
       this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
     } else if (response.command === "stackTrace") {
       //flow doesn't have type refinement for interfaces, so must do a cast here
       this._processStackTraceResponse(((response: any): DebugProtocol.StackTraceResponse));
+    } else if (response.command === "scopes") {
+      this._processScopesResponse(((response: any): DebugProtocol.ScopesResponse));
+    } else if (response.command === "variables") {
+      this._processVariablesResponse(((response: any): DebugProtocol.VariablesResponse));
     }
+  }
+
+  _processScopesResponse(response: DebugProtocol.ScopesResponse) {
+    let scopes = response.body.scopes;
+    for (const scope of scopes) {
+      this._uiOutput(`${scope.name} ${scope.variablesReference}`);
+    }
+  }
+
+  _processInitializeResponse(response: DebugProtocol.InitializeResponse) {
+    let launchArgs: LaunchRequestArguments = {
+      prepackRuntime: this._prepackRuntime,
+      sourceFile: this._sourceFile,
+      prepackArguments: this._prepackArguments,
+      debugInFilePath: this._inFilePath,
+      debugOutFilePath: this._outFilePath,
+    };
+    this._sendLaunchRequest(launchArgs);
   }
 
   _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {
@@ -152,6 +193,17 @@ export class UISession {
   _processThreadsResponse(response: DebugProtocol.ThreadsResponse) {
     for (const thread of response.body.threads) {
       this._uiOutput(`${thread.id}: ${thread.name}`);
+    }
+  }
+
+  _processVariablesResponse(response: DebugProtocol.VariablesResponse) {
+    for (const variable of response.body.variables) {
+      if (variable.variablesReference === 0) {
+        // 0 means there are not more nested variables to return
+        this._uiOutput(`${variable.name}: ${variable.value}`);
+      } else {
+        this._uiOutput(`${variable.name}: ${variable.value} ${variable.variablesReference}`);
+      }
     }
   }
 
@@ -201,6 +253,24 @@ export class UISession {
         if (parts.length !== 1) return false;
         this._sendThreadsRequest();
         break;
+      case "scopes":
+        if (parts.length !== 2) return false;
+        let frameId = parseInt(parts[1], 10);
+        if (isNaN(frameId)) return false;
+        let scopesArgs: DebugProtocol.ScopesArguments = {
+          frameId: frameId,
+        };
+        this._sendScopesRequest(scopesArgs);
+        break;
+      case "variables":
+        if (parts.length !== 2) return false;
+        let varRef = parseInt(parts[1], 10);
+        if (isNaN(varRef)) return false;
+        let variableArgs: DebugProtocol.VariablesArguments = {
+          variablesReference: varRef,
+        };
+        this._sendVariablesRequest(variableArgs);
+        break;
       default:
         // invalid command
         return false;
@@ -237,6 +307,18 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "initialize",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  // tell the adapter to start Prepack
+  _sendLaunchRequest(args: DebugProtocol.LaunchRequestArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "launch",
       arguments: args,
     };
     let json = JSON.stringify(message);
@@ -306,6 +388,28 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "threads",
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendScopesRequest(args: DebugProtocol.ScopesArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "scopes",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendVariablesRequest(args: DebugProtocol.VariablesArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "variables",
+      arguments: args,
     };
     let json = JSON.stringify(message);
     this._packageAndSend(json);

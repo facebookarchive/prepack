@@ -13,7 +13,6 @@ import type { Realm } from "../../realm.js";
 import { BooleanValue, ObjectValue, NullValue } from "../../values/index.js";
 import {
   CreateArrayFromList,
-  FromPropertyDescriptor,
   ToPropertyDescriptor,
   Construct,
   ToPropertyKey,
@@ -22,6 +21,7 @@ import {
   Call,
   IsConstructor,
 } from "../../methods/index.js";
+import { Properties } from "../../singletons.js";
 
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Reflect");
@@ -137,7 +137,7 @@ export default function(realm: Realm): ObjectValue {
     let desc = target.$GetOwnProperty(key);
 
     // 4. Return FromPropertyDescriptor(desc).
-    return FromPropertyDescriptor(realm, desc);
+    return Properties.FromPropertyDescriptor(realm, desc);
   });
 
   // ECMA262 26.1.7

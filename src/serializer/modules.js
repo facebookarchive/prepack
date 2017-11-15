@@ -13,8 +13,9 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
-import { incorporateSavedCompletion, IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
+import { ResolveBinding, Get, IsUnresolvableReference } from "../methods/index.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
+import { Functions } from "../singletons.js";
 import { AbstractValue, Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
@@ -120,9 +121,11 @@ export class ModuleTracer extends Tracer {
           try {
             let value = performCall();
             this.modules.recordModuleInitialized(moduleIdValue, value);
-            let completion = incorporateSavedCompletion(realm, value);
+            // Make this into a join point by suppressing the conditional exception.
+            // TODO: delete this code and let the caller deal with the conditional exception.
+            let completion = Functions.incorporateSavedCompletion(realm, value);
             if (completion instanceof PossiblyNormalCompletion) {
-              realm.stopEffectCapture();
+              realm.stopEffectCapture(completion);
               let warning = new CompilerDiagnostic(
                 "Module import may fail with an exception",
                 completion.location,
@@ -448,7 +451,7 @@ export class Modules {
       let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
       if (effects === undefined) continue;
       let result = effects[0];
-      invariant(result instanceof Value);
+      if (!(result instanceof Value)) continue; // module might throw
       count++;
       this.initializedModules.set(moduleId, result);
     }

@@ -269,13 +269,27 @@ export class Emitter {
     invariant(this._activeValues.has(value));
     return condition ? value : undefined;
   }
+  _shouldEmitWithoutWaiting(delayReason: void | Value | SerializedBody, targetBody?: SerializedBody): boolean {
+    /**
+     * We can directly emit without waiting if:
+     * 1. No delayReason
+     * 2. delayReason is a generator body while the target body we are not emitting into is not a generator body.
+     */
+    return (
+      !delayReason ||
+      (!(delayReason instanceof Value) &&
+        this._isGeneratorBody(delayReason) &&
+        targetBody !== undefined &&
+        !this._isGeneratorBody(targetBody))
+    );
+  }
   emitAfterWaiting(
     delayReason: void | Value | SerializedBody,
     dependencies: Array<Value>,
     func: () => void,
     targetBody?: SerializedBody
   ) {
-    if (!delayReason) {
+    if (this._shouldEmitWithoutWaiting(delayReason, targetBody)) {
       if (targetBody === undefined || targetBody === this._body) {
         // Emit into current body.
         func();
@@ -286,9 +300,14 @@ export class Emitter {
         this.endEmitting(targetBody.type, oldBody);
       }
     } else {
-      invariant(targetBody === undefined || targetBody === this._body);
+      invariant(delayReason !== undefined);
       if (delayReason instanceof Value) {
-        this._emitAfterWaitingForValue(delayReason, dependencies, func);
+        this._emitAfterWaitingForValue(
+          delayReason,
+          dependencies,
+          targetBody === undefined ? this._body : targetBody,
+          func
+        );
       } else if (this._isGeneratorBody(delayReason)) {
         // delayReason is a generator body.
         this._emitAfterWaitingForGeneratorBody(delayReason, dependencies, func);
@@ -298,14 +317,14 @@ export class Emitter {
       }
     }
   }
-  _emitAfterWaitingForValue(reason: Value, dependencies: Array<Value>, func: () => void) {
+  _emitAfterWaitingForValue(reason: Value, dependencies: Array<Value>, targetBody: SerializedBody, func: () => void) {
     invariant(!this._finalized);
     invariant(
       !(reason instanceof AbstractValue && this._declaredAbstractValues.has(reason)) || this._activeValues.has(reason)
     );
     let a = this._waitingForValues.get(reason);
     if (a === undefined) this._waitingForValues.set(reason, (a = []));
-    a.push({ body: this._body, dependencies, func });
+    a.push({ body: targetBody, dependencies, func });
   }
   _emitAfterWaitingForGeneratorBody(reason: SerializedBody, dependencies: Array<Value>, func: () => void) {
     invariant(this._isGeneratorBody(reason));

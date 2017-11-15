@@ -26,8 +26,6 @@ import { FatalError } from "../errors.js";
 import { BooleanValue, ConcreteValue, NullValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
 import {
   GetValue,
-  PutValue,
-  SetFunctionName,
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
   HasOwnProperty,
@@ -35,6 +33,7 @@ import {
   composeNormalCompletions,
   unbundleNormalCompletion,
 } from "../methods/index.js";
+import { Functions, Properties } from "../singletons.js";
 
 import * as t from "babel-types";
 import invariant from "../invariant.js";
@@ -86,12 +85,12 @@ export default function(
         // ii. If hasNameProperty is false, perform SetFunctionName(rval, GetReferencedName(lref)).
         if (!hasNameProperty) {
           invariant(lref instanceof Reference);
-          SetFunctionName(realm, rval, GetReferencedName(realm, lref));
+          Functions.SetFunctionName(realm, rval, GetReferencedName(realm, lref));
         }
       }
 
       // f. Perform ? PutValue(lref, rval).
-      PutValue(realm, lref, rval);
+      Properties.PutValue(realm, lref, rval);
 
       // g. Return rval.
       let resultAst = t.assignmentExpression(ast.operator, (last: any), (rast: any));

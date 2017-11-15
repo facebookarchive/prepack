@@ -8,26 +8,23 @@
  */
 
 /* @flow */
-import type { DebuggerOptions } from "./../../options.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { MessageMarshaller } from "./MessageMarshaller.js";
 import Queue from "queue-fifo";
 import EventEmitter from "events";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./DebugMessage.js";
-import { DebuggerConstants } from "./../DebuggerConstants.js";
-import type { BreakpointArguments, DebuggerResponse } from "./../types.js";
+import child_process from "child_process";
+import type { BreakpointArguments, DebuggerResponse, PrepackLaunchArguments } from "./../types.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
-  constructor(dbgOptions: DebuggerOptions) {
-    this._ioWrapper = new FileIOWrapper(true, dbgOptions.inFilePath, dbgOptions.outFilePath);
+  constructor(inFilePath: string, outFilePath: string) {
+    this._ioWrapper = new FileIOWrapper(true, inFilePath, outFilePath);
     this._marshaller = new MessageMarshaller();
     this._queue = new Queue();
     this._pendingRequestCallbacks = new Map();
     this._eventEmitter = new EventEmitter();
-    this.sendDebuggerStart(DebuggerConstants.DEFAULT_REQUEST_ID);
-    this.listenOnFile(this._processPrepackMessage.bind(this));
   }
   _ioWrapper: FileIOWrapper;
   _marshaller: MessageMarshaller;
@@ -35,6 +32,7 @@ export class AdapterChannel {
   _pendingRequestCallbacks: { [number]: (DebuggerResponse) => void };
   _prepackWaiting: boolean;
   _eventEmitter: EventEmitter;
+  _prepackProcess: child_process.ChildProcess;
 
   // Error handler for errors in files from the adapter channel
   _handleFileReadError(err: ?ErrnoError) {
@@ -68,6 +66,16 @@ export class AdapterChannel {
       this.trySendNextRequest();
     } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
       let dbgResponse = this._marshaller.unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
+      this._prepackWaiting = true;
+      this._processRequestCallback(requestID, dbgResponse);
+      this.trySendNextRequest();
+    } else if (messageType === DebugMessage.SCOPES_RESPONSE) {
+      let dbgResponse = this._marshaller.unmarshallScopesResponse(requestID, parts.slice(2).join(" "));
+      this._prepackWaiting = true;
+      this._processRequestCallback(requestID, dbgResponse);
+      this.trySendNextRequest();
+    } else if (messageType === DebugMessage.VARIABLES_RESPONSE) {
+      let dbgResponse = this._marshaller.unmarshallVariablesResponse(requestID, parts.slice(2).join(" "));
       this._prepackWaiting = true;
       this._processRequestCallback(requestID, dbgResponse);
       this.trySendNextRequest();
@@ -105,6 +113,44 @@ export class AdapterChannel {
     this._eventEmitter.addListener(event, listener);
   }
 
+  launch(requestID: number, args: PrepackLaunchArguments, callback: DebuggerResponse => void) {
+    this.sendDebuggerStart(requestID);
+    this.listenOnFile(this._processPrepackMessage.bind(this));
+
+    let prepackCommand = [args.sourceFile].concat(args.prepackArguments);
+    // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
+    prepackCommand = prepackCommand.concat([
+      "--debugInFilePath",
+      args.debugOutFilePath,
+      "--debugOutFilePath",
+      args.debugInFilePath,
+    ]);
+
+    let runtime = "prepack";
+    if (args.prepackRuntime.length > 0) {
+      // user specified a Prepack path
+      runtime = "node";
+      prepackCommand = [args.prepackRuntime].concat(prepackCommand);
+    }
+    this._prepackProcess = child_process.spawn(runtime, prepackCommand);
+
+    process.on("exit", () => {
+      this._prepackProcess.kill();
+      this.clean();
+      process.exit();
+    });
+
+    process.on("SIGINT", () => {
+      this._prepackProcess.kill();
+      process.exit();
+    });
+
+    this._prepackProcess.stdout.on("data", args.outputCallback);
+
+    this._prepackProcess.on("exit", args.exitCallback);
+    this._addRequestCallback(requestID, callback);
+  }
+
   run(requestID: number, callback: DebuggerResponse => void) {
     this._queue.enqueue(this._marshaller.marshallContinueRequest(requestID));
     this.trySendNextRequest();
@@ -121,6 +167,18 @@ export class AdapterChannel {
 
   getStackFrames(requestID: number, callback: DebuggerResponse => void) {
     this._queue.enqueue(this._marshaller.marshallStackFramesRequest(requestID));
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  getScopes(requestID: number, frameId: number, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallScopesRequest(requestID, frameId));
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  getVariables(requestID: number, variablesReference: number, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallVariablesRequest(requestID, variablesReference));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }

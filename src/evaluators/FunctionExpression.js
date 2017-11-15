@@ -12,10 +12,9 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { NewDeclarativeEnvironment, SetFunctionName, FunctionCreate, MakeConstructor } from "../methods/index.js";
+import { NewDeclarativeEnvironment, MakeConstructor } from "../methods/index.js";
 import { ObjectCreate } from "../methods/create.js";
-import { GeneratorFunctionCreate } from "../methods/function.js";
-import { DefinePropertyOrThrow } from "../methods/properties.js";
+import { Functions, Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionExpression } from "babel-types";
@@ -51,7 +50,7 @@ export default function(
       envRec.CreateImmutableBinding(name, false);
 
       // 7. Let closure be GeneratorFunctionCreate(Normal, FormalParameters, GeneratorBody, funcEnv, strict).
-      let closure = GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, funcEnv, strict);
+      let closure = Functions.GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, funcEnv, strict);
       closure.loc = ast.loc;
 
       // 8. Let prototype be ObjectCreate(%GeneratorPrototype%).
@@ -59,7 +58,7 @@ export default function(
       prototype.originalConstructor = closure;
 
       // 9. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-      DefinePropertyOrThrow(realm, closure, "prototype", {
+      Properties.DefinePropertyOrThrow(realm, closure, "prototype", {
         value: prototype,
         writable: true,
         enumerable: false,
@@ -67,7 +66,7 @@ export default function(
       });
 
       // 10. Perform SetFunctionName(closure, name).
-      SetFunctionName(realm, closure, new StringValue(realm, name));
+      Functions.SetFunctionName(realm, closure, new StringValue(realm, name));
 
       // 11. Perform envRec.InitializeBinding(name, closure).
       envRec.InitializeBinding(name, closure);
@@ -95,14 +94,14 @@ export default function(
       envRec.CreateImmutableBinding(name, false);
 
       // 7. Let closure be FunctionCreate(Normal, FormalParameters, FunctionBody, funcEnv, strict).
-      let closure = FunctionCreate(realm, "normal", ast.params, ast.body, funcEnv, strict);
+      let closure = Functions.FunctionCreate(realm, "normal", ast.params, ast.body, funcEnv, strict);
       closure.loc = ast.loc;
 
       // 8. Perform MakeConstructor(closure).
       MakeConstructor(realm, closure);
 
       // 9. Perform SetFunctionName(closure, name).
-      SetFunctionName(realm, closure, new StringValue(realm, name));
+      Functions.SetFunctionName(realm, closure, new StringValue(realm, name));
 
       // 10. Perform envRec.InitializeBinding(name, closure).
       envRec.InitializeBinding(name, closure);
@@ -119,14 +118,14 @@ export default function(
       let scope = env;
 
       // 3. Let closure be GeneratorFunctionCreate(Normal, FormalParameters, GeneratorBody, scope, strict).
-      let closure = GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, scope, strict);
+      let closure = Functions.GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, scope, strict);
 
       // 4. Let prototype be ObjectCreate(%GeneratorPrototype%).
       let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
       prototype.originalConstructor = closure;
 
       // 5. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-      DefinePropertyOrThrow(realm, closure, "prototype", {
+      Properties.DefinePropertyOrThrow(realm, closure, "prototype", {
         value: prototype,
         writable: true,
         enumerable: false,
@@ -143,7 +142,7 @@ export default function(
       let scope = env;
 
       // 3. Let closure be FunctionCreate(Normal, FormalParameters, FunctionBody, scope, strict).
-      let closure = FunctionCreate(realm, "normal", ast.params, ast.body, scope, strict);
+      let closure = Functions.FunctionCreate(realm, "normal", ast.params, ast.body, scope, strict);
 
       // 4. Perform MakeConstructor(closure).
       MakeConstructor(realm, closure);

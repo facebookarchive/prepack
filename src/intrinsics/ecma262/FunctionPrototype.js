@@ -10,8 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { BoundFunctionCreate, SetFunctionName } from "../../methods/function.js";
-import { DefinePropertyOrThrow } from "../../methods/properties.js";
+import { Functions, Properties } from "../../singletons.js";
 import {
   AbstractValue,
   BooleanValue,
@@ -101,7 +100,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     args;
 
     // 4. Let F be ? BoundFunctionCreate(Target, thisArg, args).
-    let F = BoundFunctionCreate(realm, Target, thisArg, args);
+    let F = Functions.BoundFunctionCreate(realm, Target, thisArg, args);
 
     // 5. Let targetHasLength be ? HasOwnProperty(Target, "length").
     let targetHasLength = HasOwnProperty(realm, Target, new StringValue(realm, "length"));
@@ -131,7 +130,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 8. Perform ! DefinePropertyOrThrow(F, "length", PropertyDescriptor {[[Value]]: L, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-    DefinePropertyOrThrow(realm, F, "length", {
+    Properties.DefinePropertyOrThrow(realm, F, "length", {
       value: new NumberValue(realm, L),
       writable: false,
       enumerable: false,
@@ -145,7 +144,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (!(targetName instanceof StringValue)) targetName = realm.intrinsics.emptyString;
 
     // 11. Perform SetFunctionName(F, targetName, "bound").
-    SetFunctionName(realm, F, targetName, "bound");
+    Functions.SetFunctionName(realm, F, targetName, "bound");
 
     // 12. Return F.
     return F;

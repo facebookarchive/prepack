@@ -17,7 +17,7 @@ import { EnvironmentRecord } from "../environment.js";
 import { Value } from "../values/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue, ObjectValue } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { PerformEval } from "../methods/function.js";
+import { Functions } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -90,8 +90,7 @@ function callBothFunctionsAndJoinTheirEffects(
     // not all control flow branches join into one flow at this point.
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
-    completion = realm.getRunningContext().composeWithSavedCompletion(completion);
-    realm.captureEffects();
+    completion = realm.composeWithSavedCompletion(completion);
   }
 
   // Note that the effects of (non joining) abrupt branches are not included
@@ -183,7 +182,7 @@ function EvaluateCall(
         // Assume that it is a safe eval with no visible heap changes or abrupt control flow.
         return generateRuntimeCall();
       }
-      return PerformEval(realm, evalText, evalRealm, strictCaller, true);
+      return Functions.PerformEval(realm, evalText, evalRealm, strictCaller, true);
     }
   }
 

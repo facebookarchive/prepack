@@ -22,7 +22,7 @@ import {
   BooleanValue,
   NativeFunctionValue,
 } from "../values/index.js";
-import { AddRestrictedFunctionProperties } from "../methods/function.js";
+import { Functions } from "../singletons.js";
 
 import initializeObject from "./ecma262/Object.js";
 import initializeObjectPrototype from "./ecma262/ObjectPrototype.js";
@@ -458,7 +458,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.eval = initializeEval(realm);
 
   // 8.2.2, step 12
-  AddRestrictedFunctionProperties(i.FunctionPrototype, realm);
+  Functions.AddRestrictedFunctionProperties(i.FunctionPrototype, realm);
 
   return i;
 }

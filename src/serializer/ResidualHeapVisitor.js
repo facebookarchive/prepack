@@ -208,6 +208,12 @@ export class ResidualHeapVisitor {
 
   visitDescriptor(desc: Descriptor): void {
     invariant(desc.value === undefined || desc.value instanceof Value);
+    if (desc.joinCondition !== undefined) {
+      desc.joinCondition = this.visitEquivalentValue(desc.joinCondition);
+      if (desc.descriptor1 !== undefined) this.visitDescriptor(desc.descriptor1);
+      if (desc.descriptor2 !== undefined) this.visitDescriptor(desc.descriptor2);
+      return;
+    }
     if (desc.value !== undefined) desc.value = this.visitEquivalentValue(desc.value);
     if (desc.get !== undefined) this.visitValue(desc.get);
     if (desc.set !== undefined) this.visitValue(desc.set);
@@ -482,9 +488,11 @@ export class ResidualHeapVisitor {
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existance as templates for abstract objects (TODO #882).
-      this._withScope(this.commonScope, () => {
-        this._mark(val);
-      });
+      if (val.isTemplate) this._mark(val);
+      else
+        this._withScope(this.commonScope, () => {
+          this._mark(val);
+        });
     } else if (val instanceof EmptyValue) {
       this._mark(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {

@@ -34,11 +34,9 @@ import {
   ToNumber,
   ToBooleanPartial,
   Get,
-  DeletePropertyOrThrow,
-  Set,
   HasSomeCompatibleType,
-  ThrowIfMightHaveBeenDeleted,
 } from "../../methods/index.js";
+import { Properties } from "../../singletons.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -123,7 +121,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 6. Perform ? Set(A, "length", n, true).
-    Set(realm, A, "length", new NumberValue(realm, n), true);
+    Properties.Set(realm, A, "length", new NumberValue(realm, n), true);
 
     // 7. Return A.
     return A;
@@ -192,11 +190,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           // i. Let fromVal be ? Get(O, fromKey).
           let fromVal = Get(realm, O, fromKey);
           // ii. Perform ? Set(O, toKey, fromVal, true).
-          Set(realm, O, toKey, fromVal, true);
+          Properties.Set(realm, O, toKey, fromVal, true);
         } else {
           // e. Else fromPresent is false,
           // i. Perform ? DeletePropertyOrThrow(O, toKey).
-          DeletePropertyOrThrow(realm, O, toKey);
+          Properties.DeletePropertyOrThrow(realm, O, toKey);
         }
 
         // f. Let from be from + direction.
@@ -295,7 +293,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let Pk = new StringValue(realm, k + "");
 
       // b. Perform ? Set(O, Pk, value, true).
-      Set(realm, O, Pk, value, true);
+      Properties.Set(realm, O, Pk, value, true);
 
       // c. Increase k by 1.
       k++;
@@ -768,7 +766,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 3. If len is zero, then
     if (len === 0) {
       // a. Perform ? Set(O, "length", 0, true).
-      Set(realm, O, "length", realm.intrinsics.zero, true);
+      Properties.Set(realm, O, "length", realm.intrinsics.zero, true);
 
       // b. Return undefined.
       return realm.intrinsics.undefined;
@@ -784,10 +782,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let element = Get(realm, O, indx);
 
       // d. Perform ? DeletePropertyOrThrow(O, indx).
-      DeletePropertyOrThrow(realm, O, indx);
+      Properties.DeletePropertyOrThrow(realm, O, indx);
 
       // e. Perform ? Set(O, "length", newLen, true).
-      Set(realm, O, "length", new NumberValue(realm, newLen), true);
+      Properties.Set(realm, O, "length", new NumberValue(realm, newLen), true);
 
       // f. Return element.
       return element;
@@ -819,14 +817,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let E = items.shift();
 
       // b. Perform ? Set(O, ! ToString(len), E, true).
-      Set(realm, O, new StringValue(realm, len + ""), E, true);
+      Properties.Set(realm, O, new StringValue(realm, len + ""), E, true);
 
       // c. Let len be len+1.
       len++;
     }
 
     // 7. Perform ? Set(O, "length", len, true).
-    Set(realm, O, new StringValue(realm, "length"), new NumberValue(realm, len), true);
+    Properties.Set(realm, O, new StringValue(realm, "length"), new NumberValue(realm, len), true);
 
     // 8. Return len.
     return new NumberValue(realm, len);
@@ -1055,28 +1053,28 @@ export default function(realm: Realm, obj: ObjectValue): void {
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
-        Set(realm, O, lowerP, upperValue, true);
+        Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
-        Set(realm, O, upperP, lowerValue, true);
+        Properties.Set(realm, O, upperP, lowerValue, true);
       } else if (!lowerExists && upperExists) {
         // i. Else if lowerExists is false and upperExists is true, then
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
-        Set(realm, O, lowerP, upperValue, true);
+        Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? DeletePropertyOrThrow(O, upperP).
-        DeletePropertyOrThrow(realm, O, upperP);
+        Properties.DeletePropertyOrThrow(realm, O, upperP);
       } else if (lowerExists && !upperExists) {
         // j. Else if lowerExists is true and upperExists is false, then
         invariant(lowerValue, "expected lower value to exist");
 
         // i. Perform ? DeletePropertyOrThrow(O, lowerP).
-        DeletePropertyOrThrow(realm, O, lowerP);
+        Properties.DeletePropertyOrThrow(realm, O, lowerP);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
-        Set(realm, O, upperP, lowerValue, true);
+        Properties.Set(realm, O, upperP, lowerValue, true);
       } else {
         // k. Else both lowerExists and upperExists are false,
         // i. No action is required.
@@ -1101,7 +1099,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 3. If len is zero, then
     if (len === 0) {
       // a. Perform ? Set(O, "length", 0, true).
-      Set(realm, O, "length", realm.intrinsics.zero, true);
+      Properties.Set(realm, O, "length", realm.intrinsics.zero, true);
 
       // b. Return undefined.
       return realm.intrinsics.undefined;
@@ -1130,11 +1128,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let fromVal = Get(realm, O, frm);
 
         // ii. Perform ? Set(O, to, fromVal, true).
-        Set(realm, O, to, fromVal, true);
+        Properties.Set(realm, O, to, fromVal, true);
       } else {
         // d. Else fromPresent is false,
         // i. Perform ? DeletePropertyOrThrow(O, to).
-        DeletePropertyOrThrow(realm, O, to);
+        Properties.DeletePropertyOrThrow(realm, O, to);
       }
 
       // e. Increase k by 1.
@@ -1142,10 +1140,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 7. Perform ? DeletePropertyOrThrow(O, ! ToString(len-1)).
-    DeletePropertyOrThrow(realm, O, new StringValue(realm, len - 1 + ""));
+    Properties.DeletePropertyOrThrow(realm, O, new StringValue(realm, len - 1 + ""));
 
     // 8. Perform ? Set(O, "length", len-1, true).
-    Set(realm, O, "length", new NumberValue(realm, len - 1), true);
+    Properties.Set(realm, O, "length", new NumberValue(realm, len - 1), true);
 
     // 9. Return first.
     return first;
@@ -1205,7 +1203,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 11. Perform ? Set(A, "length", n, true).
-    Set(realm, A, "length", new NumberValue(realm, n), true);
+    Properties.Set(realm, A, "length", new NumberValue(realm, n), true);
 
     // 12. Return A.
     return A;
@@ -1277,7 +1275,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let elem = O.$GetOwnProperty(i.toString());
         // b.If elem is undefined, return true.
         if (elem === undefined) return true;
-        ThrowIfMightHaveBeenDeleted(elem.value);
+        Properties.ThrowIfMightHaveBeenDeleted(elem.value);
       }
       // 2.Return false.
       return false;
@@ -1311,7 +1309,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // is a data property whose [[Configurable]] attribute is false.
         let prop = O.$GetOwnProperty(j.toString());
         if (prop !== undefined && !prop.configurable) {
-          ThrowIfMightHaveBeenDeleted(prop.value);
+          Properties.ThrowIfMightHaveBeenDeleted(prop.value);
           throw Error(
             "Implementation defined behavior :  Array is sparse and it's prototype has some numbered properties"
           );
@@ -1324,7 +1322,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       //is a data property whose [[writable]] attribute is false.
       let prop = O.$GetOwnProperty(j.toString());
       if (prop !== undefined && !prop.writable) {
-        ThrowIfMightHaveBeenDeleted(prop.value);
+        Properties.ThrowIfMightHaveBeenDeleted(prop.value);
         throw Error("Implementation defined behavior : property " + j.toString() + "is non writable : ");
       }
     }
@@ -1418,7 +1416,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       } else {
         // If obj is not sparse then DeletePropertyOrThrow must not be called.
         invariant(sparse);
-        DeletePropertyOrThrow(realm, O, j.toString());
+        Properties.DeletePropertyOrThrow(realm, O, j.toString());
       }
     }
     // If an abrupt completion is returned from any of these operations, it is immediately returned as the value of this function.
@@ -1503,7 +1501,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 12. Perform ? Set(A, "length", actualDeleteCount, true).
-    Set(realm, A, "length", new NumberValue(realm, actualDeleteCount), true);
+    Properties.Set(realm, A, "length", new NumberValue(realm, actualDeleteCount), true);
 
     // 13. Let items be a List whose elements are, in left to right order, the portion of the actual argument
     //     list starting with the third argument. The list is empty if fewer than three arguments were passed.
@@ -1534,11 +1532,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let fromValue = Get(realm, O, frm);
 
           // 2. Perform ? Set(O, to, fromValue, true).
-          Set(realm, O, to, fromValue, true);
+          Properties.Set(realm, O, to, fromValue, true);
         } else {
           // v. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O, to);
         }
 
         // vi. Increase k by 1.
@@ -1551,7 +1549,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // d. Repeat, while k > (len - actualDeleteCount + itemCount)
       while (k > len - actualDeleteCount + itemCount) {
         // i. Perform ? DeletePropertyOrThrow(O, ! ToString(k-1)).
-        DeletePropertyOrThrow(realm, O, new StringValue(realm, k - 1 + ""));
+        Properties.DeletePropertyOrThrow(realm, O, new StringValue(realm, k - 1 + ""));
 
         // ii. Decrease k by 1.
         k--;
@@ -1578,11 +1576,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let fromValue = Get(realm, O, frm);
 
           // 2. Perform ? Set(O, to, fromValue, true).
-          Set(realm, O, to, fromValue, true);
+          Properties.Set(realm, O, to, fromValue, true);
         } else {
           // v. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O, to);
         }
 
         // vi. Decrease k by 1.
@@ -1599,14 +1597,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let E = items.shift();
 
       // b. Perform ? Set(O, ! ToString(k), E, true).
-      Set(realm, O, new StringValue(realm, k + ""), E, true);
+      Properties.Set(realm, O, new StringValue(realm, k + ""), E, true);
 
       // c. Increase k by 1.
       k++;
     }
 
     // 19. Perform ? Set(O, "length", len - actualDeleteCount + itemCount, true).
-    Set(realm, O, "length", new NumberValue(realm, len - actualDeleteCount + itemCount), true);
+    Properties.Set(realm, O, "length", new NumberValue(realm, len - actualDeleteCount + itemCount), true);
 
     // 20. Return A.
     return A;
@@ -1714,11 +1712,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let fromValue = Get(realm, O, frm);
 
           // 2. Perform ? Set(O, to, fromValue, true).
-          Set(realm, O, to, fromValue, true);
+          Properties.Set(realm, O, to, fromValue, true);
         } else {
           // vi. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O, to);
         }
 
         // vii. Decrease k by 1.
@@ -1738,7 +1736,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let E = items.shift();
 
         // ii. Perform ? Set(O, ! ToString(j), E, true).
-        Set(realm, O, new StringValue(realm, j + ""), E, true);
+        Properties.Set(realm, O, new StringValue(realm, j + ""), E, true);
 
         // iii. Increase j by 1.
         j++;
@@ -1746,7 +1744,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 5. Perform ? Set(O, "length", len+argCount, true).
-    Set(realm, O, "length", new NumberValue(realm, len + argCount), true);
+    Properties.Set(realm, O, "length", new NumberValue(realm, len + argCount), true);
 
     // 6. Return len+argCount.
     return new NumberValue(realm, len + argCount);

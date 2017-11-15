@@ -42,7 +42,6 @@ import {
   GetV,
   GetThisValue,
   ToObjectPartial,
-  PutValue,
   RequireObjectCoercible,
   HasSomeCompatibleType,
   GetIterator,
@@ -53,8 +52,8 @@ import {
   ArrayCreate,
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
-  SetFunctionName,
 } from "./index.js";
+import { Functions, Properties } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeVariableDeclaration,
@@ -728,14 +727,14 @@ export function IteratorBindingInitialization(
 
           // ii. If hasNameProperty is false, perform SetFunctionName(v, bindingId).
           if (hasNameProperty === false) {
-            SetFunctionName(realm, v, bindingId);
+            Functions.SetFunctionName(realm, v, bindingId);
           }
         }
       }
 
       // 6. If environment is undefined, return ? PutValue(lhs, v).
       if (!environment) {
-        PutValue(realm, lhs, v);
+        Properties.PutValue(realm, lhs, v);
         continue;
       }
 
@@ -845,7 +844,7 @@ export function IteratorBindingInitialization(
       if (iteratorRecord.$Done === true) {
         // i. If environment is undefined, return ? PutValue(lhs, A).
         if (!environment) {
-          PutValue(realm, lhs, A);
+          Properties.PutValue(realm, lhs, A);
           break;
         }
 
@@ -972,7 +971,7 @@ export function InitializeBoundName(realm: Realm, name: string, value: Value, en
     let lhs = ResolveBinding(realm, name, false);
 
     // b. Return ? PutValue(lhs, value).
-    return PutValue(realm, lhs, value);
+    return Properties.PutValue(realm, lhs, value);
   }
 }
 
@@ -1052,13 +1051,13 @@ export function KeyedBindingInitialization(
 
         // ii. If hasNameProperty is false, perform SetFunctionName(v, bindingId).
         if (hasNameProperty === false) {
-          SetFunctionName(realm, v, bindingId);
+          Functions.SetFunctionName(realm, v, bindingId);
         }
       }
     }
 
     // 5. If environment is undefined, return ? PutValue(lhs, v).
-    if (!environment) return PutValue(realm, lhs, v);
+    if (!environment) return Properties.PutValue(realm, lhs, v);
 
     // 6. Return InitializeReferencedBinding(lhs, v).
     return InitializeReferencedBinding(realm, lhs, v);

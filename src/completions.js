@@ -105,7 +105,8 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     consequent: Completion | Value,
     consequentEffects: Effects,
     alternate: Completion | Value,
-    alternateEffects: Effects
+    alternateEffects: Effects,
+    savedEffects: void | Effects = undefined
   ) {
     invariant(
       consequent instanceof NormalCompletion ||
@@ -134,6 +135,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     this.consequentEffects = consequentEffects;
     this.alternate = alternate;
     this.alternateEffects = alternateEffects;
+    this.savedEffects = savedEffects;
   }
 
   joinCondition: AbstractValue;
@@ -141,6 +143,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   consequentEffects: Effects;
   alternate: Completion | Value;
   alternateEffects: Effects;
+  savedEffects: void | Effects;
 
   containsBreakOrContinue(): boolean {
     if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;

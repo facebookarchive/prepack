@@ -25,7 +25,7 @@ import { SameValue } from "../../methods/abstract.js";
 import { Call } from "../../methods/call.js";
 import { Construct, SpeciesConstructor } from "../../methods/construct.js";
 import { Get, GetSubstitution } from "../../methods/get.js";
-import { Set } from "../../methods/properties.js";
+import { Properties } from "../../singletons.js";
 import { IsCallable } from "../../methods/is.js";
 import { ToString, ToStringPartial, ToBooleanPartial, ToLength, ToInteger, ToUint32 } from "../../methods/to.js";
 import { RegExpBuiltinExec, RegExpExec, EscapeRegExpPattern, AdvanceStringIndex } from "../../methods/regexp.js";
@@ -174,7 +174,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let fullUnicode = ToBooleanPartial(realm, Get(realm, rx, "unicode"));
 
       // b. Perform ? Set(rx, "lastIndex", 0, true).
-      Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
+      Properties.Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
 
       // c. Let A be ArrayCreate(0).
       let A = ArrayCreate(realm, 0);
@@ -221,7 +221,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
             let nextIndex = AdvanceStringIndex(realm, S, thisIndex, fullUnicode);
 
             // c .Perform ? Set(rx, "lastIndex", nextIndex, true).
-            Set(realm, rx, "lastIndex", new NumberValue(realm, nextIndex), true);
+            Properties.Set(realm, rx, "lastIndex", new NumberValue(realm, nextIndex), true);
           }
 
           // 5. Increment n.
@@ -273,7 +273,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       fullUnicode = ToBooleanPartial(realm, Get(realm, rx, "unicode"));
 
       // b. Perform ? Set(rx, "lastIndex", 0, true).
-      Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
+      Properties.Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
     }
 
     // 9. Let results be a new empty List.
@@ -314,7 +314,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
             let nextIndex = AdvanceStringIndex(realm, S, thisIndex, fullUnicode);
 
             // c. Perform ? Set(rx, "lastIndex", nextIndex, true).
-            Set(realm, rx, "lastIndex", new NumberValue(realm, nextIndex), true);
+            Properties.Set(realm, rx, "lastIndex", new NumberValue(realm, nextIndex), true);
           }
         }
       }
@@ -434,13 +434,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let previousLastIndex = Get(realm, rx, "lastIndex");
 
     // 5. Perform ? Set(rx, "lastIndex", 0, true).
-    Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
+    Properties.Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
 
     // 6. Let result be ? RegExpExec(rx, S).
     let result = RegExpExec(realm, rx, S);
 
     // 7. Perform ? Set(rx, "lastIndex", previousLastIndex, true).
-    Set(realm, rx, "lastIndex", previousLastIndex, true);
+    Properties.Set(realm, rx, "lastIndex", previousLastIndex, true);
 
     // 8. If result is null, return -1.
     if (result instanceof NullValue) return new NumberValue(realm, -1);
@@ -567,7 +567,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 19. Repeat, while q < size
     while (q < size) {
       // a. Perform ? Set(splitter, "lastIndex", q, true).
-      Set(realm, splitter, "lastIndex", new NumberValue(realm, q), true);
+      Properties.Set(realm, splitter, "lastIndex", new NumberValue(realm, q), true);
 
       // b. Let z be ? RegExpExec(splitter, S).
       let z = RegExpExec(realm, splitter, S);
