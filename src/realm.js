@@ -33,6 +33,7 @@ import {
   composePossiblyNormalCompletions,
   Construct,
   incorporateSavedCompletion,
+  GetValue,
   ToString,
   updatePossiblyNormalCompletionWithSubsequentEffects,
 } from "./methods/index.js";
@@ -404,8 +405,14 @@ export class Realm {
 
       let c;
       try {
-        c = f();
-        // This is join point for the normal branch of a PossiblyNormalCompletion.
+        try {
+          c = f();
+          if (c instanceof Reference) c = GetValue(this, c);
+        } catch (e) {
+          if (e instanceof AbruptCompletion) c = e;
+          else throw e;
+        }
+        // This is a join point for the normal branch of a PossiblyNormalCompletion.
         if (c instanceof Value || c instanceof AbruptCompletion) c = incorporateSavedCompletion(this, c);
         invariant(c !== undefined);
         if (c instanceof PossiblyNormalCompletion) {

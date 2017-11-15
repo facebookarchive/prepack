@@ -22,6 +22,15 @@ export class PathImplementation {
     return false;
   }
 
+  impliesNot(condition: AbstractValue): boolean {
+    let path = condition.$Realm.pathConditions;
+    for (let i = path.length - 1; i >= 0; i--) {
+      let pathCondition = path[i];
+      if (pathCondition.impliesNot(condition)) return true;
+    }
+    return false;
+  }
+
   withCondition<T>(condition: AbstractValue, evaluate: () => T): T {
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;

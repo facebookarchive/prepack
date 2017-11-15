@@ -26,7 +26,7 @@ import {
   ThrowCompletion,
 } from "../completions.js";
 import { Reference } from "../environment.js";
-import { cloneDescriptor, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
+import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { construct_empty_effects } from "../realm.js";
 import { Generator } from "../utils/generator.js";
 import { AbstractValue, ObjectValue, Value } from "../values/index.js";
@@ -682,9 +682,6 @@ export function joinPropertyBindings(
   c1: CreatedObjects,
   c2: CreatedObjects
 ): PropertyBindings {
-  function getAbstractValue(v1: void | Value, v2: void | Value): Value {
-    return joinValuesAsConditional(realm, joinCondition, v1, v2);
-  }
   function join(b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) {
     // If the PropertyBinding object has been freshly allocated do not join
     if (d1 === undefined) {
@@ -711,7 +708,7 @@ export function joinPropertyBindings(
         d2 = b.descriptor; //Get value of property before the split
       }
     }
-    return joinDescriptors(realm, d1, d2, getAbstractValue);
+    return joinDescriptors(realm, joinCondition, d1, d2);
   }
   return joinMaps(m1, m2, join);
 }
@@ -720,12 +717,19 @@ export function joinPropertyBindings(
 // Descriptors with get/set are not yet supported.
 export function joinDescriptors(
   realm: Realm,
+  joinCondition: AbstractValue,
   d1: void | Descriptor,
-  d2: void | Descriptor,
-  getAbstractValue: (void | Value, void | Value) => Value
+  d2: void | Descriptor
 ): void | Descriptor {
+  function getAbstractValue(v1: void | Value, v2: void | Value): Value {
+    return joinValuesAsConditional(realm, joinCondition, v1, v2);
+  }
   function clone_with_abstract_value(d: Descriptor) {
-    if (!IsDataDescriptor(realm, d)) throw new FatalError("TODO #1015: join computed properties");
+    if (!IsDataDescriptor(realm, d)) {
+      let d3: Descriptor = {};
+      d3.joinCondition = joinCondition;
+      return d3;
+    }
     let dc = cloneDescriptor(d);
     invariant(dc !== undefined);
     let dcValue = dc.value;
@@ -751,37 +755,26 @@ export function joinDescriptors(
   if (d1 === undefined) {
     if (d2 === undefined) return undefined;
     // d2 is a new property created in only one branch, join with empty
-    return clone_with_abstract_value(d2);
-  } else if (d2 === undefined) {
-    // d1 is a new property created in only one branch, join with empty
-    return clone_with_abstract_value(d1);
-  } else {
-    let d3: Descriptor = {};
-    let writable = joinBooleans(d1.writable, d2.writable);
-    if (writable !== undefined) d3.writable = writable;
-    let enumerable = joinBooleans(d1.enumerable, d2.enumerable);
-    if (enumerable !== undefined) d3.enumerable = enumerable;
-    let configurable = joinBooleans(d1.configurable, d2.configurable);
-    if (configurable !== undefined) d3.configurable = configurable;
-    //TODO #1015: do not join the values if one the descriptors is a getter/setters
-    if (IsDataDescriptor(realm, d1) || IsDataDescriptor(realm, d2))
-      d3.value = joinValues(realm, d1.value, d2.value, getAbstractValue);
-    if (d1.hasOwnProperty("get") || d2.hasOwnProperty("get"))
-      d3.get = (joinValues(realm, d1.get, d2.get, getAbstractValue): any);
-    if (d1.hasOwnProperty("set") || d2.hasOwnProperty("set"))
-      d3.set = (joinValues(realm, d1.set, d2.set, getAbstractValue): any);
+    let d3 = clone_with_abstract_value(d2);
+    if (!IsDataDescriptor(realm, d2)) d3.descriptor2 = d2;
     return d3;
-  }
-}
-
-// Returns v1 || v2, treating undefined as false,
-// but returns undefined if both v1 and v2 are undefined.
-export function joinBooleans(v1: void | boolean, v2: void | boolean): void | boolean {
-  if (v1 === undefined) {
-    return v2;
-  } else if (v2 === undefined) {
-    return v1;
+  } else if (d2 === undefined) {
+    invariant(d1 !== undefined);
+    // d1 is a new property created in only one branch, join with empty
+    let d3 = clone_with_abstract_value(d1);
+    if (!IsDataDescriptor(realm, d1)) d3.descriptor1 = d1;
+    return d3;
   } else {
-    return v1 || v2;
+    if (equalDescriptors(d1, d2) && IsDataDescriptor(realm, d1)) {
+      let dc = cloneDescriptor(d1);
+      invariant(dc !== undefined);
+      dc.value = joinValues(realm, d1.value, d2.value, getAbstractValue);
+      return dc;
+    }
+    let d3: Descriptor = {};
+    d3.joinCondition = joinCondition;
+    d3.descriptor1 = d1;
+    d3.descriptor2 = d2;
+    return d3;
   }
 }
