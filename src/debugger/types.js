@@ -20,7 +20,7 @@ export type DebuggerRequest = {
 };
 
 export type DebuggerRequestArguments =
-  | BreakpointArguments
+  | BreakpointsArguments
   | RunArguments
   | StackframeArguments
   | ScopesArguments
@@ -37,11 +37,15 @@ export type PrepackLaunchArguments = {
   exitCallback: () => void,
 };
 
-export type BreakpointArguments = {
-  kind: "breakpoint",
+export type Breakpoint = {
   filePath: string,
   line: number,
   column: number,
+};
+
+export type BreakpointsArguments = {
+  kind: "breakpoint",
+  breakpoints: Array<Breakpoint>,
 };
 
 export type RunArguments = {
@@ -78,7 +82,7 @@ export type DebuggerResponse = {
 export type DebuggerResponseResult =
   | ReadyResult
   | StackframeResult
-  | BreakpointAddResult
+  | BreakpointsAddResult
   | BreakpointStoppedResult
   | ScopesResult
   | VariablesResult;
@@ -92,11 +96,9 @@ export type StackframeResult = {
   stackframes: Array<Stackframe>,
 };
 
-export type BreakpointAddResult = {
+export type BreakpointsAddResult = {
   kind: "breakpoint-add",
-  filePath: string,
-  line: number,
-  column: number,
+  breakpoints: Array<Breakpoint>,
 };
 
 export type BreakpointStoppedResult = {

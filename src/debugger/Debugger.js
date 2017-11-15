@@ -129,23 +129,31 @@ export class DebugServer {
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.addBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
+        for (let bp of args.breakpoints) {
+          this._breakpoints.addBreakpoint(bp.filePath, bp.line, bp.column);
+        }
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.removeBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
+        for (let bp of args.breakpoints) {
+          this._breakpoints.removeBreakpoint(bp.filePath, bp.line, bp.column);
+        }
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.enableBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
+        for (let bp of args.breakpoints) {
+          this._breakpoints.enableBreakpoint(bp.filePath, bp.line, bp.column);
+        }
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.disableBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
+        for (let bp of args.breakpoints) {
+          this._breakpoints.disableBreakpoint(bp.filePath, bp.line, bp.column);
+        }
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
         invariant(args.kind === "run");

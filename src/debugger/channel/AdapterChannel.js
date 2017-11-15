@@ -15,7 +15,7 @@ import EventEmitter from "events";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./DebugMessage.js";
 import child_process from "child_process";
-import type { BreakpointArguments, DebuggerResponse, PrepackLaunchArguments } from "./../types.js";
+import type { Breakpoint, DebuggerResponse, PrepackLaunchArguments } from "./../types.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
@@ -51,7 +51,7 @@ export class AdapterChannel {
       this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE, result);
       this.trySendNextRequest();
     } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
-      let dbgResponse = this._marshaller.unmarshallBreakpointAddResponse(requestID, parts.slice(2));
+      let dbgResponse = this._marshaller.unmarshallBreakpointsAddResponse(requestID, parts.slice(2).join(" "));
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, dbgResponse);
       // Prepack acknowledged adding a breakpoint
       this._prepackWaiting = true;
@@ -157,10 +157,8 @@ export class AdapterChannel {
     this._addRequestCallback(requestID, callback);
   }
 
-  setBreakpoints(requestID: number, breakpoints: Array<BreakpointArguments>, callback: DebuggerResponse => void) {
-    for (const breakpoint of breakpoints) {
-      this._queue.enqueue(this._marshaller.marshallSetBreakpointsRequest(requestID, breakpoint));
-    }
+  setBreakpoints(requestID: number, breakpoints: Array<Breakpoint>, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallSetBreakpointsRequest(requestID, breakpoints));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }

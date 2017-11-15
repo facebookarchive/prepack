@@ -16,7 +16,8 @@ import { DebuggerError } from "./../DebuggerError.js";
 import type {
   DebuggerRequest,
   DebuggerRequestArguments,
-  BreakpointArguments,
+  Breakpoint,
+  BreakpointsArguments,
   RunArguments,
   StackframeArguments,
   Stackframe,
@@ -82,7 +83,7 @@ export class DebugChannel {
         args = runArgs;
         break;
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
-        args = this._marshaller.unmarshallBreakpointArguments(requestID, parts.slice(2));
+        args = this._marshaller.unmarshallBreakpointsArguments(requestID, parts.slice(2).join(" "));
         break;
       case DebugMessage.STACKFRAMES_COMMAND:
         let stackFrameArgs: StackframeArguments = {
@@ -116,14 +117,12 @@ export class DebugChannel {
     this._requestReceived = false;
   }
 
-  sendBreakpointAcknowledge(messageType: string, requestID: number, args: BreakpointArguments): void {
-    this.writeOut(
-      this._marshaller.marshallBreakpointAcknowledge(requestID, messageType, args.filePath, args.line, args.column)
-    );
+  sendBreakpointsAcknowledge(messageType: string, requestID: number, args: BreakpointsArguments): void {
+    this.writeOut(this._marshaller.marshallBreakpointAcknowledge(requestID, messageType, args.breakpoints));
   }
 
   sendBreakpointStopped(filePath: string, line: number, column: number): void {
-    let breakpointInfo: BreakpointArguments = {
+    let breakpointInfo: Breakpoint = {
       kind: "breakpoint",
       filePath: filePath,
       line: line,

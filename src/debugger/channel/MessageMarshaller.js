@@ -10,12 +10,13 @@
 /* @flow */
 import { DebugMessage } from "./DebugMessage.js";
 import type {
-  BreakpointArguments,
+  Breakpoint,
+  BreakpointsArguments,
   ScopesArguments,
   Stackframe,
   DebuggerResponse,
   StackframeResult,
-  BreakpointAddResult,
+  BreakpointsAddResult,
   BreakpointStoppedResult,
   ReadyResult,
   Scope,
@@ -28,17 +29,11 @@ import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
 
 export class MessageMarshaller {
-  marshallBreakpointAcknowledge(
-    requestID: number,
-    prefix: string,
-    filePath: string,
-    line: number,
-    column: number
-  ): string {
-    return `${requestID} ${prefix} ${filePath} ${line} ${column}`;
+  marshallBreakpointAcknowledge(requestID: number, messageType: string, breakpoints: Array<Breakpoint>): string {
+    return `${requestID} ${messageType} ${JSON.stringify(breakpoints)}`;
   }
 
-  marshallBreakpointStopped(requestID: number, args: BreakpointArguments): string {
+  marshallBreakpointStopped(requestID: number, args: Breakpoint): string {
     return `${requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line} ${args.column}`;
   }
 
@@ -54,8 +49,8 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.PREPACK_RUN_COMMAND}`;
   }
 
-  marshallSetBreakpointsRequest(requestID: number, args: BreakpointArguments): string {
-    return `${requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${args.filePath} ${args.line} ${args.column}`;
+  marshallSetBreakpointsRequest(requestID: number, breakpoints: Array<Breakpoint>): string {
+    return `${requestID} ${DebugMessage.BREAKPOINT_ADD_COMMAND} ${JSON.stringify(breakpoints)}`;
   }
 
   marshallStackFramesRequest(requestID: number): string {
@@ -74,6 +69,7 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.SCOPES_RESPONSE} ${JSON.stringify(scopes)}`;
   }
 
+
   marshallVariablesRequest(requestID: number, variablesReference: number): string {
     return `${requestID} ${DebugMessage.VARIABLES_COMMAND} ${variablesReference}`;
   }
@@ -82,24 +78,24 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.VARIABLES_RESPONSE} ${JSON.stringify(variables)}`;
   }
 
-  unmarshallBreakpointArguments(requestID: number, parts: Array<string>): BreakpointArguments {
-    let filePath = parts[0];
-
-    let lineNum = parseInt(parts[1], 10);
-    invariant(!isNaN(lineNum));
-    let columnNum = 0;
-    if (parts.length === 3) {
-      columnNum = parseInt(parts[2], 10);
-      invariant(!isNaN(columnNum));
+  unmarshallBreakpointsArguments(requestID: number, breakpointsString: string): BreakpointsArguments {
+    try {
+      let breakpoints = JSON.parse(breakpointsString);
+      for (const breakpoint of breakpoints) {
+        invariant(breakpoint.hasOwnProperty("filePath"), "breakpoint missing filePath property");
+        invariant(breakpoint.hasOwnProperty("line"), "breakpoint missing line property");
+        invariant(breakpoint.hasOwnProperty("column"), "breakpoint missing column property");
+        invariant(!isNaN(breakpoint.line));
+        invariant(!isNaN(breakpoint.column));
+      }
+      let result: BreakpointsArguments = {
+        kind: "breakpoint",
+        breakpoints: breakpoints,
+      };
+      return result;
+    } catch (e) {
+      throw new DebuggerError("Invalid command", e.message);
     }
-
-    let result: BreakpointArguments = {
-      kind: "breakpoint",
-      filePath: filePath,
-      line: lineNum,
-      column: columnNum,
-    };
-    return result;
   }
 
   unmarshallScopesArguments(requestID: number, frameIdString: string): ScopesArguments {
@@ -188,29 +184,34 @@ export class MessageMarshaller {
         result: result,
       };
       return dbgResponse;
+      } catch (e) {
+      throw new DebuggerError("Invalid response", e.message);
+      }
+    }
+
+  unmarshallBreakpointsAddResponse(requestID: number, breakpointsString: string): DebuggerResponse {
+    try {
+      let breakpoints = JSON.parse(breakpointsString);
+      for (const breakpoint of breakpoints) {
+        invariant(breakpoint.hasOwnProperty("filePath"), "breakpoint missing filePath property");
+        invariant(breakpoint.hasOwnProperty("line"), "breakpoint missing line property");
+        invariant(breakpoint.hasOwnProperty("column"), "breakpoint missing column property");
+        invariant(!isNaN(breakpoint.line));
+        invariant(!isNaN(breakpoint.column));
+      }
+
+      let result: BreakpointsAddResult = {
+        kind: "breakpoint-add",
+        breakpoints: breakpoints,
+      };
+      let dbgResponse: DebuggerResponse = {
+        id: requestID,
+        result: result,
+      };
+      return dbgResponse;
     } catch (e) {
       throw new DebuggerError("Invalid response", e.message);
     }
-  }
-
-  unmarshallBreakpointAddResponse(requestID: number, parts: Array<string>): DebuggerResponse {
-    invariant(parts.length === 3, "Incorrect number of arguments in breakpoint stopped response");
-    let filePath = parts[0];
-    let line = parseInt(parts[1], 10);
-    invariant(!isNaN(line), "Invalid line number");
-    let column = parseInt(parts[2], 10);
-    invariant(!isNaN(column), "Invalid column number");
-    let result: BreakpointAddResult = {
-      kind: "breakpoint-add",
-      filePath: filePath,
-      line: line,
-      column: column,
-    };
-    let dbgResponse: DebuggerResponse = {
-      id: requestID,
-      result: result,
-    };
-    return dbgResponse;
   }
 
   unmarshallBreakpointStoppedResponse(requestID: number, parts: Array<string>): DebuggerResponse {
