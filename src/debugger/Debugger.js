@@ -36,7 +36,7 @@ export class DebugServer {
     this._lastRunRequestID = 0;
     this._channel = channel;
     this._realm = realm;
-    this._variableManager = new VariableManager();
+    this._variableManager = new VariableManager(realm);
     this.waitForRun();
   }
   // the collection of breakpoints
