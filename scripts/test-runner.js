@@ -346,8 +346,7 @@ function runTest(name, code, options, args) {
             actual = execExternal(execSpec, codeToRun);
           } else {
             if (options.lazyObjectsRuntime !== undefined) {
-              codeToRun = augmentCodeWithLazyObjectSupport(codeToRun,
-                args.lazyObjectsRuntime);
+              codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
             }
 
             actual = execInContext(codeToRun);
@@ -456,7 +455,7 @@ function run(args) {
       [true, true, undefined],
       [false, false, args.lazyObjectsRuntime],
     ]) {
-      if (skipLazyObjects && lazyObjectsRuntime) {
+      if ((skipLazyObjects || args.noLazySupport) && lazyObjectsRuntime) {
         continue;
       }
       total++;
@@ -478,13 +477,23 @@ class ProgramArgs {
   outOfProcessRuntime: string;
   es5: boolean;
   lazyObjectsRuntime: string;
-  constructor(debugNames: boolean, verbose: boolean, filter: string, outOfProcessRuntime: string, es5: boolean, lazyObjectsRuntime: string) {
+  noLazySupport: boolean;
+  constructor(
+    debugNames: boolean,
+    verbose: boolean,
+    filter: string,
+    outOfProcessRuntime: string,
+    es5: boolean,
+    lazyObjectsRuntime: string,
+    noLazySupport: boolean
+  ) {
     this.debugNames = debugNames;
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
     this.outOfProcessRuntime = outOfProcessRuntime;
     this.es5 = es5;
     this.lazyObjectsRuntime = lazyObjectsRuntime;
+    this.noLazySupport = noLazySupport;
   }
 }
 
@@ -513,7 +522,7 @@ function usage(): string {
   return (
     `Usage: ${process.argv[0]} ${process.argv[1]} ` +
     EOL +
-    `[--verbose] [--filter <string>] [--outOfProcessRuntime <path>] [--es5] [--lazyObjectsRuntime]`
+    `[--verbose] [--filter <string>] [--outOfProcessRuntime <path>] [--es5] [--noLazySupport]`
   );
 }
 
@@ -538,7 +547,8 @@ function argsParse(): ProgramArgs {
       filter: "",
       outOfProcessRuntime: "", // if set, assumed to be a JS runtime and is used
       // to run tests. If not a seperate node context used.
-      lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME
+      lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME,
+      noLazySupport: false,
     },
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
@@ -561,7 +571,9 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.lazyObjectsRuntime !== "string") {
     throw new ArgsParseError("lazyObjectsRuntime must be a string");
   }
-
+  if (typeof parsedArgs.noLazySupport !== "boolean") {
+    throw new ArgsParseError("noLazySupport must be a boolean (either --noLazySupport or not)");
+  }
   let programArgs = new ProgramArgs(
     parsedArgs.debugNames,
     parsedArgs.verbose,
@@ -569,6 +581,7 @@ function argsParse(): ProgramArgs {
     parsedArgs.outOfProcessRuntime,
     parsedArgs.es5,
     parsedArgs.lazyObjectsRuntime,
+    parsedArgs.noLazySupport
   );
   return programArgs;
 }
