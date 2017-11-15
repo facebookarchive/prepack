@@ -14,7 +14,10 @@ function Child(props) {
 // so we have to use ES5 instead
 var App = (function (superclass) {
   function App () {
-    superclass.apply(this, arguments);
+		superclass.apply(this, arguments);
+		this.state = {
+			title: "It works!",
+		};
   }
 
   if ( superclass ) {
@@ -23,10 +26,10 @@ var App = (function (superclass) {
   App.prototype = Object.create( superclass && superclass.prototype );
   App.prototype.constructor = App;
   App.prototype.render = function render () {
-    return <Child title={this.props.title} />;
+    return <Child title={this.state.title} />;
   };
   App.getTrials = function(renderer, Root) {
-    renderer.update(<Root title="Hello world" />);
+    renderer.update(<Root />);
     return [['render with class root and props', renderer.toJSON()]];
   };
 

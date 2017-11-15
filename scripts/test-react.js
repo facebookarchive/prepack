@@ -65,6 +65,7 @@ function runSource(source) {
     module: moduleShim,
     Object,
     String,
+    console,
   };
   try {
     // $FlowFixMe flow doesn't new Function
@@ -187,6 +188,14 @@ describe("Test React", () => {
 
     it("Class component as root with props", async () => {
       await runTest(directory, "class-root-with-props.js");
+    });
+
+    it("Class component as root with state", async () => {
+      await runTest(directory, "class-root-with-state.js");
+    });
+
+    it("Class component as root with instance variables", async () => {
+      await runTest(directory, "class-root-with-instance-vars.js");
     });
   });
 });

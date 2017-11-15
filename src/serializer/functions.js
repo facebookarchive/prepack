@@ -167,8 +167,6 @@ export class Functions {
       // When that happens we cannot prepack the bundle.
       // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
 
-      // TODO check if the function is a React component
-      // for now we do this on all functions
       let e = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
       this.writeEffects.set(funcValue, e);
     }
