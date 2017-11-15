@@ -33,8 +33,7 @@ import { Type, SameValue, RequireObjectCoercible } from "./abstract.js";
 import { ToStringPartial, ToLength } from "./to.js";
 import { Get, GetFunctionRealm } from "./get.js";
 import { Construct, MakeConstructor } from "./construct.js";
-import { FunctionAllocate, FunctionInitialize, SetFunctionName } from "./function.js";
-import { Properties } from "../singletons.js";
+import { Functions, Properties } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -832,7 +831,7 @@ export function CreateDynamicFunction(
   let proto = GetPrototypeFromConstructor(realm, newTarget, fallbackProto);
 
   // 23. Let F be FunctionAllocate(proto, strict, kind).
-  let F = FunctionAllocate(realm, proto, strict, kind);
+  let F = Functions.FunctionAllocate(realm, proto, strict, kind);
 
   // 24. Let realmF be the value of F's [[Realm]] internal slot.
   let realmF = F.$Realm;
@@ -841,7 +840,7 @@ export function CreateDynamicFunction(
   let scope = realmF.$GlobalEnv;
 
   // 26. Perform FunctionInitialize(F, Normal, parameters, body, scope).
-  FunctionInitialize(realm, F, "normal", params, body, scope);
+  Functions.FunctionInitialize(realm, F, "normal", params, body, scope);
 
   // 27. If kind is "generator", then
   if (kind === "generator") {
@@ -862,7 +861,7 @@ export function CreateDynamicFunction(
   }
 
   // 29. Perform SetFunctionName(F, "anonymous").
-  SetFunctionName(realm, F, "anonymous");
+  Functions.SetFunctionName(realm, F, "anonymous");
 
   // 30. Return F.
   return F;

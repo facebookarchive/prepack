@@ -25,11 +25,11 @@ import {
   IsInTailPosition,
   IsPropertyReference,
   joinEffects,
-  PerformEval,
   SameValue,
   stopEffectCaptureJoinApplyAndReturnCompletion,
   unbundleNormalCompletion,
 } from "../methods/index.js";
+import { Functions } from "../singletons.js";
 import { AbstractValue, BooleanValue, FunctionValue, Value } from "../values/index.js";
 
 import * as t from "babel-types";
@@ -187,7 +187,7 @@ function EvaluateCall(
       let evalRealm = realm;
 
       // vi. Return ? PerformEval(evalText, evalRealm, strictCaller, true).
-      return PerformEval(realm, evalText, evalRealm, strictCaller, true);
+      return Functions.PerformEval(realm, evalText, evalRealm, strictCaller, true);
     }
   }
 

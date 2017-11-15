@@ -52,9 +52,8 @@ import {
   ArrayCreate,
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
-  SetFunctionName,
 } from "./index.js";
-import { Properties } from "../singletons.js";
+import { Functions, Properties } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeVariableDeclaration,
@@ -728,7 +727,7 @@ export function IteratorBindingInitialization(
 
           // ii. If hasNameProperty is false, perform SetFunctionName(v, bindingId).
           if (hasNameProperty === false) {
-            SetFunctionName(realm, v, bindingId);
+            Functions.SetFunctionName(realm, v, bindingId);
           }
         }
       }
@@ -1052,7 +1051,7 @@ export function KeyedBindingInitialization(
 
         // ii. If hasNameProperty is false, perform SetFunctionName(v, bindingId).
         if (hasNameProperty === false) {
-          SetFunctionName(realm, v, bindingId);
+          Functions.SetFunctionName(realm, v, bindingId);
         }
       }
     }

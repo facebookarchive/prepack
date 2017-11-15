@@ -26,7 +26,6 @@ import { FatalError } from "../errors.js";
 import { BooleanValue, ConcreteValue, NullValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
 import {
   GetValue,
-  SetFunctionName,
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
   HasOwnProperty,
@@ -34,7 +33,7 @@ import {
   composeNormalCompletions,
   unbundleNormalCompletion,
 } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Functions, Properties } from "../singletons.js";
 
 import * as t from "babel-types";
 import invariant from "../invariant.js";
@@ -86,7 +85,7 @@ export default function(
         // ii. If hasNameProperty is false, perform SetFunctionName(rval, GetReferencedName(lref)).
         if (!hasNameProperty) {
           invariant(lref instanceof Reference);
-          SetFunctionName(realm, rval, GetReferencedName(realm, lref));
+          Functions.SetFunctionName(realm, rval, GetReferencedName(realm, lref));
         }
       }
 

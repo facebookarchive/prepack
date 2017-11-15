@@ -23,7 +23,7 @@ import {
   AbstractObjectValue,
 } from "./index.js";
 import { ReturnCompletion } from "../completions.js";
-import { $Call, $Construct } from "../methods/function.js";
+import { Functions } from "../singletons.js";
 export type NativeFunctionCallback = (
   context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
   args: Array<Value>,
@@ -48,13 +48,13 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     this.$FunctionKind = "normal";
 
     this.$Call = (thisArgument, argsList) => {
-      return $Call(this.$Realm, this, thisArgument, argsList);
+      return Functions.$Call(this.$Realm, this, thisArgument, argsList);
     };
 
     if (constructor) {
       this.$ConstructorKind = "base";
       this.$Construct = (argumentsList, newTarget) => {
-        return $Construct(this.$Realm, this, argumentsList, newTarget);
+        return Functions.$Construct(this.$Realm, this, argumentsList, newTarget);
       };
     }
 

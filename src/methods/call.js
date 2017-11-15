@@ -26,12 +26,10 @@ import {
   AbstractValue,
 } from "../values/index.js";
 import {
-  FunctionDeclarationInstantiation,
   GetBase,
   GetIterator,
   GetValue,
   HasSomeCompatibleType,
-  incorporateSavedCompletion,
   IsCallable,
   IsPropertyKey,
   IsPropertyReference,
@@ -52,6 +50,7 @@ import {
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { construct_empty_effects } from "../realm.js";
+import { Functions } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
@@ -326,7 +325,7 @@ export function OrdinaryCallEvaluateBody(
     invariant(F instanceof ECMAScriptSourceFunctionValue);
     if (F.$FunctionKind === "generator") {
       // 1. Perform ? FunctionDeclarationInstantiation(functionObject, argumentsList).
-      FunctionDeclarationInstantiation(realm, F, argumentsList);
+      Functions.FunctionDeclarationInstantiation(realm, F, argumentsList);
 
       // 2. Let G be ? OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%", « [[GeneratorState]], [[GeneratorContext]] »).
       let G = OrdinaryCreateFromConstructor(realm, F, "GeneratorPrototype", {
@@ -343,7 +342,7 @@ export function OrdinaryCallEvaluateBody(
       return new ReturnCompletion(G, realm.currentLocation);
     } else {
       // 1. Perform ? FunctionDeclarationInstantiation(F, argumentsList).
-      FunctionDeclarationInstantiation(realm, F, argumentsList);
+      Functions.FunctionDeclarationInstantiation(realm, F, argumentsList);
 
       // 2. Return the result of EvaluateBody of the parsed code that is the value of F's
       //    [[ECMAScriptCode]] internal slot passing F as the argument.
@@ -353,7 +352,7 @@ export function OrdinaryCallEvaluateBody(
       let c = context.lexicalEnvironment.evaluateCompletionDeref(code, F.$Strict);
       // We are about the leave this function and this presents a join point where all non exeptional control flows
       // converge into a single flow using the joined effects as the new state.
-      c = incorporateSavedCompletion(realm, c);
+      c = Functions.incorporateSavedCompletion(realm, c);
       let joinedEffects;
       if (c instanceof PossiblyNormalCompletion) {
         let e = realm.getCapturedEffects(c);

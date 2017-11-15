@@ -32,7 +32,6 @@ import {
   composeGenerators,
   composePossiblyNormalCompletions,
   Construct,
-  incorporateSavedCompletion,
   GetValue,
   ToString,
   updatePossiblyNormalCompletionWithSubsequentEffects,
@@ -42,7 +41,7 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { Properties } from "./singletons.js";
+import { Functions, Properties } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -413,7 +412,7 @@ export class Realm {
           else throw e;
         }
         // This is a join point for the normal branch of a PossiblyNormalCompletion.
-        if (c instanceof Value || c instanceof AbruptCompletion) c = incorporateSavedCompletion(this, c);
+        if (c instanceof Value || c instanceof AbruptCompletion) c = Functions.incorporateSavedCompletion(this, c);
         invariant(c !== undefined);
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.

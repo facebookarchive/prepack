@@ -20,10 +20,9 @@ import {
   InitializeReferencedBinding,
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
-  SetFunctionName,
   BindingInitialization,
 } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeVariableDeclaration } from "babel-types";
 
@@ -72,7 +71,7 @@ function letAndConst(
       let hasNameProperty = HasOwnProperty(realm, value, "name");
 
       // b. If hasNameProperty is false, perform SetFunctionName(value, bindingId).
-      if (!hasNameProperty) SetFunctionName(realm, value, new StringValue(realm, bindingId));
+      if (!hasNameProperty) Functions.SetFunctionName(realm, value, new StringValue(realm, bindingId));
     }
 
     // 6. Return InitializeReferencedBinding(lhs, value).
@@ -125,7 +124,7 @@ export default function(
         let hasNameProperty = HasOwnProperty(realm, value, "name");
 
         // b. If hasNameProperty is false, perform SetFunctionName(value, bindingId).
-        if (!hasNameProperty) SetFunctionName(realm, value, new StringValue(realm, bindingId));
+        if (!hasNameProperty) Functions.SetFunctionName(realm, value, new StringValue(realm, bindingId));
       }
 
       // 6. Return ? PutValue(lhs, value).

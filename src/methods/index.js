@@ -17,7 +17,6 @@ export * from "./create.js";
 export * from "./date.js";
 export * from "./descriptor.js";
 export * from "./environment.js";
-export * from "./function.js";
 export * from "./get.js";
 export * from "./has.js";
 export * from "./hash.js";

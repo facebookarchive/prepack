@@ -23,12 +23,10 @@ import type {
 import parse from "../utils/parse.js";
 import {
   HasOwnProperty,
-  SetFunctionName,
   IsConstructor,
   Get,
   MakeConstructor,
   CreateMethodProperty,
-  DefineMethod,
   NewDeclarativeEnvironment,
   MakeClassConstructor,
   ObjectCreate,
@@ -38,7 +36,7 @@ import {
   InitializeBoundName,
   NonConstructorMethodDefinitions,
 } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 function EvaluateClassHeritage(
@@ -204,7 +202,7 @@ export function ClassDefinitionEvaluation(
   let F;
   try {
     // 12. Let constructorInfo be the result of performing DefineMethod for constructor with arguments proto and constructorParent as the optional functionPrototype argument.
-    let constructorInfo = DefineMethod(realm, constructor, proto, env, strictCode, constructorParent);
+    let constructorInfo = Functions.DefineMethod(realm, constructor, proto, env, strictCode, constructorParent);
 
     // 13. Assert: constructorInfo is not an abrupt completion.
 
@@ -287,7 +285,7 @@ function BindingClassDeclarationEvaluation(
 
     // 6. If hasNameProperty is false, then perform SetFunctionName(value, className).
     if (hasNameProperty === false) {
-      SetFunctionName(realm, value, className);
+      Functions.SetFunctionName(realm, value, className);
     }
 
     // 7. Let env be the running execution context’s LexicalEnvironment.

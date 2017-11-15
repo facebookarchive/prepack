@@ -15,11 +15,8 @@ import type { LexicalEnvironment } from "../environment.js";
 
 import { Completion, NormalCompletion } from "../completions.js";
 import { EmptyValue, StringValue, Value } from "../values/index.js";
-import {
-  BlockDeclarationInstantiation,
-  NewDeclarativeEnvironment,
-  PartiallyEvaluateStatements,
-} from "../methods/index.js";
+import { BlockDeclarationInstantiation, NewDeclarativeEnvironment } from "../methods/index.js";
+import { Functions } from "../singletons.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -53,7 +50,7 @@ export default function(
       }
     }
 
-    let [res, bAst] = PartiallyEvaluateStatements(ast.body, blockValue, strictCode, blockEnv, realm);
+    let [res, bAst] = Functions.PartiallyEvaluateStatements(ast.body, blockValue, strictCode, blockEnv, realm);
     invariant(bAst.length > 0 || res instanceof EmptyValue);
     if (bAst.length === 0) return [res, t.emptyStatement(), []];
     let rAst = t.blockStatement(bAst, ast.directives);

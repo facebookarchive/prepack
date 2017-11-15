@@ -35,10 +35,7 @@ import {
   Call,
   cloneDescriptor,
   CreateDataProperty,
-  DefineMethod,
   equalDescriptors,
-  FunctionCreate,
-  GeneratorFunctionCreate,
   Get,
   GetBase,
   GetGlobalObject,
@@ -56,11 +53,9 @@ import {
   IsUnresolvableReference,
   joinEffects,
   MakeConstructor,
-  MakeMethod,
   ObjectCreate,
   SameValue,
   SameValuePartial,
-  SetFunctionName,
   ToBooleanPartial,
   ToNumber,
   ToObject,
@@ -70,7 +65,7 @@ import {
 } from "../methods/index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
-import { Path } from "../singletons.js";
+import { Functions, Path } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 
@@ -1274,12 +1269,12 @@ export class PropertiesImplementation {
     // MethodDefinition : PropertyName ( StrictFormalParameters ) { FunctionBody }
     if (MethodDefinition.kind === "method") {
       // 1. Let methodDef be DefineMethod of MethodDefinition with argument object.
-      let methodDef = DefineMethod(realm, MethodDefinition, object, env, strictCode);
+      let methodDef = Functions.DefineMethod(realm, MethodDefinition, object, env, strictCode);
 
       // 2. ReturnIfAbrupt(methodDef).
 
       // 3. Perform SetFunctionName(methodDef.[[closure]], methodDef.[[key]]).
-      SetFunctionName(realm, methodDef.$Closure, methodDef.$Key);
+      Functions.SetFunctionName(realm, methodDef.$Closure, methodDef.$Key);
 
       // 4. Let desc be the Property Descriptor{[[Value]]: methodDef.[[closure]], [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
       let desc: Descriptor = { value: methodDef.$Closure, writable: true, enumerable: enumerable, configurable: true };
@@ -1301,7 +1296,7 @@ export class PropertiesImplementation {
       let scope = env;
 
       // 5. Let closure be GeneratorFunctionCreate(Method, StrictFormalParameters, GeneratorBody, scope, strict).
-      let closure = GeneratorFunctionCreate(
+      let closure = Functions.GeneratorFunctionCreate(
         realm,
         "method",
         MethodDefinition.params,
@@ -1311,7 +1306,7 @@ export class PropertiesImplementation {
       );
 
       // 6. Perform MakeMethod(closure, object).
-      MakeMethod(realm, closure, object);
+      Functions.MakeMethod(realm, closure, object);
 
       // 7. Let prototype be ObjectCreate(%GeneratorPrototype%).
       let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
@@ -1321,7 +1316,7 @@ export class PropertiesImplementation {
       MakeConstructor(realm, closure, true, prototype);
 
       // 9. Perform SetFunctionName(closure, propKey).
-      SetFunctionName(realm, closure, propKey);
+      Functions.SetFunctionName(realm, closure, propKey);
 
       // 10. Let desc be the Property Descriptor{[[Value]]: closure, [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
       let desc: Descriptor = { value: closure, writable: true, enumerable: enumerable, configurable: true };
@@ -1344,13 +1339,20 @@ export class PropertiesImplementation {
       let formalParameterList = [];
 
       // 6. Let closure be FunctionCreate(Method, formalParameterList, FunctionBody, scope, strict).
-      let closure = FunctionCreate(realm, "method", formalParameterList, MethodDefinition.body, scope, strict);
+      let closure = Functions.FunctionCreate(
+        realm,
+        "method",
+        formalParameterList,
+        MethodDefinition.body,
+        scope,
+        strict
+      );
 
       // 7. Perform MakeMethod(closure, object).
-      MakeMethod(realm, closure, object);
+      Functions.MakeMethod(realm, closure, object);
 
       // 8. Perform SetFunctionName(closure, propKey, "get").
-      SetFunctionName(realm, closure, propKey, "get");
+      Functions.SetFunctionName(realm, closure, propKey, "get");
 
       // 9. Let desc be the PropertyDescriptor{[[Get]]: closure, [[Enumerable]]: enumerable, [[Configurable]]: true}.
       let desc = {
@@ -1375,13 +1377,20 @@ export class PropertiesImplementation {
       let scope = env;
 
       // 5. Let closure be FunctionCreate(Method, PropertySetParameterList, FunctionBody, scope, strict).
-      let closure = FunctionCreate(realm, "method", MethodDefinition.params, MethodDefinition.body, scope, strict);
+      let closure = Functions.FunctionCreate(
+        realm,
+        "method",
+        MethodDefinition.params,
+        MethodDefinition.body,
+        scope,
+        strict
+      );
 
       // 6. Perform MakeMethod(closure, object).
-      MakeMethod(realm, closure, object);
+      Functions.MakeMethod(realm, closure, object);
 
       // 7. Perform SetFunctionName(closure, propKey, "set").
-      SetFunctionName(realm, closure, propKey, "set");
+      Functions.SetFunctionName(realm, closure, propKey, "set");
 
       // 8. Let desc be the PropertyDescriptor{[[Set]]: closure, [[Enumerable]]: enumerable, [[Configurable]]: true}.
       let desc = {
