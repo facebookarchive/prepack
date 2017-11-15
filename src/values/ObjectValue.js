@@ -234,6 +234,8 @@ export default class ObjectValue extends ConcreteValue {
   // to return AbstractValue for unknown properties.
   _isSimple: BooleanValue;
 
+  isTemplate: void | true;
+
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
   unknownProperty: void | PropertyBinding;
