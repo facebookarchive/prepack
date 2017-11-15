@@ -15,7 +15,6 @@ let prepackSources = require("../lib/prepack-node.js").prepackSources;
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
-let util = require("util");
 let chalk = require("chalk");
 let path = require("path");
 let fs = require("fs");
@@ -171,7 +170,7 @@ function execInContext(code) {
 }
 
 function runTest(name, code, options, args) {
-  console.log(chalk.inverse(name) + " " + util.inspect(options));
+  console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
   let compileJSXWithBabel = code.includes("// babel:jsx");
