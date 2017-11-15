@@ -179,8 +179,10 @@ export class ResidualFunctions {
     functionEntries.sort((funcA, funcB) => {
       const funcALocation = funcA[0].loc;
       const funcBLocation = funcB[0].loc;
-      invariant(funcALocation && funcBLocation);
-      invariant(funcALocation.source && funcBLocation.source);
+      if (!funcALocation || !funcBLocation || !funcALocation.source || !funcBLocation.source) {
+        // Preserve the current ordering if there is no source location information available.
+        return -1;
+      }
       if (funcALocation.source !== funcBLocation.source) {
         return funcALocation.source.localeCompare(funcBLocation.source);
       } else if (funcALocation.start.line !== funcBLocation.start.line) {
