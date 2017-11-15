@@ -35,16 +35,11 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { NewDeclarativeEnvironment } from "./index.js";
 import { OrdinaryCreateFromConstructor, CreateUnmappedArgumentsObject, CreateMappedArgumentsObject } from "./create.js";
 import { OrdinaryCallEvaluateBody, OrdinaryCallBindThis, PrepareForOrdinaryCall, Call } from "./call.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
-import { IteratorBindingInitialization } from "../methods/environment.js";
 import {
-  BoundNames,
-  ContainsExpression,
-  GetActiveScriptOrModule,
   joinAndRemoveNestedReturnCompletions,
   joinPossiblyNormalCompletionWithAbruptCompletion,
   UpdateEmpty,
@@ -52,7 +47,7 @@ import {
 } from "../methods/index.js";
 import { CreateListIterator } from "../methods/iterator.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
-import { Properties } from "../singletons.js";
+import { Environment, Properties } from "../singletons.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -415,7 +410,7 @@ export class FunctionImplementation {
     let hasParameterExpressions = false;
     invariant(formals !== undefined);
     for (let param of formals) {
-      if (ContainsExpression(realm, param)) {
+      if (Environment.ContainsExpression(realm, param)) {
         hasParameterExpressions = true;
         break;
       }
@@ -454,7 +449,7 @@ export class FunctionImplementation {
         // i. Assert: d is either a FunctionDeclaration or a GeneratorDeclaration.
         invariant(d.type === "FunctionDeclaration" || d.type === "GeneratorDeclaration");
         // ii. Let fn be the sole element of the BoundNames of d.
-        let fn = BoundNames(realm, d)[0];
+        let fn = Environment.BoundNames(realm, d)[0];
         // iii. If fn is not an element of functionNames, then
         if (functionNames.indexOf(fn) < 0) {
           // 1. Insert fn as the first element of functionNames.
@@ -550,12 +545,12 @@ export class FunctionImplementation {
     if (hasDuplicates === true) {
       // a. Perform ? IteratorBindingInitialization for formals with iteratorRecord and undefined as arguments.
       invariant(formals !== undefined);
-      IteratorBindingInitialization(realm, formals, iteratorRecord, strict);
+      Environment.IteratorBindingInitialization(realm, formals, iteratorRecord, strict);
     } else {
       // 25. Else,
       // a. Perform ? IteratorBindingInitialization for formals with iteratorRecord and env as arguments.
       invariant(formals !== undefined);
-      IteratorBindingInitialization(realm, formals, iteratorRecord, strict, env);
+      Environment.IteratorBindingInitialization(realm, formals, iteratorRecord, strict, env);
     }
 
     // 26. If hasParameterExpressions is false, then
@@ -590,7 +585,7 @@ export class FunctionImplementation {
       // a. NOTE A separate Environment Record is needed to ensure that closures created by expressions in the formal parameter list do not have visibility of declarations in the function body.
 
       // b. Let varEnv be NewDeclarativeEnvironment(env).
-      varEnv = NewDeclarativeEnvironment(realm, env);
+      varEnv = Environment.NewDeclarativeEnvironment(realm, env);
 
       // c. Let varEnvRec be varEnv's EnvironmentRecord.
       varEnvRec = varEnv.environmentRecord;
@@ -636,7 +631,7 @@ export class FunctionImplementation {
     // 29. If strict is false, then
     if (strict === false) {
       // a. Let lexEnv be NewDeclarativeEnvironment(varEnv).
-      lexEnv = NewDeclarativeEnvironment(realm, varEnv);
+      lexEnv = Environment.NewDeclarativeEnvironment(realm, varEnv);
 
       // b. NOTE: Non-strict functions use a separate lexical Environment Record for top-level lexical declarations so that a direct eval (see 12.3.4.1) can determine whether any var scoped declarations introduced by the eval code conflict with pre-existing top-level lexically scoped declarations. realm is not needed for strict functions because a strict direct eval always places all declarations into a new Environment Record.
     } else {
@@ -657,7 +652,7 @@ export class FunctionImplementation {
     for (let d of lexDeclarations) {
       // a. NOTE A lexically declared name cannot be the same as a function/generator declaration, formal parameter, or a var name. Lexically declared names are only instantiated here but not initialized.
       // b. For each element dn of the BoundNames of d do
-      for (let dn of BoundNames(realm, d)) {
+      for (let dn of Environment.BoundNames(realm, d)) {
         // i. If IsConstantDeclaration of d is true, then
         if (d.kind === "const") {
           // 1. Perform ! lexEnvRec.CreateImmutableBinding(dn, true).
@@ -673,7 +668,7 @@ export class FunctionImplementation {
     // 35. For each parsed grammar phrase f in functionsToInitialize, do
     for (let f of functionsToInitialize) {
       // a. Let fn be the sole element of the BoundNames of f.
-      let fn = BoundNames(realm, f)[0];
+      let fn = Environment.BoundNames(realm, f)[0];
       // b. Let fo be the result of performing InstantiateFunctionObject for f with argument lexEnv.
       let fo = lexEnv.evaluate(f, strict);
       invariant(fo instanceof Value);
@@ -792,7 +787,7 @@ export class FunctionImplementation {
     F.$ECMAScriptCode = Body;
 
     // 8. Set the [[ScriptOrModule]] internal slot of F to GetActiveScriptOrModule().
-    F.$ScriptOrModule = GetActiveScriptOrModule(realm);
+    F.$ScriptOrModule = Environment.GetActiveScriptOrModule(realm);
 
     // 9. If kind is Arrow, set the [[realmMode]] internal slot of F to lexical.
     if (kind === "arrow") {
@@ -1022,14 +1017,14 @@ export class FunctionImplementation {
     let lexEnv, varEnv;
     if (direct) {
       // a. Let lexEnv be NewDeclarativeEnvironment(ctx's LexicalEnvironment).
-      lexEnv = NewDeclarativeEnvironment(realm, ctx.lexicalEnvironment);
+      lexEnv = Environment.NewDeclarativeEnvironment(realm, ctx.lexicalEnvironment);
 
       // b. Let varEnv be ctx's VariableEnvironment.
       varEnv = ctx.variableEnvironment;
     } else {
       // 10. Else,
       // a. Let lexEnv be NewDeclarativeEnvironment(evalRealm.[[GlobalEnv]]).
-      lexEnv = NewDeclarativeEnvironment(realm, evalRealm.$GlobalEnv);
+      lexEnv = Environment.NewDeclarativeEnvironment(realm, evalRealm.$GlobalEnv);
 
       // b. Let varEnv be evalRealm.[[GlobalEnv]].
       varEnv = evalRealm.$GlobalEnv;
@@ -1332,7 +1327,7 @@ export class FunctionImplementation {
         invariant(d.type === "FunctionDeclaration" || d.type === "GeneratorDeclaration");
         // ii. NOTE If there are multiple FunctionDeclarations for the same name, the last declaration is used.
         // iii. Let fn be the sole element of the BoundNames of d.
-        let fn = BoundNames(realm, d)[0];
+        let fn = Environment.BoundNames(realm, d)[0];
         // iv. If fn is not an element of declaredFunctionNames, then
         if (declaredFunctionNames.indexOf(fn) < 0) {
           // 1. If varEnvRec is a global Environment Record, then
@@ -1362,7 +1357,7 @@ export class FunctionImplementation {
       // a. If d is a VariableDeclaration or a ForBinding, then
       if (d.type === "VariableDeclaration") {
         // i. For each String vn in the BoundNames of d, do
-        for (let vn of BoundNames(realm, d)) {
+        for (let vn of Environment.BoundNames(realm, d)) {
           // 1. If vn is not an element of declaredFunctionNames, then
           if (declaredFunctionNames.indexOf(vn) < 0) {
             // a. If varEnvRec is a global Environment Record, then
@@ -1398,7 +1393,7 @@ export class FunctionImplementation {
     for (let d of lexDeclarations) {
       // a. NOTE Lexically declared names are only instantiated here but not initialized.
       // b. For each element dn of the BoundNames of d do
-      for (let dn of BoundNames(realm, d)) {
+      for (let dn of Environment.BoundNames(realm, d)) {
         // c. If IsConstantDeclaration of d is true, then
         if (d.kind === "const") {
           // i. Perform ? lexEnvRec.CreateImmutableBinding(dn, true).
@@ -1414,7 +1409,7 @@ export class FunctionImplementation {
     // 15. For each production f in functionsToInitialize, do
     for (let f of functionsToInitialize) {
       // a. Let fn be the sole element of the BoundNames of f.
-      let fn = BoundNames(realm, f)[0];
+      let fn = Environment.BoundNames(realm, f)[0];
       // b. Let fo be the result of performing InstantiateFunctionObject for f with argument lexEnv.
       let fo = lexEnv.evaluate(f, strict);
       invariant(fo instanceof Value);

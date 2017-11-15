@@ -12,9 +12,9 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { NewDeclarativeEnvironment, MakeConstructor } from "../methods/index.js";
+import { MakeConstructor } from "../methods/index.js";
 import { ObjectCreate } from "../methods/create.js";
-import { Functions, Properties } from "../singletons.js";
+import { Environment, Functions, Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionExpression } from "babel-types";
@@ -37,7 +37,7 @@ export default function(
       let scope = env;
 
       // 3. Let funcEnv be NewDeclarativeEnvironment(scope).
-      let funcEnv = NewDeclarativeEnvironment(realm, scope);
+      let funcEnv = Environment.NewDeclarativeEnvironment(realm, scope);
 
       // 4. Let envRec be funcEnv's EnvironmentRecord.
       let envRec = funcEnv.environmentRecord;
@@ -81,7 +81,7 @@ export default function(
       let scope = env;
 
       // 3. Let funcEnv be NewDeclarativeEnvironment(scope).
-      let funcEnv = NewDeclarativeEnvironment(realm, scope);
+      let funcEnv = Environment.NewDeclarativeEnvironment(realm, scope);
 
       // 4. Let envRec be funcEnv's EnvironmentRecord.
       let envRec = funcEnv.environmentRecord;

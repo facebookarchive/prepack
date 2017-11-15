@@ -13,11 +13,11 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { StringValue, NumberValue } from "../values/index.js";
-import { GetIterator, GetValue } from "../methods/index.js";
+import { GetIterator } from "../methods/index.js";
 import { ArrayCreate, CreateDataProperty } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { IteratorStep, IteratorValue } from "../methods/iterator.js";
-import { Properties } from "../singletons.js";
+import { Environment, Properties } from "../singletons.js";
 import type { BabelNodeArrayExpression } from "babel-types";
 
 // ECMA262 2.2.5.3
@@ -47,7 +47,7 @@ export default function(
       let spreadRef = env.evaluate(elem.argument, strictCode);
 
       // 2. Let spreadObj be ? GetValue(spreadRef).
-      let spreadObj = GetValue(realm, spreadRef);
+      let spreadObj = Environment.GetValue(realm, spreadRef);
 
       // 3. Let iterator be ? GetIterator(spreadObj).
       let iterator = GetIterator(realm, spreadObj);
@@ -81,7 +81,7 @@ export default function(
       let initResult = env.evaluate(elem, strictCode);
 
       // 5. Let initValue be ? GetValue(initResult).
-      let initValue = GetValue(realm, initResult);
+      let initValue = Environment.GetValue(realm, initResult);
 
       // 6. Let created be CreateDataProperty(array, ToString(ToUint32(postIndex+padding)), initValue).
       let created = CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), initValue);

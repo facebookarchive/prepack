@@ -37,20 +37,13 @@ import {
   CreateDataProperty,
   equalDescriptors,
   Get,
-  GetBase,
   GetGlobalObject,
-  GetReferencedName,
-  GetReferencedNamePartial,
   GetThisValue,
-  HasPrimitiveBase,
   HasSomeCompatibleType,
   IsAccessorDescriptor,
   IsDataDescriptor,
   IsGenericDescriptor,
   IsPropertyKey,
-  IsPropertyReference,
-  IsStrictReference,
-  IsUnresolvableReference,
   joinEffects,
   MakeConstructor,
   ObjectCreate,
@@ -65,7 +58,7 @@ import {
 } from "../methods/index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
-import { Functions, Path } from "../singletons.js";
+import { Environment, Functions, Path } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 
@@ -879,12 +872,12 @@ export class PropertiesImplementation {
     }
 
     // 4. Let base be GetBase(V).
-    let base = GetBase(realm, V);
+    let base = Environment.GetBase(realm, V);
 
     // 5. If IsUnresolvableReference(V) is true, then
-    if (IsUnresolvableReference(realm, V)) {
+    if (Environment.IsUnresolvableReference(realm, V)) {
       // a. If IsStrictReference(V) is true, then
-      if (IsStrictReference(realm, V)) {
+      if (Environment.IsStrictReference(realm, V)) {
         // i. Throw a ReferenceError exception.
         throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError);
       }
@@ -893,13 +886,13 @@ export class PropertiesImplementation {
       let globalObj = GetGlobalObject(realm);
 
       // c. Return ? Set(globalObj, GetReferencedName(V), W, false).
-      return this.Set(realm, globalObj, GetReferencedName(realm, V), W, false);
+      return this.Set(realm, globalObj, Environment.GetReferencedName(realm, V), W, false);
     }
 
     // 6. Else if IsPropertyReference(V) is true, then
-    if (IsPropertyReference(realm, V)) {
+    if (Environment.IsPropertyReference(realm, V)) {
       // a. If HasPrimitiveBase(V) is true, then
-      if (HasPrimitiveBase(realm, V)) {
+      if (Environment.HasPrimitiveBase(realm, V)) {
         // i. Assert: In realm case, base will never be null or undefined.
         invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
@@ -909,10 +902,10 @@ export class PropertiesImplementation {
       invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
       // b. Let succeeded be ? base.[[Set]](GetReferencedName(V), W, GetThisValue(V)).
-      let succeeded = base.$SetPartial(GetReferencedNamePartial(realm, V), W, GetThisValue(realm, V));
+      let succeeded = base.$SetPartial(Environment.GetReferencedNamePartial(realm, V), W, GetThisValue(realm, V));
 
       // c. If succeeded is false and IsStrictReference(V) is true, throw a TypeError exception.
-      if (succeeded === false && IsStrictReference(realm, V)) {
+      if (succeeded === false && Environment.IsStrictReference(realm, V)) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
 
@@ -923,9 +916,9 @@ export class PropertiesImplementation {
     // 7. Else base must be an Environment Record,
     if (base instanceof EnvironmentRecord) {
       // a. Return ? base.SetMutableBinding(GetReferencedName(V), W, IsStrictReference(V)) (see 8.1.1).
-      let referencedName = GetReferencedName(realm, V);
+      let referencedName = Environment.GetReferencedName(realm, V);
       invariant(typeof referencedName === "string");
-      return base.SetMutableBinding(referencedName, W, IsStrictReference(realm, V));
+      return base.SetMutableBinding(referencedName, W, Environment.IsStrictReference(realm, V));
     }
 
     invariant(false);

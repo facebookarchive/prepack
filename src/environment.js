@@ -49,16 +49,8 @@ import generate from "babel-generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
-import {
-  ToBooleanPartial,
-  HasProperty,
-  Get,
-  GetValue,
-  IsExtensible,
-  HasOwnProperty,
-  IsDataDescriptor,
-} from "./methods/index.js";
-import { Properties } from "./singletons.js";
+import { ToBooleanPartial, HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
+import { Environment, Properties } from "./singletons.js";
 import * as t from "babel-types";
 
 const sourceMap = require("source-map");
@@ -987,7 +979,7 @@ export class LexicalEnvironment {
   ): [Completion | Value, BabelNode, Array<BabelNodeStatement>] {
     let [result, partial_ast, partial_io] = this.partiallyEvaluateCompletion(ast, strictCode, metadata);
     if (result instanceof Reference) {
-      result = GetValue(this.realm, result);
+      result = Environment.GetValue(this.realm, result);
     }
     return [result, partial_ast, partial_io];
   }
@@ -1011,7 +1003,7 @@ export class LexicalEnvironment {
 
   evaluateCompletionDeref(ast: BabelNode, strictCode: boolean, metadata?: any): AbruptCompletion | Value {
     let result = this.evaluateCompletion(ast, strictCode, metadata);
-    if (result instanceof Reference) result = GetValue(this.realm, result);
+    if (result instanceof Reference) result = Environment.GetValue(this.realm, result);
     return result;
   }
 
@@ -1100,7 +1092,7 @@ export class LexicalEnvironment {
     }
     if (res instanceof AbruptCompletion) return [res, code];
 
-    return [GetValue(this.realm, res), code];
+    return [Environment.GetValue(this.realm, res), code];
   }
 
   executePartialEvaluator(
@@ -1160,7 +1152,7 @@ export class LexicalEnvironment {
     }
     if (res instanceof AbruptCompletion) return res;
 
-    return GetValue(this.realm, res);
+    return Environment.GetValue(this.realm, res);
   }
 
   fixup_source_locations(ast: BabelNode, map: string) {

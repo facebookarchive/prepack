@@ -24,7 +24,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { GetValue } from "../methods/index.js";
+import { Environment } from "../singletons.js";
 import { IsToPrimitivePure, GetToPrimitivePureResultType, IsToNumberPure } from "../methods/index.js";
 import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
@@ -37,11 +37,11 @@ export default function(
 ): Value {
   // evaluate left
   let lref = env.evaluate(ast.left, strictCode);
-  let lval = GetValue(realm, lref);
+  let lval = Environment.GetValue(realm, lref);
 
   // evaluate right
   let rref = env.evaluate(ast.right, strictCode);
-  let rval = GetValue(realm, rref);
+  let rval = Environment.GetValue(realm, rref);
 
   return computeBinary(realm, ast.operator, lval, rval, ast.left.loc, ast.right.loc, ast.loc);
 }

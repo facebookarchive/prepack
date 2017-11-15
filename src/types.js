@@ -27,7 +27,7 @@ import type {
   Value,
 } from "./values/index.js";
 import { AbruptCompletion, Completion, NormalCompletion } from "./completions.js";
-import { LexicalEnvironment, Reference } from "./environment.js";
+import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
 import { ObjectValue } from "./values/index.js";
 import type {
   BabelNode,
@@ -35,6 +35,8 @@ import type {
   BabelNodeClassMethod,
   BabelNodeLVal,
   BabelNodeObjectMethod,
+  BabelNodePattern,
+  BabelNodeVariableDeclaration,
 } from "babel-types";
 import { Realm } from "./realm.js";
 
@@ -516,4 +518,125 @@ export type FunctionType = {
     strictCode: boolean,
     functionPrototype?: ObjectValue
   ): { $Key: PropertyKeyValue, $Closure: ECMAScriptSourceFunctionValue },
+};
+
+export type EnvironmentType = {
+  // ECMA262 6.2.3
+  // IsSuperReference(V). Returns true if this reference has a thisValue component.
+  IsSuperReference(realm: Realm, V: Reference): boolean,
+
+  // ECMA262 6.2.3
+  // HasPrimitiveBase(V). Returns true if Type(base) is Boolean, String, Symbol, or Number.
+  HasPrimitiveBase(realm: Realm, V: Reference): boolean,
+
+  // ECMA262 6.2.3
+  // GetReferencedName(V). Returns the referenced name component of the reference V.
+  GetReferencedName(realm: Realm, V: Reference): string | SymbolValue,
+
+  GetReferencedNamePartial(realm: Realm, V: Reference): AbstractValue | string | SymbolValue,
+
+  // ECMA262 6.2.3.1
+  GetValue(realm: Realm, V: Reference | Value): Value,
+
+  // ECMA262 6.2.3
+  // IsStrictReference(V). Returns the strict reference flag component of the reference V.
+  IsStrictReference(realm: Realm, V: Reference): boolean,
+
+  // ECMA262 6.2.3
+  // IsPropertyReference(V). Returns true if either the base value is an object or HasPrimitiveBase(V) is true; otherwise returns false.
+  IsPropertyReference(realm: Realm, V: Reference): boolean,
+
+  // ECMA262 6.2.3
+  // GetBase(V). Returns the base value component of the reference V.
+  GetBase(realm: Realm, V: Reference): void | Value | EnvironmentRecord,
+
+  // ECMA262 6.2.3
+  // IsUnresolvableReference(V). Returns true if the base value is undefined and false otherwise.
+  IsUnresolvableReference(realm: Realm, V: Reference): boolean,
+
+  // ECMA262 8.1.2.2
+  NewDeclarativeEnvironment(realm: Realm, E: LexicalEnvironment): LexicalEnvironment,
+
+  BoundNames(realm: Realm, node: BabelNode): Array<string>,
+
+  // ECMA262 13.3.3.2
+  ContainsExpression(realm: Realm, node: ?BabelNode): boolean,
+
+  // ECMA262 8.3.2
+  ResolveBinding(realm: Realm, name: string, strict: boolean, env?: ?LexicalEnvironment): Reference,
+
+  // ECMA262 8.1.2.1
+  GetIdentifierReference(realm: Realm, lex: ?LexicalEnvironment, name: string, strict: boolean): Reference,
+
+  // ECMA262 6.2.3.4
+  InitializeReferencedBinding(realm: Realm, V: Reference, W: Value): Value,
+
+  // ECMA262 13.2.14
+  BlockDeclarationInstantiation(
+    realm: Realm,
+    strictCode: boolean,
+    body: Array<BabelNodeStatement>,
+    env: LexicalEnvironment
+  ): void,
+
+  // ECMA262 8.1.2.5
+  NewGlobalEnvironment(
+    realm: Realm,
+    G: ObjectValue | AbstractObjectValue,
+    thisValue: ObjectValue | AbstractObjectValue
+  ): void,
+
+  // ECMA262 8.1.2.3
+  NewObjectEnvironment(realm: Realm, O: ObjectValue | AbstractObjectValue, E: LexicalEnvironment): LexicalEnvironment,
+
+  // ECMA262 8.1.2.4
+  NewFunctionEnvironment(realm: Realm, F: ECMAScriptFunctionValue, newTarget?: ObjectValue): LexicalEnvironment,
+
+  // ECMA262 8.3.1
+  GetActiveScriptOrModule(realm: Realm): any,
+
+  // ECMA262 8.3.3
+  GetThisEnvironment(realm: Realm): EnvironmentRecord,
+
+  // ECMA262 8.3.4
+  ResolveThisBinding(realm: Realm): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue,
+
+  BindingInitialization(
+    realm: Realm,
+    node: BabelNodeLVal | BabelNodeVariableDeclaration,
+    value: Value,
+    strictCode: boolean,
+    environment: void | LexicalEnvironment
+  ): void | boolean | Value,
+
+  // ECMA262 13.3.3.6
+  // ECMA262 14.1.19
+  IteratorBindingInitialization(
+    realm: Realm,
+    formals: $ReadOnlyArray<BabelNodeLVal | null>,
+    iteratorRecord: { $Iterator: ObjectValue, $Done: boolean },
+    strictCode: boolean,
+    environment: void | LexicalEnvironment
+  ): void,
+
+  // ECMA262 12.1.5.1
+  InitializeBoundName(
+    realm: Realm,
+    name: string,
+    value: Value,
+    environment: void | LexicalEnvironment
+  ): void | boolean | Value,
+
+  // ECMA262 12.3.1.3 and 13.7.5.6
+  IsDestructuring(ast: BabelNode): boolean,
+
+  // ECMA262 13.3.3.7
+  KeyedBindingInitialization(
+    realm: Realm,
+    node: BabelNodeIdentifier | BabelNodePattern,
+    value: Value,
+    strictCode: boolean,
+    environment: ?LexicalEnvironment,
+    propertyName: PropertyKeyValue
+  ): void | boolean | Value,
 };

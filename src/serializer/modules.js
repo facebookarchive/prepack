@@ -13,9 +13,9 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
-import { ResolveBinding, Get, IsUnresolvableReference } from "../methods/index.js";
+import { Get } from "../methods/index.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
-import { Functions } from "../singletons.js";
+import { Environment, Functions } from "../singletons.js";
 import { AbstractValue, Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
@@ -385,7 +385,7 @@ export class Modules {
 
         let doesNotMatter = true;
         let reference = logger.tryQuery(
-          () => ResolveBinding(realm, innerName, doesNotMatter, f.$Environment),
+          () => Environment.ResolveBinding(realm, innerName, doesNotMatter, f.$Environment),
           undefined,
           false
         );
@@ -393,7 +393,7 @@ export class Modules {
           // We couldn't resolve as we came across some behavior that we cannot deal with abstractly
           return false;
         }
-        if (IsUnresolvableReference(realm, reference)) return false;
+        if (Environment.IsUnresolvableReference(realm, reference)) return false;
         let referencedBase = reference.base;
         let referencedName: string = (reference.referencedName: any);
         if (typeof referencedName !== "string") return false;

@@ -13,8 +13,9 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Value, EmptyValue } from "../values/index.js";
 import { AbruptCompletion, BreakCompletion } from "../completions.js";
-import { BoundNames, NewDeclarativeEnvironment, GetValue, ToBooleanPartial, UpdateEmpty } from "../methods/index.js";
+import { ToBooleanPartial, UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
+import { Environment } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeForStatement } from "babel-types";
 
@@ -31,7 +32,7 @@ export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings
     // d. Assert: outer is not null.
     invariant(outer !== null);
     // e. Let thisIterationEnv be NewDeclarativeEnvironment(outer).
-    let thisIterationEnv = NewDeclarativeEnvironment(realm, outer);
+    let thisIterationEnv = Environment.NewDeclarativeEnvironment(realm, outer);
     // f. Let thisIterationEnvRec be thisIterationEnv's EnvironmentRecord.
     let thisIterationEnvRec = thisIterationEnv.environmentRecord;
     // g. For each element bn of perIterationBindings do,
@@ -75,7 +76,7 @@ function ForBodyEvaluation(
       let testRef = env.evaluate(test, strictCode);
 
       // ii. Let testValue be ? GetValue(testRef).
-      let testValue = GetValue(realm, testRef);
+      let testValue = Environment.GetValue(realm, testRef);
 
       // iii. If ToBoolean(testValue) is false, return NormalCompletion(V).
       if (!ToBooleanPartial(realm, testValue)) return V;
@@ -109,7 +110,7 @@ function ForBodyEvaluation(
       let incRef = env.evaluate(increment, strictCode);
 
       // ii. Perform ? GetValue(incRef).
-      GetValue(realm, incRef);
+      Environment.GetValue(realm, incRef);
     }
   }
 
@@ -143,7 +144,7 @@ export default function(
       let oldEnv = env;
 
       // 2. Let loopEnv be NewDeclarativeEnvironment(oldEnv).
-      let loopEnv = NewDeclarativeEnvironment(realm, oldEnv);
+      let loopEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
 
       // 3. Let loopEnvRec be loopEnv's EnvironmentRecord.
       let loopEnvRec = loopEnv.environmentRecord;
@@ -152,7 +153,7 @@ export default function(
       let isConst = init.kind === "const";
 
       // 5. Let boundNames be the BoundNames of LexicalDeclaration.
-      let boundNames = BoundNames(realm, init);
+      let boundNames = Environment.BoundNames(realm, init);
 
       // 6. For each element dn of boundNames do
       for (let dn of boundNames) {
@@ -204,7 +205,7 @@ export default function(
       let exprRef = env.evaluate(init, strictCode);
 
       // b. Perform ? GetValue(exprRef).
-      GetValue(realm, exprRef);
+      Environment.GetValue(realm, exprRef);
     }
 
     // 2. Return ? ForBodyEvaluation(the second Expression, the third Expression, Statement, « », labelSet).
