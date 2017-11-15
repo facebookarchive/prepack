@@ -103,9 +103,9 @@ function execExternal(externalSpec, code) {
   return String(output.trim());
 }
 
-function augmentCodeWithLazyObjectSupport(code) {
+function augmentCodeWithLazyObjectSupport(code, lazyRuntimeName) {
   const mockLazyObjectsSupport = `
-    var ${LAZY_OBJECTS_RUNTIME_NAME} = {
+    var ${lazyRuntimeName} = {
       _lazyObjectIds: new Map(),
       _callback: null,
       setLazyObjectInitializer: function(callback) {
@@ -124,7 +124,7 @@ function augmentCodeWithLazyObjectSupport(code) {
       }
     };
   `;
-  const hydrateLazyObjectsCall = `${LAZY_OBJECTS_RUNTIME_NAME}.hydrateAllObjects();`;
+  const hydrateLazyObjectsCall = `${lazyRuntimeName}.hydrateAllObjects();`;
   code = code.replace("/*force hydrate lazy objects*/", hydrateLazyObjectsCall);
   return `${mockLazyObjectsSupport}
     ${code}; // keep newline here as code may end with comment
@@ -342,9 +342,16 @@ function runTest(name, code, options, args) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
         try {
-          codeToRun = augmentCodeWithLazyObjectSupport(codeToRun);
-          if (execSpec) actual = execExternal(execSpec, codeToRun);
-          else actual = execInContext(codeToRun);
+          if (options.lazyObjectsRuntime !== undefined) {
+            codeToRun = augmentCodeWithLazyObjectSupport(codeToRun,
+              args.lazyObjectsRuntime);
+          }
+          if (execSpec) {
+            actual = execExternal(execSpec, codeToRun);
+            //assume the external runtime supports lazy.
+          } else {
+            actual = execInContext(codeToRun);
+          }
         } catch (e) {
           // always compare strings.
           actual = "" + e;
@@ -447,7 +454,7 @@ function run(args) {
     for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime] of [
       [false, false, undefined],
       [true, true, undefined],
-      [false, false, LAZY_OBJECTS_RUNTIME_NAME],
+      [false, false, args.lazyObjectsRuntime],
     ]) {
       if (skipLazyObjects && lazyObjectsRuntime) {
         continue;
@@ -470,12 +477,14 @@ class ProgramArgs {
   filter: string;
   outOfProcessRuntime: string;
   es5: boolean;
-  constructor(debugNames: boolean, verbose: boolean, filter: string, outOfProcessRuntime: string, es5: boolean) {
+  lazyObjectsRuntime: string;
+  constructor(debugNames: boolean, verbose: boolean, filter: string, outOfProcessRuntime: string, es5: boolean, lazyObjectsRuntime: string) {
     this.debugNames = debugNames;
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
     this.outOfProcessRuntime = outOfProcessRuntime;
     this.es5 = es5;
+    this.lazyObjectsRuntime = lazyObjectsRuntime;
   }
 }
 
@@ -504,7 +513,7 @@ function usage(): string {
   return (
     `Usage: ${process.argv[0]} ${process.argv[1]} ` +
     EOL +
-    `[--verbose] [--filter <string>] [--outOfProcessRuntime <path>] [--es5]`
+    `[--verbose] [--filter <string>] [--outOfProcessRuntime <path>] [--es5] [--lazyObjectsRuntime]`
   );
 }
 
@@ -528,8 +537,8 @@ function argsParse(): ProgramArgs {
       es5: false, // if true test marked as es6 only are not run
       filter: "",
       outOfProcessRuntime: "", // if set, assumed to be a JS runtime and is used
-      // to run tests. If not a seperate node contexr is
-      // used.
+      // to run tests. If not a seperate node context used.
+      lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME
     },
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
@@ -549,12 +558,17 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.outOfProcessRuntime !== "string") {
     throw new ArgsParseError("outOfProcessRuntime must be path pointing to an javascript runtime");
   }
+  if (typeof parsedArgs.lazyObjectsRuntime !== "string") {
+    throw new ArgsParseError("lazyObjectsRuntime must be a string");
+  }
+
   let programArgs = new ProgramArgs(
     parsedArgs.debugNames,
     parsedArgs.verbose,
     parsedArgs.filter,
     parsedArgs.outOfProcessRuntime,
-    parsedArgs.es5
+    parsedArgs.es5,
+    parsedArgs.lazyObjectsRuntime,
   );
   return programArgs;
 }
