@@ -15,7 +15,6 @@ let prepackSources = require("../lib/prepack-node.js").prepackSources;
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
-let util = require("util");
 let chalk = require("chalk");
 let path = require("path");
 let fs = require("fs");
