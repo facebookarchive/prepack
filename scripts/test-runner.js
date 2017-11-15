@@ -342,14 +342,14 @@ function runTest(name, code, options, args) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
         try {
-          if (options.lazyObjectsRuntime !== undefined) {
-            codeToRun = augmentCodeWithLazyObjectSupport(codeToRun,
-              args.lazyObjectsRuntime);
-          }
           if (execSpec) {
             actual = execExternal(execSpec, codeToRun);
-            //assume the external runtime supports lazy.
           } else {
+            if (options.lazyObjectsRuntime !== undefined) {
+              codeToRun = augmentCodeWithLazyObjectSupport(codeToRun,
+                args.lazyObjectsRuntime);
+            }
+
             actual = execInContext(codeToRun);
           }
         } catch (e) {
