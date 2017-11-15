@@ -96,6 +96,13 @@ export type Descriptor = {
 
   get?: UndefinedValue | CallableObjectValue | AbstractValue,
   set?: UndefinedValue | CallableObjectValue | AbstractValue,
+
+  // Only used if the result of a join of two descriptors is not a data descriptor with identical attribute values.
+  // When present, any update to the property must produce effects that are the join of updating both desriptors,
+  // using joinCondition as the condition of the join.
+  joinCondition?: AbstractValue,
+  descriptor1?: Descriptor,
+  descriptor2?: Descriptor,
 };
 
 export type FunctionBodyAstNode = {
@@ -295,6 +302,7 @@ export type DebugServerType = {
 
 export type PathType = {
   implies(condition: AbstractValue): boolean,
+  impliesNot(condition: AbstractValue): boolean,
   withCondition<T>(condition: AbstractValue, evaluate: () => T): T,
   withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T,
 };
