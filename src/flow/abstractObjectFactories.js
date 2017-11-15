@@ -13,7 +13,7 @@ import { Realm } from "../realm.js";
 import buildExpressionTemplate from "../utils/builder.js";
 import { ObjectCreate, ArrayCreate } from "../methods/index.js";
 import { ValuesDomain } from "../domains/index.js";
-import { Value, AbstractValue, ObjectValue, ArrayValue } from "../values/index.js";
+import { Value, AbstractValue, ObjectValue, ArrayValue, AbstractObjectValue } from "../values/index.js";
 import invariant from "../invariant.js";
 import { type ObjectTypeTemplate } from "./utils.js";
 
@@ -60,7 +60,7 @@ function _createAbstractObject(
   realm: Realm,
   name: string | null,
   objectTypes: ObjectTypeTemplate | null
-): AbstractValue {
+): AbstractObjectValue {
   if (name === null) {
     name = "unknown";
   }
@@ -71,14 +71,14 @@ function _createAbstractObject(
   template.makeSimple();
   value.values = new ValuesDomain(new Set([template]));
   realm.rebuildNestedProperties(value, name);
-  return value;
+  return ((value: any): AbstractObjectValue);
 }
 
 export function createAbstractObject(
   realm: Realm,
   name: string | null,
   objectTypes: ObjectTypeTemplate | null | string
-): ObjectValue | AbstractValue {
+): AbstractObjectValue {
   if (typeof objectTypes === "string") {
     invariant(
       objectTypes === "empty" || objectTypes === "object",

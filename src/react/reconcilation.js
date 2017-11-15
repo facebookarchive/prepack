@@ -22,6 +22,7 @@ import {
   AbstractValue,
   ArrayValue,
   ObjectValue,
+  AbstractObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
 import { isReactElement, valueIsClassComponent, mapOverArrayValue } from "./utils";
@@ -99,8 +100,8 @@ export class Reconciler {
   }
   _renderComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractValue,
-    context: ObjectValue | AbstractValue,
+    props: ObjectValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
@@ -131,7 +132,7 @@ export class Reconciler {
   }
   _resolveDeeply(
     value: Value,
-    context: ObjectValue | AbstractValue,
+    context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
@@ -190,7 +191,7 @@ export class Reconciler {
         this._assignBailOutMessage(reactElement, `Bail-out: refs are not supported on <Components />`);
         return reactElement;
       }
-      if (!(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue)) {
+      if (!(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue)) {
         this._assignBailOutMessage(
           reactElement,
           `Bail-out: props on <Component /> was not not an ObjectValue or an AbstractValue`
@@ -255,7 +256,7 @@ export class Reconciler {
   }
   _resolveFragment(
     arrayValue: ArrayValue,
-    context: ObjectValue | AbstractValue,
+    context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
