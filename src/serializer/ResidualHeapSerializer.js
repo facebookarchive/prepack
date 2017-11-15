@@ -1212,6 +1212,11 @@ export class ResidualHeapSerializer {
 
   _serializeAbstractValueHelper(val: AbstractValue): BabelNodeExpression {
     let serializedArgs = val.args.map((abstractArg, i) => this.serializeValue(abstractArg));
+    if (val.kind === "abstractConcreteUnion") {
+      let abstractIndex = val.args.findIndex(v => v instanceof AbstractValue);
+      invariant(abstractIndex >= 0 && abstractIndex < val.args.length);
+      return serializedArgs[abstractIndex];
+    }
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
