@@ -14,7 +14,8 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
 import { StringValue, Value } from "../values/index.js";
-import { EvaluateStatements, NewDeclarativeEnvironment, BlockDeclarationInstantiation } from "../methods/index.js";
+import { NewDeclarativeEnvironment, BlockDeclarationInstantiation } from "../methods/index.js";
+import { Functions } from "../singletons.js";
 
 // ECMA262 13.2.13
 export default function(
@@ -45,7 +46,7 @@ export default function(
       }
     }
 
-    return EvaluateStatements(ast.body, blockValue, strictCode, blockEnv, realm);
+    return Functions.EvaluateStatements(ast.body, blockValue, strictCode, blockEnv, realm);
   } finally {
     // 6. Set the running execution context's LexicalEnvironment to oldEnv.
     realm.getRunningContext().lexicalEnvironment = oldEnv;

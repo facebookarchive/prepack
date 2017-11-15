@@ -9,10 +9,15 @@
 
 /* @flow */
 
-import type { PathType, PropertiesType } from "./types.js";
+import type { FunctionType, PathType, PropertiesType } from "./types.js";
 
+export let Functions: FunctionType = (null: any);
 export let Path: PathType = (null: any);
 export let Properties: PropertiesType = (null: any);
+
+export function setFunctions(singleton: FunctionType) {
+  Functions = singleton;
+}
 
 export function setPath(singleton: PathType) {
   Path = singleton;

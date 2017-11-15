@@ -21,12 +21,8 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
-import {
-  BoundNames,
-  FindVarScopedDeclarations,
-  incorporateSavedCompletion,
-  stopEffectCaptureJoinApplyAndReturnCompletion,
-} from "../methods/index.js";
+import { BoundNames, stopEffectCaptureJoinApplyAndReturnCompletion } from "../methods/index.js";
+import { Functions } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
@@ -103,7 +99,7 @@ export function GlobalDeclarationInstantiation(
   }
 
   // 7. Let varDeclarations be the VarScopedDeclarations of script.
-  let varDeclarations = FindVarScopedDeclarations(ast);
+  let varDeclarations = Functions.FindVarScopedDeclarations(ast);
 
   // 8. Let functionsToInitialize be a new empty List.
   let functionsToInitialize = [];
@@ -244,7 +240,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         if (!realm.useAbstractInterpretation) throw res;
         // We are about the leave this program and this presents a join point where all non exeptional control flows
         // converge into a single flow using the joined effects as the new state.
-        res = incorporateSavedCompletion(realm, res);
+        res = Functions.incorporateSavedCompletion(realm, res);
         // The call to incorporateSavedCompletion above, has taken care of the join because res is abrupt.
         // What remains to be done is to emit throw statements to the generator.
         if (res instanceof JoinedAbruptCompletions) {
@@ -272,7 +268,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
   // We are about to leave this program and this presents a join point where all control flows
   // converge into a single flow and the joined effects become the final state.
   if (val instanceof Value) {
-    val = incorporateSavedCompletion(realm, val);
+    val = Functions.incorporateSavedCompletion(realm, val);
     if (val instanceof PossiblyNormalCompletion) {
       // There are still some conditional throws to emit and state still has to be joined in.
       stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);

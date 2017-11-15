@@ -17,12 +17,8 @@ import {
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "../completions.js";
-import {
-  incorporateSavedCompletion,
-  joinEffects,
-  UpdateEmpty,
-  updatePossiblyNormalCompletionWithSubsequentEffects,
-} from "../methods/index.js";
+import { joinEffects, UpdateEmpty, updatePossiblyNormalCompletionWithSubsequentEffects } from "../methods/index.js";
+import { Functions } from "../singletons.js";
 import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
 import invariant from "../invariant.js";
@@ -34,7 +30,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
   let handler = ast.handler;
   if (handler) {
     // The start of the catch handler is a join point where all throw completions come together
-    blockRes = incorporateSavedCompletion(realm, blockRes);
+    blockRes = Functions.incorporateSavedCompletion(realm, blockRes);
     if (blockRes instanceof ThrowCompletion) {
       handlerRes = env.evaluateCompletionDeref(handler, strictCode, blockRes);
       // Note: The handler may have introduced new forks

@@ -13,8 +13,9 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
-import { incorporateSavedCompletion, IsUnresolvableReference, ResolveBinding, Get } from "../methods/index.js";
+import { ResolveBinding, Get, IsUnresolvableReference } from "../methods/index.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
+import { Functions } from "../singletons.js";
 import { AbstractValue, Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
@@ -122,7 +123,7 @@ export class ModuleTracer extends Tracer {
             this.modules.recordModuleInitialized(moduleIdValue, value);
             // Make this into a join point by suppressing the conditional exception.
             // TODO: delete this code and let the caller deal with the conditional exception.
-            let completion = incorporateSavedCompletion(realm, value);
+            let completion = Functions.incorporateSavedCompletion(realm, value);
             if (completion instanceof PossiblyNormalCompletion) {
               realm.stopEffectCapture(completion);
               let warning = new CompilerDiagnostic(

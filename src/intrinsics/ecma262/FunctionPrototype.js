@@ -10,8 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { BoundFunctionCreate, SetFunctionName } from "../../methods/function.js";
-import { Properties } from "../../singletons.js";
+import { Functions, Properties } from "../../singletons.js";
 import {
   AbstractValue,
   BooleanValue,
@@ -101,7 +100,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     args;
 
     // 4. Let F be ? BoundFunctionCreate(Target, thisArg, args).
-    let F = BoundFunctionCreate(realm, Target, thisArg, args);
+    let F = Functions.BoundFunctionCreate(realm, Target, thisArg, args);
 
     // 5. Let targetHasLength be ? HasOwnProperty(Target, "length").
     let targetHasLength = HasOwnProperty(realm, Target, new StringValue(realm, "length"));
@@ -145,7 +144,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (!(targetName instanceof StringValue)) targetName = realm.intrinsics.emptyString;
 
     // 11. Perform SetFunctionName(F, targetName, "bound").
-    SetFunctionName(realm, F, targetName, "bound");
+    Functions.SetFunctionName(realm, F, targetName, "bound");
 
     // 12. Return F.
     return F;

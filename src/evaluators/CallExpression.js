@@ -17,7 +17,7 @@ import { EnvironmentRecord } from "../environment.js";
 import { Value } from "../values/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue, ObjectValue } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { PerformEval } from "../methods/function.js";
+import { Functions } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -182,7 +182,7 @@ function EvaluateCall(
         // Assume that it is a safe eval with no visible heap changes or abrupt control flow.
         return generateRuntimeCall();
       }
-      return PerformEval(realm, evalText, evalRealm, strictCaller, true);
+      return Functions.PerformEval(realm, evalText, evalRealm, strictCaller, true);
     }
   }
 

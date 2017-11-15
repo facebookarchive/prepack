@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { FunctionCreate } from "../methods/index.js";
+import { Functions } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 import type { BabelNodeArrowFunctionExpression } from "babel-types";
@@ -39,7 +39,7 @@ export default function(
   let parameters = ast.params;
 
   // 4. Let closure be FunctionCreate(Arrow, parameters, ConciseBody, scope, strict).
-  let closure = FunctionCreate(realm, "arrow", parameters, ConciseBody, scope, strict);
+  let closure = Functions.FunctionCreate(realm, "arrow", parameters, ConciseBody, scope, strict);
 
   // 5. Return closure.
   return closure;
