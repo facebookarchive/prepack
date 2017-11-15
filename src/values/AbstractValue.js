@@ -587,7 +587,7 @@ export default class AbstractValue extends Value {
       values = ValuesDomain.topVal;
     }
     let types = TypesDomain.topVal;
-    let [hash, operands] = hashCall("union", ...elements);
+    let [hash, operands] = hashCall("abstractConcreteUnion", ...elements);
     let result = new AbstractValue(realm, types, values, hash, operands, abstractValue._buildNode, {
       kind: "abstractConcreteUnion",
     });
