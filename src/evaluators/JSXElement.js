@@ -26,15 +26,8 @@ import type {
 import { ArrayValue, StringValue, Value, NumberValue, ObjectValue, SymbolValue } from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../react/jsx";
 import * as t from "babel-types";
-import {
-  Get,
-  GetValue,
-  ResolveBinding,
-  ArrayCreate,
-  CreateDataPropertyOrThrow,
-  ObjectCreate,
-} from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Get, ArrayCreate, CreateDataPropertyOrThrow, ObjectCreate } from "../methods/index.js";
+import { Environment, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { computeBinary } from "./BinaryExpression.js";
 
@@ -104,9 +97,12 @@ function evaluateJSXMemberExpression(
 ): Value {
   switch (ast.type) {
     case "JSXIdentifier":
-      return GetValue(realm, ResolveBinding(realm, ((ast: any): BabelNodeJSXIdentifier).name, strictCode, env));
+      return Environment.GetValue(
+        realm,
+        Environment.ResolveBinding(realm, ((ast: any): BabelNodeJSXIdentifier).name, strictCode, env)
+      );
     case "JSXMemberExpression":
-      return GetValue(
+      return Environment.GetValue(
         realm,
         env.evaluate(convertJSXExpressionToIdentifier(((ast: any): BabelNodeJSXMemberExpression)), strictCode)
       );
@@ -131,9 +127,12 @@ function evaluateJSXValue(value: BabelNode, strictCode: boolean, env: LexicalEnv
       case "StringLiteral":
         return new StringValue(realm, ((value: any): BabelNodeStringLiteral).value);
       case "JSXExpressionContainer":
-        return GetValue(realm, env.evaluate(((value: any): BabelNodeJSXExpressionContainer).expression, strictCode));
+        return Environment.GetValue(
+          realm,
+          env.evaluate(((value: any): BabelNodeJSXExpressionContainer).expression, strictCode)
+        );
       case "JSXElement":
-        return GetValue(realm, env.evaluate(value, strictCode));
+        return Environment.GetValue(realm, env.evaluate(value, strictCode));
       default:
         invariant(false, `Unknown JSX value type: ${value.type}`);
     }
@@ -156,7 +155,7 @@ function getDefaultProps(
   }
   if (!isTagName(elementType) && typeof name === "string") {
     // find the value of "ComponentXXX.defaultProps"
-    let defaultProps = GetValue(
+    let defaultProps = Environment.GetValue(
       realm,
       env.evaluate(t.memberExpression(t.identifier(name), t.identifier("defaultProps")), false)
     );
@@ -254,7 +253,7 @@ function evaluateJSXAttributes(
         attributes.set(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm));
         break;
       case "JSXSpreadAttribute":
-        let spreadValue = GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
+        let spreadValue = Environment.GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
 
         if (spreadValue instanceof ObjectValue) {
           for (let [key, spreadProp] of spreadValue.properties) {

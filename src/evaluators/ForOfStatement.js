@@ -26,22 +26,15 @@ import {
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import {
-  InitializeReferencedBinding,
-  GetValue,
   IteratorStep,
   IteratorValue,
-  NewDeclarativeEnvironment,
-  ResolveBinding,
   IteratorClose,
   ToObjectPartial,
   UpdateEmpty,
-  BoundNames,
-  BindingInitialization,
   DestructuringAssignmentEvaluation,
   GetIterator,
-  IsDestructuring,
 } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Environment, Properties } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeForOfStatement,
@@ -91,7 +84,7 @@ function BindingInstantiation(realm: Realm, ast: BabelNodeVariableDeclaration, e
   invariant(envRec instanceof DeclarativeEnvironmentRecord);
 
   // 3. For each element name of the BoundNames of ForBinding do
-  for (let name of BoundNames(realm, ast)) {
+  for (let name of Environment.BoundNames(realm, ast)) {
     // a. If IsConstantDeclaration of LetOrConst is true, then
     if (ast.kind === "const") {
       // i. Perform ! envRec.CreateImmutableBinding(name, true).
@@ -121,7 +114,7 @@ export function ForInOfHeadEvaluation(
     // a. Assert: TDZnames has no duplicate entries.
 
     // b. Let TDZ be NewDeclarativeEnvironment(oldEnv).
-    let TDZ = NewDeclarativeEnvironment(realm, oldEnv);
+    let TDZ = Environment.NewDeclarativeEnvironment(realm, oldEnv);
 
     // c. Let TDZEnvRec be TDZ's EnvironmentRecord.
     let TDZEnvRec = TDZ.environmentRecord;
@@ -148,7 +141,7 @@ export function ForInOfHeadEvaluation(
   env = oldEnv;
 
   // 5. Let exprValue be ? GetValue(exprRef).
-  let exprValue = GetValue(realm, exprRef);
+  let exprValue = Environment.GetValue(realm, exprRef);
 
   // 6. If iterationKind is enumerate, then
   if (iterationKind === "enumerate") {
@@ -206,7 +199,7 @@ export function ForInOfBodyEvaluation(
   let V: Value = realm.intrinsics.undefined;
 
   // 3. Let destructuring be IsDestructuring of lhs.
-  let destructuring = IsDestructuring(lhs);
+  let destructuring = Environment.IsDestructuring(lhs);
 
   // 4. If destructuring is true and if lhsKind is assignment, then
   if (destructuring && lhsKind === "assignment") {
@@ -245,7 +238,7 @@ export function ForInOfBodyEvaluation(
       // ii. Assert: lhs is a ForDeclaration.
 
       // iii. Let iterationEnv be NewDeclarativeEnvironment(oldEnv).
-      iterationEnv = NewDeclarativeEnvironment(realm, oldEnv);
+      iterationEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
 
       // iv. Perform BindingInstantiation for lhs passing iterationEnv as the argument.
       BindingInstantiation(realm, lhs, iterationEnv);
@@ -256,7 +249,7 @@ export function ForInOfBodyEvaluation(
 
       // vi. If destructuring is false, then
       if (!destructuring) {
-        let names = BoundNames(realm, lhs);
+        let names = Environment.BoundNames(realm, lhs);
 
         // 1. Assert: lhs binds a single name.
         invariant(names.length === 1, "expected single name");
@@ -265,7 +258,7 @@ export function ForInOfBodyEvaluation(
         let lhsName = names[0];
 
         // 3. Let lhsRef be ! ResolveBinding(lhsName).
-        lhsRef = ResolveBinding(realm, lhsName, strictCode);
+        lhsRef = Environment.ResolveBinding(realm, lhsName, strictCode);
       }
     }
 
@@ -281,7 +274,7 @@ export function ForInOfBodyEvaluation(
           // ii. Else if lhsKind is lexicalBinding, then
           // 1. Let status be InitializeReferencedBinding(lhsRef, nextValue).
           invariant(lhsRef instanceof Reference);
-          status = InitializeReferencedBinding(realm, lhsRef, nextValue);
+          status = Environment.InitializeReferencedBinding(realm, lhsRef, nextValue);
         } else {
           // iii. Else,
           // 1. Let status be PutValue(lhsRef, nextValue).
@@ -301,7 +294,7 @@ export function ForInOfBodyEvaluation(
           // 1. Assert: lhs is a ForBinding.
 
           // 2. Let status be the result of performing BindingInitialization for lhs passing nextValue and undefined as the arguments.
-          status = BindingInitialization(realm, lhs, nextValue, strictCode, undefined);
+          status = Environment.BindingInitialization(realm, lhs, nextValue, strictCode, undefined);
         } else {
           // iii. Else,
           // 1. Assert: lhsKind is lexicalBinding.
@@ -311,7 +304,7 @@ export function ForInOfBodyEvaluation(
 
           // 3. Let status be the result of performing BindingInitialization for lhs passing nextValue and iterationEnv as arguments.
           invariant(iterationEnv !== undefined);
-          status = BindingInitialization(realm, lhs, nextValue, strictCode, iterationEnv);
+          status = Environment.BindingInitialization(realm, lhs, nextValue, strictCode, iterationEnv);
         }
       }
     } catch (e) {
@@ -388,7 +381,14 @@ export default function(
       } else {
         // for (ForDeclaration of AssignmentExpression) Statement
         // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(BoundNames of ForDeclaration, AssignmentExpression, iterate).
-        let keyResult = ForInOfHeadEvaluation(realm, env, BoundNames(realm, left), right, "iterate", strictCode);
+        let keyResult = ForInOfHeadEvaluation(
+          realm,
+          env,
+          Environment.BoundNames(realm, left),
+          right,
+          "iterate",
+          strictCode
+        );
         invariant(keyResult instanceof ObjectValue);
 
         // 2. Return ? ForIn/OfBodyEvaluation(ForDeclaration, Statement, keyResult, lexicalBinding, labelSet).

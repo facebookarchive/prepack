@@ -26,17 +26,13 @@ import {
   AbstractValue,
 } from "../values/index.js";
 import {
-  GetBase,
   GetIterator,
-  GetValue,
   HasSomeCompatibleType,
   IsCallable,
   IsPropertyKey,
-  IsPropertyReference,
   IteratorStep,
   IteratorValue,
   joinEffectsAndPromoteNestedReturnCompletions,
-  NewFunctionEnvironment,
   ToObjectPartial,
   unbundleReturnCompletion,
 } from "./index.js";
@@ -50,7 +46,7 @@ import {
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { construct_empty_effects } from "../realm.js";
-import { Functions } from "../singletons.js";
+import { Environment, Functions } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
@@ -74,7 +70,7 @@ export function ArgumentListEvaluation(
         let spreadRef = env.evaluate(node.argument, strictCode);
 
         // 3. Let spreadObj be ? GetValue(spreadRef).
-        let spreadObj = GetValue(realm, spreadRef);
+        let spreadObj = Environment.GetValue(realm, spreadRef);
 
         // 4. Let iterator be ? GetIterator(spreadObj).
         let iterator = GetIterator(realm, spreadObj);
@@ -97,7 +93,7 @@ export function ArgumentListEvaluation(
         }
       } else {
         let ref = env.evaluate(node_, strictCode);
-        let expr = GetValue(realm, ref);
+        let expr = Environment.GetValue(realm, ref);
         args.push(expr);
       }
     }
@@ -124,11 +120,11 @@ export function ArgumentListEvaluation(
       let firstSubRef = env.evaluate(node.expressions[0], strictCode);
 
       // 4. Let firstSub be ? GetValue(firstSubRef).
-      let firstSub = GetValue(realm, firstSubRef);
+      let firstSub = Environment.GetValue(realm, firstSubRef);
 
       // 5. Let restSub be SubstitutionEvaluation of TemplateSpans.
       let restSub = node.expressions.slice(1, node.expressions.length).map(expr => {
-        return GetValue(realm, env.evaluate(expr, strictCode));
+        return Environment.GetValue(realm, env.evaluate(expr, strictCode));
       });
 
       // 6. ReturnIfAbrupt(restSub).
@@ -168,18 +164,18 @@ export function EvaluateCall(
   let thisValue;
 
   // 1. Let func be ? GetValue(ref).
-  let func = GetValue(realm, ref);
+  let func = Environment.GetValue(realm, ref);
 
   // 2. If Type(ref) is Reference, then
   if (ref instanceof Reference) {
     // a. If IsPropertyReference(ref) is true, then
-    if (IsPropertyReference(realm, ref)) {
+    if (Environment.IsPropertyReference(realm, ref)) {
       // i. Let thisValue be GetThisValue(ref).
       thisValue = GetThisValue(realm, ref);
     } else {
       // b. Else, the base of ref is an Environment Record
       // i. Let refEnv be GetBase(ref).
-      let refEnv = GetBase(realm, ref);
+      let refEnv = Environment.GetBase(realm, ref);
       invariant(refEnv instanceof EnvironmentRecord);
 
       // ii. Let thisValue be refEnv.WithBaseObject().
@@ -227,7 +223,7 @@ export function PrepareForOrdinaryCall(
   calleeContext.ScriptOrModule = F.$ScriptOrModule;
 
   // 8. Let localEnv be NewFunctionEnvironment(F, newTarget).
-  let localEnv = NewFunctionEnvironment(realm, F, newTarget);
+  let localEnv = Environment.NewFunctionEnvironment(realm, F, newTarget);
 
   // 9. Set the LexicalEnvironment of calleeContext to localEnv.
   calleeContext.lexicalEnvironment = localEnv;

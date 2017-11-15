@@ -25,15 +25,13 @@ import { Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { BooleanValue, ConcreteValue, NullValue, ObjectValue, UndefinedValue, Value } from "../values/index.js";
 import {
-  GetValue,
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
   HasOwnProperty,
-  GetReferencedName,
   composeNormalCompletions,
   unbundleNormalCompletion,
 } from "../methods/index.js";
-import { Functions, Properties } from "../singletons.js";
+import { Environment, Functions, Properties } from "../singletons.js";
 
 import * as t from "babel-types";
 import invariant from "../invariant.js";
@@ -85,7 +83,7 @@ export default function(
         // ii. If hasNameProperty is false, perform SetFunctionName(rval, GetReferencedName(lref)).
         if (!hasNameProperty) {
           invariant(lref instanceof Reference);
-          Functions.SetFunctionName(realm, rval, GetReferencedName(realm, lref));
+          Functions.SetFunctionName(realm, rval, Environment.GetReferencedName(realm, lref));
         }
       }
 
@@ -115,7 +113,7 @@ export default function(
   [leftCompletion, lref] = unbundleNormalCompletion(lref);
 
   // 2. Let lval be ? GetValue(lref).
-  let lval = GetValue(realm, lref);
+  let lval = Environment.GetValue(realm, lref);
 
   // 3. Let rref be the result of evaluating AssignmentExpression.
   // 4. Let rval be ? GetValue(rref).

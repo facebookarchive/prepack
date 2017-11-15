@@ -14,7 +14,7 @@ import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
-import { IsUnresolvableReference, ToLength, ResolveBinding, HashSet, IsArray, Get } from "../methods/index.js";
+import { ToLength, HashSet, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
   ProxyValue,
@@ -41,6 +41,7 @@ import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { getSuggestedArrayLiteralLength } from "./utils.js";
+import { Environment } from "../singletons.js";
 
 export type Scope = FunctionValue | Generator;
 
@@ -358,18 +359,18 @@ export class ResidualHeapVisitor {
         let residualFunctionBinding;
         let doesNotMatter = true;
         let reference = this.logger.tryQuery(
-          () => ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
+          () => Environment.ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
           undefined,
           false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the common scope. */
         );
         if (
           reference === undefined ||
-          IsUnresolvableReference(this.realm, reference) ||
+          Environment.IsUnresolvableReference(this.realm, reference) ||
           reference.base instanceof GlobalEnvironmentRecord
         ) {
           residualFunctionBinding = this.visitGlobalBinding(innerName);
         } else {
-          invariant(!IsUnresolvableReference(this.realm, reference));
+          invariant(!Environment.IsUnresolvableReference(this.realm, reference));
           let referencedBase = reference.base;
           let referencedName: string = (reference.referencedName: any);
           if (typeof referencedName !== "string") {

@@ -13,10 +13,10 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { Add, GetValue, ToNumber, IsToNumberPure } from "../methods/index.js";
+import { Add, ToNumber, IsToNumberPure } from "../methods/index.js";
 import { AbstractValue, NumberValue } from "../values/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
-import { Properties } from "../singletons.js";
+import { Environment, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 export default function(
@@ -31,7 +31,7 @@ export default function(
   let expr = env.evaluate(ast.argument, strictCode);
 
   // Let oldValue be ? ToNumber(? GetValue(expr)).
-  let oldExpr = GetValue(realm, expr);
+  let oldExpr = Environment.GetValue(realm, expr);
   if (oldExpr instanceof AbstractValue) {
     if (!IsToNumberPure(realm, oldExpr)) {
       let error = new CompilerDiagnostic(

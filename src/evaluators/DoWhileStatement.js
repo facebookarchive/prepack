@@ -13,9 +13,10 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Value } from "../values/index.js";
 import { EmptyValue } from "../values/index.js";
-import { ToBooleanPartial, GetValue, UpdateEmpty } from "../methods/index.js";
+import { ToBooleanPartial, UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
 import { AbruptCompletion, BreakCompletion } from "../completions.js";
+import { Environment } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeDoWhileStatement } from "babel-types";
 
@@ -55,7 +56,7 @@ export default function(
     let exprRef = env.evaluate(test, strictCode);
 
     // e. Let exprValue be ? GetValue(exprRef).
-    let exprValue = GetValue(realm, exprRef);
+    let exprValue = Environment.GetValue(realm, exprRef);
 
     // f. If ToBoolean(exprValue) is false, return NormalCompletion(V).
     if (ToBooleanPartial(realm, exprValue) === false) return V;

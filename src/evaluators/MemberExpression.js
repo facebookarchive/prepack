@@ -13,7 +13,8 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
-import { GetValue, ToPropertyKeyPartial, RequireObjectCoercible } from "../methods/index.js";
+import { ToPropertyKeyPartial, RequireObjectCoercible } from "../methods/index.js";
+import { Environment } from "../singletons.js";
 import type { BabelNodeMemberExpression } from "babel-types";
 import SuperProperty from "./SuperProperty";
 
@@ -32,7 +33,7 @@ export default function(
   let baseReference = env.evaluate(ast.object, strictCode);
 
   // 2. Let baseValue be ? GetValue(baseReference).
-  let baseValue = GetValue(realm, baseReference);
+  let baseValue = Environment.GetValue(realm, baseReference);
 
   let propertyNameValue;
   if (ast.computed) {
@@ -40,7 +41,7 @@ export default function(
     let propertyNameReference = env.evaluate(ast.property, strictCode);
 
     // 4. Let propertyNameValue be ? GetValue(propertyNameReference).
-    propertyNameValue = GetValue(realm, propertyNameReference);
+    propertyNameValue = Environment.GetValue(realm, propertyNameReference);
   } else {
     // 3. Let propertyNameString be StringValue of IdentifierName.
     propertyNameValue = new StringValue(realm, ast.property.name);

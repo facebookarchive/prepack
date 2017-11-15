@@ -15,7 +15,8 @@ import { BreakCompletion } from "../completions.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
-import { BoundNames, EnumerableOwnProperties, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
+import { EnumerableOwnProperties, UpdateEmpty } from "../methods/index.js";
+import { Environment } from "../singletons.js";
 import {
   AbstractValue,
   AbstractObjectValue,
@@ -87,7 +88,14 @@ export default function(
       } else {
         // for (ForDeclaration in Expression) Statement
         // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(BoundNames of ForDeclaration, Expression, enumerate).
-        let keyResult = ForInOfHeadEvaluation(realm, env, BoundNames(realm, left), right, "enumerate", strictCode);
+        let keyResult = ForInOfHeadEvaluation(
+          realm,
+          env,
+          Environment.BoundNames(realm, left),
+          right,
+          "enumerate",
+          strictCode
+        );
         reportErrorAndThrowIfNotConcrete(keyResult, right.loc);
         invariant(keyResult instanceof ObjectValue);
 
@@ -124,14 +132,14 @@ function emitResidualLoopIfSafe(
 ) {
   invariant(ob.isSimpleObject());
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
-  let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
+  let blockEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
   realm.getRunningContext().lexicalEnvironment = blockEnv;
   try {
     let envRec = blockEnv.environmentRecord;
     invariant(envRec instanceof DeclarativeEnvironmentRecord, "expected declarative environment record");
     let absStr = AbstractValue.createFromType(realm, StringValue);
     let boundName;
-    for (let n of BoundNames(realm, lh)) {
+    for (let n of Environment.BoundNames(realm, lh)) {
       invariant(boundName === undefined);
       boundName = t.identifier(n);
       envRec.CreateMutableBinding(n, false);

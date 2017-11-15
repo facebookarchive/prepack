@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { ObjectValue } from "../values/index.js";
-import { GetValue } from "../methods/index.js";
+import { Environment } from "../singletons.js";
 import { IsConstructor } from "../methods/index.js";
 import { ArgumentListEvaluation } from "../methods/index.js";
 import { Construct } from "../methods/index.js";
@@ -43,7 +43,7 @@ export default function(
   let ref = env.evaluate(constructProduction, strictCode);
 
   // 4. Let constructor be ? GetValue(ref).
-  let constructor = GetValue(realm, ref);
+  let constructor = Environment.GetValue(realm, ref);
 
   let argsList;
 

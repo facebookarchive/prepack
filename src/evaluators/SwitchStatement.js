@@ -14,13 +14,8 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbruptCompletion, BreakCompletion } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
 import { EmptyValue, Value } from "../values/index.js";
-import {
-  GetValue,
-  NewDeclarativeEnvironment,
-  BlockDeclarationInstantiation,
-  StrictEqualityComparisonPartial,
-  UpdateEmpty,
-} from "../methods/index.js";
+import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
+import { Environment } from "../singletons.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -35,7 +30,7 @@ function CaseSelectorEvaluation(
   let exprRef = env.evaluate(expression, strictCode);
 
   // 2. Return ? GetValue(exprRef).
-  return GetValue(realm, exprRef);
+  return Environment.GetValue(realm, exprRef);
 }
 
 function CaseBlockEvaluation(
@@ -176,17 +171,17 @@ export default function(
   let exprRef = env.evaluate(expression, strictCode);
 
   // 2. Let switchValue be ? GetValue(exprRef).
-  let switchValue = GetValue(realm, exprRef);
+  let switchValue = Environment.GetValue(realm, exprRef);
 
   // 3. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 
   // 4. Let blockEnv be NewDeclarativeEnvironment(oldEnv).
-  let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
+  let blockEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
 
   // 5. Perform BlockDeclarationInstantiation(CaseBlock, blockEnv).
   let CaseBlock = cases.map(c => c.consequent).reduce((stmts, case_blk) => stmts.concat(case_blk), []);
-  BlockDeclarationInstantiation(realm, strictCode, CaseBlock, blockEnv);
+  Environment.BlockDeclarationInstantiation(realm, strictCode, CaseBlock, blockEnv);
 
   // 6. Set the running execution context's LexicalEnvironment to blockEnv.
   realm.getRunningContext().lexicalEnvironment = blockEnv;

@@ -16,14 +16,13 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
 import {
   ObjectCreate,
-  GetValue,
   CreateDataPropertyOrThrow,
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
   ToPropertyKey,
   ToString,
 } from "../methods/index.js";
-import { Functions, Properties } from "../singletons.js";
+import { Environment, Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type {
   BabelNodeObjectExpression,
@@ -55,7 +54,7 @@ function EvalPropertyNamePartial(
   strictCode: boolean
 ): AbstractValue | PropertyKeyValue {
   if (prop.computed) {
-    let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode));
+    let propertyKeyName = Environment.GetValue(realm, env.evaluate(prop.key, strictCode));
     if (propertyKeyName instanceof AbstractValue) return propertyKeyName;
     invariant(propertyKeyName instanceof ConcreteValue);
     return ToPropertyKey(realm, propertyKeyName);
@@ -63,7 +62,7 @@ function EvalPropertyNamePartial(
     if (prop.key.type === "Identifier") {
       return new StringValue(realm, prop.key.name);
     } else {
-      let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode));
+      let propertyKeyName = Environment.GetValue(realm, env.evaluate(prop.key, strictCode));
       invariant(propertyKeyName instanceof ConcreteValue); // syntax only allows literals if !prop.computed
       return ToString(realm, propertyKeyName);
     }
@@ -93,7 +92,7 @@ export default function(
       let exprValueRef = env.evaluate(prop.value, strictCode);
 
       // 4. Let propValue be ? GetValue(exprValueRef).
-      let propValue = GetValue(realm, exprValueRef);
+      let propValue = Environment.GetValue(realm, exprValueRef);
 
       // 5. If IsAnonymousFunctionDefinition(AssignmentExpression) is true, then
       if (IsAnonymousFunctionDefinition(realm, prop.value)) {
