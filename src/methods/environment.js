@@ -104,6 +104,12 @@ export class EnvironmentImplementation {
     return val;
   }
 
+  GetConditionValue(realm: Realm, V: Reference | Value): Value {
+    let val = this._dereference(realm, V);
+    if (val instanceof AbstractValue) return realm.simplifyAndRefineAbstractCondition(val);
+    return val;
+  }
+
   _dereference(realm: Realm, V: Reference | Value): Value {
     // This step is not necessary as we propagate completions with exceptions.
     // 1. ReturnIfAbrupt(V).

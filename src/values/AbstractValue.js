@@ -189,8 +189,8 @@ export default class AbstractValue extends Value {
       // x => x !== null && x !== undefined
       if (val.kind === "!==") {
         let [x, y] = val.args;
-        if (this.equals(x)) return y instanceof NullValue || y instanceof UndefinedValue;
-        if (this.equals(y)) return x instanceof NullValue || x instanceof UndefinedValue;
+        if (this.implies(x)) return y instanceof NullValue || y instanceof UndefinedValue;
+        if (this.implies(y)) return x instanceof NullValue || x instanceof UndefinedValue;
       }
     }
     return false;

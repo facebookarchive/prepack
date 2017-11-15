@@ -537,6 +537,7 @@ export type EnvironmentType = {
 
   // ECMA262 6.2.3.1
   GetValue(realm: Realm, V: Reference | Value): Value,
+  GetConditionValue(realm: Realm, V: Reference | Value): Value,
 
   // ECMA262 6.2.3
   // IsStrictReference(V). Returns the strict reference flag component of the reference V.
