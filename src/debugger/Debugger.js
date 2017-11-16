@@ -153,7 +153,6 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        invariant(ast !== undefined);
         this.processStackframesCommand(requestID, args, ast);
         break;
       case DebugMessage.SCOPES_COMMAND:
@@ -170,9 +169,9 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(requestID: number, args: StackframeArguments, ast: BabelNode) {
+  processStackframesCommand(requestID: number, args: StackframeArguments, ast?: BabelNode) {
     let frameInfos: Array<Stackframe> = [];
-    let loc = this._getFrameLocation(ast.loc);
+    let loc = this._getFrameLocation(ast ? ast.loc : null);
     let fileName = loc.fileName;
     let line = loc.line;
     let column = loc.column;

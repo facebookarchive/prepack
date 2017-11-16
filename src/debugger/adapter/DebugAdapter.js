@@ -37,6 +37,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
   }
+  _clientID: void | string;
   _adapterChannel: AdapterChannel;
 
   _registerMessageCallbacks() {
@@ -67,10 +68,23 @@ class PrepackDebugSession extends LoggingDebugSession {
     // The UI will end the configuration sequence by calling 'configurationDone' request.
     this.sendEvent(new InitializedEvent());
 
+    this._clientID = args.clientID;
     response.body = response.body || {};
     response.body.supportsConfigurationDoneRequest = true;
     // Respond back to the UI with the configurations. Will add more configurations gradually as needed.
     // Adapter can respond immediately here because no message is sent to Prepack
+    this.sendResponse(response);
+  }
+
+  configurationDoneRequest(
+    response: DebugProtocol.ConfigurationDoneResponse,
+    args: DebugProtocol.ConfigurationDoneArguments
+  ): void {
+    // initial handshake with UI is complete
+    if (this._clientID !== DebuggerConstants.CLI_CLIENTID) {
+      // for all ui except the CLI, autosend the first run request
+      this._adapterChannel.run(DebuggerConstants.DEFAULT_REQUEST_ID, (runResponse: DebuggerResponse) => {});
+    }
     this.sendResponse(response);
   }
 
