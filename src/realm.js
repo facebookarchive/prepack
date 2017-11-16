@@ -266,6 +266,8 @@ export class Realm {
 
   debuggerInstance: DebugServerType | void;
 
+  nextGeneratorId: number = 0;
+
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
     return compatibility === this.compatibility;
