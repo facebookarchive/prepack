@@ -14,15 +14,8 @@ import type { LexicalEnvironment } from "../environment.js";
 import { FatalError } from "../errors.js";
 import type { Value } from "../values/index.js";
 import { ObjectValue, StringValue } from "../values/index.js";
-import {
-  GetValue,
-  ResolveBinding,
-  InitializeReferencedBinding,
-  IsAnonymousFunctionDefinition,
-  HasOwnProperty,
-  BindingInitialization,
-} from "../methods/index.js";
-import { Functions, Properties } from "../singletons.js";
+import { IsAnonymousFunctionDefinition, HasOwnProperty } from "../methods/index.js";
+import { Environment, Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeVariableDeclaration } from "babel-types";
 
@@ -44,10 +37,10 @@ function letAndConst(
 
       // 1. Let lhs be ResolveBinding(StringValue of BindingIdentifier).
       let bindingId = declar.id.name;
-      let lhs = ResolveBinding(realm, bindingId, strictCode);
+      let lhs = Environment.ResolveBinding(realm, bindingId, strictCode);
 
       // 2. Return InitializeReferencedBinding(lhs, undefined).
-      InitializeReferencedBinding(realm, lhs, realm.intrinsics.undefined);
+      Environment.InitializeReferencedBinding(realm, lhs, realm.intrinsics.undefined);
       continue;
     }
 
@@ -55,13 +48,13 @@ function letAndConst(
     let bindingId = declar.id.name;
 
     // 2. Let lhs be ResolveBinding(bindingId).
-    let lhs = ResolveBinding(realm, bindingId, strictCode);
+    let lhs = Environment.ResolveBinding(realm, bindingId, strictCode);
 
     // 3. Let rhs be the result of evaluating Initializer.
     let rhs = env.evaluate(Initializer, strictCode);
 
     // 4. Let value be ? GetValue(rhs).
-    let value = GetValue(realm, rhs);
+    let value = Environment.GetValue(realm, rhs);
 
     // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
     if (IsAnonymousFunctionDefinition(realm, Initializer)) {
@@ -75,7 +68,7 @@ function letAndConst(
     }
 
     // 6. Return InitializeReferencedBinding(lhs, value).
-    InitializeReferencedBinding(realm, lhs, value);
+    Environment.InitializeReferencedBinding(realm, lhs, value);
   }
 
   return realm.intrinsics.empty;
@@ -107,13 +100,13 @@ export default function(
       let bindingId = declar.id.name;
 
       // 2. Let lhs be ? ResolveBinding(bindingId).
-      let lhs = ResolveBinding(realm, bindingId, strictCode);
+      let lhs = Environment.ResolveBinding(realm, bindingId, strictCode);
 
       // 3. Let rhs be the result of evaluating Initializer.
       let rhs = env.evaluate(Initializer, strictCode);
 
       // 4. Let value be ? GetValue(rhs).
-      let value = GetValue(realm, rhs);
+      let value = Environment.GetValue(realm, rhs);
       if (declar.id && declar.id.name) value.__originalName = bindingId;
 
       // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
@@ -134,10 +127,10 @@ export default function(
       let rhs = env.evaluate(Initializer, strictCode);
 
       // 2. Let rval be ? GetValue(rhs).
-      let rval = GetValue(realm, rhs);
+      let rval = Environment.GetValue(realm, rhs);
 
       // 3. Return the result of performing BindingInitialization for BindingPattern passing rval and undefined as arguments.
-      BindingInitialization(realm, declar.id, rval, strictCode, undefined);
+      Environment.BindingInitialization(realm, declar.id, rval, strictCode, undefined);
     } else {
       invariant(false, "unrecognized declaration");
     }

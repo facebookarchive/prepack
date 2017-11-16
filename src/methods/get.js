@@ -32,20 +32,16 @@ import { SetIntegrityLevel } from "./integrity.js";
 import { ToString } from "./to.js";
 import {
   Call,
-  GetBase,
-  GetThisEnvironment,
   HasSomeCompatibleType,
   IsAccessorDescriptor,
   IsCallable,
   IsDataDescriptor,
   IsPropertyKey,
-  IsPropertyReference,
-  IsSuperReference,
   joinValuesAsConditional,
   joinEffects,
   ToObjectPartial,
 } from "./index.js";
-import { Path } from "../singletons.js";
+import { Environment, Path } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
 
@@ -383,17 +379,17 @@ export function GetV(realm: Realm, V: Value, P: PropertyKeyValue): Value {
 // ECMA262 6.2.3.3
 export function GetThisValue(realm: Realm, V: Reference): Value {
   // 1. Assert: IsPropertyReference(V) is true.
-  invariant(IsPropertyReference(realm, V), "expected property reference");
+  invariant(Environment.IsPropertyReference(realm, V), "expected property reference");
 
   // 2. If IsSuperReference(V) is true, then
-  if (IsSuperReference(realm, V)) {
+  if (Environment.IsSuperReference(realm, V)) {
     invariant(V.thisValue !== undefined);
     // a. Return the value of the thisValue component of the reference V.
     return V.thisValue;
   }
 
   // 3. Return GetBase(V).
-  let result = GetBase(realm, V);
+  let result = Environment.GetBase(realm, V);
   invariant(result instanceof Value);
   return result;
 }
@@ -401,7 +397,7 @@ export function GetThisValue(realm: Realm, V: Reference): Value {
 // ECMA262 8.3.5
 export function GetNewTarget(realm: Realm): UndefinedValue | ObjectValue {
   // 1. Let envRec be GetThisEnvironment( ).
-  let envRec = GetThisEnvironment(realm);
+  let envRec = Environment.GetThisEnvironment(realm);
 
   // 2. Assert: envRec has a [[NewTarget]] field.
   if (!("$NewTarget" in envRec)) {

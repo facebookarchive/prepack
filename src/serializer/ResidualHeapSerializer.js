@@ -67,6 +67,12 @@ import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js"
 import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
 import type { Effects } from "../realm.js";
 
+function commentStatement(text: string) {
+  let s = t.emptyStatement();
+  s.leadingComments = [({ type: "BlockComment", value: text }: any)];
+  return s;
+}
+
 export class ResidualHeapSerializer {
   constructor(
     realm: Realm,
@@ -106,6 +112,7 @@ export class ResidualHeapSerializer {
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
     this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
+    this.functionNameGenerator = this.preludeGenerator.createNameGenerator("$f_");
     this.requireReturns = new Map();
     this.serializedValues = new Set();
     this.additionalFunctionValueNestedFunctions = new Set();
@@ -143,6 +150,7 @@ export class ResidualHeapSerializer {
     this.activeGeneratorBodies = new Map();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
+    this.functionNames = new Map();
   }
 
   emitter: Emitter;
@@ -164,6 +172,7 @@ export class ResidualHeapSerializer {
   descriptorNameGenerator: NameGenerator;
   factoryNameGenerator: NameGenerator;
   intrinsicNameGenerator: NameGenerator;
+  functionNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
@@ -187,6 +196,19 @@ export class ResidualHeapSerializer {
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   currentAdditionalFunction: void | FunctionValue;
+  functionNames: Map<FunctionValue, string>;
+
+  _getFunctionName(f: FunctionValue): string {
+    let n = this.functionNames.get(f);
+    if (n === undefined) this.functionNames.set(f, (n = this.functionNameGenerator.generate(f.__originalName || "")));
+    return n;
+  }
+
+  _getScopeName(s: Scope): string {
+    if (s instanceof Generator) return `#${s.id}`;
+    invariant(s instanceof FunctionValue);
+    return this._getFunctionName(s);
+  }
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -520,7 +542,13 @@ export class ResidualHeapSerializer {
   _getTarget(
     val: Value,
     scopes: Set<Scope>
-  ): { body: SerializedBody, usedOnlyByResidualFunctions?: true, usedOnlyByAdditionalFunctions?: boolean } {
+  ): {
+    body: SerializedBody,
+    usedOnlyByResidualFunctions?: true,
+    usedOnlyByAdditionalFunctions?: boolean,
+    commonAncestor?: Scope,
+    description?: string,
+  } {
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
 
@@ -534,7 +562,7 @@ export class ResidualHeapSerializer {
         if (scope === this.realm.generator) {
           // This value is used from the main generator scope. This means that we need to emit the value and its
           // initialization code into the main body, and cannot delay initialization.
-          return { body: this.currentFunctionBody };
+          return { body: this.currentFunctionBody, description: "this.realm.generator" };
         }
         generators.push(scope);
       }
@@ -560,6 +588,7 @@ export class ResidualHeapSerializer {
         return {
           body: this.currentFunctionBody,
           usedOnlyByAdditionalFunctions: numAdditionalFunctionReferences === functionValues.length,
+          description: "this.currentFunctionBody",
         };
       } else {
         // We can delay the initialization, and move it into a conditional code block in the residual functions!
@@ -567,7 +596,7 @@ export class ResidualHeapSerializer {
           functionValues,
           val
         );
-        return { body, usedOnlyByResidualFunctions: true };
+        return { body, usedOnlyByResidualFunctions: true, description: "initializer" };
       }
     }
 
@@ -587,7 +616,7 @@ export class ResidualHeapSerializer {
       invariant(commonAncestor !== undefined);
     }
     invariant(body !== undefined);
-    return { body };
+    return { body, commonAncestor };
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
@@ -609,7 +638,9 @@ export class ResidualHeapSerializer {
 
     let target = this._getTarget(val, scopes);
 
-    let name = this.valueNameGenerator.generate(val.__originalName || "");
+    let name;
+    if (val instanceof FunctionValue) name = this._getFunctionName(val);
+    else name = this.valueNameGenerator.generate(val.__originalName || "");
     let id = t.identifier(name);
     this.residualHeapValueIdentifiers.setIdentifier(val, id);
     let oldBody = this.emitter.beginEmitting(val, target.body);
@@ -619,6 +650,15 @@ export class ResidualHeapSerializer {
 
     if (this.residualHeapValueIdentifiers.needsIdentifier(val)) {
       if (init) {
+        if (this._options.debugScopes) {
+          let comment = `${name} referenced from scopes ${Array.from(scopes)
+            .map(s => this._getScopeName(s))
+            .join(",")}`;
+          if (target.commonAncestor !== undefined)
+            comment = `${comment} with common ancestor ${this._getScopeName(target.commonAncestor)}`;
+          if (target.description !== undefined) comment = `${comment} => ${target.description} `;
+          this.emitter.emit(commentStatement(comment));
+        }
         if (init !== id) {
           if (target.usedOnlyByResidualFunctions) {
             let declar = t.variableDeclaration(bindingType ? bindingType : "var", [t.variableDeclarator(id)]);
@@ -1266,6 +1306,11 @@ export class ResidualHeapSerializer {
 
   _serializeAbstractValueHelper(val: AbstractValue): BabelNodeExpression {
     let serializedArgs = val.args.map((abstractArg, i) => this.serializeValue(abstractArg));
+    if (val.kind === "abstractConcreteUnion") {
+      let abstractIndex = val.args.findIndex(v => v instanceof AbstractValue);
+      invariant(abstractIndex >= 0 && abstractIndex < val.args.length);
+      return serializedArgs[abstractIndex];
+    }
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
@@ -1357,7 +1402,15 @@ export class ResidualHeapSerializer {
     let context = {
       serializeValue: this.serializeValue.bind(this),
       serializeGenerator: (generator: Generator): Array<BabelNodeStatement> => {
-        return this._withGeneratorScope(generator, () => generator.serialize(context));
+        let statements = this._withGeneratorScope(generator, () => generator.serialize(context));
+        if (this._options.debugScopes) {
+          let comment = `generator ${this._getScopeName(generator)}`;
+          if (generator.parent !== undefined)
+            comment = `${comment} with parent ${this._getScopeName(generator.parent)}`;
+          statements.unshift(commentStatement("begin " + comment));
+          statements.push(commentStatement("end " + comment));
+        }
+        return statements;
       },
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);

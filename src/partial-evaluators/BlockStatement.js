@@ -15,8 +15,7 @@ import type { LexicalEnvironment } from "../environment.js";
 
 import { Completion, NormalCompletion } from "../completions.js";
 import { EmptyValue, StringValue, Value } from "../values/index.js";
-import { BlockDeclarationInstantiation, NewDeclarativeEnvironment } from "../methods/index.js";
-import { Functions } from "../singletons.js";
+import { Environment, Functions } from "../singletons.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -32,10 +31,10 @@ export default function(
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 
   // 2. Let blockEnv be NewDeclarativeEnvironment(oldEnv).
-  let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
+  let blockEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
 
   // 3. Perform BlockDeclarationInstantiation(StatementList, blockEnv).
-  BlockDeclarationInstantiation(realm, strictCode, ast.body, blockEnv);
+  Environment.BlockDeclarationInstantiation(realm, strictCode, ast.body, blockEnv);
 
   // 4. Set the running execution context's LexicalEnvironment to blockEnv.
   realm.getRunningContext().lexicalEnvironment = blockEnv;

@@ -12,7 +12,10 @@
 import type { VariableContainer, Variable } from "./types.js";
 import { ReferenceMap } from "./ReferenceMap.js";
 import { LexicalEnvironment, DeclarativeEnvironmentRecord } from "./../environment.js";
-import { Value, ConcreteValue, PrimitiveValue } from "./../values/index.js";
+import { Value, ConcreteValue, PrimitiveValue, ObjectValue } from "./../values/index.js";
+import invariant from "./../invariant.js";
+import type { Realm } from "./../realm.js";
+import { IsDataDescriptor } from "./../methods/is.js";
 
 // This class manages the handling of variable requests in the debugger
 // The DebugProtocol specifies collections of variables are to be fetched using a
@@ -20,14 +23,16 @@ import { Value, ConcreteValue, PrimitiveValue } from "./../values/index.js";
 // variablesReferences to pass to the UI and then perform lookups for those
 // variablesReferences when they are requested.
 export class VariableManager {
-  constructor() {
+  constructor(realm: Realm) {
     this._containerCache = new Map();
     this._referenceMap = new ReferenceMap();
+    this._realm = realm;
   }
   // cache for created references
   _containerCache: Map<VariableContainer, number>;
   // map for looking up references
   _referenceMap: ReferenceMap<VariableContainer>;
+  _realm: Realm;
 
   // Given a container, either returns a cached reference for that container if
   // it exists or return a new reference
@@ -48,9 +53,30 @@ export class VariableManager {
     if (!container) return [];
     if (container instanceof LexicalEnvironment) {
       return this._getVariablesFromEnv(container);
+    } else if (container instanceof ObjectValue) {
+      return this._getVariablesFromObject(container);
+    } else {
+      invariant(false, "Invalid variable container");
     }
-    // TODO: implement retrieving variables for other types of containers
-    return [];
+  }
+
+  _getVariablesFromObject(object: ObjectValue): Array<Variable> {
+    let variables = [];
+    let names = object.properties.keys();
+    for (let name of names) {
+      let binding = object.properties.get(name);
+      invariant(binding !== undefined);
+      if (binding.descriptor) {
+        if (IsDataDescriptor(this._realm, binding.descriptor)) {
+          let value = binding.descriptor.value;
+          if (value instanceof Value) {
+            let variable = this._getVariableFromValue(name, value);
+            variables.push(variable);
+          }
+        }
+      }
+    }
+    return variables;
   }
 
   _getVariablesFromEnv(env: LexicalEnvironment): Array<Variable> {
@@ -68,31 +94,40 @@ export class VariableManager {
     for (let name in bindings) {
       let binding = bindings[name];
       if (binding.value) {
-        let displayValue = this._getDisplayValue(binding.value);
-        let variable: Variable = {
-          name: name,
-          value: displayValue,
-          variablesReference: 0,
-        };
+        let variable = this._getVariableFromValue(name, binding.value);
         variables.push(variable);
       }
     }
     return variables;
   }
 
-  _getDisplayValue(value: Value): string {
-    let displayValue = "to be supported";
+  _getVariableFromValue(name: string, value: Value): Variable {
     if (value instanceof ConcreteValue) {
-      displayValue = this._getConcreteDisplayValue(value);
+      return this._getVariableFromConcreteValue(name, value);
+    } else {
+      invariant(false, "Unsupported type of: " + name);
     }
-    return displayValue;
+    // TODO: implement variables request for abstract values
   }
 
-  _getConcreteDisplayValue(value: ConcreteValue): string {
+  _getVariableFromConcreteValue(name: string, value: ConcreteValue): Variable {
     if (value instanceof PrimitiveValue) {
-      return value.toDisplayString();
+      let variable: Variable = {
+        name: name,
+        value: value.toDisplayString(),
+        variablesReference: 0,
+      };
+      return variable;
+    } else if (value instanceof ObjectValue) {
+      let variable: Variable = {
+        name: name,
+        value: "Object",
+        variablesReference: this.getReferenceForValue(value),
+      };
+      return variable;
+    } else {
+      invariant(false, "Concrete value must be primitive or object");
     }
-    return "to be supported";
   }
 
   clean() {

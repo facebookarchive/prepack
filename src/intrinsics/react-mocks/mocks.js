@@ -12,7 +12,8 @@
 import type { Realm } from "../../realm.js";
 import { parseExpression } from "babylon";
 import { ObjectValue, ECMAScriptFunctionValue } from "../../values/index.js";
-import { Get, GetValue } from "../../methods/index.js";
+import { Get } from "../../methods/index.js";
+import { Environment } from "../../singletons.js";
 import invariant from "../../invariant";
 
 let reactCode = `
@@ -24,7 +25,7 @@ let reactCode = `
         this.refs = {};
         this.state = {};
       }
-      isReactComponent() { 
+      isReactComponent() {
         return true;
       }
       getChildContext() {}
@@ -42,13 +43,13 @@ let reactCode = `
       };
       var hasOwnProperty = Object.prototype.hasOwnProperty;
       var props = Object.assign({}, element.props);
-    
+
       var key = element.key;
       var ref = element.ref;
       var self = element._self;
       var source = element._source;
       var owner = element._owner;
-    
+
       if (config != null) {
         if (config.ref !== undefined) {
           // owner = ReactCurrentOwner.current;
@@ -84,7 +85,7 @@ let reactCode = `
         }
         props.children = childArray;
       }
-    
+
       return {
         $$typeof: element.$$typeof,
         type: element.type,
@@ -99,7 +100,7 @@ let reactCode = `
 let reactAst = parseExpression(reactCode, { plugins: ["flow"] });
 
 export function createMockReact(realm: Realm): ObjectValue {
-  let reactValue = GetValue(realm, realm.$GlobalEnv.evaluate(reactAst, false));
+  let reactValue = Environment.GetValue(realm, realm.$GlobalEnv.evaluate(reactAst, false));
   reactValue.intrinsicName = `require("react")`;
   invariant(reactValue instanceof ObjectValue);
 

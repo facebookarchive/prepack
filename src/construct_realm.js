@@ -16,7 +16,7 @@ import initializeGlobal from "./intrinsics/ecma262/global.js";
 import type { RealmOptions } from "./options.js";
 import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
-import { NewGlobalEnvironment } from "./methods/index.js";
+import { Environment } from "./singletons.js";
 import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/Debugger.js";
 import type { DebugChannel } from "./debugger/channel/DebugChannel.js";
@@ -41,6 +41,6 @@ export default function(opts: RealmOptions = {}, debugChannel: void | DebugChann
   for (let name in partialEvaluators) r.partialEvaluators[name] = partialEvaluators[name];
   r.simplifyAndRefineAbstractValue = simplifyAndRefineAbstractValue.bind(null, r, false);
   r.simplifyAndRefineAbstractCondition = simplifyAndRefineAbstractValue.bind(null, r, true);
-  r.$GlobalEnv = NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
+  r.$GlobalEnv = Environment.NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
   return r;
 }
