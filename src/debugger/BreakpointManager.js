@@ -21,9 +21,7 @@ export class BreakpointManager {
   _breakpointMaps: { [string]: PerFileBreakpointMap };
 
   addBreakpointMulti(breakpoints: Array<BreakpointType>) {
-    for (let bp of breakpoints) {
-      this._addBreakpoint(bp);
-    }
+    this._doBreakpointsAction(breakpoints, this._addBreakpoint.bind(this));
   }
 
   _addBreakpoint(bp: BreakpointType) {
@@ -43,9 +41,7 @@ export class BreakpointManager {
   }
 
   removeBreakpointMulti(breakpoints: Array<BreakpointType>) {
-    for (let bp of breakpoints) {
-      this._removeBreakpoint(bp);
-    }
+    this._doBreakpointsAction(breakpoints, this._removeBreakpoint.bind(this));
   }
 
   _removeBreakpoint(bp: BreakpointType) {
@@ -55,9 +51,7 @@ export class BreakpointManager {
   }
 
   enableBreakpointMulti(breakpoints: Array<BreakpointType>) {
-    for (let bp of breakpoints) {
-      this._enableBreakpoint(bp);
-    }
+    this._doBreakpointsAction(breakpoints, this._enableBreakpoint.bind(this));
   }
 
   _enableBreakpoint(bp: BreakpointType) {
@@ -67,14 +61,18 @@ export class BreakpointManager {
   }
 
   disableBreakpointMulti(breakpoints: Array<BreakpointType>) {
-    for (let bp of breakpoints) {
-      this._disableBreakpoint(bp);
-    }
+    this._doBreakpointsAction(breakpoints, this._disableBreakpoint.bind(this));
   }
 
   _disableBreakpoint(bp: BreakpointType) {
     if (bp.filePath in this._breakpointMaps) {
       this._breakpointMaps[bp.filePath].disableBreakpoint(bp.line, bp.column);
+    }
+  }
+
+  _doBreakpointsAction(breakpoints: Array<BreakpointType>, action: BreakpointType => void) {
+    for (let bp of breakpoints) {
+      action(bp);
     }
   }
 }
