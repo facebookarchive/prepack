@@ -11,21 +11,16 @@
 
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NativeFunctionValue, Value, StringValue } from "../../values/index.js";
-import { ObjectCreate } from "../../methods/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import { createMockReact } from "./mocks.js";
+import { createAbstractObject } from "../../flow/abstractObjectFactories.js";
 import invariant from "../../invariant";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
   // module.exports support
-  let exportsValue = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  exportsValue.intrinsicName = "exports";
-  let moduleValue = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  moduleValue.intrinsicName = "module";
-  moduleValue.$Set("exports", exportsValue, moduleValue);
-
+  let moduleValue = createAbstractObject(realm, "module", null);
   global.$DefineOwnProperty("module", {
     value: moduleValue,
     writable: true,

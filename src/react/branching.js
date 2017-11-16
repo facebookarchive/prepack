@@ -33,7 +33,7 @@ import { ExpectedBailOut } from "./reconcilation.js";
 // keys to the root JSX element so that it keeps it identity (because we're folding trees).
 // Furthermore, we also need to bail-out of folding class components where they have lifecycle
 // events, as we can't merge lifecycles of mutliple trees when branched reliably
-export type BranchStatusEnum = "NO_BRANCH" | "NEW_BRANCH" | "BRANCH";
+export type BranchStatusEnum = "ROOT" | "NO_BRANCH" | "NEW_BRANCH" | "BRANCH";
 
 // Branch state is used to capture branched ReactElements so they can be analyzed and compared
 // once all branches have been processed. This allows us to add keys to the respective ReactElement
