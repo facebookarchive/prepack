@@ -1,14 +1,13 @@
 var React = require('react');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
-this['abstractVal'] = null;
 
 function SubChild(props) {
-  return <span>{props.title}<div>{props.abstractVal}</div></span>;
+  return <span>{props.deepObject.foo.bar}</span>;
 }
 
 function Child(props) {
-  return <span><SubChild title={props.title} abstractVal={props.abstractVal} /></span>;
+  return <span><SubChild deepObject={props.deepObject} /></span>;
 }
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
@@ -16,9 +15,11 @@ function Child(props) {
 var App = (function (superclass) {
   function App (props) {
 		superclass.apply(this, arguments);
-		this.title = props.title;
-    // side-effectful
-		this.abstractVal = abstractVal;
+		this.deepObject = {
+			foo: {
+				bar: "Hello world",
+			},
+		};
   }
 
   if ( superclass ) {
@@ -27,10 +28,9 @@ var App = (function (superclass) {
   App.prototype = Object.create( superclass && superclass.prototype );
   App.prototype.constructor = App;
   App.prototype.render = function render () {
-    return <Child title={this.title} abstractVal={this.abstractVal} />;
+    return <Child deepObject={this.deepObject} />;
   };
   App.getTrials = function(renderer, Root) {
-    abstractVal = "It works!";
 		renderer.update(<Root title="Hello world" />);
     return [['render with class root and instance vars', renderer.toJSON()]];	
   };
