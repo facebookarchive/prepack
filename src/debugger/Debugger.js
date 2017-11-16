@@ -9,8 +9,8 @@
 
 /* @flow */
 
+import { BreakpointManager } from "./BreakpointManager.js";
 import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
-import { BreakpointCollection } from "./BreakpointCollection.js";
 import { Breakpoint } from "./Breakpoint.js";
 import invariant from "../invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
@@ -30,7 +30,7 @@ import { VariableManager } from "./VariableManager.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
-    this._breakpoints = new BreakpointCollection();
+    this._breakpoints = new BreakpointManager();
     this._previousExecutedLine = 0;
     this._previousExecutedCol = 0;
     this._lastRunRequestID = 0;
@@ -40,7 +40,7 @@ export class DebugServer {
     this.waitForRun();
   }
   // the collection of breakpoints
-  _breakpoints: BreakpointCollection;
+  _breakpoints: BreakpointManager;
   _previousExecutedFile: void | string;
   _previousExecutedLine: number;
   _previousExecutedCol: number;
@@ -129,23 +129,23 @@ export class DebugServer {
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.addBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
+        this._breakpoints.addBreakpointMulti(args.breakpoints);
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.removeBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
+        this._breakpoints.removeBreakpointMulti(args.breakpoints);
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.enableBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
+        this._breakpoints.enableBreakpointMulti(args.breakpoints);
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.disableBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
+        this._breakpoints.disableBreakpointMulti(args.breakpoints);
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
         invariant(args.kind === "run");
