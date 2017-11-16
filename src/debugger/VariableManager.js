@@ -70,7 +70,7 @@ export class VariableManager {
         if (IsDataDescriptor(this._realm, binding.descriptor)) {
           let value = binding.descriptor.value;
           if (value instanceof Value) {
-            let variable = this._getVariableFromValue(binding.key, value);
+            let variable = this._getVariableFromValue(name, value);
             variables.push(variable);
           }
         }
