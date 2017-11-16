@@ -71,7 +71,8 @@ function _createAbstractObject(
   template.makeSimple();
   value.values = new ValuesDomain(new Set([template]));
   realm.rebuildNestedProperties(value, name);
-  return ((value: any): AbstractObjectValue);
+  invariant(value instanceof AbstractObjectValue);
+  return value;
 }
 
 export function createAbstractObject(
