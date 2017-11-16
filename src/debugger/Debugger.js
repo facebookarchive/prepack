@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNode } from "babel-types";
+import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
 import { BreakpointCollection } from "./BreakpointCollection.js";
 import { Breakpoint } from "./Breakpoint.js";
 import invariant from "../invariant.js";
@@ -153,6 +153,7 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
+        invariant(ast !== undefined);
         this.processStackframesCommand(requestID, args, ast);
         break;
       case DebugMessage.SCOPES_COMMAND:
@@ -169,16 +170,12 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(requestID: number, args: StackframeArguments, ast?: BabelNode) {
+  processStackframesCommand(requestID: number, args: StackframeArguments, ast: BabelNode) {
     let frameInfos: Array<Stackframe> = [];
-    let fileName = "unknown";
-    let line = 0;
-    let column = 0;
-    if (ast && ast.loc) {
-      fileName = ast.loc.source || "unknown";
-      line = ast.loc.start.line;
-      column = ast.loc.start.column;
-    }
+    let loc = this._getFrameLocation(ast.loc);
+    let fileName = loc.fileName;
+    let line = loc.line;
+    let column = loc.column;
 
     // the UI displays the current frame as index 0, so we iterate backwards
     // from the current frame
@@ -197,17 +194,28 @@ export class DebugServer {
         column: column,
       };
       frameInfos.push(frameInfo);
-      if (frame.loc) {
-        fileName = frame.loc.source || "unknown";
-        line = frame.loc.start.line;
-        column = frame.loc.start.column;
-      } else {
-        fileName = "unknown";
-        line = 0;
-        column = 0;
-      }
+      loc = this._getFrameLocation(frame.loc);
+      fileName = loc.fileName;
+      line = loc.line;
+      column = loc.column;
     }
     this._channel.sendStackframeResponse(requestID, frameInfos);
+  }
+
+  _getFrameLocation(loc: void | null | BabelNodeSourceLocation): { fileName: string, line: number, column: number } {
+    let fileName = "unknown";
+    let line = 0;
+    let column = 0;
+    if (loc && loc.source) {
+      fileName = loc.source;
+      line = loc.start.line;
+      column = loc.start.column;
+    }
+    return {
+      fileName: fileName,
+      line: line,
+      column: column,
+    };
   }
 
   processScopesCommand(requestID: number, args: ScopesArguments) {
