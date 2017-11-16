@@ -24,21 +24,30 @@ import type {
   Variable,
   VariablesArguments,
   VariablesResult,
+  DebuggerRequest,
+  DebuggerRequestArguments,
+  RunArguments,
+  StackframeArguments,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
 
 export class MessageMarshaller {
+  constructor() {
+    this._lastRunRequestID = 0;
+  }
+  _lastRunRequestID: number;
+
   marshallBreakpointAcknowledge(requestID: number, messageType: string, breakpoints: Array<Breakpoint>): string {
     return `${requestID} ${messageType} ${JSON.stringify(breakpoints)}`;
   }
 
-  marshallBreakpointStopped(requestID: number, args: Breakpoint): string {
-    return `${requestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line} ${args.column}`;
+  marshallBreakpointStopped(args: Breakpoint): string {
+    return `${this._lastRunRequestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line} ${args.column}`;
   }
 
-  marshallPrepackFinish(requestID: number): string {
-    return `${requestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`;
+  marshallPrepackFinish(): string {
+    return `${this._lastRunRequestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`;
   }
 
   marshallDebuggerStart(requestID: number): string {
@@ -78,7 +87,51 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.VARIABLES_RESPONSE} ${JSON.stringify(variables)}`;
   }
 
-  unmarshallBreakpointsArguments(requestID: number, breakpointsString: string): BreakpointsArguments {
+  unmarshallRequest(message: string): DebuggerRequest {
+    let parts = message.split(" ");
+    // each request must have a length and a command
+    invariant(parts.length >= 2, "Request is not well formed");
+    // unique ID for each request
+    let requestID = parseInt(parts[0], 10);
+    invariant(!isNaN(requestID), "Request ID must be a number");
+    let command = parts[1];
+    let args: DebuggerRequestArguments;
+    switch (command) {
+      case DebugMessage.PREPACK_RUN_COMMAND:
+        this._lastRunRequestID = requestID;
+        let runArgs: RunArguments = {
+          kind: "run",
+        };
+        args = runArgs;
+        break;
+      case DebugMessage.BREAKPOINT_ADD_COMMAND:
+        args = this._unmarshallBreakpointsArguments(requestID, parts.slice(2).join(" "));
+        break;
+      case DebugMessage.STACKFRAMES_COMMAND:
+        let stackFrameArgs: StackframeArguments = {
+          kind: "stackframe",
+        };
+        args = stackFrameArgs;
+        break;
+      case DebugMessage.SCOPES_COMMAND:
+        args = this._unmarshallScopesArguments(requestID, parts[2]);
+        break;
+      case DebugMessage.VARIABLES_COMMAND:
+        args = this._unmarshallVariablesArguments(requestID, parts[2]);
+        break;
+      default:
+        throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
+    }
+    invariant(args !== undefined);
+    let result: DebuggerRequest = {
+      id: requestID,
+      command: command,
+      arguments: args,
+    };
+    return result;
+  }
+
+  _unmarshallBreakpointsArguments(requestID: number, breakpointsString: string): BreakpointsArguments {
     try {
       let breakpoints = JSON.parse(breakpointsString);
       for (const breakpoint of breakpoints) {
@@ -98,7 +151,7 @@ export class MessageMarshaller {
     }
   }
 
-  unmarshallScopesArguments(requestID: number, frameIdString: string): ScopesArguments {
+  _unmarshallScopesArguments(requestID: number, frameIdString: string): ScopesArguments {
     let frameId = parseInt(frameIdString, 10);
     invariant(!isNaN(frameId));
     let result: ScopesArguments = {
@@ -108,7 +161,7 @@ export class MessageMarshaller {
     return result;
   }
 
-  unmarshallVariablesArguments(requestID: number, varRefString: string): VariablesArguments {
+  _unmarshallVariablesArguments(requestID: number, varRefString: string): VariablesArguments {
     let varRef = parseInt(varRefString, 10);
     invariant(!isNaN(varRef));
     let result: VariablesArguments = {
