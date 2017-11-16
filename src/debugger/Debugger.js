@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import type { BabelNode } from "babel-types";
 import { BreakpointManager } from "./BreakpointManager.js";
+import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
 import { Breakpoint } from "./Breakpoint.js";
 import invariant from "../invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
@@ -50,21 +50,21 @@ export class DebugServer {
   _realm: Realm;
   _variableManager: VariableManager;
   /* Block until adapter says to run
-  /* runCondition: a function that determines whether the adapter has told
-  /* Prepack to continue running
+  /* ast: the current ast node we are stopped on
   */
-  waitForRun() {
+  waitForRun(ast?: BabelNode) {
     let keepRunning = false;
     let request;
     while (!keepRunning) {
       request = this._channel.readIn();
-      keepRunning = this.processDebuggerCommand(request);
+      keepRunning = this.processDebuggerCommand(request, ast);
     }
   }
 
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
     this.checkForBreakpoint(ast);
+
     // last step: set the current location as the previously executed line
     if (ast.loc && ast.loc.source !== null) {
       this._previousExecutedFile = ast.loc.source;
@@ -116,13 +116,13 @@ export class DebugServer {
       // Tell the adapter that Prepack has stopped on this breakpoint
       this._channel.sendBreakpointStopped(breakpoint.filePath, breakpoint.line, breakpoint.column);
       // Wait for the adapter to tell us to run again
-      this.waitForRun();
+      this.waitForRun(ast);
     }
   }
 
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
-  processDebuggerCommand(request: DebuggerRequest) {
+  processDebuggerCommand(request: DebuggerRequest, ast?: BabelNode) {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
@@ -153,7 +153,8 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        this.processStackframesCommand(requestID, args);
+        invariant(ast !== undefined);
+        this.processStackframesCommand(requestID, args, ast);
         break;
       case DebugMessage.SCOPES_COMMAND:
         invariant(args.kind === "scopes");
@@ -169,9 +170,12 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(requestID: number, args: StackframeArguments) {
+  processStackframesCommand(requestID: number, args: StackframeArguments, ast: BabelNode) {
     let frameInfos: Array<Stackframe> = [];
-    let loc = this._realm.currentLocation;
+    let loc = this._getFrameLocation(ast.loc);
+    let fileName = loc.fileName;
+    let line = loc.line;
+    let column = loc.column;
 
     // the UI displays the current frame as index 0, so we iterate backwards
     // from the current frame
@@ -181,14 +185,7 @@ export class DebugServer {
       if (frame.function && frame.function.__originalName) {
         functionName = frame.function.__originalName;
       }
-      let fileName = "unknown";
-      let line = 0;
-      let column = 0;
-      if (loc && loc.source) {
-        fileName = loc.source;
-        line = loc.start.line;
-        column = loc.start.column;
-      }
+
       let frameInfo: Stackframe = {
         id: this._realm.contextStack.length - 1 - i,
         functionName: functionName,
@@ -197,9 +194,28 @@ export class DebugServer {
         column: column,
       };
       frameInfos.push(frameInfo);
-      loc = frame.loc;
+      loc = this._getFrameLocation(frame.loc);
+      fileName = loc.fileName;
+      line = loc.line;
+      column = loc.column;
     }
     this._channel.sendStackframeResponse(requestID, frameInfos);
+  }
+
+  _getFrameLocation(loc: void | null | BabelNodeSourceLocation): { fileName: string, line: number, column: number } {
+    let fileName = "unknown";
+    let line = 0;
+    let column = 0;
+    if (loc && loc.source) {
+      fileName = loc.source;
+      line = loc.start.line;
+      column = loc.start.column;
+    }
+    return {
+      fileName: fileName,
+      line: line,
+      column: column,
+    };
   }
 
   processScopesCommand(requestID: number, args: ScopesArguments) {
