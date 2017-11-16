@@ -11,13 +11,20 @@
 
 import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
+import type { Breakpoint  as BreakpointType } from "./types.js";
 
 // Storing BreakpointStores for all source files
-export class BreakpointCollection {
+export class BreakpointManager {
   constructor() {
     this.breakpointMaps = new Map();
   }
   breakpointMaps: { [string]: PerFileBreakpointMap };
+
+  addBreakpointMulti(breakpoints: Array<BreakpointType>) {
+    for (let bp of breakpoints) {
+      this.addBreakpoint(bp.filePath, bp.line, bp.column);
+    }
+  }
 
   addBreakpoint(filePath: string, lineNum: number, columnNum: number = 0) {
     if (!(filePath in this.breakpointMaps)) {
@@ -35,15 +42,33 @@ export class BreakpointCollection {
     return undefined;
   }
 
+  removeBreakpointMulti(breakpoints: Array<BreakpointType>) {
+    for (let bp of breakpoints) {
+      this.removeBreakpoint(bp.filePath, bp.line, bp.column);
+    }
+  }
+
   removeBreakpoint(filePath: string, lineNum: number, columnNum: number = 0) {
     if (filePath in this.breakpointMaps) {
       this.breakpointMaps[filePath].removeBreakpoint(lineNum, columnNum);
     }
   }
 
+  enableBreakpointMulti(breakpoints: Array<BreakpointType>) {
+    for (let bp of breakpoints) {
+      this.enableBreakpoint(bp.filePath, bp.line, bp.column);
+    }
+  }
+
   enableBreakpoint(filePath: string, lineNum: number, columnNum: number = 0) {
     if (filePath in this.breakpointMaps) {
       this.breakpointMaps[filePath].enableBreakpoint(lineNum, columnNum);
+    }
+  }
+
+  disableBreakpointMulti(breakpoints: Array<BreakpointType>) {
+    for (let bp of breakpoints) {
+      this.disableBreakpoint(bp.filePath, bp.line, bp.column);
     }
   }
 
