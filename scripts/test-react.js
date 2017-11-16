@@ -60,15 +60,9 @@ function runSource(source) {
         throw new Error(`Unrecognized import: "${name}".`);
     }
   };
-  let global = {
-    require: requireShim,
-    module: moduleShim,
-    Object,
-    String,
-  };
   try {
     // $FlowFixMe flow doesn't new Function
-    fn.call(global, requireShim, moduleShim);
+    fn(requireShim, moduleShim);
   } catch (e) {
     console.log(codeAfterBabel);
     throw e;
@@ -179,6 +173,34 @@ describe("Test React", () => {
       } finally {
         global.console.error = originalConsoleError;
       }
+    });
+
+    it("Class component as root", async () => {
+      await runTest(directory, "class-root.js");
+    });
+
+    it("Class component as root with multiple render methods", async () => {
+      await runTest(directory, "class-root-with-render-methods.js");
+    });
+
+    it("Class component as root with props", async () => {
+      await runTest(directory, "class-root-with-props.js");
+    });
+
+    it("Class component as root with state", async () => {
+      await runTest(directory, "class-root-with-state.js");
+    });
+
+    it("Class component as root with refs", async () => {
+      await runTest(directory, "class-root-with-refs.js");
+    });
+
+    it("Class component as root with instance variables", async () => {
+      await runTest(directory, "class-root-with-instance-vars.js");
+    });
+
+    it("Class component as root with instance variables #2", async () => {
+      await runTest(directory, "class-root-with-instance-vars-2.js");
     });
   });
 });
