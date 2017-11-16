@@ -20,7 +20,7 @@ export type DebuggerRequest = {
 };
 
 export type DebuggerRequestArguments =
-  | BreakpointArguments
+  | BreakpointsArguments
   | RunArguments
   | StackframeArguments
   | ScopesArguments
@@ -37,11 +37,15 @@ export type PrepackLaunchArguments = {
   exitCallback: () => void,
 };
 
-export type BreakpointArguments = {
-  kind: "breakpoint",
+export type Breakpoint = {
   filePath: string,
   line: number,
   column: number,
+};
+
+export type BreakpointsArguments = {
+  kind: "breakpoint",
+  breakpoints: Array<Breakpoint>,
 };
 
 export type RunArguments = {
@@ -78,10 +82,11 @@ export type DebuggerResponse = {
 export type DebuggerResponseResult =
   | ReadyResult
   | StackframeResult
-  | BreakpointAddResult
+  | BreakpointsAddResult
   | BreakpointStoppedResult
   | ScopesResult
-  | VariablesResult;
+  | VariablesResult
+  | FinishResult;
 
 export type ReadyResult = {
   kind: "ready",
@@ -92,8 +97,9 @@ export type StackframeResult = {
   stackframes: Array<Stackframe>,
 };
 
-export type BreakpointAddResult = {
+export type BreakpointsAddResult = {
   kind: "breakpoint-add",
+  breakpoints: Array<Breakpoint>,
 };
 
 export type BreakpointStoppedResult = {
@@ -122,6 +128,10 @@ export type Variable = {
 export type VariablesResult = {
   kind: "variables",
   variables: Array<Variable>,
+};
+
+export type FinishResult = {
+  kind: "finish",
 };
 
 // any object that can contain a collection of variables
