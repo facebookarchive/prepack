@@ -28,6 +28,7 @@ import type {
   DebuggerRequestArguments,
   RunArguments,
   StackframeArguments,
+  FinishResult,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -43,7 +44,8 @@ export class MessageMarshaller {
   }
 
   marshallBreakpointStopped(args: Breakpoint): string {
-    return `${this._lastRunRequestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line} ${args.column}`;
+    return `${this
+      ._lastRunRequestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line} ${args.column}`;
   }
 
   marshallPrepackFinish(): string {
@@ -77,7 +79,6 @@ export class MessageMarshaller {
   marshallScopesResponse(requestID: number, scopes: Array<Scope>): string {
     return `${requestID} ${DebugMessage.SCOPES_RESPONSE} ${JSON.stringify(scopes)}`;
   }
-
 
   marshallVariablesRequest(requestID: number, variablesReference: number): string {
     return `${requestID} ${DebugMessage.VARIABLES_COMMAND} ${variablesReference}`;
@@ -131,6 +132,32 @@ export class MessageMarshaller {
     return result;
   }
 
+  unmarshallResponse(message: string): DebuggerResponse {
+    let parts = message.split(" ");
+    let requestID = parseInt(parts[0], 10);
+    invariant(!isNaN(requestID));
+    let messageType = parts[1];
+    let dbgResponse;
+    if (messageType === DebugMessage.PREPACK_READY_RESPONSE) {
+      dbgResponse = this._unmarshallReadyResponse(requestID);
+    } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
+      dbgResponse = this._unmarshallBreakpointsAddResponse(requestID, parts.slice(2).join(" "));
+    } else if (messageType === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
+      dbgResponse = this._unmarshallBreakpointStoppedResponse(requestID, parts.slice(2));
+    } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
+      dbgResponse = this._unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
+    } else if (messageType === DebugMessage.SCOPES_RESPONSE) {
+      dbgResponse = this._unmarshallScopesResponse(requestID, parts.slice(2).join(" "));
+    } else if (messageType === DebugMessage.VARIABLES_RESPONSE) {
+      dbgResponse = this._unmarshallVariablesResponse(requestID, parts.slice(2).join(" "));
+    } else if (messageType === DebugMessage.PREPACK_FINISH_RESPONSE) {
+      dbgResponse = this._unmarshallFinishResponse(requestID);
+    } else {
+      invariant(false, "Unexpected response type");
+    }
+    return dbgResponse;
+  }
+
   _unmarshallBreakpointsArguments(requestID: number, breakpointsString: string): BreakpointsArguments {
     try {
       let breakpoints = JSON.parse(breakpointsString);
@@ -171,7 +198,7 @@ export class MessageMarshaller {
     return result;
   }
 
-  unmarshallStackframesResponse(requestID: number, responseBody: string): DebuggerResponse {
+  _unmarshallStackframesResponse(requestID: number, responseBody: string): DebuggerResponse {
     try {
       let frames = JSON.parse(responseBody);
       invariant(Array.isArray(frames), "Stack frames is not an array");
@@ -196,7 +223,7 @@ export class MessageMarshaller {
     }
   }
 
-  unmarshallScopesResponse(requestID: number, responseBody: string): DebuggerResponse {
+  _unmarshallScopesResponse(requestID: number, responseBody: string): DebuggerResponse {
     try {
       let scopes = JSON.parse(responseBody);
       invariant(Array.isArray(scopes), "Scopes is not an array");
@@ -219,7 +246,7 @@ export class MessageMarshaller {
     }
   }
 
-  unmarshallVariablesResponse(requestID: number, responseBody: string): DebuggerResponse {
+  _unmarshallVariablesResponse(requestID: number, responseBody: string): DebuggerResponse {
     try {
       let variables = JSON.parse(responseBody);
       invariant(Array.isArray(variables), "Variables is not an array");
@@ -237,12 +264,12 @@ export class MessageMarshaller {
         result: result,
       };
       return dbgResponse;
-      } catch (e) {
+    } catch (e) {
       throw new DebuggerError("Invalid response", e.message);
-      }
     }
+  }
 
-  unmarshallBreakpointsAddResponse(requestID: number, breakpointsString: string): DebuggerResponse {
+  _unmarshallBreakpointsAddResponse(requestID: number, breakpointsString: string): DebuggerResponse {
     try {
       let breakpoints = JSON.parse(breakpointsString);
       for (const breakpoint of breakpoints) {
@@ -267,7 +294,7 @@ export class MessageMarshaller {
     }
   }
 
-  unmarshallBreakpointStoppedResponse(requestID: number, parts: Array<string>): DebuggerResponse {
+  _unmarshallBreakpointStoppedResponse(requestID: number, parts: Array<string>): DebuggerResponse {
     invariant(parts.length === 3, "Incorrect number of arguments in breakpoint stopped response");
     let filePath = parts[0];
     let line = parseInt(parts[1], 10);
@@ -287,9 +314,20 @@ export class MessageMarshaller {
     return dbgResponse;
   }
 
-  unmarshallReadyResponse(requestID: number): DebuggerResponse {
+  _unmarshallReadyResponse(requestID: number): DebuggerResponse {
     let result: ReadyResult = {
       kind: "ready",
+    };
+    let dbgResponse: DebuggerResponse = {
+      id: requestID,
+      result: result,
+    };
+    return dbgResponse;
+  }
+
+  _unmarshallFinishResponse(requestID: number): DebuggerResponse {
+    let result: FinishResult = {
+      kind: "finish",
     };
     let dbgResponse: DebuggerResponse = {
       id: requestID,

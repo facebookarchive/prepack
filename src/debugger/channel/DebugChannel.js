@@ -12,18 +12,7 @@ import invariant from "./../../invariant.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
 import { MessageMarshaller } from "./MessageMarshaller.js";
-import { DebuggerError } from "./../DebuggerError.js";
-import type {
-  DebuggerRequest,
-  DebuggerRequestArguments,
-  Breakpoint,
-  BreakpointsArguments,
-  RunArguments,
-  StackframeArguments,
-  Stackframe,
-  Scope,
-  Variable,
-} from "./../types.js";
+import type { DebuggerRequest, Breakpoint, BreakpointsArguments, Stackframe, Scope, Variable } from "./../types.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
@@ -101,6 +90,6 @@ export class DebugChannel {
   }
 
   sendPrepackFinish(): void {
-    this.writeOut(this._marshaller.marshallPrepackFinish(this._lastRunRequestID));
+    this.writeOut(this._marshaller.marshallPrepackFinish());
   }
 }

@@ -85,7 +85,8 @@ export type DebuggerResponseResult =
   | BreakpointsAddResult
   | BreakpointStoppedResult
   | ScopesResult
-  | VariablesResult;
+  | VariablesResult
+  | FinishResult;
 
 export type ReadyResult = {
   kind: "ready",
@@ -127,6 +128,10 @@ export type Variable = {
 export type VariablesResult = {
   kind: "variables",
   variables: Array<Variable>,
+};
+
+export type FinishResult = {
+  kind: "finish",
 };
 
 // any object that can contain a collection of variables
