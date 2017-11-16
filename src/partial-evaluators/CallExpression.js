@@ -18,18 +18,14 @@ import { EnvironmentRecord, Reference } from "../environment.js";
 import {
   composeNormalCompletions,
   EvaluateDirectCallWithArgList,
-  GetBase,
-  GetReferencedName,
   GetThisValue,
-  GetValue,
   IsInTailPosition,
-  IsPropertyReference,
   joinEffects,
   SameValue,
   stopEffectCaptureJoinApplyAndReturnCompletion,
   unbundleNormalCompletion,
 } from "../methods/index.js";
-import { Functions } from "../singletons.js";
+import { Environment, Functions } from "../singletons.js";
 import { AbstractValue, BooleanValue, FunctionValue, Value } from "../values/index.js";
 
 import * as t from "babel-types";
@@ -55,7 +51,7 @@ export default function(
   invariant(ref instanceof Value || ref instanceof Reference);
 
   // 2. Let func be ? GetValue(ref).
-  let func = GetValue(realm, ref);
+  let func = Environment.GetValue(realm, ref);
 
   let io = calleeIO;
   let partialArgs = [];
@@ -169,7 +165,11 @@ function EvaluateCall(
   func = func.throwIfNotConcrete();
 
   // 3. If Type(ref) is Reference and IsPropertyReference(ref) is false and GetReferencedName(ref) is "eval", then
-  if (ref instanceof Reference && !IsPropertyReference(realm, ref) && GetReferencedName(realm, ref) === "eval") {
+  if (
+    ref instanceof Reference &&
+    !Environment.IsPropertyReference(realm, ref) &&
+    Environment.GetReferencedName(realm, ref) === "eval"
+  ) {
     // a. If SameValue(func, %eval%) is true, then
     if (SameValue(realm, func, realm.intrinsics.eval)) {
       // i. Let argList be ? ArgumentListEvaluation(Arguments).
@@ -196,13 +196,13 @@ function EvaluateCall(
   // 4. If Type(ref) is Reference, then
   if (ref instanceof Reference) {
     // a. If IsPropertyReference(ref) is true, then
-    if (IsPropertyReference(realm, ref)) {
+    if (Environment.IsPropertyReference(realm, ref)) {
       // i. Let thisValue be GetThisValue(ref).
       thisValue = GetThisValue(realm, ref);
     } else {
       // b. Else, the base of ref is an Environment Record
       // i. Let refEnv be GetBase(ref).
-      let refEnv = GetBase(realm, ref);
+      let refEnv = Environment.GetBase(realm, ref);
       invariant(refEnv instanceof EnvironmentRecord);
 
       // ii. Let thisValue be refEnv.WithBaseObject().

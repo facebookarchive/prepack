@@ -23,16 +23,14 @@ import {
   IteratorClose,
   IteratorStep,
   IteratorValue,
-  GetValue,
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
   HasOwnProperty,
-  GetReferencedName,
   ArrayCreate,
   CreateDataProperty,
   GetV,
 } from "./index.js";
-import { Functions, Properties } from "../singletons.js";
+import { Environment, Functions, Properties } from "../singletons.js";
 import type { BabelNodeLVal, BabelNodeArrayPattern, BabelNodeObjectPattern } from "babel-types";
 
 // ECMA262 12.15.5.2
@@ -220,7 +218,7 @@ export function IteratorDestructuringAssignmentEvaluation(
       let defaultValue = env.evaluate(Initializer, strictCode);
 
       // b. Let v be ? GetValue(defaultValue).
-      v = GetValue(realm, defaultValue);
+      v = Environment.GetValue(realm, defaultValue);
     } else {
       // 5. Else, let v be value.
       v = value;
@@ -265,7 +263,7 @@ export function IteratorDestructuringAssignmentEvaluation(
         // not be called with a value.
         invariant(lref instanceof Reference);
 
-        Functions.SetFunctionName(realm, v, GetReferencedName(realm, lref));
+        Functions.SetFunctionName(realm, v, Environment.GetReferencedName(realm, lref));
       }
     }
 
@@ -411,7 +409,7 @@ export function KeyedDestructuringAssignmentEvaluation(
     let defaultValue = env.evaluate(Initializer, strictCode);
 
     // b. Let rhsValue be ? GetValue(defaultValue).
-    rhsValue = GetValue(realm, defaultValue);
+    rhsValue = Environment.GetValue(realm, defaultValue);
   } else {
     // 4. Else, let rhsValue be v.
     rhsValue = v;
@@ -452,7 +450,7 @@ export function KeyedDestructuringAssignmentEvaluation(
       // not be called with a value.
       invariant(lref instanceof Reference);
 
-      Functions.SetFunctionName(realm, rhsValue, GetReferencedName(realm, lref));
+      Functions.SetFunctionName(realm, rhsValue, Environment.GetReferencedName(realm, lref));
     }
   }
 

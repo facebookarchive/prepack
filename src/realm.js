@@ -32,7 +32,6 @@ import {
   composeGenerators,
   composePossiblyNormalCompletions,
   Construct,
-  GetValue,
   ToString,
   updatePossiblyNormalCompletionWithSubsequentEffects,
 } from "./methods/index.js";
@@ -41,7 +40,7 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { Functions, Properties } from "./singletons.js";
+import { Environment, Functions, Properties } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -406,7 +405,7 @@ export class Realm {
       try {
         try {
           c = f();
-          if (c instanceof Reference) c = GetValue(this, c);
+          if (c instanceof Reference) c = Environment.GetValue(this, c);
         } catch (e) {
           if (e instanceof AbruptCompletion) c = e;
           else throw e;

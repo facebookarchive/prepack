@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { GetValue } from "../methods/index.js";
+import { Environment } from "../singletons.js";
 import type { BabelNodeSequenceExpression } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -25,7 +25,7 @@ export default function(
   invariant(ast.expressions.length > 0);
   let val;
   for (let node of ast.expressions) {
-    val = GetValue(realm, env.evaluate(node, strictCode));
+    val = Environment.GetValue(realm, env.evaluate(node, strictCode));
   }
   invariant(val !== undefined);
   return val;

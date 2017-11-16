@@ -15,7 +15,8 @@ import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { GetValue, joinEffects, ToBoolean } from "../methods/index.js";
+import { joinEffects, ToBoolean } from "../methods/index.js";
+import { Environment } from "../singletons.js";
 import type { BabelNodeLogicalExpression } from "babel-types";
 import invariant from "../invariant.js";
 import { Path } from "../singletons.js";
@@ -27,7 +28,7 @@ export default function(
   realm: Realm
 ): Value | Reference {
   let lref = env.evaluate(ast.left, strictCode);
-  let lval = GetValue(realm, lref);
+  let lval = Environment.GetValue(realm, lref);
 
   if (lval instanceof ConcreteValue) {
     let lbool = ToBoolean(realm, lval);
@@ -42,7 +43,7 @@ export default function(
     }
 
     let rref = env.evaluate(ast.right, strictCode);
-    return GetValue(realm, rref);
+    return Environment.GetValue(realm, rref);
   }
   invariant(lval instanceof AbstractValue);
 

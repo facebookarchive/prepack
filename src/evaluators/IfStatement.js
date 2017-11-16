@@ -15,16 +15,16 @@ import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { GetValue, joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.js";
+import { joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.js";
 import type { BabelNode, BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
-import { Path } from "../singletons.js";
+import { Environment, Path } from "../singletons.js";
 
 export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   // 1. Let exprRef be the result of evaluating Expression
   let exprRef = env.evaluate(ast.test, strictCode);
   // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
-  let exprValue: Value = GetValue(realm, exprRef);
+  let exprValue: Value = Environment.GetValue(realm, exprRef);
 
   if (exprValue instanceof ConcreteValue) {
     let stmtCompletion;

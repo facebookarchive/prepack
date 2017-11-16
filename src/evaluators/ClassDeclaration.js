@@ -27,16 +27,13 @@ import {
   Get,
   MakeConstructor,
   CreateMethodProperty,
-  NewDeclarativeEnvironment,
   MakeClassConstructor,
   ObjectCreate,
   ConstructorMethod,
-  GetValue,
   IsStatic,
-  InitializeBoundName,
   NonConstructorMethodDefinitions,
 } from "../methods/index.js";
-import { Functions, Properties } from "../singletons.js";
+import { Environment, Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 function EvaluateClassHeritage(
@@ -45,7 +42,7 @@ function EvaluateClassHeritage(
   strictCode: boolean
 ): ObjectValue | null {
   let ref = realm.getRunningContext().lexicalEnvironment.evaluate(ClassHeritage, strictCode);
-  let val = GetValue(realm, ref);
+  let val = Environment.GetValue(realm, ref);
   if (val instanceof AbstractValue) {
     let error = new CompilerDiagnostic("unknown super class", ClassHeritage.loc, "PP0009", "RecoverableError");
     if (realm.handleError(error) === "Fail") throw new FatalError();
@@ -68,7 +65,7 @@ export function ClassDefinitionEvaluation(
   let lex = env;
 
   // 2. Let classScope be NewDeclarativeEnvironment(lex).
-  let classScope = NewDeclarativeEnvironment(realm, lex);
+  let classScope = Environment.NewDeclarativeEnvironment(realm, lex);
 
   // 3. Let classScopeEnvRec be classScope’s EnvironmentRecord.
   let classScopeEnvRec = classScope.environmentRecord;
@@ -291,7 +288,7 @@ function BindingClassDeclarationEvaluation(
     // 7. Let env be the running execution context’s LexicalEnvironment.
 
     // 8. Let status be InitializeBoundName(className, value, env).
-    InitializeBoundName(realm, className, value, env);
+    Environment.InitializeBoundName(realm, className, value, env);
 
     // 9. ReturnIfAbrupt(status).
 
