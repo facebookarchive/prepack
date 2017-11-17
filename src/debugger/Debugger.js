@@ -256,12 +256,12 @@ export class DebugServer {
       return "Global";
     } else if (envRec instanceof DeclarativeEnvironmentRecord) {
       if (envRec instanceof FunctionEnvironmentRecord) {
-        return "Local";
+        return "Local: " + (envRec.$FunctionObject.__originalName || "anonymous function");
       } else {
         return "Block";
       }
     } else if (envRec instanceof ObjectEnvironmentRecord) {
-      return "Block";
+      return "With";
     } else {
       invariant(false, "Invalid type of environment record");
     }
