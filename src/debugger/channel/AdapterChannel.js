@@ -79,6 +79,7 @@ export class AdapterChannel {
     );
     let callback = this._pendingRequestCallbacks[response.id];
     callback(response);
+    delete this._pendingRequestCallbacks[response.id];
   }
 
   registerChannelEvent(event: string, listener: (response: DebuggerResponse) => void) {
