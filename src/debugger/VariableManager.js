@@ -11,8 +11,14 @@
 
 import type { VariableContainer, Variable } from "./types.js";
 import { ReferenceMap } from "./ReferenceMap.js";
-import { LexicalEnvironment, DeclarativeEnvironmentRecord } from "./../environment.js";
-import { Value, ConcreteValue, PrimitiveValue, ObjectValue } from "./../values/index.js";
+import {
+  LexicalEnvironment,
+  EnvironmentRecord,
+  DeclarativeEnvironmentRecord,
+  ObjectEnvironmentRecord,
+  GlobalEnvironmentRecord,
+} from "./../environment.js";
+import { Value, ConcreteValue, PrimitiveValue, ObjectValue, AbstractObjectValue } from "./../values/index.js";
 import invariant from "./../invariant.js";
 import type { Realm } from "./../realm.js";
 import { IsDataDescriptor } from "./../methods/is.js";
@@ -52,7 +58,7 @@ export class VariableManager {
     let container = this._referenceMap.get(reference);
     if (!container) return [];
     if (container instanceof LexicalEnvironment) {
-      return this._getVariablesFromEnv(container);
+      return this._getVariablesFromEnvRecord(container.environmentRecord);
     } else if (container instanceof ObjectValue) {
       return this._getVariablesFromObject(container);
     } else {
@@ -79,13 +85,25 @@ export class VariableManager {
     return variables;
   }
 
-  _getVariablesFromEnv(env: LexicalEnvironment): Array<Variable> {
-    let envRecord = env.environmentRecord;
+  _getVariablesFromEnvRecord(envRecord: EnvironmentRecord): Array<Variable> {
     if (envRecord instanceof DeclarativeEnvironmentRecord) {
       return this._getVariablesFromDeclarativeEnv(envRecord);
+    } else if (envRecord instanceof ObjectEnvironmentRecord) {
+      if (envRecord.object instanceof ObjectValue) {
+        return this._getVariablesFromObject(envRecord.object);
+      } else if (envRecord.object instanceof AbstractObjectValue) {
+        // TODO: call _getVariablesFromAbstractObject when it is implemented
+        return [];
+      } else {
+        invariant(false, "Invalid type of object environment record");
+      }
+    } else if (envRecord instanceof GlobalEnvironmentRecord) {
+      let declVars = this._getVariablesFromEnvRecord(envRecord.$DeclarativeRecord);
+      let objVars = this._getVariablesFromEnvRecord(envRecord.$ObjectRecord);
+      return declVars.concat(objVars);
+    } else {
+      invariant(false, "Invalid type of environment record");
     }
-    // TODO: implement retrieving variables for other kinds of environment records
-    return [];
   }
 
   _getVariablesFromDeclarativeEnv(env: DeclarativeEnvironmentRecord): Array<Variable> {
@@ -121,7 +139,7 @@ export class VariableManager {
     } else if (value instanceof ObjectValue) {
       let variable: Variable = {
         name: name,
-        value: "Object",
+        value: value.getKind(),
         variablesReference: this.getReferenceForValue(value),
       };
       return variable;
