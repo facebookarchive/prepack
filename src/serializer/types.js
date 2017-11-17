@@ -41,6 +41,8 @@ export type AdditionalFunctionInfo = {
 };
 
 export type FunctionInstance = {
+  classSuper: void | BabelNodeIdentifier,
+  isClassMethod: boolean,
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,

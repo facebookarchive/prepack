@@ -383,8 +383,23 @@ export class ResidualHeapVisitor {
         if (functionInfo.modified.has(innerName)) residualFunctionBinding.modified = true;
       }
     });
-
+    let isClassMethod = false;
+    if (val.$HomeObject instanceof AbstractValue) {
+      throw new FatalError("TODO: do not know how to handle an abstract HomeObject");
+    } else if (val.$HomeObject instanceof ObjectValue) {
+      // determine if our $HomeObject is actually a ES2015 class by looking at constructor
+      let constructorValue = Get(this.realm, val.$HomeObject, "constructor");
+      if (constructorValue instanceof AbstractValue) {
+        throw new FatalError("TODO: do not know how to handle an abstract constructor");
+      } else if (constructorValue instanceof ECMAScriptSourceFunctionValue) {
+        if (constructorValue.$FunctionKind === "classConstructor") {
+          isClassMethod = true;
+        }
+      }
+    }
     this.functionInstances.set(val, {
+      classSuper: undefined,
+      isClassMethod,
       residualFunctionBindings,
       functionValue: val,
       scopeInstances: new Set(),

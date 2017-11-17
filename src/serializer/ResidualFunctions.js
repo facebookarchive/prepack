@@ -11,7 +11,8 @@
 
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import { FunctionValue, type ECMAScriptSourceFunctionValue } from "../values/index.js";
+import { FunctionValue, type ECMAScriptSourceFunctionValue, StringValue } from "../values/index.js";
+import { Get } from "../methods/index.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -21,6 +22,8 @@ import type {
   BabelNodeLVal,
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
+  BabelNodeClassExpression,
+  BabelNodeCallExpression,
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { NameGenerator } from "../utils/generator.js";
@@ -35,6 +38,7 @@ import { nullExpression } from "../utils/internalizer.js";
 import type { LocationService } from "./types.js";
 import { Referentializer } from "./Referentializer.js";
 import { getOrDefault } from "./utils.js";
+import ObjectValue from "../values/ObjectValue";
 
 type ResidualFunctionsResult = {
   unstrictFunctionBodies: Array<BabelNodeFunctionExpression>,
@@ -68,6 +72,7 @@ export class ResidualFunctions {
     this.functionPrototypes = new Map();
     this.firstFunctionUsages = new Map();
     this.functions = new Map();
+    this.classes = new Map();
     this.functionInstances = [];
     this.residualFunctionInitializers = new ResidualFunctionInitializers(
       locationService,
@@ -95,6 +100,7 @@ export class ResidualFunctions {
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
   functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
+  classes: Map<ObjectValue, Array<FunctionInstance>>;
   functionInstances: Array<FunctionInstance>;
   residualFunctionInitializers: ResidualFunctionInitializers;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
@@ -215,17 +221,17 @@ export class ResidualFunctions {
       );
     }
 
-    let defineFunction = (instance, funcId, funcNode) => {
+    let defineFunction = (instance, funcId, funcOrClassNode) => {
       let { functionValue } = instance;
       let body;
-      if (t.isFunctionExpression(funcNode)) {
-        funcNodes.set(functionValue, ((funcNode: any): BabelNodeFunctionExpression));
+      if (t.isFunctionExpression(funcOrClassNode)) {
+        funcNodes.set(functionValue, ((funcOrClassNode: any): BabelNodeFunctionExpression));
         body = getPrelude(instance);
       } else {
-        invariant(t.isCallExpression(funcNode)); // .bind call
+        invariant(t.isCallExpression(funcOrClassNode) || t.isClassExpression(funcOrClassNode)); // .bind call
         body = getFunctionBody(instance);
       }
-      body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]));
+      body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcOrClassNode)]));
       let prototypeId = this.functionPrototypes.get(functionValue);
       if (prototypeId !== undefined) {
         let id = this.locationService.getLocation(functionValue);
@@ -325,42 +331,80 @@ export class ResidualFunctions {
         this.statistics.functionClones += instancesToSplice.length - 1;
 
         for (let instance of instancesToSplice) {
-          let { functionValue, residualFunctionBindings, scopeInstances } = instance;
+          let { functionValue, residualFunctionBindings, scopeInstances, isClassMethod, classSuper } = instance;
           let id = this.locationService.getLocation(functionValue);
-          invariant(id !== undefined);
-          let funcParams = params.slice();
-          let funcNode = t.functionExpression(
-            null,
-            funcParams,
-            ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-          );
-          let scopeInitialization = [];
-          for (let scope of scopeInstances) {
-            scopeInitialization.push(
-              t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))])
-            );
-            scopeInitialization = scopeInitialization.concat(
-              this.referentializer.getReferentializedScopeInitialization(scope)
-            );
-          }
-          funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
+          let funcOrClassNode;
 
-          traverse(t.file(t.program([t.expressionStatement(funcNode)])), ClosureRefReplacer, null, {
-            residualFunctionBindings,
-            modified,
-            requireReturns: this.requireReturns,
-            requireStatistics,
-            isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
-            factoryFunctionInfos,
-          });
+          if (isClassMethod) {
+            let homeObject = functionValue.$HomeObject;
+            invariant(homeObject instanceof ObjectValue);
+            // we use the $HomeObject as the key to gather all class method instances
+            if (!this.classes.has(homeObject)) {
+              this.classes.set(homeObject, []);
+            }
+            let classMethodInstances = this.classes.get(homeObject);
+            invariant(Array.isArray(classMethodInstances));
+            if (functionValue.$FunctionKind !== "classConstructor") {
+              classMethodInstances.push(instance);
+              continue;
+            } else {
+              classMethodInstances.unshift(instance);
+              let classBody = classMethodInstances.map(({ functionValue: methodFunctionValue, residualFunctionBindings }) => {
+                let methodParams = methodFunctionValue.$FormalParameters.slice();
+                let methodBody = ((t.cloneDeep(methodFunctionValue.$ECMAScriptCode): any): BabelNodeBlockStatement);
+                let methodName = Get(this.realm, methodFunctionValue, "name");
+                let isConstructor = methodFunctionValue === functionValue;
+                invariant(methodName instanceof StringValue);
+                let classMethod = t.classMethod(isConstructor ? "constructor" : "method", t.identifier(isConstructor ? "constructor" : methodName.value), methodParams, methodBody);
+                traverse(t.file(t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])), ClosureRefReplacer, null, {
+                  residualFunctionBindings,
+                  modified,
+                  requireReturns: this.requireReturns,
+                  requireStatistics,
+                  isRequire: this.modules.getIsRequire(methodParams, [methodFunctionValue]),
+                  factoryFunctionInfos,
+                });
+                return classMethod;
+              })
+              funcOrClassNode = t.classExpression(null, classSuper ? classSuper : null, t.classBody(classBody), []);
+            }
+          } else {
+            invariant(id !== undefined);
+            let funcParams = params.slice();
+            funcOrClassNode = t.functionExpression(
+              null,
+              funcParams,
+              ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+            );
+            let scopeInitialization = [];
+            for (let scope of scopeInstances) {
+              scopeInitialization.push(
+                t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))])
+              );
+              scopeInitialization = scopeInitialization.concat(
+                this.referentializer.getReferentializedScopeInitialization(scope)
+              );
+            }
+            funcOrClassNode.body.body = scopeInitialization.concat(funcOrClassNode.body.body);
+
+            traverse(t.file(t.program([t.expressionStatement(funcOrClassNode)])), ClosureRefReplacer, null, {
+              residualFunctionBindings,
+              modified,
+              requireReturns: this.requireReturns,
+              requireStatistics,
+              isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
+              factoryFunctionInfos,
+            });
+          }
 
           if (functionValue.$Strict) {
-            strictFunctionBodies.push(funcNode);
+            strictFunctionBodies.push(funcOrClassNode);
           } else {
-            unstrictFunctionBodies.push(funcNode);
+            unstrictFunctionBodies.push(funcOrClassNode);
           }
-
-          defineFunction(instance, id, funcNode);
+          invariant(id !== undefined);
+          invariant(funcOrClassNode !== undefined);
+          defineFunction(instance, id, funcOrClassNode);
         }
       };
 

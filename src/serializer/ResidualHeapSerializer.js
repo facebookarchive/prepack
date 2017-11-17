@@ -1060,7 +1060,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeValueFunction(val: FunctionValue): void | BabelNodeExpression {
+  _serializeValueFunction(val: FunctionValue, skipClassSerializing?: boolean): void | BabelNodeExpression {
     if (val instanceof BoundFunctionValue) {
       this._emitObjectProperties(val);
       return t.callExpression(
@@ -1115,9 +1115,32 @@ export class ResidualHeapSerializer {
       });
     }
 
-    undelay();
 
-    this._emitObjectProperties(val);
+    if (instance.isClassMethod && val.$FunctionKind === "classConstructor") {
+      if (!skipClassSerializing) {
+        if (!(val.$Prototype instanceof NativeFunctionValue)) {
+          let proto = val.$Prototype;
+          instance.classSuper = this.serializeValue(val.$Prototype);
+          this.serializedValues.add(Get(this.realm, val, "caller"));
+          this.serializedValues.add(Get(this.realm, val, "prototype"));
+        }
+        this.serializedValues.add(Get(this.realm, val, "length"));
+        this.serializedValues.add(Get(this.realm, val, "arguments"));
+        this.serializedValues.add(Get(this.realm, val, "name"));
+        invariant(val.$HomeObject instanceof ObjectValue);
+        for (let [classMethodName] of val.$HomeObject.properties) {
+          let classMethod = Get(this.realm, val.$HomeObject, classMethodName);
+          // we need to add it to the serialized values as we're handling it manually
+          this.serializedValues.add(classMethod);
+          invariant(classMethod instanceof FunctionValue);
+          this._serializeValueFunction(classMethod, true);
+        }
+      }
+      undelay();
+    } else {
+      undelay();
+      this._emitObjectProperties(val);
+    }
   }
 
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
