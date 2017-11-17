@@ -16,7 +16,7 @@ import { AbstractValue, ObjectValue, StringValue, Value } from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
-import { Join } from "../singletons.js";
+import { Join, Widen } from "../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -155,6 +155,32 @@ export default class AbstractObjectValue extends AbstractValue {
         let d2Value = d2.value;
         invariant(d2Value === undefined || d2Value instanceof Value);
         desc.value = Join.joinValuesAsConditional(this.$Realm, cond, d1Value, d2Value);
+      }
+      return desc;
+    } else if (this.kind === "widening") {
+      // This abstract object was created by repeated assignments of freshly allocated objects to the same binding inside a loop
+      let [ob1, ob2] = this.args; // ob1: summary of iterations 1...n, ob2: summary of iteration n+1
+      invariant(ob1 instanceof ObjectValue);
+      invariant(ob2 instanceof ObjectValue);
+      let d1 = ob1.$GetOwnProperty(P);
+      let d2 = ob2.$GetOwnProperty(P);
+      if (d1 === undefined || d2 === undefined || !equalDescriptors(d1, d2)) {
+        // We do not handle the case where different loop iterations result in different kinds of propperties
+        AbstractValue.reportIntrospectionError(this, P);
+        throw new FatalError();
+      }
+      let desc = cloneDescriptor(d1);
+      invariant(desc !== undefined);
+      if (IsDataDescriptor(this.$Realm, desc)) {
+        // Values may be different, i.e. values may be loop variant, so the widened value summarizes the entire loop
+        let d1Value = d1.value;
+        invariant(d1Value === undefined || d1Value instanceof Value);
+        let d2Value = d2.value;
+        invariant(d2Value === undefined || d2Value instanceof Value);
+        desc.value = Widen.widenValues(this.$Realm, d1Value, d2Value);
+      } else {
+        // In this case equalDescriptors guarantees exact equality betwee d1 and d2.
+        // Inlining the accessors will eventually bring in data properties if the accessors have loop variant behavior
       }
       return desc;
     } else {

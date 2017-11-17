@@ -9,7 +9,15 @@
 
 /* @flow */
 
-import type { CreateType, EnvironmentType, FunctionType, JoinType, PathType, PropertiesType } from "./types.js";
+import type {
+  CreateType,
+  EnvironmentType,
+  FunctionType,
+  JoinType,
+  PathType,
+  PropertiesType,
+  WidenType,
+} from "./types.js";
 
 export let Create: CreateType = (null: any);
 export let Environment: EnvironmentType = (null: any);
@@ -17,6 +25,7 @@ export let Functions: FunctionType = (null: any);
 export let Join: JoinType = (null: any);
 export let Path: PathType = (null: any);
 export let Properties: PropertiesType = (null: any);
+export let Widen: WidenType = (null: any);
 
 export function setCreate(singleton: CreateType) {
   Create = singleton;
@@ -40,4 +49,8 @@ export function setPath(singleton: PathType) {
 
 export function setProperties(singleton: PropertiesType) {
   Properties = singleton;
+}
+
+export function setWiden(singleton: WidenType) {
+  Widen = singleton;
 }

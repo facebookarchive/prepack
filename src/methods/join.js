@@ -712,8 +712,6 @@ export class JoinImplementation {
     return this.joinMaps(m1, m2, join);
   }
 
-  // Returns a field by field join of two descriptors.
-  // Descriptors with get/set are not yet supported.
   joinDescriptors(
     realm: Realm,
     joinCondition: AbstractValue,
