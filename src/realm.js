@@ -717,6 +717,7 @@ export class Realm {
     if (!(propertyValue instanceof AbstractValue)) return;
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
+      propertyValue.kind = "rebuiltProperty";
       propertyValue.args = [object];
       propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
       this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);

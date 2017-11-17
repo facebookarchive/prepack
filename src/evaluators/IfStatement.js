@@ -24,7 +24,7 @@ export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: Le
   // 1. Let exprRef be the result of evaluating Expression
   let exprRef = env.evaluate(ast.test, strictCode);
   // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
-  let exprValue: Value = Environment.GetValue(realm, exprRef);
+  let exprValue: Value = Environment.GetConditionValue(realm, exprRef);
 
   if (exprValue instanceof ConcreteValue) {
     let stmtCompletion;
@@ -51,7 +51,6 @@ export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: Le
   }
   invariant(exprValue instanceof AbstractValue);
 
-  exprValue = realm.simplifyAndRefineAbstractCondition(exprValue);
   if (!exprValue.mightNotBeTrue()) {
     let stmtCompletion = env.evaluate(ast.consequent, strictCode);
     invariant(!(stmtCompletion instanceof Reference));
