@@ -17,7 +17,6 @@ export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-ma
 export type RealmOptions = {
   compatibility?: Compatibility,
   debugNames?: boolean,
-  lazyObjectsRuntime?: string,
   errorHandler?: ErrorHandler,
   mathRandomSeed?: string,
   omitInvariants?: boolean,

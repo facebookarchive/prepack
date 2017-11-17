@@ -105,6 +105,7 @@ function execExternal(externalSpec, code) {
 
 function augmentCodeWithLazyObjectSupport(code, lazyRuntimeName) {
   const mockLazyObjectsSupport = `
+    /* Lazy objects mock support begin */
     var ${lazyRuntimeName} = {
       _lazyObjectIds: new Map(),
       _callback: null,
@@ -116,19 +117,69 @@ function augmentCodeWithLazyObjectSupport(code, lazyRuntimeName) {
         this._lazyObjectIds.set(obj, id);
         return obj;
       },
-      hydrateAllObjects: function() {
-        for (const [lazyObj, id] of this._lazyObjectIds) {
-          this._callback(lazyObj, id);
+      hydrateObject: function(obj) {
+        const AlreadyHydratedLazyId = -1;
+        const lazyId = this._lazyObjectIds.get(obj);
+        if (lazyId === AlreadyHydratedLazyId) {
+          // Already being hydrated.
+          return;
         }
-        this._lazyObjectIds.clear();
+        this._callback(obj, lazyId);
+        this._lazyObjectIds.set(obj, AlreadyHydratedLazyId);
       }
     };
+
+    var __hydrationHook = {
+      get: function(target, prop) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.get(target, prop);
+      },
+      has: function(target, prop) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.has(target, prop);
+      },
+      ownKeys: function(target) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.ownKeys(target);
+      },
+      isExtensible: function(target) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.isExtensible(target);
+      },
+      preventExtensions: function(target) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.preventExtensions(target);
+      },
+      deleteProperty: function(target, prop) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.deleteProperty(target, prop);
+      },
+      getPrototypeOf: function(target) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.getPrototypeOf(target);
+      },
+      setPrototypeOf: function(target, prototype) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.setPrototypeOf(target, prototype);
+      },
+      apply: function(target, thisArg, argumentsList) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.apply(target, thisArg, argumentsList);
+      },
+      construct: function(target, argumentsList, newTarget) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.construct(target, argumentsList, newTarget);
+      }
+    };
+    /* Lazy objects mock support end */
   `;
-  const hydrateLazyObjectsCall = `${lazyRuntimeName}.hydrateAllObjects();`;
-  code = code.replace("/*force hydrate lazy objects*/", hydrateLazyObjectsCall);
+  function wrapLazyObjectWithProxyHook(lazyCode) {
+    const lazyObjectCreationRegex = new RegExp(`(${lazyRuntimeName}\.createLazyObject\\(\\d+\\))`, "g");
+    return lazyCode.replace(lazyObjectCreationRegex, "new Proxy($1, __hydrationHook)");
+  }
+  code = wrapLazyObjectWithProxyHook(code);
   return `${mockLazyObjectsSupport}
-    ${code}; // keep newline here as code may end with comment
-    ${hydrateLazyObjectsCall}`;
+    ${code}; // keep newline here as code may end with comment`;
 }
 
 // run code in a seperate context
@@ -326,7 +377,6 @@ function runTest(name, code, options, args) {
         if (compileJSXWithBabel) {
           newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
         }
-        codeIterations.push(newCode);
         if (args.verbose) console.log(newCode);
         let markersIssue = false;
         for (let { positive, value, start } of markersToFind) {
@@ -338,6 +388,10 @@ function runTest(name, code, options, args) {
         }
         if (markersIssue) break;
         let codeToRun = addedCode + newCode;
+        if (!execSpec && options.lazyObjectsRuntime !== undefined) {
+          codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
+        }
+        codeIterations.push(codeToRun);
         if (args.es5) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
@@ -345,10 +399,6 @@ function runTest(name, code, options, args) {
           if (execSpec) {
             actual = execExternal(execSpec, codeToRun);
           } else {
-            if (options.lazyObjectsRuntime !== undefined) {
-              codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
-            }
-
             actual = execInContext(codeToRun);
           }
         } catch (e) {

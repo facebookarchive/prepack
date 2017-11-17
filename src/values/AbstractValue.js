@@ -541,8 +541,7 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |},
-    forceHydrateLazyObjects: boolean = false
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
@@ -551,7 +550,7 @@ export default class AbstractValue extends Value {
     let args = temp.args;
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
-    return realm.generator.derive(types, values, args, buildNode_, optionalArgs, forceHydrateLazyObjects);
+    return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
   }
 
   static createTemporalFromBuildFunction(
