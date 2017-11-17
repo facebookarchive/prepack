@@ -20,6 +20,6 @@ export class DebuggerConstants {
   // is required
   static PREPACK_THREAD_ID: number = 1;
 
-  // clientID used in initalize requests by the CLI
+  // clientID used in initialize requests by the CLI
   static CLI_CLIENTID: string = "Prepack-Debugger-CLI";
 }
