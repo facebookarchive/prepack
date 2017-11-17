@@ -27,6 +27,13 @@ import type {
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
 import { VariableManager } from "./VariableManager.js";
+import {
+  EnvironmentRecord,
+  GlobalEnvironmentRecord,
+  FunctionEnvironmentRecord,
+  DeclarativeEnvironmentRecord,
+  ObjectEnvironmentRecord,
+} from "./../environment.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
@@ -229,27 +236,35 @@ export class DebugServer {
     let context = this._realm.contextStack[stackIndex];
     invariant(context instanceof ExecutionContext);
     let scopes = [];
-    if (context.variableEnvironment) {
-      // get a new mapping for this collection of variables
-      let variableRef = this._variableManager.getReferenceForValue(context.variableEnvironment);
+    let lexicalEnv = context.lexicalEnvironment;
+    while (lexicalEnv) {
       let scope: Scope = {
-        name: "Locals",
-        variablesReference: variableRef,
+        name: this._getScopeName(lexicalEnv.environmentRecord),
+        // key used by UI to retrieve variables in this scope
+        variablesReference: this._variableManager.getReferenceForValue(lexicalEnv),
+        // the variables are easy to retrieve
         expensive: false,
       };
       scopes.push(scope);
-    }
-    if (context.lexicalEnvironment) {
-      // get a new mapping for this collection of variables
-      let variableRef = this._variableManager.getReferenceForValue(context.lexicalEnvironment);
-      let scope: Scope = {
-        name: "Globals",
-        variablesReference: variableRef,
-        expensive: false,
-      };
-      scopes.push(scope);
+      lexicalEnv = lexicalEnv.parent;
     }
     this._channel.sendScopesResponse(requestID, scopes);
+  }
+
+  _getScopeName(envRec: EnvironmentRecord): string {
+    if (envRec instanceof GlobalEnvironmentRecord) {
+      return "Global";
+    } else if (envRec instanceof DeclarativeEnvironmentRecord) {
+      if (envRec instanceof FunctionEnvironmentRecord) {
+        return "Local";
+      } else {
+        return "Block";
+      }
+    } else if (envRec instanceof ObjectEnvironmentRecord) {
+      return "Block";
+    } else {
+      invariant(false, "Invalid type of environment record");
+    }
   }
 
   processVariablesCommand(requestID: number, args: VariablesArguments) {
