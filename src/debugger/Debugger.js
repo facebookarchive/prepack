@@ -52,7 +52,7 @@ export class DebugServer {
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
   */
-  waitForRun(ast?: BabelNode) {
+  waitForRun(ast: void | BabelNode) {
     let keepRunning = false;
     let request;
     while (!keepRunning) {
@@ -122,7 +122,7 @@ export class DebugServer {
 
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
-  processDebuggerCommand(request: DebuggerRequest, ast?: BabelNode) {
+  processDebuggerCommand(request: DebuggerRequest, ast: void | BabelNode) {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
@@ -153,7 +153,6 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        invariant(ast !== undefined);
         this.processStackframesCommand(requestID, args, ast);
         break;
       case DebugMessage.SCOPES_COMMAND:
@@ -170,9 +169,9 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(requestID: number, args: StackframeArguments, ast: BabelNode) {
+  processStackframesCommand(requestID: number, args: StackframeArguments, ast: void | BabelNode) {
     let frameInfos: Array<Stackframe> = [];
-    let loc = this._getFrameLocation(ast.loc);
+    let loc = this._getFrameLocation(ast ? ast.loc : null);
     let fileName = loc.fileName;
     let line = loc.line;
     let column = loc.column;
