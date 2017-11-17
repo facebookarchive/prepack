@@ -17,13 +17,12 @@ import { EnvironmentRecord } from "../environment.js";
 import { Value } from "../values/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue, ObjectValue } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { Environment, Functions } from "../singletons.js";
+import { Environment, Functions, Join } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
   GetThisValue,
   IsInTailPosition,
-  joinEffects,
   SameValue,
   TestIntegrityLevel,
 } from "../methods/index.js";
@@ -74,7 +73,7 @@ function callBothFunctionsAndJoinTheirEffects(
     EvaluateCall(func2, func2, ast, strictCode, env, realm)
   );
 
-  let joinedEffects = joinEffects(
+  let joinedEffects = Join.joinEffects(
     realm,
     cond,
     [compl1, gen1, bindings1, properties1, createdObj1],

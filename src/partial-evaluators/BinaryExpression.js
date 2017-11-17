@@ -22,7 +22,7 @@ import type { Realm } from "../realm.js";
 import { computeBinary, getPureBinaryOperationResultType } from "../evaluators/BinaryExpression.js";
 import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
-import { composeNormalCompletions, unbundleNormalCompletion } from "../methods/index.js";
+import { Join } from "../singletons.js";
 import { AbstractValue, BooleanValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
 
 import * as t from "babel-types";
@@ -37,7 +37,7 @@ export default function(
   let [lval, leftAst, leftIO] = env.partiallyEvaluateCompletionDeref(ast.left, strictCode);
   if (lval instanceof AbruptCompletion) return [lval, (leftAst: any), leftIO];
   let leftCompletion;
-  [leftCompletion, lval] = unbundleNormalCompletion(lval);
+  [leftCompletion, lval] = Join.unbundleNormalCompletion(lval);
   invariant(lval instanceof Value);
 
   let [rval, rightAst, rightIO] = env.partiallyEvaluateCompletionDeref(ast.right, strictCode);
@@ -47,7 +47,7 @@ export default function(
     return [rval, t.binaryExpression(ast.operator, (leftAst: any), (rightAst: any)), io];
   }
   let rightCompletion;
-  [rightCompletion, rval] = unbundleNormalCompletion(rval);
+  [rightCompletion, rval] = Join.unbundleNormalCompletion(rval);
   invariant(rval instanceof Value);
 
   let op = ast.operator;
@@ -117,6 +117,6 @@ export function createAbstractValueForBinary(
     }
     resultValue = AbstractValue.createFromBinaryOp(realm, op, lval, rval, ast.loc);
   }
-  let r = composeNormalCompletions(leftCompletion, rightCompletion, resultValue, realm);
+  let r = Join.composeNormalCompletions(leftCompletion, rightCompletion, resultValue, realm);
   return [r, ast, io];
 }

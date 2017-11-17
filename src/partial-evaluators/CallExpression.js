@@ -15,17 +15,8 @@ import type { LexicalEnvironment } from "../environment.js";
 
 import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
 import { EnvironmentRecord, Reference } from "../environment.js";
-import {
-  composeNormalCompletions,
-  EvaluateDirectCallWithArgList,
-  GetThisValue,
-  IsInTailPosition,
-  joinEffects,
-  SameValue,
-  stopEffectCaptureJoinApplyAndReturnCompletion,
-  unbundleNormalCompletion,
-} from "../methods/index.js";
-import { Environment, Functions } from "../singletons.js";
+import { EvaluateDirectCallWithArgList, GetThisValue, IsInTailPosition, SameValue } from "../methods/index.js";
+import { Environment, Functions, Join } from "../singletons.js";
 import { AbstractValue, BooleanValue, FunctionValue, Value } from "../values/index.js";
 
 import * as t from "babel-types";
@@ -62,7 +53,7 @@ export default function(
     partialArgs.push((argAst: any));
     if (argValue instanceof AbruptCompletion) {
       if (completion instanceof PossiblyNormalCompletion)
-        completion = stopEffectCaptureJoinApplyAndReturnCompletion(completion, argValue, realm);
+        completion = Join.stopEffectCaptureJoinApplyAndReturnCompletion(completion, argValue, realm);
       else completion = argValue;
       let resultAst = t.callExpression((calleeAst: any), partialArgs);
       return [completion, resultAst, io];
@@ -70,7 +61,7 @@ export default function(
     if (argValue instanceof PossiblyNormalCompletion) {
       argVals.push(argValue.value);
       if (completion instanceof PossiblyNormalCompletion)
-        completion = composeNormalCompletions(completion, argValue, argValue.value, realm);
+        completion = Join.composeNormalCompletions(completion, argValue, argValue.value, realm);
       else completion = argValue;
     } else {
       invariant(argValue instanceof Value);
@@ -81,16 +72,16 @@ export default function(
   let callResult = EvaluateCall(ref, func, ast, argVals, strictCode, env, realm);
   if (callResult instanceof AbruptCompletion) {
     if (completion instanceof PossiblyNormalCompletion)
-      completion = stopEffectCaptureJoinApplyAndReturnCompletion(completion, callResult, realm);
+      completion = Join.stopEffectCaptureJoinApplyAndReturnCompletion(completion, callResult, realm);
     else completion = callResult;
     let resultAst = t.callExpression((calleeAst: any), partialArgs);
     return [completion, resultAst, io];
   }
   let callCompletion;
-  [callCompletion, callResult] = unbundleNormalCompletion(callResult);
+  [callCompletion, callResult] = Join.unbundleNormalCompletion(callResult);
   invariant(callResult instanceof Value);
   invariant(completion === undefined || completion instanceof PossiblyNormalCompletion);
-  completion = composeNormalCompletions(completion, callCompletion, callResult, realm);
+  completion = Join.composeNormalCompletions(completion, callCompletion, callResult, realm);
   if (completion instanceof PossiblyNormalCompletion) {
     realm.captureEffects(completion);
   }
@@ -118,7 +109,7 @@ function callBothFunctionsAndJoinTheirEffects(
     EvaluateCall(func2, func2, ast, argVals, strictCode, env, realm)
   );
 
-  let joinedEffects = joinEffects(
+  let joinedEffects = Join.joinEffects(
     realm,
     cond,
     [compl1, gen1, bindings1, properties1, createdObj1],

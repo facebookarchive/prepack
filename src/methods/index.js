@@ -22,7 +22,6 @@ export * from "./hash.js";
 export * from "./integrity.js";
 export * from "./is.js";
 export * from "./iterator.js";
-export * from "./join.js";
 export * from "./own.js";
 export * from "./destructuring.js";
 export * from "./regexp.js";

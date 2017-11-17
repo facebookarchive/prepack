@@ -15,11 +15,11 @@ import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { joinEffects, ToBoolean } from "../methods/index.js";
+import { ToBoolean } from "../methods/index.js";
 import { Environment } from "../singletons.js";
 import type { BabelNodeLogicalExpression } from "babel-types";
 import invariant from "../invariant.js";
-import { Path } from "../singletons.js";
+import { Join, Path } from "../singletons.js";
 
 export default function(
   ast: BabelNodeLogicalExpression,
@@ -66,14 +66,14 @@ export default function(
   // use lval as is for the join condition.
   let joinedEffects;
   if (ast.operator === "&&") {
-    joinedEffects = joinEffects(
+    joinedEffects = Join.joinEffects(
       realm,
       lval,
       [compl2, gen2, bindings2, properties2, createdObj2],
       [lval, gen1, bindings1, properties1, createdObj1]
     );
   } else {
-    joinedEffects = joinEffects(
+    joinedEffects = Join.joinEffects(
       realm,
       lval,
       [lval, gen1, bindings1, properties1, createdObj1],
