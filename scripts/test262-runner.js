@@ -30,6 +30,7 @@ import cluster from "cluster";
 import os from "os";
 import tty from "tty";
 import minimist from "minimist";
+import process from "process";
 
 const EOL = os.EOL;
 const numCPUs = os.cpus().length;
@@ -310,7 +311,7 @@ function main(): number {
     } else {
       console.log(e);
     }
-    return 1;
+    process.exit(1);
   }
   return 0;
 }
@@ -1263,7 +1264,13 @@ function getBanners(test: TestFileInfo, fileContents: string): ?BannerData {
     } else if (bannerText.includes("attribute of 'arguments'")) {
       return null;
     } else if (bannerText.includes("poisoned")) return null;
-    data = yaml.safeLoad(banners[0].slice(3, -3));
+    try {
+      data = yaml.safeLoad(banners[0].slice(3, -3));
+    } catch (e) {
+      // Some versions of test262 have comments inside of yaml banners.
+      // parsing these will usually fail.
+      return null;
+    }
   }
   return BannerData.fromObject(data);
 }
