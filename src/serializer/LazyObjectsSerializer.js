@@ -97,7 +97,6 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   // Holds object's lazy initializer bodies.
   // These bodies will be combined into a well-known callback after generator serialization is done and registered with the runtime.
   _lazyObjectInitializers: Map<ObjectValue, SerializedBody>;
-  _currentSerializeLazyObject: void | ObjectValue;
 
   _lazyObjectJSRuntimeName: BabelNodeIdentifier;
   _callbackLazyObjectParam: BabelNodeIdentifier;
@@ -109,13 +108,10 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
 
   // TODO: change to use _getTarget() to get the lazy objects initializer body.
   _serializeLazyObjectInitializer(obj: ObjectValue): SerializedBody {
-    const prevLazyObject = this._currentSerializeLazyObject;
-    this._currentSerializeLazyObject = obj;
     const initializerBody = { type: LAZY_OBJECTS_SERIALIZER_BODY_TYPE, entries: [] };
     let oldBody = this.emitter.beginEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, initializerBody);
     this._emitObjectProperties(obj);
     this.emitter.endEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, oldBody);
-    this._currentSerializeLazyObject = prevLazyObject;
     return initializerBody;
   }
 
@@ -167,11 +163,21 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     );
   }
 
+  /**
+   * Check if the object current emitting is lazy object(inside _lazyObjectInitializers map) and
+   * the its emitting body matches this lazy object's initializer body.
+   * This is needed because for "lazy1.p = lazy2" case,
+   * we need to replace "lazy1" with "obj" but not for "lazy2".
+   */
+  _isEmittingIntoLazyObjectInitializerBody(obj: ObjectValue) {
+    return this._lazyObjectInitializers.get(obj) === this.emitter.getBody();
+  }
+
   // Override default behavior.
   // Inside lazy objects callback, the lazy object identifier needs to be replaced with the
   // parameter passed from the runtime.
   getSerializeObjectIdentifier(val: Value): BabelNodeIdentifier {
-    return this.emitter.getBody().type === LAZY_OBJECTS_SERIALIZER_BODY_TYPE && this._currentSerializeLazyObject === val
+    return val instanceof ObjectValue && this._isEmittingIntoLazyObjectInitializerBody(val)
       ? this._callbackLazyObjectParam
       : super.getSerializeObjectIdentifier(val);
   }
@@ -180,7 +186,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   // Inside lazy objects callback, the lazy object identifier needs to be replaced with the
   // parameter passed from the runtime.
   getSerializeObjectIdentifierOptional(val: Value): void | BabelNodeIdentifier {
-    return this.emitter.getBody().type === LAZY_OBJECTS_SERIALIZER_BODY_TYPE && this._currentSerializeLazyObject === val
+    return val instanceof ObjectValue && this._isEmittingIntoLazyObjectInitializerBody(val)
       ? this._callbackLazyObjectParam
       : super.getSerializeObjectIdentifierOptional(val);
   }
