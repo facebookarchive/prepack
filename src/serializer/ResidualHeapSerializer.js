@@ -220,7 +220,7 @@ export class ResidualHeapSerializer {
     properties: Map<string, PropertyBinding> = obj.properties,
     objectPrototypeAlreadyEstablished: boolean = false,
     cleanupDummyProperties: ?Set<string>,
-    skipPrototype: boolean = false,
+    skipPrototype: boolean = false
   ) {
     //inject symbols
     for (let [symbol, propertyBinding] of obj.symbols) {
@@ -1176,7 +1176,7 @@ export class ResidualHeapSerializer {
       proto !== this.realm.intrinsics.ObjectPrototype &&
       this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
       proto instanceof ObjectValue;
-    
+
     let classPrototype;
     let isClass = false;
     // if the object has a prototype that was a class (by check the constructor on the prototype)

@@ -23,7 +23,6 @@ import type {
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
   BabelNodeClassExpression,
-  BabelNodeCallExpression,
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { NameGenerator } from "../utils/generator.js";
@@ -353,16 +352,26 @@ export class ResidualFunctions {
             let methodName = Get(this.realm, functionValue, "name");
             invariant(methodName instanceof StringValue);
             // create the class method AST
-            let classMethod = t.classMethod(isConstructor ? "constructor" : "method", t.identifier(isConstructor ? "constructor" : methodName.value), methodParams, methodBody);
+            let classMethod = t.classMethod(
+              isConstructor ? "constructor" : "method",
+              t.identifier(isConstructor ? "constructor" : methodName.value),
+              methodParams,
+              methodBody
+            );
             // traverse and replace refs in the class method
-            traverse(t.file(t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])), ClosureRefReplacer, null, {
-              residualFunctionBindings,
-              modified,
-              requireReturns: this.requireReturns,
-              requireStatistics,
-              isRequire: this.modules.getIsRequire(methodParams, [functionValue]),
-              factoryFunctionInfos,
-            });
+            traverse(
+              t.file(t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])),
+              ClosureRefReplacer,
+              null,
+              {
+                residualFunctionBindings,
+                modified,
+                requireReturns: this.requireReturns,
+                requireStatistics,
+                isRequire: this.modules.getIsRequire(methodParams, [functionValue]),
+                factoryFunctionInfos,
+              }
+            );
             // add the class method to the class expression node body
             funcOrClassNode.body.body.push(classMethod);
             // we only return the funcOrClassNode if this is the constructor as it has the right ID
@@ -380,7 +389,9 @@ export class ResidualFunctions {
             let scopeInitialization = [];
             for (let scope of scopeInstances) {
               scopeInitialization.push(
-                t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))])
+                t.variableDeclaration("var", [
+                  t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
+                ])
               );
               scopeInitialization = scopeInitialization.concat(
                 this.referentializer.getReferentializedScopeInitialization(scope)
