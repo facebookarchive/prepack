@@ -164,8 +164,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   }
 
   /**
-   * Check if the object current emitting is lazy object(inside _lazyObjectInitializers map) and
-   * the its emitting body matches this lazy object's initializer body.
+   * Check if the object currently being emitted is lazy object(inside _lazyObjectInitializers map) and
+   * that its emitting body matches this lazy object's initializer body.
    * This is needed because for "lazy1.p = lazy2" case,
    * we need to replace "lazy1" with "obj" but not for "lazy2".
    */
