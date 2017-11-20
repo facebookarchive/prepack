@@ -41,6 +41,7 @@ import type {
   BabelNodeMemberExpression,
   BabelVariableKind,
   BabelNodeFile,
+  BabelNodeFunctionExpression,
 } from "babel-types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
@@ -1632,17 +1633,20 @@ export class ResidualHeapSerializer {
       globalDirectives.push(strictDirective);
     } else if (unstrictFunctionBodies.length && strictFunctionBodies.length) {
       // strict and unstrict functions
-      funcLoop: for (let func of strictFunctionBodies) {
-        if (func.body.directives) {
-          for (let directive of func.body.directives) {
-            if (directive.value.value === "use strict") {
-              // already have a use strict directive
-              continue funcLoop;
+      funcLoop: for (let node of strictFunctionBodies) {
+        if (t.isFunctionExpression(node)) {
+          let func = ((node: any): BabelNodeFunctionExpression);
+          if (func.body.directives) {
+            for (let directive of func.body.directives) {
+              if (directive.value.value === "use strict") {
+                // already have a use strict directive
+                continue funcLoop;
+              }
             }
-          }
-        } else func.body.directives = [];
+          } else func.body.directives = [];
 
-        func.body.directives.unshift(strictDirective);
+          func.body.directives.unshift(strictDirective);
+        }
       }
     }
 
