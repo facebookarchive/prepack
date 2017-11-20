@@ -40,8 +40,8 @@ import { getOrDefault } from "./utils.js";
 import ObjectValue from "../values/ObjectValue";
 
 type ResidualFunctionsResult = {
-  unstrictFunctionBodies: Array<BabelNodeFunctionExpression>,
-  strictFunctionBodies: Array<BabelNodeFunctionExpression>,
+  unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
+  strictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
   requireStatistics: { replaced: number, count: number },
 };
 
