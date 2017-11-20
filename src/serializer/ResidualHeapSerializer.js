@@ -219,7 +219,8 @@ export class ResidualHeapSerializer {
     obj: ObjectValue,
     properties: Map<string, PropertyBinding> = obj.properties,
     objectPrototypeAlreadyEstablished: boolean = false,
-    cleanupDummyProperties: ?Set<string>
+    cleanupDummyProperties: ?Set<string>,
+    skipPrototype: boolean = false,
   ) {
     //inject symbols
     for (let [symbol, propertyBinding] of obj.symbols) {
@@ -259,7 +260,9 @@ export class ResidualHeapSerializer {
     }
 
     // prototype
-    this._emitObjectPrototype(obj, objectPrototypeAlreadyEstablished);
+    if (!skipPrototype) {
+      this._emitObjectPrototype(obj, objectPrototypeAlreadyEstablished);
+    }
     if (obj instanceof FunctionValue) this._emitConstructorPrototype(obj);
 
     this.statistics.objects++;
@@ -1219,12 +1222,9 @@ export class ResidualHeapSerializer {
         dummyProperties.add(key);
         let serializedKey = this.generator.getAsPropertyNameExpression(key);
         props.push(t.objectProperty(serializedKey, voidExpression));
-      } else if (isClass && !descriptor.enumerable) {
-        // if we are in a class and the property is not enumerable, then we don't need to emit
-        remainingProperties.delete(key);
       }
     }
-    this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties);
+    this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties, isClass);
 
     if (createViaAuxiliaryConstructor) {
       this.needsAuxiliaryConstructor = true;
