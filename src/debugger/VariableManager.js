@@ -18,7 +18,14 @@ import {
   ObjectEnvironmentRecord,
   GlobalEnvironmentRecord,
 } from "./../environment.js";
-import { Value, ConcreteValue, PrimitiveValue, ObjectValue, AbstractObjectValue } from "./../values/index.js";
+import {
+  Value,
+  ConcreteValue,
+  PrimitiveValue,
+  ObjectValue,
+  AbstractObjectValue,
+  AbstractValue,
+} from "./../values/index.js";
 import invariant from "./../invariant.js";
 import type { Realm } from "./../realm.js";
 import { IsDataDescriptor } from "./../methods/is.js";
@@ -61,6 +68,8 @@ export class VariableManager {
       return this._getVariablesFromEnvRecord(container.environmentRecord);
     } else if (container instanceof ObjectValue) {
       return this._getVariablesFromObject(container);
+    } else if (container instanceof AbstractValue) {
+      return this._getAbstractValueContent(container);
     } else {
       invariant(false, "Invalid variable container");
     }
@@ -83,6 +92,21 @@ export class VariableManager {
       }
     }
     return variables;
+  }
+
+  _getAbstractValueContent(value: AbstractValue): Array<Variable> {
+    let kindVar: Variable = {
+      name: "kind",
+      value: value.kind || "undefined",
+      variablesReference: 0,
+    };
+    let contents: Array<Variable> = [kindVar];
+    let argCount = 1;
+    for (let arg of value.args) {
+      contents.push(this._getVariableFromValue("arg-" + argCount, arg));
+      argCount++;
+    }
+    return contents;
   }
 
   _getVariablesFromEnvRecord(envRecord: EnvironmentRecord): Array<Variable> {
@@ -122,10 +146,27 @@ export class VariableManager {
   _getVariableFromValue(name: string, value: Value): Variable {
     if (value instanceof ConcreteValue) {
       return this._getVariableFromConcreteValue(name, value);
+    } else if (value instanceof AbstractValue) {
+      return this._getVariableFromAbstractValue(name, value);
     } else {
-      invariant(false, "Unsupported type of: " + name);
+      invariant(false, "Value is neither concrete nor abstract");
     }
-    // TODO: implement variables request for abstract values
+  }
+
+  _getVariableFromAbstractValue(name: string, value: AbstractValue): Variable {
+    let variable: Variable = {
+      name: name,
+      value: this._getAbstractValueDisplay(value),
+      variablesReference: this.getReferenceForValue(value),
+    };
+    return variable;
+  }
+
+  _getAbstractValueDisplay(value: AbstractValue): string {
+    if (value.intrinsicName && !value.intrinsicName.startsWith("_")) {
+      return value.intrinsicName;
+    }
+    return "Abstract " + value.types.getType().name;
   }
 
   _getVariableFromConcreteValue(name: string, value: ConcreteValue): Variable {
