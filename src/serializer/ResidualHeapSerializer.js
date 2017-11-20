@@ -1173,6 +1173,21 @@ export class ResidualHeapSerializer {
       proto !== this.realm.intrinsics.ObjectPrototype &&
       this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
       proto instanceof ObjectValue;
+    
+    let classPrototype;
+    let isClass = false;
+    // if the object has a prototype that was a class (by check the constructor on the prototype)
+    if (proto instanceof ObjectValue) {
+      let constructor = Get(this.realm, proto, "constructor");
+      if (constructor instanceof ECMAScriptSourceFunctionValue && constructor.$FunctionKind === "classConstructor") {
+        classPrototype = constructor;
+      }
+    }
+    // check if this object is actually based from a class (by checking the constructor)
+    let constructor = Get(this.realm, val, "constructor");
+    if (constructor instanceof ECMAScriptSourceFunctionValue && constructor.$FunctionKind === "classConstructor") {
+      isClass = true;
+    }
 
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
@@ -1204,13 +1219,17 @@ export class ResidualHeapSerializer {
         dummyProperties.add(key);
         let serializedKey = this.generator.getAsPropertyNameExpression(key);
         props.push(t.objectProperty(serializedKey, voidExpression));
+      } else if (isClass && !descriptor.enumerable) {
+        // if we are in a class and the property is not enumerable, then we don't need to emit
+        remainingProperties.delete(key);
       }
     }
     this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties);
 
     if (createViaAuxiliaryConstructor) {
       this.needsAuxiliaryConstructor = true;
-      let serializedProto = this.serializeValue(proto);
+      // if we know the class prototype, we can use that instead
+      let serializedProto = this.serializeValue(classPrototype ? classPrototype : proto);
       return t.sequenceExpression([
         t.assignmentExpression(
           "=",
