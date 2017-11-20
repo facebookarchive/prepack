@@ -100,7 +100,7 @@ export class ResidualFunctions {
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
   functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
-  classes: Map<ObjectValue, Array<FunctionInstance>>;
+  classes: Map<ObjectValue, BabelNodeClassExpression>;
   functionInstances: Array<FunctionInstance>;
   residualFunctionInitializers: ResidualFunctionInitializers;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
@@ -338,35 +338,36 @@ export class ResidualFunctions {
           if (isClassMethod) {
             let homeObject = functionValue.$HomeObject;
             invariant(homeObject instanceof ObjectValue);
-            // we use the $HomeObject as the key to gather all class method instances
+            // we use the $HomeObject as the key to get the class expression ast node
             if (!this.classes.has(homeObject)) {
-              this.classes.set(homeObject, []);
-            }
-            let classMethodInstances = this.classes.get(homeObject);
-            invariant(Array.isArray(classMethodInstances));
-            if (functionValue.$FunctionKind !== "classConstructor") {
-              classMethodInstances.push(instance);
-              continue;
+              funcOrClassNode = t.classExpression(null, classSuper ? classSuper : null, t.classBody([]), []);
+              this.classes.set(homeObject, funcOrClassNode);
             } else {
-              classMethodInstances.unshift(instance);
-              let classBody = classMethodInstances.map(({ functionValue: methodFunctionValue, residualFunctionBindings }) => {
-                let methodParams = methodFunctionValue.$FormalParameters.slice();
-                let methodBody = ((t.cloneDeep(methodFunctionValue.$ECMAScriptCode): any): BabelNodeBlockStatement);
-                let methodName = Get(this.realm, methodFunctionValue, "name");
-                let isConstructor = methodFunctionValue === functionValue;
-                invariant(methodName instanceof StringValue);
-                let classMethod = t.classMethod(isConstructor ? "constructor" : "method", t.identifier(isConstructor ? "constructor" : methodName.value), methodParams, methodBody);
-                traverse(t.file(t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])), ClosureRefReplacer, null, {
-                  residualFunctionBindings,
-                  modified,
-                  requireReturns: this.requireReturns,
-                  requireStatistics,
-                  isRequire: this.modules.getIsRequire(methodParams, [methodFunctionValue]),
-                  factoryFunctionInfos,
-                });
-                return classMethod;
-              })
-              funcOrClassNode = t.classExpression(null, classSuper ? classSuper : null, t.classBody(classBody), []);
+              funcOrClassNode = this.classes.get(homeObject);
+            }
+            invariant(funcOrClassNode && t.isClassExpression(funcOrClassNode));
+            // use $FunctionKind to determine if this is the class constructor
+            let isConstructor = functionValue.$FunctionKind === "classConstructor";
+            let methodParams = params.slice();
+            let methodBody = ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement);
+            let methodName = Get(this.realm, functionValue, "name");
+            invariant(methodName instanceof StringValue);
+            // create the class method AST
+            let classMethod = t.classMethod(isConstructor ? "constructor" : "method", t.identifier(isConstructor ? "constructor" : methodName.value), methodParams, methodBody);
+            // traverse and replace refs in the class method
+            traverse(t.file(t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])), ClosureRefReplacer, null, {
+              residualFunctionBindings,
+              modified,
+              requireReturns: this.requireReturns,
+              requireStatistics,
+              isRequire: this.modules.getIsRequire(methodParams, [functionValue]),
+              factoryFunctionInfos,
+            });
+            // add the class method to the class expression node body
+            funcOrClassNode.body.body.push(classMethod);
+            // we only return the funcOrClassNode if this is the constructor as it has the right ID
+            if (!isConstructor) {
+              continue;
             }
           } else {
             invariant(id !== undefined);

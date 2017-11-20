@@ -1115,30 +1115,30 @@ export class ResidualHeapSerializer {
       });
     }
 
-
+    undelay();
     if (instance.isClassMethod && val.$FunctionKind === "classConstructor") {
       if (!skipClassSerializing) {
-        if (!(val.$Prototype instanceof NativeFunctionValue)) {
-          let proto = val.$Prototype;
-          instance.classSuper = this.serializeValue(val.$Prototype);
-          this.serializedValues.add(Get(this.realm, val, "caller"));
-          this.serializedValues.add(Get(this.realm, val, "prototype"));
+        for (let [key] of val.properties) {
+          if (!this.residualHeapInspector.canIgnoreProperty(val, key)) {
+            this.serializedValues.add(Get(this.realm, val, key));
+          }
         }
-        this.serializedValues.add(Get(this.realm, val, "length"));
-        this.serializedValues.add(Get(this.realm, val, "arguments"));
-        this.serializedValues.add(Get(this.realm, val, "name"));
         invariant(val.$HomeObject instanceof ObjectValue);
         for (let [classMethodName] of val.$HomeObject.properties) {
           let classMethod = Get(this.realm, val.$HomeObject, classMethodName);
-          // we need to add it to the serialized values as we're handling it manually
-          this.serializedValues.add(classMethod);
           invariant(classMethod instanceof FunctionValue);
+          this.serializedValues.add(classMethod);
           this._serializeValueFunction(classMethod, true);
         }
+        if (!(val.$Prototype instanceof NativeFunctionValue)) {
+          let proto = val.$Prototype;
+          instance.classSuper = this.serializeValue(val.$Prototype);
+          if (proto.$HomeObject instanceof ObjectValue) {
+            this.serializedValues.add(proto.$HomeObject);
+          }
+        }
       }
-      undelay();
     } else {
-      undelay();
       this._emitObjectProperties(val);
     }
   }
