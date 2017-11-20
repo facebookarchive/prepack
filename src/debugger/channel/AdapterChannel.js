@@ -29,7 +29,7 @@ export class AdapterChannel {
   _ioWrapper: FileIOWrapper;
   _marshaller: MessageMarshaller;
   _queue: Queue;
-  _pendingRequestCallbacks: { [number]: (DebuggerResponse) => void };
+  _pendingRequestCallbacks: Map<number, (DebuggerResponse) => void>;
   _prepackWaiting: boolean;
   _eventEmitter: EventEmitter;
   _prepackProcess: child_process.ChildProcess;
@@ -68,17 +68,15 @@ export class AdapterChannel {
   }
 
   _addRequestCallback(requestID: number, callback: DebuggerResponse => void) {
-    invariant(!(requestID in this._pendingRequestCallbacks), "Request ID already exists in pending requests");
-    this._pendingRequestCallbacks[requestID] = callback;
+    invariant(!this._pendingRequestCallbacks.has(requestID), "Request ID already exists in pending requests");
+    this._pendingRequestCallbacks.set(requestID, callback);
   }
 
   _processRequestCallback(response: DebuggerResponse) {
-    invariant(
-      response.id in this._pendingRequestCallbacks,
-      "Request ID does not exist in pending requests: " + response.id
-    );
-    let callback = this._pendingRequestCallbacks[response.id];
+    let callback = this._pendingRequestCallbacks.get(response.id);
+    invariant(callback !== undefined, "Request ID does not exist in pending requests: " + response.id);
     callback(response);
+    this._pendingRequestCallbacks.delete(response.id);
   }
 
   registerChannelEvent(event: string, listener: (response: DebuggerResponse) => void) {
