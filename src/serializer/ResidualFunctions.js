@@ -383,7 +383,11 @@ export class ResidualFunctions {
               }
             );
             // add the class method to the class expression node body
-            funcOrClassNode.body.body.push(classMethod);
+            if (isConstructor) {
+              funcOrClassNode.body.body.unshift(classMethod);
+            } else {
+              funcOrClassNode.body.body.push(classMethod);
+            }
             // we only return the funcOrClassNode if this is the constructor as it has the right ID
             if (!isConstructor) {
               continue;
