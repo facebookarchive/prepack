@@ -298,7 +298,7 @@ export class ResidualFunctions {
       invariant(id !== undefined);
       let funcParams = params.slice();
       let funcOrClassNode;
-      let { isClassMethod, classSuper } = instance;
+      let { isClassMethod } = instance;
 
       if (isClassMethod) {
         let homeObject = functionValue.$HomeObject;
@@ -310,7 +310,7 @@ export class ResidualFunctions {
         let methodName = Get(this.realm, functionValue, "name");
         invariant(methodName instanceof StringValue);
         let classMethod = t.classMethod("method", t.identifier(methodName.value), funcParams, functionBody);
-        funcOrClassNode = this._getOrCreateClassNode(homeObject, classSuper);
+        funcOrClassNode = this._getOrCreateClassNode(homeObject);
         funcOrClassNode.body.body.push(classMethod);
       } else {
         funcOrClassNode = t.functionExpression(null, funcParams, functionBody);
@@ -354,7 +354,7 @@ export class ResidualFunctions {
             let homeObject = functionValue.$HomeObject;
             invariant(homeObject instanceof ObjectValue);
             // we use the $HomeObject as the key to get the class expression ast node
-            funcOrClassNode = this._getOrCreateClassNode(homeObject, classSuper);
+            funcOrClassNode = this._getOrCreateClassNode(homeObject);
             // use $FunctionKind to determine if this is the class constructor
             let isConstructor = functionValue.$FunctionKind === "classConstructor";
             let methodParams = params.slice();
@@ -391,6 +391,10 @@ export class ResidualFunctions {
             // we only return the funcOrClassNode if this is the constructor as it has the right ID
             if (!isConstructor) {
               continue;
+            }
+            // handle the class super
+            if (classSuper) {
+              funcOrClassNode.superClass = classSuper;
             }
           } else {
             invariant(id !== undefined);
@@ -629,9 +633,9 @@ export class ResidualFunctions {
 
     return { unstrictFunctionBodies, strictFunctionBodies, requireStatistics };
   }
-  _getOrCreateClassNode(homeObject: ObjectValue, classSuper: BabelNodeIdentifier | void): BabelNodeClassExpression {
+  _getOrCreateClassNode(homeObject: ObjectValue): BabelNodeClassExpression {
     if (!this.classes.has(homeObject)) {
-      let funcOrClassNode = t.classExpression(null, classSuper ? classSuper : null, t.classBody([]), []);
+      let funcOrClassNode = t.classExpression(null, null, t.classBody([]), []);
       this.classes.set(homeObject, funcOrClassNode);
       return funcOrClassNode;
     } else {
