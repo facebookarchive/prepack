@@ -88,7 +88,6 @@ function runTest(name: string, code: string): boolean {
     };
     if (name.endsWith("/bundle.js~"))
       (options: any).additionalFunctions = [
-        "global.WildeBundle.prepareComponentScript",
         "global.WildeBundle.prepareReact",
       ];
     let serialized = prepackSources(sources, options);
