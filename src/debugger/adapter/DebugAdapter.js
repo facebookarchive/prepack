@@ -57,6 +57,16 @@ class PrepackDebugSession extends LoggingDebugSession {
         );
       }
     );
+    this._adapterChannel.registerChannelEvent(DebugMessage.STEPIN_RESPONSE, (response: DebuggerResponse) => {
+      let result = response.result;
+      invariant(result.kind === "stepIn");
+      this.sendEvent(
+        new StoppedEvent(
+          "Stepped to " + `${result.filePath} ${result.line}:${result.column}`,
+          DebuggerConstants.PREPACK_THREAD_ID
+        )
+      );
+    });
   }
 
   /**
@@ -246,6 +256,12 @@ class PrepackDebugSession extends LoggingDebugSession {
         this.sendResponse(response);
       }
     );
+  }
+
+  stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
+    this._adapterChannel.stepIn(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
   }
 }
 

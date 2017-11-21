@@ -89,7 +89,12 @@ export class DebugChannel {
     this.writeOut(this._marshaller.marshallVariablesResponse(requestID, variables));
   }
 
-  sendPrepackFinish(): void {
-    this.writeOut(this._marshaller.marshallPrepackFinish());
+  sendStepInResponse(filePath: string, line: number, column: number) {
+    this.writeOut(this._marshaller.marshallStepInResponse(filePath, line, column));
+  }
+
+  shutdown() {
+    this._ioWrapper.clearInFile();
+    this._ioWrapper.clearOutFile();
   }
 }

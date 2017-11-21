@@ -31,6 +31,7 @@ import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "babel-types";
+import { BabelNode } from "babel-types";
 
 // ECMA262 22.1.3.1.1
 export function IsConcatSpreadable(realm: Realm, O: Value): boolean {
@@ -349,4 +350,43 @@ export function IsIntrospectionError(realm: Realm, value: Value): boolean {
 export function IsStatic(classElement: BabelNodeClassMethod): boolean {
   // $FlowFixMe need to backport static property to BabelNodeClassMethod
   return classElement.static;
+}
+
+export function IsStatement(node: BabelNode): boolean {
+  if (node.type === "BlockStatement") return true;
+  if (node.type === "BreakStatement") return true;
+  if (node.type === "ContinueStatement") return true;
+  if (node.type === "DebuggerStatement") return true;
+  if (node.type === "DoWhileStatement") return true;
+  if (node.type === "EmptyStatement") return true;
+  if (node.type === "ExpressionStatement") return true;
+  if (node.type === "ForInStatement") return true;
+  if (node.type === "ForStatement") return true;
+  if (node.type === "FunctionDeclaration") return true;
+  if (node.type === "IfStatement") return true;
+  if (node.type === "LabeledStatement") return true;
+  if (node.type === "ReturnStatement") return true;
+  if (node.type === "SwitchStatement") return true;
+  if (node.type === "ThrowStatement") return true;
+  if (node.type === "TryStatement") return true;
+  if (node.type === "VariableDeclaration") return true;
+  if (node.type === "WhileStatement") return true;
+  if (node.type === "WithStatement") return true;
+  if (node.type === "ClassDeclaration") return true;
+  if (node.type === "ExportAllDeclaration") return true;
+  if (node.type === "ExportDefaultDeclaration") return true;
+  if (node.type === "ExportNamedDeclaration") return true;
+  if (node.type === "ForOfStatement") return true;
+  if (node.type === "ImportDeclaration") return true;
+  if (node.type === "DeclareClass") return true;
+  if (node.type === "DeclareFunction") return true;
+  if (node.type === "DeclareInterface") return true;
+  if (node.type === "DeclareModule") return true;
+  if (node.type === "DeclareModuleExports") return true;
+  if (node.type === "DeclareTypeAlias") return true;
+  if (node.type === "DeclareVariable") return true;
+  if (node.type === "InterfaceDeclaration") return true;
+  if (node.type === "TypeAlias") return true;
+  if (node.type === "ForAwaitStatement") return true;
+  return false;
 }

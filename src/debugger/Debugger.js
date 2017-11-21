@@ -23,6 +23,7 @@ import type {
   Stackframe,
   Scope,
   VariablesArguments,
+  SteppingInfo,
 } from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
@@ -34,6 +35,7 @@ import {
   DeclarativeEnvironmentRecord,
   ObjectEnvironmentRecord,
 } from "./../environment.js";
+import { IsStatement } from "./../methods/is.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
@@ -56,6 +58,8 @@ export class DebugServer {
   _lastRunRequestID: number;
   _realm: Realm;
   _variableManager: VariableManager;
+  _steppingInfo: void | SteppingInfo;
+
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
   */
@@ -71,8 +75,8 @@ export class DebugServer {
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
     this.checkForBreakpoint(ast);
-
-    // last step: set the current location as the previously executed line
+    this.checkStepIn(ast);
+    // set the current location as the previously executed line
     if (ast.loc && ast.loc.source !== null) {
       this._previousExecutedFile = ast.loc.source;
       this._previousExecutedLine = ast.loc.start.line;
@@ -127,6 +131,37 @@ export class DebugServer {
     }
   }
 
+  checkStepIn(ast: BabelNode) {
+    if (this._steppingInfo !== undefined) {
+      if (this.isValidSteppingLocation(ast)) {
+        if (ast.loc && ast.loc.source) {
+          this._channel.sendStepInResponse(ast.loc.source, ast.loc.start.line, ast.loc.start.column);
+          this._steppingInfo = undefined;
+          this.waitForRun(ast);
+        }
+      }
+    }
+  }
+
+  isValidSteppingLocation(ast: BabelNode): boolean {
+    if (!IsStatement(ast)) return false;
+    invariant(this._steppingInfo !== undefined);
+    let loc = ast.loc;
+    if (!loc) return false;
+    let filePath = loc.source;
+    let line = loc.start.line;
+    let column = loc.start.column;
+    if (!filePath) return false;
+    if (
+      filePath === this._steppingInfo.stoppedFile &&
+      line === this._steppingInfo.stoppedLine &&
+      column === this._steppingInfo.stoppedColumn
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
   processDebuggerCommand(request: DebuggerRequest, ast: void | BabelNode) {
@@ -170,6 +205,11 @@ export class DebugServer {
         invariant(args.kind === "variables");
         this.processVariablesCommand(requestID, args);
         break;
+      case DebugMessage.STEPIN_COMMAND:
+        invariant(ast !== undefined);
+        this.processStepInCommand(requestID, ast);
+        this._onDebuggeeResume();
+        return true;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
@@ -271,6 +311,17 @@ export class DebugServer {
     this._channel.sendVariablesResponse(requestID, variables);
   }
 
+  processStepInCommand(requestID: number, ast: BabelNode) {
+    invariant(this._steppingInfo === undefined);
+    invariant(ast.loc && ast.loc.source);
+    this._steppingInfo = {
+      kind: "in",
+      stoppedFile: ast.loc.source,
+      stoppedLine: ast.loc.start.line,
+      stoppedColumn: ast.loc.start.column,
+    };
+  }
+
   // actions that need to happen before Prepack can resume
   _onDebuggeeResume() {
     // resets the variable manager
@@ -278,7 +329,7 @@ export class DebugServer {
   }
 
   shutdown() {
-    //let the adapter know Prepack is done running
-    this._channel.sendPrepackFinish();
+    // clean the channel pipes
+    this._channel.shutdown();
   }
 }

@@ -48,6 +48,8 @@ export class AdapterChannel {
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, dbgResponse.id, dbgResponse);
     } else if (dbgResponse.result.kind === "breakpoint-stopped") {
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, dbgResponse);
+    } else if (dbgResponse.result.kind === "stepIn") {
+      this._eventEmitter.emit(DebugMessage.STEPIN_RESPONSE, dbgResponse);
     }
     this._prepackWaiting = true;
     this._processRequestCallback(dbgResponse);
@@ -149,6 +151,12 @@ export class AdapterChannel {
 
   getVariables(requestID: number, variablesReference: number, callback: DebuggerResponse => void) {
     this._queue.enqueue(this._marshaller.marshallVariablesRequest(requestID, variablesReference));
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  stepIn(requestID: number, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallStepInRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }

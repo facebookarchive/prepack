@@ -29,6 +29,8 @@ import type {
   RunArguments,
   StackframeArguments,
   FinishResult,
+  StepInArguments,
+  StepInResult,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -36,8 +38,10 @@ import { DebuggerError } from "./../DebuggerError.js";
 export class MessageMarshaller {
   constructor() {
     this._lastRunRequestID = 0;
+    this._lastStepInRequestID = 0;
   }
   _lastRunRequestID: number;
+  _lastStepInRequestID: number;
 
   marshallBreakpointAcknowledge(requestID: number, messageType: string, breakpoints: Array<Breakpoint>): string {
     return `${requestID} ${messageType} ${JSON.stringify(breakpoints)}`;
@@ -88,6 +92,20 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.VARIABLES_RESPONSE} ${JSON.stringify(variables)}`;
   }
 
+  marshallStepInRequest(requestID: number): string {
+    return `${requestID} ${DebugMessage.STEPIN_COMMAND}`;
+  }
+
+  marshallStepInResponse(filePath: string, line: number, column: number): string {
+    let result: StepInResult = {
+      kind: "stepIn",
+      filePath: filePath,
+      line: line,
+      column: column,
+    };
+    return `${this._lastStepInRequestID} ${DebugMessage.STEPIN_RESPONSE} ${JSON.stringify(result)}`;
+  }
+
   unmarshallRequest(message: string): DebuggerRequest {
     let parts = message.split(" ");
     // each request must have a length and a command
@@ -119,6 +137,13 @@ export class MessageMarshaller {
         break;
       case DebugMessage.VARIABLES_COMMAND:
         args = this._unmarshallVariablesArguments(requestID, parts[2]);
+        break;
+      case DebugMessage.STEPIN_COMMAND:
+        this._lastStepInRequestID = requestID;
+        let stepInArgs: StepInArguments = {
+          kind: "stepIn",
+        };
+        args = stepInArgs;
         break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
@@ -152,6 +177,8 @@ export class MessageMarshaller {
       dbgResponse = this._unmarshallVariablesResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.PREPACK_FINISH_RESPONSE) {
       dbgResponse = this._unmarshallFinishResponse(requestID);
+    } else if (messageType === DebugMessage.STEPIN_RESPONSE) {
+      dbgResponse = this._unmarshallStepInResponse(requestID, parts.slice(2).join(" "));
     } else {
       invariant(false, "Unexpected response type");
     }
@@ -259,6 +286,24 @@ export class MessageMarshaller {
         kind: "variables",
         variables: variables,
       };
+      let dbgResponse: DebuggerResponse = {
+        id: requestID,
+        result: result,
+      };
+      return dbgResponse;
+    } catch (e) {
+      throw new DebuggerError("Invalid response", e.message);
+    }
+  }
+
+  _unmarshallStepInResponse(requestID: number, responseBody: string): DebuggerResponse {
+    try {
+      let result = JSON.parse(responseBody);
+      invariant(result.hasOwnProperty("kind"));
+      invariant(result.kind === "stepIn");
+      invariant(result.hasOwnProperty("filePath"));
+      invariant(result.hasOwnProperty("line"));
+      invariant(result.hasOwnProperty("column"));
       let dbgResponse: DebuggerResponse = {
         id: requestID,
         result: result,

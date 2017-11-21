@@ -24,7 +24,8 @@ export type DebuggerRequestArguments =
   | RunArguments
   | StackframeArguments
   | ScopesArguments
-  | VariablesArguments;
+  | VariablesArguments
+  | StepInArguments;
 
 export type PrepackLaunchArguments = {
   kind: "launch",
@@ -74,6 +75,10 @@ export type VariablesArguments = {
   variablesReference: number,
 };
 
+export type StepInArguments = {
+  kind: "stepIn",
+};
+
 export type DebuggerResponse = {
   id: number,
   result: DebuggerResponseResult,
@@ -86,6 +91,7 @@ export type DebuggerResponseResult =
   | BreakpointStoppedResult
   | ScopesResult
   | VariablesResult
+  | StepInResult
   | FinishResult;
 
 export type ReadyResult = {
@@ -130,6 +136,13 @@ export type VariablesResult = {
   variables: Array<Variable>,
 };
 
+export type StepInResult = {
+  kind: "stepIn",
+  filePath: string,
+  line: number,
+  column: number,
+};
+
 export type FinishResult = {
   kind: "finish",
 };
@@ -144,3 +157,10 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   debugInFilePath: string,
   debugOutFilePath: string,
 }
+
+export type SteppingInfo = {
+  kind: "in" | "over" | "out",
+  stoppedFile: string,
+  stoppedLine: number,
+  stoppedColumn: number,
+};
