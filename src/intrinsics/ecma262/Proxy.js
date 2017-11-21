@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { ProxyValue, NullValue, NativeFunctionValue } from "../../values/index.js";
-import { ObjectCreate, CreateDataProperty } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import { ProxyCreate } from "../../methods/proxy.js";
 import invariant from "../../invariant.js";
 
@@ -39,13 +39,13 @@ export default function(realm: Realm): NativeFunctionValue {
     revoker.$RevocableProxy = p;
 
     // 4. Let result be ObjectCreate(%ObjectPrototype%).
-    let result = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    let result = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
     // 5. Perform CreateDataProperty(result, "proxy", p).
-    CreateDataProperty(realm, result, "proxy", p);
+    Create.CreateDataProperty(realm, result, "proxy", p);
 
     // 6. Perform CreateDataProperty(result, "revoke", revoker).
-    CreateDataProperty(realm, result, "revoke", revoker);
+    Create.CreateDataProperty(realm, result, "revoke", revoker);
 
     // 7. Return result.
     return result;

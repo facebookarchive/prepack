@@ -11,9 +11,9 @@
 
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
-import { Get, ToObject, CreateArrayFromList, IsArrayIndex } from "./index.js";
+import { Get, ToObject, IsArrayIndex } from "./index.js";
 import { StringValue, ObjectValue, Value, ArrayValue } from "../values/index.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 
 import invariant from "../invariant.js";
 
@@ -38,7 +38,7 @@ export function GetOwnPropertyKeys(realm: Realm, O: Value, Type: Function): Arra
   }
 
   // 1. Return CreateArrayFromList(nameList).
-  return CreateArrayFromList(realm, nameList);
+  return Create.CreateArrayFromList(realm, nameList);
 }
 
 // ECMA262 9.1.11.1
@@ -108,7 +108,7 @@ export function EnumerableOwnProperties(realm: Realm, O: ObjectValue, kind: stri
             invariant(kind === "key+value", "expected kind to be key+value");
 
             // ii. Let entry be CreateArrayFromList(« key, value »).
-            let entry = CreateArrayFromList(realm, [key, value]);
+            let entry = Create.CreateArrayFromList(realm, [key, value]);
 
             // iii. Append entry to properties.
             properties.push(entry);

@@ -35,7 +35,6 @@ import {
   ToObjectPartial,
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
-import { OrdinaryCreateFromConstructor } from "../methods/create.js";
 import {
   ReturnCompletion,
   AbruptCompletion,
@@ -44,7 +43,7 @@ import {
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { construct_empty_effects } from "../realm.js";
-import { Environment, Functions, Join } from "../singletons.js";
+import { Create, Environment, Functions, Join } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
@@ -322,7 +321,7 @@ export function OrdinaryCallEvaluateBody(
       Functions.FunctionDeclarationInstantiation(realm, F, argumentsList);
 
       // 2. Let G be ? OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%", « [[GeneratorState]], [[GeneratorContext]] »).
-      let G = OrdinaryCreateFromConstructor(realm, F, "GeneratorPrototype", {
+      let G = Create.OrdinaryCreateFromConstructor(realm, F, "GeneratorPrototype", {
         $GeneratorState: undefined,
         $GeneratorContext: undefined,
       });

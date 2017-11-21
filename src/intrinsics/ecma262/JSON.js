@@ -25,13 +25,11 @@ import {
 } from "../../values/index.js";
 import {
   Call,
-  CreateDataProperty,
   EnumerableOwnProperties,
   Get,
   HasSomeCompatibleType,
   IsArray,
   IsCallable,
-  ObjectCreate,
   ToInteger,
   ToLength,
   ToNumber,
@@ -41,7 +39,7 @@ import {
 import { InternalizeJSONProperty } from "../../methods/json.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
-import { Properties } from "../../singletons.js";
+import { Create, Properties } from "../../singletons.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
@@ -304,7 +302,7 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
 }
 
 function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
-  let clone = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  let clone = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   for (let [key, binding] of val.properties) {
     if (binding === undefined || binding.descriptor === undefined) continue; // deleted
     invariant(binding.descriptor !== undefined);
@@ -315,7 +313,7 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
       throw new FatalError();
     }
     invariant(value instanceof Value);
-    CreateDataProperty(realm, clone, key, InternalJSONClone(realm, value));
+    Create.CreateDataProperty(realm, clone, key, InternalJSONClone(realm, value));
   }
   if (val.isPartialObject()) clone.makePartial();
   if (val.isSimpleObject()) clone.makeSimple();
@@ -353,7 +351,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
     let clonedObj;
     let isArray = IsArray(realm, val);
     if (isArray === true) {
-      clonedObj = ObjectCreate(realm, realm.intrinsics.ArrayPrototype);
+      clonedObj = Create.ObjectCreate(realm, realm.intrinsics.ArrayPrototype);
       let I = 0;
       let len = ToLength(realm, Get(realm, val, "length"));
       while (I < len) {
@@ -361,12 +359,12 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
         let newElement = Get(realm, val, P);
         if (!(newElement instanceof UndefinedValue)) {
           // TODO #1011: An abstract value that ultimately yields undefined should still be skipped
-          CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
+          Create.CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
         }
         I += 1;
       }
     } else {
-      clonedObj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      clonedObj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
       let valIsPartial = false;
       if (val.isPartialObject()) {
         valIsPartial = true;
@@ -379,7 +377,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
         let newElement = Get(realm, val, P);
         if (!(newElement instanceof UndefinedValue)) {
           // TODO #1011: An abstract value that ultimately yields undefined should still be skipped
-          CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
+          Create.CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
         }
       }
     }
@@ -500,7 +498,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 9. Let wrapper be ObjectCreate(%ObjectPrototype%).
-    let wrapper = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    let wrapper = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
     // TODO #1012: Make result abstract if any nested element is an abstract value.
     if (value instanceof AbstractValue || (value instanceof ObjectValue && value.isPartialObject())) {
@@ -526,7 +524,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 10. Let status be CreateDataProperty(wrapper, the empty String, value).
-    let status = CreateDataProperty(realm, wrapper, "", value);
+    let status = Create.CreateDataProperty(realm, wrapper, "", value);
 
     // 11. Assert: status is true.
     invariant(status, "expected to create data property");
@@ -602,13 +600,13 @@ export default function(realm: Realm): ObjectValue {
     // 7. If IsCallable(reviver) is true, then
     if (IsCallable(realm, reviver)) {
       // a. Let root be ObjectCreate(%ObjectPrototype%).
-      let root = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      let root = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
       // b. Let rootName be the empty String.
       let rootName = "";
 
       // c. Let status be CreateDataProperty(root, rootName, unfiltered).
-      let status = CreateDataProperty(realm, root, rootName, unfiltered);
+      let status = Create.CreateDataProperty(realm, root, rootName, unfiltered);
 
       // d. Assert: status is true.
       invariant(status, "expected to create data property");

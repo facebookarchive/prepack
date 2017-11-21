@@ -12,16 +12,14 @@
 import type { Realm } from "../../realm.js";
 import { BooleanValue, ObjectValue, NullValue } from "../../values/index.js";
 import {
-  CreateArrayFromList,
   ToPropertyDescriptor,
   Construct,
   ToPropertyKey,
   IsCallable,
-  CreateListFromArrayLike,
   Call,
   IsConstructor,
 } from "../../methods/index.js";
-import { Properties } from "../../singletons.js";
+import { Create, Properties } from "../../singletons.js";
 
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Reflect");
@@ -34,7 +32,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let args be ? CreateListFromArrayLike(argumentsList).
-    let args = CreateListFromArrayLike(realm, argumentsList);
+    let args = Create.CreateListFromArrayLike(realm, argumentsList);
 
     // TODO #1008 3. Perform PrepareForTailCall().
 
@@ -58,7 +56,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 4. Let args be ? CreateListFromArrayLike(argumentsList).
-    let args = CreateListFromArrayLike(realm, argumentsList);
+    let args = Create.CreateListFromArrayLike(realm, argumentsList);
 
     // 5. Return ? Construct(target, args, newTarget).
     return Construct(realm, target, args, newTarget);
@@ -194,7 +192,7 @@ export default function(realm: Realm): ObjectValue {
     let keys = target.$OwnPropertyKeys();
 
     // 3. Return CreateArrayFromList(keys).
-    return CreateArrayFromList(realm, keys);
+    return Create.CreateArrayFromList(realm, keys);
   });
 
   // ECMA262 26.1.11

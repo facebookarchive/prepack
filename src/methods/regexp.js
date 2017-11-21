@@ -12,13 +12,12 @@
 import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
 import { NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
-import { ArrayCreate, OrdinaryCreateFromConstructor, CreateDataProperty } from "./create.js";
 import { ToString, ToStringPartial, ToLength } from "./to.js";
 import { Get } from "./get.js";
 import { IsCallable } from "./is.js";
 import { Call } from "./call.js";
 import { HasCompatibleType, HasSomeCompatibleType } from "./has.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 
 // ECMA262 21.2.3.2.3
 export function RegExpCreate(realm: Realm, P: ?Value, F: ?Value): ObjectValue {
@@ -33,7 +32,7 @@ export function RegExpCreate(realm: Realm, P: ?Value, F: ?Value): ObjectValue {
 export function RegExpAlloc(realm: Realm, newTarget: ObjectValue): ObjectValue {
   // 1. Let obj be ? OrdinaryCreateFromConstructor(newTarget, "%RegExpPrototype%", « [[RegExpMatcher]],
   //    [[OriginalSource]], [[OriginalFlags]] »).
-  let obj = OrdinaryCreateFromConstructor(realm, newTarget, "RegExpPrototype", {
+  let obj = Create.OrdinaryCreateFromConstructor(realm, newTarget, "RegExpPrototype", {
     $RegExpMatcher: undefined, // always initialized to not undefined before use
     $OriginalSource: undefined, // ditto
     $OriginalFlags: undefined, // ditto
@@ -282,7 +281,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
   let n = r.captures.length - 1;
 
   // 17. Let A be ArrayCreate(n + 1).
-  let A = ArrayCreate(realm, n + 1);
+  let A = Create.ArrayCreate(realm, n + 1);
 
   // 18. Assert: The value of A's "length" property is n + 1.
   let lengthOfA = Get(realm, A, "length").throwIfNotConcrete();
@@ -293,16 +292,16 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
   let matchIndex = lastIndex;
 
   // 20. Perform ! CreateDataProperty(A, "index", matchIndex).
-  CreateDataProperty(realm, A, "index", new NumberValue(realm, matchIndex));
+  Create.CreateDataProperty(realm, A, "index", new NumberValue(realm, matchIndex));
 
   // 21. Perform ! CreateDataProperty(A, "input", S).
-  CreateDataProperty(realm, A, "input", new StringValue(realm, S));
+  Create.CreateDataProperty(realm, A, "input", new StringValue(realm, S));
 
   // 22. Let matchedSubstr be the matched substring (i.e. the portion of S between offset lastIndex inclusive and offset e exclusive).
   let matchedSubstr = S.substr(lastIndex, e - lastIndex);
 
   // 23. Perform ! CreateDataProperty(A, "0", matchedSubstr).
-  CreateDataProperty(realm, A, "0", new StringValue(realm, matchedSubstr));
+  Create.CreateDataProperty(realm, A, "0", new StringValue(realm, matchedSubstr));
 
   // 24. For each integer i such that i > 0 and i ≤ n
   for (let i = 1; i <= n; ++i) {
@@ -328,7 +327,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
     }
 
     // e. Perform ! CreateDataProperty(A, ! ToString(i), capturedValue).
-    CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, i)), capturedValue);
+    Create.CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, i)), capturedValue);
   }
 
   // 25. Return A.

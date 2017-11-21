@@ -35,10 +35,9 @@ import {
   IntegerIndexedElementSet,
   IntegerIndexedElementGet,
 } from "../../methods/typedarray.js";
-import { CreateArrayIterator } from "../../methods/create.js";
 import { SetValueInBuffer, GetValueFromBuffer, CloneArrayBuffer } from "../../methods/arraybuffer.js";
 import { SameValue, SameValueZeroPartial, StrictEqualityComparisonPartial } from "../../methods/abstract.js";
-import { Properties } from "../../singletons.js";
+import { Create, Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -239,7 +238,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(O instanceof ObjectValue);
 
     // 3. Return CreateArrayIterator(O, "key+value").
-    return CreateArrayIterator(realm, O, "key+value");
+    return Create.CreateArrayIterator(realm, O, "key+value");
   });
 
   // ECMA262 22.2.3.7
@@ -723,7 +722,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(O instanceof ObjectValue);
 
     // 3. Return CreateArrayIterator(O, "key").
-    return CreateArrayIterator(realm, O, "key");
+    return Create.CreateArrayIterator(realm, O, "key");
   });
 
   // ECMA262 22.2.3.17

@@ -21,11 +21,8 @@ import {
   ObjectValue,
 } from "../../values/index.js";
 import {
-  ArrayCreate,
   Construct,
   Call,
-  CreateDataProperty,
-  CreateDataPropertyOrThrow,
   Get,
   GetPrototypeFromConstructor,
   GetMethod,
@@ -35,7 +32,7 @@ import {
 } from "../../methods/index.js";
 import { ToString, ToUint32, ToObject, ToLength } from "../../methods/to.js";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
-import { Properties } from "../../singletons.js";
+import { Create, Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -54,7 +51,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let proto = GetPrototypeFromConstructor(realm, newTarget, "ArrayPrototype");
 
       // 5. Return ArrayCreate(0, proto).
-      return ArrayCreate(realm, 0, proto);
+      return Create.ArrayCreate(realm, 0, proto);
     } else if (argCount === 1) {
       // 1. Let numberOfArgs be the number of arguments passed to this function call.
       let numberOfArgs = argCount;
@@ -69,7 +66,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let proto = GetPrototypeFromConstructor(realm, newTarget, "ArrayPrototype");
 
       // 5. Let array be ArrayCreate(0, proto).
-      let array = ArrayCreate(realm, 0, proto);
+      let array = Create.ArrayCreate(realm, 0, proto);
 
       // 6. If Type(len) is not Number, then
       let len = items[0];
@@ -77,7 +74,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let intLen;
       if (!len.mightBeNumber()) {
         // a. Let defineStatus be CreateDataProperty(array, "0", len).
-        let defineStatus = CreateDataProperty(realm, array, "0", len);
+        let defineStatus = Create.CreateDataProperty(realm, array, "0", len);
 
         // b. Assert: defineStatus is true.
         invariant(defineStatus, "defineStatus is true");
@@ -115,7 +112,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let proto = GetPrototypeFromConstructor(realm, newTarget, "ArrayPrototype");
 
       // 5. Let array be ? ArrayCreate(numberOfArgs, proto).
-      let array = ArrayCreate(realm, numberOfArgs, proto);
+      let array = Create.ArrayCreate(realm, numberOfArgs, proto);
 
       // 6. Let k be 0.
       let k = 0;
@@ -133,7 +130,7 @@ export default function(realm: Realm): NativeFunctionValue {
         invariant(itemK !== undefined);
 
         // c. Let defineStatus be CreateDataProperty(array, Pk, itemK).
-        let defineStatus = CreateDataProperty(realm, array, Pk, itemK);
+        let defineStatus = Create.CreateDataProperty(realm, array, Pk, itemK);
 
         // d. Assert: defineStatus is true.
         invariant(defineStatus, "defineStatus is true");
@@ -179,7 +176,7 @@ export default function(realm: Realm): NativeFunctionValue {
       } else {
         // 5. Else,
         // a. Let A be ? ArrayCreate(len).
-        A = ArrayCreate(realm, len);
+        A = Create.ArrayCreate(realm, len);
       }
 
       // 6. Let k be 0.
@@ -194,7 +191,7 @@ export default function(realm: Realm): NativeFunctionValue {
         let Pk = ToString(realm, new NumberValue(realm, k));
 
         // c. Perform ? CreateDataPropertyOrThrow(A, Pk, kValue).
-        CreateDataPropertyOrThrow(realm, A, Pk, kValue);
+        Create.CreateDataPropertyOrThrow(realm, A, Pk, kValue);
 
         // d. Increase k by 1.
         k += 1;
@@ -249,7 +246,7 @@ export default function(realm: Realm): NativeFunctionValue {
         } else {
           // b. Else,
           // i. Let A be ArrayCreate(0).
-          A = ArrayCreate(realm, 0);
+          A = Create.ArrayCreate(realm, 0);
         }
 
         // c. Let iterator be ? GetIterator(items, usingIterator).
@@ -310,7 +307,7 @@ export default function(realm: Realm): NativeFunctionValue {
 
           // viii. Let defineStatus be CreateDataPropertyOrThrow(A, Pk, mappedValue).
           try {
-            CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
+            Create.CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
           } catch (completion) {
             if (completion instanceof AbruptCompletion) {
               // ix. If defineStatus is an abrupt completion, return ? IteratorClose(iterator, defineStatus).
@@ -344,7 +341,7 @@ export default function(realm: Realm): NativeFunctionValue {
       } else {
         // 10. Else,
         // a. Let A be ? ArrayCreate(len).
-        A = ArrayCreate(realm, len);
+        A = Create.ArrayCreate(realm, len);
       }
 
       // 11. Let k be 0.
@@ -370,7 +367,7 @@ export default function(realm: Realm): NativeFunctionValue {
         }
 
         // e. Perform ? CreateDataPropertyOrThrow(A, Pk, mappedValue).
-        CreateDataPropertyOrThrow(realm, A, new StringValue(realm, Pk), mappedValue);
+        Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, Pk), mappedValue);
 
         // f. Increase k by 1.
         k = k + 1;

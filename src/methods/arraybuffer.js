@@ -12,12 +12,11 @@
 import type { Realm } from "../realm.js";
 import type { DataBlock, ElementType } from "../types.js";
 import { Value, ObjectValue, NumberValue, EmptyValue, NullValue, UndefinedValue } from "../values/index.js";
-import { OrdinaryCreateFromConstructor } from "../methods/create.js";
 import { SpeciesConstructor } from "../methods/construct.js";
 import { IsConstructor } from "../methods/index.js";
 import { ToIndexPartial, ToBooleanPartial, ToNumber, ElementConv } from "./to.js";
 import { IsDetachedBuffer } from "../methods/is.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { ElementSize } from "../types.js";
 
@@ -94,7 +93,7 @@ export function CopyDataBlockBytes(
 // ECMA262 24.1.1.1
 export function AllocateArrayBuffer(realm: Realm, constructor: ObjectValue, byteLength: number): ObjectValue {
   // 1. Let obj be ? OrdinaryCreateFromConstructor(constructor, "%ArrayBufferPrototype%", « [[ArrayBufferData]], [[ArrayBufferByteLength]] »).
-  let obj = OrdinaryCreateFromConstructor(realm, constructor, "ArrayBufferPrototype", {
+  let obj = Create.OrdinaryCreateFromConstructor(realm, constructor, "ArrayBufferPrototype", {
     $ArrayBufferData: undefined,
     $ArrayBufferByteLength: undefined,
   });

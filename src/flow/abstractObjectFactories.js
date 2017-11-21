@@ -11,14 +11,14 @@
 
 import { Realm } from "../realm.js";
 import buildExpressionTemplate from "../utils/builder.js";
-import { ObjectCreate, ArrayCreate } from "../methods/index.js";
+import { Create } from "../singletons.js";
 import { ValuesDomain } from "../domains/index.js";
 import { Value, AbstractValue, ObjectValue, ArrayValue, AbstractObjectValue } from "../values/index.js";
 import invariant from "../invariant.js";
 import { type ObjectTypeTemplate } from "./utils.js";
 
 export function createObject(realm: Realm, shape: ObjectTypeTemplate | null, name: string | null): ObjectValue {
-  let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   if (shape != null) {
     // to get around Flow complaining that shape could be null
     let shapeThatIsNotNull = shape;
@@ -38,7 +38,7 @@ export function createObject(realm: Realm, shape: ObjectTypeTemplate | null, nam
 }
 
 export function createArray(realm: Realm, name: string | null): ArrayValue {
-  let obj = ArrayCreate(realm, 0, realm.intrinsics.ArrayPrototype);
+  let obj = Create.ArrayCreate(realm, 0, realm.intrinsics.ArrayPrototype);
   if (name !== null) {
     obj.intrinsicName = name;
   }
