@@ -26,8 +26,8 @@ import type {
 import { ArrayValue, StringValue, Value, NumberValue, ObjectValue, SymbolValue } from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../react/jsx";
 import * as t from "babel-types";
-import { Get, ArrayCreate, CreateDataPropertyOrThrow, ObjectCreate } from "../methods/index.js";
-import { Environment, Properties } from "../singletons.js";
+import { Get } from "../methods/index.js";
+import { Create, Environment, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { computeBinary } from "./BinaryExpression.js";
 
@@ -187,7 +187,7 @@ function evaluateJSXChildren(
     }
     return singleChild;
   }
-  let array = ArrayCreate(realm, 0);
+  let array = Create.ArrayCreate(realm, 0);
   let dynamicChildrenLength = children.length;
   let dynamicIterator = 0;
   let lastChildValue = null;
@@ -204,7 +204,7 @@ function evaluateJSXChildren(
       }
     }
     lastChildValue = value;
-    CreateDataPropertyOrThrow(realm, array, "" + dynamicIterator, value);
+    Create.CreateDataPropertyOrThrow(realm, array, "" + dynamicIterator, value);
     dynamicIterator++;
   }
   if (dynamicChildrenLength === 1) {
@@ -312,29 +312,29 @@ function createReactProps(
   children,
   env: LexicalEnvironment
 ): ObjectValue {
-  let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   for (let [key, value] of attributes) {
     if (typeof key === "string") {
       if (RESERVED_PROPS.hasOwnProperty(key)) {
         continue;
       }
-      CreateDataPropertyOrThrow(realm, obj, key, value);
+      Create.CreateDataPropertyOrThrow(realm, obj, key, value);
     }
   }
   if (children !== null) {
-    CreateDataPropertyOrThrow(realm, obj, "children", children);
+    Create.CreateDataPropertyOrThrow(realm, obj, "children", children);
   }
   return obj;
 }
 
 function createReactElement(realm: Realm, type: Value, key: Value, ref: Value, props: ObjectValue): ObjectValue {
-  let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactElementSymbol(realm));
-  CreateDataPropertyOrThrow(realm, obj, "type", type);
-  CreateDataPropertyOrThrow(realm, obj, "key", key);
-  CreateDataPropertyOrThrow(realm, obj, "ref", ref);
-  CreateDataPropertyOrThrow(realm, obj, "props", props);
-  CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
+  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactElementSymbol(realm));
+  Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
+  Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
+  Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
+  Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
+  Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
   return obj;
 }
 

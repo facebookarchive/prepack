@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { CreateDynamicFunction } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 25.2.1
@@ -28,7 +28,7 @@ export default function(realm: Realm): NativeFunctionValue {
       args = argCount > 0 ? args : [];
 
       // 3. Return ? CreateDynamicFunction(C, NewTarget, "generator", args).
-      return CreateDynamicFunction(realm, C, NewTarget, "generator", args);
+      return Create.CreateDynamicFunction(realm, C, NewTarget, "generator", args);
     }
   );
 

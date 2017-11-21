@@ -12,7 +12,6 @@
 import type { Realm } from "../../realm.js";
 import { NumberValue, StringValue, ObjectValue, UndefinedValue, NullValue, Value } from "../../values/index.js";
 import invariant from "../../invariant.js";
-import { ObjectCreate, CreateDataProperty } from "../../methods/create.js";
 import { SameValueZeroPartial, AbstractRelationalComparison } from "../../methods/abstract.js";
 import {
   ToLength,
@@ -25,9 +24,6 @@ import {
   HasProperty,
   Call,
   Invoke,
-  CreateDataPropertyOrThrow,
-  CreateArrayIterator,
-  ArraySpeciesCreate,
   ToString,
   ToStringPartial,
   ToInteger,
@@ -36,7 +32,7 @@ import {
   Get,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Properties } from "../../singletons.js";
+import { Create, Properties } from "../../singletons.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -51,7 +47,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let O = ToObject(realm, context.throwIfNotConcrete());
 
     // 2. Let A be ? ArraySpeciesCreate(O, 0).
-    let A = ArraySpeciesCreate(realm, O, 0);
+    let A = Create.ArraySpeciesCreate(realm, O, 0);
 
     // 3. Let n be 0.
     let n = 0;
@@ -96,7 +92,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
             let subElement = Get(realm, E, P);
 
             // b. Perform ? CreateDataPropertyOrThrow(A, ! ToString(n), subElement).
-            CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), subElement);
+            Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), subElement);
           }
 
           // 4. Increase n by 1.
@@ -113,7 +109,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         }
 
         // ii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(n), E).
-        CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), E);
+        Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), E);
 
         // iii. Increase n by 1.
         n++;
@@ -217,7 +213,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let O = ToObject(realm, context.throwIfNotConcrete());
 
     // 2. Return CreateArrayIterator(O, "key+value").
-    return CreateArrayIterator(realm, O, "key+value");
+    return Create.CreateArrayIterator(realm, O, "key+value");
   });
 
   // ECMA262 22.1.3.5
@@ -320,7 +316,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let T = thisArg || realm.intrinsics.undefined;
 
     // 5. Let A be ? ArraySpeciesCreate(O, 0).
-    let A = ArraySpeciesCreate(realm, O, 0);
+    let A = Create.ArraySpeciesCreate(realm, O, 0);
 
     // 6. Let k be 0.
     let k = 0;
@@ -347,7 +343,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // iii. If selected is true, then
         if (selected) {
           // 1. Perform ? CreateDataPropertyOrThrow(A, ! ToString(to), kValue).
-          CreateDataPropertyOrThrow(realm, A, ToString(realm, new NumberValue(realm, to)), kValue);
+          Create.CreateDataPropertyOrThrow(realm, A, ToString(realm, new NumberValue(realm, to)), kValue);
 
           // 2. Increase to by 1.
           to++;
@@ -652,7 +648,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let O = ToObject(realm, context.throwIfNotConcrete());
 
     // 2. Return CreateArrayIterator(O, "key").
-    return CreateArrayIterator(realm, O, "key");
+    return Create.CreateArrayIterator(realm, O, "key");
   });
 
   // ECMA262 22.1.3.15
@@ -722,7 +718,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let T = thisArg || realm.intrinsics.undefined;
 
     // 5. Let A be ? ArraySpeciesCreate(O, len).
-    let A = ArraySpeciesCreate(realm, O, len);
+    let A = Create.ArraySpeciesCreate(realm, O, len);
 
     // 6. Let k be 0.
     let k = 0;
@@ -744,7 +740,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let mappedValue = Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]);
 
         // iii. Perform ? CreateDataPropertyOrThrow(A, Pk, mappedValue).
-        CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
+        Create.CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
       }
 
       // d. Increase k by 1.
@@ -1173,7 +1169,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let count = Math.max(final - k, 0);
 
     // 8. Let A be ? ArraySpeciesCreate(O, count).
-    let A = ArraySpeciesCreate(realm, O, count);
+    let A = Create.ArraySpeciesCreate(realm, O, count);
 
     // 9. Let n be 0.
     let n = 0;
@@ -1192,7 +1188,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(n), kValue).
-        CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), kValue);
+        Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), kValue);
       }
 
       // d. Increase k by 1.
@@ -1474,7 +1470,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 9. Let A be ? ArraySpeciesCreate(O, actualDeleteCount).
-    let A = ArraySpeciesCreate(realm, O, actualDeleteCount);
+    let A = Create.ArraySpeciesCreate(realm, O, actualDeleteCount);
 
     // 10. Let k be 0.
     let k = 0;
@@ -1493,7 +1489,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let fromValue = Get(realm, O, frm);
 
         // ii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(k), fromValue).
-        CreateDataPropertyOrThrow(realm, A, new StringValue(realm, k + ""), fromValue);
+        Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, k + ""), fromValue);
       }
 
       // d. Increment k by 1.
@@ -1756,31 +1752,31 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.32
   {
     // 1. Let unscopableList be ObjectCreate(null).
-    let unscopableList = ObjectCreate(realm, realm.intrinsics.null);
+    let unscopableList = Create.ObjectCreate(realm, realm.intrinsics.null);
 
     // 2. Perform CreateDataProperty(unscopableList, "copyWithin", true).
-    CreateDataProperty(realm, unscopableList, "copyWithin", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "copyWithin", realm.intrinsics.true);
 
     // 3. Perform CreateDataProperty(unscopableList, "entries", true).
-    CreateDataProperty(realm, unscopableList, "entries", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "entries", realm.intrinsics.true);
 
     // 4. Perform CreateDataProperty(unscopableList, "fill", true).
-    CreateDataProperty(realm, unscopableList, "fill", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "fill", realm.intrinsics.true);
 
     // 5. Perform CreateDataProperty(unscopableList, "find", true).
-    CreateDataProperty(realm, unscopableList, "find", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "find", realm.intrinsics.true);
 
     // 6. Perform CreateDataProperty(unscopableList, "findIndex", true).
-    CreateDataProperty(realm, unscopableList, "findIndex", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "findIndex", realm.intrinsics.true);
 
     // 7. Perform CreateDataProperty(unscopableList, "includes", true).
-    CreateDataProperty(realm, unscopableList, "includes", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "includes", realm.intrinsics.true);
 
     // 8. Perform CreateDataProperty(unscopableList, "keys", true).
-    CreateDataProperty(realm, unscopableList, "keys", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "keys", realm.intrinsics.true);
 
     // 9. Perform CreateDataProperty(unscopableList, "values", true).
-    CreateDataProperty(realm, unscopableList, "values", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "values", realm.intrinsics.true);
 
     // 10. Assert: Each of the above calls will return true.
 

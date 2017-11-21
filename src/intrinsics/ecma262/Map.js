@@ -19,7 +19,6 @@ import {
 } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
 import {
-  OrdinaryCreateFromConstructor,
   Get,
   IsCallable,
   IteratorStep,
@@ -29,6 +28,7 @@ import {
   Call,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -39,7 +39,7 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 2. Let map be ? OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", « [[MapData]] »).
-    let map = OrdinaryCreateFromConstructor(realm, NewTarget, "MapPrototype", {
+    let map = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "MapPrototype", {
       $MapData: undefined,
     });
 

@@ -13,8 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { MakeConstructor } from "../methods/construct.js";
-import { ObjectCreate } from "../methods/create.js";
-import { Functions, Properties } from "../singletons.js";
+import { Create, Functions, Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionDeclaration } from "babel-types";
@@ -42,7 +41,7 @@ export default function(
     let F = Functions.GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, env, strict);
 
     // 4. Let prototype be ObjectCreate(%GeneratorPrototype%).
-    let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
+    let prototype = Create.ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
 
     // 5. Perform DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
     Properties.DefinePropertyOrThrow(realm, F, "prototype", {

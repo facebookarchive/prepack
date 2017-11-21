@@ -13,7 +13,6 @@ import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NullValue, UndefinedValue } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
 import {
-  OrdinaryCreateFromConstructor,
   IsCallable,
   Call,
   GetIterator,
@@ -23,6 +22,7 @@ import {
   Get,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -34,7 +34,7 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 2. Let set be ? OrdinaryCreateFromConstructor(NewTarget, "%SetPrototype%", « [[SetData]] »).
-    let set = OrdinaryCreateFromConstructor(realm, NewTarget, "SetPrototype", {
+    let set = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "SetPrototype", {
       $SetData: undefined,
     });
 

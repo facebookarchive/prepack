@@ -26,14 +26,12 @@ import {
   IsConstructor,
   Get,
   MakeConstructor,
-  CreateMethodProperty,
   MakeClassConstructor,
-  ObjectCreate,
   ConstructorMethod,
   IsStatic,
   NonConstructorMethodDefinitions,
 } from "../methods/index.js";
-import { Environment, Functions, Properties } from "../singletons.js";
+import { Create, Environment, Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 function EvaluateClassHeritage(
@@ -148,7 +146,7 @@ export function ClassDefinitionEvaluation(
   }
 
   // 7. Let proto be ObjectCreate(protoParent).
-  let proto = ObjectCreate(realm, protoParent);
+  let proto = Create.ObjectCreate(realm, protoParent);
 
   // react. Check the Flow class paramater annotations, stored in "superTypeParameters"
   if (realm.react.enabled && realm.react.flowRequired && ast.superTypeParameters) {
@@ -218,7 +216,7 @@ export function ClassDefinitionEvaluation(
     MakeClassConstructor(realm, F);
 
     // 18. Perform CreateMethodProperty(proto, "constructor", F).
-    CreateMethodProperty(realm, proto, "constructor", F);
+    Create.CreateMethodProperty(realm, proto, "constructor", F);
 
     let methods;
     // 19. If ClassBody opt is not present, let methods be a new empty List.

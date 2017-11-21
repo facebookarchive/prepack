@@ -13,8 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { MakeConstructor } from "../methods/index.js";
-import { ObjectCreate } from "../methods/create.js";
-import { Environment, Functions, Properties } from "../singletons.js";
+import { Create, Environment, Functions, Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionExpression } from "babel-types";
@@ -54,7 +53,7 @@ export default function(
       closure.loc = ast.loc;
 
       // 8. Let prototype be ObjectCreate(%GeneratorPrototype%).
-      let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
+      let prototype = Create.ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
       prototype.originalConstructor = closure;
 
       // 9. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
@@ -121,7 +120,7 @@ export default function(
       let closure = Functions.GeneratorFunctionCreate(realm, "normal", ast.params, ast.body, scope, strict);
 
       // 4. Let prototype be ObjectCreate(%GeneratorPrototype%).
-      let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
+      let prototype = Create.ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
       prototype.originalConstructor = closure;
 
       // 5. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).

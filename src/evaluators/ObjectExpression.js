@@ -14,15 +14,8 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
-import {
-  ObjectCreate,
-  CreateDataPropertyOrThrow,
-  IsAnonymousFunctionDefinition,
-  HasOwnProperty,
-  ToPropertyKey,
-  ToString,
-} from "../methods/index.js";
-import { Environment, Functions, Properties } from "../singletons.js";
+import { IsAnonymousFunctionDefinition, HasOwnProperty, ToPropertyKey, ToString } from "../methods/index.js";
+import { Create, Environment, Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type {
   BabelNodeObjectExpression,
@@ -77,7 +70,7 @@ export default function(
   realm: Realm
 ): ObjectValue {
   // 1. Let obj be ObjectCreate(%ObjectPrototype%).
-  let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
   // 2. Let status be the result of performing PropertyDefinitionEvaluation of PropertyDefinitionList with arguments obj and true.
   for (let prop of ast.properties) {
@@ -118,7 +111,7 @@ export default function(
         }
         obj.$SetPartial(propKey, propValue, obj);
       } else {
-        CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
+        Create.CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
       }
     } else {
       invariant(prop.type === "ObjectMethod");

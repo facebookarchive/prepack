@@ -11,7 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ToObject, CreateArrayIterator } from "../../methods/index.js";
+import { ToObject } from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
@@ -20,6 +21,6 @@ export default function(realm: Realm): NativeFunctionValue {
     let O = ToObject(realm, context.throwIfNotConcrete());
 
     // 2. Return CreateArrayIterator(O, "value").
-    return CreateArrayIterator(realm, O, "value");
+    return Create.CreateArrayIterator(realm, O, "value");
   });
 }

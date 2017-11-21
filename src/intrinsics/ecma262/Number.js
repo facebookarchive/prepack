@@ -11,7 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue } from "../../values/index.js";
-import { OrdinaryCreateFromConstructor, ToNumber, ToInteger } from "../../methods/index.js";
+import { ToNumber, ToInteger } from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 20.1.1
@@ -30,7 +31,7 @@ export default function(realm: Realm): NativeFunctionValue {
     if (!NewTarget) return n;
 
     // 4. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%NumberPrototype%", « [[NumberData]] »).
-    let O = OrdinaryCreateFromConstructor(realm, NewTarget, "NumberPrototype", { $NumberData: undefined });
+    let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "NumberPrototype", { $NumberData: undefined });
 
     // 5. Set the value of O's [[NumberData]] internal slot to n.
     O.$NumberData = n;

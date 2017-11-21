@@ -15,7 +15,7 @@ import { IsCallable } from "./is.js";
 import { GetMethod } from "./get.js";
 import { Construct } from "./construct.js";
 import { Call } from "./call.js";
-import { CreateArrayFromList } from "./create.js";
+import { Create } from "../singletons.js";
 import invariant from "../invariant.js";
 
 // ECMA262 9.5.12
@@ -44,7 +44,7 @@ export function ProxyCall(realm: Realm, O: ProxyValue, thisArgument: Value, argu
   }
 
   // 7. Let argArray be CreateArrayFromList(argumentsList).
-  let argArray = CreateArrayFromList(realm, argumentsList);
+  let argArray = Create.CreateArrayFromList(realm, argumentsList);
 
   // 8. Return ? Call(trap, handler, « target, thisArgument, argArray »).
   return Call(realm, trap.throwIfNotConcrete(), handler, [target, thisArgument, argArray]);
@@ -85,7 +85,7 @@ export function ProxyConstruct(
   }
 
   // 7. Let argArray be CreateArrayFromList(argumentsList).
-  let argArray = CreateArrayFromList(realm, argumentsList);
+  let argArray = Create.CreateArrayFromList(realm, argumentsList);
 
   // 8. Let newObj be ? Call(trap, handler, « target, argArray, newTarget »).
   let newObj = Call(realm, trap.throwIfNotConcrete(), handler, [target, argArray, newTarget]).throwIfNotConcrete();
