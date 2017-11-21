@@ -297,15 +297,31 @@ export class ResidualFunctions {
       let id = this.locationService.getLocation(funcValue);
       invariant(id !== undefined);
       let funcParams = params.slice();
-      let funcNode = t.functionExpression(null, funcParams, functionBody);
+      let funcOrClassNode;
+      let { isClassMethod, classSuper } = instance;
 
-      if (funcValue.$Strict) {
-        strictFunctionBodies.push(funcNode);
+      if (isClassMethod) {
+        let homeObject = functionValue.$HomeObject;
+        invariant(homeObject instanceof ObjectValue);
+        invariant(
+          functionValue.$FunctionKind !== "classConstructor",
+          "Class constructors cannot be additional functions"
+        );
+        let methodName = Get(this.realm, functionValue, "name");
+        invariant(methodName instanceof StringValue);
+        let classMethod = t.classMethod("method", t.identifier(methodName.value), funcParams, functionBody);
+        funcOrClassNode = this._getOrCreateClassNode(homeObject, classSuper);
+        funcOrClassNode.body.body.push(classMethod);
       } else {
-        unstrictFunctionBodies.push(funcNode);
-      }
+        funcOrClassNode = t.functionExpression(null, funcParams, functionBody);
 
-      defineFunction(instance, id, funcNode);
+        if (funcValue.$Strict) {
+          strictFunctionBodies.push(funcOrClassNode);
+        } else {
+          unstrictFunctionBodies.push(funcOrClassNode);
+        }
+        defineFunction(instance, id, funcOrClassNode);
+      }
     }
 
     // Process normal functions
@@ -338,13 +354,7 @@ export class ResidualFunctions {
             let homeObject = functionValue.$HomeObject;
             invariant(homeObject instanceof ObjectValue);
             // we use the $HomeObject as the key to get the class expression ast node
-            if (!this.classes.has(homeObject)) {
-              funcOrClassNode = t.classExpression(null, classSuper ? classSuper : null, t.classBody([]), []);
-              this.classes.set(homeObject, funcOrClassNode);
-            } else {
-              funcOrClassNode = this.classes.get(homeObject);
-            }
-            invariant(funcOrClassNode && t.isClassExpression(funcOrClassNode));
+            funcOrClassNode = this._getOrCreateClassNode(homeObject, classSuper);
             // use $FunctionKind to determine if this is the class constructor
             let isConstructor = functionValue.$FunctionKind === "classConstructor";
             let methodParams = params.slice();
@@ -614,5 +624,16 @@ export class ResidualFunctions {
     }
 
     return { unstrictFunctionBodies, strictFunctionBodies, requireStatistics };
+  }
+  _getOrCreateClassNode(homeObject: ObjectValue, classSuper: BabelNodeIdentifier | void): BabelNodeClassExpression {
+    if (!this.classes.has(homeObject)) {
+      let funcOrClassNode = t.classExpression(null, classSuper ? classSuper : null, t.classBody([]), []);
+      this.classes.set(homeObject, funcOrClassNode);
+      return funcOrClassNode;
+    } else {
+      let funcOrClassNode = this.classes.get(homeObject);
+      invariant(funcOrClassNode && t.isClassExpression(funcOrClassNode));
+      return funcOrClassNode;
+    }
   }
 }
