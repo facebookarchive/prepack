@@ -27,20 +27,13 @@ import {
 } from "./values/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import {
-  cloneDescriptor,
-  composeGenerators,
-  composePossiblyNormalCompletions,
-  Construct,
-  ToString,
-  updatePossiblyNormalCompletionWithSubsequentEffects,
-} from "./methods/index.js";
+import { cloneDescriptor, Construct, ToString } from "./methods/index.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { Environment, Functions, Properties } from "./singletons.js";
+import { Environment, Functions, Join, Properties } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -421,7 +414,7 @@ export class Realm {
           let subsequentEffects = this.getCapturedEffects(c, c.value);
           invariant(subsequentEffects !== undefined);
           this.stopEffectCaptureAndUndoEffects(c);
-          updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
+          Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
           this.savedCompletion = undefined;
         }
 
@@ -466,7 +459,7 @@ export class Realm {
 
     result[0] = sc;
 
-    result[1] = composeGenerators(this, pg || result[1], sg);
+    result[1] = Join.composeGenerators(this, pg || result[1], sg);
 
     if (pb) {
       pb.forEach((val, key, m) => rb.set(key, val));
@@ -504,7 +497,7 @@ export class Realm {
       this.savedCompletion = completion;
       this.captureEffects(completion);
     } else {
-      this.savedCompletion = composePossiblyNormalCompletions(this, this.savedCompletion, completion);
+      this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
     }
     return completion.value;
   }
@@ -724,6 +717,7 @@ export class Realm {
     if (!(propertyValue instanceof AbstractValue)) return;
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
+      propertyValue.kind = "rebuiltProperty";
       propertyValue.args = [object];
       propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
       this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);

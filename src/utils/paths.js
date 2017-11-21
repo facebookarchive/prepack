@@ -14,6 +14,7 @@ import invariant from "../invariant.js";
 
 export class PathImplementation {
   implies(condition: AbstractValue): boolean {
+    if (!condition.mightNotBeTrue()) return true; // any path implies true
     let path = condition.$Realm.pathConditions;
     for (let i = path.length - 1; i >= 0; i--) {
       let pathCondition = path[i];
@@ -23,6 +24,7 @@ export class PathImplementation {
   }
 
   impliesNot(condition: AbstractValue): boolean {
+    if (!condition.mightNotBeFalse()) return true; // any path implies !false
     let path = condition.$Realm.pathConditions;
     for (let i = path.length - 1; i >= 0; i--) {
       let pathCondition = path[i];

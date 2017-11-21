@@ -15,16 +15,16 @@ import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { joinEffects, ToBoolean, UpdateEmpty } from "../methods/index.js";
+import { ToBoolean, UpdateEmpty } from "../methods/index.js";
 import type { BabelNode, BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
-import { Environment, Path } from "../singletons.js";
+import { Environment, Join, Path } from "../singletons.js";
 
 export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   // 1. Let exprRef be the result of evaluating Expression
   let exprRef = env.evaluate(ast.test, strictCode);
   // 2. Let exprValue be ToBoolean(? GetValue(exprRef))
-  let exprValue: Value = Environment.GetValue(realm, exprRef);
+  let exprValue: Value = Environment.GetConditionValue(realm, exprRef);
 
   if (exprValue instanceof ConcreteValue) {
     let stmtCompletion;
@@ -51,7 +51,6 @@ export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: Le
   }
   invariant(exprValue instanceof AbstractValue);
 
-  exprValue = realm.simplifyAndRefineAbstractCondition(exprValue);
   if (!exprValue.mightNotBeTrue()) {
     let stmtCompletion = env.evaluate(ast.consequent, strictCode);
     invariant(!(stmtCompletion instanceof Reference));
@@ -97,7 +96,7 @@ export function evaluateWithAbstractConditional(
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of condValue.
-  let joinedEffects = joinEffects(
+  let joinedEffects = Join.joinEffects(
     realm,
     condValue,
     [compl1, gen1, bindings1, properties1, createdObj1],

@@ -11,8 +11,21 @@
 
 import type { VariableContainer, Variable } from "./types.js";
 import { ReferenceMap } from "./ReferenceMap.js";
-import { LexicalEnvironment, DeclarativeEnvironmentRecord } from "./../environment.js";
-import { Value, ConcreteValue, PrimitiveValue, ObjectValue } from "./../values/index.js";
+import {
+  LexicalEnvironment,
+  EnvironmentRecord,
+  DeclarativeEnvironmentRecord,
+  ObjectEnvironmentRecord,
+  GlobalEnvironmentRecord,
+} from "./../environment.js";
+import {
+  Value,
+  ConcreteValue,
+  PrimitiveValue,
+  ObjectValue,
+  AbstractObjectValue,
+  AbstractValue,
+} from "./../values/index.js";
 import invariant from "./../invariant.js";
 import type { Realm } from "./../realm.js";
 import { IsDataDescriptor } from "./../methods/is.js";
@@ -52,9 +65,11 @@ export class VariableManager {
     let container = this._referenceMap.get(reference);
     if (!container) return [];
     if (container instanceof LexicalEnvironment) {
-      return this._getVariablesFromEnv(container);
+      return this._getVariablesFromEnvRecord(container.environmentRecord);
     } else if (container instanceof ObjectValue) {
       return this._getVariablesFromObject(container);
+    } else if (container instanceof AbstractValue) {
+      return this._getAbstractValueContent(container);
     } else {
       invariant(false, "Invalid variable container");
     }
@@ -79,13 +94,40 @@ export class VariableManager {
     return variables;
   }
 
-  _getVariablesFromEnv(env: LexicalEnvironment): Array<Variable> {
-    let envRecord = env.environmentRecord;
+  _getAbstractValueContent(value: AbstractValue): Array<Variable> {
+    let kindVar: Variable = {
+      name: "kind",
+      value: value.kind || "undefined",
+      variablesReference: 0,
+    };
+    let contents: Array<Variable> = [kindVar];
+    let argCount = 1;
+    for (let arg of value.args) {
+      contents.push(this._getVariableFromValue("arg-" + argCount, arg));
+      argCount++;
+    }
+    return contents;
+  }
+
+  _getVariablesFromEnvRecord(envRecord: EnvironmentRecord): Array<Variable> {
     if (envRecord instanceof DeclarativeEnvironmentRecord) {
       return this._getVariablesFromDeclarativeEnv(envRecord);
+    } else if (envRecord instanceof ObjectEnvironmentRecord) {
+      if (envRecord.object instanceof ObjectValue) {
+        return this._getVariablesFromObject(envRecord.object);
+      } else if (envRecord.object instanceof AbstractObjectValue) {
+        // TODO: call _getVariablesFromAbstractObject when it is implemented
+        return [];
+      } else {
+        invariant(false, "Invalid type of object environment record");
+      }
+    } else if (envRecord instanceof GlobalEnvironmentRecord) {
+      let declVars = this._getVariablesFromEnvRecord(envRecord.$DeclarativeRecord);
+      let objVars = this._getVariablesFromEnvRecord(envRecord.$ObjectRecord);
+      return declVars.concat(objVars);
+    } else {
+      invariant(false, "Invalid type of environment record");
     }
-    // TODO: implement retrieving variables for other kinds of environment records
-    return [];
   }
 
   _getVariablesFromDeclarativeEnv(env: DeclarativeEnvironmentRecord): Array<Variable> {
@@ -104,10 +146,27 @@ export class VariableManager {
   _getVariableFromValue(name: string, value: Value): Variable {
     if (value instanceof ConcreteValue) {
       return this._getVariableFromConcreteValue(name, value);
+    } else if (value instanceof AbstractValue) {
+      return this._getVariableFromAbstractValue(name, value);
     } else {
-      invariant(false, "Unsupported type of: " + name);
+      invariant(false, "Value is neither concrete nor abstract");
     }
-    // TODO: implement variables request for abstract values
+  }
+
+  _getVariableFromAbstractValue(name: string, value: AbstractValue): Variable {
+    let variable: Variable = {
+      name: name,
+      value: this._getAbstractValueDisplay(value),
+      variablesReference: this.getReferenceForValue(value),
+    };
+    return variable;
+  }
+
+  _getAbstractValueDisplay(value: AbstractValue): string {
+    if (value.intrinsicName && !value.intrinsicName.startsWith("_")) {
+      return value.intrinsicName;
+    }
+    return "Abstract " + value.types.getType().name;
   }
 
   _getVariableFromConcreteValue(name: string, value: ConcreteValue): Variable {
@@ -121,7 +180,7 @@ export class VariableManager {
     } else if (value instanceof ObjectValue) {
       let variable: Variable = {
         name: name,
-        value: "Object",
+        value: value.getKind(),
         variablesReference: this.getReferenceForValue(value),
       };
       return variable;

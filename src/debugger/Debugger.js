@@ -9,8 +9,8 @@
 
 /* @flow */
 
+import { BreakpointManager } from "./BreakpointManager.js";
 import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
-import { BreakpointCollection } from "./BreakpointCollection.js";
 import { Breakpoint } from "./Breakpoint.js";
 import invariant from "../invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
@@ -27,10 +27,17 @@ import type {
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
 import { VariableManager } from "./VariableManager.js";
+import {
+  EnvironmentRecord,
+  GlobalEnvironmentRecord,
+  FunctionEnvironmentRecord,
+  DeclarativeEnvironmentRecord,
+  ObjectEnvironmentRecord,
+} from "./../environment.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
-    this._breakpoints = new BreakpointCollection();
+    this._breakpoints = new BreakpointManager();
     this._previousExecutedLine = 0;
     this._previousExecutedCol = 0;
     this._lastRunRequestID = 0;
@@ -40,7 +47,7 @@ export class DebugServer {
     this.waitForRun();
   }
   // the collection of breakpoints
-  _breakpoints: BreakpointCollection;
+  _breakpoints: BreakpointManager;
   _previousExecutedFile: void | string;
   _previousExecutedLine: number;
   _previousExecutedCol: number;
@@ -52,7 +59,7 @@ export class DebugServer {
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
   */
-  waitForRun(ast?: BabelNode) {
+  waitForRun(ast: void | BabelNode) {
     let keepRunning = false;
     let request;
     while (!keepRunning) {
@@ -122,30 +129,30 @@ export class DebugServer {
 
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
-  processDebuggerCommand(request: DebuggerRequest, ast?: BabelNode) {
+  processDebuggerCommand(request: DebuggerRequest, ast: void | BabelNode) {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.addBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
+        this._breakpoints.addBreakpointMulti(args.breakpoints);
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.removeBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
+        this._breakpoints.removeBreakpointMulti(args.breakpoints);
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.enableBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
+        this._breakpoints.enableBreakpointMulti(args.breakpoints);
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.disableBreakpoint(args.filePath, args.line, args.column);
-        this._channel.sendBreakpointAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
+        this._breakpoints.disableBreakpointMulti(args.breakpoints);
+        this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
         invariant(args.kind === "run");
@@ -153,7 +160,6 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        invariant(ast !== undefined);
         this.processStackframesCommand(requestID, args, ast);
         break;
       case DebugMessage.SCOPES_COMMAND:
@@ -170,9 +176,9 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(requestID: number, args: StackframeArguments, ast: BabelNode) {
+  processStackframesCommand(requestID: number, args: StackframeArguments, ast: void | BabelNode) {
     let frameInfos: Array<Stackframe> = [];
-    let loc = this._getFrameLocation(ast.loc);
+    let loc = this._getFrameLocation(ast ? ast.loc : null);
     let fileName = loc.fileName;
     let line = loc.line;
     let column = loc.column;
@@ -229,27 +235,35 @@ export class DebugServer {
     let context = this._realm.contextStack[stackIndex];
     invariant(context instanceof ExecutionContext);
     let scopes = [];
-    if (context.variableEnvironment) {
-      // get a new mapping for this collection of variables
-      let variableRef = this._variableManager.getReferenceForValue(context.variableEnvironment);
+    let lexicalEnv = context.lexicalEnvironment;
+    while (lexicalEnv) {
       let scope: Scope = {
-        name: "Locals",
-        variablesReference: variableRef,
+        name: this._getScopeName(lexicalEnv.environmentRecord),
+        // key used by UI to retrieve variables in this scope
+        variablesReference: this._variableManager.getReferenceForValue(lexicalEnv),
+        // the variables are easy to retrieve
         expensive: false,
       };
       scopes.push(scope);
-    }
-    if (context.lexicalEnvironment) {
-      // get a new mapping for this collection of variables
-      let variableRef = this._variableManager.getReferenceForValue(context.lexicalEnvironment);
-      let scope: Scope = {
-        name: "Globals",
-        variablesReference: variableRef,
-        expensive: false,
-      };
-      scopes.push(scope);
+      lexicalEnv = lexicalEnv.parent;
     }
     this._channel.sendScopesResponse(requestID, scopes);
+  }
+
+  _getScopeName(envRec: EnvironmentRecord): string {
+    if (envRec instanceof GlobalEnvironmentRecord) {
+      return "Global";
+    } else if (envRec instanceof DeclarativeEnvironmentRecord) {
+      if (envRec instanceof FunctionEnvironmentRecord) {
+        return "Local: " + (envRec.$FunctionObject.__originalName || "anonymous function");
+      } else {
+        return "Block";
+      }
+    } else if (envRec instanceof ObjectEnvironmentRecord) {
+      return "With";
+    } else {
+      invariant(false, "Invalid type of environment record");
+    }
   }
 
   processVariablesCommand(requestID: number, args: VariablesArguments) {

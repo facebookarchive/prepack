@@ -32,9 +32,7 @@ import {
   IsPropertyKey,
   IteratorStep,
   IteratorValue,
-  joinEffectsAndPromoteNestedReturnCompletions,
   ToObjectPartial,
-  unbundleReturnCompletion,
 } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
 import { OrdinaryCreateFromConstructor } from "../methods/create.js";
@@ -46,7 +44,7 @@ import {
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { construct_empty_effects } from "../realm.js";
-import { Environment, Functions } from "../singletons.js";
+import { Environment, Functions, Join } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
@@ -359,9 +357,9 @@ export function OrdinaryCallEvaluateBody(
         } else {
           e = construct_empty_effects(realm);
         }
-        joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
+        joinedEffects = Join.joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
       } else if (c instanceof JoinedAbruptCompletions) {
-        joinedEffects = joinEffectsAndPromoteNestedReturnCompletions(realm, c, construct_empty_effects(realm));
+        joinedEffects = Join.joinEffectsAndPromoteNestedReturnCompletions(realm, c, construct_empty_effects(realm));
       }
       if (joinedEffects !== undefined) {
         let result = joinedEffects[0];
@@ -394,7 +392,7 @@ export function OrdinaryCallEvaluateBody(
     // We need to carry on in normal mode (after arranging to capturing effects)
     // while stashing away the throw completions so that the next completion we return
     // incorporates them.
-    let [joinedEffects, possiblyNormalCompletion] = unbundleReturnCompletion(realm, c);
+    let [joinedEffects, possiblyNormalCompletion] = Join.unbundleReturnCompletion(realm, c);
     realm.composeWithSavedCompletion(possiblyNormalCompletion);
     return joinedEffects;
   }

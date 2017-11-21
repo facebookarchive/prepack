@@ -21,8 +21,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
-import { stopEffectCaptureJoinApplyAndReturnCompletion } from "../methods/index.js";
-import { Environment, Functions } from "../singletons.js";
+import { Environment, Functions, Join } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
@@ -271,7 +270,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
     val = Functions.incorporateSavedCompletion(realm, val);
     if (val instanceof PossiblyNormalCompletion) {
       // There are still some conditional throws to emit and state still has to be joined in.
-      stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);
+      Join.stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);
       // The global state has now been updated to the join of all the flows reaching this join point
       emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
       val = val.value;

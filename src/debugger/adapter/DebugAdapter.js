@@ -21,12 +21,7 @@ import * as DebugProtocol from "vscode-debugprotocol";
 import { AdapterChannel } from "./../channel/AdapterChannel.js";
 import invariant from "./../../invariant.js";
 import { DebugMessage } from "./../channel/DebugMessage.js";
-import type {
-  BreakpointArguments,
-  DebuggerResponse,
-  LaunchRequestArguments,
-  PrepackLaunchArguments,
-} from "./../types.js";
+import type { Breakpoint, DebuggerResponse, LaunchRequestArguments, PrepackLaunchArguments } from "./../types.js";
 import { DebuggerConstants } from "./../DebuggerConstants.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
@@ -42,6 +37,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
   }
+  _clientID: void | string;
   _adapterChannel: AdapterChannel;
 
   _registerMessageCallbacks() {
@@ -72,10 +68,23 @@ class PrepackDebugSession extends LoggingDebugSession {
     // The UI will end the configuration sequence by calling 'configurationDone' request.
     this.sendEvent(new InitializedEvent());
 
+    this._clientID = args.clientID;
     response.body = response.body || {};
     response.body.supportsConfigurationDoneRequest = true;
     // Respond back to the UI with the configurations. Will add more configurations gradually as needed.
     // Adapter can respond immediately here because no message is sent to Prepack
+    this.sendResponse(response);
+  }
+
+  configurationDoneRequest(
+    response: DebugProtocol.ConfigurationDoneResponse,
+    args: DebugProtocol.ConfigurationDoneArguments
+  ): void {
+    // initial handshake with UI is complete
+    if (this._clientID !== DebuggerConstants.CLI_CLIENTID) {
+      // for all ui except the CLI, autosend the first run request
+      this._adapterChannel.run(DebuggerConstants.DEFAULT_REQUEST_ID, (runResponse: DebuggerResponse) => {});
+    }
     this.sendResponse(response);
   }
 
@@ -123,7 +132,7 @@ class PrepackDebugSession extends LoggingDebugSession {
       if (breakpoint.column) {
         column = breakpoint.column;
       }
-      let breakpointInfo: BreakpointArguments = {
+      let breakpointInfo: Breakpoint = {
         kind: "breakpoint",
         requestID: response.request_seq,
         filePath: filePath,
@@ -133,6 +142,24 @@ class PrepackDebugSession extends LoggingDebugSession {
       breakpointInfos.push(breakpointInfo);
     }
     this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (dbgResponse: DebuggerResponse) => {
+      let result = dbgResponse.result;
+      invariant(result.kind === "breakpoint-add");
+      let breakpoints: Array<DebugProtocol.Breakpoint> = [];
+      for (const breakpointInfo of result.breakpoints) {
+        let source: DebugProtocol.Source = {
+          path: breakpointInfo.filePath,
+        };
+        let breakpoint: DebugProtocol.Breakpoint = {
+          verified: true,
+          source: source,
+          line: breakpointInfo.line,
+          column: breakpointInfo.column,
+        };
+        breakpoints.push(breakpoint);
+      }
+      response.body = {
+        breakpoints: breakpoints,
+      };
       this.sendResponse(response);
     });
   }

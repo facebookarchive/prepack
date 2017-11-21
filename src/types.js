@@ -26,8 +26,15 @@ import type {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import { AbruptCompletion, Completion, NormalCompletion } from "./completions.js";
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  NormalCompletion,
+  PossiblyNormalCompletion,
+} from "./completions.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
+import { Generator } from "./utils/generator.js";
 import { ObjectValue } from "./values/index.js";
 import type {
   BabelNode,
@@ -38,7 +45,7 @@ import type {
   BabelNodePattern,
   BabelNodeVariableDeclaration,
 } from "babel-types";
-import { Realm } from "./realm.js";
+import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -537,6 +544,7 @@ export type EnvironmentType = {
 
   // ECMA262 6.2.3.1
   GetValue(realm: Realm, V: Reference | Value): Value,
+  GetConditionValue(realm: Realm, V: Reference | Value): Value,
 
   // ECMA262 6.2.3
   // IsStrictReference(V). Returns the strict reference flag component of the reference V.
@@ -639,4 +647,133 @@ export type EnvironmentType = {
     environment: ?LexicalEnvironment,
     propertyName: PropertyKeyValue
   ): void | boolean | Value,
+};
+
+export type JoinType = {
+  stopEffectCaptureJoinApplyAndReturnCompletion(
+    c1: PossiblyNormalCompletion,
+    c2: AbruptCompletion,
+    realm: Realm
+  ): AbruptCompletion,
+
+  unbundleNormalCompletion(
+    completionOrValue: Completion | Value | Reference
+  ): [void | NormalCompletion, Value | Reference],
+
+  composeNormalCompletions(
+    leftCompletion: void | NormalCompletion,
+    rightCompletion: void | NormalCompletion,
+    resultValue: Value,
+    realm: Realm
+  ): PossiblyNormalCompletion | Value,
+
+  composePossiblyNormalCompletions(
+    realm: Realm,
+    pnc: PossiblyNormalCompletion,
+    c: PossiblyNormalCompletion
+  ): PossiblyNormalCompletion,
+
+  updatePossiblyNormalCompletionWithSubsequentEffects(
+    realm: Realm,
+    pnc: PossiblyNormalCompletion,
+    subsequentEffects: Effects
+  ): void,
+
+  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void,
+
+  // Returns the joined effects of all of the paths in pnc.
+  // The normal path in pnc is modified to become terminated by ac,
+  // so the overall completion will always be an instance of JoinedAbruptCompletions
+  joinPossiblyNormalCompletionWithAbruptCompletion(
+    realm: Realm,
+    // a forked path with a non abrupt (normal) component
+    pnc: PossiblyNormalCompletion,
+    // an abrupt completion that completes the normal path
+    ac: AbruptCompletion,
+    // effects collected after pnc was constructed
+    e: Effects
+  ): Effects,
+
+  joinPossiblyNormalCompletionWithValue(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    pnc: PossiblyNormalCompletion,
+    v: Value
+  ): void,
+
+  joinValueWithPossiblyNormalCompletion(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    pnc: PossiblyNormalCompletion,
+    v: Value
+  ): void,
+
+  joinAndRemoveNestedReturnCompletions(
+    realm: Realm,
+    c: AbruptCompletion
+  ): AbruptCompletion | PossiblyNormalCompletion | Value,
+
+  joinEffectsAndPromoteNestedReturnCompletions(
+    realm: Realm,
+    c: Completion | Value,
+    e: Effects,
+    nested_effects?: Effects
+  ): Effects,
+
+  unbundleReturnCompletion(realm: Realm, c: JoinedAbruptCompletions): [Effects, PossiblyNormalCompletion],
+
+  removeNormalEffects(realm: Realm, c: PossiblyNormalCompletion): Effects,
+
+  joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects,
+
+  joinResults(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    result1: EvaluationResult,
+    result2: EvaluationResult,
+    e1: Effects,
+    e2: Effects
+  ): AbruptCompletion | PossiblyNormalCompletion | Value,
+
+  composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator,
+
+  // Creates a single map that joins together maps m1 and m2 using the given join
+  // operator. If an entry is present in one map but not the other, the missing
+  // entry is treated as if it were there and its value were undefined.
+  joinMaps<K, V>(m1: Map<K, void | V>, m2: Map<K, void | V>, join: (K, void | V, void | V) => V): Map<K, void | V>,
+
+  // Creates a single map that has an key, value pair for the union of the key
+  // sets of m1 and m2. The value of a pair is the join of m1[key] and m2[key]
+  // where the join is defined to be just m1[key] if m1[key] === m2[key] and
+  // and abstract value with expression "joinCondition ? m1[key] : m2[key]" if not.
+  joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bindings, m2: Bindings): Bindings,
+
+  // If v1 is known and defined and v1 === v2 return v1,
+  // otherwise return getAbstractValue(v1, v2)
+  joinValues(
+    realm: Realm,
+    v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    getAbstractValue: (void | Value, void | Value) => Value
+  ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+
+  joinValuesAsConditional(realm: Realm, condition: AbstractValue, v1: void | Value, v2: void | Value): Value,
+
+  joinPropertyBindings(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    m1: PropertyBindings,
+    m2: PropertyBindings,
+    c1: CreatedObjects,
+    c2: CreatedObjects
+  ): PropertyBindings,
+
+  // Returns a field by field join of two descriptors.
+  // Descriptors with get/set are not yet supported.
+  joinDescriptors(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    d1: void | Descriptor,
+    d2: void | Descriptor
+  ): void | Descriptor,
 };

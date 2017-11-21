@@ -437,7 +437,7 @@ export class UISession {
     // send an initialize request to the adapter to fetch some configuration details
     let initArgs: DebugProtocol.InitializeRequestArguments = {
       // a unique name for each UI (e.g Nuclide, VSCode, CLI)
-      clientID: "Prepack-Debugger-CLI",
+      clientID: DebuggerConstants.CLI_CLIENTID,
       // a unique name for each adapter
       adapterID: "Prepack-Debugger-Adapter",
       linesStartAt1: true,

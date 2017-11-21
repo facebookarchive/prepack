@@ -26,7 +26,7 @@ export default function(
   realm: Realm
 ): Value | Reference {
   let exprRef = env.evaluate(ast.test, strictCode);
-  let exprValue = Environment.GetValue(realm, exprRef);
+  let exprValue = Environment.GetConditionValue(realm, exprRef);
 
   if (exprValue instanceof ConcreteValue) {
     if (ToBoolean(realm, exprValue)) {

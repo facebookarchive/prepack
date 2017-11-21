@@ -37,11 +37,9 @@ import {
   IsCallable,
   IsDataDescriptor,
   IsPropertyKey,
-  joinValuesAsConditional,
-  joinEffects,
   ToObjectPartial,
 } from "./index.js";
-import { Environment, Path } from "../singletons.js";
+import { Environment, Join, Path } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
 
@@ -117,7 +115,7 @@ export function OrdinaryGet(
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
-      let joinedEffects = joinEffects(
+      let joinedEffects = Join.joinEffects(
         realm,
         joinCondition,
         [compl1, gen1, bindings1, properties1, createdObj1],
@@ -174,7 +172,7 @@ export function OrdinaryGet(
         // Only get the parent value if it does not involve a getter call.
         // Use a property get for the joined value since it does the check for empty.
         let cond = AbstractValue.createFromBinaryOp(realm, "!==", descValue, realm.intrinsics.empty);
-        return joinValuesAsConditional(realm, cond, descValue, parentVal);
+        return Join.joinValuesAsConditional(realm, cond, descValue, parentVal);
       }
       invariant(!desc || descValue instanceof EmptyValue);
       return parent.$Get(P, Receiver);
