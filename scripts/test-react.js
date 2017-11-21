@@ -72,7 +72,12 @@ function runSource(source) {
 
 async function runTest(directory, name) {
   let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
-  let { compiledSource } = compileSourceWithPrepack(source);
+  let compiledSource
+  try {
+    compiledSource = compileSourceWithPrepack(source).compiledSource;
+  } catch (e) {
+    console.log(e.stack)
+  }
 
   let A = runSource(source);
   expect(typeof A).toBe("function");
@@ -187,7 +192,7 @@ describe("Test React", () => {
       await runTest(directory, "class-root-with-props.js");
     });
 
-    it("Class component as root with state", async () => {
+    it.only("Class component as root with state", async () => {
       await runTest(directory, "class-root-with-state.js");
     });
 

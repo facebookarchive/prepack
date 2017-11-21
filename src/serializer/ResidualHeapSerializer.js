@@ -263,8 +263,8 @@ export class ResidualHeapSerializer {
     // prototype
     if (!skipPrototype) {
       this._emitObjectPrototype(obj, objectPrototypeAlreadyEstablished);
+      if (obj instanceof FunctionValue) this._emitConstructorPrototype(obj);
     }
-    if (obj instanceof FunctionValue) this._emitConstructorPrototype(obj);
 
     this.statistics.objects++;
     this.statistics.objectProperties += obj.properties.size;
@@ -1122,9 +1122,17 @@ export class ResidualHeapSerializer {
     undelay();
     if (instance.isClassMethod && val.$FunctionKind === "classConstructor") {
       if (!skipClassSerializing) {
+        let properties = new Map(val.properties);
         for (let [key] of val.properties) {
           if (!this.residualHeapInspector.canIgnoreProperty(val, key)) {
-            this.serializedValues.add(Get(this.realm, val, key));
+            let propertyValue = Get(this.realm, val, key);
+            // we visit all of these as these, as they form part of the constructor for the class
+            // but we want to serialize them out as class methods in the ResidualFunctions
+            // rather than via the typical Prepack route of serializing properties
+            if (key === "arguments" || key === "length" || key === "name" || key === "caller" || key === "prototype") {
+              properties.delete(key);
+              this.serializedValues.add(propertyValue);
+            }
           }
         }
         invariant(val.$HomeObject instanceof ObjectValue);
@@ -1141,6 +1149,8 @@ export class ResidualHeapSerializer {
             this.serializedValues.add(proto.$HomeObject);
           }
         }
+        // pass in the properties and set it so we don't serialize the prototype
+        this._emitObjectProperties(val, properties, undefined, undefined, true);
       }
     } else {
       this._emitObjectProperties(val);
@@ -1181,16 +1191,16 @@ export class ResidualHeapSerializer {
     let classPrototype;
     let isClass = false;
     // if the object has a prototype that was a class (by check the constructor on the prototype)
-    if (proto instanceof ObjectValue) {
+    if (proto instanceof ObjectValue && proto !== this.realm.intrinsics.ObjectPrototype) {
       let constructor = Get(this.realm, proto, "constructor");
       if (constructor instanceof ECMAScriptSourceFunctionValue && constructor.$FunctionKind === "classConstructor") {
         classPrototype = constructor;
       }
-    }
-    // check if this object is actually based from a class (by checking the constructor)
-    let constructor = Get(this.realm, val, "constructor");
-    if (constructor instanceof ECMAScriptSourceFunctionValue && constructor.$FunctionKind === "classConstructor") {
-      isClass = true;
+      // check if this object is actually based from a class (by checking the constructor)
+      constructor = Get(this.realm, val, "constructor");
+      if (constructor instanceof ECMAScriptSourceFunctionValue && constructor.$FunctionKind === "classConstructor") {
+        isClass = true;
+      }
     }
 
     let remainingProperties = new Map(val.properties);
