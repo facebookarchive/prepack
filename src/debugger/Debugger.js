@@ -75,7 +75,7 @@ export class DebugServer {
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
     this.checkForBreakpoint(ast);
-    this.checkStepIn(ast);
+    this.checkStepComplete(ast);
     // set the current location as the previously executed line
     if (ast.loc && ast.loc.source !== null) {
       this._previousExecutedFile = ast.loc.source;
@@ -131,7 +131,7 @@ export class DebugServer {
     }
   }
 
-  checkStepIn(ast: BabelNode) {
+  checkStepComplete(ast: BabelNode) {
     if (this._stepManager.isStepInComplete(ast)) {
       this.waitForRun(ast);
     }
