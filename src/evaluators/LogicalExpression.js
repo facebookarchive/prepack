@@ -46,9 +46,10 @@ export default function(
     return Environment.GetValue(realm, rref);
   }
   invariant(lval instanceof AbstractValue);
+  let lcond = Environment.GetConditionValue(realm, lref);
 
-  if (!lval.mightNotBeFalse()) return ast.operator === "||" ? env.evaluate(ast.right, strictCode) : lval;
-  if (!lval.mightNotBeTrue()) return ast.operator === "&&" ? env.evaluate(ast.right, strictCode) : lval;
+  if (!lcond.mightNotBeFalse()) return ast.operator === "||" ? env.evaluate(ast.right, strictCode) : lval;
+  if (!lcond.mightNotBeTrue()) return ast.operator === "&&" ? env.evaluate(ast.right, strictCode) : lval;
 
   // Create empty effects for the case where ast.right is not evaluated
   let [compl1, gen1, bindings1, properties1, createdObj1] = construct_empty_effects(realm);
