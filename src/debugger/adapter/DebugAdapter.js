@@ -70,7 +70,7 @@ class PrepackDebugSession extends LoggingDebugSession {
    * The 'initialize' request is the first request called by the UI
    * to interrogate the features the debug adapter provides.
    */
-   // Override
+  // Override
   initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
     // Let the UI know that we can start accepting breakpoint requests.
     // The UI will end the configuration sequence by calling 'configurationDone' request.
