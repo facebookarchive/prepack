@@ -383,7 +383,10 @@ export class ResidualHeapVisitor {
         if (functionInfo.modified.has(innerName)) residualFunctionBinding.modified = true;
       }
     });
-    let isClassMethod = false;
+    let useClassProperties = false;
+    let isConstructor = false;
+    let isComputed = val.$Computed;
+
     if (val.$HomeObject instanceof AbstractValue) {
       throw new FatalError("TODO: do not know how to handle an abstract HomeObject");
     } else if (val.$HomeObject instanceof ObjectValue) {
@@ -393,13 +396,22 @@ export class ResidualHeapVisitor {
         throw new FatalError("TODO: do not know how to handle an abstract constructor");
       } else if (constructorValue instanceof ECMAScriptSourceFunctionValue) {
         if (constructorValue.$FunctionKind === "classConstructor") {
-          isClassMethod = true;
+          useClassProperties = true;
+          if (val.$FunctionKind === "classConstructor") {
+            isConstructor = true;
+          }
         }
       }
     }
     this.functionInstances.set(val, {
-      classSuper: undefined,
-      isClassMethod,
+      classProperties: useClassProperties
+        ? {
+            methodType: isConstructor ? "constructor" : "method",
+            classSuperNode: undefined,
+            classMethodKeyNode: undefined,
+            classMethodComputed: isComputed,
+          }
+        : undefined,
       residualFunctionBindings,
       functionValue: val,
       scopeInstances: new Set(),

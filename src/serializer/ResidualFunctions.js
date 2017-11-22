@@ -11,8 +11,7 @@
 
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import { FunctionValue, type ECMAScriptSourceFunctionValue, StringValue } from "../values/index.js";
-import { Get } from "../methods/index.js";
+import { FunctionValue, type ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -37,7 +36,6 @@ import { nullExpression } from "../utils/internalizer.js";
 import type { LocationService } from "./types.js";
 import { Referentializer } from "./Referentializer.js";
 import { getOrDefault } from "./utils.js";
-import ObjectValue from "../values/ObjectValue";
 
 type ResidualFunctionsResult = {
   unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
@@ -295,21 +293,18 @@ export class ResidualFunctions {
       let functionBody = t.blockStatement(rewrittenBody);
       let funcParams = params.slice();
       let funcOrClassNode;
-      let { isClassMethod, classSuper } = instance;
-      let isConstructor = functionValue.$FunctionKind === "classConstructor";
+      let { classProperties } = instance;
 
-      if (isClassMethod) {
+      if (classProperties !== undefined) {
+        let { methodType, classMethodKeyNode, classSuperNode, classMethodComputed } = classProperties;
+
+        let isConstructor = methodType === "constructor";
         let homeObject = functionValue.$HomeObject;
         invariant(homeObject instanceof ObjectValue);
-        let methodName = Get(this.realm, functionValue, "name");
-        invariant(methodName instanceof StringValue);
-        let classMethod = t.classMethod(
-          isConstructor ? "constructor" : "method",
-          t.identifier(isConstructor ? "constructor" : methodName.value),
-          funcParams,
-          functionBody
-        );
+        invariant(classMethodKeyNode && (t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode)));
+        // we use the $HomeObject as the key to get the class expression ast node
         funcOrClassNode = this._getOrCreateClassNode(homeObject);
+        let classMethod = t.classMethod(methodType, classMethodKeyNode, funcParams, functionBody, classMethodComputed);
         // add the class method to the class expression node body
         if (isConstructor) {
           funcOrClassNode.body.body.unshift(classMethod);
@@ -321,8 +316,8 @@ export class ResidualFunctions {
           continue;
         }
         // handle the class super
-        if (classSuper) {
-          funcOrClassNode.superClass = classSuper;
+        if (classSuperNode !== undefined) {
+          funcOrClassNode.superClass = classSuperNode;
         }
       } else {
         funcOrClassNode = t.functionExpression(null, funcParams, functionBody);
@@ -360,26 +355,27 @@ export class ResidualFunctions {
         this.statistics.functionClones += instancesToSplice.length - 1;
 
         for (let instance of instancesToSplice) {
-          let { functionValue, residualFunctionBindings, scopeInstances, isClassMethod, classSuper } = instance;
+          let { functionValue, residualFunctionBindings, scopeInstances, classProperties } = instance;
           let funcOrClassNode;
 
-          if (isClassMethod) {
+          if (classProperties !== undefined) {
+            let { classSuperNode, classMethodKeyNode, methodType, classMethodComputed } = classProperties;
+
+            let isConstructor = methodType === "constructor";
             let homeObject = functionValue.$HomeObject;
             invariant(homeObject instanceof ObjectValue);
+            invariant(classMethodKeyNode && (t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode)));
             // we use the $HomeObject as the key to get the class expression ast node
             funcOrClassNode = this._getOrCreateClassNode(homeObject);
-            // use $FunctionKind to determine if this is the class constructor
-            let isConstructor = functionValue.$FunctionKind === "classConstructor";
             let methodParams = params.slice();
             let methodBody = ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement);
-            let methodName = Get(this.realm, functionValue, "name");
-            invariant(methodName instanceof StringValue);
             // create the class method AST
             let classMethod = t.classMethod(
-              isConstructor ? "constructor" : "method",
-              t.identifier(isConstructor ? "constructor" : methodName.value),
+              methodType,
+              classMethodKeyNode,
               methodParams,
-              methodBody
+              methodBody,
+              classMethodComputed
             );
             // traverse and replace refs in the class method
             traverse(
@@ -406,8 +402,8 @@ export class ResidualFunctions {
               continue;
             }
             // handle the class super
-            if (classSuper) {
-              funcOrClassNode.superClass = classSuper;
+            if (classSuperNode !== undefined) {
+              funcOrClassNode.superClass = classSuperNode;
             }
           } else {
             let funcParams = params.slice();
