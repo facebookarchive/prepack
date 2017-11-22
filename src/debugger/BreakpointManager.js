@@ -12,29 +12,32 @@
 import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
 import type { Breakpoint as BreakpointType } from "./types.js";
+import invariant from "./../invariant.js";
 
 // Storing BreakpointStores for all source files
 export class BreakpointManager {
   constructor() {
     this._breakpointMaps = new Map();
   }
-  _breakpointMaps: { [string]: PerFileBreakpointMap };
+  _breakpointMaps: Map<string, PerFileBreakpointMap>;
 
   addBreakpointMulti(breakpoints: Array<BreakpointType>) {
     this._doBreakpointsAction(breakpoints, this._addBreakpoint.bind(this));
   }
 
   _addBreakpoint(bp: BreakpointType) {
-    if (!(bp.filePath in this._breakpointMaps)) {
-      this._breakpointMaps[bp.filePath] = new PerFileBreakpointMap(bp.filePath);
+    if (!(this._breakpointMaps.has(bp.filePath))) {
+      this._breakpointMaps.set(bp.filePath, new PerFileBreakpointMap(bp.filePath));
     }
-    let breakpointMap = this._breakpointMaps[bp.filePath];
+    let breakpointMap = this._breakpointMaps.get(bp.filePath);
+    invariant(breakpointMap);
     breakpointMap.addBreakpoint(bp.line, bp.column);
   }
 
   getBreakpoint(filePath: string, lineNum: number, columnNum: number = 0): void | Breakpoint {
-    if (filePath in this._breakpointMaps) {
-      let breakpointMap = this._breakpointMaps[filePath];
+    if (this._breakpointMaps.has(filePath)) {
+      let breakpointMap = this._breakpointMaps.get(filePath);
+      invariant(breakpointMap);
       return breakpointMap.getBreakpoint(lineNum, columnNum);
     }
     return undefined;
@@ -45,8 +48,10 @@ export class BreakpointManager {
   }
 
   _removeBreakpoint(bp: BreakpointType) {
-    if (bp.filePath in this._breakpointMaps) {
-      this._breakpointMaps[bp.filePath].removeBreakpoint(bp.line, bp.column);
+    if (this._breakpointMaps.has(bp.filePath)) {
+      let breakpointMap = this._breakpointMaps.get(bp.filePath);
+      invariant(breakpointMap);
+      breakpointMap.removeBreakpoint(bp.line, bp.column);
     }
   }
 
@@ -55,8 +60,10 @@ export class BreakpointManager {
   }
 
   _enableBreakpoint(bp: BreakpointType) {
-    if (bp.filePath in this._breakpointMaps) {
-      this._breakpointMaps[bp.filePath].enableBreakpoint(bp.line, bp.column);
+    if (this._breakpointMaps.has(bp.filePath)) {
+      let breakpointMap = this._breakpointMaps.get(bp.filePath);
+      invariant(breakpointMap);
+      breakpointMap.enableBreakpoint(bp.line, bp.column);
     }
   }
 
@@ -65,8 +72,10 @@ export class BreakpointManager {
   }
 
   _disableBreakpoint(bp: BreakpointType) {
-    if (bp.filePath in this._breakpointMaps) {
-      this._breakpointMaps[bp.filePath].disableBreakpoint(bp.line, bp.column);
+    if (this._breakpointMaps.has(bp.filePath)) {
+      let breakpointMap = this._breakpointMaps.get(bp.filePath);
+      invariant(breakpointMap);
+      breakpointMap.disableBreakpoint(bp.line, bp.column);
     }
   }
 

@@ -10,41 +10,42 @@
 /* @flow */
 
 import { Breakpoint } from "./Breakpoint.js";
+import invariant from "./../invariant.js";
 
 // Storage for all the breakpoints in one source file
 // Each source file will be associated with one PerFileBreakpointMap
 export class PerFileBreakpointMap {
   constructor(filePath: string) {
-    this.filePath = filePath;
-    this.breakpoints = new Map();
+    this._filePath = filePath;
+    this._breakpoints = new Map();
   }
-  filePath: string;
+  _filePath: string;
 
   //map of line:column to Breakpoint objects
-  breakpoints: { [string]: Breakpoint };
+  _breakpoints: Map<string, Breakpoint>;
 
   addBreakpoint(line: number, column: number = 0, temporary?: boolean, enabled?: boolean) {
-    let breakpoint = new Breakpoint(this.filePath, line, column, temporary, enabled);
+    let breakpoint = new Breakpoint(this._filePath, line, column, temporary, enabled);
     let key = this._getKey(line, column);
-    this.breakpoints[key] = breakpoint;
+    this._breakpoints.set(key, breakpoint);
   }
 
   getBreakpoint(line: number, column: number = 0): void | Breakpoint {
     //check for a column breakpoint first, then line breakpoint
     if (column !== 0) {
       let key = this._getKey(line, column);
-      if (key in this.breakpoints) {
-        return this.breakpoints[key];
+      if (this._breakpoints.has(key)) {
+        return this._breakpoints.get(key);
       } else {
         key = this._getKey(line, 0);
-        if (key in this.breakpoints) {
-          return this.breakpoints[key];
+        if (this._breakpoints.has(key)) {
+          return this._breakpoints.get(key);
         }
       }
     } else {
       let key = this._getKey(line, 0);
-      if (key in this.breakpoints) {
-        return this.breakpoints[key];
+      if (this._breakpoints.has(key)) {
+        return this._breakpoints.get(key);
       }
     }
 
@@ -53,22 +54,28 @@ export class PerFileBreakpointMap {
 
   removeBreakpoint(line: number, column: number = 0) {
     let key = this._getKey(line, column);
-    if (key in this.breakpoints) {
-      delete this.breakpoints[key];
+    if (key in this._breakpoints) {
+      this._breakpoints.delete(key);
     }
   }
 
   enableBreakpoint(line: number, column: number = 0) {
     let key = this._getKey(line, column);
-    if (key in this.breakpoints) {
-      this.breakpoints[key].enabled = true;
+    if (this._breakpoints.has(key)) {
+      let breakpoint = this._breakpoints.get(key);
+      // flow complains without this invariant
+      invariant(breakpoint);
+      breakpoint.enabled = true;
     }
   }
 
   disableBreakpoint(line: number, column: number = 0) {
     let key = this._getKey(line, column);
-    if (key in this.breakpoints) {
-      this.breakpoints[key].enabled = false;
+    if (this._breakpoints.has(key)) {
+      let breakpoint = this._breakpoints.get(key);
+      // flow complains without this invariant
+      invariant(breakpoint);
+      breakpoint.enabled = false;
     }
   }
 
