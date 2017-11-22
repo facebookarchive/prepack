@@ -26,7 +26,7 @@ export class BreakpointManager {
   }
 
   _addBreakpoint(bp: BreakpointType) {
-    if (!(this._breakpointMaps.has(bp.filePath))) {
+    if (!this._breakpointMaps.has(bp.filePath)) {
       this._breakpointMaps.set(bp.filePath, new PerFileBreakpointMap(bp.filePath));
     }
     let breakpointMap = this._breakpointMaps.get(bp.filePath);
