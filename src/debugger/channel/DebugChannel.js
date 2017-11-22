@@ -91,7 +91,7 @@ export class DebugChannel {
   }
 
   sendStepInResponse(filePath: string, line: number, column: number) {
-    this.writeOut(this._marshaller.marshallStepInResponse(filePath, line, column));
+    this.writeOut(this._marshaller.marshallPrepackStopped("Step In", filePath, line, column));
   }
 
   shutdown() {

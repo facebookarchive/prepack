@@ -28,9 +28,7 @@ import type {
   DebuggerRequestArguments,
   RunArguments,
   StackframeArguments,
-  FinishResult,
   StepInArguments,
-  StepInResult,
   PrepackStoppedReason,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
@@ -95,16 +93,6 @@ export class MessageMarshaller {
 
   marshallStepInRequest(requestID: number): string {
     return `${requestID} ${DebugMessage.STEPIN_COMMAND}`;
-  }
-
-  marshallStepInResponse(filePath: string, line: number, column: number): string {
-    let result: StepInResult = {
-      kind: "stepIn",
-      filePath: filePath,
-      line: line,
-      column: column,
-    };
-    return `${this._lastRunRequestID} ${DebugMessage.STEPIN_RESPONSE} ${JSON.stringify(result)}`;
   }
 
   unmarshallRequest(message: string): DebuggerRequest {
@@ -176,10 +164,6 @@ export class MessageMarshaller {
       dbgResponse = this._unmarshallScopesResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.VARIABLES_RESPONSE) {
       dbgResponse = this._unmarshallVariablesResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.PREPACK_FINISH_RESPONSE) {
-      dbgResponse = this._unmarshallFinishResponse(requestID);
-    } else if (messageType === DebugMessage.STEPIN_RESPONSE) {
-      dbgResponse = this._unmarshallStepInResponse(requestID, parts.slice(2).join(" "));
     } else {
       invariant(false, "Unexpected response type");
     }
@@ -297,24 +281,6 @@ export class MessageMarshaller {
     }
   }
 
-  _unmarshallStepInResponse(requestID: number, responseBody: string): DebuggerResponse {
-    try {
-      let result = JSON.parse(responseBody);
-      invariant(result.hasOwnProperty("kind"));
-      invariant(result.kind === "stepIn");
-      invariant(result.hasOwnProperty("filePath"));
-      invariant(result.hasOwnProperty("line"));
-      invariant(result.hasOwnProperty("column"));
-      let dbgResponse: DebuggerResponse = {
-        id: requestID,
-        result: result,
-      };
-      return dbgResponse;
-    } catch (e) {
-      throw new DebuggerError("Invalid response", e.message);
-    }
-  }
-
   _unmarshallBreakpointsAddResponse(requestID: number, breakpointsString: string): DebuggerResponse {
     try {
       let breakpoints = JSON.parse(breakpointsString);
@@ -363,17 +329,6 @@ export class MessageMarshaller {
   _unmarshallReadyResponse(requestID: number): DebuggerResponse {
     let result: ReadyResult = {
       kind: "ready",
-    };
-    let dbgResponse: DebuggerResponse = {
-      id: requestID,
-      result: result,
-    };
-    return dbgResponse;
-  }
-
-  _unmarshallFinishResponse(requestID: number): DebuggerResponse {
-    let result: FinishResult = {
-      kind: "finish",
     };
     let dbgResponse: DebuggerResponse = {
       id: requestID,
