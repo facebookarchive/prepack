@@ -56,17 +56,20 @@ function _createAbstractArray(realm: Realm, name: string): AbstractValue {
   return value;
 }
 
-function _createAbstractObject(
+export function createAbstractObject(
   realm: Realm,
   name: string | null,
-  objectTypes: ObjectTypeTemplate | null
+  objectTypes: ObjectTypeTemplate | null,
+  template?: ObjectValue
 ): AbstractObjectValue {
   if (name === null) {
     name = "unknown";
   }
   let value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
   value.intrinsicName = name;
-  let template = createObject(realm, objectTypes, name);
+  if (template === undefined) {
+    template = createObject(realm, objectTypes, name);
+  }
   template.makePartial();
   template.makeSimple();
   value.values = new ValuesDomain(new Set([template]));
@@ -75,7 +78,7 @@ function _createAbstractObject(
   return value;
 }
 
-export function createAbstractObject(
+export function createAbstractObjectFromFlowTypes(
   realm: Realm,
   name: string | null,
   objectTypes: ObjectTypeTemplate | null | string
@@ -85,7 +88,7 @@ export function createAbstractObject(
       objectTypes === "empty" || objectTypes === "object",
       `Expected an object or a string of "empty" or "object" for createAbstractObject() paramater "objectTypes"`
     );
-    return _createAbstractObject(realm, name, null);
+    return createAbstractObject(realm, name, null);
   }
   if (objectTypes !== null) {
     let propTypeObject = {};
@@ -98,7 +101,7 @@ export function createAbstractObject(
         if (value === "array") {
           propTypeObject[key] = _createAbstractArray(realm, propertyName);
         } else if (value === "object") {
-          propTypeObject[key] = _createAbstractObject(realm, propertyName, null);
+          propTypeObject[key] = createAbstractObject(realm, propertyName, null);
         } else {
           propTypeObject[key] = createAbstractByType(realm, value, propertyName);
         }
@@ -109,9 +112,9 @@ export function createAbstractObject(
       }
     });
 
-    return _createAbstractObject(realm, name, propTypeObject);
+    return createAbstractObject(realm, name, propTypeObject);
   } else {
-    return _createAbstractObject(realm, name, null);
+    return createAbstractObject(realm, name, null);
   }
 }
 
