@@ -353,40 +353,44 @@ export function IsStatic(classElement: BabelNodeClassMethod): boolean {
 }
 
 export function IsStatement(node: BabelNode): boolean {
-  if (node.type === "BlockStatement") return true;
-  if (node.type === "BreakStatement") return true;
-  if (node.type === "ContinueStatement") return true;
-  if (node.type === "DebuggerStatement") return true;
-  if (node.type === "DoWhileStatement") return true;
-  if (node.type === "EmptyStatement") return true;
-  if (node.type === "ExpressionStatement") return true;
-  if (node.type === "ForInStatement") return true;
-  if (node.type === "ForStatement") return true;
-  if (node.type === "FunctionDeclaration") return true;
-  if (node.type === "IfStatement") return true;
-  if (node.type === "LabeledStatement") return true;
-  if (node.type === "ReturnStatement") return true;
-  if (node.type === "SwitchStatement") return true;
-  if (node.type === "ThrowStatement") return true;
-  if (node.type === "TryStatement") return true;
-  if (node.type === "VariableDeclaration") return true;
-  if (node.type === "WhileStatement") return true;
-  if (node.type === "WithStatement") return true;
-  if (node.type === "ClassDeclaration") return true;
-  if (node.type === "ExportAllDeclaration") return true;
-  if (node.type === "ExportDefaultDeclaration") return true;
-  if (node.type === "ExportNamedDeclaration") return true;
-  if (node.type === "ForOfStatement") return true;
-  if (node.type === "ImportDeclaration") return true;
-  if (node.type === "DeclareClass") return true;
-  if (node.type === "DeclareFunction") return true;
-  if (node.type === "DeclareInterface") return true;
-  if (node.type === "DeclareModule") return true;
-  if (node.type === "DeclareModuleExports") return true;
-  if (node.type === "DeclareTypeAlias") return true;
-  if (node.type === "DeclareVariable") return true;
-  if (node.type === "InterfaceDeclaration") return true;
-  if (node.type === "TypeAlias") return true;
-  if (node.type === "ForAwaitStatement") return true;
-  return false;
+  switch (node.type) {
+    case "BlockStatement":
+    case "BreakStatement":
+    case "ContinueStatement":
+    case "DebuggerStatement":
+    case "DoWhileStatement":
+    case "EmptyStatement":
+    case "ExpressionStatement":
+    case "ForInStatement":
+    case "ForStatement":
+    case "FunctionDeclaration":
+    case "IfStatement":
+    case "LabeledStatement":
+    case "ReturnStatement":
+    case "SwitchStatement":
+    case "ThrowStatement":
+    case "TryStatement":
+    case "VariableDeclaration":
+    case "WhileStatement":
+    case "WithStatement":
+    case "ClassDeclaration":
+    case "ExportAllDeclaration":
+    case "ExportDefaultDeclaration":
+    case "ExportNamedDeclaration":
+    case "ForOfStatement":
+    case "ImportDeclaration":
+    case "DeclareClass":
+    case "DeclareFunction":
+    case "DeclareInterface":
+    case "DeclareModule":
+    case "DeclareModuleExports":
+    case "DeclareTypeAlias":
+    case "DeclareVariable":
+    case "InterfaceDeclaration":
+    case "TypeAlias":
+    case "ForAwaitStatement":
+      return true;
+    default:
+      return false;
+  }
 }

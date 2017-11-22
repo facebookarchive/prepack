@@ -158,9 +158,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   debugOutFilePath: string,
 }
 
-export type SteppingInfo = {
-  kind: "in" | "over" | "out",
-  stoppedFile: string,
-  stoppedLine: number,
-  stoppedColumn: number,
+export type StepInData = {
+  prevStopFile: string,
+  prevStopLine: number,
+  prevStopColumn: number,
 };
