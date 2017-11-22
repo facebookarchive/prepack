@@ -30,7 +30,6 @@ export class SteppingManager {
   }
 
   _processStepIn(ast: BabelNode) {
-    invariant(this._stepInData === undefined);
     invariant(ast.loc && ast.loc.source);
     this._stepInData = {
       prevStopFile: ast.loc.source,
@@ -40,7 +39,7 @@ export class SteppingManager {
   }
 
   isStepInComplete(ast: BabelNode): boolean {
-    if (this._isValidStepInLocation(ast)) {
+    if (this._isStepInComplete(ast)) {
       if (ast.loc && ast.loc.source) {
         this._stepInData = undefined;
         this._channel.sendPrepackStopped("Step In", ast.loc.source, ast.loc.start.line, ast.loc.start.column);
@@ -50,7 +49,8 @@ export class SteppingManager {
     return false;
   }
 
-  _isValidStepInLocation(ast: BabelNode): boolean {
+  _isStepInComplete(ast: BabelNode): boolean {
+    // we should only step to statements
     if (!IsStatement(ast)) return false;
     let loc = ast.loc;
     if (!loc) return false;
