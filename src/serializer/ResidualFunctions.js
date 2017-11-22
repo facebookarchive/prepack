@@ -293,35 +293,49 @@ export class ResidualFunctions {
       // rewritten functions shouldn't have references fixed up because the body,
       // consists of serialized code. For simplicity we emit their instances in a naive way
       let functionBody = t.blockStatement(rewrittenBody);
-
-      let id = this.locationService.getLocation(funcValue);
-      invariant(id !== undefined);
       let funcParams = params.slice();
       let funcOrClassNode;
-      let { isClassMethod } = instance;
+      let { isClassMethod, classSuper } = instance;
+      let isConstructor = functionValue.$FunctionKind === "classConstructor";
 
       if (isClassMethod) {
         let homeObject = functionValue.$HomeObject;
         invariant(homeObject instanceof ObjectValue);
-        invariant(
-          functionValue.$FunctionKind !== "classConstructor",
-          "Class constructors cannot be additional functions"
-        );
         let methodName = Get(this.realm, functionValue, "name");
         invariant(methodName instanceof StringValue);
-        let classMethod = t.classMethod("method", t.identifier(methodName.value), funcParams, functionBody);
+        let classMethod = t.classMethod(
+          isConstructor ? "constructor" : "method",
+          t.identifier(isConstructor ? "constructor" : methodName.value),
+          funcParams,
+          functionBody
+        );
         funcOrClassNode = this._getOrCreateClassNode(homeObject);
-        funcOrClassNode.body.body.push(classMethod);
+        // add the class method to the class expression node body
+        if (isConstructor) {
+          funcOrClassNode.body.body.unshift(classMethod);
+        } else {
+          funcOrClassNode.body.body.push(classMethod);
+        }
+        // we only return the funcOrClassNode if this is the constructor
+        if (!isConstructor) {
+          continue;
+        }
+        // handle the class super
+        if (classSuper) {
+          funcOrClassNode.superClass = classSuper;
+        }
       } else {
         funcOrClassNode = t.functionExpression(null, funcParams, functionBody);
-
-        if (funcValue.$Strict) {
-          strictFunctionBodies.push(funcOrClassNode);
-        } else {
-          unstrictFunctionBodies.push(funcOrClassNode);
-        }
-        defineFunction(instance, id, funcOrClassNode);
       }
+      let id = this.locationService.getLocation(funcValue);
+      invariant(id !== undefined);
+
+      if (funcValue.$Strict) {
+        strictFunctionBodies.push(funcOrClassNode);
+      } else {
+        unstrictFunctionBodies.push(funcOrClassNode);
+      }
+      defineFunction(instance, id, funcOrClassNode);
     }
 
     // Process normal functions
@@ -347,7 +361,6 @@ export class ResidualFunctions {
 
         for (let instance of instancesToSplice) {
           let { functionValue, residualFunctionBindings, scopeInstances, isClassMethod, classSuper } = instance;
-          let id = this.locationService.getLocation(functionValue);
           let funcOrClassNode;
 
           if (isClassMethod) {
@@ -388,7 +401,7 @@ export class ResidualFunctions {
             } else {
               funcOrClassNode.body.body.push(classMethod);
             }
-            // we only return the funcOrClassNode if this is the constructor as it has the right ID
+            // we only return the funcOrClassNode if this is the constructor
             if (!isConstructor) {
               continue;
             }
@@ -397,7 +410,6 @@ export class ResidualFunctions {
               funcOrClassNode.superClass = classSuper;
             }
           } else {
-            invariant(id !== undefined);
             let funcParams = params.slice();
             funcOrClassNode = t.functionExpression(
               null,
@@ -426,6 +438,8 @@ export class ResidualFunctions {
               factoryFunctionInfos,
             });
           }
+          let id = this.locationService.getLocation(functionValue);
+          invariant(id !== undefined);
 
           if (functionValue.$Strict) {
             strictFunctionBodies.push(funcOrClassNode);
