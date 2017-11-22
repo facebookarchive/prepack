@@ -198,7 +198,9 @@ export class PropertiesImplementation {
     invariant(IsPropertyKey(realm, P), "expected property key");
 
     // 2. Let ownDesc be ? O.[[GetOwnProperty]](P).
-    let ownDesc = O.$GetOwnProperty(P);
+    let ownDesc;
+    let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
+    if (existingBinding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) ownDesc = O.$GetOwnProperty(P);
     let ownDescValue = !ownDesc
       ? realm.intrinsics.undefined
       : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
@@ -305,7 +307,10 @@ export class PropertiesImplementation {
         if (!(Receiver instanceof ObjectValue)) return false;
 
         // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
-        let existingDescriptor = Receiver.$GetOwnProperty(P);
+        let existingDescriptor;
+        let binding = InternalGetPropertiesMap(Receiver, P).get(InternalGetPropertiesKey(P));
+        if (binding !== undefined || !(Receiver.isPartialObject() && Receiver.isSimpleObject()))
+          existingDescriptor = Receiver.$GetOwnProperty(P);
         if (existingDescriptor !== undefined) {
           if (existingDescriptor.descriptor1 === ownDesc) existingDescriptor = ownDesc;
           else if (existingDescriptor.descriptor2 === ownDesc) existingDescriptor = ownDesc;
@@ -748,7 +753,9 @@ export class PropertiesImplementation {
     invariant(O instanceof ObjectValue);
 
     // 1. Let current be ? O.[[GetOwnProperty]](P).
-    let current = O.$GetOwnProperty(P);
+    let current;
+    let binding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
+    if (binding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) current = O.$GetOwnProperty(P);
 
     // 2. Let extensible be the value of the [[Extensible]] internal slot of O.
     let extensible = O.getExtensible();
