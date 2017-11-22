@@ -86,10 +86,7 @@ function runTest(name: string, code: string): boolean {
       sourceMaps: !!sourceMap,
       additionalFunctions: additionalFunctions,
     };
-    if (name.endsWith("/bundle.js~"))
-      (options: any).additionalFunctions = [
-        "global.WildeBundle.prepareReact",
-      ];
+    if (name.endsWith("/bundle.js~")) (options: any).additionalFunctions = ["global.WildeBundle.prepareReact"];
     let serialized = prepackSources(sources, options);
     let new_map = serialized.map; // force source maps to get computed
     if (!new_map) console.log(chalk.red("No source map"));
