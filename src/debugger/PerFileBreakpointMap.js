@@ -10,7 +10,6 @@
 /* @flow */
 
 import { Breakpoint } from "./Breakpoint.js";
-import invariant from "./../invariant.js";
 
 // Storage for all the breakpoints in one source file
 // Each source file will be associated with one PerFileBreakpointMap
@@ -54,29 +53,21 @@ export class PerFileBreakpointMap {
 
   removeBreakpoint(line: number, column: number = 0) {
     let key = this._getKey(line, column);
-    if (key in this._breakpoints) {
+    if (this._breakpoints.has(key)) {
       this._breakpoints.delete(key);
     }
   }
 
   enableBreakpoint(line: number, column: number = 0) {
     let key = this._getKey(line, column);
-    if (this._breakpoints.has(key)) {
-      let breakpoint = this._breakpoints.get(key);
-      // flow complains without this invariant
-      invariant(breakpoint);
-      breakpoint.enabled = true;
-    }
+    let breakpoint = this._breakpoints.get(key);
+    if (breakpoint) breakpoint.enabled = true;
   }
 
   disableBreakpoint(line: number, column: number = 0) {
     let key = this._getKey(line, column);
-    if (this._breakpoints.has(key)) {
-      let breakpoint = this._breakpoints.get(key);
-      // flow complains without this invariant
-      invariant(breakpoint);
-      breakpoint.enabled = false;
-    }
+    let breakpoint = this._breakpoints.get(key);
+    if (breakpoint) breakpoint.enabled = false;
   }
 
   _getKey(line: number, column: number): string {
