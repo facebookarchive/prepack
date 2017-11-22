@@ -853,3 +853,20 @@ export type CreateType = {
     args: Array<Value>
   ): Value,
 };
+
+export type WidenType = {
+  // Returns a new effects summary that includes both e1 and e2.
+  widenEffects(realm: Realm, e1: Effects, e2: Effects): Effects,
+
+  // Returns an abstract value that includes both v1 and v2 as potential values.
+  widenValues(
+    realm: Realm,
+    v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+  ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+
+  // If e2 is the result of a loop iteration starting with effects e1 and it has the same elements as e1,
+  // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
+  // summary of the loop, regardless of how many iterations will be performed at runtime.
+  equalsEffects(e1: Effects, e2: Effects): boolean,
+};
