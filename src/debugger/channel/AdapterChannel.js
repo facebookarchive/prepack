@@ -46,8 +46,8 @@ export class AdapterChannel {
       this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE, dbgResponse);
     } else if (dbgResponse.result.kind === "breakpoint-add") {
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, dbgResponse.id, dbgResponse);
-    } else if (dbgResponse.result.kind === "breakpoint-stopped") {
-      this._eventEmitter.emit(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, dbgResponse);
+    } else if (dbgResponse.result.kind === "stopped") {
+      this._eventEmitter.emit(DebugMessage.PREPACK_STOPPED_RESPONSE, dbgResponse);
     } else if (dbgResponse.result.kind === "stepIn") {
       this._eventEmitter.emit(DebugMessage.STEPIN_RESPONSE, dbgResponse);
     }

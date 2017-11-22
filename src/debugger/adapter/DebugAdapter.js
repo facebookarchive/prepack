@@ -44,19 +44,16 @@ class PrepackDebugSession extends LoggingDebugSession {
     this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
       this.sendEvent(new StoppedEvent("entry", DebuggerConstants.PREPACK_THREAD_ID));
     });
-    this._adapterChannel.registerChannelEvent(
-      DebugMessage.BREAKPOINT_STOPPED_RESPONSE,
-      (response: DebuggerResponse) => {
-        let result = response.result;
-        invariant(result.kind === "breakpoint-stopped");
-        this.sendEvent(
-          new StoppedEvent(
-            "breakpoint " + `${result.filePath} ${result.line}:${result.column}`,
-            DebuggerConstants.PREPACK_THREAD_ID
-          )
-        );
-      }
-    );
+    this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_STOPPED_RESPONSE, (response: DebuggerResponse) => {
+      let result = response.result;
+      invariant(result.kind === "stopped");
+      this.sendEvent(
+        new StoppedEvent(
+          `${result.reason}: ${result.filePath} ${result.line}:${result.column}`,
+          DebuggerConstants.PREPACK_THREAD_ID
+        )
+      );
+    });
     this._adapterChannel.registerChannelEvent(DebugMessage.STEPIN_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
       invariant(result.kind === "stepIn");

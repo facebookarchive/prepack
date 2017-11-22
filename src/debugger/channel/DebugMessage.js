@@ -38,8 +38,8 @@ export class DebugMessage {
   static PREPACK_READY_RESPONSE: string = "PrepackReady";
   // Respond to the adapter that Prepack is finished
   static PREPACK_FINISH_RESPONSE: string = "PrepackFinish";
-  // Respond to the adapter that Prepack has stopped on a breakpoint
-  static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped-response";
+  // Respond to the adapter that Prepack has stopped
+  static PREPACK_STOPPED_RESPONSE: string = "Prepack-stopped-response";
   // Respond to the adapter with the request stackframes
   static STACKFRAMES_RESPONSE: string = "Stackframes-response";
   // Respond to the adapter with the requested scopes

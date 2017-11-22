@@ -88,7 +88,7 @@ export type DebuggerResponseResult =
   | ReadyResult
   | StackframeResult
   | BreakpointsAddResult
-  | BreakpointStoppedResult
+  | StoppedResult
   | ScopesResult
   | VariablesResult
   | StepInResult
@@ -108,8 +108,9 @@ export type BreakpointsAddResult = {
   breakpoints: Array<Breakpoint>,
 };
 
-export type BreakpointStoppedResult = {
-  kind: "breakpoint-stopped",
+export type StoppedResult = {
+  kind: "stopped",
+  reason: PrepackStoppedReason,
   filePath: string,
   line: number,
   column: number,
@@ -157,6 +158,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   debugInFilePath: string,
   debugOutFilePath: string,
 }
+
+export type PrepackStoppedReason = "Breakpoint" | "Step In";
 
 export type StepInData = {
   prevStopFile: string,

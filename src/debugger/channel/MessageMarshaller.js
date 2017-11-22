@@ -17,7 +17,7 @@ import type {
   DebuggerResponse,
   StackframeResult,
   BreakpointsAddResult,
-  BreakpointStoppedResult,
+  StoppedResult,
   ReadyResult,
   Scope,
   ScopesResult,
@@ -31,6 +31,7 @@ import type {
   FinishResult,
   StepInArguments,
   StepInResult,
+  PrepackStoppedReason,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -38,22 +39,22 @@ import { DebuggerError } from "./../DebuggerError.js";
 export class MessageMarshaller {
   constructor() {
     this._lastRunRequestID = 0;
-    this._lastStepInRequestID = 0;
   }
   _lastRunRequestID: number;
-  _lastStepInRequestID: number;
 
   marshallBreakpointAcknowledge(requestID: number, messageType: string, breakpoints: Array<Breakpoint>): string {
     return `${requestID} ${messageType} ${JSON.stringify(breakpoints)}`;
   }
 
-  marshallBreakpointStopped(args: Breakpoint): string {
-    return `${this
-      ._lastRunRequestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line} ${args.column}`;
-  }
-
-  marshallPrepackFinish(): string {
-    return `${this._lastRunRequestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`;
+  marshallPrepackStopped(reason: PrepackStoppedReason, filePath: string, line: number, column: number): string {
+    let result: StoppedResult = {
+      kind: "stopped",
+      reason: reason,
+      filePath: filePath,
+      line: line,
+      column: column,
+    };
+    return `${this._lastRunRequestID} ${DebugMessage.PREPACK_STOPPED_RESPONSE} ${JSON.stringify(result)}`;
   }
 
   marshallDebuggerStart(requestID: number): string {
@@ -103,7 +104,7 @@ export class MessageMarshaller {
       line: line,
       column: column,
     };
-    return `${this._lastStepInRequestID} ${DebugMessage.STEPIN_RESPONSE} ${JSON.stringify(result)}`;
+    return `${this._lastRunRequestID} ${DebugMessage.STEPIN_RESPONSE} ${JSON.stringify(result)}`;
   }
 
   unmarshallRequest(message: string): DebuggerRequest {
@@ -139,7 +140,7 @@ export class MessageMarshaller {
         args = this._unmarshallVariablesArguments(requestID, parts[2]);
         break;
       case DebugMessage.STEPIN_COMMAND:
-        this._lastStepInRequestID = requestID;
+        this._lastRunRequestID = requestID;
         let stepInArgs: StepInArguments = {
           kind: "stepIn",
         };
@@ -167,8 +168,8 @@ export class MessageMarshaller {
       dbgResponse = this._unmarshallReadyResponse(requestID);
     } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
       dbgResponse = this._unmarshallBreakpointsAddResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
-      dbgResponse = this._unmarshallBreakpointStoppedResponse(requestID, parts.slice(2));
+    } else if (messageType === DebugMessage.PREPACK_STOPPED_RESPONSE) {
+      dbgResponse = this._unmarshallPrepackStoppedResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
       dbgResponse = this._unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.SCOPES_RESPONSE) {
@@ -339,24 +340,24 @@ export class MessageMarshaller {
     }
   }
 
-  _unmarshallBreakpointStoppedResponse(requestID: number, parts: Array<string>): DebuggerResponse {
-    invariant(parts.length === 3, "Incorrect number of arguments in breakpoint stopped response");
-    let filePath = parts[0];
-    let line = parseInt(parts[1], 10);
-    invariant(!isNaN(line), "Invalid line number");
-    let column = parseInt(parts[2], 10);
-    invariant(!isNaN(column), "Invalid column number");
-    let result: BreakpointStoppedResult = {
-      kind: "breakpoint-stopped",
-      filePath: filePath,
-      line: line,
-      column: column,
-    };
-    let dbgResponse: DebuggerResponse = {
-      id: requestID,
-      result: result,
-    };
-    return dbgResponse;
+  _unmarshallPrepackStoppedResponse(requestID: number, responseStr: string): DebuggerResponse {
+    try {
+      let result = JSON.parse(responseStr);
+      invariant(result.kind === "stopped");
+      invariant(result.hasOwnProperty("reason"));
+      invariant(result.hasOwnProperty("filePath"));
+      invariant(result.hasOwnProperty("line"));
+      invariant(!isNaN(result.line));
+      invariant(result.hasOwnProperty("column"));
+      invariant(!isNaN(result.column));
+      let dbgResponse: DebuggerResponse = {
+        id: requestID,
+        result: result,
+      };
+      return dbgResponse;
+    } catch (e) {
+      throw new DebuggerError("Invalid response", e.message);
+    }
   }
 
   _unmarshallReadyResponse(requestID: number): DebuggerResponse {
