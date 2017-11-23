@@ -14,22 +14,18 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BooleanValue,
-  ConcreteValue,
   FunctionValue,
   NativeFunctionValue,
   ObjectValue,
-  StringValue,
-  UndefinedValue,
   Value,
   ECMAScriptSourceFunctionValue,
 } from "../../values/index.js";
 import { ToStringPartial } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
-import { describeLocation } from "../ecma262/Error.js";
+import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
@@ -44,28 +40,6 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  function parseTypeNameOrTemplate(typeNameOrTemplate): { type: typeof Value, template: void | ObjectValue } {
-    if (typeNameOrTemplate === undefined || typeNameOrTemplate instanceof UndefinedValue) {
-      return { type: Value, template: undefined };
-    } else if (typeNameOrTemplate instanceof StringValue) {
-      let typeNameString = ToStringPartial(realm, typeNameOrTemplate);
-      let type = Value.getTypeFromName(typeNameString);
-      if (type === undefined) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
-      }
-      return { type, template: undefined };
-    } else if (typeNameOrTemplate instanceof FunctionValue) {
-      return { type: FunctionValue, template: typeNameOrTemplate };
-    } else if (typeNameOrTemplate instanceof ObjectValue) {
-      return { type: ObjectValue, template: typeNameOrTemplate };
-    } else {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "typeNameOrTemplate has unsupported type");
-    }
-  }
-
-  const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
-  const throwTemplate = buildExpressionTemplate(throwTemplateSrc);
-
   // Helper function to model values that are obtained from the environment,
   // and whose concrete values are not known at Prepack-time.
   // __abstract(typeNameOrTemplate, name, options) creates a new abstract value
@@ -73,82 +47,32 @@ export default function(realm: Realm): void {
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
-    value: createAbstract(),
+    value: createAbstract(realm),
     writable: true,
     enumerable: false,
     configurable: true,
   });
 
   global.$DefineOwnProperty("__abstractOrNull", {
-    value: createAbstract(realm.intrinsics.null),
+    value: createAbstract(realm, realm.intrinsics.null),
     writable: true,
     enumerable: false,
     configurable: true,
   });
 
   global.$DefineOwnProperty("__abstractOrNullOrUndefined", {
-    value: createAbstract(realm.intrinsics.null, realm.intrinsics.undefined),
+    value: createAbstract(realm, realm.intrinsics.null, realm.intrinsics.undefined),
     writable: true,
     enumerable: false,
     configurable: true,
   });
 
   global.$DefineOwnProperty("__abstractOrUndefined", {
-    value: createAbstract(realm.intrinsics.undefined),
+    value: createAbstract(realm, realm.intrinsics.undefined),
     writable: true,
     enumerable: false,
     configurable: true,
   });
-
-  function createAbstract(...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
-    return new NativeFunctionValue(
-      realm,
-      "global.__abstract",
-      "__abstract",
-      0,
-      (context, [typeNameOrTemplate, name]) => {
-        if (!realm.useAbstractInterpretation) {
-          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
-        }
-
-        let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
-
-        let result;
-        let nameString = name ? ToStringPartial(realm, name) : "";
-        if (nameString === "") {
-          let locString;
-          for (let executionContext of realm.contextStack.slice().reverse()) {
-            let caller = executionContext.caller;
-            locString = describeLocation(
-              realm,
-              caller ? caller.function : undefined,
-              caller ? caller.lexicalEnvironment : undefined,
-              executionContext.loc
-            );
-            if (locString !== undefined) break;
-          }
-          let locVal = new StringValue(realm, locString || "(unknown location)");
-          let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
-          result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
-        } else {
-          let kind = "__abstract_" + nameString; // assume name is unique TODO #1155: check this
-          result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(nameString), type, [], kind);
-          result.intrinsicName = nameString;
-        }
-
-        if (template) result.values = new ValuesDomain(new Set([template]));
-        if (template && !(template instanceof FunctionValue)) {
-          // why exclude functions?
-          template.makePartial();
-          if (nameString) realm.rebuildNestedProperties(result, nameString);
-        }
-
-        if (additionalValues.length > 0)
-          result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
-        return result;
-      }
-    );
-  }
 
   global.$DefineOwnProperty("__additionalFunctions", {
     value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__additionalFunctions", true),
@@ -240,7 +164,7 @@ export default function(realm: Realm): void {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
 
-        let { type, template } = parseTypeNameOrTemplate(typeNameOrTemplate);
+        let { type, template } = parseTypeNameOrTemplate(realm, typeNameOrTemplate);
 
         if (!Value.isTypeCompatibleWith(f.constructor, FunctionValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "cannot determine residual function");
