@@ -146,7 +146,13 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   debugOutFilePath: string,
 }
 
-export type StoppedReason = "Breakpoint" | "Step Into";
+export type StoppedReason = "Entry" | "Breakpoint" | "Step Into";
+
+export type StoppedData = {
+  filePath: string,
+  line: number,
+  column: number,
+};
 
 export type StepIntoData = {
   prevStopFile: string,
