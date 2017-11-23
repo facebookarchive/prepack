@@ -121,7 +121,6 @@ function augmentCodeWithLazyObjectSupport(code, lazyRuntimeName) {
         const AlreadyHydratedLazyId = -1;
         const lazyId = this._lazyObjectIds.get(obj);
         if (lazyId === AlreadyHydratedLazyId) {
-          // Already being hydrated.
           return;
         }
         this._callback(obj, lazyId);
@@ -377,7 +376,6 @@ function runTest(name, code, options, args) {
         if (compileJSXWithBabel) {
           newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
         }
-        if (args.verbose) console.log(newCode);
         let markersIssue = false;
         for (let { positive, value, start } of markersToFind) {
           let found = newCode.indexOf(value, start) !== -1;
@@ -391,6 +389,7 @@ function runTest(name, code, options, args) {
         if (!execSpec && options.lazyObjectsRuntime !== undefined) {
           codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
         }
+        if (args.verbose) console.log(codeToRun);
         codeIterations.push(codeToRun);
         if (args.es5) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
