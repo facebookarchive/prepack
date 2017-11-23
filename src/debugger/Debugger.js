@@ -132,7 +132,7 @@ export class DebugServer {
   }
 
   checkStepComplete(ast: BabelNode) {
-    if (this._stepManager.isStepInComplete(ast)) {
+    if (this._stepManager.isStepComplete(ast)) {
       this.waitForRun(ast);
     }
   }
@@ -180,7 +180,7 @@ export class DebugServer {
         invariant(args.kind === "variables");
         this.processVariablesCommand(requestID, args);
         break;
-      case DebugMessage.STEPIN_COMMAND:
+      case DebugMessage.STEPINTO_COMMAND:
         invariant(ast !== undefined);
         this._stepManager.processStepCommand("in", ast);
         this._onDebuggeeResume();

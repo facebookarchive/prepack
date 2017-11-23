@@ -44,7 +44,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
       this.sendEvent(new StoppedEvent("entry", DebuggerConstants.PREPACK_THREAD_ID));
     });
-    this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_STOPPED_RESPONSE, (response: DebuggerResponse) => {
+    this._adapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
       invariant(result.kind === "stopped");
       this.sendEvent(
@@ -54,12 +54,12 @@ class PrepackDebugSession extends LoggingDebugSession {
         )
       );
     });
-    this._adapterChannel.registerChannelEvent(DebugMessage.STEPIN_RESPONSE, (response: DebuggerResponse) => {
+    this._adapterChannel.registerChannelEvent(DebugMessage.STEPINTO_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
-      invariant(result.kind === "stepIn");
+      invariant(result.kind === "stepInto");
       this.sendEvent(
         new StoppedEvent(
-          "Stepped to " + `${result.filePath} ${result.line}:${result.column}`,
+          "Stepped into " + `${result.filePath} ${result.line}:${result.column}`,
           DebuggerConstants.PREPACK_THREAD_ID
         )
       );
@@ -266,7 +266,7 @@ class PrepackDebugSession extends LoggingDebugSession {
 
   // Override
   stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
-    this._adapterChannel.stepIn(response.request_seq, (dbgResponse: DebuggerResponse) => {
+    this._adapterChannel.stepInto(response.request_seq, (dbgResponse: DebuggerResponse) => {
       this.sendResponse(response);
     });
   }

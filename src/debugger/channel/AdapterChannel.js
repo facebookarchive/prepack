@@ -47,9 +47,9 @@ export class AdapterChannel {
     } else if (dbgResponse.result.kind === "breakpoint-add") {
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, dbgResponse.id, dbgResponse);
     } else if (dbgResponse.result.kind === "stopped") {
-      this._eventEmitter.emit(DebugMessage.PREPACK_STOPPED_RESPONSE, dbgResponse);
-    } else if (dbgResponse.result.kind === "stepIn") {
-      this._eventEmitter.emit(DebugMessage.STEPIN_RESPONSE, dbgResponse);
+      this._eventEmitter.emit(DebugMessage.STOPPED_RESPONSE, dbgResponse);
+    } else if (dbgResponse.result.kind === "stepInto") {
+      this._eventEmitter.emit(DebugMessage.STEPINTO_RESPONSE, dbgResponse);
     }
     this._prepackWaiting = true;
     this._processRequestCallback(dbgResponse);
@@ -155,8 +155,8 @@ export class AdapterChannel {
     this._addRequestCallback(requestID, callback);
   }
 
-  stepIn(requestID: number, callback: DebuggerResponse => void) {
-    this._queue.enqueue(this._marshaller.marshallStepInRequest(requestID));
+  stepInto(requestID: number, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallStepIntoRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }

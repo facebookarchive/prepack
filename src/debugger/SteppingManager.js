@@ -11,7 +11,7 @@
 
 import { BabelNode } from "babel-types";
 import type { DebugChannel } from "./channel/DebugChannel.js";
-import type { StepInData } from "./types.js";
+import type { StepIntoData } from "./types.js";
 import invariant from "./../invariant.js";
 import { IsStatement } from "./../methods/is.js";
 
@@ -20,7 +20,7 @@ export class SteppingManager {
     this._channel = channel;
   }
   _channel: DebugChannel;
-  _stepInData: void | StepInData;
+  _stepIntoData: void | StepIntoData;
 
   processStepCommand(kind: "in" | "over" | "out", currentNode: BabelNode) {
     if (kind === "in") {
@@ -32,25 +32,25 @@ export class SteppingManager {
   _processStepIn(ast: BabelNode) {
     invariant(this._steppInData === undefined);
     invariant(ast.loc && ast.loc.source);
-    this._stepInData = {
+    this._stepIntoData = {
       prevStopFile: ast.loc.source,
       prevStopLine: ast.loc.start.line,
       prevStopColumn: ast.loc.start.column,
     };
   }
 
-  isStepInComplete(ast: BabelNode): boolean {
-    if (this._isStepInComplete(ast)) {
+  isStepComplete(ast: BabelNode): boolean {
+    if (this._isStepIntoComplete(ast)) {
       if (ast.loc && ast.loc.source) {
-        this._stepInData = undefined;
-        this._channel.sendStoppedResponse("Step In", ast.loc.source, ast.loc.start.line, ast.loc.start.column);
+        this._stepIntoData = undefined;
+        this._channel.sendStoppedResponse("Step Into", ast.loc.source, ast.loc.start.line, ast.loc.start.column);
         return true;
       }
     }
     return false;
   }
 
-  _isStepInComplete(ast: BabelNode): boolean {
+  _isStepIntoComplete(ast: BabelNode): boolean {
     // we should only step to statements
     if (!IsStatement(ast)) return false;
     let loc = ast.loc;
@@ -59,11 +59,11 @@ export class SteppingManager {
     let line = loc.start.line;
     let column = loc.start.column;
     if (!filePath) return false;
-    if (this._stepInData) {
+    if (this._stepIntoData) {
       if (
-        filePath === this._stepInData.prevStopFile &&
-        line === this._stepInData.prevStopLine &&
-        column === this._stepInData.prevStopColumn
+        filePath === this._stepIntoData.prevStopFile &&
+        line === this._stepIntoData.prevStopLine &&
+        column === this._stepIntoData.prevStopColumn
       ) {
         return false;
       }

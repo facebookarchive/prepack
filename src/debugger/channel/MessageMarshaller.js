@@ -28,7 +28,7 @@ import type {
   DebuggerRequestArguments,
   RunArguments,
   StackframeArguments,
-  StepInArguments,
+  StepIntoArguments,
   StoppedReason,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
@@ -52,7 +52,7 @@ export class MessageMarshaller {
       line: line,
       column: column,
     };
-    return `${this._lastRunRequestID} ${DebugMessage.PREPACK_STOPPED_RESPONSE} ${JSON.stringify(result)}`;
+    return `${this._lastRunRequestID} ${DebugMessage.STOPPED_RESPONSE} ${JSON.stringify(result)}`;
   }
 
   marshallDebuggerStart(requestID: number): string {
@@ -91,8 +91,8 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.VARIABLES_RESPONSE} ${JSON.stringify(variables)}`;
   }
 
-  marshallStepInRequest(requestID: number): string {
-    return `${requestID} ${DebugMessage.STEPIN_COMMAND}`;
+  marshallStepIntoRequest(requestID: number): string {
+    return `${requestID} ${DebugMessage.STEPINTO_COMMAND}`;
   }
 
   unmarshallRequest(message: string): DebuggerRequest {
@@ -127,12 +127,12 @@ export class MessageMarshaller {
       case DebugMessage.VARIABLES_COMMAND:
         args = this._unmarshallVariablesArguments(requestID, parts[2]);
         break;
-      case DebugMessage.STEPIN_COMMAND:
+      case DebugMessage.STEPINTO_COMMAND:
         this._lastRunRequestID = requestID;
-        let stepInArgs: StepInArguments = {
-          kind: "stepIn",
+        let stepIntoArgs: StepIntoArguments = {
+          kind: "stepInto",
         };
-        args = stepInArgs;
+        args = stepIntoArgs;
         break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
@@ -156,7 +156,7 @@ export class MessageMarshaller {
       dbgResponse = this._unmarshallReadyResponse(requestID);
     } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
       dbgResponse = this._unmarshallBreakpointsAddResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.PREPACK_STOPPED_RESPONSE) {
+    } else if (messageType === DebugMessage.STOPPED_RESPONSE) {
       dbgResponse = this._unmarshallStoppedResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
       dbgResponse = this._unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));

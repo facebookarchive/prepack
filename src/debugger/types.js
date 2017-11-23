@@ -25,7 +25,7 @@ export type DebuggerRequestArguments =
   | StackframeArguments
   | ScopesArguments
   | VariablesArguments
-  | StepInArguments;
+  | StepIntoArguments;
 
 export type PrepackLaunchArguments = {
   kind: "launch",
@@ -75,8 +75,8 @@ export type VariablesArguments = {
   variablesReference: number,
 };
 
-export type StepInArguments = {
-  kind: "stepIn",
+export type StepIntoArguments = {
+  kind: "stepInto",
 };
 
 export type DebuggerResponse = {
@@ -146,9 +146,9 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   debugOutFilePath: string,
 }
 
-export type StoppedReason = "Breakpoint" | "Step In";
+export type StoppedReason = "Breakpoint" | "Step Into";
 
-export type StepInData = {
+export type StepIntoData = {
   prevStopFile: string,
   prevStopLine: number,
   prevStopColumn: number,

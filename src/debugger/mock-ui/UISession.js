@@ -273,12 +273,12 @@ export class UISession {
         };
         this._sendVariablesRequest(variableArgs);
         break;
-      case "stepIn":
+      case "stepInto":
         if (parts.length !== 1) return false;
-        let stepInArgs: DebugProtocol.StepInArguments = {
+        let stepIntoArgs: DebugProtocol.StepInArguments = {
           threadId: DebuggerConstants.PREPACK_THREAD_ID,
         };
-        this._sendStepInRequest(stepInArgs);
+        this._sendStepIntoRequest(stepIntoArgs);
         break;
       default:
         // invalid command
@@ -424,7 +424,7 @@ export class UISession {
     this._packageAndSend(json);
   }
 
-  _sendStepInRequest(args: DebugProtocol.StepInArguments) {
+  _sendStepIntoRequest(args: DebugProtocol.StepInArguments) {
     let message = {
       type: "request",
       seq: this._sequenceNum,
