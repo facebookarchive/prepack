@@ -18,9 +18,12 @@ import { IsStatement } from "./../methods/is.js";
 export class SteppingManager {
   constructor(channel: DebugChannel) {
     this._channel = channel;
+    this._stepIntoData = {
+      prevStopData: undefined,
+    };
   }
   _channel: DebugChannel;
-  _stepIntoData: void | StepIntoData;
+  _stepIntoData: StepIntoData;
 
   processStepCommand(kind: "in" | "over" | "out", currentNode: BabelNode) {
     if (kind === "in") {
@@ -30,19 +33,21 @@ export class SteppingManager {
   }
 
   _processStepIn(ast: BabelNode) {
-    invariant(this._steppInData === undefined);
+    invariant(this._stepIntoData.prevStopData === undefined);
     invariant(ast.loc && ast.loc.source);
     this._stepIntoData = {
-      prevStopFile: ast.loc.source,
-      prevStopLine: ast.loc.start.line,
-      prevStopColumn: ast.loc.start.column,
+      prevStopData: {
+        filePath: ast.loc.source,
+        line: ast.loc.start.line,
+        column: ast.loc.start.column,
+      },
     };
   }
 
   isStepComplete(ast: BabelNode): boolean {
     if (this._isStepIntoComplete(ast)) {
       if (ast.loc && ast.loc.source) {
-        this._stepIntoData = undefined;
+        this._stepIntoData.prevStopData = undefined;
         this._channel.sendStoppedResponse("Step Into", ast.loc.source, ast.loc.start.line, ast.loc.start.column);
         return true;
       }
@@ -59,12 +64,9 @@ export class SteppingManager {
     let line = loc.start.line;
     let column = loc.start.column;
     if (!filePath) return false;
-    if (this._stepIntoData) {
-      if (
-        filePath === this._stepIntoData.prevStopFile &&
-        line === this._stepIntoData.prevStopLine &&
-        column === this._stepIntoData.prevStopColumn
-      ) {
+    let prevStop = this._stepIntoData.prevStopData;
+    if (prevStop) {
+      if (filePath === prevStop.filePath && line === prevStop.line && column === prevStop.column) {
         return false;
       }
     } else {
@@ -76,10 +78,10 @@ export class SteppingManager {
 
   onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
     if (reason !== "Step Into") {
-      // stopped for another reason, ie breakpoint
-      if (this._stepIntoData !== undefined) {
+      // stopped for another reason, e.g. breakpoint
+      if (this._stepIntoData.prevStopData !== undefined) {
         // we're in the middle of a step into, but debuggee has stopped for another reason here first, so cancel this step into
-        this._stepIntoData = undefined;
+        this._stepIntoData.prevStopData = undefined;
       }
     }
 

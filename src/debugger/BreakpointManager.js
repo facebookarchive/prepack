@@ -27,7 +27,6 @@ export class BreakpointManager {
   _channel: DebugChannel;
 
   onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
-    if (reason === "Breakpoint") return;
     if (ast.loc && ast.loc.source !== null) {
       this._previousStop = {
         filePath: ast.loc.source,
@@ -77,7 +76,7 @@ export class BreakpointManager {
           }
         } else {
           // this is a line breakpoint
-          if (filePath === this._previousStop.filePath && lineNum === this._previousStop.column) {
+          if (filePath === this._previousStop.filePath && lineNum === this._previousStop.line) {
             return null;
           }
         }

@@ -155,7 +155,5 @@ export type StoppedData = {
 };
 
 export type StepIntoData = {
-  prevStopFile: string,
-  prevStopLine: number,
-  prevStopColumn: number,
+  prevStopData: void | StoppedData,
 };
