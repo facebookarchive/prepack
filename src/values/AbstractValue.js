@@ -541,8 +541,7 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |},
-    forceHydrateLazyObjects: boolean = false
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
@@ -551,7 +550,7 @@ export default class AbstractValue extends Value {
     let args = temp.args;
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
-    return realm.generator.derive(types, values, args, buildNode_, optionalArgs, forceHydrateLazyObjects);
+    return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
   }
 
   static createTemporalFromBuildFunction(
@@ -592,6 +591,18 @@ export default class AbstractValue extends Value {
       kind: "abstractConcreteUnion",
     });
     result.expressionLocation = realm.currentLocation;
+    return result;
+  }
+
+  static createFromWidening(realm: Realm, value1: Value, value2: Value): AbstractValue {
+    // todo: #1174 look at kind and figure out much narrower widenings
+    let types = TypesDomain.joinValues(value1, value2);
+    let values = ValuesDomain.joinValues(realm, value1, value2);
+    let [hash] = hashCall("widening");
+    let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let result = new Constructor(realm, types, values, hash, []);
+    result.kind = "widening";
+    result.expressionLocation = value1.expressionLocation;
     return result;
   }
 

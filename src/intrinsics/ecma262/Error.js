@@ -12,8 +12,8 @@
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
 import { ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
-import { Get, OrdinaryCreateFromConstructor, ToStringPartial, ToStringValue } from "../../methods/index.js";
-import { Properties } from "../../singletons.js";
+import { Get, ToStringPartial, ToStringValue } from "../../methods/index.js";
+import { Create, Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 
@@ -98,7 +98,7 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
     let newTarget = NewTarget || func;
 
     // 2. Let O be ? OrdinaryCreateFromConstructor(newTarget, "%ErrorPrototype%", « [[ErrorData]] »).
-    let O = OrdinaryCreateFromConstructor(realm, newTarget, `${name}Prototype`, { $ErrorData: undefined });
+    let O = Create.OrdinaryCreateFromConstructor(realm, newTarget, `${name}Prototype`, { $ErrorData: undefined });
     O.$ErrorData = {
       contextStack: realm.contextStack.slice(1),
       locationData: undefined,

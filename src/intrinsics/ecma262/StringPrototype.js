@@ -15,7 +15,7 @@ import { AbstractValue, UndefinedValue, NumberValue, ObjectValue, StringValue, N
 import { IsCallable, IsRegExp } from "../../methods/is.js";
 import { GetMethod, GetSubstitution } from "../../methods/get.js";
 import { Call, Invoke } from "../../methods/call.js";
-import { CreateStringIterator, CreateDataProperty, ArrayCreate, CreateHTML } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import { RegExpCreate } from "../../methods/regexp.js";
 import {
   ToString,
@@ -645,7 +645,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = ToString(realm, O.throwIfNotConcrete());
 
     // 4. Let A be ArrayCreate(0).
-    let A = ArrayCreate(realm, 0);
+    let A = Create.ArrayCreate(realm, 0);
 
     // 5. Let lengthA be 0.
     let lengthA = 0;
@@ -669,7 +669,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     // 11. If separator is undefined, then
     if (!separator || separator instanceof UndefinedValue) {
       // a. Perform ! CreateDataProperty(A, "0", S).
-      CreateDataProperty(realm, A, "0", new StringValue(realm, S));
+      Create.CreateDataProperty(realm, A, "0", new StringValue(realm, S));
 
       // b. Return A.
       return A;
@@ -684,7 +684,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       if (z !== false) return A;
 
       // c. Perform ! CreateDataProperty(A, "0", S).
-      CreateDataProperty(realm, A, "0", new StringValue(realm, S));
+      Create.CreateDataProperty(realm, A, "0", new StringValue(realm, S));
       // d. Return A.
       return A;
     }
@@ -711,7 +711,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
           let T = S.substring(p, q);
 
           // 2. Perform ! CreateDataProperty(A, ! ToString(lengthA), T).
-          CreateDataProperty(realm, A, new StringValue(realm, lengthA + ""), new StringValue(realm, T));
+          Create.CreateDataProperty(realm, A, new StringValue(realm, lengthA + ""), new StringValue(realm, T));
 
           // 3. Increment lengthA by 1.
           lengthA++;
@@ -732,7 +732,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let T = S.substring(p, s);
 
     // 16. Perform ! CreateDataProperty(A, ! ToString(lengthA), T).
-    CreateDataProperty(realm, A, new StringValue(realm, lengthA + ""), new StringValue(realm, T));
+    Create.CreateDataProperty(realm, A, new StringValue(realm, lengthA + ""), new StringValue(realm, T));
 
     // 17. Return A.
     return A;
@@ -900,7 +900,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = ToString(realm, O.throwIfNotConcrete());
 
     // 3. Return CreateStringIterator(S).
-    return CreateStringIterator(realm, new StringValue(realm, S));
+    return Create.CreateStringIterator(realm, new StringValue(realm, S));
   });
 
   // B.2.3.1
@@ -950,7 +950,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. // 2. Return ? CreateHTML(S, "a", "name", name).
-    return CreateHTML(realm, S, "a", "name", name);
+    return Create.CreateHTML(realm, S, "a", "name", name);
   });
 
   // B.2.3.3
@@ -959,7 +959,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "big", "", "").
-    return CreateHTML(realm, S, "big", "", "");
+    return Create.CreateHTML(realm, S, "big", "", "");
   });
 
   // B.2.3.4
@@ -968,7 +968,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "blink", "", "").
-    return CreateHTML(realm, S, "blink", "", "");
+    return Create.CreateHTML(realm, S, "blink", "", "");
   });
 
   // B.2.3.5
@@ -977,7 +977,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "b", "", "").
-    return CreateHTML(realm, S, "b", "", "");
+    return Create.CreateHTML(realm, S, "b", "", "");
   });
 
   // B.2.3.6
@@ -986,7 +986,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "tt", "", "").
-    return CreateHTML(realm, S, "tt", "", "");
+    return Create.CreateHTML(realm, S, "tt", "", "");
   });
 
   // B.2.3.7
@@ -995,7 +995,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "font", "color", color).
-    return CreateHTML(realm, S, "font", "color", color);
+    return Create.CreateHTML(realm, S, "font", "color", color);
   });
 
   // B.2.3.8
@@ -1004,7 +1004,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "font", "size", size).
-    return CreateHTML(realm, S, "font", "size", size);
+    return Create.CreateHTML(realm, S, "font", "size", size);
   });
 
   // B.2.3.9
@@ -1013,7 +1013,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "i", "", "").
-    return CreateHTML(realm, S, "i", "", "");
+    return Create.CreateHTML(realm, S, "i", "", "");
   });
 
   // B.2.3.10
@@ -1022,7 +1022,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "a", "href", url).
-    return CreateHTML(realm, S, "a", "href", url);
+    return Create.CreateHTML(realm, S, "a", "href", url);
   });
 
   // B.2.3.11
@@ -1031,7 +1031,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "small", "", "").
-    return CreateHTML(realm, S, "small", "", "");
+    return Create.CreateHTML(realm, S, "small", "", "");
   });
 
   // B.2.3.12
@@ -1040,7 +1040,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "strike", "", "").
-    return CreateHTML(realm, S, "strike", "", "");
+    return Create.CreateHTML(realm, S, "strike", "", "");
   });
 
   // B.2.3.13
@@ -1049,7 +1049,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "sub", "", "").
-    return CreateHTML(realm, S, "sub", "", "");
+    return Create.CreateHTML(realm, S, "sub", "", "");
   });
 
   // B.2.3.14
@@ -1058,7 +1058,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "sup", "", "").
-    return CreateHTML(realm, S, "sup", "", "");
+    return Create.CreateHTML(realm, S, "sup", "", "");
   });
 
   return obj;

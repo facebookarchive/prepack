@@ -16,9 +16,8 @@ import invariant from "../invariant.js";
 import { ToBooleanPartial, ToPropertyDescriptor } from "../methods/to.js";
 import { SameValue, SameValuePartial, SamePropertyKey } from "../methods/abstract.js";
 import { GetMethod } from "../methods/get.js";
-import { CreateListFromArrayLike } from "../methods/create.js";
 import { IsExtensible, IsPropertyKey, IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import { Call } from "../methods/call.js";
 
 function FindPropertyKey(realm: Realm, keys: Array<PropertyKeyValue>, key: PropertyKeyValue): number {
@@ -738,7 +737,7 @@ export default class ProxyValue extends ObjectValue {
     let trapResultArray = Call(realm, trap, handler, [target]);
 
     // 8. Let trapResult be ? CreateListFromArrayLike(trapResultArray, « String, Symbol »).
-    let trapResult: Array<PropertyKeyValue> = ((CreateListFromArrayLike(realm, trapResultArray, [
+    let trapResult: Array<PropertyKeyValue> = ((Create.CreateListFromArrayLike(realm, trapResultArray, [
       "String",
       "Symbol",
     ]): any): Array<PropertyKeyValue>);

@@ -29,12 +29,10 @@ import {
 import { EvalPropertyName } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
-import { CreateIterResultObject } from "../methods/create.js";
 import invariant from "../invariant.js";
 import {
   Call,
   cloneDescriptor,
-  CreateDataProperty,
   equalDescriptors,
   Get,
   GetGlobalObject,
@@ -45,7 +43,6 @@ import {
   IsGenericDescriptor,
   IsPropertyKey,
   MakeConstructor,
-  ObjectCreate,
   SameValue,
   SameValuePartial,
   ToBooleanPartial,
@@ -57,7 +54,7 @@ import {
 } from "../methods/index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
-import { Environment, Functions, Join, Path } from "../singletons.js";
+import { Create, Environment, Functions, Join, Path } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 
@@ -201,7 +198,9 @@ export class PropertiesImplementation {
     invariant(IsPropertyKey(realm, P), "expected property key");
 
     // 2. Let ownDesc be ? O.[[GetOwnProperty]](P).
-    let ownDesc = O.$GetOwnProperty(P);
+    let ownDesc;
+    let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
+    if (existingBinding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) ownDesc = O.$GetOwnProperty(P);
     let ownDescValue = !ownDesc
       ? realm.intrinsics.undefined
       : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
@@ -308,7 +307,10 @@ export class PropertiesImplementation {
         if (!(Receiver instanceof ObjectValue)) return false;
 
         // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
-        let existingDescriptor = Receiver.$GetOwnProperty(P);
+        let existingDescriptor;
+        let binding = InternalGetPropertiesMap(Receiver, P).get(InternalGetPropertiesKey(P));
+        if (binding !== undefined || !(Receiver.isPartialObject() && Receiver.isSimpleObject()))
+          existingDescriptor = Receiver.$GetOwnProperty(P);
         if (existingDescriptor !== undefined) {
           if (existingDescriptor.descriptor1 === ownDesc) existingDescriptor = ownDesc;
           else if (existingDescriptor.descriptor2 === ownDesc) existingDescriptor = ownDesc;
@@ -360,7 +362,7 @@ export class PropertiesImplementation {
           // e. Else Receiver does not currently have a property P,
 
           // i. Return ? CreateDataProperty(Receiver, P, V).
-          return CreateDataProperty(realm, Receiver, P, V);
+          return Create.CreateDataProperty(realm, Receiver, P, V);
         }
       }
 
@@ -387,7 +389,7 @@ export class PropertiesImplementation {
     if (!Desc) return realm.intrinsics.undefined;
 
     // 2. Let obj be ObjectCreate(%ObjectPrototype%).
-    let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
     // 3. Assert: obj is an extensible ordinary object with no own properties.
     invariant(obj.getExtensible(), "expected an extensible object");
@@ -398,42 +400,44 @@ export class PropertiesImplementation {
     if ("value" in Desc) {
       invariant(Desc.value instanceof Value);
       // a. Perform CreateDataProperty(obj, "value", Desc.[[Value]]).
-      success = CreateDataProperty(realm, obj, "value", Desc.value) && success;
+      success = Create.CreateDataProperty(realm, obj, "value", Desc.value) && success;
     }
 
     // 5. If Desc has a [[Writable]] field, then
     if ("writable" in Desc) {
       invariant(Desc.writable !== undefined);
       // a. Perform CreateDataProperty(obj, "writable", Desc.[[Writable]]).
-      success = CreateDataProperty(realm, obj, "writable", new BooleanValue(realm, Desc.writable)) && success;
+      success = Create.CreateDataProperty(realm, obj, "writable", new BooleanValue(realm, Desc.writable)) && success;
     }
 
     // 6. If Desc has a [[Get]] field, then
     if ("get" in Desc) {
       invariant(Desc.get !== undefined);
       // a. Perform CreateDataProperty(obj, "get", Desc.[[Get]]).
-      success = CreateDataProperty(realm, obj, "get", Desc.get) && success;
+      success = Create.CreateDataProperty(realm, obj, "get", Desc.get) && success;
     }
 
     // 7. If Desc has a [[Set]] field, then
     if ("set" in Desc) {
       invariant(Desc.set !== undefined);
       // a. Perform CreateDataProperty(obj, "set", Desc.[[Set]]).
-      success = CreateDataProperty(realm, obj, "set", Desc.set) && success;
+      success = Create.CreateDataProperty(realm, obj, "set", Desc.set) && success;
     }
 
     // 8. If Desc has an [[Enumerable]] field, then
     if ("enumerable" in Desc) {
       invariant(Desc.enumerable !== undefined);
       // a. Perform CreateDataProperty(obj, "enumerable", Desc.[[Enumerable]]).
-      success = CreateDataProperty(realm, obj, "enumerable", new BooleanValue(realm, Desc.enumerable)) && success;
+      success =
+        Create.CreateDataProperty(realm, obj, "enumerable", new BooleanValue(realm, Desc.enumerable)) && success;
     }
 
     // 9. If Desc has a [[Configurable]] field, then
     if ("configurable" in Desc) {
       invariant(Desc.configurable !== undefined);
       // a. Perform CreateDataProperty(obj, "configurable", Desc.[[Configurable]]).
-      success = CreateDataProperty(realm, obj, "configurable", new BooleanValue(realm, Desc.configurable)) && success;
+      success =
+        Create.CreateDataProperty(realm, obj, "configurable", new BooleanValue(realm, Desc.configurable)) && success;
     }
 
     // 10. Assert: all of the above CreateDataProperty operations return true.
@@ -749,7 +753,9 @@ export class PropertiesImplementation {
     invariant(O instanceof ObjectValue);
 
     // 1. Let current be ? O.[[GetOwnProperty]](P).
-    let current = O.$GetOwnProperty(P);
+    let current;
+    let binding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
+    if (binding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) current = O.$GetOwnProperty(P);
 
     // 2. Let extensible be the value of the [[Extensible]] internal slot of O.
     let extensible = O.getExtensible();
@@ -1193,7 +1199,7 @@ export class PropertiesImplementation {
         if (index >= keys.length) {
           let proto = obj.$GetPrototypeOf();
           if (proto instanceof NullValue) {
-            return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+            return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
           }
           obj = proto;
           keys = obj.$OwnPropertyKeys();
@@ -1225,7 +1231,7 @@ export class PropertiesImplementation {
         visited.add(key.value);
 
         // Yield the key.
-        return CreateIterResultObject(realm, key, false);
+        return Create.CreateIterResultObject(realm, key, false);
       }
     });
     return iterator;
@@ -1301,7 +1307,7 @@ export class PropertiesImplementation {
       Functions.MakeMethod(realm, closure, object);
 
       // 7. Let prototype be ObjectCreate(%GeneratorPrototype%).
-      let prototype = ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
+      let prototype = Create.ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
       prototype.originalConstructor = closure;
 
       // 8. Perform MakeConstructor(closure, true, prototype).

@@ -13,7 +13,6 @@ export * from "./to.js";
 export * from "./abstract.js";
 export * from "./call.js";
 export * from "./construct.js";
-export * from "./create.js";
 export * from "./date.js";
 export * from "./descriptor.js";
 export * from "./get.js";

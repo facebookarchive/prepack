@@ -14,7 +14,7 @@ import { ECMAScriptSourceFunctionValue, AbstractValue, ObjectValue, AbstractObje
 import { flowAnnotationToObjectTypeTemplate } from "../flow/utils.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { createAbstractObject } from "../flow/abstractObjectFactories.js";
+import { createAbstractObject, createAbstractObjectFromFlowTypes } from "../flow/abstractObjectFactories.js";
 import { valueIsClassComponent } from "./utils";
 import { ExpectedBailOut } from "./reconcilation.js";
 import { Get } from "../methods/index.js";
@@ -55,7 +55,7 @@ export function getInitialProps(
       }
     }
   }
-  return createAbstractObject(realm, propsName, propTypes);
+  return createAbstractObjectFromFlowTypes(realm, propsName, propTypes);
 }
 
 export function getInitialContext(
@@ -87,7 +87,7 @@ export function getInitialContext(
       contextTypes = flowAnnotationToObjectTypeTemplate(contextTypeAnnotation);
     }
   }
-  return createAbstractObject(realm, contextName, contextTypes);
+  return createAbstractObjectFromFlowTypes(realm, contextName, contextTypes);
 }
 
 export function createClassInstance(
@@ -98,15 +98,13 @@ export function createClassInstance(
 ): AbstractObjectValue {
   let componentPrototype = Get(realm, componentType, "prototype");
   invariant(componentPrototype instanceof ObjectValue);
-  let instance = createAbstractObject(realm, "this", null);
+  // create an instance object and disable serialization as we don't want to output the internals we set below
+  let instance = new ObjectValue(realm, componentPrototype, "this", true);
   for (let [name] of componentPrototype.properties) {
     if (name !== "constructor") {
       Properties.Set(realm, instance, name, Get(realm, componentPrototype, name), true);
     }
   }
-  // make partial and simple to support user instance properties
-  instance.makeSimple();
-  instance.makePartial();
   // assign state
   Properties.Set(realm, instance, "state", createAbstractObject(realm, "this.state", null), true);
   // assign refs
@@ -115,6 +113,8 @@ export function createClassInstance(
   Properties.Set(realm, instance, "props", props, true);
   // assign context
   Properties.Set(realm, instance, "context", context, true);
-  // return the instance
-  return instance;
+  // enable serialization to support simple instance variables properties
+  instance.refuseSerialization = false;
+  // return the instance in an abstract object
+  return createAbstractObject(realm, "this", null, instance);
 }

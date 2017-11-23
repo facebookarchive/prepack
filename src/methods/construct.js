@@ -20,10 +20,9 @@ import {
   EmptyValue,
 } from "../values/index.js";
 import { IsConstructor, IsStatic } from "./is.js";
-import { ObjectCreate } from "./create.js";
 import { Get } from "./get.js";
 import { HasSomeCompatibleType } from "./has.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeClassMethod } from "babel-types";
 
@@ -51,7 +50,7 @@ export function MakeConstructor(
   // 5. If the prototype argument was not provided, then
   if (!prototype) {
     // a. Let prototype be ObjectCreate(%ObjectPrototype%).
-    prototype = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    prototype = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     prototype.originalConstructor = F;
 
     // b. Perform ! DefinePropertyOrThrow(prototype, "constructor", PropertyDescriptor{[[Value]]: F, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: true }).

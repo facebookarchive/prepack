@@ -268,7 +268,7 @@ export class Generator {
       // duplicate args to ensure refcount > 1
       args: [o, targetObject, sourceObject, targetObject, sourceObject],
       buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {
-        const forInLoopStatement = t.forInStatement(
+        return t.forInStatement(
           lh,
           obj,
           t.blockStatement([
@@ -281,10 +281,6 @@ export class Generator {
             ),
           ])
         );
-        if (this.realm.lazyObjectsRuntime) {
-          forInLoopStatement.leadingComments = [({ type: "BlockComment", value: "force hydrate lazy objects" }: any)];
-        }
-        return forInLoopStatement;
       },
     });
   }
@@ -294,8 +290,7 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |},
-    forceHydrateLazyObjects: boolean = false
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
@@ -309,7 +304,7 @@ export class Generator {
       declared: res,
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
-        const statement = t.variableDeclaration("var", [
+        return t.variableDeclaration("var", [
           t.variableDeclarator(
             id,
             (buildNode_: any) instanceof Function
@@ -317,10 +312,6 @@ export class Generator {
               : ((buildNode_: any): BabelNodeExpression)
           ),
         ]);
-        if (forceHydrateLazyObjects && this.realm.lazyObjectsRuntime) {
-          statement.leadingComments = [({ type: "BlockComment", value: "force hydrate lazy objects" }: any)];
-        }
-        return statement;
       },
     });
     let type = types.getType();

@@ -275,7 +275,10 @@ export class ResidualHeapSerializer {
         invariant(proto);
         let serializedProto = this.serializeValue(proto);
         let uid = this.getSerializeObjectIdentifier(obj);
-        let condition = t.binaryExpression("!==", t.memberExpression(uid, protoExpression), serializedProto);
+        const fetchedPrototype = this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION)
+          ? t.memberExpression(uid, protoExpression)
+          : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
+        let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
         let throwblock = t.blockStatement([
           t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("unexpected prototype")])),
         ]);

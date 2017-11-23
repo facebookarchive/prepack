@@ -10,8 +10,9 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ToIndexPartial, OrdinaryCreateFromConstructor, IsDetachedBuffer } from "../../methods/index.js";
+import { ToIndexPartial, IsDetachedBuffer } from "../../methods/index.js";
 import { NativeFunctionValue, ObjectValue, UndefinedValue } from "../../values/index.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -72,7 +73,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 10. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%DataViewPrototype%", « [[DataView]], [[ViewedArrayBuffer]], [[ByteLength]], [[ByteOffset]] »).
-      let O = OrdinaryCreateFromConstructor(realm, NewTarget, "DataViewPrototype", {
+      let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "DataViewPrototype", {
         $DataView: undefined,
         $ViewedArrayBuffer: undefined,
         $ByteLength: undefined,
