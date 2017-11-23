@@ -367,35 +367,41 @@ export class ResidualFunctions {
             invariant(classMethodKeyNode && (t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode)));
             // we use the $HomeObject as the key to get the class expression ast node
             funcOrClassNode = this._getOrCreateClassNode(homeObject);
-            let methodParams = params.slice();
-            let methodBody = ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement);
-            // create the class method AST
-            let classMethod = t.classMethod(
-              methodType,
-              classMethodKeyNode,
-              methodParams,
-              methodBody,
-              classMethodComputed
-            );
-            // traverse and replace refs in the class method
-            traverse(
-              t.file(t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])),
-              ClosureRefReplacer,
-              null,
-              {
-                residualFunctionBindings,
-                modified,
-                requireReturns: this.requireReturns,
-                requireStatistics,
-                isRequire: this.modules.getIsRequire(methodParams, [functionValue]),
-                factoryFunctionInfos,
+            // if we are dealing with a constructor, don't serialize it if the original
+            // had an empty user-land constructor (because we create a constructor behind the scenes for them)
+            if (!isConstructor || (isConstructor && !functionValue.$HasEmptyConstructor)) {
+              let methodParams = params.slice();
+              let methodBody = ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement);
+              // create the class method AST
+              let classMethod = t.classMethod(
+                methodType,
+                classMethodKeyNode,
+                methodParams,
+                methodBody,
+                classMethodComputed
+              );
+              // traverse and replace refs in the class method
+              traverse(
+                t.file(
+                  t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])
+                ),
+                ClosureRefReplacer,
+                null,
+                {
+                  residualFunctionBindings,
+                  modified,
+                  requireReturns: this.requireReturns,
+                  requireStatistics,
+                  isRequire: this.modules.getIsRequire(methodParams, [functionValue]),
+                  factoryFunctionInfos,
+                }
+              );
+              // add the class method to the class expression node body
+              if (isConstructor) {
+                funcOrClassNode.body.body.unshift(classMethod);
+              } else {
+                funcOrClassNode.body.body.push(classMethod);
               }
-            );
-            // add the class method to the class expression node body
-            if (isConstructor) {
-              funcOrClassNode.body.body.unshift(classMethod);
-            } else {
-              funcOrClassNode.body.body.push(classMethod);
             }
             // we only return the funcOrClassNode if this is the constructor
             if (!isConstructor) {

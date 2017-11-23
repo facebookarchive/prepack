@@ -385,7 +385,7 @@ export class ResidualHeapVisitor {
     });
     let useClassProperties = false;
     let isConstructor = false;
-    let isComputed = val.$Computed;
+    let isComputed = val.$HasEmptyConstructor;
 
     if (val.$HomeObject instanceof AbstractValue) {
       throw new FatalError("TODO: do not know how to handle an abstract HomeObject");

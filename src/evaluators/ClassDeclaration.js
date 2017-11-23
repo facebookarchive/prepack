@@ -153,6 +153,7 @@ export function ClassDefinitionEvaluation(
     proto.$SuperTypeParameters = ast.superTypeParameters;
   }
   let constructor;
+  let emptyConstructor = false;
   let ClassBody: Array<BabelNodeClassMethod> = [];
   for (let elem of ast.body.body) {
     if (elem.type === "ClassMethod") {
@@ -169,6 +170,7 @@ export function ClassDefinitionEvaluation(
 
   // 10. If constructor is empty, then,
   if (constructor instanceof EmptyValue) {
+    emptyConstructor = true;
     let constructorFile;
     // a. If ClassHeritage opt is present, then
     if (ast.superClass) {
@@ -208,6 +210,9 @@ export function ClassDefinitionEvaluation(
     if (ast.superClass) {
       F.$ConstructorKind = "derived";
     }
+
+    // Assign the empty constructor boolean
+    F.$HasEmptyConstructor = emptyConstructor;
 
     // 16. Perform MakeConstructor(F, false, proto).
     MakeConstructor(realm, F, false, proto);

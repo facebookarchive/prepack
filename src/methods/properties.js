@@ -1275,7 +1275,7 @@ export class PropertiesImplementation {
       Functions.SetFunctionName(realm, methodDef.$Closure, methodDef.$Key);
 
       // If the AST name was computed, give the hint to the closure
-      methodDef.$Closure.$Computed = !!MethodDefinition.computed;
+      methodDef.$Closure.$HasEmptyConstructor = !!MethodDefinition.computed;
 
       // 4. Let desc be the Property Descriptor{[[Value]]: methodDef.[[closure]], [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
       let desc: Descriptor = { value: methodDef.$Closure, writable: true, enumerable: enumerable, configurable: true };
