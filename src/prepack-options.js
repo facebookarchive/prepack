@@ -52,7 +52,6 @@ export type PrepackOptions = {|
 export function getRealmOptions({
   compatibility = "browser",
   debugNames = false,
-  lazyObjectsRuntime,
   errorHandler,
   mathRandomSeed,
   omitInvariants = false,
@@ -67,7 +66,6 @@ export function getRealmOptions({
   return {
     compatibility,
     debugNames,
-    lazyObjectsRuntime,
     errorHandler,
     mathRandomSeed,
     omitInvariants,
