@@ -12,7 +12,6 @@
 import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { ToLength, IsArray, Get, IsAccessorDescriptor } from "../methods/index.js";
-import { FatalError } from "../errors.js";
 import {
   ArrayValue,
   BoundFunctionValue,
