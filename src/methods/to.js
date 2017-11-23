@@ -33,6 +33,10 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
+import buildExpressionTemplate from "../utils/builder.js";
+
+const tsTemplateSrc = "(A).toString()";
+const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,
@@ -761,7 +765,12 @@ export class ToImplementation {
 
   ToPropertyKeyPartial(realm: Realm, arg: Value): AbstractValue | SymbolValue | string /* but not StringValue */ {
     if (arg instanceof ConcreteValue) return this.ToPropertyKey(realm, arg);
-    if (arg.mightNotBeString()) arg.throwIfNotConcrete();
+    if (arg.mightNotBeString()) {
+      if (!arg.mightNotBeNumber()) {
+        return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [arg], tsTemplateSrc);
+      }
+      arg.throwIfNotConcrete();
+    }
     invariant(arg instanceof AbstractValue);
     return arg;
   }

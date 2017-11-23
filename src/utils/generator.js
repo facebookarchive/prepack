@@ -197,6 +197,21 @@ export class Generator {
     );
   }
 
+  // test must be a temporal value, which means that it must have a defined intrinsicName
+  emitDoWhileStatement(test: AbstractValue, body: Generator) {
+    this._addEntry({
+      args: [],
+      buildNode: function([], context: SerializationContext) {
+        let testId = test.intrinsicName;
+        invariant(testId !== undefined);
+        let statements = context.serializeGenerator(body);
+        let block = t.blockStatement(statements);
+        return t.doWhileStatement(t.identifier(testId), block);
+      },
+      dependencies: [body],
+    });
+  }
+
   emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,

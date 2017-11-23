@@ -33,8 +33,14 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { Environment, Functions, Join, Properties, To } from "./singletons.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
+import { Environment, Functions, Join, Properties, To, Widen } from "./singletons.js";
+import type {
+  BabelNode,
+  BabelNodeIdentifier,
+  BabelNodeSourceLocation,
+  BabelNodeLVal,
+  BabelNodeStatement,
+} from "babel-types";
 import * as t from "babel-types";
 
 export type Bindings = Map<Binding, void | Value>;
@@ -320,10 +326,12 @@ export class Realm {
   }
 
   popContext(context: ExecutionContext): void {
-    let modifiedBindings = this.modifiedBindings;
-    if (modifiedBindings !== undefined) {
-      for (let b of modifiedBindings.keys()) {
-        if (b.environment.$FunctionObject === context.function) modifiedBindings.delete(b);
+    if (context.function !== undefined) {
+      let modifiedBindings = this.modifiedBindings;
+      if (modifiedBindings !== undefined) {
+        for (let b of modifiedBindings.keys()) {
+          if (b.environment.$FunctionObject === context.function) modifiedBindings.delete(b);
+        }
       }
     }
     let c = this.contextStack.pop();
@@ -451,6 +459,104 @@ export class Realm {
     } finally {
       for (let t2 of this.tracers) t2.endEvaluateForEffects(state, result);
     }
+  }
+
+  evaluateWithUndoForDiagnostic(f: () => Value): CompilerDiagnostic | Value {
+    if (!this.useAbstractInterpretation) return f();
+    let savedHandler = this.errorHandler;
+    let diagnostic;
+    try {
+      this.errorHandler = d => {
+        diagnostic = d;
+        return "Fail";
+      };
+      let effects = this.evaluateForEffects(f);
+      this.applyEffects(effects);
+      let resultVal = effects[0];
+      if (resultVal instanceof AbruptCompletion) throw resultVal;
+      if (resultVal instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        resultVal = this.composeWithSavedCompletion(resultVal);
+      }
+      invariant(resultVal instanceof Value);
+      return resultVal;
+    } catch (e) {
+      if (diagnostic !== undefined) return diagnostic;
+      throw e;
+    } finally {
+      this.errorHandler = savedHandler;
+    }
+  }
+
+  evaluateForFixpointEffects(
+    loopContinueTest: () => Value,
+    loopBody: () => EvaluationResult
+  ): void | [Effects, Effects] {
+    try {
+      let effects1 = this.evaluateForEffects((loopBody: any));
+      while (true) {
+        this.restoreBindings(effects1[2]);
+        this.restoreProperties(effects1[3]);
+        let effects2 = this.evaluateForEffects(() => {
+          let test = loopContinueTest();
+          if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
+          return (loopBody(): any);
+        });
+        this.restoreBindings(effects1[2]);
+        this.restoreProperties(effects1[3]);
+        if (Widen.containsEffects(effects1, effects2)) {
+          // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
+          // result in any more values being added to abstract domains and hence a fixpoint has been reached.
+          let [, , bindings1, pbindings1] = effects1;
+          if (pbindings1.size > 0) return undefined;
+          let [, gen, bindings2, pbindings2] = effects2;
+          if (pbindings2.size > 0) return undefined;
+          this._emitLocalAssignments(gen, bindings1, bindings2);
+          return [effects1, effects2];
+        }
+        effects1 = Widen.widenEffects(this, effects1, effects2);
+      }
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  // populate the loop body generator with assignments that will update the phiNodes
+  _emitLocalAssignments(gen: Generator, bindings1: Bindings, bindings2: Bindings) {
+    // bindings1 maps local bindings to widened values whose build nodes return the identity of the correspoding phiNodes
+    // bindings2 maps local bindings to the unwidened values whose build nodes result in expressions that reference phiNodes
+    let idFor: Map<any, BabelNodeIdentifier> = new Map();
+    bindings1.forEach((val, key, map) => {
+      if (val instanceof AbstractValue && val.kind === "widening") {
+        let id = val.buildNode([]);
+        idFor.set(key, (id: any));
+      }
+    });
+    let tvalFor: Map<any, AbstractValue> = new Map();
+    bindings2.forEach((val, key, map) => {
+      if (val instanceof AbstractValue) {
+        invariant(val._buildNode !== undefined);
+        let tval = gen.derive(val.types, val.values, [val], ([n]) => n, {
+          skipInvariant: true,
+        });
+        tvalFor.set(key, tval);
+      }
+    });
+    bindings2.forEach((val, key, map) => {
+      if (val instanceof AbstractValue) {
+        let id = idFor.get(key);
+        invariant(id !== undefined);
+        let tval = tvalFor.get(key);
+        invariant(tval !== undefined);
+        gen.emitStatement([tval], ([v]) => {
+          invariant(id !== undefined);
+          return t.expressionStatement(t.assignmentExpression("=", id, v));
+        });
+      }
+    });
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
