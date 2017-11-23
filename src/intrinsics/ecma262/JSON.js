@@ -504,16 +504,9 @@ export default function(realm: Realm): ObjectValue {
     if (value instanceof AbstractValue || (value instanceof ObjectValue && value.isPartialObject())) {
       // Return abstract result. This enables cloning via JSON.parse(JSON.stringify(...)).
       let clonedValue = InternalJSONClone(realm, value);
-      let result = AbstractValue.createTemporalFromTemplate(
-        realm,
-        JSONStringify,
-        StringValue,
-        [clonedValue],
-        {
-          kind: "JSON.stringify(...)",
-        },
-        true
-      );
+      let result = AbstractValue.createTemporalFromTemplate(realm, JSONStringify, StringValue, [clonedValue], {
+        kind: "JSON.stringify(...)",
+      });
       if (clonedValue instanceof ObjectValue) {
         let iName = result.intrinsicName;
         invariant(iName);
