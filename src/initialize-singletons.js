@@ -10,16 +10,20 @@
 /* @flow */
 
 import * as Singletons from "./singletons.js";
+import { CreateImplementation } from "./methods/create.js";
 import { EnvironmentImplementation } from "./methods/environment.js";
 import { FunctionImplementation } from "./methods/function.js";
 import { JoinImplementation } from "./methods/join.js";
 import { PathImplementation } from "./utils/paths.js";
 import { PropertiesImplementation } from "./methods/properties.js";
+import { WidenImplementation } from "./methods/widen.js";
 
 export default function() {
+  Singletons.setCreate(new CreateImplementation());
   Singletons.setEnvironment(new EnvironmentImplementation());
   Singletons.setFunctions(new FunctionImplementation());
   Singletons.setJoin(new JoinImplementation());
   Singletons.setPath(new PathImplementation());
   Singletons.setProperties((new PropertiesImplementation(): any));
+  Singletons.setWiden((new WidenImplementation(): any));
 }

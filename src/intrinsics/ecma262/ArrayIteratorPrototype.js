@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { CreateIterResultObject, CreateArrayFromList } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import { NumberValue, ObjectValue, UndefinedValue, StringValue } from "../../values/index.js";
 import { ToLength } from "../../methods/to.js";
 import { Get } from "../../methods/get.js";
@@ -42,7 +42,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 5. If a is undefined, return CreateIterResultObject(undefined, true).
     if (a instanceof UndefinedValue) {
-      return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+      return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     }
 
     // 6. Let index be the value of the [[ArrayIteratorNextIndex]] internal slot of O.
@@ -69,7 +69,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       O.$IteratedObject = realm.intrinsics.undefined;
 
       // b. Return CreateIterResultObject(undefined, true).
-      return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+      return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     }
 
     // 11. Set the value of the [[ArrayIteratorNextIndex]] internal slot of O to index+1.
@@ -77,7 +77,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 12. If itemKind is "key", return CreateIterResultObject(index, false).
     if (itemKind === "key") {
-      return CreateIterResultObject(realm, new NumberValue(realm, index), false);
+      return Create.CreateIterResultObject(realm, new NumberValue(realm, index), false);
     }
 
     // 13. Let elementKey be ! ToString(index).
@@ -96,11 +96,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       invariant(itemKind === "key+value", "expected item kind to be key+value");
 
       // b. Let result be CreateArrayFromList(« index, elementValue »).
-      result = CreateArrayFromList(realm, [new NumberValue(realm, index), elementValue]);
+      result = Create.CreateArrayFromList(realm, [new NumberValue(realm, index), elementValue]);
     }
 
     // 17. Return CreateIterResultObject(result, false).
-    return CreateIterResultObject(realm, result, false);
+    return Create.CreateIterResultObject(realm, result, false);
   });
 
   // ECMA262 22.1.5.2.2

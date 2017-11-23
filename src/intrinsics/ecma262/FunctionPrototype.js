@@ -24,7 +24,7 @@ import {
 } from "../../values/index.js";
 import { Call } from "../../methods/call.js";
 import { ToInteger } from "../../methods/to.js";
-import { CreateListFromArrayLike } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import { Get } from "../../methods/get.js";
 import { IsCallable } from "../../methods/is.js";
 import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
@@ -77,7 +77,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. Let argList be ? CreateListFromArrayLike(argArray).
-    let argList = CreateListFromArrayLike(realm, argArray);
+    let argList = Create.CreateListFromArrayLike(realm, argArray);
 
     // TODO #1008 4. Perform PrepareForTailCall().
 

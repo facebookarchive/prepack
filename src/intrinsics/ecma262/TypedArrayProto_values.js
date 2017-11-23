@@ -11,7 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ToObject, CreateArrayIterator } from "../../methods/index.js";
+import { ToObject } from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 import { ValidateTypedArray } from "../../methods/typedarray.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -24,6 +25,6 @@ export default function(realm: Realm): NativeFunctionValue {
     ValidateTypedArray(realm, O);
 
     // 3. Return CreateArrayIterator(O, "value").
-    return CreateArrayIterator(realm, O, "value");
+    return Create.CreateArrayIterator(realm, O, "value");
   });
 }

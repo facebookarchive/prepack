@@ -20,12 +20,11 @@ import {
   UndefinedValue,
   Value,
 } from "../../values/index.js";
-import { ArrayCreate, CreateDataProperty } from "../../methods/create.js";
 import { SameValue } from "../../methods/abstract.js";
 import { Call } from "../../methods/call.js";
 import { Construct, SpeciesConstructor } from "../../methods/construct.js";
 import { Get, GetSubstitution } from "../../methods/get.js";
-import { Properties } from "../../singletons.js";
+import { Create, Properties } from "../../singletons.js";
 import { IsCallable } from "../../methods/is.js";
 import { ToString, ToStringPartial, ToBooleanPartial, ToLength, ToInteger, ToUint32 } from "../../methods/to.js";
 import { RegExpBuiltinExec, RegExpExec, EscapeRegExpPattern, AdvanceStringIndex } from "../../methods/regexp.js";
@@ -177,7 +176,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       Properties.Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
 
       // c. Let A be ArrayCreate(0).
-      let A = ArrayCreate(realm, 0);
+      let A = Create.ArrayCreate(realm, 0);
 
       // d. Let n be 0.
       let n = 0;
@@ -202,7 +201,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let matchStr = ToStringPartial(realm, Get(realm, result, "0"));
 
           // 2. Let status be CreateDataProperty(A, ! ToString(n), matchStr).
-          let status = CreateDataProperty(
+          let status = Create.CreateDataProperty(
             realm,
             A,
             ToString(realm, new NumberValue(realm, n)),
@@ -529,7 +528,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let splitter = Construct(realm, C, [rx, new StringValue(realm, newFlags)]);
 
     // 11. Let A be ArrayCreate(0).
-    let A = ArrayCreate(realm, 0);
+    let A = Create.ArrayCreate(realm, 0);
 
     // 12. Let lengthA be 0.
     let lengthA = 0;
@@ -555,7 +554,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (!(z instanceof NullValue)) return A;
 
       // c. Perform ! CreateDataProperty(A, "0", S).
-      CreateDataProperty(realm, A, "0", new StringValue(realm, S));
+      Create.CreateDataProperty(realm, A, "0", new StringValue(realm, S));
 
       // d Return A.
       return A;
@@ -592,7 +591,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let T = S.substr(p, q - p);
 
           // 2. Perform ! CreateDataProperty(A, ! ToString(lengthA), T).
-          CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, lengthA)), new StringValue(realm, T));
+          Create.CreateDataProperty(
+            realm,
+            A,
+            ToString(realm, new NumberValue(realm, lengthA)),
+            new StringValue(realm, T)
+          );
 
           // 3. Let lengthA be lengthA + 1.
           lengthA = lengthA + 1;
@@ -618,7 +622,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
             let nextCapture = Get(realm, z, ToString(realm, new NumberValue(realm, i)));
 
             // b. Perform ! CreateDataProperty(A, ! ToString(lengthA), nextCapture).
-            CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, lengthA)), nextCapture);
+            Create.CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, lengthA)), nextCapture);
 
             // c. Let i be i + 1.
             i = i + 1;
@@ -640,7 +644,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let T = S.substr(p, size - p);
 
     // 21. Perform ! CreateDataProperty(A, ! ToString(lengthA), T).
-    CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, lengthA)), new StringValue(realm, T));
+    Create.CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, lengthA)), new StringValue(realm, T));
 
     // 22. Return A.
     return A;

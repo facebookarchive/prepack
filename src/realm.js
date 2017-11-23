@@ -145,9 +145,6 @@ export class Realm {
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.omitInvariants = !!opts.omitInvariants;
-    // Store in realm so that we can emit magic comment for test-runner.
-    // TODO: remove it once we have better test-runner support.
-    this.lazyObjectsRuntime = opts.lazyObjectsRuntime;
 
     this.$TemplateMap = [];
 
@@ -205,7 +202,6 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
-  lazyObjectsRuntime: void | string;
 
   react: {
     enabled: boolean,

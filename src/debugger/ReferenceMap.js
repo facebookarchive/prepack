@@ -18,16 +18,16 @@ export class ReferenceMap<T> {
     this._mapping = new Map();
   }
   _counter: number;
-  _mapping: { [number]: T };
+  _mapping: Map<number, T>;
 
   add(value: T): number {
     this._counter++;
-    this._mapping[this._counter] = value;
+    this._mapping.set(this._counter, value);
     return this._counter;
   }
 
   get(reference: number): void | T {
-    return this._mapping[reference];
+    return this._mapping.get(reference);
   }
 
   clean() {

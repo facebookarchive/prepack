@@ -27,7 +27,6 @@ import {
 } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
-import { ArrayCreate } from "./create.js";
 import { SetIntegrityLevel } from "./integrity.js";
 import { ToString } from "./to.js";
 import {
@@ -39,7 +38,7 @@ import {
   IsPropertyKey,
   ToObjectPartial,
 } from "./index.js";
-import { Environment, Join, Path } from "../singletons.js";
+import { Create, Environment, Join, Path } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
 
@@ -447,10 +446,10 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
   let count = cookedStrings.length;
 
   // 7. Let template be ArrayCreate(count).
-  let template = ArrayCreate(realm, count);
+  let template = Create.ArrayCreate(realm, count);
 
   // 8. Let rawObj be ArrayCreate(count).
-  let rawObj = ArrayCreate(realm, count);
+  let rawObj = Create.ArrayCreate(realm, count);
 
   // 9. Let index be 0.
   let index = 0;

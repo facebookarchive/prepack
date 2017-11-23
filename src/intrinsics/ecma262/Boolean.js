@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, BooleanValue } from "../../values/index.js";
-import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import { ToBooleanPartial } from "../../methods/to.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -24,7 +24,7 @@ export default function(realm: Realm): NativeFunctionValue {
     if (!NewTarget) return b;
 
     // 3. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%BooleanPrototype%", « [[BooleanData]] »).
-    let O = OrdinaryCreateFromConstructor(realm, NewTarget, "BooleanPrototype", { $BooleanData: undefined });
+    let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "BooleanPrototype", { $BooleanData: undefined });
 
     // 4. Set the value of O's [[BooleanData]] internal slot to b.
     O.$BooleanData = b;

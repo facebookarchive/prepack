@@ -12,7 +12,7 @@
 import type { Descriptor, CallableObjectValue } from "../types.js";
 import type { Realm } from "../realm.js";
 import { GetMethod, Get } from "./get.js";
-import { StringCreate } from "./create.js";
+import { Create } from "../singletons.js";
 import { HasProperty } from "./has.js";
 import { Call } from "./call.js";
 import { FatalError } from "../errors.js";
@@ -374,7 +374,7 @@ export function ToObject(realm: Realm, arg: ConcreteValue): ObjectValue {
     obj.$NumberData = arg;
     return obj;
   } else if (arg instanceof StringValue) {
-    let obj = StringCreate(realm, arg, realm.intrinsics.StringPrototype);
+    let obj = Create.StringCreate(realm, arg, realm.intrinsics.StringPrototype);
     return obj;
   } else if (arg instanceof SymbolValue) {
     let obj = new ObjectValue(realm, realm.intrinsics.SymbolPrototype);

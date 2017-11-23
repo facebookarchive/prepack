@@ -12,8 +12,7 @@
 import type { Realm } from "../realm.js";
 import { AbruptCompletion } from "../completions.js";
 import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
-import { CreateIterResultObject } from "../methods/create.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeBlockStatement } from "babel-types";
 
@@ -93,7 +92,7 @@ export function GeneratorResume(realm: Realm, generator: Value, value: Value): V
   invariant(generator instanceof ObjectValue);
 
   // 2. If state is "completed", return CreateIterResultObject(undefined, true).
-  if (state === "completed") return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+  if (state === "completed") return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
 
   // 3. Assert: state is either "suspendedStart" or "suspendedYield".
   invariant(
