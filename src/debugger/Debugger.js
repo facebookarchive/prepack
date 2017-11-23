@@ -238,6 +238,7 @@ export class DebugServer {
   _onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
     if (reason === "Entry") return;
     this._breakpointManager.onDebuggeeStop(ast, reason);
+    this._stepManager.onDebuggeeStop(ast, reason);
   }
 
   // actions that need to happen before Prepack can resume

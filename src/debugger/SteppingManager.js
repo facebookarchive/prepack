@@ -11,7 +11,7 @@
 
 import { BabelNode } from "babel-types";
 import type { DebugChannel } from "./channel/DebugChannel.js";
-import type { StepIntoData } from "./types.js";
+import type { StepIntoData, StoppedReason } from "./types.js";
 import invariant from "./../invariant.js";
 import { IsStatement } from "./../methods/is.js";
 
@@ -72,5 +72,17 @@ export class SteppingManager {
     }
 
     return true;
+  }
+
+  onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
+    if (reason !== "Step Into") {
+      // stopped for another reason, ie breakpoint
+      if (this._stepIntoData !== undefined) {
+        // we're in the middle of a step into, but debuggee has stopped for another reason here first, so cancel this step into
+        this._stepIntoData = undefined;
+      }
+    }
+
+    //TODO: handle other stepping related stopped reasons when they are implemented
   }
 }
