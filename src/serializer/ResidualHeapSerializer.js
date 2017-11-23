@@ -75,6 +75,11 @@ function commentStatement(text: string) {
   return s;
 }
 
+type MethodProperties = {
+  type: "Value" | "Get" | "Set",
+  property: string | SymbolValue,
+};
+
 export class ResidualHeapSerializer {
   constructor(
     realm: Realm,
@@ -1068,7 +1073,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeValueFunction(val: FunctionValue): void | BabelNodeExpression {
+  _serializeValueFunction(val: FunctionValue, methodProperties?: MethodProperties): void | BabelNodeExpression {
     if (val instanceof BoundFunctionValue) {
       this._emitObjectProperties(val);
       return t.callExpression(
@@ -1127,40 +1132,67 @@ export class ResidualHeapSerializer {
     if (classProperties !== undefined) {
       // handle the constructor for the class
       if (classProperties.methodType === "constructor") {
+        invariant(val.$HomeObject instanceof ObjectValue);
         let properties = new Map(val.properties);
+
+        // we visit all of these as these, as they form part of the constructor for the class
+        // but we want to serialize them out as class methods in the ResidualFunctions
+        // rather than via the typical Prepack route of serializing properties
         for (let [key] of val.properties) {
           if (!this.residualHeapInspector.canIgnoreProperty(val, key)) {
             let propertyValue = Get(this.realm, val, key);
-            // we visit all of these as these, as they form part of the constructor for the class
-            // but we want to serialize them out as class methods in the ResidualFunctions
-            // rather than via the typical Prepack route of serializing properties
+
             if (key === "arguments" || key === "length" || key === "name" || key === "caller" || key === "prototype") {
               properties.delete(key);
               this.serializedValues.add(propertyValue);
             }
           }
         }
-        invariant(val.$HomeObject instanceof ObjectValue);
-        // non-symbol properties
-        for (let [classMethodName] of val.$HomeObject.properties) {
-          let classMethod = Get(this.realm, val.$HomeObject, classMethodName);
+
+        let handleClassMethodValue = (classMethod, methodProps: MethodProperties) => {
           invariant(classMethod instanceof FunctionValue);
-          // skip processing the constructor again
-          if (classMethod === val) {
-            continue;
+          // skip processing if its the constructor
+          if (classMethod !== val) {
+            this.serializedValues.add(classMethod);
+            this._serializeValueFunction(classMethod, methodProps);
           }
-          this.serializedValues.add(classMethod);
-          this._serializeValueFunction(classMethod);
+        };
+
+        let handleClassMethodDescriptor = (_descriptor, property: string | SymbolValue) => {
+          if (_descriptor.value !== undefined) {
+            handleClassMethodValue(_descriptor.value, { type: "Value", property });
+          }
+          if (_descriptor.get !== undefined) {
+            handleClassMethodValue(_descriptor.get, { type: "Get", property });
+          }
+          if (_descriptor.set !== undefined) {
+            handleClassMethodValue(_descriptor.set, { type: "Set", property });
+          }
+        };
+
+        // non-symbol properties
+        for (let [string, method] of val.$HomeObject.properties) {
+          invariant(typeof string === "string");
+          let methodDescriptor = method.descriptor;
+
+          if (methodDescriptor !== undefined) {
+            handleClassMethodDescriptor(methodDescriptor, string);
+          }
         }
+
         // symbol properties
-        for (let [classMethodSymbol] of val.$HomeObject.symbols) {
-          let classMethod = Get(this.realm, val.$HomeObject, classMethodSymbol);
-          invariant(classMethod instanceof FunctionValue);
-          this.serializedValues.add(classMethod);
-          this._serializeValueFunction(classMethod);
+        for (let [symbol, method] of val.$HomeObject.symbols) {
+          invariant(symbol instanceof SymbolValue);
+          let methodDescriptor = method.descriptor;
+
+          if (methodDescriptor !== undefined) {
+            handleClassMethodDescriptor(methodDescriptor, symbol);
+          }
         }
+
         // assign the AST method key node for the "constructor"
         classProperties.classMethodKeyNode = t.identifier("constructor");
+
         // handle class inheritance
         if (!(val.$Prototype instanceof NativeFunctionValue)) {
           let proto = val.$Prototype;
@@ -1169,33 +1201,27 @@ export class ResidualHeapSerializer {
             this.serializedValues.add(proto.$HomeObject);
           }
         }
+
         // pass in the properties and set it so we don't serialize the prototype
         undelay();
         this._emitObjectProperties(val, properties, undefined, undefined, true);
         return;
       }
       // otherwise handle with the name key for the non-constructor method
-      let nameValue = Get(this.realm, val, "name");
+      invariant(methodProperties !== undefined);
+      let { property, type } = methodProperties;
 
-      if (nameValue instanceof AbstractValue) {
-        throw new FatalError("TODO: implement abstract computed class method keys");
-      } else if (nameValue instanceof StringValue) {
-        if (nameValue === this.realm.intrinsics.emptyString) {
-          // empty string, as per spec means usage of Symbol for method name, so we need to look it up from parent
-          invariant(val.$HomeObject instanceof ObjectValue);
-          for (let [symbol] of val.$HomeObject.symbols) {
-            let method = Get(this.realm, val.$HomeObject, symbol);
-            if (method === val) {
-              classProperties.classMethodKeyNode = this.serializeValue(symbol);
-              break;
-            }
-          }
-          invariant(classProperties.classMethodKeyNode, "Could not find symbol method from class");
-        } else {
-          classProperties.classMethodKeyNode = t.identifier(nameValue.value);
-          // as we know the method name is a string again, we can remove the computed status
-          classProperties.classMethodComputed = false;
-        }
+      if (type === "Get") {
+        classProperties.methodType = "get";
+      } else if (type === "Set") {
+        classProperties.methodType = "set";
+      }
+      if (typeof property === "string") {
+        classProperties.classMethodKeyNode = t.identifier(property);
+        // as we know the method name is a string again, we can remove the computed status
+        classProperties.classMethodComputed = false;
+      } else if (property instanceof SymbolValue) {
+        classProperties.classMethodKeyNode = this.serializeValue(property);
       } else {
         invariant(false, "Unknown method type");
       }

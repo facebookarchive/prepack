@@ -41,7 +41,7 @@ export type AdditionalFunctionInfo = {
 };
 
 export type FunctionClassProperties = {|
-  methodType: "constructor" | "method",
+  methodType: "constructor" | "method" | "get" | "set",
   classSuperNode: void | BabelNodeIdentifier,
   classMethodKeyNode: void | BabelNodeExpression,
   classMethodComputed: boolean,
