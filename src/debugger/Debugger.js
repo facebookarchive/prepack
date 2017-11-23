@@ -125,7 +125,7 @@ export class DebugServer {
       let breakpoint = this.findStoppableBreakpoint(filePath, lineNum, colNum);
       if (breakpoint === null) return;
       // Tell the adapter that Prepack has stopped on this breakpoint
-      this._channel.sendPrepackStopped("Breakpoint", breakpoint.filePath, breakpoint.line, breakpoint.column);
+      this._channel.sendStoppedResponse("Breakpoint", breakpoint.filePath, breakpoint.line, breakpoint.column);
       // Wait for the adapter to tell us to run again
       this.waitForRun(ast);
     }

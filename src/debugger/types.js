@@ -108,7 +108,7 @@ export type BreakpointsAddResult = {
 
 export type StoppedResult = {
   kind: "stopped",
-  reason: PrepackStoppedReason,
+  reason: StoppedReason,
   filePath: string,
   line: number,
   column: number,
@@ -146,7 +146,7 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   debugOutFilePath: string,
 }
 
-export type PrepackStoppedReason = "Breakpoint" | "Step In";
+export type StoppedReason = "Breakpoint" | "Step In";
 
 export type StepInData = {
   prevStopFile: string,

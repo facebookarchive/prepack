@@ -30,6 +30,7 @@ export class SteppingManager {
   }
 
   _processStepIn(ast: BabelNode) {
+    invariant(this._steppInData === undefined);
     invariant(ast.loc && ast.loc.source);
     this._stepInData = {
       prevStopFile: ast.loc.source,
@@ -42,7 +43,7 @@ export class SteppingManager {
     if (this._isStepInComplete(ast)) {
       if (ast.loc && ast.loc.source) {
         this._stepInData = undefined;
-        this._channel.sendPrepackStopped("Step In", ast.loc.source, ast.loc.start.line, ast.loc.start.column);
+        this._channel.sendStoppedResponse("Step In", ast.loc.source, ast.loc.start.line, ast.loc.start.column);
         return true;
       }
     }

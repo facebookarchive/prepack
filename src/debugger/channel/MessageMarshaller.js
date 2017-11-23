@@ -29,7 +29,7 @@ import type {
   RunArguments,
   StackframeArguments,
   StepInArguments,
-  PrepackStoppedReason,
+  StoppedReason,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -44,7 +44,7 @@ export class MessageMarshaller {
     return `${requestID} ${messageType} ${JSON.stringify(breakpoints)}`;
   }
 
-  marshallPrepackStopped(reason: PrepackStoppedReason, filePath: string, line: number, column: number): string {
+  marshallStoppedResponse(reason: StoppedReason, filePath: string, line: number, column: number): string {
     let result: StoppedResult = {
       kind: "stopped",
       reason: reason,
@@ -157,7 +157,7 @@ export class MessageMarshaller {
     } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
       dbgResponse = this._unmarshallBreakpointsAddResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.PREPACK_STOPPED_RESPONSE) {
-      dbgResponse = this._unmarshallPrepackStoppedResponse(requestID, parts.slice(2).join(" "));
+      dbgResponse = this._unmarshallStoppedResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
       dbgResponse = this._unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.SCOPES_RESPONSE) {
@@ -306,7 +306,7 @@ export class MessageMarshaller {
     }
   }
 
-  _unmarshallPrepackStoppedResponse(requestID: number, responseStr: string): DebuggerResponse {
+  _unmarshallStoppedResponse(requestID: number, responseStr: string): DebuggerResponse {
     try {
       let result = JSON.parse(responseStr);
       invariant(result.kind === "stopped");
