@@ -43,10 +43,10 @@ import { ResidualFunctions } from "./ResidualFunctions.js";
 //    When an emission is supposed to target a body that is the current body, i.e. when it sits
 //    lower on the stack, then the emission task gets delayed until the next emission task on
 //    the lower body entry is finished.
-//    To this end, the emitter maintains the `_activeBodies` and `_waitingForBodies` datastructures.
+//    To this end, the emitter maintains the `_activeGeneratorStack` and `_waitingForBodies` datastructures.
 export class Emitter {
   constructor(residualFunctions: ResidualFunctions) {
-    let mainBody = { type: "MainGenerator", entries: [] };
+    let mainBody = { type: "MainGenerator", parentBody: undefined, entries: [] };
     this._waitingForValues = new Map();
     this._waitingForBodies = new Map();
     this._body = mainBody;
@@ -54,29 +54,32 @@ export class Emitter {
     this._residualFunctions = residualFunctions;
     this._activeStack = [];
     this._activeValues = new Set();
-    this._activeBodies = [mainBody];
+    this._activeGeneratorStack = [mainBody];
     this._finalized = false;
   }
 
   _finalized: boolean;
   _activeStack: Array<string | Generator | Value>;
   _activeValues: Set<Value>;
-  _activeBodies: Array<SerializedBody>;
+  _activeGeneratorStack: Array<SerializedBody>; // Contains all the active generator bodies in stack order.
   _residualFunctions: ResidualFunctions;
   _waitingForValues: Map<Value, Array<{ body: SerializedBody, dependencies: Array<Value>, func: () => void }>>;
   _waitingForBodies: Map<SerializedBody, Array<{ dependencies: Array<Value>, func: () => void }>>;
   _declaredAbstractValues: Map<AbstractValue, Array<SerializedBody>>;
   _body: SerializedBody;
 
-  beginEmitting(dependency: string | Generator | Value, targetBody: SerializedBody) {
+  beginEmitting(dependency: string | Generator | Value, targetBody: SerializedBody, isChild: boolean = false) {
     invariant(!this._finalized);
     this._activeStack.push(dependency);
     if (dependency instanceof Value) {
       invariant(!this._activeValues.has(dependency));
       this._activeValues.add(dependency);
     } else if (dependency instanceof Generator) {
-      invariant(!this._activeBodies.includes(targetBody));
-      this._activeBodies.push(targetBody);
+      invariant(!this._activeGeneratorStack.includes(targetBody));
+      this._activeGeneratorStack.push(targetBody);
+    }
+    if (isChild) {
+      targetBody.parentBody = this._body;
     }
     let oldBody = this._body;
     this._body = targetBody;
@@ -97,7 +100,7 @@ export class Emitter {
       this._processValue(dependency);
     } else if (dependency instanceof Generator) {
       invariant(this._isEmittingActiveGenerator());
-      this._activeBodies.pop();
+      this._activeGeneratorStack.pop();
     }
     let lastBody = this._body;
     this._body = oldBody;
@@ -105,16 +108,16 @@ export class Emitter {
   }
   finalize() {
     invariant(!this._finalized);
-    invariant(this._activeBodies.length === 1);
-    invariant(this._activeBodies[0] === this._body);
+    invariant(this._activeGeneratorStack.length === 1);
+    invariant(this._activeGeneratorStack[0] === this._body);
     this._processCurrentBody();
-    this._activeBodies.pop();
+    this._activeGeneratorStack.pop();
     this._finalized = true;
     invariant(this._waitingForBodies.size === 0);
     invariant(this._waitingForValues.size === 0);
     invariant(this._activeStack.length === 0);
     invariant(this._activeValues.size === 0);
-    invariant(this._activeBodies.length === 0);
+    invariant(this._activeGeneratorStack.length === 0);
   }
   /**
    * Emitter is emitting in two modes:
@@ -123,8 +126,8 @@ export class Emitter {
    * This function checks the first condition above.
    */
   _isEmittingActiveGenerator(): boolean {
-    invariant(this._activeBodies.length > 0);
-    return this._activeBodies[this._activeBodies.length - 1] === this._body;
+    invariant(this._activeGeneratorStack.length > 0);
+    return this._activeGeneratorStack[this._activeGeneratorStack.length - 1] === this._body;
   }
   _isGeneratorBody(body: SerializedBody): boolean {
     return body.type === "MainGenerator" || body.type === "Generator";
@@ -160,7 +163,7 @@ export class Emitter {
   // Find the first ancestor in input generator body stack that is in current active stack.
   // It can always find one because the bottom one in the stack is the main generator.
   _getFirstAncestorGeneratorWithActiveBody(bodyStack: Array<SerializedBody>): SerializedBody {
-    const activeBody = bodyStack.slice().reverse().find(body => this._activeBodies.includes(body));
+    const activeBody = bodyStack.slice().reverse().find(body => this._activeGeneratorStack.includes(body));
     invariant(activeBody);
     return activeBody;
   }
@@ -173,7 +176,7 @@ export class Emitter {
   // 2. a value that is also currently being serialized
   //    (tracked by `_activeValues`).
   // 3. a generator body that is higher(near top) in generator body stack.
-  //    (tracked by `_activeBodies`)
+  //    (tracked by `_activeGeneratorStack`)
   getReasonToWaitForDependencies(dependencies: Value | Array<Value>): void | Value | SerializedBody {
     invariant(!this._finalized);
     if (Array.isArray(dependencies)) {
@@ -214,13 +217,13 @@ export class Emitter {
           // 2. Not emitting in current active generator.(otherwise no need to wait) -- and
           // 3. Dependency's active ancestor generator body is higher(near top) in generator stack than current body.
           const valActiveAncestorBody = this._getFirstAncestorGeneratorWithActiveBody(valSerializeBodyStack);
-          invariant(this._activeBodies.includes(valActiveAncestorBody));
+          invariant(this._activeGeneratorStack.includes(valActiveAncestorBody));
 
           if (this._isGeneratorBody(this._body)) {
-            invariant(this._activeBodies.includes(this._body));
+            invariant(this._activeGeneratorStack.includes(this._body));
             if (
               !this._isEmittingActiveGenerator() &&
-              this._activeBodies.indexOf(valActiveAncestorBody) > this._activeBodies.indexOf(this._body)
+              this._activeGeneratorStack.indexOf(valActiveAncestorBody) > this._activeGeneratorStack.indexOf(this._body)
             ) {
               return this._body;
             }
@@ -329,7 +332,7 @@ export class Emitter {
   _emitAfterWaitingForGeneratorBody(reason: SerializedBody, dependencies: Array<Value>, func: () => void) {
     invariant(this._isGeneratorBody(reason));
     invariant(!this._finalized);
-    invariant(this._activeBodies.includes(reason));
+    invariant(this._activeGeneratorStack.includes(reason));
     let b = this._waitingForBodies.get(reason);
     if (b === undefined) this._waitingForBodies.set(reason, (b = []));
     b.push({ dependencies, func });
@@ -339,7 +342,7 @@ export class Emitter {
     this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func, targetBody);
   }
   _cloneGeneratorStack() {
-    return this._activeBodies.slice();
+    return this._activeGeneratorStack.slice();
   }
   declare(value: AbstractValue) {
     invariant(!this._finalized);
@@ -355,6 +358,16 @@ export class Emitter {
   }
   getBody(): SerializedBody {
     return this._body;
+  }
+  isCurrentBodyOffspringOf(targetBody: SerializedBody): boolean {
+    let currentBody = this._body;
+    while (currentBody !== undefined) {
+      if (currentBody === targetBody) {
+        return true;
+      }
+      currentBody = currentBody.parentBody;
+    }
+    return false;
   }
   getBodyReference() {
     invariant(!this._finalized);

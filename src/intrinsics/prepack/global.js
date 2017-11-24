@@ -16,6 +16,7 @@ import {
   BooleanValue,
   FunctionValue,
   NativeFunctionValue,
+  ConcreteValue,
   ObjectValue,
   Value,
   ECMAScriptSourceFunctionValue,
@@ -26,6 +27,13 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
+
+export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
+  return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) =>
+    // this line really confuses Flow
+    createAbstract(realm, typeNameOrTemplate, ((name: any): string | void), ...additionalValues)
+  );
+}
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
@@ -47,28 +55,28 @@ export default function(realm: Realm): void {
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
-    value: createAbstract(realm),
+    value: createAbstractFunction(realm),
     writable: true,
     enumerable: false,
     configurable: true,
   });
 
   global.$DefineOwnProperty("__abstractOrNull", {
-    value: createAbstract(realm, realm.intrinsics.null),
+    value: createAbstractFunction(realm, realm.intrinsics.null),
     writable: true,
     enumerable: false,
     configurable: true,
   });
 
   global.$DefineOwnProperty("__abstractOrNullOrUndefined", {
-    value: createAbstract(realm, realm.intrinsics.null, realm.intrinsics.undefined),
+    value: createAbstractFunction(realm, realm.intrinsics.null, realm.intrinsics.undefined),
     writable: true,
     enumerable: false,
     configurable: true,
   });
 
   global.$DefineOwnProperty("__abstractOrUndefined", {
-    value: createAbstract(realm, realm.intrinsics.undefined),
+    value: createAbstractFunction(realm, realm.intrinsics.undefined),
     writable: true,
     enumerable: false,
     configurable: true,

@@ -12,7 +12,7 @@
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
 import { ConcreteValue, Value } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
-import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
+import type { BabelNodeExpression, BabelNodeStatement, BabelNodeJSXElement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm } from "../realm.js";
 import invariant from "../invariant.js";
@@ -29,6 +29,7 @@ export type SerializedBodyType =
 
 export type SerializedBody = {
   type: SerializedBodyType,
+  parentBody: void | SerializedBody,
   entries: Array<BabelNodeStatement>,
 };
 
@@ -54,6 +55,11 @@ export type FunctionInfo = {
   modified: Set<string>,
   usesArguments: boolean,
   usesThis: boolean,
+};
+
+export type HoistedReactElements = {
+  id: BabelNodeIdentifier,
+  nodes: Array<{ id: BabelNodeIdentifier, reactElement: BabelNodeJSXElement }>,
 };
 
 export type FactoryFunctionInfo = { factoryId: BabelNodeIdentifier, functionInfo: FunctionInfo };

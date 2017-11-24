@@ -30,25 +30,25 @@ var Stateful = (function (superclass) {
   return Stateful;
 }(React.Component));
 
-function MessagePane() {
-  return <Stateful>Hi</Stateful>;
+function MessagePane(props) {
+  return <Stateful x={props.x}>Hi</Stateful>;
 }
 
-function SettingsPane() {
-  return <Stateful>Bye</Stateful>;
+function SettingsPane(props) {
+  return <Stateful x={props.x}>Bye</Stateful>;
 }
 
-function App(props: {switch: boolean}) {
+function App(props: {switch: boolean, x: any}) {
   if (props.switch) {
     return (
       <div>
-        <MessagePane />
+        <MessagePane x={props.x} />
       </div>
     );
   }
   return (
     <div>
-      <SettingsPane />
+      <SettingsPane x={props.x} />
     </div>
   );
 }

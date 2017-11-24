@@ -133,13 +133,25 @@ function augmentCodeWithLazyObjectSupport(code, lazyRuntimeName) {
         ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
         return Reflect.get(target, prop);
       },
+      set: function(target, property, value, receiver) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.set(target, property, value, receiver);
+      },
       has: function(target, prop) {
         ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
         return Reflect.has(target, prop);
       },
+      getOwnPropertyDescriptor: function(target, prop) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.getOwnPropertyDescriptor(target, prop);
+      },
       ownKeys: function(target) {
         ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
         return Reflect.ownKeys(target);
+      },
+      defineProperty: function(target, property, descriptor) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.defineProperty(target, property, descriptor);
       },
       isExtensible: function(target) {
         ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);

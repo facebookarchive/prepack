@@ -30,20 +30,24 @@ export class DebugMessage {
   static SCOPES_COMMAND: string = "Scopes-command";
   // Command to fetch variables
   static VARIABLES_COMMAND: string = "Variables-command";
+  // Command to step into a function
+  static STEPINTO_COMMAND: string = "StepInto-command";
 
   /* Messages from Prepack to adapter with requested information */
   // Respond to the adapter that Prepack is ready
   static PREPACK_READY_RESPONSE: string = "PrepackReady";
   // Respond to the adapter that Prepack is finished
   static PREPACK_FINISH_RESPONSE: string = "PrepackFinish";
-  // Respond to the adapter that Prepack has stopped on a breakpoint
-  static BREAKPOINT_STOPPED_RESPONSE: string = "Breakpoint-stopped-response";
+  // Respond to the adapter that Prepack has stopped
+  static STOPPED_RESPONSE: string = "Stopped-response";
   // Respond to the adapter with the request stackframes
   static STACKFRAMES_RESPONSE: string = "Stackframes-response";
   // Respond to the adapter with the requested scopes
   static SCOPES_RESPONSE: string = "Scopes-response";
   // Respond to the adapter with the requested variables
   static VARIABLES_RESPONSE: string = "Variables-response";
+  // Respond to the adapter with the stepped in location
+  static STEPINTO_RESPONSE: string = "StepInto-response";
 
   /* Messages from Prepack to adapter to acknowledge having received the request */
   // Acknowledgement for setting a breakpoint

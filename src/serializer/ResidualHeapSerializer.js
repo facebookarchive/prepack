@@ -30,7 +30,6 @@ import {
   UndefinedValue,
 } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
-import { isReactElement } from "../react/utils.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -52,6 +51,7 @@ import type {
   AdditionalFunctionInfo,
   ReactSerializerState,
   SerializedBody,
+  HoistedReactElements,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics } from "./types.js";
@@ -197,6 +197,7 @@ export class ResidualHeapSerializer {
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   currentAdditionalFunction: void | FunctionValue;
   functionNames: Map<FunctionValue, string>;
+  hoistedReactElements: void | HoistedReactElements;
 
   _getFunctionName(f: FunctionValue): string {
     let n = this.functionNames.get(f);
@@ -367,11 +368,27 @@ export class ResidualHeapSerializer {
       invariant(consequent instanceof AbstractValue);
       let alternate = absVal.args[2];
       invariant(alternate instanceof AbstractValue);
-      let oldBody = this.emitter.beginEmitting("consequent", { type: "ConditionalAssignmentBranch", entries: [] });
+      let oldBody = this.emitter.beginEmitting(
+        "consequent",
+        {
+          type: "ConditionalAssignmentBranch",
+          parentBody: undefined,
+          entries: [],
+        },
+        /*isChild*/ true
+      );
       this._emitPropertiesWithComputedNames(obj, consequent);
       let consequentBody = this.emitter.endEmitting("consequent", oldBody);
       let consequentStatement = t.blockStatement(consequentBody.entries);
-      oldBody = this.emitter.beginEmitting("alternate", { type: "ConditionalAssignmentBranch", entries: [] });
+      oldBody = this.emitter.beginEmitting(
+        "alternate",
+        {
+          type: "ConditionalAssignmentBranch",
+          parentBody: undefined,
+          entries: [],
+        },
+        /*isChild*/ true
+      );
       this._emitPropertiesWithComputedNames(obj, alternate);
       let alternateBody = this.emitter.endEmitting("alternate", oldBody);
       let alternateStatement = t.blockStatement(alternateBody.entries);
@@ -565,7 +582,10 @@ export class ResidualHeapSerializer {
         if (scope === this.realm.generator) {
           // This value is used from the main generator scope. This means that we need to emit the value and its
           // initialization code into the main body, and cannot delay initialization.
-          return { body: this.currentFunctionBody, description: "this.realm.generator" };
+          return {
+            body: this.currentFunctionBody,
+            description: "this.realm.generator",
+          };
         }
         generators.push(scope);
       }
@@ -640,7 +660,6 @@ export class ResidualHeapSerializer {
     }
 
     let target = this._getTarget(val, scopes);
-
     let name;
     if (val instanceof FunctionValue) name = this._getFunctionName(val);
     else name = this.valueNameGenerator.generate(val.__originalName || "");
@@ -825,17 +844,6 @@ export class ResidualHeapSerializer {
   }
 
   _serializeValueReactElementChild(child: Value): BabelNode {
-    if (isReactElement(child)) {
-      // if we know it's a ReactElement, we add the value to the serializedValues
-      // and short cut to get back the JSX expression so we don't emit additional data
-      // we do this to ensure child JSXElements can get keys assigned if needed
-      this.serializedValues.add(child);
-      let reactChild = this._serializeValueObject(((child: any): ObjectValue));
-      if (reactChild.leadingComments != null) {
-        return t.jSXExpressionContainer(reactChild);
-      }
-      return reactChild;
-    }
     const expr = this.serializeValue(child);
 
     if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
@@ -915,13 +923,47 @@ export class ResidualHeapSerializer {
     let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
     let closingElement = t.jSXClosingElement(identifier);
 
-    let jsxElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
+    let reactElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
     // if there has been a bail-out, we create an inline BlockComment node before the JSX element
     if (val.$BailOutReason !== undefined) {
       // $BailOutReason contains an optional string of what to print out in the comment
-      jsxElement.leadingComments = [({ type: "BlockComment", value: `${val.$BailOutReason}` }: any)];
+      reactElement.leadingComments = [({ type: "BlockComment", value: `${val.$BailOutReason}` }: any)];
     }
-    return jsxElement;
+
+    let id = this.getSerializeObjectIdentifier(val);
+    // if we are hoisting this React element, put the assignment in the body
+    if (val.$CanHoist) {
+      // if the currentHoistedReactElements is not defined, we create it an emit the function call
+      // this should only occur once per additional function
+      if (this.hoistedReactElements === undefined) {
+        let funcId = t.identifier(this.functionNameGenerator.generate());
+        this.hoistedReactElements = {
+          id: funcId,
+          nodes: [],
+        };
+        let statement = t.expressionStatement(
+          t.logicalExpression(
+            "&&",
+            t.binaryExpression("===", id, t.unaryExpression("void", t.numericLiteral(0), true)),
+            t.callExpression(funcId, [])
+          )
+        );
+        this.emitter.emit(statement);
+      }
+      // we then push the reactElement and its id into our list of elements to process after
+      // the current additional function has serialzied
+      invariant(this.hoistedReactElements !== undefined);
+      invariant(Array.isArray(this.hoistedReactElements.nodes));
+      this.hoistedReactElements.nodes.push({ id, reactElement });
+    } else {
+      let declar = t.variableDeclaration("var", [t.variableDeclarator(id, reactElement)]);
+      this.emitter.emit(declar);
+    }
+    return reactElement;
+  }
+
+  _serializeHoistedReactElements() {
+    // TODO
   }
 
   _serializeValueMap(val: ObjectValue): BabelNodeExpression {
@@ -1148,19 +1190,13 @@ export class ResidualHeapSerializer {
 
   // Overridable.
   serializeValueRawObject(val: ObjectValue): BabelNodeExpression {
-    let proto = val.$Prototype;
-    let createViaAuxiliaryConstructor =
-      proto !== this.realm.intrinsics.ObjectPrototype &&
-      this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
-      proto instanceof ObjectValue;
-
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
     for (let [key, propertyBinding] of val.properties) {
       let descriptor = propertyBinding.descriptor;
       if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
-      if (!createViaAuxiliaryConstructor && this._canEmbedProperty(val, key, descriptor)) {
+      if (this._canEmbedProperty(val, key, descriptor)) {
         let propValue = descriptor.value;
         invariant(propValue instanceof Value);
         if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
@@ -1186,25 +1222,25 @@ export class ResidualHeapSerializer {
         props.push(t.objectProperty(serializedKey, voidExpression));
       }
     }
-    this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties);
-
-    if (createViaAuxiliaryConstructor) {
-      this.needsAuxiliaryConstructor = true;
-      let serializedProto = this.serializeValue(proto);
-      return t.sequenceExpression([
-        t.assignmentExpression(
-          "=",
-          t.memberExpression(constructorExpression, t.identifier("prototype")),
-          serializedProto
-        ),
-        t.newExpression(constructorExpression, []),
-      ]);
-    } else {
-      return t.objectExpression(props);
-    }
+    this._emitObjectProperties(val, remainingProperties, /*objectPrototypeAlreadyEstablished*/ false, dummyProperties);
+    return t.objectExpression(props);
   }
 
-  _serializeValueObject(val: ObjectValue): BabelNodeExpression {
+  _serializeValueObjectViaConstructor(val: ObjectValue) {
+    this._emitObjectProperties(val, val.properties, /*objectPrototypeAlreadyEstablished*/ true);
+    this.needsAuxiliaryConstructor = true;
+    let serializedProto = this.serializeValue(val.$Prototype);
+    return t.sequenceExpression([
+      t.assignmentExpression(
+        "=",
+        t.memberExpression(constructorExpression, t.identifier("prototype")),
+        serializedProto
+      ),
+      t.newExpression(constructorExpression, []),
+    ]);
+  }
+
+  _serializeValueObject(val: ObjectValue): BabelNodeExpression | void {
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
     // in a special way that's handled alongside function serialization.
@@ -1269,7 +1305,8 @@ export class ResidualHeapSerializer {
       case "ArrayBuffer":
         return this._serializeValueArrayBuffer(val);
       case "ReactElement":
-        return this._serializeValueReactElement(val);
+        this._serializeValueReactElement(val);
+        return;
       case "Map":
       case "WeakMap":
         return this._serializeValueMap(val);
@@ -1279,7 +1316,15 @@ export class ResidualHeapSerializer {
       default:
         invariant(kind === "Object", "invariant established by visitor");
         invariant(this.$ParameterMap === undefined, "invariant established by visitor");
-        return this.serializeValueRawObject(val);
+
+        let proto = val.$Prototype;
+        let createViaAuxiliaryConstructor =
+          proto !== this.realm.intrinsics.ObjectPrototype &&
+          this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
+          proto instanceof ObjectValue;
+        return createViaAuxiliaryConstructor
+          ? this._serializeValueObjectViaConstructor(val)
+          : this.serializeValueRawObject(val);
     }
   }
 
@@ -1390,8 +1435,8 @@ export class ResidualHeapSerializer {
   }
 
   _withGeneratorScope(generator: Generator, callback: SerializedBody => void): Array<BabelNodeStatement> {
-    let newBody = { type: "Generator", entries: [] };
-    let oldBody = this.emitter.beginEmitting(generator, newBody);
+    let newBody = { type: "Generator", parentBody: undefined, entries: [] };
+    let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ true);
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
@@ -1523,6 +1568,25 @@ export class ResidualHeapSerializer {
               residualBinding.additionalValueSerialized = this.serializeValue(newVal);
             }
             this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+            if (this.hoistedReactElements !== undefined) {
+              let { id, nodes } = this.hoistedReactElements;
+              // create a function that initializes all the hoisted React elements
+              let func = t.functionExpression(
+                null,
+                [],
+                t.blockStatement(
+                  nodes.map(node => t.expressionStatement(t.assignmentExpression("=", node.id, node.reactElement)))
+                )
+              );
+              // push it to the mainBody of the module
+              this.mainBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(id, func)]));
+              // output all the empty variable declarations that will hold the React elements lazily
+              this.mainBody.entries.push(
+                ...nodes.map(node => t.variableDeclaration("var", [t.variableDeclarator(node.id)]))
+              );
+              // reset the hoistedReactElements so other additional functions work
+              this.hoistedReactElements = undefined;
+            }
           };
           this.currentAdditionalFunction = additionalFunctionValue;
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);

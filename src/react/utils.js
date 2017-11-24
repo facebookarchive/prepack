@@ -20,10 +20,12 @@ import {
   StringValue,
   ArrayValue,
 } from "../values/index.js";
+import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { type ReactSerializerState } from "../serializer/types.js";
 import invariant from "../invariant.js";
+import AbstractValue from "../values/AbstractValue";
 
 export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
@@ -58,6 +60,92 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
   return false;
 }
 
+function canHoistObject(realm: Realm, object: ObjectValue, hoistedScope?: Generator): boolean {
+  if (isReactElement(object)) {
+    return canHoistReactElement(realm, object);
+  }
+  for (let [propName] of object.properties) {
+    let prop = Get(realm, object, propName);
+    if (prop instanceof AbstractValue) {
+      return false;
+    } else if (prop instanceof FunctionValue && prop.parent !== hoistedScope) {
+      return false;
+    } else if (prop instanceof ArrayValue) {
+      let isHoistable = canHoistArray(realm, prop, hoistedScope);
+
+      if (!isHoistable) {
+        return false;
+      }
+    } else if (prop instanceof ObjectValue) {
+      let isHoistable = canHoistObject(realm, prop, hoistedScope);
+
+      if (!isHoistable) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function canHoistArray(realm: Realm, array: ArrayValue, hoistedScope?: Generator): boolean {
+  let lengthValue = Get(realm, array, "length");
+  invariant(lengthValue instanceof NumberValue);
+  let length = lengthValue.value;
+  for (let i = 0; i < length; i++) {
+    let element = Get(realm, array, "" + i);
+
+    if (element instanceof AbstractValue) {
+      return false;
+    } else if (element instanceof ArrayValue) {
+      let isHoistable = canHoistArray(realm, element, hoistedScope);
+
+      if (!isHoistable) {
+        return false;
+      }
+    } else if (element instanceof FunctionValue && element.parent !== hoistedScope) {
+      return false;
+    } else if (element instanceof ObjectValue) {
+      let isHoistable = canHoistObject(realm, element, hoistedScope);
+
+      if (!isHoistable) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+export function canHoistReactElement(realm: Realm, reactElement: ObjectValue, hoistedScope?: Generator): boolean {
+  if (reactElement.$CanHoist) {
+    return true;
+  }
+  // we host components <div />, <span /> etc
+  // we also allow functions where their parent scope matches the hoisted scope
+  let type = Get(realm, reactElement, "type");
+  if (!(type instanceof StringValue || (type instanceof FunctionValue && type.parent === hoistedScope))) {
+    return false;
+  }
+  // you can only hoist null or function values where the scope matches the hoisted scope
+  let ref = Get(realm, reactElement, "ref");
+  if (!(ref === realm.intrinsics.null || (ref instanceof FunctionValue && ref.parent === hoistedScope))) {
+    return false;
+  }
+  // keys should also be string or null
+  let key = Get(realm, reactElement, "key");
+  if (!(key instanceof StringValue || key === realm.intrinsics.null)) {
+    return false;
+  }
+  let props = Get(realm, reactElement, "props");
+  invariant(props instanceof ObjectValue);
+  let isHoistable = canHoistObject(realm, props, hoistedScope);
+  if (!isHoistable) {
+    return false;
+  }
+  // cache the value so we can avoid doing this work again
+  reactElement.$CanHoist = true;
+  return true;
+}
+
 export function addKeyToReactElement(
   realm: Realm,
   reactSerializerState: ReactSerializerState,
@@ -90,12 +178,12 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
 }
 
 // a helper function to map over ArrayValues
-export function mapOverArrayValue(realm: Realm, arrayValue: ArrayValue, mapFunc: Function): void {
-  let lengthValue = Get(realm, arrayValue, "length");
+export function mapOverArrayValue(realm: Realm, array: ArrayValue, mapFunc: Function): void {
+  let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
   let length = lengthValue.value;
   for (let i = 0; i < length; i++) {
-    let elementProperty = arrayValue.properties.get("" + i);
+    let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
     let elementValue = elementPropertyDescriptor.value;

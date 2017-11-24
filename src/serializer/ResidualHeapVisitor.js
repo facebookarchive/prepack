@@ -42,6 +42,8 @@ import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { getSuggestedArrayLiteralLength } from "./utils.js";
 import { Environment } from "../singletons.js";
+import { canHoistReactElement, isReactElement } from "../react/utils.js";
+import ReactElementSet from "../react/ReactElementSet.js";
 
 export type Scope = FunctionValue | Generator;
 
@@ -76,6 +78,7 @@ export class ResidualHeapVisitor {
     this.delayedVisitGeneratorEntries = [];
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
+    this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
   }
 
@@ -99,6 +102,7 @@ export class ResidualHeapVisitor {
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
+  reactElementEquivalenceSet: ReactElementSet;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -409,8 +413,17 @@ export class ResidualHeapVisitor {
       case "Number":
       case "String":
       case "Boolean":
-      case "ReactElement":
       case "ArrayBuffer":
+        return;
+      case "ReactElement":
+        // if we visiting during an additional function, we can check to see if
+        // we can hoist React elements to the main scope
+        let targetScope = this.scope.parent;
+        if (targetScope !== undefined) {
+          // this check sets the React element $CanHoist to "true"
+          // allowing it to serialize differently later
+          canHoistReactElement(this.realm, val, targetScope);
+        }
         return;
       case "Date":
         let dateValue = val.$DateValue;
@@ -477,6 +490,11 @@ export class ResidualHeapVisitor {
       let equivalentValue = this.equivalenceSet.add(val);
       if (this._mark(equivalentValue)) this.visitAbstractValue(equivalentValue);
       return (equivalentValue: any);
+    }
+    if (val instanceof ObjectValue && isReactElement(val)) {
+      let equivalentReactElementValue = this.reactElementEquivalenceSet.add(val);
+      if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
+      return (equivalentReactElementValue: any);
     }
     this.visitValue(val);
     return val;
@@ -594,6 +612,8 @@ export class ResidualHeapVisitor {
       // Allows us to emit function declarations etc. inside of this additional
       // function instead of adding them at global scope
       this.commonScope = functionValue;
+      let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
+      this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
       let modifiedBindingInfo = new Map();
       let visitPropertiesAndBindings = () => {
         for (let propertyBinding of modifiedProperties.keys()) {
@@ -653,6 +673,7 @@ export class ResidualHeapVisitor {
       this._withScope(generator, visitPropertiesAndBindings);
       this.realm.restoreBindings(modifiedBindings);
       this.realm.restoreProperties(modifiedProperties);
+      this.reactElementEquivalenceSet = oldReactElementEquivalenceSet;
     }
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value
