@@ -169,6 +169,7 @@ export class Realm {
       enabled: opts.reactEnabled || false,
       flowRequired: true,
       reactElementSymbol: undefined,
+      currentOwner: undefined,
     };
 
     this.errorHandler = opts.errorHandler;
@@ -207,6 +208,7 @@ export class Realm {
     enabled: boolean,
     flowRequired: boolean,
     reactElementSymbol?: SymbolValue,
+    currentOwner?: ObjectValue,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
