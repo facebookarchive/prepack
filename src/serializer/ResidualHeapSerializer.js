@@ -1148,19 +1148,13 @@ export class ResidualHeapSerializer {
 
   // Overridable.
   serializeValueRawObject(val: ObjectValue): BabelNodeExpression {
-    let proto = val.$Prototype;
-    let createViaAuxiliaryConstructor =
-      proto !== this.realm.intrinsics.ObjectPrototype &&
-      this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
-      proto instanceof ObjectValue;
-
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
     for (let [key, propertyBinding] of val.properties) {
       let descriptor = propertyBinding.descriptor;
       if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
-      if (!createViaAuxiliaryConstructor && this._canEmbedProperty(val, key, descriptor)) {
+      if (this._canEmbedProperty(val, key, descriptor)) {
         let propValue = descriptor.value;
         invariant(propValue instanceof Value);
         if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
@@ -1186,22 +1180,22 @@ export class ResidualHeapSerializer {
         props.push(t.objectProperty(serializedKey, voidExpression));
       }
     }
-    this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties);
+    this._emitObjectProperties(val, remainingProperties, /*objectPrototypeAlreadyEstablished*/ false, dummyProperties);
+    return t.objectExpression(props);
+  }
 
-    if (createViaAuxiliaryConstructor) {
-      this.needsAuxiliaryConstructor = true;
-      let serializedProto = this.serializeValue(proto);
-      return t.sequenceExpression([
-        t.assignmentExpression(
-          "=",
-          t.memberExpression(constructorExpression, t.identifier("prototype")),
-          serializedProto
-        ),
-        t.newExpression(constructorExpression, []),
-      ]);
-    } else {
-      return t.objectExpression(props);
-    }
+  _serializeValueObjectViaConstructor(val: ObjectValue) {
+    this._emitObjectProperties(val, val.properties, /*objectPrototypeAlreadyEstablished*/ true);
+    this.needsAuxiliaryConstructor = true;
+    let serializedProto = this.serializeValue(val.$Prototype);
+    return t.sequenceExpression([
+      t.assignmentExpression(
+        "=",
+        t.memberExpression(constructorExpression, t.identifier("prototype")),
+        serializedProto
+      ),
+      t.newExpression(constructorExpression, []),
+    ]);
   }
 
   _serializeValueObject(val: ObjectValue): BabelNodeExpression {
@@ -1279,7 +1273,15 @@ export class ResidualHeapSerializer {
       default:
         invariant(kind === "Object", "invariant established by visitor");
         invariant(this.$ParameterMap === undefined, "invariant established by visitor");
-        return this.serializeValueRawObject(val);
+
+        let proto = val.$Prototype;
+        let createViaAuxiliaryConstructor =
+          proto !== this.realm.intrinsics.ObjectPrototype &&
+          this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
+          proto instanceof ObjectValue;
+        return createViaAuxiliaryConstructor
+          ? this._serializeValueObjectViaConstructor(val)
+          : this.serializeValueRawObject(val);
     }
   }
 
