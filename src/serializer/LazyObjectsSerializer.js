@@ -108,7 +108,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
 
   // TODO: change to use _getTarget() to get the lazy objects initializer body.
   _serializeLazyObjectInitializer(obj: ObjectValue): SerializedBody {
-    const initializerBody = { type: LAZY_OBJECTS_SERIALIZER_BODY_TYPE, entries: [] };
+    const initializerBody = { type: LAZY_OBJECTS_SERIALIZER_BODY_TYPE, parentBody: undefined, entries: [] };
     let oldBody = this.emitter.beginEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, initializerBody);
     this._emitObjectProperties(obj);
     this.emitter.endEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, oldBody);
@@ -165,12 +165,15 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
 
   /**
    * Check if the object currently being emitted is lazy object(inside _lazyObjectInitializers map) and
-   * that its emitting body matches this lazy object's initializer body.
+   * that its emitting body is the offspring of this lazy object's initializer body.
    * This is needed because for "lazy1.p = lazy2" case,
    * we need to replace "lazy1" with "obj" but not for "lazy2".
+   * The offspring checking is needed because object may be emitting in a "ConditionalAssignmentBranch" of
+   * lazy object's initializer body.
    */
   _isEmittingIntoLazyObjectInitializerBody(obj: ObjectValue) {
-    return this._lazyObjectInitializers.get(obj) === this.emitter.getBody();
+    const objLazyBody = this._lazyObjectInitializers.get(obj);
+    return objLazyBody !== undefined && this.emitter.isCurrentBodyOffspringOf(objLazyBody);
   }
 
   // Override default behavior.
