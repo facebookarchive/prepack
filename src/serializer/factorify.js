@@ -92,7 +92,6 @@ function getObjectKeys(obj: BabelNodeObjectExpression): string | false {
 export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGenerator: NameGenerator) {
   let signatures = Object.create(null);
 
-  let initializerAstNodeName = "init";
   for (let node of body) {
     switch (node.type) {
       case "VariableDeclaration":
@@ -104,8 +103,9 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
           let keys = getObjectKeys(init);
           if (!keys) continue;
 
+          let initializerAstNodeName = "init";
           let declars = (signatures[keys] = signatures[keys] || []);
-          declars.push(declar);
+          declars.push({ declar, initializerAstNodeName });
         }
         break;
 
@@ -122,9 +122,9 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
         let keys = getObjectKeys(right);
         if (!keys) continue;
 
-        initializerAstNodeName = "right";
+        let initializerAstNodeName = "right";
         let declars = (signatures[keys] = signatures[keys] || []);
-        declars.push(node.expression);
+        declars.push({ declar: node.expression, initializerAstNodeName });
         break;
 
       default:
@@ -156,7 +156,7 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
     body.unshift(rootFactory);
 
     //
-    for (let declar of declars) {
+    for (let { declar, initializerAstNodeName } of declars) {
       let args = [];
       for (let prop of declar[initializerAstNodeName].properties) {
         args.push(prop.value);
@@ -167,19 +167,19 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
 
     //
     let seen = new Set();
-    for (let declar of declars) {
+    for (let { declar, initializerAstNodeName } of declars) {
       if (seen.has(declar)) continue;
 
       // build up a map containing the arguments that are shared
       let common = new Map();
       let mostSharedArgsLength = 0;
-      for (let declar2 of declars) {
+      for (let { declar: declar2, initializerAstNodeName: initializerAstNodeName2 } of declars) {
         if (seen.has(declar2)) continue;
         if (declar === declar2) continue;
 
         let sharedArgs = [];
         for (let i = 0; i < keys.length; i++) {
-          if (isSameNode(declar[initializerAstNodeName].arguments[i], declar2[initializerAstNodeName].arguments[i])) {
+          if (isSameNode(declar[initializerAstNodeName].arguments[i], declar2[initializerAstNodeName2].arguments[i])) {
             sharedArgs.push(i);
           }
         }
