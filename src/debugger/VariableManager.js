@@ -25,10 +25,13 @@ import {
   ObjectValue,
   AbstractObjectValue,
   AbstractValue,
+  StringValue,
 } from "./../values/index.js";
 import invariant from "./../invariant.js";
 import type { Realm } from "./../realm.js";
 import { IsDataDescriptor } from "./../methods/is.js";
+import { DebuggerError } from "./DebuggerError.js";
+import { Functions } from "./../singletons.js";
 
 // This class manages the handling of variable requests in the debugger
 // The DebugProtocol specifies collections of variables are to be fetched using a
@@ -187,6 +190,23 @@ export class VariableManager {
     } else {
       invariant(false, "Concrete value must be primitive or object");
     }
+  }
+
+  evaluate(frameId: number, expression: string): Value {
+    if (frameId < 0 || frameId >= this._realm.contextStack.length) {
+      throw new DebuggerError("Invalid command", "Invalid value for frame ID");
+    }
+    // frameId's are in reverse order of context stack
+    let stackIndex = this._realm.contextStack.length - 1 - frameId;
+    let context = this._realm.contextStack[stackIndex];
+    let evalString = new StringValue(this._realm, expression);
+    return Functions.PerformEval(
+      this._realm,
+      evalString,
+      context.realm,
+      /* eval is in strict mode */ true,
+      /* is direct eval */ true
+    );
   }
 
   clean() {
