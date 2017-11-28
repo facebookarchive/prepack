@@ -1093,7 +1093,7 @@ export class PropertiesImplementation {
       if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
         let realmGenerator = realm.generator;
         invariant(realmGenerator);
-        value = realmGenerator.derive(value.types, value.values, value.args, [], value.getBuildNode(), {
+        value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
           kind: "resolved",
         });
         InternalSetProperty(realm, O, P, {

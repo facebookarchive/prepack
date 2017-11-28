@@ -667,7 +667,7 @@ export class ResidualHeapSerializer {
     return name;
   }
 
-  serializeBinding(binding: Binding): BabelNodeExpression {
+  serializeBinding(binding: Binding): BabelNodeIdentifier | BabelNodeMemberExpression {
     let record = binding.environment;
     invariant(record instanceof DeclarativeEnvironmentRecord, "only declarative environments has bindings");
 
@@ -687,7 +687,7 @@ export class ResidualHeapSerializer {
       this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding, instance);
     }
     invariant(residualBinding.serializedValue);
-    return residualBinding.serializedValue;
+    return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {

@@ -43,7 +43,7 @@ import { nullExpression } from "./internalizer.js";
 
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
-  serializeBinding: Binding => BabelNodeExpression,
+  serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
@@ -51,12 +51,16 @@ export type SerializationContext = {
   declare: AbstractValue => void,
 };
 
+export type DerivedExpressionBuildNodeFunction = (
+  Array<BabelNodeExpression>,
+  SerializationContext
+) => BabelNodeExpression;
+
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
 export type GeneratorEntry = {
   declared?: AbstractValue,
   args: Array<Value>,
-  bindings: Array<Binding>,
   buildNode: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
@@ -125,7 +129,6 @@ export class Generator {
   emitGlobalAssignment(key: string, value: Value, strictMode: boolean) {
     this._addEntry({
       args: [value],
-      bindings: [],
       buildNode: ([valueNode]) =>
         t.expressionStatement(
           t.assignmentExpression("=", this.preludeGenerator.globalReference(key, !strictMode), valueNode)
@@ -136,7 +139,6 @@ export class Generator {
   emitGlobalDelete(key: string, strictMode: boolean) {
     this._addEntry({
       args: [],
-      bindings: [],
       buildNode: ([]) =>
         t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode))),
     });
@@ -145,10 +147,13 @@ export class Generator {
   emitBindingAssignment(binding: Binding, value: Value) {
     this._addEntry({
       args: [value],
-      bindings: [binding],
-      buildNode: ([valueNode, bindingNode]) =>
+      buildNode: ([valueNode], context) =>
         t.expressionStatement(
-          t.assignmentExpression("=", ((bindingNode: any): BabelNodeIdentifier | BabelNodeMemberExpression), valueNode)
+          t.assignmentExpression(
+            "=",
+            (context.serializeBinding(binding): BabelNodeIdentifier | BabelNodeMemberExpression),
+            valueNode
+          )
         ),
     });
   }
@@ -158,7 +163,6 @@ export class Generator {
     let propName = this.getAsPropertyNameExpression(key);
     this._addEntry({
       args: [object, value],
-      bindings: [],
       buildNode: ([objectNode, valueNode]) =>
         t.expressionStatement(
           t.assignmentExpression("=", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)), valueNode)
@@ -183,7 +187,6 @@ export class Generator {
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        bindings: [],
         buildNode: (_, context: SerializationContext) => context.emitDefinePropertyBody(object, key, desc),
       });
     }
@@ -194,7 +197,6 @@ export class Generator {
     let propName = this.getAsPropertyNameExpression(key);
     this._addEntry({
       args: [object],
-      bindings: [],
       buildNode: ([objectNode]) =>
         t.expressionStatement(
           t.unaryExpression("delete", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)))
@@ -205,7 +207,6 @@ export class Generator {
   emitCall(createCallee: () => BabelNodeExpression, args: Array<Value>) {
     this._addEntry({
       args,
-      bindings: [],
       buildNode: values => t.expressionStatement(t.callExpression(createCallee(), [...values])),
     });
   }
@@ -240,7 +241,6 @@ export class Generator {
     if (this.realm.omitInvariants) return;
     this._addEntry({
       args,
-      bindings: [],
       buildNode: (nodes: Array<BabelNodeExpression>) => {
         let throwString = t.stringLiteral("Prepack model invariant violation");
         if (appendLastToInvariantFn) {
@@ -265,13 +265,12 @@ export class Generator {
     args: Array<Value>,
     kind?: string
   ): AbstractValue {
-    return this.derive(types, values, args, [], (nodes: any) => t.callExpression(createCallee(), nodes));
+    return this.derive(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes));
   }
 
   emitStatement(args: Array<Value>, buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement) {
     this._addEntry({
       args,
-      bindings: [],
       buildNode: buildNode_,
     });
   }
@@ -284,7 +283,6 @@ export class Generator {
   ): UndefinedValue {
     this._addEntry({
       args,
-      bindings: [],
       buildNode: (nodes: Array<BabelNodeExpression>) =>
         t.expressionStatement(
           (buildNode_: any) instanceof Function
@@ -305,7 +303,6 @@ export class Generator {
     this._addEntry({
       // duplicate args to ensure refcount > 1
       args: [o, targetObject, sourceObject, targetObject, sourceObject],
-      bindings: [],
       buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {
         return t.forInStatement(
           lh,
@@ -328,8 +325,7 @@ export class Generator {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    bindings: Array<Binding>,
-    buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
     optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
@@ -343,13 +339,12 @@ export class Generator {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
-      bindings,
-      buildNode: (nodes: Array<BabelNodeExpression>) => {
+      buildNode: (nodes: Array<BabelNodeExpression>, context: SerializationContext) => {
         return t.variableDeclaration("var", [
           t.variableDeclarator(
             id,
             (buildNode_: any) instanceof Function
-              ? ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes)
+              ? ((buildNode_: any): DerivedExpressionBuildNodeFunction)(nodes, context)
               : ((buildNode_: any): BabelNodeExpression)
           ),
         ]);
@@ -400,7 +395,6 @@ export class Generator {
     for (let entry of this._entries) {
       if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
         let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
-        entry.bindings.forEach((bindingArg, i) => nodes.push(context.serializeBinding(bindingArg)));
         context.emit(entry.buildNode(nodes, context));
         if (entry.declared !== undefined) context.declare(entry.declared);
       }
@@ -429,7 +423,6 @@ export class Generator {
     if (other.empty()) return;
     this._addEntry({
       args: [],
-      bindings: [],
       buildNode: function(args, context: SerializationContext) {
         let statements = context.serializeGenerator(other);
         let block = t.blockStatement(statements);
@@ -443,7 +436,6 @@ export class Generator {
   composeGenerators(generator1: Generator, generator2: Generator): void {
     this._addEntry({
       args: [],
-      bindings: [],
       buildNode: function([], context) {
         let statements = [];
         if (!generator1.empty()) statements.push(serializeBody(generator1, context));
@@ -457,7 +449,6 @@ export class Generator {
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {
     this._addEntry({
       args: [joinCondition],
-      bindings: [],
       buildNode: function([cond], context) {
         let block1 = generator1.empty() ? null : serializeBody(generator1, context);
         let block2 = generator2.empty() ? null : serializeBody(generator2, context);
