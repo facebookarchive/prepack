@@ -62,7 +62,12 @@ export class ResidualFunctionInitializers {
     if (initializer === undefined)
       this.initializers.set(
         id,
-        (initializer = { id, order: infos.length, values: [], body: { type: "DelayInitializations", entries: [] } })
+        (initializer = {
+          id,
+          order: infos.length,
+          values: [],
+          body: { type: "DelayInitializations", parentBody: undefined, entries: [] },
+        })
       );
     initializer.values.push(val);
     return initializer.body;

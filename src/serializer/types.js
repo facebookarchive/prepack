@@ -29,6 +29,7 @@ export type SerializedBodyType =
 
 export type SerializedBody = {
   type: SerializedBodyType,
+  parentBody: void | SerializedBody,
   entries: Array<BabelNodeStatement>,
 };
 
