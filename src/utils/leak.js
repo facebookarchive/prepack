@@ -62,7 +62,7 @@ function emitAllProperties(realm: Realm, O: ObjectValue) {
   // TODO: Emit symbol properties, prototype and other fields as well.
 }
 
-class TaintedValueVisitor {
+class ObjectValueLeakingVisitor {
   realm: Realm;
   // Values to visit if they're reachable.
   impureObjects: Set<ObjectValue>;
@@ -120,9 +120,9 @@ class TaintedValueVisitor {
     // if this object wasn't already tainted, we need to emit all properties
     // that had been set until this point, and mark it as tainted so that any
     // mutation and property access get tracked after this.
-    if (!obj.isTaintedObject()) {
+    if (!obj.isLeakedObject()) {
       emitAllProperties(this.realm, obj);
-      obj.makeTainted();
+      obj.leak();
     }
   }
 
@@ -176,9 +176,9 @@ class TaintedValueVisitor {
       if (value) {
         this.visitValue(value);
       }
-      // TODO: Tainting needs to be reverted if we're tracking effects.
-      if (!binding.isTainted) {
-        binding.isTainted = true;
+      // TODO: Leaking needs to be reverted if we're tracking effects.
+      if (!binding.hasLeaked) {
+        binding.hasLeaked = true;
         binding.initialValue = value;
       }
       // Delete the value. We will lazily set it to a derived abstract value
@@ -379,7 +379,7 @@ function ensureFrozenValue(realm, value, ast) {
 
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
-export function taintImpureValue(realm: Realm, value: Value, ast: BabelNodeExpression) {
+export function leakValue(realm: Realm, value: Value, ast: BabelNodeExpression) {
   let impureObjects = realm.impureObjects;
   if (impureObjects === undefined) {
     // We're not tracking a pure function. That means that we would track
@@ -392,7 +392,7 @@ export function taintImpureValue(realm: Realm, value: Value, ast: BabelNodeExpre
     // object can safely be assumed to be deeply immutable as far as this
     // pure function is concerned. However, any mutable object needs to
     // be tainted as possibly having changed to anything.
-    let visitor = new TaintedValueVisitor(realm, impureObjects);
+    let visitor = new ObjectValueLeakingVisitor(realm, impureObjects);
     visitor.visitValue(value);
   }
 }

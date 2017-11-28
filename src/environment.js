@@ -60,7 +60,9 @@ export function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
-  return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
+  return realm.generator.derive(types, values, [], (_, context) =>
+    context.serializeBinding(binding)
+  );
 }
 
 // ECMA262 8.1.1
@@ -103,7 +105,7 @@ export type Binding = {
   isGlobal: boolean,
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
-  isTainted: boolean,
+  hasLeaked: boolean,
   initialValue?: Value,
 };
 
@@ -150,7 +152,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
-      isTainted: false,
+      hasLeaked: false,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -176,7 +178,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
-      isTainted: false,
+      hasLeaked: false,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -238,7 +240,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
-      if (binding.isTainted) {
+      if (binding.hasLeaked) {
         invariant(realm.generator);
         realm.generator.emitBindingAssignment(binding, V);
       }
@@ -275,7 +277,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return the value currently bound to N in envRec.
-    if (binding.isTainted && !binding.value) {
+    if (binding.hasLeaked && !binding.value) {
       binding.value = deriveGetBinding(realm, binding);
     }
     invariant(binding.value);

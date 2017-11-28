@@ -249,7 +249,7 @@ export class ResidualHeapVisitor {
       let binding = r.bindings[n];
       invariant(!binding.deletable);
       let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
-      if (binding.isTainted) {
+      if (binding.hasLeaked) {
         value = binding.initialValue;
       }
       residualFunctionBinding = { value, modified: false, declarativeEnvironmentRecord: r };

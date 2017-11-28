@@ -61,7 +61,7 @@ export default class ObjectValue extends ConcreteValue {
     this.$Prototype = proto || realm.intrinsics.null;
     this.$Extensible = realm.intrinsics.true;
     this._isPartial = realm.intrinsics.false;
-    this._isTainted = realm.intrinsics.false;
+    this._hasLeaked = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
@@ -70,7 +70,7 @@ export default class ObjectValue extends ConcreteValue {
 
   static trackedPropertyNames = [
     "_isPartial",
-    "_isTainted",
+    "_hasLeaked",
     "_isSimple",
     "$ArrayIteratorNextIndex",
     "$DateValue",
@@ -231,7 +231,7 @@ export default class ObjectValue extends ConcreteValue {
   _isPartial: BooleanValue;
 
   // tainted objects
-  _isTainted: BooleanValue;
+  _hasLeaked: BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
@@ -295,8 +295,8 @@ export default class ObjectValue extends ConcreteValue {
     return this._isPartial.value;
   }
 
-  makeTainted(): void {
-    this._isTainted = this.$Realm.intrinsics.true;
+  leak(): void {
+    this._hasLeaked = this.$Realm.intrinsics.true;
     // Clear all properties. This object is now completely unknown.
     this.properties.clear(); // TODO: Track that this happens so that it can be undone by evaluateForEffects
     // TODO: Clear symbol properties, prototype and other fields as well.
@@ -304,8 +304,8 @@ export default class ObjectValue extends ConcreteValue {
     this.makeSimple(); // TODO: Don't assume it is once property access no longer fatal.
   }
 
-  isTaintedObject(): boolean {
-    return this._isTainted.value;
+  isLeakedObject(): boolean {
+    return this._hasLeaked.value;
   }
 
   isSimpleObject(): boolean {

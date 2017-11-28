@@ -95,7 +95,7 @@ function InternalSetProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, 
 function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, oldDesc?: Descriptor) {
   let generator = realm.generator;
   if (!generator) return;
-  if (!O.isIntrinsic() && !O.isTaintedObject()) return;
+  if (!O.isIntrinsic() && !O.isLeakedObject()) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
   invariant(typeof P === "string");

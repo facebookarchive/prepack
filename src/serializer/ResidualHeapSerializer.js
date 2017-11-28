@@ -231,8 +231,8 @@ export class ResidualHeapSerializer {
     objectPrototypeAlreadyEstablished: boolean = false,
     cleanupDummyProperties: ?Set<string>
   ) {
-    if (obj.isTaintedObject()) {
-      // Tainted objects always start out as empty and then they're mutated
+    if (obj.isLeakedObject()) {
+      // Leaked objects always start out as empty and then they're mutated
       // before their first use.
       return;
     }
