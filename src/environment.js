@@ -60,9 +60,7 @@ export function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
-  return realm.generator.derive(types, values, [], (_, context) =>
-    context.serializeBinding(binding)
-  );
+  return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
 }
 
 // ECMA262 8.1.1

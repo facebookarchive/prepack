@@ -402,7 +402,7 @@ export class Realm {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
-    // *other* object is unchange (pure). These objects are marked
+    // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
     try {

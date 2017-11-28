@@ -64,7 +64,7 @@ function emitAllProperties(realm: Realm, O: ObjectValue) {
 
 class ObjectValueLeakingVisitor {
   realm: Realm;
-  // Values to visit if they're reachable.
+  // ObjectValues to visit if they're reachable.
   objectsTrackedForLeaks: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
