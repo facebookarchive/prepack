@@ -367,11 +367,27 @@ export class ResidualHeapSerializer {
       invariant(consequent instanceof AbstractValue);
       let alternate = absVal.args[2];
       invariant(alternate instanceof AbstractValue);
-      let oldBody = this.emitter.beginEmitting("consequent", { type: "ConditionalAssignmentBranch", entries: [] });
+      let oldBody = this.emitter.beginEmitting(
+        "consequent",
+        {
+          type: "ConditionalAssignmentBranch",
+          parentBody: undefined,
+          entries: [],
+        },
+        /*isChild*/ true
+      );
       this._emitPropertiesWithComputedNames(obj, consequent);
       let consequentBody = this.emitter.endEmitting("consequent", oldBody);
       let consequentStatement = t.blockStatement(consequentBody.entries);
-      oldBody = this.emitter.beginEmitting("alternate", { type: "ConditionalAssignmentBranch", entries: [] });
+      oldBody = this.emitter.beginEmitting(
+        "alternate",
+        {
+          type: "ConditionalAssignmentBranch",
+          parentBody: undefined,
+          entries: [],
+        },
+        /*isChild*/ true
+      );
       this._emitPropertiesWithComputedNames(obj, alternate);
       let alternateBody = this.emitter.endEmitting("alternate", oldBody);
       let alternateStatement = t.blockStatement(alternateBody.entries);
@@ -1392,8 +1408,8 @@ export class ResidualHeapSerializer {
   }
 
   _withGeneratorScope(generator: Generator, callback: SerializedBody => void): Array<BabelNodeStatement> {
-    let newBody = { type: "Generator", entries: [] };
-    let oldBody = this.emitter.beginEmitting(generator, newBody);
+    let newBody = { type: "Generator", parentBody: undefined, entries: [] };
+    let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ true);
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
