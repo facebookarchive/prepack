@@ -200,8 +200,13 @@ export class VariableManager {
     let stackIndex = this._realm.contextStack.length - 1 - frameId;
     let context = this._realm.contextStack[stackIndex];
     let evalString = new StringValue(this._realm, expression);
-    let value = Functions.PerformEval(this._realm, evalString, context.realm, true, true);
-    return value;
+    return Functions.PerformEval(
+      this._realm,
+      evalString,
+      context.realm,
+      /* eval is in strict mode */ true,
+      /* is direct eval */ true
+    );
   }
 
   clean() {
