@@ -44,25 +44,33 @@ class PrepackDebugSession extends LoggingDebugSession {
     this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
       this.sendEvent(new StoppedEvent("entry", DebuggerConstants.PREPACK_THREAD_ID));
     });
-    this._adapterChannel.registerChannelEvent(
-      DebugMessage.BREAKPOINT_STOPPED_RESPONSE,
-      (response: DebuggerResponse) => {
-        let result = response.result;
-        invariant(result.kind === "breakpoint-stopped");
-        this.sendEvent(
-          new StoppedEvent(
-            "breakpoint " + `${result.filePath} ${result.line}:${result.column}`,
-            DebuggerConstants.PREPACK_THREAD_ID
-          )
-        );
-      }
-    );
+    this._adapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
+      let result = response.result;
+      invariant(result.kind === "stopped");
+      this.sendEvent(
+        new StoppedEvent(
+          `${result.reason}: ${result.filePath} ${result.line}:${result.column}`,
+          DebuggerConstants.PREPACK_THREAD_ID
+        )
+      );
+    });
+    this._adapterChannel.registerChannelEvent(DebugMessage.STEPINTO_RESPONSE, (response: DebuggerResponse) => {
+      let result = response.result;
+      invariant(result.kind === "stepInto");
+      this.sendEvent(
+        new StoppedEvent(
+          "Stepped into " + `${result.filePath} ${result.line}:${result.column}`,
+          DebuggerConstants.PREPACK_THREAD_ID
+        )
+      );
+    });
   }
 
   /**
    * The 'initialize' request is the first request called by the UI
    * to interrogate the features the debug adapter provides.
    */
+  // Override
   initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
     // Let the UI know that we can start accepting breakpoint requests.
     // The UI will end the configuration sequence by calling 'configurationDone' request.
@@ -76,6 +84,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.sendResponse(response);
   }
 
+  // Override
   configurationDoneRequest(
     response: DebugProtocol.ConfigurationDoneResponse,
     args: DebugProtocol.ConfigurationDoneArguments
@@ -88,6 +97,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.sendResponse(response);
   }
 
+  // Override
   launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
     // set up the communication channel
     this._adapterChannel = new AdapterChannel(args.debugInFilePath, args.debugOutFilePath);
@@ -112,6 +122,7 @@ class PrepackDebugSession extends LoggingDebugSession {
   /**
    * Request Prepack to continue running when it is stopped
   */
+  // Override
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // send a Run request to Prepack and try to send the next request
     this._adapterChannel.run(response.request_seq, (dbgResponse: DebuggerResponse) => {
@@ -119,6 +130,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     });
   }
 
+  // Override
   setBreakPointsRequest(
     response: DebugProtocol.SetBreakpointsResponse,
     args: DebugProtocol.SetBreakpointsArguments
@@ -164,6 +176,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     });
   }
 
+  // Override
   stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): void {
     this._adapterChannel.getStackFrames(response.request_seq, (dbgResponse: DebuggerResponse) => {
       let result = dbgResponse.result;
@@ -190,6 +203,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     });
   }
 
+  // Override
   threadsRequest(response: DebugProtocol.ThreadsResponse): void {
     // There will only be 1 thread, so respond immediately
     let thread: DebugProtocol.Thread = {
@@ -202,6 +216,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     this.sendResponse(response);
   }
 
+  // Override
   scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments): void {
     this._adapterChannel.getScopes(response.request_seq, args.frameId, (dbgResponse: DebuggerResponse) => {
       let result = dbgResponse.result;
@@ -223,6 +238,7 @@ class PrepackDebugSession extends LoggingDebugSession {
     });
   }
 
+  // Override
   variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
     this._adapterChannel.getVariables(
       response.request_seq,
@@ -246,6 +262,13 @@ class PrepackDebugSession extends LoggingDebugSession {
         this.sendResponse(response);
       }
     );
+  }
+
+  // Override
+  stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
+    this._adapterChannel.stepInto(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
   }
 }
 

@@ -141,6 +141,8 @@ export class UISession {
           });
         } else if (event.body.reason.startsWith("breakpoint")) {
           this._uiOutput("Prepack stopped on: " + event.body.reason);
+        } else {
+          this._uiOutput(event.body.reason);
         }
       }
     }
@@ -270,6 +272,13 @@ export class UISession {
           variablesReference: varRef,
         };
         this._sendVariablesRequest(variableArgs);
+        break;
+      case "stepInto":
+        if (parts.length !== 1) return false;
+        let stepIntoArgs: DebugProtocol.StepInArguments = {
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStepIntoRequest(stepIntoArgs);
         break;
       default:
         // invalid command
@@ -409,6 +418,17 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "variables",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStepIntoRequest(args: DebugProtocol.StepInArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "stepIn",
       arguments: args,
     };
     let json = JSON.stringify(message);
