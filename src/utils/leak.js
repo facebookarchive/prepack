@@ -75,8 +75,13 @@ class ObjectValueLeakingVisitor {
     this.visitedValues = new Set();
   }
 
-  _mark(val: Value): boolean {
-    if (!this.objectsTrackedForLeaks.has((val: any))) return false;
+  mustVisit(val: Value): boolean {
+    if (val instanceof ObjectValue) {
+      // For Objects we only need to visit it if it is tracked
+      // as a newly created object that might still be mutated.
+      // Abstract values gets their arguments visited.
+      if (!this.objectsTrackedForLeaks.has(val)) return false;
+    }
     if (this.visitedValues.has(val)) return false;
     this.visitedValues.add(val);
     return true;
@@ -338,27 +343,27 @@ class ObjectValueLeakingVisitor {
 
   visitValue(val: Value): void {
     if (val instanceof AbstractValue) {
-      if (this._mark(val)) this.visitAbstractValue(val);
+      if (this.mustVisit(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existance as templates for abstract objects (TODO #882).
-      this._mark(val);
+      this.mustVisit(val);
     } else if (val instanceof EmptyValue) {
-      this._mark(val);
+      this.mustVisit(val);
     } else if (val instanceof PrimitiveValue) {
-      this._mark(val);
+      this.mustVisit(val);
     } else if (val instanceof ProxyValue) {
-      if (this._mark(val)) this.visitValueProxy(val);
+      if (this.mustVisit(val)) this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
       invariant(val instanceof FunctionValue);
-      if (this._mark(val)) this.visitValueFunction(val);
+      if (this.mustVisit(val)) this.visitValueFunction(val);
     } else {
       invariant(val instanceof ObjectValue);
       if (val.originalConstructor !== undefined) {
         invariant(val instanceof ObjectValue);
-        if (this._mark(val)) this.visitValueObject(val);
+        if (this.mustVisit(val)) this.visitValueObject(val);
       } else {
-        if (this._mark(val)) this.visitValueObject(val);
+        if (this.mustVisit(val)) this.visitValueObject(val);
       }
     }
   }
