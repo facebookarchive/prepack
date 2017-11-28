@@ -17,7 +17,7 @@ import type {
   DebuggerResponse,
   StackframeResult,
   BreakpointsAddResult,
-  BreakpointStoppedResult,
+  StoppedResult,
   ReadyResult,
   Scope,
   ScopesResult,
@@ -28,7 +28,8 @@ import type {
   DebuggerRequestArguments,
   RunArguments,
   StackframeArguments,
-  FinishResult,
+  StepIntoArguments,
+  StoppedReason,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -43,13 +44,15 @@ export class MessageMarshaller {
     return `${requestID} ${messageType} ${JSON.stringify(breakpoints)}`;
   }
 
-  marshallBreakpointStopped(args: Breakpoint): string {
-    return `${this
-      ._lastRunRequestID} ${DebugMessage.BREAKPOINT_STOPPED_RESPONSE} ${args.filePath} ${args.line} ${args.column}`;
-  }
-
-  marshallPrepackFinish(): string {
-    return `${this._lastRunRequestID} ${DebugMessage.PREPACK_FINISH_RESPONSE}`;
+  marshallStoppedResponse(reason: StoppedReason, filePath: string, line: number, column: number): string {
+    let result: StoppedResult = {
+      kind: "stopped",
+      reason: reason,
+      filePath: filePath,
+      line: line,
+      column: column,
+    };
+    return `${this._lastRunRequestID} ${DebugMessage.STOPPED_RESPONSE} ${JSON.stringify(result)}`;
   }
 
   marshallDebuggerStart(requestID: number): string {
@@ -88,6 +91,10 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.VARIABLES_RESPONSE} ${JSON.stringify(variables)}`;
   }
 
+  marshallStepIntoRequest(requestID: number): string {
+    return `${requestID} ${DebugMessage.STEPINTO_COMMAND}`;
+  }
+
   unmarshallRequest(message: string): DebuggerRequest {
     let parts = message.split(" ");
     // each request must have a length and a command
@@ -120,6 +127,13 @@ export class MessageMarshaller {
       case DebugMessage.VARIABLES_COMMAND:
         args = this._unmarshallVariablesArguments(requestID, parts[2]);
         break;
+      case DebugMessage.STEPINTO_COMMAND:
+        this._lastRunRequestID = requestID;
+        let stepIntoArgs: StepIntoArguments = {
+          kind: "stepInto",
+        };
+        args = stepIntoArgs;
+        break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
@@ -142,16 +156,14 @@ export class MessageMarshaller {
       dbgResponse = this._unmarshallReadyResponse(requestID);
     } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
       dbgResponse = this._unmarshallBreakpointsAddResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.BREAKPOINT_STOPPED_RESPONSE) {
-      dbgResponse = this._unmarshallBreakpointStoppedResponse(requestID, parts.slice(2));
+    } else if (messageType === DebugMessage.STOPPED_RESPONSE) {
+      dbgResponse = this._unmarshallStoppedResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
       dbgResponse = this._unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.SCOPES_RESPONSE) {
       dbgResponse = this._unmarshallScopesResponse(requestID, parts.slice(2).join(" "));
     } else if (messageType === DebugMessage.VARIABLES_RESPONSE) {
       dbgResponse = this._unmarshallVariablesResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.PREPACK_FINISH_RESPONSE) {
-      dbgResponse = this._unmarshallFinishResponse(requestID);
     } else {
       invariant(false, "Unexpected response type");
     }
@@ -294,40 +306,29 @@ export class MessageMarshaller {
     }
   }
 
-  _unmarshallBreakpointStoppedResponse(requestID: number, parts: Array<string>): DebuggerResponse {
-    invariant(parts.length === 3, "Incorrect number of arguments in breakpoint stopped response");
-    let filePath = parts[0];
-    let line = parseInt(parts[1], 10);
-    invariant(!isNaN(line), "Invalid line number");
-    let column = parseInt(parts[2], 10);
-    invariant(!isNaN(column), "Invalid column number");
-    let result: BreakpointStoppedResult = {
-      kind: "breakpoint-stopped",
-      filePath: filePath,
-      line: line,
-      column: column,
-    };
-    let dbgResponse: DebuggerResponse = {
-      id: requestID,
-      result: result,
-    };
-    return dbgResponse;
+  _unmarshallStoppedResponse(requestID: number, responseStr: string): DebuggerResponse {
+    try {
+      let result = JSON.parse(responseStr);
+      invariant(result.kind === "stopped");
+      invariant(result.hasOwnProperty("reason"));
+      invariant(result.hasOwnProperty("filePath"));
+      invariant(result.hasOwnProperty("line"));
+      invariant(!isNaN(result.line));
+      invariant(result.hasOwnProperty("column"));
+      invariant(!isNaN(result.column));
+      let dbgResponse: DebuggerResponse = {
+        id: requestID,
+        result: result,
+      };
+      return dbgResponse;
+    } catch (e) {
+      throw new DebuggerError("Invalid response", e.message);
+    }
   }
 
   _unmarshallReadyResponse(requestID: number): DebuggerResponse {
     let result: ReadyResult = {
       kind: "ready",
-    };
-    let dbgResponse: DebuggerResponse = {
-      id: requestID,
-      result: result,
-    };
-    return dbgResponse;
-  }
-
-  _unmarshallFinishResponse(requestID: number): DebuggerResponse {
-    let result: FinishResult = {
-      kind: "finish",
     };
     let dbgResponse: DebuggerResponse = {
       id: requestID,
