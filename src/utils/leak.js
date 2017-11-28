@@ -21,7 +21,6 @@ import {
 import {
   BoundFunctionValue,
   ProxyValue,
-  SymbolValue,
   AbstractValue,
   EmptyValue,
   FunctionValue,
@@ -94,16 +93,13 @@ class ObjectValueLeakingVisitor {
   }
 
   visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
-    // visit properties
-    for (let [symbol, propertyBinding] of obj.symbols) {
-      invariant(propertyBinding);
-      let desc = propertyBinding.descriptor;
-      if (desc === undefined) continue; //deleted
-      this.visitDescriptor(desc);
-      this.visitValue(symbol);
+    // visit symbol properties
+    for (let [, propertyBindingValue] of obj.symbols) {
+      invariant(propertyBindingValue);
+      this.visitObjectProperty(propertyBindingValue);
     }
 
-    // visit properties
+    // visit string properties
     for (let [, propertyBindingValue] of obj.properties) {
       invariant(propertyBindingValue);
       this.visitObjectProperty(propertyBindingValue);
@@ -324,10 +320,6 @@ class ObjectValueLeakingVisitor {
         );
         return;
     }
-  }
-
-  visitValueSymbol(val: SymbolValue): void {
-    if (val.$Description) this.visitValue(val.$Description);
   }
 
   visitValueProxy(val: ProxyValue): void {
