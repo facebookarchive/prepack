@@ -1,4 +1,4 @@
-// skip lazy objects
+// does not contain:setPrototypeOf
 let x = global.__abstract ? __abstract("string", "('abc')") : 'abc';
 let err1 = new Error(x);
 err1.name = x;
