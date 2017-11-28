@@ -364,7 +364,8 @@ export class ResidualFunctions {
             let isConstructor = methodType === "constructor";
             let homeObject = functionValue.$HomeObject;
             invariant(homeObject instanceof ObjectValue);
-            invariant(classMethodKeyNode && (t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode)));
+            invariant(classMethodKeyNode);
+            invariant(t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode));
             // we use the $HomeObject as the key to get the class expression ast node
             funcOrClassNode = this._getOrCreateClassNode(homeObject);
             // if we are dealing with a constructor, don't serialize it if the original

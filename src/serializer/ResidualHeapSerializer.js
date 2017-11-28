@@ -1141,7 +1141,11 @@ export class ResidualHeapSerializer {
           if (!this.residualHeapInspector.canIgnoreProperty(val, key)) {
             let propertyValue = Get(this.realm, val, key);
 
-            if (key === "arguments" || key === "length" || key === "name" || key === "caller" || key === "prototype") {
+            if (key === "arguments" || key === "length" || key === "name" || key === "caller") {
+              properties.delete(key);
+            }
+            // prototype is a special case
+            if (key === "prototype") {
               properties.delete(key);
               this.serializedValues.add(propertyValue);
             }
@@ -1253,35 +1257,14 @@ export class ResidualHeapSerializer {
   }
 
   // Overridable.
-  serializeValueRawObject(val: ObjectValue): BabelNodeExpression {
-    let proto = val.$Prototype;
-    let createViaAuxiliaryConstructor =
-      proto !== this.realm.intrinsics.ObjectPrototype &&
-      this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
-      proto instanceof ObjectValue;
-
-    let classPrototype;
-    let isClass = false;
-    // if the object has a prototype that was a class (by check the constructor on the prototype)
-    if (proto instanceof ObjectValue && proto !== this.realm.intrinsics.ObjectPrototype) {
-      let constructor = Get(this.realm, proto, "constructor");
-      if (constructor instanceof ECMAScriptSourceFunctionValue && constructor.$FunctionKind === "classConstructor") {
-        classPrototype = constructor;
-      }
-      // check if this object is actually based from a class (by checking the constructor)
-      constructor = Get(this.realm, val, "constructor");
-      if (constructor instanceof ECMAScriptSourceFunctionValue && constructor.$FunctionKind === "classConstructor") {
-        isClass = true;
-      }
-    }
-
+  serializeValueRawObject(val: ObjectValue, isClass: boolean): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
     for (let [key, propertyBinding] of val.properties) {
       let descriptor = propertyBinding.descriptor;
       if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
-      if (!createViaAuxiliaryConstructor && this._canEmbedProperty(val, key, descriptor)) {
+      if (this._canEmbedProperty(val, key, descriptor)) {
         let propValue = descriptor.value;
         invariant(propValue instanceof Value);
         if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
@@ -1307,23 +1290,33 @@ export class ResidualHeapSerializer {
         props.push(t.objectProperty(serializedKey, voidExpression));
       }
     }
-    this._emitObjectProperties(val, remainingProperties, createViaAuxiliaryConstructor, dummyProperties, isClass);
+    this._emitObjectProperties(
+      val,
+      remainingProperties,
+      /*objectPrototypeAlreadyEstablished*/ false,
+      dummyProperties,
+      isClass
+    );
+    return t.objectExpression(props);
+  }
 
-    if (createViaAuxiliaryConstructor) {
-      this.needsAuxiliaryConstructor = true;
-      // if we know the class prototype, we can use that instead
-      let serializedProto = this.serializeValue(classPrototype ? classPrototype : proto);
-      return t.sequenceExpression([
-        t.assignmentExpression(
-          "=",
-          t.memberExpression(constructorExpression, t.identifier("prototype")),
-          serializedProto
-        ),
-        t.newExpression(constructorExpression, []),
-      ]);
-    } else {
-      return t.objectExpression(props);
-    }
+  _serializeValueObjectViaConstructor(
+    val: ObjectValue,
+    isClass: boolean,
+    classPrototype?: ECMAScriptSourceFunctionValue
+  ) {
+    let proto = val.$Prototype;
+    this._emitObjectProperties(val, val.properties, /*objectPrototypeAlreadyEstablished*/ true, undefined, isClass);
+    this.needsAuxiliaryConstructor = true;
+    let serializedProto = this.serializeValue(classPrototype ? classPrototype : proto);
+    return t.sequenceExpression([
+      t.assignmentExpression(
+        "=",
+        t.memberExpression(constructorExpression, t.identifier("prototype")),
+        serializedProto
+      ),
+      t.newExpression(constructorExpression, []),
+    ]);
   }
 
   _serializeValueObject(val: ObjectValue): BabelNodeExpression {
@@ -1401,7 +1394,36 @@ export class ResidualHeapSerializer {
       default:
         invariant(kind === "Object", "invariant established by visitor");
         invariant(this.$ParameterMap === undefined, "invariant established by visitor");
-        return this.serializeValueRawObject(val);
+
+        let proto = val.$Prototype;
+        let createViaAuxiliaryConstructor =
+          proto !== this.realm.intrinsics.ObjectPrototype &&
+          this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
+          proto instanceof ObjectValue;
+        let isClass = false;
+        let classPrototype;
+        // if the object has a prototype that was a class (by check the constructor on the prototype)
+        if (proto instanceof ObjectValue && proto !== this.realm.intrinsics.ObjectPrototype) {
+          // check if this object is actually based from a class (by checking the constructor)
+          let valConstructor = Get(this.realm, val, "constructor");
+          if (
+            valConstructor instanceof ECMAScriptSourceFunctionValue &&
+            valConstructor.$FunctionKind === "classConstructor"
+          ) {
+            isClass = true;
+          }
+          let protoConstructor = Get(this.realm, proto, "constructor");
+          if (
+            protoConstructor instanceof ECMAScriptSourceFunctionValue &&
+            protoConstructor.$FunctionKind === "classConstructor"
+          ) {
+            classPrototype = protoConstructor;
+          }
+        }
+
+        return createViaAuxiliaryConstructor
+          ? this._serializeValueObjectViaConstructor(val, isClass, classPrototype)
+          : this.serializeValueRawObject(val, isClass);
     }
   }
 

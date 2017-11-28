@@ -136,6 +136,17 @@ export class ResidualHeapVisitor {
       if (kind === "ReactElement" && (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner")) {
         continue;
       }
+      // we don't want to visit these as we handle the serialization ourselves
+      // via a different logic route for classes
+      if (
+        obj.$FunctionKind === "classConstructor" &&
+        (propertyBindingKey === "arguments" ||
+          propertyBindingKey === "length" ||
+          propertyBindingKey === "name" ||
+          propertyBindingKey === "caller")
+      ) {
+        continue;
+      }
       invariant(propertyBindingValue);
       this.visitObjectProperty(propertyBindingValue);
     }
