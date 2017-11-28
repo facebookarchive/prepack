@@ -1,3 +1,4 @@
+// does not contain:setPrototypeOf
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 
 try {
