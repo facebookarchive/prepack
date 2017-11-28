@@ -65,18 +65,18 @@ function emitAllProperties(realm: Realm, O: ObjectValue) {
 class ObjectValueLeakingVisitor {
   realm: Realm;
   // Values to visit if they're reachable.
-  impureObjects: Set<ObjectValue>;
+  objectsTrackedForLeaks: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
 
-  constructor(realm: Realm, impureObjects: Set<ObjectValue>) {
+  constructor(realm: Realm, objectsTrackedForLeaks: Set<ObjectValue>) {
     this.realm = realm;
-    this.impureObjects = impureObjects;
+    this.objectsTrackedForLeaks = objectsTrackedForLeaks;
     this.visitedValues = new Set();
   }
 
   _mark(val: Value): boolean {
-    if (!this.impureObjects.has((val: any))) return false;
+    if (!this.objectsTrackedForLeaks.has((val: any))) return false;
     if (this.visitedValues.has(val)) return false;
     this.visitedValues.add(val);
     return true;
@@ -255,7 +255,7 @@ class ObjectValueLeakingVisitor {
 
       invariant(
         !(record instanceof GlobalEnvironmentRecord),
-        "we should never reach the global scope because it is never impure in a pure function."
+        "we should never reach the global scope because it is never newly created in a pure function."
       );
       invariant(record instanceof DeclarativeEnvironmentRecord);
 
@@ -263,7 +263,7 @@ class ObjectValueLeakingVisitor {
 
       if (record instanceof FunctionEnvironmentRecord) {
         // If this is a function environment, we visit the function object which if it is
-        // impure will comeback here to visit its parent environment.
+        // tracked will comeback here to visit its parent environment.
         let fn = record.$FunctionObject;
         this.visitValue(fn);
         break;
@@ -380,10 +380,10 @@ function ensureFrozenValue(realm, value, ast) {
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
 export function leakValue(realm: Realm, value: Value, ast: BabelNodeExpression) {
-  let impureObjects = realm.impureObjects;
-  if (impureObjects === undefined) {
+  let objectsTrackedForLeaks = realm.createdObjectsTrackedForLeaks;
+  if (objectsTrackedForLeaks === undefined) {
     // We're not tracking a pure function. That means that we would track
-    // everything as impure. We'll assume that any object argument
+    // everything as leaked. We'll assume that any object argument
     // is invalid unless it's frozen.
     ensureFrozenValue(realm, value, ast);
   } else {
@@ -392,7 +392,7 @@ export function leakValue(realm: Realm, value: Value, ast: BabelNodeExpression) 
     // object can safely be assumed to be deeply immutable as far as this
     // pure function is concerned. However, any mutable object needs to
     // be tainted as possibly having changed to anything.
-    let visitor = new ObjectValueLeakingVisitor(realm, impureObjects);
+    let visitor = new ObjectValueLeakingVisitor(realm, objectsTrackedForLeaks);
     visitor.visitValue(value);
   }
 }

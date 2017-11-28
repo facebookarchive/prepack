@@ -45,8 +45,6 @@ export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 export type CreatedObjects = Set<ObjectValue>;
 export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
-export type ImpureObjects = Set<ObjectValue>;
-
 export class Tracer {
   beginEvaluateForEffects(state: any) {}
   endEvaluateForEffects(state: any, effects: void | Effects) {}
@@ -199,7 +197,7 @@ export class Realm {
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
-  impureObjects: void | ImpureObjects;
+  createdObjectsTrackedForLeaks: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
@@ -401,15 +399,16 @@ export class Realm {
   // also won't have effects on any objects or bindings that weren't created in this
   // call.
   evaluatePure<T>(f: () => T) {
-    let savedImpureObjects = this.impureObjects;
+    let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
-    // *other* object is unchange (pure).
-    this.impureObjects = new Set();
+    // *other* object is unchange (pure). These objects are marked
+    // as leaked if they're passed to abstract functions.
+    this.createdObjectsTrackedForLeaks = new Set();
     try {
       return f();
     } finally {
-      this.impureObjects = savedImpureObjects;
+      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
     }
   }
 
@@ -880,8 +879,8 @@ export class Realm {
     if (this.createdObjects !== undefined) {
       this.createdObjects.add(object);
     }
-    if (this.impureObjects !== undefined) {
-      this.impureObjects.add(object);
+    if (this.createdObjectsTrackedForLeaks !== undefined) {
+      this.createdObjectsTrackedForLeaks.add(object);
     }
   }
 
