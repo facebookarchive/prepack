@@ -11,16 +11,24 @@
 import type { StoppedData } from "./types.js";
 import { IsStatement } from "./../methods/is.js";
 import { BabelNode } from "babel-types";
+import invariant from "./../invariant.js";
 
-export class StepInto {
+export class Stepper {
+  _prevStopData: StoppedData;
+  isComplete(ast: BabelNode): boolean {
+    invariant(false, "Abstract method, please override");
+  }
+}
+
+export class StepperInto extends Stepper {
   constructor(filePath: string, line: number, column: number) {
+    super();
     this._prevStopData = {
       filePath: filePath,
       line: line,
       column: column,
     };
   }
-  _prevStopData: StoppedData;
 
   isComplete(ast: BabelNode): boolean {
     // we should only step to statements
