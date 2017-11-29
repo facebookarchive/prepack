@@ -144,7 +144,7 @@ export let ClosureRefReplacer = {
     }
 
     const functionExpression: BabelNodeFunctionExpression = path.node;
-    const functionTag = ((functionExpression.body: any): FunctionBodyAstNode).uniqueTag;
+    const functionTag = ((functionExpression.body: any): FunctionBodyAstNode).uniqueOrderedTag;
     if (!functionTag) {
       // Un-interpreted nested function.
       return;

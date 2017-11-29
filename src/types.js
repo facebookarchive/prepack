@@ -124,8 +124,9 @@ export type Descriptor = {
 };
 
 export type FunctionBodyAstNode = {
-  // Function body ast node will have uniqueTag after interpreted.
-  uniqueTag?: number,
+  // Function body ast node will have uniqueOrderedTag after being interpreted.
+  // This tag value is unique and sorted in ast DFS traversal ordering.
+  uniqueOrderedTag?: number,
 };
 
 export type PropertyBinding = {
