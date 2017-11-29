@@ -54,10 +54,8 @@ let reactCode = `
 
     class Component {
       constructor(props, context) {
-        this.props = props || {};
-        this.context = context || {};
-        this.refs = {};
-        this.state = {};
+        // we don't set any properties here
+        // this is simply a stub
       }
       getChildContext() {}
     }
