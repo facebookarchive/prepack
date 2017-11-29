@@ -640,6 +640,7 @@ export class ResidualHeapSerializer {
     // make sure we're not serializing a class method here
     if (val instanceof ECMAScriptSourceFunctionValue && this.residualFunctionInstances.has(val)) {
       let instance = this.residualFunctionInstances.get(val);
+      invariant(instance);
       let classProperties = instance.classProperties;
       // anything other than a class constructor should never go through serializeValue()
       // so we need to log a nice error message to the user
