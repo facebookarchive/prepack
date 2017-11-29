@@ -1498,6 +1498,7 @@ export class ResidualHeapSerializer {
             modifiedBindings,
             modifiedProperties: Map<PropertyBinding, void | Descriptor>,
             createdObjects,
+            transforms,
           ] = effects;
           let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
           // result -- ignore TODO: return the result from the function somehow
@@ -1514,6 +1515,7 @@ export class ResidualHeapSerializer {
             modifiedBindings,
             modifiedProperties,
             createdObjects,
+            transforms,
           ]);
           // Allows us to emit function declarations etc. inside of this additional
           // function instead of adding them at global scope
@@ -1545,6 +1547,9 @@ export class ResidualHeapSerializer {
           this.currentAdditionalFunction = additionalFunctionValue;
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
+          for (let transform of transforms) {
+            transform(body);
+          }
           rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
           // re-resolve initialized modules to include things from additional functions
           this.modules.resolveInitializedModules();

@@ -28,7 +28,11 @@ import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
 import { ReactStatistics, type ReactSerializerState } from "./types";
 import { Reconciler } from "../react/reconcilation.js";
-import { valueIsClassComponent } from "../react/utils.js";
+import {
+  valueIsClassComponent,
+  valueIsSimpleClassComponent,
+  convertSimpleClassComponentToFunctionalComponent,
+} from "../react/utils.js";
 import * as t from "babel-types";
 
 export class Functions {
@@ -122,7 +126,12 @@ export class Functions {
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
       let result = reconciler.render(componentType);
-      if (valueIsClassComponent(this.realm, componentType)) {
+      if (valueIsSimpleClassComponent(this.realm, componentType)) {
+        // if the root component was a class and is now simple, we can convert it from a class
+        // component to a functional component
+        convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, result);
+        this.writeEffects.set(componentType, result);
+      } else if (valueIsClassComponent(this.realm, componentType)) {
         let prototype = Get(this.realm, componentType, "prototype");
         invariant(prototype instanceof ObjectValue);
         let renderMethod = Get(this.realm, prototype, "render");

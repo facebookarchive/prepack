@@ -570,6 +570,7 @@ export class ResidualHeapVisitor {
         modifiedBindings,
         modifiedProperties: Map<PropertyBinding, void | Descriptor>,
         createdObjects,
+        transforms,
       ] = effects;
       // Need to do this fixup because otherwise we will skip over this function's
       // generator in the _getTarget scope lookup
@@ -590,6 +591,7 @@ export class ResidualHeapVisitor {
         modifiedBindings,
         modifiedProperties,
         createdObjects,
+        transforms,
       ]);
       // Allows us to emit function declarations etc. inside of this additional
       // function instead of adding them at global scope

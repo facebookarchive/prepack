@@ -101,19 +101,19 @@ function callBothFunctionsAndJoinTheirEffects(
   invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
   invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
 
-  let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateForEffects(() =>
+  let [compl1, gen1, bindings1, properties1, createdObj1, transforms1] = realm.evaluateForEffects(() =>
     EvaluateCall(func1, func1, ast, argVals, strictCode, env, realm)
   );
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateForEffects(() =>
+  let [compl2, gen2, bindings2, properties2, createdObj2, transforms2] = realm.evaluateForEffects(() =>
     EvaluateCall(func2, func2, ast, argVals, strictCode, env, realm)
   );
 
   let joinedEffects = Join.joinEffects(
     realm,
     cond,
-    [compl1, gen1, bindings1, properties1, createdObj1],
-    [compl2, gen2, bindings2, properties2, createdObj2]
+    [compl1, gen1, bindings1, properties1, createdObj1, transforms1],
+    [compl2, gen2, bindings2, properties2, createdObj2, transforms2]
   );
   let joinedCompletion = joinedEffects[0];
   if (joinedCompletion instanceof PossiblyNormalCompletion) {

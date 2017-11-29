@@ -30,7 +30,7 @@ import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
-import { getInitialProps, getInitialContext, createClassInstance } from "./components.js";
+import { getInitialProps, getInitialContext, createClassInstance, createSimpleClassInstance } from "./components.js";
 
 // ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
 // allowing the reconcilation to continue on other branches of the tree, the message
@@ -98,6 +98,59 @@ export class Reconciler {
       })
     );
   }
+
+  _renderComplexClassComponent(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
+  ): Value {
+    if (branchStatus !== "ROOT") {
+      throw new ExpectedBailOut(
+        "only complex class components at the root of __registerReactComponentRoot() are supported"
+      );
+    }
+    // create a new instance of this React class component
+    let instance = createClassInstance(this.realm, componentType, props, context);
+    // get the "render" method off the instance
+    let renderMethod = Get(this.realm, instance, "render");
+    invariant(
+      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
+      "Expected render method to be a FunctionValue with $Call method"
+    );
+    // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
+    return renderMethod.$Call(instance, []);
+  }
+
+  _renderSimpleClassComponent(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
+  ): Value {
+    // create a new simple instance of this React class component
+    let instance = createSimpleClassInstance(this.realm, componentType, props, context);
+    // get the "render" method off the instance
+    let renderMethod = Get(this.realm, instance, "render");
+    invariant(
+      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
+      "Expected render method to be a FunctionValue with $Call method"
+    );
+    // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
+    return renderMethod.$Call(instance, []);
+  }
+
+  _renderFunctionalComponent(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue
+  ) {
+    invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
+    return componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
+  }
+
   _renderComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue,
@@ -107,29 +160,50 @@ export class Reconciler {
   ) {
     let value;
     let childContext = context;
+
     if (valueIsClassComponent(this.realm, componentType)) {
-      if (branchStatus !== "ROOT") {
-        throw new ExpectedBailOut("only class components at the root of __registerReactComponentRoot() are supported");
+      // We first need to know what type of class component we're dealing with.
+      // A "simple" class component is defined as:
+      //
+      // - having only a "render" method or many method, i.e. render(), _renderHeader(), _renderFooter()
+      // - having no lifecycle events
+      // - having no state
+      // - having no instance variables
+      //
+      // the only things a class component should be able to access on "this" are:
+      // - this.props
+      // - this.context
+      // - this._someRenderMethodX() etc
+      //
+      // Otherwise, the class component is a "complex" one.
+      // To begin with, we don't know what type of component it is, so we try and render it as if it were
+      // a simple component using the above heuristics. If an error occurs during this process, we assume
+      // that the class wasn't simple, then try again with the "complex" heuristics.
+      if (componentType.$IsSimpleReactClassComponent === undefined) {
+        try {
+          value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
+          componentType.$IsSimpleReactClassComponent = true;
+        } catch (e) {
+          // mark the component as not simple
+          componentType.$IsSimpleReactClassComponent = false;
+        }
+      } else if (componentType.$IsSimpleReactClassComponent === true) {
+        value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
       }
-      // create a new instance of this React class component
-      let instance = createClassInstance(this.realm, componentType, props, context);
-      // get the "render" method off the instance
-      let renderMethod = Get(this.realm, instance, "render");
-      invariant(
-        renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
-        "Expected render method to be a FunctionValue with $Call method"
-      );
-      // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-      value = renderMethod.$Call(instance, []);
+      // handle the complex class component
+      if (componentType.$IsSimpleReactClassComponent === false) {
+        value = this._renderComplexClassComponent(componentType, props, context, branchStatus, branchState);
+      }
     } else {
-      invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
-      value = componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
+      value = this._renderFunctionalComponent(componentType, props, context);
     }
+    invariant(value !== undefined);
     return {
       result: this._resolveDeeply(value, context, branchStatus === "ROOT" ? "NO_BRANCH" : branchStatus, branchState),
       childContext,
     };
   }
+
   _resolveDeeply(
     value: Value,
     context: ObjectValue | AbstractObjectValue,
@@ -244,6 +318,7 @@ export class Reconciler {
       throw new ExpectedBailOut("unsupported value type during reconcilation");
     }
   }
+
   _assignBailOutMessage(reactElement: ObjectValue, message: string): void {
     // $BailOutReason is a field on ObjectValue that allows us to specify a message
     // that gets serialized as a comment node during the ReactElement serialization stage
@@ -254,6 +329,7 @@ export class Reconciler {
       reactElement.$BailOutReason = message;
     }
   }
+
   _resolveFragment(
     arrayValue: ArrayValue,
     context: ObjectValue | AbstractObjectValue,

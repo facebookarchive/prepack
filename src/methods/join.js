@@ -153,8 +153,8 @@ export class JoinImplementation {
   ): PossiblyNormalCompletion {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
-        let [, g, b, p, o] = pnc.alternateEffects;
-        let newAlternateEffects = [c, g, b, p, o];
+        let [, g, b, p, o, t] = pnc.alternateEffects;
+        let newAlternateEffects = [c, g, b, p, o, t];
         return new PossiblyNormalCompletion(
           c.value,
           pnc.joinCondition,
@@ -167,8 +167,8 @@ export class JoinImplementation {
       }
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
       let new_alternate = this.composePossiblyNormalCompletions(realm, pnc.alternate, c);
-      let [, g, b, p, o] = pnc.alternateEffects;
-      let newAlternateEffects = [new_alternate, g, b, p, o];
+      let [, g, b, p, o, t] = pnc.alternateEffects;
+      let newAlternateEffects = [new_alternate, g, b, p, o, t];
       return new PossiblyNormalCompletion(
         new_alternate.value,
         pnc.joinCondition,
@@ -181,8 +181,8 @@ export class JoinImplementation {
     } else {
       invariant(pnc.alternate instanceof AbruptCompletion);
       if (pnc.consequent instanceof Value) {
-        let [, g, b, p, o] = pnc.consequentEffects;
-        let newConsequentEffects = [c, g, b, p, o];
+        let [, g, b, p, o, t] = pnc.consequentEffects;
+        let newConsequentEffects = [c, g, b, p, o, t];
         return new PossiblyNormalCompletion(
           c.value,
           pnc.joinCondition,
@@ -195,8 +195,8 @@ export class JoinImplementation {
       }
       invariant(pnc.consequent instanceof PossiblyNormalCompletion);
       let new_consequent = this.composePossiblyNormalCompletions(realm, pnc.consequent, c);
-      let [, g, b, p, o] = pnc.consequentEffects;
-      let newConsequentEffects = [new_consequent, g, b, p, o];
+      let [, g, b, p, o, t] = pnc.consequentEffects;
+      let newConsequentEffects = [new_consequent, g, b, p, o, t];
       return new PossiblyNormalCompletion(
         new_consequent.value,
         pnc.joinCondition,
@@ -482,18 +482,18 @@ export class JoinImplementation {
   }
 
   joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects {
-    let [result1, gen1, bindings1, properties1, createdObj1] = e1;
-    let [result2, gen2, bindings2, properties2, createdObj2] = e2;
+    let [result1, gen1, bindings1, properties1, createdObj1, transforms1] = e1;
+    let [result2, gen2, bindings2, properties2, createdObj2, transforms2] = e2;
 
     let result = this.joinResults(realm, joinCondition, result1, result2, e1, e2);
     if (result1 instanceof AbruptCompletion) {
       if (!(result2 instanceof AbruptCompletion)) {
         invariant(result instanceof PossiblyNormalCompletion);
-        return [result, gen2, bindings2, properties2, createdObj2];
+        return [result, gen2, bindings2, properties2, createdObj2, transforms2];
       }
     } else if (result2 instanceof AbruptCompletion) {
       invariant(result instanceof PossiblyNormalCompletion);
-      return [result, gen1, bindings1, properties1, createdObj1];
+      return [result, gen1, bindings1, properties1, createdObj1, transforms1];
     }
 
     let bindings = this.joinBindings(realm, joinCondition, bindings1, bindings2);
@@ -515,7 +515,7 @@ export class JoinImplementation {
 
     let generator = joinGenerators(realm, joinCondition, gen1, gen2);
 
-    return [result, generator, bindings, properties, createdObjects];
+    return [result, generator, bindings, properties, createdObjects, transforms1.concat(transforms2)];
   }
 
   joinResults(
