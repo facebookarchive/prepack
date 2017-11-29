@@ -35,7 +35,7 @@ import {
   Value,
 } from "./index.js";
 import { isReactElement } from "../react/utils.js";
-import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
+import { ECMAScriptSourceFunctionValue, type NativeFunctionCallback } from "./index.js";
 import {
   IsDataDescriptor,
   OrdinaryOwnPropertyKeys,
@@ -476,6 +476,24 @@ export default class ObjectValue extends ConcreteValue {
 
   // ECMA262 9.1.6
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+    // If this object has a constructor and it's a classConstructor, set the $HomeObject of the property to it
+    if (this.properties.has("constructor")) {
+      let constructor = this.properties.get("constructor");
+      invariant(constructor !== undefined);
+      let ConstructorDesc = constructor.descriptor;
+
+      if (ConstructorDesc !== undefined) {
+        let value = Desc.value;
+        let constructorValue = ConstructorDesc.value;
+        if (
+          constructorValue instanceof ECMAScriptSourceFunctionValue &&
+          constructorValue.$FunctionKind === "classConstructor" &&
+          value instanceof ECMAScriptSourceFunctionValue
+        ) {
+          value.$HomeObject = constructorValue.$HomeObject;
+        }
+      }
+    }
     // 1. Return ? OrdinaryDefineOwnProperty(O, P, Desc).
     return Properties.OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc);
   }
