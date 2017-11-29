@@ -396,11 +396,9 @@ export class ResidualHeapVisitor {
     });
     let useClassProperties = false;
     let isConstructor = false;
-    let isComputed = val.$HasComputedName;
+    let isComputed = !!val.$HasComputedName;
 
-    if (val.$HomeObject instanceof AbstractValue) {
-      throw new FatalError("TODO: do not know how to handle an abstract HomeObject");
-    } else if (val.$HomeObject instanceof ObjectValue) {
+    if (val.$HomeObject instanceof ObjectValue) {
       // determine if our $HomeObject is actually a ES2015 class by looking at constructor
       let constructorValue = Get(this.realm, val.$HomeObject, "constructor");
       if (constructorValue instanceof AbstractValue) {

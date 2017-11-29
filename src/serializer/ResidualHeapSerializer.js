@@ -67,6 +67,7 @@ import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
 import type { Effects } from "../realm.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -636,6 +637,24 @@ export class ResidualHeapSerializer {
     let scopes = this.residualValues.get(val);
     invariant(scopes !== undefined);
 
+    // make sure we're not serializing a class method here
+    if (val instanceof ECMAScriptSourceFunctionValue && this.residualFunctionInstances.has(val)) {
+      let instance = this.residualFunctionInstances.get(val);
+      let classProperties = instance.classProperties;
+      // anything other than a class constructor should never go through serializeValue()
+      // so we need to log a nice error message to the user
+      if (classProperties !== undefined && classProperties.methodType !== "constructor") {
+        let error = new CompilerDiagnostic(
+          "a class method incorrectly went through the serializeValue() code path",
+          val.$ECMAScriptCode.loc,
+          "PP0020",
+          "FatalError"
+        );
+        this.realm.handleError(error);
+        throw new FatalError();
+      }
+    }
+
     let ref = this.getSerializeObjectIdentifierOptional(val);
     if (ref) {
       return ref;
@@ -1154,7 +1173,7 @@ export class ResidualHeapSerializer {
 
         let handleClassMethodValue = (classMethod, methodProps: MethodProperties) => {
           invariant(classMethod instanceof FunctionValue);
-          // skip processing if its the constructor
+          // skip processing if it's the constructor
           if (classMethod !== val) {
             this.serializedValues.add(classMethod);
             this._serializeValueFunction(classMethod, methodProps);

@@ -370,7 +370,8 @@ export class ResidualFunctions {
             funcOrClassNode = this._getOrCreateClassNode(homeObject);
             // if we are dealing with a constructor, don't serialize it if the original
             // had an empty user-land constructor (because we create a constructor behind the scenes for them)
-            if (!isConstructor || (isConstructor && !functionValue.$HasEmptyConstructor)) {
+            let hasEmptyConstructor = !!functionValue.$HasEmptyConstructor;
+            if (!isConstructor || (isConstructor && !hasEmptyConstructor)) {
               let methodParams = params.slice();
               let methodBody = ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement);
               // create the class method AST
