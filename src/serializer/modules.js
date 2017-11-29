@@ -14,7 +14,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { Get } from "../methods/index.js";
-import { AbruptCompletion, Completion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { Environment, Functions } from "../singletons.js";
 import { AbstractValue, Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
 import * as t from "babel-types";
@@ -169,18 +169,8 @@ export class ModuleTracer extends Tracer {
             const previousNumDelayedModules = this.statistics.delayedModules;
             do {
               try {
-                effects = realm.evaluateForEffects(() => {
-                  try {
-                    return performCall();
-                  } catch (e) {
-                    if (e instanceof Completion) return e;
-                    throw e;
-                  }
-                }, this);
-              } catch (err) {
-                if (err instanceof FatalError) effects = undefined;
-                else throw err;
-              }
+                effects = realm.evaluateForEffects(() => performCall(), this);
+              } catch (e) {}
 
               acceleratedModuleIds = [];
               if (isTopLevelRequire) {
@@ -216,7 +206,7 @@ export class ModuleTracer extends Tracer {
               }
             } while (acceleratedModuleIds.length > 0);
 
-            if (effects === undefined) {
+            if (effects === undefined || effects[0] instanceof AbruptCompletion) {
               console.log(`delaying require(${moduleIdValue})`);
               this.statistics.delayedModules = previousNumDelayedModules + 1;
               // So we are about to emit a delayed require(...) call.
@@ -263,16 +253,16 @@ export class ModuleTracer extends Tracer {
                 result = result.value;
                 realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
                 this.modules.recordModuleInitialized(moduleIdValue, result);
+              } else {
+                invariant(false);
               }
             }
           } finally {
             let popped = this.requireStack.pop();
             invariant(popped === moduleIdValue);
-            let message = "";
-            if (result instanceof ThrowCompletion) message = " threw an error";
-            this.log(`<require(${moduleIdValue})${message}`);
+            this.log(`<require(${moduleIdValue})`);
           }
-          if (result instanceof Completion) throw result;
+          invariant(result instanceof Value);
           return result;
         });
       }
