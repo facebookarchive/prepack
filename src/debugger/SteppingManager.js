@@ -13,14 +13,14 @@ import { BabelNode } from "babel-types";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import type { StoppedReason } from "./types.js";
 import invariant from "./../invariant.js";
-import { StepperInto } from "./Stepper.js";
+import { StepIntoStepper } from "./Stepper.js";
 
 export class SteppingManager {
   constructor(channel: DebugChannel) {
     this._channel = channel;
   }
   _channel: DebugChannel;
-  _stepInto: void | StepperInto;
+  _stepInto: void | StepIntoStepper;
 
   processStepCommand(kind: "in" | "over" | "out", currentNode: BabelNode) {
     if (kind === "in") {
@@ -32,7 +32,7 @@ export class SteppingManager {
   _processStepIn(ast: BabelNode) {
     invariant(this._stepInto === undefined);
     invariant(ast.loc && ast.loc.source);
-    this._stepInto = new StepperInto(ast.loc.source, ast.loc.start.line, ast.loc.start.column);
+    this._stepInto = new StepIntoStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column);
   }
 
   isStepComplete(ast: BabelNode): boolean {
