@@ -80,23 +80,23 @@ let reactCode = `
     PureComponent.prototype.isPureReactComponent = true;
 
     function forEachChildren() {
-      // TODO
+      throw new Error("TODO: React.Children.forEach is not yet supported");
     }
 
     function mapChildren() {
-      // TODO
+      throw new Error("TODO: React.Children.map is not yet supported");
     }
 
     function countChildren() {
-      // TODO
+      throw new Error("TODO: React.Children.count is not yet supported");
     }
 
     function onlyChild() {
-      // TODO
+      throw new Error("TODO: React.Children.only is not yet supported");
     }
 
     function toArray() {
-      // TODO
+      throw new Error("TODO: React.Children.toArray is not yet supported");
     }
 
     function createElement(type, config, children) {
