@@ -293,10 +293,10 @@ export class ResidualFunctions {
       let functionBody = t.blockStatement(rewrittenBody);
       let funcParams = params.slice();
       let funcOrClassNode;
-      let { classProperties } = instance;
+      let { classData } = instance;
 
-      if (classProperties !== undefined) {
-        let { methodType, classMethodKeyNode, classSuperNode, classMethodComputed } = classProperties;
+      if (classData !== undefined) {
+        let { methodType, classMethodKeyNode, classSuperNode, classMethodComputed } = classData;
 
         let isConstructor = methodType === "constructor";
         let homeObject = functionValue.$HomeObject;
@@ -355,11 +355,11 @@ export class ResidualFunctions {
         this.statistics.functionClones += instancesToSplice.length - 1;
 
         for (let instance of instancesToSplice) {
-          let { functionValue, residualFunctionBindings, scopeInstances, classProperties } = instance;
+          let { functionValue, residualFunctionBindings, scopeInstances, classData } = instance;
           let funcOrClassNode;
 
-          if (classProperties !== undefined) {
-            let { classSuperNode, classMethodKeyNode, methodType, classMethodComputed } = classProperties;
+          if (classData !== undefined) {
+            let { classSuperNode, classMethodKeyNode, methodType, classMethodComputed } = classData;
 
             let isConstructor = methodType === "constructor";
             let homeObject = functionValue.$HomeObject;

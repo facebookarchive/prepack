@@ -641,10 +641,10 @@ export class ResidualHeapSerializer {
     if (val instanceof ECMAScriptSourceFunctionValue && this.residualFunctionInstances.has(val)) {
       let instance = this.residualFunctionInstances.get(val);
       invariant(instance);
-      let classProperties = instance.classProperties;
+      let classData = instance.classData;
       // anything other than a class constructor should never go through serializeValue()
       // so we need to log a nice error message to the user
-      if (classProperties !== undefined && classProperties.methodType !== "constructor") {
+      if (classData !== undefined && classData.methodType !== "constructor") {
         let error = new CompilerDiagnostic(
           "a class method incorrectly went through the serializeValue() code path",
           val.$ECMAScriptCode.loc,
@@ -1146,11 +1146,11 @@ export class ResidualHeapSerializer {
         undelay();
       });
     }
-    let classProperties = instance.classProperties;
+    let classData = instance.classData;
 
-    if (classProperties !== undefined) {
+    if (classData !== undefined) {
       // handle the constructor for the class
-      if (classProperties.methodType === "constructor") {
+      if (classData.methodType === "constructor") {
         invariant(val.$HomeObject instanceof ObjectValue);
         let properties = new Map(val.properties);
 
@@ -1214,12 +1214,12 @@ export class ResidualHeapSerializer {
         }
 
         // assign the AST method key node for the "constructor"
-        classProperties.classMethodKeyNode = t.identifier("constructor");
+        classData.classMethodKeyNode = t.identifier("constructor");
 
         // handle class inheritance
         if (!(val.$Prototype instanceof NativeFunctionValue)) {
           let proto = val.$Prototype;
-          classProperties.classSuperNode = this.serializeValue(val.$Prototype);
+          classData.classSuperNode = this.serializeValue(val.$Prototype);
           if (proto.$HomeObject instanceof ObjectValue) {
             this.serializedValues.add(proto.$HomeObject);
           }
@@ -1235,16 +1235,16 @@ export class ResidualHeapSerializer {
       let { property, type } = methodProperties;
 
       if (type === "Get") {
-        classProperties.methodType = "get";
+        classData.methodType = "get";
       } else if (type === "Set") {
-        classProperties.methodType = "set";
+        classData.methodType = "set";
       }
       if (typeof property === "string") {
-        classProperties.classMethodKeyNode = t.identifier(property);
+        classData.classMethodKeyNode = t.identifier(property);
         // as we know the method name is a string again, we can remove the computed status
-        classProperties.classMethodComputed = false;
+        classData.classMethodComputed = false;
       } else if (property instanceof SymbolValue) {
-        classProperties.classMethodKeyNode = this.serializeValue(property);
+        classData.classMethodKeyNode = this.serializeValue(property);
       } else {
         invariant(false, "Unknown method type");
       }

@@ -40,7 +40,7 @@ export type AdditionalFunctionInfo = {
   instance: FunctionInstance,
 };
 
-export type FunctionClassProperties = {|
+export type FunctionClassData = {|
   methodType: "constructor" | "method" | "get" | "set",
   classSuperNode: void | BabelNodeIdentifier,
   classMethodKeyNode: void | BabelNodeExpression,
@@ -48,7 +48,7 @@ export type FunctionClassProperties = {|
 |};
 
 export type FunctionInstance = {
-  classProperties: void | FunctionClassProperties,
+  classData: void | FunctionClassData,
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,
