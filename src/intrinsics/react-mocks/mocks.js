@@ -54,8 +54,8 @@ let reactCode = `
 
     class Component {
       constructor(props, context) {
-        // we don't set any properties here
-        // this is simply a stub
+        // stub, this constructor is never evaluated
+        throw new Error("React.Component constructor should never evaluate");
       }
       getChildContext() {}
     }
@@ -64,17 +64,12 @@ let reactCode = `
 
     class PureComponent {
       constructor(props, context) {
-        this.props = props || {};
-        this.context = context || {};
-        this.refs = {};
-        this.state = {};
+        // stub, this constructor is never evaluated
+        throw new Error("React.PureComponent constructor should never evaluate");
       }
-      isReactComponent() {
-        return true;
-      }
-      getChildContext() {}
     }
 
+    PureComponent.prototype.isReactComponent = {};
     PureComponent.prototype.isPureReactComponent = true;
 
     function forEachChildren() {
