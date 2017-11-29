@@ -70,16 +70,15 @@ export class WidenImplementation {
 
   // Returns a new effects summary that includes both e1 and e2.
   widenEffects(realm: Realm, e1: Effects, e2: Effects): Effects {
-    let [result1, , bindings1, properties1, createdObj1, transforms1] = e1;
-    let [result2, , bindings2, properties2, createdObj2, transforms2] = e2;
+    let [result1, , bindings1, properties1, createdObj1] = e1;
+    let [result2, , bindings2, properties2, createdObj2] = e2;
 
     let result = this.widenResults(realm, result1, result2);
     let bindings = this.widenBindings(realm, bindings1, bindings2);
     let properties = this.widenPropertyBindings(realm, properties1, properties2, createdObj1, createdObj2);
     let createdObjects = new Set(); // Top, since the empty set knows nothing. There is no other choice for widen.
     let generator = new Generator(realm); // code subject to widening will be generated somewhere else
-    let transforms = transforms1.concat(transforms2);
-    return [result, generator, bindings, properties, createdObjects, transforms];
+    return [result, generator, bindings, properties, createdObjects];
   }
 
   widenResults(realm: Realm, result1: EvaluationResult, result2: EvaluationResult): PossiblyNormalCompletion | Value {

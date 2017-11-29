@@ -86,11 +86,11 @@ export function evaluateWithAbstractConditional(
   realm: Realm
 ): Value {
   // Evaluate consequent and alternate in sandboxes and get their effects.
-  let [compl1, gen1, bindings1, properties1, createdObj1, transforms1] = Path.withCondition(condValue, () => {
+  let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(condValue, () => {
     return realm.evaluateNodeForEffects(consequent, strictCode, env);
   });
 
-  let [compl2, gen2, bindings2, properties2, createdObj2, transforms2] = Path.withInverseCondition(condValue, () => {
+  let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(condValue, () => {
     return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
   });
 
@@ -99,8 +99,8 @@ export function evaluateWithAbstractConditional(
   let joinedEffects = Join.joinEffects(
     realm,
     condValue,
-    [compl1, gen1, bindings1, properties1, createdObj1, transforms1],
-    [compl2, gen2, bindings2, properties2, createdObj2, transforms2]
+    [compl1, gen1, bindings1, properties1, createdObj1],
+    [compl2, gen2, bindings2, properties2, createdObj2]
   );
   let completion = joinedEffects[0];
   if (completion instanceof PossiblyNormalCompletion) {

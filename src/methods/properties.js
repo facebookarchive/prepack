@@ -244,20 +244,13 @@ export class PropertiesImplementation {
     if (joinCondition !== undefined) {
       let descriptor2 = ownDesc.descriptor2;
       ownDesc = ownDesc.descriptor1;
-      let [compl1, gen1, bindings1, properties1, createdObj1, transform1] = Path.withCondition(joinCondition, () => {
+      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()))
           : construct_empty_effects(realm);
       });
       ownDesc = descriptor2;
-      let [
-        compl2,
-        gen2,
-        bindings2,
-        properties2,
-        createdObj2,
-        transform2,
-      ] = Path.withInverseCondition(joinCondition, () => {
+      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()))
           : construct_empty_effects(realm);
@@ -268,8 +261,8 @@ export class PropertiesImplementation {
       let joinedEffects = Join.joinEffects(
         realm,
         joinCondition,
-        [compl1, gen1, bindings1, properties1, createdObj1, transform1],
-        [compl2, gen2, bindings2, properties2, createdObj2, transform2]
+        [compl1, gen1, bindings1, properties1, createdObj1],
+        [compl2, gen2, bindings2, properties2, createdObj2]
       );
       let completion = joinedEffects[0];
       if (completion instanceof PossiblyNormalCompletion) {

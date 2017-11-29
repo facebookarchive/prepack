@@ -52,12 +52,12 @@ export default function(
   if (!lcond.mightNotBeTrue()) return ast.operator === "&&" ? env.evaluate(ast.right, strictCode) : lval;
 
   // Create empty effects for the case where ast.right is not evaluated
-  let [compl1, gen1, bindings1, properties1, createdObj1, transforms1] = construct_empty_effects(realm);
+  let [compl1, gen1, bindings1, properties1, createdObj1] = construct_empty_effects(realm);
   compl1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
   let wrapper = ast.operator === "&&" ? Path.withCondition : Path.withInverseCondition;
-  let [compl2, gen2, bindings2, properties2, createdObj2, transforms2] = wrapper(lval, () =>
+  let [compl2, gen2, bindings2, properties2, createdObj2] = wrapper(lval, () =>
     realm.evaluateNodeForEffects(ast.right, strictCode, env)
   );
 
@@ -70,15 +70,15 @@ export default function(
     joinedEffects = Join.joinEffects(
       realm,
       lval,
-      [compl2, gen2, bindings2, properties2, createdObj2, transforms2],
-      [lval, gen1, bindings1, properties1, createdObj1, transforms1]
+      [compl2, gen2, bindings2, properties2, createdObj2],
+      [lval, gen1, bindings1, properties1, createdObj1]
     );
   } else {
     joinedEffects = Join.joinEffects(
       realm,
       lval,
-      [lval, gen1, bindings1, properties1, createdObj1, transforms1],
-      [compl2, gen2, bindings2, properties2, createdObj2, transforms2]
+      [lval, gen1, bindings1, properties1, createdObj1],
+      [compl2, gen2, bindings2, properties2, createdObj2]
     );
   }
   let completion = joinedEffects[0];

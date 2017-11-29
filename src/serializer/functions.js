@@ -14,6 +14,7 @@ import { Completion, ThrowCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
+import type { AdditionalFunctionEffects } from "./types.js";
 import type { PropertyBinding } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
@@ -49,7 +50,7 @@ export class Functions {
   // maps back from FunctionValue to the expression string
   functionExpressions: Map<FunctionValue, string>;
   moduleTracer: ModuleTracer;
-  writeEffects: Map<FunctionValue, Effects>;
+  writeEffects: Map<FunctionValue, AdditionalFunctionEffects>;
 
   _generateAdditionalFunctionCallsFromInput(): Array<[FunctionValue, BabelNodeCallExpression]> {
     // lookup functions
@@ -115,6 +116,13 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
+  _createAdditionalEffects(effects: Effects): AdditionalFunctionEffects {
+    return {
+      effects,
+      transforms: [],
+    };
+  }
+
   checkReactRootComponents(statistics: ReactStatistics, react: ReactSerializerState): void {
     let recordedReactRootComponents = this.__generateAdditionalFunctions("__reactComponentRoots");
 
@@ -125,20 +133,21 @@ export class Functions {
         componentType instanceof ECMAScriptSourceFunctionValue,
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
-      let result = reconciler.render(componentType);
+      let effects = reconciler.render(componentType);
+      let additionalFunctionEffects = this._createAdditionalEffects(effects);
       if (valueIsSimpleClassComponent(this.realm, componentType)) {
         // if the root component was a class and is now simple, we can convert it from a class
         // component to a functional component
-        convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, result);
-        this.writeEffects.set(componentType, result);
+        convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
+        this.writeEffects.set(componentType, additionalFunctionEffects);
       } else if (valueIsClassComponent(this.realm, componentType)) {
         let prototype = Get(this.realm, componentType, "prototype");
         invariant(prototype instanceof ObjectValue);
         let renderMethod = Get(this.realm, prototype, "render");
         invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-        this.writeEffects.set(renderMethod, result);
+        this.writeEffects.set(renderMethod, additionalFunctionEffects);
       } else {
-        this.writeEffects.set(componentType, result);
+        this.writeEffects.set(componentType, additionalFunctionEffects);
       }
     }
   }
@@ -176,8 +185,9 @@ export class Functions {
       // When that happens we cannot prepack the bundle.
       // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
 
-      let e = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
-      this.writeEffects.set(funcValue, e);
+      let effects = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
+      let additionalFunctionEffects = this._createAdditionalEffects(effects);
+      this.writeEffects.set(funcValue, additionalFunctionEffects);
     }
 
     // check that functions are independent
@@ -189,7 +199,9 @@ export class Functions {
         // TODO #987: Make Additional Functions work with arguments
         throw new FatalError("TODO: implement arguments to additional functions");
       }
-      let e1 = this.writeEffects.get(fun1);
+      let additionalFunctionEffects = this.writeEffects.get(fun1);
+      invariant(additionalFunctionEffects !== undefined);
+      let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
       let fun1Name = this.functionExpressions.get(fun1) || fun1.intrinsicName || "unknown";
       if (e1[0] instanceof Completion) {
@@ -213,7 +225,7 @@ export class Functions {
     }
   }
 
-  getAdditionalFunctionValuesToEffects(): Map<FunctionValue, Effects> {
+  getAdditionalFunctionValuesToEffects(): Map<FunctionValue, AdditionalFunctionEffects> {
     return this.writeEffects;
   }
 

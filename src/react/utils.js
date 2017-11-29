@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects } from "../realm.js";
+import { Realm } from "../realm.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   Value,
@@ -23,7 +23,7 @@ import {
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import { type ReactSerializerState } from "../serializer/types.js";
+import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
 import invariant from "../invariant.js";
 import { Properties } from "../singletons.js";
 import traverse from "babel-traverse";
@@ -122,7 +122,7 @@ export function mapOverArrayValue(realm: Realm, arrayValue: ArrayValue, mapFunc:
 export function convertSimpleClassComponentToFunctionalComponent(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue,
-  effects: Effects
+  additionalFunctionEffects: AdditionalFunctionEffects
 ): void {
   let prototype = componentType.properties.get("prototype");
   invariant(prototype);
@@ -134,7 +134,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
   // give the function the functional components params
   componentType.$FormalParameters = [t.identifier("props"), t.identifier("context")];
   // add a transform to occur after the additional function has serialized the body of the class
-  effects[5].push((body: Array<BabelNodeStatement>) => {
+  additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
     // as this was a class before and is now a functional component, we need to replace
     // this.props and this.context to props and context, via the function arugments
     let funcNode = t.functionExpression(null, [], t.blockStatement(body));

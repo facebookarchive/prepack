@@ -42,8 +42,7 @@ export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
-export type Transforms = Array<Function>;
-export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects, Transforms];
+export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
 export class Tracer {
   beginEvaluateForEffects(state: any) {}
@@ -123,7 +122,7 @@ export class ExecutionContext {
 }
 
 export function construct_empty_effects(realm: Realm): Effects {
-  return [realm.intrinsics.empty, new Generator(realm), new Map(), new Map(), new Set(), []];
+  return [realm.intrinsics.empty, new Generator(realm), new Map(), new Map(), new Set()];
 }
 
 export class Realm {
@@ -190,7 +189,6 @@ export class Realm {
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
-  transforms: void | Transforms;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
@@ -426,7 +424,7 @@ export class Realm {
         let astCreatedObjects = this.createdObjects;
 
         // Return the captured state changes and evaluation result
-        result = [c, astGenerator, astBindings, astProperties, astCreatedObjects, []];
+        result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
         return result;
       } finally {
         // Roll back the state changes
@@ -511,13 +509,11 @@ export class Realm {
       (this.modifiedBindings: any),
       (this.modifiedProperties: any),
       (this.createdObjects: any),
-      (this.transforms: any),
     ];
     this.generator = new Generator(this);
     this.modifiedBindings = new Map();
     this.modifiedProperties = new Map();
     this.createdObjects = new Set();
-    this.transforms = [];
   }
 
   getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value): void | Effects {
@@ -527,8 +523,7 @@ export class Realm {
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
-    invariant(this.transforms !== undefined);
-    return [v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects, this.transforms];
+    return [v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects];
   }
 
   stopEffectCapture(completion: PossiblyNormalCompletion) {
@@ -546,14 +541,13 @@ export class Realm {
 
     // Restore saved state
     if (completion.savedEffects !== undefined) {
-      let [c, g, b, p, o, _t] = completion.savedEffects;
+      let [c, g, b, p, o] = completion.savedEffects;
       c;
       completion.savedEffects = undefined;
       this.generator = g;
       this.modifiedBindings = b;
       this.modifiedProperties = p;
       this.createdObjects = o;
-      this.transforms = _t;
     } else {
       invariant(false);
     }

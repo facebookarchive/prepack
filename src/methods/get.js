@@ -100,20 +100,13 @@ export function OrdinaryGet(
     if (joinCondition !== undefined) {
       let descriptor2 = desc.descriptor2;
       desc = desc.descriptor1;
-      let [compl1, gen1, bindings1, properties1, createdObj1, transforms1] = Path.withCondition(joinCondition, () => {
+      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
         return desc !== undefined
           ? realm.evaluateForEffects(() => OrdinaryGetHelper())
           : construct_empty_effects(realm);
       });
       desc = descriptor2;
-      let [
-        compl2,
-        gen2,
-        bindings2,
-        properties2,
-        createdObj2,
-        transforms2,
-      ] = Path.withInverseCondition(joinCondition, () => {
+      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
         return desc !== undefined
           ? realm.evaluateForEffects(() => OrdinaryGetHelper())
           : construct_empty_effects(realm);
@@ -124,8 +117,8 @@ export function OrdinaryGet(
       let joinedEffects = Join.joinEffects(
         realm,
         joinCondition,
-        [compl1, gen1, bindings1, properties1, createdObj1, transforms1],
-        [compl2, gen2, bindings2, properties2, createdObj2, transforms2]
+        [compl1, gen1, bindings1, properties1, createdObj1],
+        [compl2, gen2, bindings2, properties2, createdObj2]
       );
       let completion = joinedEffects[0];
       if (completion instanceof PossiblyNormalCompletion) {
