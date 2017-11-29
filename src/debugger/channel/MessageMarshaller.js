@@ -146,52 +146,24 @@ export class MessageMarshaller {
     return result;
   }
 
-  unmarshallResponse(message: string): DebuggerResponse {
-    let parts = message.split(" ");
-    let requestID = parseInt(parts[0], 10);
-    invariant(!isNaN(requestID));
-    let messageType = parts[1];
-    let dbgResponse;
-    if (messageType === DebugMessage.PREPACK_READY_RESPONSE) {
-      dbgResponse = this._unmarshallReadyResponse(requestID);
-    } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
-      dbgResponse = this._unmarshallBreakpointsAddResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.STOPPED_RESPONSE) {
-      dbgResponse = this._unmarshallStoppedResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
-      dbgResponse = this._unmarshallStackframesResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.SCOPES_RESPONSE) {
-      dbgResponse = this._unmarshallScopesResponse(requestID, parts.slice(2).join(" "));
-    } else if (messageType === DebugMessage.VARIABLES_RESPONSE) {
-      dbgResponse = this._unmarshallVariablesResponse(requestID, parts.slice(2).join(" "));
-    } else {
-      invariant(false, "Unexpected response type");
+  _unmarshallBreakpointsArguments(requestID: number, responseString: string): BreakpointsArguments {
+    let breakpoints = JSON.parse(responseString);
+    for (const breakpoint of breakpoints) {
+      invariant(breakpoint.hasOwnProperty("filePath"), "breakpoint missing filePath property");
+      invariant(breakpoint.hasOwnProperty("line"), "breakpoint missing line property");
+      invariant(breakpoint.hasOwnProperty("column"), "breakpoint missing column property");
+      invariant(!isNaN(breakpoint.line));
+      invariant(!isNaN(breakpoint.column));
     }
-    return dbgResponse;
+    let result: BreakpointsArguments = {
+      kind: "breakpoint",
+      breakpoints: breakpoints,
+    };
+    return result;
   }
 
-  _unmarshallBreakpointsArguments(requestID: number, breakpointsString: string): BreakpointsArguments {
-    try {
-      let breakpoints = JSON.parse(breakpointsString);
-      for (const breakpoint of breakpoints) {
-        invariant(breakpoint.hasOwnProperty("filePath"), "breakpoint missing filePath property");
-        invariant(breakpoint.hasOwnProperty("line"), "breakpoint missing line property");
-        invariant(breakpoint.hasOwnProperty("column"), "breakpoint missing column property");
-        invariant(!isNaN(breakpoint.line));
-        invariant(!isNaN(breakpoint.column));
-      }
-      let result: BreakpointsArguments = {
-        kind: "breakpoint",
-        breakpoints: breakpoints,
-      };
-      return result;
-    } catch (e) {
-      throw new DebuggerError("Invalid command", e.message);
-    }
-  }
-
-  _unmarshallScopesArguments(requestID: number, frameIdString: string): ScopesArguments {
-    let frameId = parseInt(frameIdString, 10);
+  _unmarshallScopesArguments(requestID: number, responseString: string): ScopesArguments {
+    let frameId = parseInt(responseString, 10);
     invariant(!isNaN(frameId));
     let result: ScopesArguments = {
       kind: "scopes",
@@ -200,8 +172,8 @@ export class MessageMarshaller {
     return result;
   }
 
-  _unmarshallVariablesArguments(requestID: number, varRefString: string): VariablesArguments {
-    let varRef = parseInt(varRefString, 10);
+  _unmarshallVariablesArguments(requestID: number, responseString: string): VariablesArguments {
+    let varRef = parseInt(responseString, 10);
     invariant(!isNaN(varRef));
     let result: VariablesArguments = {
       kind: "variables",
@@ -210,130 +182,121 @@ export class MessageMarshaller {
     return result;
   }
 
-  _unmarshallStackframesResponse(requestID: number, responseBody: string): DebuggerResponse {
+  unmarshallResponse(message: string): DebuggerResponse {
     try {
-      let frames = JSON.parse(responseBody);
-      invariant(Array.isArray(frames), "Stack frames is not an array");
-      for (const frame of frames) {
-        invariant(frame.hasOwnProperty("id"), "Stack frame is missing id");
-        invariant(frame.hasOwnProperty("fileName"), "Stack frame is missing filename");
-        invariant(frame.hasOwnProperty("line"), "Stack frame is missing line number");
-        invariant(frame.hasOwnProperty("column"), "Stack frame is missing column number");
-        invariant(frame.hasOwnProperty("functionName"), "Stack frame is missing function name");
-      }
-      let result: StackframeResult = {
-        kind: "stackframe",
-        stackframes: frames,
-      };
-      let dbgResponse: DebuggerResponse = {
-        id: requestID,
-        result: result,
-      };
-      return dbgResponse;
-    } catch (e) {
-      throw new DebuggerError("Invalid response", e.message);
-    }
-  }
-
-  _unmarshallScopesResponse(requestID: number, responseBody: string): DebuggerResponse {
-    try {
-      let scopes = JSON.parse(responseBody);
-      invariant(Array.isArray(scopes), "Scopes is not an array");
-      for (const scope of scopes) {
-        invariant(scope.hasOwnProperty("name"), "Scope is missing name");
-        invariant(scope.hasOwnProperty("variablesReference"), "Scope is missing variablesReference");
-        invariant(scope.hasOwnProperty("expensive"), "Scope is missing expensive");
-      }
-      let result: ScopesResult = {
-        kind: "scopes",
-        scopes: scopes,
-      };
-      let dbgResponse: DebuggerResponse = {
-        id: requestID,
-        result: result,
-      };
-      return dbgResponse;
-    } catch (e) {
-      throw new DebuggerError("Invalid response", e.message);
-    }
-  }
-
-  _unmarshallVariablesResponse(requestID: number, responseBody: string): DebuggerResponse {
-    try {
-      let variables = JSON.parse(responseBody);
-      invariant(Array.isArray(variables), "Variables is not an array");
-      for (const variable of variables) {
-        invariant(variable.hasOwnProperty("name"));
-        invariant(variable.hasOwnProperty("value"));
-        invariant(variable.hasOwnProperty("variablesReference"));
-      }
-      let result: VariablesResult = {
-        kind: "variables",
-        variables: variables,
-      };
-      let dbgResponse: DebuggerResponse = {
-        id: requestID,
-        result: result,
-      };
-      return dbgResponse;
-    } catch (e) {
-      throw new DebuggerError("Invalid response", e.message);
-    }
-  }
-
-  _unmarshallBreakpointsAddResponse(requestID: number, breakpointsString: string): DebuggerResponse {
-    try {
-      let breakpoints = JSON.parse(breakpointsString);
-      for (const breakpoint of breakpoints) {
-        invariant(breakpoint.hasOwnProperty("filePath"), "breakpoint missing filePath property");
-        invariant(breakpoint.hasOwnProperty("line"), "breakpoint missing line property");
-        invariant(breakpoint.hasOwnProperty("column"), "breakpoint missing column property");
-        invariant(!isNaN(breakpoint.line));
-        invariant(!isNaN(breakpoint.column));
+      let parts = message.split(" ");
+      let requestID = parseInt(parts[0], 10);
+      invariant(!isNaN(requestID));
+      let messageType = parts[1];
+      let dbgResult;
+      let resultString = parts.slice(2).join(" ");
+      if (messageType === DebugMessage.PREPACK_READY_RESPONSE) {
+        dbgResult = this._unmarshallReadyResult();
+      } else if (messageType === DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE) {
+        dbgResult = this._unmarshallBreakpointsAddResult(resultString);
+      } else if (messageType === DebugMessage.STOPPED_RESPONSE) {
+        dbgResult = this._unmarshallStoppedResult(resultString);
+      } else if (messageType === DebugMessage.STACKFRAMES_RESPONSE) {
+        dbgResult = this._unmarshallStackframesResult(resultString);
+      } else if (messageType === DebugMessage.SCOPES_RESPONSE) {
+        dbgResult = this._unmarshallScopesResult(resultString);
+      } else if (messageType === DebugMessage.VARIABLES_RESPONSE) {
+        dbgResult = this._unmarshallVariablesResult(resultString);
+      } else {
+        invariant(false, "Unexpected response type");
       }
 
-      let result: BreakpointsAddResult = {
-        kind: "breakpoint-add",
-        breakpoints: breakpoints,
-      };
       let dbgResponse: DebuggerResponse = {
         id: requestID,
-        result: result,
+        result: dbgResult,
       };
       return dbgResponse;
     } catch (e) {
-      throw new DebuggerError("Invalid response", e.message);
+      throw new DebuggerError("Invalid command", e.message);
     }
   }
 
-  _unmarshallStoppedResponse(requestID: number, responseStr: string): DebuggerResponse {
-    try {
-      let result = JSON.parse(responseStr);
-      invariant(result.kind === "stopped");
-      invariant(result.hasOwnProperty("reason"));
-      invariant(result.hasOwnProperty("filePath"));
-      invariant(result.hasOwnProperty("line"));
-      invariant(!isNaN(result.line));
-      invariant(result.hasOwnProperty("column"));
-      invariant(!isNaN(result.column));
-      let dbgResponse: DebuggerResponse = {
-        id: requestID,
-        result: result,
-      };
-      return dbgResponse;
-    } catch (e) {
-      throw new DebuggerError("Invalid response", e.message);
+  _unmarshallStackframesResult(resultString: string): StackframeResult {
+    let frames = JSON.parse(resultString);
+    invariant(Array.isArray(frames), "Stack frames is not an array");
+    for (const frame of frames) {
+      invariant(frame.hasOwnProperty("id"), "Stack frame is missing id");
+      invariant(frame.hasOwnProperty("fileName"), "Stack frame is missing filename");
+      invariant(frame.hasOwnProperty("line"), "Stack frame is missing line number");
+      invariant(frame.hasOwnProperty("column"), "Stack frame is missing column number");
+      invariant(frame.hasOwnProperty("functionName"), "Stack frame is missing function name");
     }
+    let result: StackframeResult = {
+      kind: "stackframe",
+      stackframes: frames,
+    };
+    return result;
   }
 
-  _unmarshallReadyResponse(requestID: number): DebuggerResponse {
+  _unmarshallScopesResult(resultString: string): ScopesResult {
+    let scopes = JSON.parse(resultString);
+    invariant(Array.isArray(scopes), "Scopes is not an array");
+    for (const scope of scopes) {
+      invariant(scope.hasOwnProperty("name"), "Scope is missing name");
+      invariant(scope.hasOwnProperty("variablesReference"), "Scope is missing variablesReference");
+      invariant(scope.hasOwnProperty("expensive"), "Scope is missing expensive");
+    }
+    let result: ScopesResult = {
+      kind: "scopes",
+      scopes: scopes,
+    };
+    return result;
+  }
+
+  _unmarshallVariablesResult(resultString: string): VariablesResult {
+    let variables = JSON.parse(resultString);
+    invariant(Array.isArray(variables), "Variables is not an array");
+    for (const variable of variables) {
+      invariant(variable.hasOwnProperty("name"));
+      invariant(variable.hasOwnProperty("value"));
+      invariant(variable.hasOwnProperty("variablesReference"));
+    }
+    let result: VariablesResult = {
+      kind: "variables",
+      variables: variables,
+    };
+    return result;
+  }
+
+  _unmarshallBreakpointsAddResult(resultString: string): BreakpointsAddResult {
+    let breakpoints = JSON.parse(resultString);
+    invariant(Array.isArray(breakpoints));
+    for (const breakpoint of breakpoints) {
+      invariant(breakpoint.hasOwnProperty("filePath"), "breakpoint missing filePath property");
+      invariant(breakpoint.hasOwnProperty("line"), "breakpoint missing line property");
+      invariant(breakpoint.hasOwnProperty("column"), "breakpoint missing column property");
+      invariant(!isNaN(breakpoint.line));
+      invariant(!isNaN(breakpoint.column));
+    }
+
+    let result: BreakpointsAddResult = {
+      kind: "breakpoint-add",
+      breakpoints: breakpoints,
+    };
+    return result;
+  }
+
+  _unmarshallStoppedResult(resultString: string): StoppedResult {
+    let result = JSON.parse(resultString);
+    invariant(result.kind === "stopped");
+    invariant(result.hasOwnProperty("reason"));
+    invariant(result.hasOwnProperty("filePath"));
+    invariant(result.hasOwnProperty("line"));
+    invariant(!isNaN(result.line));
+    invariant(result.hasOwnProperty("column"));
+    invariant(!isNaN(result.column));
+    return result;
+  }
+
+  _unmarshallReadyResult(): ReadyResult {
     let result: ReadyResult = {
       kind: "ready",
     };
-    let dbgResponse: DebuggerResponse = {
-      id: requestID,
-      result: result,
-    };
-    return dbgResponse;
+    return result;
   }
 }
