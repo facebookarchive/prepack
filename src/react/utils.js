@@ -25,6 +25,8 @@ import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { type ReactSerializerState } from "../serializer/types.js";
 import invariant from "../invariant.js";
 
+let reactElementSymbolKey = "react.element";
+
 export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
     let realm = val.$Realm;
@@ -35,6 +37,28 @@ export function isReactElement(val: Value): boolean {
     }
   }
   return false;
+}
+
+export function getReactElementSymbol(realm: Realm): SymbolValue {
+  let reactElementSymbol = realm.react.reactElementSymbol;
+  if (reactElementSymbol !== undefined) {
+    return reactElementSymbol;
+  }
+  let SymbolFor = realm.intrinsics.Symbol.properties.get("for");
+  if (SymbolFor !== undefined) {
+    let SymbolForDescriptor = SymbolFor.descriptor;
+
+    if (SymbolForDescriptor !== undefined) {
+      let SymbolForValue = SymbolForDescriptor.value;
+      if (SymbolForValue !== undefined && typeof SymbolForValue.$Call === "function") {
+        realm.react.reactElementSymbol = reactElementSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [
+          new StringValue(realm, reactElementSymbolKey),
+        ]);
+      }
+    }
+  }
+  invariant(reactElementSymbol instanceof SymbolValue, `ReactElement "$$typeof" property was not a symbol`);
+  return reactElementSymbol;
 }
 
 export function isTagName(ast: BabelNode): boolean {
