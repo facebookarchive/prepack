@@ -65,7 +65,6 @@ export default class ObjectValue extends ConcreteValue {
     this.properties = new Map();
     this.symbols = new Map();
     this.refuseSerialization = refuseSerialization;
-    this.$CanHoist = false;
   }
 
   static trackedPropertyNames = [
@@ -243,7 +242,6 @@ export default class ObjectValue extends ConcreteValue {
 
   // ReactElement
   $BailOutReason: void | string;
-  $CanHoist: boolean;
 
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();

@@ -51,10 +51,10 @@ import type {
   AdditionalFunctionInfo,
   ReactSerializerState,
   SerializedBody,
-  HoistedReactElements,
+  LazilyHoistedNodes,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics } from "./types.js";
+import { TimingStatistics, SerializerStatistics, BodyReference } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -66,6 +66,7 @@ import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
 import type { Effects } from "../realm.js";
+import { canHoistReactElement, canHoistFunction } from "../react/hoisting.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -197,7 +198,7 @@ export class ResidualHeapSerializer {
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   currentAdditionalFunction: void | FunctionValue;
   functionNames: Map<FunctionValue, string>;
-  hoistedReactElements: void | HoistedReactElements;
+  lazilyHoistedNodes: void | LazilyHoistedNodes;
 
   _getFunctionName(f: FunctionValue): string {
     let n = this.functionNames.get(f);
@@ -932,12 +933,12 @@ export class ResidualHeapSerializer {
 
     let id = this.getSerializeObjectIdentifier(val);
     // if we are hoisting this React element, put the assignment in the body
-    if (val.$CanHoist) {
+    if (canHoistReactElement(this.realm, val)) {
       // if the currentHoistedReactElements is not defined, we create it an emit the function call
       // this should only occur once per additional function
-      if (this.hoistedReactElements === undefined) {
+      if (this.lazilyHoistedNodes === undefined) {
         let funcId = t.identifier(this.functionNameGenerator.generate());
-        this.hoistedReactElements = {
+        this.lazilyHoistedNodes = {
           id: funcId,
           nodes: [],
         };
@@ -952,9 +953,9 @@ export class ResidualHeapSerializer {
       }
       // we then push the reactElement and its id into our list of elements to process after
       // the current additional function has serialzied
-      invariant(this.hoistedReactElements !== undefined);
-      invariant(Array.isArray(this.hoistedReactElements.nodes));
-      this.hoistedReactElements.nodes.push({ id, reactElement });
+      invariant(this.lazilyHoistedNodes !== undefined);
+      invariant(Array.isArray(this.lazilyHoistedNodes.nodes));
+      this.lazilyHoistedNodes.nodes.push({ id, astNode: reactElement });
     } else {
       let declar = t.variableDeclaration("var", [t.variableDeclarator(id, reactElement)]);
       this.emitter.emit(declar);
@@ -1126,7 +1127,12 @@ export class ResidualHeapSerializer {
     let undelay = () => {
       if (--delayed === 0) {
         invariant(instance);
-        instance.insertionPoint = this.emitter.getBodyReference();
+        if (canHoistFunction(this.realm, val)) {
+          instance.insertionPoint = new BodyReference(this.mainBody, this.mainBody.entries.length);
+          instance.containingAdditionalFunction = undefined;
+        } else {
+          instance.insertionPoint = this.emitter.getBodyReference();
+        }
       }
     };
     for (let [boundName, residualBinding] of residualBindings) {
@@ -1564,24 +1570,24 @@ export class ResidualHeapSerializer {
               residualBinding.additionalValueSerialized = this.serializeValue(newVal);
             }
             this.emitter.emit(t.returnStatement(this.serializeValue(result)));
-            if (this.hoistedReactElements !== undefined) {
-              let { id, nodes } = this.hoistedReactElements;
-              // create a function that initializes all the hoisted React elements
+            if (this.lazilyHoistedNodes !== undefined) {
+              let { id, nodes } = this.lazilyHoistedNodes;
+              // create a function that initializes all the hoisted nodes
               let func = t.functionExpression(
                 null,
                 [],
                 t.blockStatement(
-                  nodes.map(node => t.expressionStatement(t.assignmentExpression("=", node.id, node.reactElement)))
+                  nodes.map(node => t.expressionStatement(t.assignmentExpression("=", node.id, node.astNode)))
                 )
               );
               // push it to the mainBody of the module
               this.mainBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(id, func)]));
-              // output all the empty variable declarations that will hold the React elements lazily
+              // output all the empty variable declarations that will hold the nodes lazily
               this.mainBody.entries.push(
                 ...nodes.map(node => t.variableDeclaration("var", [t.variableDeclarator(node.id)]))
               );
-              // reset the hoistedReactElements so other additional functions work
-              this.hoistedReactElements = undefined;
+              // reset the lazilyHoistedNodes so other additional functions work
+              this.lazilyHoistedNodes = undefined;
             }
           };
           this.currentAdditionalFunction = additionalFunctionValue;

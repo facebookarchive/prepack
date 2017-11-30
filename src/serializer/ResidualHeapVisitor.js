@@ -42,7 +42,8 @@ import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { getSuggestedArrayLiteralLength } from "./utils.js";
 import { Environment } from "../singletons.js";
-import { canHoistReactElement, isReactElement } from "../react/utils.js";
+import { isReactElement } from "../react/utils.js";
+import { canHoistReactElement } from "../react/hoisting.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 
 export type Scope = FunctionValue | Generator;
@@ -416,14 +417,8 @@ export class ResidualHeapVisitor {
       case "ArrayBuffer":
         return;
       case "ReactElement":
-        // if we visiting during an additional function, we can check to see if
-        // we can hoist React elements to the main scope
-        let targetScope = this.commonScope.parent;
-        if (targetScope !== undefined) {
-          // this check sets the React element $CanHoist to "true"
-          // allowing it to serialize differently later
-          canHoistReactElement(this.realm, val, targetScope);
-        }
+        // check we can hoist a React Element
+        canHoistReactElement(this.realm, val, this);
         return;
       case "Date":
         let dateValue = val.$DateValue;
