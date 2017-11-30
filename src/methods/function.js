@@ -1118,6 +1118,9 @@ export class FunctionImplementation {
   // Call this only when a join point has been reached.
   incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
     let savedCompletion = realm.savedCompletion;
+    if (savedCompletion && savedCompletion.savedPathConditions) {
+      realm.pathConditions = savedCompletion.savedPathConditions;
+    }
     if (savedCompletion !== undefined) {
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;

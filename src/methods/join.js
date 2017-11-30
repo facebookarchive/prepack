@@ -151,6 +151,22 @@ export class JoinImplementation {
     pnc: PossiblyNormalCompletion,
     c: PossiblyNormalCompletion
   ): PossiblyNormalCompletion {
+    //merge the two pathConditions
+    let mergedPath = [];
+    mergedPath.concat(pnc.path);
+    mergedPath.concat(c.path);
+    let savedPathConditions = []
+    // saved paths are identical.
+    if (pnc.savedPathConditions) {
+      savedPathConditions = pnc.savedPathConditions
+    }
+    else if (c.savedPathConditions) {
+      savedPathConditions = c.savedPathConditions;
+    }
+    else {
+      savedPathConditions = [];
+    }
+
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         let [, g, b, p, o] = pnc.alternateEffects;
@@ -162,7 +178,9 @@ export class JoinImplementation {
           pnc.consequentEffects,
           c,
           newAlternateEffects,
-          pnc.savedEffects
+          mergedPath,
+          savedPathConditions,
+          pnc.savedEffects,
         );
       }
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
@@ -176,6 +194,8 @@ export class JoinImplementation {
         pnc.consequentEffects,
         new_alternate,
         newAlternateEffects,
+        mergedPath,
+        savedPathConditions,
         pnc.savedEffects
       );
     } else {
@@ -190,6 +210,8 @@ export class JoinImplementation {
           newConsequentEffects,
           pnc.alternate,
           pnc.alternateEffects,
+          mergedPath,
+          savedPathConditions,
           pnc.savedEffects
         );
       }
@@ -204,6 +226,8 @@ export class JoinImplementation {
         newConsequentEffects,
         pnc.alternate,
         pnc.alternateEffects,
+        mergedPath,
+        savedPathConditions,
         pnc.savedEffects
       );
     }
@@ -445,10 +469,10 @@ export class JoinImplementation {
     let empty_effects = construct_empty_effects(realm);
     let v = realm.intrinsics.empty;
     if (c.consequent instanceof ReturnCompletion) {
-      let pnc = new PossiblyNormalCompletion(v, c.joinCondition, v, empty_effects, c.alternate, c.alternateEffects);
+      let pnc = new PossiblyNormalCompletion(v, c.joinCondition, v, empty_effects, c.alternate, c.alternateEffects,[],[]);
       return [c.consequentEffects, pnc];
     } else if (c.alternate instanceof ReturnCompletion) {
-      let pnc = new PossiblyNormalCompletion(v, c.joinCondition, c.consequent, c.consequentEffects, v, empty_effects);
+      let pnc = new PossiblyNormalCompletion(v, c.joinCondition, c.consequent, c.consequentEffects, v, empty_effects, [],[]);
       return [c.alternateEffects, pnc];
     } else {
       invariant(false, "unbundleReturnCompletion needs an argument that contains a non nested return completion");
@@ -572,7 +596,7 @@ export class JoinImplementation {
         savedEffects = result2.savedEffects;
       }
       invariant(value instanceof Value);
-      return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2, savedEffects);
+      return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2, [joinCondition], [], savedEffects);
     }
     if (result2 instanceof AbruptCompletion) {
       let value = result1;
@@ -582,7 +606,7 @@ export class JoinImplementation {
         savedEffects = result1.savedEffects;
       }
       invariant(value instanceof Value);
-      return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2, savedEffects);
+      return new PossiblyNormalCompletion(value, joinCondition, result1, e1, result2, e2, [joinCondition], [], savedEffects);
     }
     if (result1 instanceof PossiblyNormalCompletion) {
       invariant(result2 instanceof Value);

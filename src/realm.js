@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType } from "./types.js";
+import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType} from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -33,7 +33,7 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { Environment, Functions, Join, Properties, To, Widen } from "./singletons.js";
+import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type {
   BabelNode,
   BabelNodeIdentifier,
@@ -605,9 +605,16 @@ export class Realm {
   composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
     if (this.savedCompletion === undefined) {
       this.savedCompletion = completion;
+      this.savedCompletion.savedPathConditions = this.pathConditions;
       this.captureEffects(completion);
     } else {
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
+    }
+    if (completion.consequent instanceof AbruptCompletion) {
+      Path.pushInverseAndRefine(completion.joinCondition)
+    }
+    else if (completion.alternate instanceof AbruptCompletion) {
+      Path.pushAndRefine(completion.joinCondition)
     }
     return completion.value;
   }

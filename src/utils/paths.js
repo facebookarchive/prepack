@@ -58,11 +58,29 @@ export class PathImplementation {
       realm.pathConditions = savedPath;
     }
   }
+
+  pushAndRefine(condition: AbstractValue) {
+    let realm = condition.$Realm;
+    let savedPath = realm.pathConditions;
+    realm.pathConditions = [];
+
+    pushPathCondition(condition);
+    pushRefinedConditions(savedPath);
+  }
+
+    pushInverseAndRefine(condition: AbstractValue) {
+      let realm = condition.$Realm;
+      let savedPath = realm.pathConditions;
+      realm.pathConditions = [];
+
+      pushInversePathCondition(condition);
+      pushRefinedConditions(savedPath);
+    }
 }
 
 // A path condition is an abstract value that is known to be true in a particular code path
 function pushPathCondition(condition: Value) {
-  invariant(condition.mightNotBeFalse()); // it is mistake to assert that false is true
+  invariant(condition.mightNotBeFalse(), "pushing false"); // it is mistake to assert that false is true
   if (condition instanceof ConcreteValue) return;
   if (!condition.mightNotBeTrue()) return;
   invariant(condition instanceof AbstractValue);
