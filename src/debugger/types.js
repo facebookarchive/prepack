@@ -26,6 +26,7 @@ export type DebuggerRequestArguments =
   | ScopesArguments
   | VariablesArguments
   | StepIntoArguments
+  | StepOverArguments
   | EvaluateArguments;
 
 export type PrepackLaunchArguments = {
@@ -78,6 +79,10 @@ export type VariablesArguments = {
 
 export type StepIntoArguments = {
   kind: "stepInto",
+};
+
+export type StepOverArguments = {
+  kind: "stepOver",
 };
 
 export type EvaluateArguments = {

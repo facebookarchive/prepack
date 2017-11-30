@@ -139,6 +139,11 @@ export class DebugServer {
         this._stepManager.processStepCommand("in", ast);
         this._onDebuggeeResume();
         return true;
+      case DebugMessage.STEPOVER_COMMAND:
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("over", ast);
+        this._onDebuggeeResume();
+        return true;
       case DebugMessage.EVALUATE_COMMAND:
         invariant(args.kind === "evaluate");
         this.processEvaluateCommand(requestID, args);

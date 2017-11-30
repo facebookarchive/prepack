@@ -289,6 +289,13 @@ export class UISession {
         };
         this._sendStepIntoRequest(stepIntoArgs);
         break;
+      case "stepOver":
+        if (parts.length !== 1) return false;
+        let stepOverArgs: DebugProtocol.NextArguments = {
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStepOverRequest(stepOverArgs);
+        break;
       case "eval":
         if (parts.length < 2) return false;
         let evalFrameId = parseInt(parts[1], 10);
@@ -456,6 +463,17 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "stepIn",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStepOverRequest(args: DebugProtocol.NextArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "next",
       arguments: args,
     };
     let json = JSON.stringify(message);

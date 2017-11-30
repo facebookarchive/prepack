@@ -272,6 +272,13 @@ class PrepackDebugSession extends LoggingDebugSession {
   }
 
   // Override
+  nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
+    this._adapterChannel.stepOver(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
+  }
+
+  // Override
   evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
     this._adapterChannel.evaluate(
       response.request_seq,
