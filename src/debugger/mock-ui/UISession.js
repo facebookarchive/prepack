@@ -290,15 +290,22 @@ export class UISession {
         this._sendStepIntoRequest(stepIntoArgs);
         break;
       case "eval":
-        if (parts.length < 3) return false;
+        if (parts.length < 2) return false;
         let evalFrameId = parseInt(parts[1], 10);
-        if (isNaN(evalFrameId)) return false;
-        let expression = parts.slice(2).join(" ");
-        let evaluateArgs: DebugProtocol.EvaluateArguments = {
-          expression: expression,
-          frameId: evalFrameId,
-        };
-        this._sendEvaluateRequest(evaluateArgs);
+        if (isNaN(evalFrameId)) {
+          let expression = parts.slice(1).join(" ");
+          let evaluateArgs: DebugProtocol.EvaluateArguments = {
+            expression: expression,
+          };
+          this._sendEvaluateRequest(evaluateArgs);
+        } else {
+          let expression = parts.slice(2).join(" ");
+          let evaluateArgs: DebugProtocol.EvaluateArguments = {
+            expression: expression,
+            frameId: evalFrameId,
+          };
+          this._sendEvaluateRequest(evaluateArgs);
+        }
         break;
       default:
         // invalid command
