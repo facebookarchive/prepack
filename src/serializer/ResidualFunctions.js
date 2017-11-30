@@ -159,7 +159,7 @@ export class ResidualFunctions {
         factoryId = this.locationService.getLocation(instances[0].functionValue);
       }
 
-      const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueTag;
+      const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueOrderedTag;
       invariant(functionUniqueTag);
 
       const functionInfo = this.residualFunctionInfos.get(functionBody);
@@ -169,27 +169,16 @@ export class ResidualFunctions {
     return factoryFunctionInfos;
   }
 
-  // Preserve residual functions' ordering from original source code.
+  // Preserve residual functions' ordering based on its ast dfs traversal order.
   // This is necessary to prevent unexpected code locality issues.
-  // [Algorithm] sort function based on following criterias:
-  // 1. source file alphabetically.
-  // 2. start line number.
-  // 3. start column number.
   _sortFunctionByOriginalOrdering(functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]>): void {
     functionEntries.sort((funcA, funcB) => {
-      const funcALocation = funcA[0].loc;
-      const funcBLocation = funcB[0].loc;
-      if (!funcALocation || !funcBLocation || !funcALocation.source || !funcBLocation.source) {
-        // Preserve the current ordering if there is no source location information available.
-        return -1;
-      }
-      if (funcALocation.source !== funcBLocation.source) {
-        return funcALocation.source.localeCompare(funcBLocation.source);
-      } else if (funcALocation.start.line !== funcBLocation.start.line) {
-        return funcALocation.start.line - funcBLocation.start.line;
-      } else {
-        return funcALocation.start.column - funcBLocation.start.column;
-      }
+      const funcAUniqueTag = ((funcA[0]: any): FunctionBodyAstNode).uniqueOrderedTag;
+      invariant(funcAUniqueTag);
+
+      const funcBUniqueTag = ((funcB[0]: any): FunctionBodyAstNode).uniqueOrderedTag;
+      invariant(funcBUniqueTag);
+      return funcAUniqueTag - funcBUniqueTag;
     });
   }
 
@@ -393,7 +382,7 @@ export class ResidualFunctions {
       if (!this._shouldUseFactoryFunction(funcBody, normalInstances)) {
         naiveProcessInstances(normalInstances);
       } else if (normalInstances.length > 0) {
-        const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueTag;
+        const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueOrderedTag;
         invariant(functionUniqueTag);
         const factoryInfo = factoryFunctionInfos.get(functionUniqueTag);
         invariant(factoryInfo);

@@ -777,7 +777,7 @@ export class FunctionImplementation {
     F.$FormalParameters = ParameterList;
 
     // 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
-    ((Body: any): FunctionBodyAstNode).uniqueTag = realm.functionBodyUniqueTagSeed++;
+    ((Body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
     F.$ECMAScriptCode = Body;
 
     // 8. Set the [[ScriptOrModule]] internal slot of F to GetActiveScriptOrModule().
