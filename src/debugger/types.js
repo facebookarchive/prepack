@@ -153,7 +153,3 @@ export type StoppedData = {
   line: number,
   column: number,
 };
-
-export type StepIntoData = {
-  prevStopData: void | StoppedData,
-};
