@@ -53,6 +53,7 @@ import type {
   AdditionalFunctionInfo,
   ReactSerializerState,
   SerializedBody,
+  ClassMethodInstance,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics } from "./types.js";
@@ -65,7 +66,12 @@ import { factorifyObjects } from "./factorify.js";
 import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/internalizer.js";
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
-import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
+import {
+  commonAncestorOf,
+  getSuggestedArrayLiteralLength,
+  withDescriptorValue,
+  ClassProprtiesToIgnore,
+} from "./utils.js";
 import type { Effects } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
@@ -74,11 +80,6 @@ function commentStatement(text: string) {
   s.leadingComments = [({ type: "BlockComment", value: text }: any)];
   return s;
 }
-
-type MethodProperties = {
-  type: "Value" | "Get" | "Set",
-  property: string | SymbolValue,
-};
 
 export class ResidualHeapSerializer {
   constructor(
@@ -89,6 +90,7 @@ export class ResidualHeapSerializer {
     residualHeapInspector: ResidualHeapInspector,
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
+    residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
     referencedDeclaredValues: Set<AbstractValue>,
@@ -142,6 +144,7 @@ export class ResidualHeapSerializer {
       this.preludeGenerator.createNameGenerator("__scope_"),
       residualFunctionInfos,
       residualFunctionInstances,
+      residualClassMethodInstances,
       additionalFunctionValueInfos,
       this.additionalFunctionValueNestedFunctions
     );
@@ -151,6 +154,7 @@ export class ResidualHeapSerializer {
     this.residualHeapInspector = residualHeapInspector;
     this.residualValues = residualValues;
     this.residualFunctionInstances = residualFunctionInstances;
+    this.residualClassMethodInstances = residualClassMethodInstances;
     this.residualFunctionInfos = residualFunctionInfos;
     this._options = options;
     this.referencedDeclaredValues = referencedDeclaredValues;
@@ -189,6 +193,7 @@ export class ResidualHeapSerializer {
   residualHeapInspector: ResidualHeapInspector;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
+  residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
   residualFunctions: ResidualFunctions;
@@ -638,13 +643,12 @@ export class ResidualHeapSerializer {
     invariant(scopes !== undefined);
 
     // make sure we're not serializing a class method here
-    if (val instanceof ECMAScriptSourceFunctionValue && this.residualFunctionInstances.has(val)) {
-      let instance = this.residualFunctionInstances.get(val);
-      invariant(instance);
-      let classData = instance.classData;
+    if (val instanceof ECMAScriptSourceFunctionValue && this.residualClassMethodInstances.has(val)) {
+      let classMethodInstance = this.residualClassMethodInstances.get(val);
+      invariant(classMethodInstance);
       // anything other than a class constructor should never go through serializeValue()
       // so we need to log a nice error message to the user
-      if (classData !== undefined && classData.methodType !== "constructor") {
+      if (classMethodInstance.methodType !== "constructor") {
         let error = new CompilerDiagnostic(
           "a class method incorrectly went through the serializeValue() code path",
           val.$ECMAScriptCode.loc,
@@ -1092,7 +1096,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeValueFunction(val: FunctionValue, methodProperties?: MethodProperties): void | BabelNodeExpression {
+  _serializeValueFunction(val: FunctionValue): void | BabelNodeExpression {
     if (val instanceof BoundFunctionValue) {
       this._emitObjectProperties(val);
       return t.callExpression(
@@ -1146,111 +1150,128 @@ export class ResidualHeapSerializer {
         undelay();
       });
     }
-    let classData = instance.classData;
-
-    if (classData !== undefined) {
-      // handle the constructor for the class
-      if (classData.methodType === "constructor") {
-        invariant(val.$HomeObject instanceof ObjectValue);
-        let properties = new Map(val.properties);
-
-        // we visit all of these as these, as they form part of the constructor for the class
-        // but we want to serialize them out as class methods in the ResidualFunctions
-        // rather than via the typical Prepack route of serializing properties
-        for (let [key] of val.properties) {
-          if (!this.residualHeapInspector.canIgnoreProperty(val, key)) {
-            let propertyValue = Get(this.realm, val, key);
-
-            if (key === "arguments" || key === "length" || key === "name" || key === "caller") {
-              properties.delete(key);
-            }
-            // prototype is a special case
-            if (key === "prototype") {
-              properties.delete(key);
-              this.serializedValues.add(propertyValue);
-            }
-          }
-        }
-
-        let handleClassMethodValue = (classMethod, methodProps: MethodProperties) => {
-          invariant(classMethod instanceof FunctionValue);
-          // skip processing if it's the constructor
-          if (classMethod !== val) {
-            this.serializedValues.add(classMethod);
-            this._serializeValueFunction(classMethod, methodProps);
-          }
-        };
-
-        let handleClassMethodDescriptor = (_descriptor, property: string | SymbolValue) => {
-          if (_descriptor.value !== undefined) {
-            handleClassMethodValue(_descriptor.value, { type: "Value", property });
-          }
-          if (_descriptor.get !== undefined) {
-            handleClassMethodValue(_descriptor.get, { type: "Get", property });
-          }
-          if (_descriptor.set !== undefined) {
-            handleClassMethodValue(_descriptor.set, { type: "Set", property });
-          }
-        };
-
-        // non-symbol properties
-        for (let [string, method] of val.$HomeObject.properties) {
-          invariant(typeof string === "string");
-          let methodDescriptor = method.descriptor;
-
-          if (methodDescriptor !== undefined) {
-            handleClassMethodDescriptor(methodDescriptor, string);
-          }
-        }
-
-        // symbol properties
-        for (let [symbol, method] of val.$HomeObject.symbols) {
-          invariant(symbol instanceof SymbolValue);
-          let methodDescriptor = method.descriptor;
-
-          if (methodDescriptor !== undefined) {
-            handleClassMethodDescriptor(methodDescriptor, symbol);
-          }
-        }
-
-        // assign the AST method key node for the "constructor"
-        classData.classMethodKeyNode = t.identifier("constructor");
-
-        // handle class inheritance
-        if (!(val.$Prototype instanceof NativeFunctionValue)) {
-          let proto = val.$Prototype;
-          classData.classSuperNode = this.serializeValue(val.$Prototype);
-          if (proto.$HomeObject instanceof ObjectValue) {
-            this.serializedValues.add(proto.$HomeObject);
-          }
-        }
-
-        // pass in the properties and set it so we don't serialize the prototype
-        undelay();
-        this._emitObjectProperties(val, properties, undefined, undefined, true);
+    if (val.$FunctionKind === "classConstructor") {
+      let homeObject = val.$HomeObject;
+      if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
+        this._serializeClass(val, homeObject, undelay);
         return;
-      }
-      // otherwise handle with the name key for the non-constructor method
-      invariant(methodProperties !== undefined);
-      let { property, type } = methodProperties;
-
-      if (type === "Get") {
-        classData.methodType = "get";
-      } else if (type === "Set") {
-        classData.methodType = "set";
-      }
-      if (typeof property === "string") {
-        classData.classMethodKeyNode = t.identifier(property);
-        // as we know the method name is a string again, we can remove the computed status
-        classData.classMethodComputed = false;
-      } else if (property instanceof SymbolValue) {
-        classData.classMethodKeyNode = this.serializeValue(property);
-      } else {
-        invariant(false, "Unknown method type");
       }
     }
     undelay();
     this._emitObjectProperties(val);
+  }
+
+  _serializeClass(classFunc: ECMAScriptSourceFunctionValue, classPrototype: ObjectValue, undelay: Function): void {
+    let classMethodInstance = this.residualClassMethodInstances.get(classFunc);
+
+    invariant(classMethodInstance !== undefined);
+
+    let classProtoId;
+    let hasSerializedClassProtoId = false;
+    let propertiesToSerialize = new Map();
+
+    let serializeClassPrototypeId = () => {
+      if (!hasSerializedClassProtoId) {
+        let classId = this.getSerializeObjectIdentifier(classFunc);
+        classProtoId = t.identifier(this.valueNameGenerator.generate());
+        hasSerializedClassProtoId = true;
+        this.emitter.emit(
+          t.variableDeclaration("var", [
+            t.variableDeclarator(classProtoId, t.memberExpression(classId, t.identifier("prototype"))),
+          ])
+        );
+      }
+    };
+
+    let serializeClassMethod = (propertyNameOrSymbol, methodFunc) => {
+      invariant(methodFunc instanceof ECMAScriptSourceFunctionValue);
+      if (methodFunc !== classFunc) {
+        // if the method does not have a $HomeObject, it's not a class method
+        if (methodFunc.$HomeObject !== undefined) {
+          this.serializedValues.add(methodFunc);
+          this._serializeClassMethod(propertyNameOrSymbol, methodFunc);
+        } else {
+          // if the method is not part of the class, we have to assign it to the prototype
+          // we can't serialize via emitting the properties as that will emit all
+          // the prototype and we only want to mutate the prototype here
+          serializeClassPrototypeId();
+          let methodId = this.serializeValue(methodFunc);
+          let name;
+
+          if (typeof propertyNameOrSymbol === "string") {
+            name = t.identifier(propertyNameOrSymbol);
+          } else {
+            name = this.serializeValue(propertyNameOrSymbol);
+          }
+          invariant(classProtoId !== undefined);
+          this.emitter.emit(
+            t.expressionStatement(t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodId))
+          );
+        }
+      }
+    };
+
+    let serializeClassProperty = (propertyNameOrSymbol, propertyValue) => {
+      // we handle the prototype via class syntax
+      if (propertyNameOrSymbol === "prototype") {
+        this.serializedValues.add(propertyValue);
+      } else if (propertyValue instanceof ECMAScriptSourceFunctionValue && propertyValue.$HomeObject === classFunc) {
+        serializeClassMethod(propertyNameOrSymbol, propertyValue);
+      } else {
+        let prop = classFunc.properties.get(propertyNameOrSymbol);
+        invariant(prop);
+        propertiesToSerialize.set(propertyNameOrSymbol, prop);
+      }
+    };
+
+    // find the all the properties on the class that we need to serialize
+    for (let [propertyName, method] of classFunc.properties) {
+      if (
+        !this.residualHeapInspector.canIgnoreProperty(classFunc, propertyName) &&
+        !ClassProprtiesToIgnore.has(propertyName)
+      ) {
+        withDescriptorValue(propertyName, method.descriptor, serializeClassProperty);
+      }
+    }
+    // pass in the properties and set it so we don't serialize the prototype
+    undelay();
+    this._emitObjectProperties(classFunc, propertiesToSerialize, undefined, undefined, true);
+
+    // handle non-symbol properties
+    for (let [propertyName, method] of classPrototype.properties) {
+      withDescriptorValue(propertyName, method.descriptor, serializeClassMethod);
+    }
+    // handle symbol properties
+    for (let [symbol, method] of classPrototype.symbols) {
+      withDescriptorValue(symbol, method.descriptor, serializeClassMethod);
+    }
+    // assign the AST method key node for the "constructor"
+    classMethodInstance.classMethodKeyNode = t.identifier("constructor");
+
+    // handle class inheritance
+    if (!(classFunc.$Prototype instanceof NativeFunctionValue)) {
+      let proto = classFunc.$Prototype;
+      classMethodInstance.classSuperNode = this.serializeValue(classFunc.$Prototype);
+      if (proto.$HomeObject instanceof ObjectValue) {
+        this.serializedValues.add(proto.$HomeObject);
+      }
+    }
+  }
+
+  _serializeClassMethod(key: string | SymbolValue, methodFunc: ECMAScriptSourceFunctionValue): void {
+    let classMethodInstance = this.residualClassMethodInstances.get(methodFunc);
+
+    invariant(classMethodInstance !== undefined);
+    if (typeof key === "string") {
+      classMethodInstance.classMethodKeyNode = t.identifier(key);
+      // as we know the method name is a string again, we can remove the computed status
+      classMethodInstance.classMethodComputed = false;
+    } else if (key instanceof SymbolValue) {
+      classMethodInstance.classMethodKeyNode = this.serializeValue(key);
+    } else {
+      invariant(false, "Unknown method key type");
+    }
+    this._serializeValueFunction(methodFunc);
   }
 
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
@@ -1323,12 +1344,12 @@ export class ResidualHeapSerializer {
   _serializeValueObjectViaConstructor(
     val: ObjectValue,
     isClass: boolean,
-    classPrototype?: ECMAScriptSourceFunctionValue
+    classConstructor?: ECMAScriptSourceFunctionValue
   ) {
     let proto = val.$Prototype;
     this._emitObjectProperties(val, val.properties, /*objectPrototypeAlreadyEstablished*/ true, undefined, isClass);
     this.needsAuxiliaryConstructor = true;
-    let serializedProto = this.serializeValue(classPrototype ? classPrototype : proto);
+    let serializedProto = this.serializeValue(classConstructor ? classConstructor : proto);
     return t.sequenceExpression([
       t.assignmentExpression(
         "=",
@@ -1421,28 +1442,36 @@ export class ResidualHeapSerializer {
           this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
           proto instanceof ObjectValue;
         let isClass = false;
-        let classPrototype;
-        // if the object has a prototype that was a class (by check the constructor on the prototype)
-        if (proto instanceof ObjectValue && proto !== this.realm.intrinsics.ObjectPrototype) {
-          // check if this object is actually based from a class (by checking the constructor)
-          let valConstructor = Get(this.realm, val, "constructor");
-          if (
-            valConstructor instanceof ECMAScriptSourceFunctionValue &&
-            valConstructor.$FunctionKind === "classConstructor"
-          ) {
+        let classConstructor;
+
+        if (val.$IsClassPrototype) {
+          isClass = true;
+        }
+        if (proto.$IsClassPrototype) {
+          invariant(proto instanceof ObjectValue);
+          // we now need to check if the prototpe has a constructor
+          // if it does, we can serialize back the original class syntax
+          // by using the original class function
+          if (proto.properties.has("constructor")) {
+            let _classConstructor = proto.properties.get("constructor");
+            invariant(_classConstructor !== undefined);
+            // if the contructor has been deleted then we have no way
+            // to serialize the original class AST as it won't have been
+            // evluated and thus visited
+            if (_classConstructor.descriptor === undefined) {
+              throw new FatalError(
+                "TODO #1024: implement object prototype serialization with deleted class constructor"
+              );
+            }
+            let classFunc = Get(this.realm, proto, "constructor");
+            _classConstructor = classFunc;
+            invariant(_classConstructor instanceof ECMAScriptSourceFunctionValue);
             isClass = true;
-          }
-          let protoConstructor = Get(this.realm, proto, "constructor");
-          if (
-            protoConstructor instanceof ECMAScriptSourceFunctionValue &&
-            protoConstructor.$FunctionKind === "classConstructor"
-          ) {
-            classPrototype = protoConstructor;
           }
         }
 
         return createViaAuxiliaryConstructor
-          ? this._serializeValueObjectViaConstructor(val, isClass, classPrototype)
+          ? this._serializeValueObjectViaConstructor(val, isClass, classConstructor)
           : this.serializeValueRawObject(val, isClass);
     }
   }

@@ -65,6 +65,7 @@ export default class ObjectValue extends ConcreteValue {
     this.properties = new Map();
     this.symbols = new Map();
     this.refuseSerialization = refuseSerialization;
+    this.$IsClassPrototype = false;
   }
 
   static trackedPropertyNames = [
@@ -242,6 +243,9 @@ export default class ObjectValue extends ConcreteValue {
 
   // ReactElement
   $BailOutReason: void | string;
+
+  // ES2015 classes
+  $IsClassPrototype: boolean;
 
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();
@@ -476,24 +480,6 @@ export default class ObjectValue extends ConcreteValue {
 
   // ECMA262 9.1.6
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
-    // If this object has a constructor and it's a classConstructor, set the $HomeObject of the property to it
-    if (this.properties.has("constructor")) {
-      let constructor = this.properties.get("constructor");
-      invariant(constructor !== undefined);
-      let ConstructorDesc = constructor.descriptor;
-
-      if (ConstructorDesc !== undefined) {
-        let value = Desc.value;
-        let constructorValue = ConstructorDesc.value;
-        if (
-          constructorValue instanceof ECMAScriptSourceFunctionValue &&
-          constructorValue.$FunctionKind === "classConstructor" &&
-          value instanceof ECMAScriptSourceFunctionValue
-        ) {
-          value.$HomeObject = constructorValue.$HomeObject;
-        }
-      }
-    }
     // 1. Return ? OrdinaryDefineOwnProperty(O, P, Desc).
     return Properties.OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc);
   }

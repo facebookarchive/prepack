@@ -10,7 +10,7 @@
 /* @flow */
 
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
-import { ConcreteValue, Value } from "../values/index.js";
+import { ConcreteValue, Value, ObjectValue } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
@@ -40,15 +40,16 @@ export type AdditionalFunctionInfo = {
   instance: FunctionInstance,
 };
 
-export type FunctionClassData = {|
+export type ClassMethodInstance = {|
+  classPrototype: ObjectValue,
   methodType: "constructor" | "method" | "get" | "set",
   classSuperNode: void | BabelNodeIdentifier,
+  classMethodIsStatic: boolean,
   classMethodKeyNode: void | BabelNodeExpression,
   classMethodComputed: boolean,
 |};
 
 export type FunctionInstance = {
-  classData: void | FunctionClassData,
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
   insertionPoint?: BodyReference,

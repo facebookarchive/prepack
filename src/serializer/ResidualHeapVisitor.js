@@ -35,12 +35,18 @@ import { Generator } from "../utils/generator.js";
 import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { ResidualFunctionBinding, FunctionInfo, AdditionalFunctionInfo, FunctionInstance } from "./types.js";
+import type {
+  ResidualFunctionBinding,
+  FunctionInfo,
+  AdditionalFunctionInfo,
+  FunctionInstance,
+  ClassMethodInstance,
+} from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
-import { getSuggestedArrayLiteralLength } from "./utils.js";
+import { getSuggestedArrayLiteralLength, withDescriptorValue, ClassProprtiesToIgnore } from "./utils.js";
 import { Environment } from "../singletons.js";
 
 export type Scope = FunctionValue | Generator;
@@ -66,6 +72,7 @@ export class ResidualHeapVisitor {
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.globalBindings = new Map();
     this.functionInfos = new Map();
+    this.classMethodInstances = new Map();
     this.functionInstances = new Map();
     this.values = new Map();
     let generator = this.realm.generator;
@@ -99,6 +106,7 @@ export class ResidualHeapVisitor {
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
+  classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -394,36 +402,82 @@ export class ResidualHeapVisitor {
         if (functionInfo.modified.has(innerName)) residualFunctionBinding.modified = true;
       }
     });
-    let useClassData = false;
-    let isConstructor = false;
-    let isComputed = !!val.$HasComputedName;
 
-    if (val.$HomeObject instanceof ObjectValue) {
-      // determine if our $HomeObject is actually a ES2015 class by looking at constructor
-      let constructorValue = Get(this.realm, val.$HomeObject, "constructor");
-      if (constructorValue instanceof AbstractValue) {
-        throw new FatalError("TODO: do not know how to handle an abstract constructor");
-      } else if (constructorValue instanceof ECMAScriptSourceFunctionValue) {
-        if (constructorValue.$FunctionKind === "classConstructor") {
-          useClassData = true;
-          if (val.$FunctionKind === "classConstructor") {
-            isConstructor = true;
+    if (val.$FunctionKind === "classConstructor") {
+      let homeObject = val.$HomeObject;
+      if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
+        this._visitClass(val, homeObject);
+      }
+    }
+    this.functionInstances.set(val, {
+      residualFunctionBindings,
+      functionValue: val,
+      scopeInstances: new Set(),
+    });
+  }
+
+  _visitClass(classFunc: ECMAScriptSourceFunctionValue, classPrototype: ObjectValue): void {
+    let visitClassMethod = (propertyNameOrSymbol, methodFunc, methodType, isStatic) => {
+      if (methodFunc instanceof ECMAScriptSourceFunctionValue) {
+        // if the method does not have a $HomeObject, it's not a class method
+        if (methodFunc.$HomeObject !== undefined) {
+          if (methodFunc !== classFunc) {
+            this._visitClassMethod(methodFunc, methodType, classPrototype, !!isStatic);
+          }
+        }
+      }
+    };
+    for (let [propertyName, method] of classPrototype.properties) {
+      withDescriptorValue(propertyName, method.descriptor, visitClassMethod);
+    }
+    for (let [symbol, method] of classPrototype.symbols) {
+      withDescriptorValue(symbol, method.descriptor, visitClassMethod);
+    }
+    if (classPrototype.properties.has("constructor")) {
+      let constructor = classPrototype.properties.get("constructor");
+
+      invariant(constructor !== undefined);
+      // check if the constructor was deleted, as it can't really be deleted
+      // it just gets set to empty (the default again)
+      if (constructor.descriptor === undefined) {
+        classFunc.$HasEmptyConstructor = true;
+      } else {
+        let visitClassProperty = (propertyNameOrSymbol, methodFunc, methodType) => {
+          visitClassMethod(propertyNameOrSymbol, methodFunc, methodType, true);
+        };
+        // check if we have any static methods we need to include
+        let constructorFunc = Get(this.realm, classPrototype, "constructor");
+        invariant(constructorFunc instanceof ObjectValue);
+        for (let [propertyName, method] of constructorFunc.properties) {
+          if (!ClassProprtiesToIgnore.has(propertyName)) {
+            withDescriptorValue(propertyName, method.descriptor, visitClassProperty);
           }
         }
       }
     }
-    this.functionInstances.set(val, {
-      classData: useClassData
-        ? {
-            methodType: isConstructor ? "constructor" : "method",
-            classSuperNode: undefined,
-            classMethodKeyNode: undefined,
-            classMethodComputed: isComputed,
-          }
-        : undefined,
-      residualFunctionBindings,
-      functionValue: val,
-      scopeInstances: new Set(),
+    this.classMethodInstances.set(classFunc, {
+      classPrototype,
+      methodType: "constructor",
+      classSuperNode: undefined,
+      classMethodIsStatic: false,
+      classMethodKeyNode: undefined,
+      classMethodComputed: false,
+    });
+  }
+
+  _visitClassMethod(
+    methodFunc: ECMAScriptSourceFunctionValue,
+    methodType: "get" | "set" | "value",
+    classPrototype: ObjectValue,
+    isStatic: boolean
+  ): void {
+    this.classMethodInstances.set(methodFunc, {
+      classPrototype,
+      methodType: methodType === "value" ? "method" : methodType,
+      classSuperNode: undefined,
+      classMethodIsStatic: isStatic,
+      classMethodKeyNode: undefined,
+      classMethodComputed: !!methodFunc.$HasComputedName,
     });
   }
 

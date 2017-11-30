@@ -33,7 +33,7 @@ import { ClosureRefReplacer } from "./visitors.js";
 import { Modules } from "./modules.js";
 import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js";
 import { nullExpression } from "../utils/internalizer.js";
-import type { LocationService } from "./types.js";
+import type { LocationService, ClassMethodInstance } from "./types.js";
 import { Referentializer } from "./Referentializer.js";
 import { getOrDefault } from "./utils.js";
 
@@ -56,6 +56,7 @@ export class ResidualFunctions {
     scopeNameGenerator: NameGenerator,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
+    residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     additionalFunctionValueNestedFunctions: Set<FunctionValue>
   ) {
@@ -78,6 +79,7 @@ export class ResidualFunctions {
     );
     this.residualFunctionInfos = residualFunctionInfos;
     this.residualFunctionInstances = residualFunctionInstances;
+    this.residualClassMethodInstances = residualClassMethodInstances;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
     this.referentializer = new Referentializer(scopeNameGenerator, statistics);
     for (let instance of residualFunctionInstances.values()) {
@@ -102,6 +104,7 @@ export class ResidualFunctions {
   residualFunctionInitializers: ResidualFunctionInitializers;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
+  residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   referentializer: Referentializer;
@@ -293,18 +296,32 @@ export class ResidualFunctions {
       let functionBody = t.blockStatement(rewrittenBody);
       let funcParams = params.slice();
       let funcOrClassNode;
-      let { classData } = instance;
 
-      if (classData !== undefined) {
-        let { methodType, classMethodKeyNode, classSuperNode, classMethodComputed } = classData;
+      if (this.residualClassMethodInstances.has(funcValue)) {
+        let classMethodInstance = this.residualClassMethodInstances.get(funcValue);
+        invariant(classMethodInstance);
+        let {
+          methodType,
+          classMethodKeyNode,
+          classSuperNode,
+          classMethodComputed,
+          classPrototype,
+          classMethodIsStatic,
+        } = classMethodInstance;
 
         let isConstructor = methodType === "constructor";
-        let homeObject = functionValue.$HomeObject;
-        invariant(homeObject instanceof ObjectValue);
+        invariant(classPrototype instanceof ObjectValue);
         invariant(classMethodKeyNode && (t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode)));
-        // we use the $HomeObject as the key to get the class expression ast node
-        funcOrClassNode = this._getOrCreateClassNode(homeObject);
-        let classMethod = t.classMethod(methodType, classMethodKeyNode, funcParams, functionBody, classMethodComputed);
+        // we use the classPrototype as the key to get the class expression ast node
+        funcOrClassNode = this._getOrCreateClassNode(classPrototype);
+        let classMethod = t.classMethod(
+          methodType,
+          classMethodKeyNode,
+          funcParams,
+          functionBody,
+          classMethodComputed,
+          classMethodIsStatic
+        );
         // add the class method to the class expression node body
         if (isConstructor) {
           funcOrClassNode.body.body.unshift(classMethod);
@@ -355,19 +372,27 @@ export class ResidualFunctions {
         this.statistics.functionClones += instancesToSplice.length - 1;
 
         for (let instance of instancesToSplice) {
-          let { functionValue, residualFunctionBindings, scopeInstances, classData } = instance;
+          let { functionValue, residualFunctionBindings, scopeInstances } = instance;
           let funcOrClassNode;
 
-          if (classData !== undefined) {
-            let { classSuperNode, classMethodKeyNode, methodType, classMethodComputed } = classData;
+          if (this.residualClassMethodInstances.has(functionValue)) {
+            let classMethodInstance = this.residualClassMethodInstances.get(functionValue);
+            invariant(classMethodInstance);
+            let {
+              classSuperNode,
+              classMethodKeyNode,
+              methodType,
+              classMethodComputed,
+              classPrototype,
+              classMethodIsStatic,
+            } = classMethodInstance;
 
             let isConstructor = methodType === "constructor";
-            let homeObject = functionValue.$HomeObject;
-            invariant(homeObject instanceof ObjectValue);
+            invariant(classPrototype instanceof ObjectValue);
             invariant(classMethodKeyNode);
             invariant(t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode));
-            // we use the $HomeObject as the key to get the class expression ast node
-            funcOrClassNode = this._getOrCreateClassNode(homeObject);
+            // we use the classPrototype as the key to get the class expression ast node
+            funcOrClassNode = this._getOrCreateClassNode(classPrototype);
             // if we are dealing with a constructor, don't serialize it if the original
             // had an empty user-land constructor (because we create a constructor behind the scenes for them)
             let hasEmptyConstructor = !!functionValue.$HasEmptyConstructor;
@@ -380,7 +405,8 @@ export class ResidualFunctions {
                 classMethodKeyNode,
                 methodParams,
                 methodBody,
-                classMethodComputed
+                classMethodComputed,
+                classMethodIsStatic
               );
               // traverse and replace refs in the class method
               traverse(
@@ -651,13 +677,13 @@ export class ResidualFunctions {
 
     return { unstrictFunctionBodies, strictFunctionBodies, requireStatistics };
   }
-  _getOrCreateClassNode(homeObject: ObjectValue): BabelNodeClassExpression {
-    if (!this.classes.has(homeObject)) {
+  _getOrCreateClassNode(classPrototype: ObjectValue): BabelNodeClassExpression {
+    if (!this.classes.has(classPrototype)) {
       let funcOrClassNode = t.classExpression(null, null, t.classBody([]), []);
-      this.classes.set(homeObject, funcOrClassNode);
+      this.classes.set(classPrototype, funcOrClassNode);
       return funcOrClassNode;
     } else {
-      let funcOrClassNode = this.classes.get(homeObject);
+      let funcOrClassNode = this.classes.get(classPrototype);
       invariant(funcOrClassNode && t.isClassExpression(funcOrClassNode));
       return funcOrClassNode;
     }

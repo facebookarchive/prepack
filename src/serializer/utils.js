@@ -9,9 +9,10 @@
 
 /* @flow */
 
-import type { ObjectValue } from "../values/index.js";
+import type { ObjectValue, SymbolValue } from "../values/index.js";
 import type { Realm } from "../realm.js";
 
+import type { Descriptor } from "../types.js";
 import invariant from "../invariant.js";
 import { IsArray, IsArrayIndex } from "../methods/index.js";
 
@@ -81,3 +82,24 @@ export function getOrDefault<K, V>(map: Map<K, V>, key: K, defaultFn: () => V): 
   invariant(value !== undefined);
   return value;
 }
+
+export function withDescriptorValue(
+  propertyNameOrSymbol: string | SymbolValue,
+  descriptor: void | Descriptor,
+  func: Function
+): void {
+  if (descriptor !== undefined) {
+    if (descriptor.value !== undefined) {
+      func(propertyNameOrSymbol, descriptor.value, "value");
+    } else {
+      if (descriptor.get !== undefined) {
+        func(propertyNameOrSymbol, descriptor.get, "get");
+      }
+      if (descriptor.set !== undefined) {
+        func(propertyNameOrSymbol, descriptor.set, "set");
+      }
+    }
+  }
+}
+
+export const ClassProprtiesToIgnore: Set<string> = new Set(["arguments", "name", "caller", "length"]);

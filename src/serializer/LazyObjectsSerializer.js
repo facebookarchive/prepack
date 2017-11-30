@@ -28,7 +28,7 @@ import type {
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
-import { SerializerStatistics } from "./types.js";
+import { SerializerStatistics, type ClassMethodInstance } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -59,6 +59,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     residualHeapInspector: ResidualHeapInspector,
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
+    residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
     referencedDeclaredValues: Set<AbstractValue>,
@@ -75,6 +76,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       residualHeapInspector,
       residualValues,
       residualFunctionInstances,
+      residualClassMethodInstances,
       residualFunctionInfos,
       options,
       referencedDeclaredValues,
