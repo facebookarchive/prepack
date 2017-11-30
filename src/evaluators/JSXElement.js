@@ -23,8 +23,9 @@ import type {
   BabelNodeJSXSpreadAttribute,
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
-import { ArrayValue, StringValue, Value, NumberValue, ObjectValue, SymbolValue } from "../values/index.js";
-import { convertJSXExpressionToIdentifier } from "../react/jsx";
+import { ArrayValue, StringValue, Value, NumberValue, ObjectValue } from "../values/index.js";
+import { getReactElementSymbol } from "../react/utils.js";
+import { convertJSXExpressionToIdentifier } from "../react/jsx.js";
 import * as t from "babel-types";
 import { Get } from "../methods/index.js";
 import { Create, Environment, Properties } from "../singletons.js";
@@ -37,8 +38,6 @@ let RESERVED_PROPS = {
   __self: true,
   __source: true,
 };
-
-let reactElementSymbolKey = "react.element";
 
 // taken from Babel
 function cleanJSXElementLiteralChild(child: string): null | string {
@@ -281,28 +280,6 @@ function evaluateJSXAttributes(
     attributes,
     children,
   };
-}
-
-function getReactElementSymbol(realm: Realm): SymbolValue {
-  let reactElementSymbol = realm.react.reactElementSymbol;
-  if (reactElementSymbol !== undefined) {
-    return reactElementSymbol;
-  }
-  let SymbolFor = realm.intrinsics.Symbol.properties.get("for");
-  if (SymbolFor !== undefined) {
-    let SymbolForDescriptor = SymbolFor.descriptor;
-
-    if (SymbolForDescriptor !== undefined) {
-      let SymbolForValue = SymbolForDescriptor.value;
-      if (SymbolForValue !== undefined && typeof SymbolForValue.$Call === "function") {
-        realm.react.reactElementSymbol = reactElementSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [
-          new StringValue(realm, reactElementSymbolKey),
-        ]);
-      }
-    }
-  }
-  invariant(reactElementSymbol instanceof SymbolValue, `ReactElement "$$typeof" property was not a symbol`);
-  return reactElementSymbol;
 }
 
 function createReactProps(

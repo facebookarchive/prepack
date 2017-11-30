@@ -159,7 +159,7 @@ export class ResidualFunctions {
         factoryId = this.locationService.getLocation(instances[0].functionValue);
       }
 
-      const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueTag;
+      const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueOrderedTag;
       invariant(functionUniqueTag);
 
       const functionInfo = this.residualFunctionInfos.get(functionBody);
@@ -167,6 +167,19 @@ export class ResidualFunctions {
       factoryFunctionInfos.set(functionUniqueTag, { factoryId, functionInfo });
     }
     return factoryFunctionInfos;
+  }
+
+  // Preserve residual functions' ordering based on its ast dfs traversal order.
+  // This is necessary to prevent unexpected code locality issues.
+  _sortFunctionByOriginalOrdering(functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]>): void {
+    functionEntries.sort((funcA, funcB) => {
+      const funcAUniqueTag = ((funcA[0]: any): FunctionBodyAstNode).uniqueOrderedTag;
+      invariant(funcAUniqueTag);
+
+      const funcBUniqueTag = ((funcB[0]: any): FunctionBodyAstNode).uniqueOrderedTag;
+      invariant(funcBUniqueTag);
+      return funcAUniqueTag - funcBUniqueTag;
+    });
   }
 
   spliceFunctions(
@@ -200,6 +213,7 @@ export class ResidualFunctions {
     let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(
       this.functions.entries()
     );
+    this._sortFunctionByOriginalOrdering(functionEntries);
     this.statistics.functions = functionEntries.length;
     let unstrictFunctionBodies = [];
     let strictFunctionBodies = [];
@@ -368,7 +382,7 @@ export class ResidualFunctions {
       if (!this._shouldUseFactoryFunction(funcBody, normalInstances)) {
         naiveProcessInstances(normalInstances);
       } else if (normalInstances.length > 0) {
-        const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueTag;
+        const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueOrderedTag;
         invariant(functionUniqueTag);
         const factoryInfo = factoryFunctionInfos.get(functionUniqueTag);
         invariant(factoryInfo);

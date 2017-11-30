@@ -170,6 +170,7 @@ export class Realm {
       flowRequired: true,
       reactElementSymbol: undefined,
       classComponentTypes: new WeakMap(),
+      currentOwner: undefined,
     };
 
     this.errorHandler = opts.errorHandler;
@@ -209,6 +210,7 @@ export class Realm {
     flowRequired: boolean,
     reactElementSymbol?: SymbolValue,
     classComponentTypes: WeakMap<ECMAScriptSourceFunctionValue, "SIMPLE" | "COMPLEX">,
+    currentOwner?: ObjectValue,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
