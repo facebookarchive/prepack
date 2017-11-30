@@ -60,6 +60,9 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
   return false;
 }
 
+// a nested object of a React Element should be hoisted where all its properties are known
+// at evaluation time to be "static" or "pure". This means function values in scope, strings, numbers
+// and deeply nested object/arrays that share the same heuristics
 function canHoistObject(realm: Realm, object: ObjectValue, hoistedScope?: Generator): boolean {
   if (isReactElement(object)) {
     return canHoistReactElement(realm, object);

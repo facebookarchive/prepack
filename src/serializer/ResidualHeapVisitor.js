@@ -418,7 +418,7 @@ export class ResidualHeapVisitor {
       case "ReactElement":
         // if we visiting during an additional function, we can check to see if
         // we can hoist React elements to the main scope
-        let targetScope = this.scope.parent;
+        let targetScope = this.commonScope.parent;
         if (targetScope !== undefined) {
           // this check sets the React element $CanHoist to "true"
           // allowing it to serialize differently later

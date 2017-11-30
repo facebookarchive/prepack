@@ -962,10 +962,6 @@ export class ResidualHeapSerializer {
     return reactElement;
   }
 
-  _serializeHoistedReactElements() {
-    // TODO
-  }
-
   _serializeValueMap(val: ObjectValue): BabelNodeExpression {
     let kind = val.getKind();
     let elems = [];
