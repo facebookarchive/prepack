@@ -25,6 +25,7 @@ export class BreakpointManager {
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
   _previousStop: StoppedData;
   _channel: DebugChannel;
+  _lastExecuted: StoppedData;
 
   onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
     if (ast.loc && ast.loc.source !== null) {
@@ -46,6 +47,11 @@ export class BreakpointManager {
       let colNum = location.start.column;
       // Check whether there is a breakpoint we need to stop on here
       let breakpoint = this._findStoppableBreakpoint(filePath, lineNum, colNum);
+      this._lastExecuted = {
+        filePath: filePath,
+        line: lineNum,
+        column: colNum,
+      };
       if (breakpoint === null) return false;
       // Tell the adapter that Prepack has stopped on this breakpoint
       this._channel.sendStoppedResponse("Breakpoint", breakpoint.filePath, breakpoint.line, breakpoint.column);
@@ -58,7 +64,7 @@ export class BreakpointManager {
   _findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
     let breakpoint = this.getBreakpoint(filePath, lineNum, colNum);
     if (breakpoint && breakpoint.enabled) {
-      if (this._previousStop) {
+      if (this._lastExecuted) {
         // checking if this is the same file and line we stopped at last time
         // if so, we should skip it this time
         // Note: for the case when the debugger is supposed to stop on the same
@@ -68,15 +74,15 @@ export class BreakpointManager {
         if (breakpoint.column !== 0) {
           // this is a column breakpoint
           if (
-            filePath === this._previousStop.filePath &&
-            lineNum === this._previousStop.line &&
-            colNum === this._previousStop.column
+            filePath === this._lastExecuted.filePath &&
+            lineNum === this._lastExecuted.line &&
+            colNum === this._lastExecuted.column
           ) {
             return null;
           }
         } else {
           // this is a line breakpoint
-          if (filePath === this._previousStop.filePath && lineNum === this._previousStop.line) {
+          if (filePath === this._lastExecuted.filePath && lineNum === this._lastExecuted.line) {
             return null;
           }
         }
