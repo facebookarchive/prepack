@@ -128,7 +128,7 @@ function makeDemoSharable() {
 function compile() {
   clearTimeout(debounce);
   terminateWorker();
-  graphDiv.style.display = "none";
+  graphModalDiv.style.display = "none";
 
   errorOutput.innerHTML = '';
   errorOutput.style.display = 'none';
@@ -163,14 +163,11 @@ function compile() {
         }
 
         // create a network
-        var network = new vis.Network(graphModalContents, visData, visOptions);
-        network.moveTo({
-          position: {
-            x: 100,
-            y: 100
-          }
-        });
-        graphDiv.style.display = "inline-block";
+        var modalNetwork = new vis.Network(graphModalContents, visData, visOptions);
+        graphModalDiv.style.display = "inline-block";
+
+        var boxNetwork = new vis.Network(graphBox, visData, visOptions);
+
         output.setValue(code, -1);
       } else if (result.type === 'error') {
         let errors = result.data;
@@ -228,22 +225,20 @@ var saveButton = document.querySelector('#saveBtn');
 var deleteButton = document.querySelector('#deleteBtn');
 var storage = window.localStorage;
 
-/** graph modal **/
+/** graph **/
 var graphButton = document.querySelector('#graphBtn');
-var graphDiv = document.getElementById('graphBtn');
+var graphModalDiv = document.getElementById('graphBtn');
 
 var graphModal = document.getElementById('graphModal');
 var graphModalContents = document.getElementById('graphModalContent');
-var graphModalClose = document.getElementById('graphModalClose');
+
+var graphBox = document.getElementById('graphBox');
 
 function setUpModal() {
-  graphDiv.style.display = "none";
+  graphModalDiv.style.display = "none";
   graphButton.onclick = () => {
     graphModal.style.display = "block";
   };
-  graphModalClose.onclick = function() {
-    graphModal.style.display = "none";
-  }
   window.onclick = function(event) {
     if (event.target == graphModal) {
           graphModal.style.display = "none";

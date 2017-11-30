@@ -142,9 +142,6 @@ header, .repl-container {
 .record-container .record-button.delete:hover{
   background-color:#ef5b5b;
 }
-.record-container .record-button.graph{
-  background-color: blue;
-}
 
 .record-container .record-input{
   right: 0px;
@@ -188,29 +185,18 @@ header, .repl-container {
     overflow: auto; /* Enable scroll if needed */
     background-color: rgb(0,0,0); /* Fallback color */
     background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    vertical-align: center;
 }
 /* Modal Content/Box */
 .graph-modal-content {
     text-align: center;
     height: 70%;
     background-color: #fefefe;
-    margin: 15% auto; /* 15% from the top and centered */
+    margin: 10% auto;
     padding: 20px;
     border: 1px solid #888;
     width: 80%; /* Could be more or less, depending on screen size */
-}
-/* The Close Button */
-.graph-modal-close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-}
-.graph-modal-close:hover,
-.graph-modal-close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
+    vertical-align: center;
 }
 
 .repl-container {
@@ -606,11 +592,11 @@ a.nav-item.is-brand {
 
 /* REPL */
 
-.input, .output {
+.input, .output, .graph {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 50%;
+  width: 33%;
 }
 
 .input {
@@ -620,7 +606,36 @@ a.nav-item.is-brand {
 }
 
 .output {
-  right: 0;
+  left: 33%;
+}
+
+.graph {
+  left: 66%;
+  background-color: white;
+  border-left: 1px solid #ddd;
+}
+.graphBar {
+  background-color: white;
+  height: 3%;
+  padding-top: 0;
+  vertical-align: center;
+}
+
+.graphBox {
+  background-color: #ddd;
+  height: 100%;
+}
+
+.graphBar .graphBtn {
+  display: inline-block;
+  vertical-align: top;
+  padding: 5px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 3px;
+  background-color: blue;
+  color: white;
+  margin-left: 10px;
 }
 
 .repl, .error {
