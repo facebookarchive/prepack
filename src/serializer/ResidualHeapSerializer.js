@@ -933,7 +933,8 @@ export class ResidualHeapSerializer {
 
     let id = this.getSerializeObjectIdentifier(val);
     // if we are hoisting this React element, put the assignment in the body
-    if (canHoistReactElement(this.realm, val)) {
+    // also ensure we are in an additional function
+    if (this.currentFunctionBody !== this.mainBody && canHoistReactElement(this.realm, val)) {
       // if the currentHoistedReactElements is not defined, we create it an emit the function call
       // this should only occur once per additional function
       if (this.lazilyHoistedNodes === undefined) {
@@ -1127,7 +1128,8 @@ export class ResidualHeapSerializer {
     let undelay = () => {
       if (--delayed === 0) {
         invariant(instance);
-        if (canHoistFunction(this.realm, val)) {
+        // hoist if we are in an additionalFunction
+        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val)) {
           instance.insertionPoint = new BodyReference(this.mainBody, this.mainBody.entries.length);
           instance.containingAdditionalFunction = undefined;
         } else {
