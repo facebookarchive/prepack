@@ -44,7 +44,7 @@ export class DebugServer {
     this._realm = realm;
     this._breakpointManager = new BreakpointManager(this._channel);
     this._variableManager = new VariableManager(realm);
-    this._stepManager = new SteppingManager(this._channel);
+    this._stepManager = new SteppingManager(this._channel, this._realm, /* default discard old steppers */ false);
     this.waitForRun(undefined, "Entry");
   }
   // the collection of breakpoints
@@ -85,8 +85,9 @@ export class DebugServer {
   }
 
   checkStepComplete(ast: BabelNode) {
-    if (this._stepManager.isStepComplete(ast)) {
-      this.waitForRun(ast, "Step Into");
+    let steppingType = this._stepManager.isStepComplete(ast);
+    if (steppingType) {
+      this.waitForRun(ast, steppingType);
     }
   }
 
