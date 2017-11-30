@@ -142,6 +142,7 @@ export default function(
 
       // 3. Let closure be FunctionCreate(Normal, FormalParameters, FunctionBody, scope, strict).
       let closure = Functions.FunctionCreate(realm, "normal", ast.params, ast.body, scope, strict);
+      closure.loc = ast.loc;
 
       // 4. Perform MakeConstructor(closure).
       MakeConstructor(realm, closure);
