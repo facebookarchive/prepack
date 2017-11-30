@@ -16,7 +16,7 @@ import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { createAbstractObject, createAbstractObjectFromFlowTypes } from "../flow/abstractObjectFactories.js";
 import { valueIsClassComponent } from "./utils";
-import { ExpectedBailOut } from "./reconcilation.js";
+import { ExpectedBailOut, SimpleClassBailOut } from "./reconcilation.js";
 import { Get } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
@@ -115,7 +115,7 @@ export function createSimpleClassInstance(
   for (let [name] of componentPrototype.properties) {
     if (lifecycleMethods.has(name)) {
       // this error will result in the simple class falling back to a complex class
-      throw FatalError("lifecycle methods are not supported on simple classes");
+      throw new SimpleClassBailOut("lifecycle methods are not supported on simple classes");
     } else if (name !== "constructor") {
       allowedPropertyAccess.add(name);
       Properties.Set(realm, instance, name, Get(realm, componentPrototype, name), true);
@@ -131,7 +131,7 @@ export function createSimpleClassInstance(
   instance.$GetOwnProperty = P => {
     if (!allowedPropertyAccess.has(P)) {
       // this error will result in the simple class falling back to a complex class
-      throw FatalError("access to basic class instance properties is not supported on simple classes");
+      throw new SimpleClassBailOut("access to basic class instance properties is not supported on simple classes");
     }
     return $GetOwnProperty.call(instance, P);
   };

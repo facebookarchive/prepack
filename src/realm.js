@@ -169,6 +169,7 @@ export class Realm {
       enabled: opts.reactEnabled || false,
       flowRequired: true,
       reactElementSymbol: undefined,
+      classComponentTypes: new WeakMap(),
     };
 
     this.errorHandler = opts.errorHandler;
@@ -207,6 +208,7 @@ export class Realm {
     enabled: boolean,
     flowRequired: boolean,
     reactElementSymbol?: SymbolValue,
+    classComponentTypes: WeakMap<ECMAScriptSourceFunctionValue, "SIMPLE" | "COMPLEX">,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;

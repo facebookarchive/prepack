@@ -65,10 +65,12 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
 }
 
 export function valueIsSimpleClassComponent(realm: Realm, value: Value) {
+  let classComponentTypes = realm.react.classComponentTypes;
   return (
     valueIsClassComponent(realm, value) &&
     value instanceof ECMAScriptSourceFunctionValue &&
-    value.$IsSimpleReactClassComponent === true
+    classComponentTypes.has(value) &&
+    classComponentTypes.get(value) === "SIMPLE"
   );
 }
 

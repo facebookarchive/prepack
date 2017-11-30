@@ -23,7 +23,6 @@ export default class ECMAScriptSourceFunctionValue extends ECMAScriptFunctionVal
   $Strict: boolean;
   $FormalParameters: Array<BabelNodeLVal>;
   $ECMAScriptCode: BabelNodeBlockStatement;
-  $IsSimpleReactClassComponent: ?boolean;
   loc: ?BabelNodeSourceLocation;
 
   hasDefaultLength(): boolean {

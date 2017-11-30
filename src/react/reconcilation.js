@@ -44,6 +44,13 @@ export class ExpectedBailOut {
   }
 }
 
+export class SimpleClassBailOut {
+  message: string;
+  constructor(message: string) {
+    this.message = message;
+  }
+}
+
 export class Reconciler {
   constructor(
     realm: Realm,
@@ -161,7 +168,9 @@ export class Reconciler {
     let value;
     let childContext = context;
 
+    // first we check if it's a class component
     if (valueIsClassComponent(this.realm, componentType)) {
+      let classComponentTypes = this.realm.react.classComponentTypes;
       // We first need to know what type of class component we're dealing with.
       // A "simple" class component is defined as:
       //
@@ -179,19 +188,26 @@ export class Reconciler {
       // To begin with, we don't know what type of component it is, so we try and render it as if it were
       // a simple component using the above heuristics. If an error occurs during this process, we assume
       // that the class wasn't simple, then try again with the "complex" heuristics.
-      if (componentType.$IsSimpleReactClassComponent === undefined) {
+      if (!classComponentTypes.has(componentType)) {
         try {
           value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
-          componentType.$IsSimpleReactClassComponent = true;
-        } catch (e) {
-          // mark the component as not simple
-          componentType.$IsSimpleReactClassComponent = false;
+          classComponentTypes.set(componentType, "SIMPLE");
+        } catch (error) {
+          // if we get back a SimpleClassBailOut error, we know that this class component
+          // wasn't a simple one and is likely to be a complex class component instead
+          if (error instanceof SimpleClassBailOut) {
+            // mark the component as not simple and continue
+            classComponentTypes.set(componentType, "COMPLEX");
+          } else {
+            // else we rethrow the error
+            throw error;
+          }
         }
-      } else if (componentType.$IsSimpleReactClassComponent === true) {
+      } else if (classComponentTypes.get(componentType) === "SIMPLE") {
         value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
       }
       // handle the complex class component
-      if (componentType.$IsSimpleReactClassComponent === false) {
+      if (classComponentTypes.get(componentType) === "COMPLEX") {
         value = this._renderComplexClassComponent(componentType, props, context, branchStatus, branchState);
       }
     } else {
