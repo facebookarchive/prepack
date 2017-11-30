@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { VariableContainer, Variable } from "./types.js";
+import type { VariableContainer, Variable, EvaluateResult } from "./types.js";
 import { ReferenceMap } from "./ReferenceMap.js";
 import {
   LexicalEnvironment,
@@ -192,21 +192,46 @@ export class VariableManager {
     }
   }
 
-  evaluate(frameId: number, expression: string): Value {
-    if (frameId < 0 || frameId >= this._realm.contextStack.length) {
-      throw new DebuggerError("Invalid command", "Invalid value for frame ID");
+  evaluate(frameId: void | number, expression: string): EvaluateResult {
+    let evalRealm = this._realm;
+    let isDirect = false;
+    if (frameId !== undefined) {
+      if (frameId < 0 || frameId >= this._realm.contextStack.length) {
+        throw new DebuggerError("Invalid command", "Invalid value for frame ID");
+      }
+      // frameId's are in reverse order of context stack
+      let stackIndex = this._realm.contextStack.length - 1 - frameId;
+      let context = this._realm.contextStack[stackIndex];
+      isDirect = true;
+      evalRealm = context.realm;
     }
-    // frameId's are in reverse order of context stack
-    let stackIndex = this._realm.contextStack.length - 1 - frameId;
-    let context = this._realm.contextStack[stackIndex];
+
     let evalString = new StringValue(this._realm, expression);
-    return Functions.PerformEval(
-      this._realm,
-      evalString,
-      context.realm,
-      /* eval is in strict mode */ true,
-      /* is direct eval */ true
-    );
+    try {
+      let value = Functions.PerformEval(
+        this._realm,
+        evalString,
+        evalRealm,
+        /* eval is in strict mode */ true,
+        isDirect
+      );
+      let varInfo = this._getVariableFromValue(expression, value);
+      let result: EvaluateResult = {
+        kind: "evaluate",
+        displayValue: varInfo.value,
+        type: value.getType().name,
+        variablesReference: varInfo.variablesReference,
+      };
+      return result;
+    } catch (e) {
+      let result: EvaluateResult = {
+        kind: "evaluate",
+        displayValue: "Failed to evaluate: " + expression,
+        type: "unknown",
+        variablesReference: 0,
+      };
+      return result;
+    }
   }
 
   clean() {

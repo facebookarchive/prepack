@@ -32,6 +32,8 @@ export class DebugMessage {
   static VARIABLES_COMMAND: string = "Variables-command";
   // Command to step into a function
   static STEPINTO_COMMAND: string = "StepInto-command";
+  // Command to evaluate an expression
+  static EVALUATE_COMMAND: string = "Evaluate-command";
 
   /* Messages from Prepack to adapter with requested information */
   // Respond to the adapter that Prepack is ready
@@ -48,6 +50,8 @@ export class DebugMessage {
   static VARIABLES_RESPONSE: string = "Variables-response";
   // Respond to the adapter with the stepped in location
   static STEPINTO_RESPONSE: string = "StepInto-response";
+  // Respond to the adapter with the evaluation results
+  static EVALUATE_RESPONSE: string = "Evaluate-response";
 
   /* Messages from Prepack to adapter to acknowledge having received the request */
   // Acknowledgement for setting a breakpoint
