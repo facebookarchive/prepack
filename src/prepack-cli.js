@@ -214,15 +214,15 @@ function run(
     let serialized = prepackFileSync(inputFilenames, resolvedOptions);
     processSerializedCode(null, serialized);
   } catch (x) {
-    console.log(x.message);
-    console.log(x.stack);
-    if (errors.size === 0) process.exit(1);
+    console.error(x.message);
+    console.error(x.stack);
+    process.exit(1);
   } finally {
     if (errors.size > 0) {
       let foundFatal = false;
       for (let [loc, error] of errors) {
         foundFatal = foundFatal || error.severity === "FatalError";
-        console.log(
+        console.error(
           `${loc.source || ""}(${loc.start.line}:${loc.start.column +
             1}) ${error.severity} ${error.errorCode}: ${error.message}` +
             ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
@@ -242,7 +242,7 @@ function run(
       let foundFatal = false;
       for (let [loc, error] of errors) {
         foundFatal = foundFatal || error.severity === "FatalError";
-        console.log(
+        console.error(
           `${loc.source || ""}(${loc.start.line}:${loc.start.column +
             1}) ${error.severity} ${error.errorCode}: ${error.message}`
         );
@@ -251,7 +251,7 @@ function run(
     }
     if (serialized) {
       if (serialized.code === "") {
-        console.log("No source code to prepack.");
+        console.error("Prepack returned empty code.");
         return;
       }
       if (outputFilename) {
