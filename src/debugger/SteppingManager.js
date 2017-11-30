@@ -85,8 +85,14 @@ export class SteppingManager {
 
   onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
     if (reason === "Breakpoint") {
-      // stopped for breakpoint, clear any steppers that would complete here too
-      this._anyStepperComplete(ast);
+      // stopped for breakpoint
+      if (this._keepOldSteppers) {
+        // remove only steppers that would complete
+        this._anyStepperComplete(ast);
+      } else {
+        // remove all steppers
+        this._steppers = [];
+      }
     }
   }
 }
