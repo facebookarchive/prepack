@@ -270,6 +270,25 @@ class PrepackDebugSession extends LoggingDebugSession {
       this.sendResponse(response);
     });
   }
+
+  // Override
+  evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
+    this._adapterChannel.evaluate(
+      response.request_seq,
+      args.frameId,
+      args.expression,
+      (dbgResponse: DebuggerResponse) => {
+        let evalResult = dbgResponse.result;
+        invariant(evalResult.kind === "evaluate");
+        response.body = {
+          result: evalResult.displayValue,
+          type: evalResult.type,
+          variablesReference: evalResult.variablesReference,
+        };
+        this.sendResponse(response);
+      }
+    );
+  }
 }
 
 DebugSession.run(PrepackDebugSession);

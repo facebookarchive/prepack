@@ -159,6 +159,12 @@ export class AdapterChannel {
     this._addRequestCallback(requestID, callback);
   }
 
+  evaluate(requestID: number, frameId: void | number, expression: string, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallEvaluateRequest(requestID, frameId, expression));
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
   writeOut(contents: string) {
     this._ioWrapper.writeOutSync(contents);
   }

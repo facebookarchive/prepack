@@ -23,6 +23,7 @@ import type {
   Scope,
   VariablesArguments,
   StoppedReason,
+  EvaluateArguments,
 } from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
@@ -133,6 +134,10 @@ export class DebugServer {
         this._stepManager.processStepCommand("in", ast);
         this._onDebuggeeResume();
         return true;
+      case DebugMessage.EVALUATE_COMMAND:
+        invariant(args.kind === "evaluate");
+        this.processEvaluateCommand(requestID, args);
+        break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
@@ -232,6 +237,11 @@ export class DebugServer {
   processVariablesCommand(requestID: number, args: VariablesArguments) {
     let variables = this._variableManager.getVariablesByReference(args.variablesReference);
     this._channel.sendVariablesResponse(requestID, variables);
+  }
+
+  processEvaluateCommand(requestID: number, args: EvaluateArguments) {
+    let evalResult = this._variableManager.evaluate(args.frameId, args.expression);
+    this._channel.sendEvaluateResponse(requestID, evalResult);
   }
 
   // actions that need to happen when Prepack is going to be stopped

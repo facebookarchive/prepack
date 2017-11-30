@@ -25,7 +25,8 @@ export type DebuggerRequestArguments =
   | StackframeArguments
   | ScopesArguments
   | VariablesArguments
-  | StepIntoArguments;
+  | StepIntoArguments
+  | EvaluateArguments;
 
 export type PrepackLaunchArguments = {
   kind: "launch",
@@ -79,6 +80,12 @@ export type StepIntoArguments = {
   kind: "stepInto",
 };
 
+export type EvaluateArguments = {
+  kind: "evaluate",
+  frameId?: number,
+  expression: string,
+};
+
 export type DebuggerResponse = {
   id: number,
   result: DebuggerResponseResult,
@@ -90,7 +97,8 @@ export type DebuggerResponseResult =
   | BreakpointsAddResult
   | StoppedResult
   | ScopesResult
-  | VariablesResult;
+  | VariablesResult
+  | EvaluateResult;
 
 export type ReadyResult = {
   kind: "ready",
@@ -133,6 +141,13 @@ export type Variable = {
 export type VariablesResult = {
   kind: "variables",
   variables: Array<Variable>,
+};
+
+export type EvaluateResult = {
+  kind: "evaluate",
+  displayValue: string,
+  type: string,
+  variablesReference: number,
 };
 
 // any object that can contain a collection of variables
