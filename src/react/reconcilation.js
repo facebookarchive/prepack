@@ -31,25 +31,7 @@ import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import { getInitialProps, getInitialContext, createClassInstance, createSimpleClassInstance } from "./components.js";
-
-// ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
-// allowing the reconcilation to continue on other branches of the tree, the message
-// given to ExpectedBailOut will be assigned to the value.$BailOutReason property and serialized
-// as a comment in the output source to give the user hints as to what they need to do
-// to fix the bail-out case
-export class ExpectedBailOut {
-  message: string;
-  constructor(message: string) {
-    this.message = message;
-  }
-}
-
-export class SimpleClassBailOut {
-  message: string;
-  constructor(message: string) {
-    this.message = message;
-  }
-}
+import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 
 export class Reconciler {
   constructor(

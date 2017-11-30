@@ -16,11 +16,10 @@ import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { createAbstractObject, createAbstractObjectFromFlowTypes } from "../flow/abstractObjectFactories.js";
 import { valueIsClassComponent } from "./utils";
-import { ExpectedBailOut, SimpleClassBailOut } from "./reconcilation.js";
+import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import { FatalError } from "../errors.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
