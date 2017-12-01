@@ -11,7 +11,7 @@
 
 import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
-import type { Breakpoint as BreakpointType, SourceData, StoppedReason } from "./types.js";
+import type { Breakpoint as BreakpointType } from "./types.js";
 import { BabelNode } from "babel-types";
 import { IsStatement } from "./../methods/is.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
@@ -24,18 +24,6 @@ export class BreakpointManager {
   }
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
   _channel: DebugChannel;
-  // the location of the statement that was last executed
-  _lastExecuted: SourceData;
-
-  onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
-    if (ast.loc && ast.loc.source !== null) {
-      this._lastExecuted = {
-        filePath: ast.loc.source,
-        line: ast.loc.start.line,
-        column: ast.loc.start.column,
-      };
-    }
-  }
 
   shouldStopOnBreakpoint(ast: BabelNode): boolean {
     if (!IsStatement(ast)) return false;
@@ -47,11 +35,6 @@ export class BreakpointManager {
       let colNum = location.start.column;
       // Check whether there is a breakpoint we need to stop on here
       let breakpoint = this._findStoppableBreakpoint(filePath, lineNum, colNum);
-      this._lastExecuted = {
-        filePath: filePath,
-        line: lineNum,
-        column: colNum,
-      };
       if (breakpoint === null) return false;
       // Tell the adapter that Prepack has stopped on this breakpoint
       this._channel.sendStoppedResponse("Breakpoint", breakpoint.filePath, breakpoint.line, breakpoint.column);
@@ -64,29 +47,6 @@ export class BreakpointManager {
   _findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
     let breakpoint = this.getBreakpoint(filePath, lineNum, colNum);
     if (breakpoint && breakpoint.enabled) {
-      if (this._lastExecuted) {
-        // checking if this is the same file and line we stopped at last time
-        // if so, we should skip it this time
-        // Note: for the case when the debugger is supposed to stop on the same
-        // breakpoint consecutively (e.g. the statement is in a loop), some other
-        // ast node (e.g. block, loop) must have been checked in between so
-        // lastExecuted will have changed
-        if (breakpoint.column !== 0) {
-          // this is a column breakpoint
-          if (
-            filePath === this._lastExecuted.filePath &&
-            lineNum === this._lastExecuted.line &&
-            colNum === this._lastExecuted.column
-          ) {
-            return null;
-          }
-        } else {
-          // this is a line breakpoint
-          if (filePath === this._lastExecuted.filePath && lineNum === this._lastExecuted.line) {
-            return null;
-          }
-        }
-      }
       return breakpoint;
     }
     return null;
