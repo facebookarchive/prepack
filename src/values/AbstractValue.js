@@ -179,7 +179,7 @@ export default class AbstractValue extends Value {
     if (!this.mightNotBeFalse()) return true; // false => val
     if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
     if (val instanceof AbstractValue) {
-      // Neither this (x) nor val (y) is a known value, so we need to some reasoning based on the structure
+      // Neither this (x) nor val (y) is a known value, so we need to do some reasoning based on the structure
       // x => !y if y => !x
       if (val.kind === "!") {
         let [y] = val.args;
@@ -191,6 +191,16 @@ export default class AbstractValue extends Value {
         let [x, y] = val.args;
         if (this.implies(x)) return y instanceof NullValue || y instanceof UndefinedValue;
         if (this.implies(y)) return x instanceof NullValue || x instanceof UndefinedValue;
+      }
+      // !!x => x
+      if (this.kind === "!") {
+        let [nx] = this.args;
+        invariant(nx instanceof AbstractValue);
+        if (nx.kind === "!") {
+          let [x] = nx.args;
+          invariant(x instanceof AbstractValue);
+          return x.equals(val);
+        }
       }
     }
     return false;
