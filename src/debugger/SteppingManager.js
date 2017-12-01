@@ -58,7 +58,7 @@ export class SteppingManager {
   }
 
   isStepComplete(ast: BabelNode): void | SteppingType {
-    let completedStepperType = this._anyStepperComplete(ast);
+    let completedStepperType = this._checkCompleteSteppers(ast);
     if (completedStepperType) {
       invariant(ast.loc && ast.loc.source);
       this._channel.sendStoppedResponse(completedStepperType, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
@@ -67,12 +67,12 @@ export class SteppingManager {
     return undefined;
   }
 
-  _anyStepperComplete(ast: BabelNode): void | SteppingType {
+  _checkCompleteSteppers(ast: BabelNode): void | SteppingType {
     let i = 0;
     let completedStepperType;
     while (i < this._steppers.length) {
       let stepper = this._steppers[i];
-      if (stepper.isComplete(ast, this._realm)) {
+      if (stepper.isComplete(ast, this._realm.contextStack.length)) {
         if (stepper instanceof StepIntoStepper) completedStepperType = "Step Into";
         if (stepper instanceof StepOverStepper) completedStepperType = "Step Over";
         this._steppers.splice(i, 1);
@@ -88,7 +88,7 @@ export class SteppingManager {
       // stopped for breakpoint
       if (this._keepOldSteppers) {
         // remove only steppers that would complete
-        this._anyStepperComplete(ast);
+        this._checkCompleteSteppers(ast);
       } else {
         // remove all steppers
         this._steppers = [];

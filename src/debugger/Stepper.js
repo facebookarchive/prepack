@@ -12,7 +12,6 @@ import type { SourceData } from "./types.js";
 import { IsStatement } from "./../methods/is.js";
 import { BabelNode } from "babel-types";
 import invariant from "./../invariant.js";
-import type { Realm } from "./../realm.js";
 
 export class Stepper {
   constructor(filePath: string, line: number, column: number) {
@@ -24,18 +23,11 @@ export class Stepper {
   }
   _stepStartData: SourceData;
 
-  isComplete(ast: BabelNode, realm: Realm): boolean {
+  isComplete(ast: BabelNode, currentStackSize: number): boolean {
     invariant(false, "Abstract method, please override");
   }
-}
 
-export class StepIntoStepper extends Stepper {
-  constructor(filePath: string, line: number, column: number) {
-    super(filePath, line, column);
-  }
-
-  // Override
-  isComplete(ast: BabelNode, realm: Realm): boolean {
+  isValidStopLocation(ast: BabelNode) {
     // we should only step to statements
     if (!IsStatement(ast)) return false;
     let loc = ast.loc;
@@ -59,6 +51,17 @@ export class StepIntoStepper extends Stepper {
   }
 }
 
+export class StepIntoStepper extends Stepper {
+  constructor(filePath: string, line: number, column: number) {
+    super(filePath, line, column);
+  }
+
+  // Override
+  isComplete(ast: BabelNode, currentStackSize: number): boolean {
+    return this.isValidStopLocation(ast);
+  }
+}
+
 export class StepOverStepper extends Stepper {
   constructor(filePath: string, line: number, column: number, stackSize: number) {
     super(filePath, line, column);
@@ -66,27 +69,9 @@ export class StepOverStepper extends Stepper {
   }
   _startStackSize: number;
 
-  isComplete(ast: BabelNode, realm: Realm): boolean {
-    // we should only step to statements
-    if (!IsStatement(ast)) return false;
-    let loc = ast.loc;
-    if (!loc) return false;
-    let filePath = loc.source;
-    let line = loc.start.line;
-    let column = loc.start.column;
-    if (!filePath) return false;
-    if (this._stepStartData) {
-      if (
-        filePath === this._stepStartData.filePath &&
-        line === this._stepStartData.line &&
-        column === this._stepStartData.column
-      ) {
-        return false;
-      }
-    } else {
-      return false;
-    }
-    if (realm.contextStack.length <= this._startStackSize) {
+  isComplete(ast: BabelNode, currentStackSize: number): boolean {
+    if (!this.isValidStopLocation(ast)) return false;
+    if (currentStackSize <= this._startStackSize) {
       // two cases here:
       // if current stack length < starting stack length, the program must have
       // hit an exception so this stepper is no longer relevant
