@@ -636,7 +636,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 11798 || numPassedES6 < 5245 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 11575 || numPassedES6 < 4252 || numTimeouts > 0)) {
     console.log(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -936,7 +936,7 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   $.defineNativeProperty("global", realm.$GlobalObject);
 
   let glob = ((realm.$GlobalObject: any): ObjectValue);
-  glob.defineNativeProperty("$", $);
+  glob.defineNativeProperty("$262", $);
   glob.defineNativeMethod("print", 1, (context, [arg]) => {
     return realm.intrinsics.undefined;
   });
@@ -1155,6 +1155,24 @@ function filterFeatures(data: BannerData): boolean {
   if (features.includes("default-parameters")) return false;
   if (features.includes("generators")) return false;
   if (features.includes("generator")) return false;
+  if (features.includes("BigInt")) return false;
+  if (features.includes("class-fields")) return false;
+  if (features.includes("async-iteration")) return false;
+  if (features.includes("Function.prototype.toString")) return false;
+  if (features.includes("SharedArrayBuffer")) return false;
+  if (features.includes("cross-realm")) return false;
+  if (features.includes("atomics")) return false;
+  if (features.includes("u180e")) return false;
+  if (features.includes("Symbol.isConcatSpreadable")) return false;
+  if (features.includes("destructuring-binding")) return false;
+  if (features.includes("IsHTMLDDA")) return false;
+  if (features.includes("regexp-unicode-property-escapes")) return false;
+  if (features.includes("regexp-named-groups")) return false;
+  if (features.includes("regexp-lookbehind")) return false;
+  if (features.includes("regexp-dotall")) return false;
+  if (features.includes("optional-catch-binding")) return false;
+  if (features.includes("Symbol.asyncIterator")) return false;
+  if (features.includes("Promise.prototype.finally")) return false;
   return true;
 }
 
