@@ -23,14 +23,13 @@ export class BreakpointManager {
     this._breakpointMaps = new Map();
   }
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
-  _previousStop: SourceData;
   _channel: DebugChannel;
   // the location of the statement that was last executed
   _lastExecuted: SourceData;
 
   onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
     if (ast.loc && ast.loc.source !== null) {
-      this._previousStop = {
+      this._lastExecuted = {
         filePath: ast.loc.source,
         line: ast.loc.start.line,
         column: ast.loc.start.column,
@@ -71,7 +70,7 @@ export class BreakpointManager {
         // Note: for the case when the debugger is supposed to stop on the same
         // breakpoint consecutively (e.g. the statement is in a loop), some other
         // ast node (e.g. block, loop) must have been checked in between so
-        // previousExecutedFile and previousExecutedLine will have changed
+        // lastExecuted will have changed
         if (breakpoint.column !== 0) {
           // this is a column breakpoint
           if (
