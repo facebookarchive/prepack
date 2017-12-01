@@ -75,7 +75,7 @@ export class DebugServer {
   }
 
   checkForBreakpoint(ast: BabelNode) {
-    if (this._breakpointManager.isValidBreakpoint(ast)) {
+    if (this._breakpointManager.shouldStopOnBreakpoint(ast)) {
       this.waitForRun(ast, "Breakpoint");
     }
   }

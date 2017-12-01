@@ -11,7 +11,7 @@
 
 import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
-import type { Breakpoint as BreakpointType, StoppedData, StoppedReason } from "./types.js";
+import type { Breakpoint as BreakpointType, SourceData, StoppedReason } from "./types.js";
 import { BabelNode } from "babel-types";
 import { IsStatement } from "./../methods/is.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
@@ -23,9 +23,10 @@ export class BreakpointManager {
     this._breakpointMaps = new Map();
   }
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
-  _previousStop: StoppedData;
+  _previousStop: SourceData;
   _channel: DebugChannel;
-  _lastExecuted: StoppedData;
+  // the location of the statement that was last executed
+  _lastExecuted: SourceData;
 
   onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
     if (ast.loc && ast.loc.source !== null) {
@@ -37,7 +38,7 @@ export class BreakpointManager {
     }
   }
 
-  isValidBreakpoint(ast: BabelNode): boolean {
+  shouldStopOnBreakpoint(ast: BabelNode): boolean {
     if (!IsStatement(ast)) return false;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
