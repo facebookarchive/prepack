@@ -8,7 +8,7 @@
  */
 
 /* @flow */
-import type { StoppedData } from "./types.js";
+import type { SourceData } from "./types.js";
 import { IsStatement } from "./../methods/is.js";
 import { BabelNode } from "babel-types";
 import invariant from "./../invariant.js";
@@ -21,7 +21,7 @@ export class Stepper {
       column: column,
     };
   }
-  _stepStartData: StoppedData;
+  _stepStartData: SourceData;
 
   isComplete(ast: BabelNode): boolean {
     invariant(false, "Abstract method, please override");
