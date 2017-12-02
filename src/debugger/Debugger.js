@@ -265,6 +265,7 @@ export class DebugServer {
       let filePath = ast.loc.source;
       let line = ast.loc.start.line;
       let column = ast.loc.start.column;
+      // check if the current location is same as the last one
       if (
         this._lastExecuted &&
         filePath === this._lastExecuted.filePath &&
