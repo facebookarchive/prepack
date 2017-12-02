@@ -11,7 +11,7 @@
 
 import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
-import type { Breakpoint as BreakpointType, StoppedData, StoppedReason } from "./types.js";
+import type { Breakpoint as BreakpointType } from "./types.js";
 import { BabelNode } from "babel-types";
 import { IsStatement } from "./../methods/is.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
@@ -23,20 +23,9 @@ export class BreakpointManager {
     this._breakpointMaps = new Map();
   }
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
-  _previousStop: StoppedData;
   _channel: DebugChannel;
 
-  onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
-    if (ast.loc && ast.loc.source !== null) {
-      this._previousStop = {
-        filePath: ast.loc.source,
-        line: ast.loc.start.line,
-        column: ast.loc.start.column,
-      };
-    }
-  }
-
-  isValidBreakpoint(ast: BabelNode): boolean {
+  shouldStopOnBreakpoint(ast: BabelNode): boolean {
     if (!IsStatement(ast)) return false;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
@@ -58,29 +47,6 @@ export class BreakpointManager {
   _findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
     let breakpoint = this.getBreakpoint(filePath, lineNum, colNum);
     if (breakpoint && breakpoint.enabled) {
-      if (this._previousStop) {
-        // checking if this is the same file and line we stopped at last time
-        // if so, we should skip it this time
-        // Note: for the case when the debugger is supposed to stop on the same
-        // breakpoint consecutively (e.g. the statement is in a loop), some other
-        // ast node (e.g. block, loop) must have been checked in between so
-        // previousExecutedFile and previousExecutedLine will have changed
-        if (breakpoint.column !== 0) {
-          // this is a column breakpoint
-          if (
-            filePath === this._previousStop.filePath &&
-            lineNum === this._previousStop.line &&
-            colNum === this._previousStop.column
-          ) {
-            return null;
-          }
-        } else {
-          // this is a line breakpoint
-          if (filePath === this._previousStop.filePath && lineNum === this._previousStop.line) {
-            return null;
-          }
-        }
-      }
       return breakpoint;
     }
     return null;
