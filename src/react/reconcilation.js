@@ -38,18 +38,21 @@ export class Reconciler {
     realm: Realm,
     moduleTracer: ModuleTracer,
     statistics: ReactStatistics,
-    reactSerializerState: ReactSerializerState
+    reactSerializerState: ReactSerializerState,
+    simpleClassComponents: Set<Value>
   ) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
     this.statistics = statistics;
     this.reactSerializerState = reactSerializerState;
+    this.simpleClassComponents = simpleClassComponents;
   }
 
   realm: Realm;
   moduleTracer: ModuleTracer;
   statistics: ReactStatistics;
   reactSerializerState: ReactSerializerState;
+  simpleClassComponents: Set<Value>;
 
   render(componentType: ECMAScriptSourceFunctionValue): Effects {
     return this.realm.wrapInGlobalEnv(() =>
@@ -152,7 +155,6 @@ export class Reconciler {
 
     // first we check if it's a class component
     if (valueIsClassComponent(this.realm, componentType)) {
-      let classComponentTypes = this.realm.react.classComponentTypes;
       // We first need to know what type of class component we're dealing with.
       // A "simple" class component is defined as:
       //
@@ -170,26 +172,21 @@ export class Reconciler {
       // To begin with, we don't know what type of component it is, so we try and render it as if it were
       // a simple component using the above heuristics. If an error occurs during this process, we assume
       // that the class wasn't simple, then try again with the "complex" heuristics.
-      if (!classComponentTypes.has(componentType)) {
-        try {
-          value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
-          classComponentTypes.set(componentType, "SIMPLE");
-        } catch (error) {
-          // if we get back a SimpleClassBailOut error, we know that this class component
-          // wasn't a simple one and is likely to be a complex class component instead
-          if (error instanceof SimpleClassBailOut) {
-            // mark the component as not simple and continue
-            classComponentTypes.set(componentType, "COMPLEX");
-          } else {
-            // else we rethrow the error
-            throw error;
-          }
-        }
-      } else if (classComponentTypes.get(componentType) === "SIMPLE") {
+      try {
         value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
+        this.simpleClassComponents.add(value);
+      } catch (error) {
+        // if we get back a SimpleClassBailOut error, we know that this class component
+        // wasn't a simple one and is likely to be a complex class component instead
+        if (error instanceof SimpleClassBailOut) {
+          // the component was not simple, so we continue with complex case
+        } else {
+          // else we rethrow the error
+          throw error;
+        }
       }
-      // handle the complex class component
-      if (classComponentTypes.get(componentType) === "COMPLEX") {
+      // handle the complex class component if there is not value
+      if (value === undefined) {
         value = this._renderComplexClassComponent(componentType, props, context, branchStatus, branchState);
       }
     } else {

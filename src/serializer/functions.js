@@ -18,6 +18,7 @@ import type { AdditionalFunctionEffects } from "./types.js";
 import type { PropertyBinding } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
+  Value,
   AbstractObjectValue,
   FunctionValue,
   ObjectValue,
@@ -29,11 +30,7 @@ import { ModuleTracer } from "./modules.js";
 import buildTemplate from "babel-template";
 import { ReactStatistics, type ReactSerializerState } from "./types";
 import { Reconciler } from "../react/reconcilation.js";
-import {
-  valueIsClassComponent,
-  valueIsSimpleClassComponent,
-  convertSimpleClassComponentToFunctionalComponent,
-} from "../react/utils.js";
+import { valueIsClassComponent, convertSimpleClassComponentToFunctionalComponent } from "../react/utils.js";
 import * as t from "babel-types";
 
 export class Functions {
@@ -128,14 +125,16 @@ export class Functions {
 
     // Get write effects of the components
     for (let [componentType] of recordedReactRootComponents) {
-      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react);
+      let simpleClassComponents = new Set();
+      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react, simpleClassComponents);
       invariant(
         componentType instanceof ECMAScriptSourceFunctionValue,
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
       let effects = reconciler.render(componentType);
       let additionalFunctionEffects = this._createAdditionalEffects(effects);
-      if (valueIsSimpleClassComponent(this.realm, componentType)) {
+      invariant(effects[0] instanceof Value);
+      if (simpleClassComponents.has(effects[0])) {
         // if the root component was a class and is now simple, we can convert it from a class
         // component to a functional component
         convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);

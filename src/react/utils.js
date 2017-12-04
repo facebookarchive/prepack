@@ -88,16 +88,6 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
   return false;
 }
 
-export function valueIsSimpleClassComponent(realm: Realm, value: Value) {
-  let classComponentTypes = realm.react.classComponentTypes;
-  return (
-    valueIsClassComponent(realm, value) &&
-    value instanceof ECMAScriptSourceFunctionValue &&
-    classComponentTypes.has(value) &&
-    classComponentTypes.get(value) === "SIMPLE"
-  );
-}
-
 export function addKeyToReactElement(
   realm: Realm,
   reactSerializerState: ReactSerializerState,

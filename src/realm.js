@@ -169,7 +169,6 @@ export class Realm {
       enabled: opts.reactEnabled || false,
       flowRequired: true,
       reactElementSymbol: undefined,
-      classComponentTypes: new WeakMap(),
       currentOwner: undefined,
     };
 
@@ -209,7 +208,6 @@ export class Realm {
     enabled: boolean,
     flowRequired: boolean,
     reactElementSymbol?: SymbolValue,
-    classComponentTypes: WeakMap<ECMAScriptSourceFunctionValue, "SIMPLE" | "COMPLEX">,
     currentOwner?: ObjectValue,
   };
 
