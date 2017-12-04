@@ -24,6 +24,7 @@ import type {
   VariablesArguments,
   StoppedReason,
   EvaluateArguments,
+  SourceData,
 } from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
@@ -53,6 +54,7 @@ export class DebugServer {
   _realm: Realm;
   _variableManager: VariableManager;
   _stepManager: SteppingManager;
+  _lastExecuted: SourceData;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -70,12 +72,14 @@ export class DebugServer {
 
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
-    this.checkForBreakpoint(ast);
-    this.checkStepComplete(ast);
+    if (this._checkAndUpdateLastExecuted(ast)) {
+      this.checkForBreakpoint(ast);
+      this.checkStepComplete(ast);
+    }
   }
 
   checkForBreakpoint(ast: BabelNode) {
-    if (this._breakpointManager.isValidBreakpoint(ast)) {
+    if (this._breakpointManager.shouldStopOnBreakpoint(ast)) {
       this.waitForRun(ast, "Breakpoint");
     }
   }
@@ -247,7 +251,6 @@ export class DebugServer {
   // actions that need to happen when Prepack is going to be stopped
   _onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
     if (reason === "Entry") return;
-    this._breakpointManager.onDebuggeeStop(ast, reason);
     this._stepManager.onDebuggeeStop(ast, reason);
   }
 
@@ -255,6 +258,30 @@ export class DebugServer {
   _onDebuggeeResume() {
     // resets the variable manager
     this._variableManager.clean();
+  }
+
+  _checkAndUpdateLastExecuted(ast: BabelNode): boolean {
+    if (ast.loc && ast.loc.source) {
+      let filePath = ast.loc.source;
+      let line = ast.loc.start.line;
+      let column = ast.loc.start.column;
+      // check if the current location is same as the last one
+      if (
+        this._lastExecuted &&
+        filePath === this._lastExecuted.filePath &&
+        line === this._lastExecuted.line &&
+        column === this._lastExecuted.column
+      ) {
+        return false;
+      }
+      this._lastExecuted = {
+        filePath: filePath,
+        line: line,
+        column: column,
+      };
+      return true;
+    }
+    return false;
   }
 
   shutdown() {
