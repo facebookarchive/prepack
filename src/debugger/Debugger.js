@@ -85,7 +85,7 @@ export class DebugServer {
   }
 
   checkStepComplete(ast: BabelNode) {
-    let steppingType = this._stepManager.isStepComplete(ast);
+    let steppingType = this._stepManager.getStepperType(ast);
     if (steppingType) {
       this.waitForRun(ast, steppingType);
     }

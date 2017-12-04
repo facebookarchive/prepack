@@ -27,7 +27,7 @@ export class Stepper {
     invariant(false, "Abstract method, please override");
   }
 
-  isValidStopLocation(ast: BabelNode) {
+  isAstLocationChanged(ast: BabelNode) {
     // we should only step to statements
     if (!IsStatement(ast)) return false;
     let loc = ast.loc;
@@ -58,7 +58,7 @@ export class StepIntoStepper extends Stepper {
 
   // Override
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
-    return this.isValidStopLocation(ast);
+    return this.isAstLocationChanged(ast);
   }
 }
 
@@ -70,7 +70,7 @@ export class StepOverStepper extends Stepper {
   _startStackSize: number;
 
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
-    if (!this.isValidStopLocation(ast)) return false;
+    if (!this.isAstLocationChanged(ast)) return false;
     if (currentStackSize <= this._startStackSize) {
       // two cases here:
       // if current stack length < starting stack length, the program must have

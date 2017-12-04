@@ -57,7 +57,7 @@ export class SteppingManager {
     );
   }
 
-  isStepComplete(ast: BabelNode): void | SteppingType {
+  getStepperType(ast: BabelNode): void | SteppingType {
     let completedStepperType = this._checkCompleteSteppers(ast);
     if (completedStepperType) {
       invariant(ast.loc && ast.loc.source);
