@@ -470,6 +470,15 @@ export class ResidualHeapVisitor {
     }
   }
 
+  // Overridable hook for pre-visiting the value.
+  // Return false will tell visitor to skip visiting children of this node.
+  preProcessValue(val: Value): boolean {
+    return this._mark(val);
+  }
+
+  // Overridable hook for post-visiting the value.
+  postProcessValue(val: Value) {}
+
   _mark(val: Value): boolean {
     let scopes = this.values.get(val);
     if (scopes === undefined) this.values.set(val, (scopes = new Set()));
@@ -481,7 +490,7 @@ export class ResidualHeapVisitor {
   visitEquivalentValue<T: Value>(val: T): T {
     if (val instanceof AbstractValue) {
       let equivalentValue = this.equivalenceSet.add(val);
-      if (this._mark(equivalentValue)) this.visitAbstractValue(equivalentValue);
+      if (this.preProcessValue(equivalentValue)) this.visitAbstractValue(equivalentValue);
       return (equivalentValue: any);
     }
     this.visitValue(val);
@@ -491,32 +500,32 @@ export class ResidualHeapVisitor {
   visitValue(val: Value): void {
     invariant(!val.refuseSerialization);
     if (val instanceof AbstractValue) {
-      if (this._mark(val)) this.visitAbstractValue(val);
+      if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existance as templates for abstract objects (TODO #882).
-      if (val.isTemplate) this._mark(val);
+      if (val.isTemplate) this.preProcessValue(val);
       else
         this._withScope(this.commonScope, () => {
-          this._mark(val);
+          this.preProcessValue(val);
         });
     } else if (val instanceof EmptyValue) {
-      this._mark(val);
+      this.preProcessValue(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {
-      this._mark(val);
+      this.preProcessValue(val);
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
-      if (this._mark(val)) this.visitValueArray(val);
+      if (this.preProcessValue(val)) this.visitValueArray(val);
     } else if (val instanceof ProxyValue) {
-      if (this._mark(val)) this.visitValueProxy(val);
+      if (this.preProcessValue(val)) this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
       // Function declarations should get hoisted in common scope so that instances only get allocated once
       this._withScope(this.commonScope, () => {
         invariant(val instanceof FunctionValue);
-        if (this._mark(val)) this.visitValueFunction(val);
+        if (this.preProcessValue(val)) this.visitValueFunction(val);
       });
     } else if (val instanceof SymbolValue) {
-      if (this._mark(val)) this.visitValueSymbol(val);
+      if (this.preProcessValue(val)) this.visitValueSymbol(val);
     } else {
       invariant(val instanceof ObjectValue);
 
@@ -525,12 +534,13 @@ export class ResidualHeapVisitor {
       if (val.originalConstructor !== undefined) {
         this._withScope(this.commonScope, () => {
           invariant(val instanceof ObjectValue);
-          if (this._mark(val)) this.visitValueObject(val);
+          if (this.preProcessValue(val)) this.visitValueObject(val);
         });
       } else {
-        if (this._mark(val)) this.visitValueObject(val);
+        if (this.preProcessValue(val)) this.visitValueObject(val);
       }
     }
+    this.postProcessValue(val);
   }
 
   visitGlobalBinding(key: string): ResidualFunctionBinding {
