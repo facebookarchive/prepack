@@ -231,12 +231,6 @@ export class ResidualHeapSerializer {
     objectPrototypeAlreadyEstablished: boolean = false,
     cleanupDummyProperties: ?Set<string>
   ) {
-    if (obj.isLeakedObject()) {
-      // Leaked objects always start out as empty and then they're mutated
-      // before their first use.
-      return;
-    }
-
     //inject symbols
     for (let [symbol, propertyBinding] of obj.symbols) {
       invariant(propertyBinding);

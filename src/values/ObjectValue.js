@@ -114,6 +114,7 @@ export default class ObjectValue extends ConcreteValue {
           return binding.descriptor.value;
         },
         set: function(v) {
+          invariant(!this.isLeakedObject(), "cannot mutate a leaked object");
           let binding = this[propName + "_binding"];
           this.$Realm.recordModifiedProperty(binding);
           binding.descriptor.value = v;
@@ -231,7 +232,7 @@ export default class ObjectValue extends ConcreteValue {
   _isPartial: BooleanValue;
 
   // tainted objects
-  _hasLeaked: BooleanValue;
+  _hasLeaked: AbstractValue | BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
@@ -297,15 +298,16 @@ export default class ObjectValue extends ConcreteValue {
 
   leak(): void {
     this._hasLeaked = this.$Realm.intrinsics.true;
-    // Clear all properties. This object is now completely unknown.
-    this.properties.clear(); // TODO: Track that this happens so that it can be undone by evaluateForEffects
-    // TODO: Clear symbol properties, prototype and other fields as well.
-    this.makePartial();
-    this.makeSimple(); // TODO: Don't assume it is once property access no longer fatal.
   }
 
   isLeakedObject(): boolean {
-    return this._hasLeaked.value;
+    if (this._hasLeaked instanceof BooleanValue) {
+      return this._hasLeaked.value;
+    }
+    if (this._hasLeaked === undefined) {
+      return false;
+    }
+    return true;
   }
 
   isSimpleObject(): boolean {
@@ -420,7 +422,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   getOwnPropertyKeysArray(): Array<string> {
-    if (this.isPartialObject() || this.unknownProperty !== undefined) {
+    if (this.isPartialObject() || this.isLeakedObject() || this.unknownProperty !== undefined) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }

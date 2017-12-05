@@ -29,47 +29,17 @@ import {
   ObjectValue,
   NativeFunctionValue,
 } from "../values/index.js";
-import { IsDataDescriptor, TestIntegrityLevel } from "../methods/index.js";
+import { TestIntegrityLevel } from "../methods/index.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 
-import { ResidualHeapInspector } from "../serializer/ResidualHeapInspector.js";
-
-function emitAllProperties(realm: Realm, O: ObjectValue) {
-  invariant(realm.generator, "a generator must exist while tracking a pure function");
-  let generator = realm.generator;
-  invariant(
-    O !== realm.$GlobalObject,
-    "we should not be able to get here because the global object is never mutated in a pure function."
-  );
-  // Temporary hack
-  let insp = new ResidualHeapInspector(realm, (null: any));
-  for (let [P, propertyBinding] of O.properties) {
-    if (insp.canIgnoreProperty(O, P)) {
-      continue;
-    }
-    let desc = propertyBinding.descriptor;
-    if (desc === undefined) continue; // deleted
-    if (IsDataDescriptor(realm, desc) && desc.configurable && desc.enumerable && desc.writable) {
-      let descValue = desc.value || realm.intrinsics.undefined;
-      invariant(descValue instanceof Value);
-      generator.emitPropertyAssignment(O, P, descValue);
-    } else {
-      generator.emitDefineProperty(O, P, desc);
-    }
-  }
-  // TODO: Emit symbol properties, prototype and other fields as well.
-}
-
 class ObjectValueLeakingVisitor {
-  realm: Realm;
   // ObjectValues to visit if they're reachable.
   objectsTrackedForLeaks: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
 
   constructor(realm: Realm, objectsTrackedForLeaks: Set<ObjectValue>) {
-    this.realm = realm;
     this.objectsTrackedForLeaks = objectsTrackedForLeaks;
     this.visitedValues = new Set();
   }
@@ -118,11 +88,9 @@ class ObjectValueLeakingVisitor {
     // prototype
     this.visitObjectPrototype(obj);
 
-    // if this object wasn't already tainted, we need to emit all properties
-    // that had been set until this point, and mark it as tainted so that any
-    // mutation and property access get tracked after this.
+    // if this object wasn't already leaked, we need mark it as leaked
+    // so that any mutation and property access get tracked after this.
     if (!obj.isLeakedObject()) {
-      emitAllProperties(this.realm, obj);
       obj.leak();
     }
   }

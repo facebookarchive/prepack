@@ -13,12 +13,17 @@ import type { Realm } from "../realm.js";
 import { ObjectValue } from "../values/index.js";
 import { IsExtensible, IsDataDescriptor, IsAccessorDescriptor } from "./index.js";
 import { Properties } from "../singletons.js";
+import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 
 type IntegrityLevels = "sealed" | "frozen";
 
 // ECMA262 9.1.4.1
 export function OrdinaryPreventExtensions(realm: Realm, O: ObjectValue): boolean {
+  if (O.isLeakedObject() && O.getExtensible()) {
+    throw new FatalError();
+  }
+
   // 1. Set the value of the [[Extensible]] internal slot of O to false.
   O.setExtensible(false);
 
