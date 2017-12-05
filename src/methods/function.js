@@ -111,6 +111,7 @@ function InternalCall(
     result = OrdinaryCallEvaluateBody(realm, F, argsList);
   } finally {
     // 8. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
+    realm.popScope(callerContext.lexicalEnvironment);
     realm.popContext(calleeContext);
     invariant(realm.getRunningContext() === callerContext);
 
@@ -637,7 +638,7 @@ export class FunctionImplementation {
     let lexEnvRec = lexEnv.environmentRecord;
 
     // 32. Set the LexicalEnvironment of calleeContext to lexEnv.
-    calleeContext.lexicalEnvironment = lexEnv;
+    realm.pushScope(lexEnv);
 
     // 33. Let lexDeclarations be the LexicallyScopedDeclarations of code.
     let lexDeclarations = [];
@@ -1047,10 +1048,10 @@ export class FunctionImplementation {
     evalCxt.variableEnvironment = varEnv;
 
     // 18. Set the evalCxt's LexicalEnvironment to lexEnv.
-    evalCxt.lexicalEnvironment = lexEnv;
 
     // 19. Push evalCxt on to the execution context stack; evalCxt is now the running execution context.
     realm.pushContext(evalCxt);
+    realm.pushScope(lexEnv);
 
     let result;
     try {
@@ -1088,6 +1089,7 @@ export class FunctionImplementation {
     } finally {
       // 23. Suspend evalCxt and remove it from the execution context stack.
       evalCxt.suspend();
+      realm.destroyScope(evalCxt);
       realm.popContext(evalCxt);
     }
 

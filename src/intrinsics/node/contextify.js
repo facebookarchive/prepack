@@ -356,17 +356,18 @@ export default function(realm: Realm): ObjectValue {
     previousContext.suspend();
 
     let context = realm.createExecutionContext();
-    context.lexicalEnvironment = environment;
     context.variableEnvironment = environment;
     context.realm = realm;
 
     realm.pushContext(context);
+    let oldScope = realm.pushScope(environment);
 
     let result;
     try {
       result = environment.evaluateCompletion(script.ast, false);
     } finally {
       context.suspend();
+      realm.popScope(oldScope);
       realm.popContext(context);
     }
     invariant(realm.getRunningContext() === previousContext);

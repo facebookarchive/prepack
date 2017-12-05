@@ -1077,10 +1077,10 @@ export class LexicalEnvironment {
     onParse: void | (BabelNodeFile => void) = undefined
   ): [AbruptCompletion | Value, any] {
     let context = new ExecutionContext();
-    context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
     this.realm.pushContext(context);
+    this.realm.pushScope(this);
     let res, code;
     try {
       let ast;
@@ -1088,6 +1088,7 @@ export class LexicalEnvironment {
       if (onParse) onParse(ast);
       res = this.evaluateCompletion(ast, false);
     } finally {
+      this.realm.destroyScope(context);
       this.realm.popContext(context);
     }
     if (res instanceof AbruptCompletion) return [res, code];
@@ -1102,16 +1103,17 @@ export class LexicalEnvironment {
   ): AbruptCompletion | { code: string, map?: SourceMap } {
     let [ast, code] = this.concatenateAndParse(sources, sourceType);
     let context = new ExecutionContext();
-    context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
     this.realm.pushContext(context);
+    this.realm.pushScope(this);
     let partialAST;
     try {
       let res;
       [res, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
       if (res instanceof AbruptCompletion) return res;
     } finally {
+      this.realm.destroyScope(context);
       this.realm.popContext(context);
     }
     invariant(partialAST.type === "File");
@@ -1129,11 +1131,11 @@ export class LexicalEnvironment {
     onParse: void | (BabelNodeFile => void) = undefined
   ): AbruptCompletion | Value {
     let context = new ExecutionContext();
-    context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
 
     this.realm.pushContext(context);
+    this.realm.pushScope(this);
 
     let ast, res;
     try {
@@ -1148,6 +1150,7 @@ export class LexicalEnvironment {
       this.fixup_filenames(ast);
       res = this.evaluateCompletion(ast, false);
     } finally {
+      this.realm.destroyScope(context);
       this.realm.popContext(context);
     }
     if (res instanceof AbruptCompletion) return res;

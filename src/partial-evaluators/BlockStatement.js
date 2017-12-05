@@ -37,7 +37,7 @@ export default function(
   Environment.BlockDeclarationInstantiation(realm, strictCode, ast.body, blockEnv);
 
   // 4. Set the running execution context's LexicalEnvironment to blockEnv.
-  realm.getRunningContext().lexicalEnvironment = blockEnv;
+  realm.pushScope(blockEnv);
 
   try {
     // 5. Let blockValue be the result of evaluating StatementList.
@@ -56,6 +56,6 @@ export default function(
     return [res, rAst, []];
   } finally {
     // 6. Set the running execution context's LexicalEnvironment to oldEnv.
-    realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.popScope(oldEnv);
   }
 }

@@ -184,7 +184,7 @@ export default function(
   Environment.BlockDeclarationInstantiation(realm, strictCode, CaseBlock, blockEnv);
 
   // 6. Set the running execution context's LexicalEnvironment to blockEnv.
-  realm.getRunningContext().lexicalEnvironment = blockEnv;
+  realm.pushScope(blockEnv);
 
   let R;
   try {
@@ -200,6 +200,6 @@ export default function(
     throw e;
   } finally {
     // 8. Set the running execution context's LexicalEnvironment to oldEnv.
-    realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.popScope(oldEnv);
   }
 }

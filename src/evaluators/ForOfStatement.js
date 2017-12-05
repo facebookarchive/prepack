@@ -126,7 +126,7 @@ export function ForInOfHeadEvaluation(
     }
 
     // e. Set the running execution context's LexicalEnvironment to TDZ.
-    realm.getRunningContext().lexicalEnvironment = TDZ;
+    realm.pushScope(TDZ);
     env = TDZ;
   }
 
@@ -136,7 +136,7 @@ export function ForInOfHeadEvaluation(
     exprRef = env.evaluate(expr, strictCode);
   } finally {
     // 4. Set the running execution context's LexicalEnvironment to oldEnv.
-    realm.getRunningContext().lexicalEnvironment = oldEnv;
+    if (realm.getRunningContext().lexicalEnvironment !== oldEnv) realm.popScope(oldEnv);
   }
   env = oldEnv;
 
@@ -244,7 +244,7 @@ export function ForInOfBodyEvaluation(
       BindingInstantiation(realm, lhs, iterationEnv);
 
       // v. Set the running execution context's LexicalEnvironment to iterationEnv.
-      realm.getRunningContext().lexicalEnvironment = iterationEnv;
+      realm.pushScope(iterationEnv);
       env = iterationEnv;
 
       // vi. If destructuring is false, then
@@ -318,7 +318,7 @@ export function ForInOfBodyEvaluation(
     // h. If status is an abrupt completion, then
     if (status instanceof AbruptCompletion) {
       // i. Set the running execution context's LexicalEnvironment to oldEnv.
-      realm.getRunningContext().lexicalEnvironment = oldEnv;
+      if (env !== oldEnv) realm.popScope(oldEnv);
 
       // ii. Return ? IteratorClose(iterator, status).
       throw IteratorClose(realm, iterator, status);
@@ -329,7 +329,7 @@ export function ForInOfBodyEvaluation(
     invariant(result instanceof Value || result instanceof AbruptCompletion);
 
     // j. Set the running execution context's LexicalEnvironment to oldEnv.
-    realm.getRunningContext().lexicalEnvironment = oldEnv;
+    if (realm.getRunningContext().lexicalEnvironment !== oldEnv) realm.popScope(oldEnv);
     env = oldEnv;
 
     // k. If LoopContinues(result, labelSet) is false, return ? IteratorClose(iterator, UpdateEmpty(result, V)).

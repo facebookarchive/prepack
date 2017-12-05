@@ -223,7 +223,6 @@ export function PrepareForOrdinaryCall(
   let localEnv = Environment.NewFunctionEnvironment(realm, F, newTarget);
 
   // 9. Set the LexicalEnvironment of calleeContext to localEnv.
-  calleeContext.lexicalEnvironment = localEnv;
 
   // 10. Set the VariableEnvironment of calleeContext to localEnv.
   calleeContext.variableEnvironment = localEnv;
@@ -233,6 +232,7 @@ export function PrepareForOrdinaryCall(
 
   // 12. Push calleeContext onto the execution context stack; calleeContext is now the running execution context.
   realm.pushContext(calleeContext);
+  realm.pushScope(localEnv);
 
   // 13. NOTE Any exception objects produced after this point are associated with calleeRealm.
 
@@ -473,6 +473,7 @@ export function PrepareForTailCall(realm: Realm) {
 
   // 3. Pop leafContext from the execution context stack. The execution context now on the
   //    top of the stack becomes the running execution context.
+  realm.destroyScope(leafContext);
   realm.popContext(leafContext);
 
   // TODO #1008 4. Assert: leafContext has no further use. It will never be activated as the running execution context.

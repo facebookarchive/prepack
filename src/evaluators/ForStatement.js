@@ -20,7 +20,11 @@ import invariant from "../invariant.js";
 import type { BabelNodeForStatement } from "babel-types";
 
 // ECMA262 13.7.4.9
-export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings: Array<string>) {
+export function CreatePerIterationEnvironment(
+  realm: Realm,
+  perIterationBindings: Array<string>,
+  ignorePop: boolean = false
+) {
   // 1. If perIterationBindings has any elements, then
   if (perIterationBindings.length > 0) {
     // a. Let lastIterationEnv be the running execution context's LexicalEnvironment.
@@ -31,6 +35,7 @@ export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings
     let outer = lastIterationEnv.parent;
     // d. Assert: outer is not null.
     invariant(outer !== null);
+
     // e. Let thisIterationEnv be NewDeclarativeEnvironment(outer).
     let thisIterationEnv = Environment.NewDeclarativeEnvironment(realm, outer);
     // f. Let thisIterationEnvRec be thisIterationEnv's EnvironmentRecord.
@@ -45,7 +50,8 @@ export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings
       thisIterationEnvRec.InitializeBinding(bn, lastValue);
     }
     // h. Set the running execution context's LexicalEnvironment to thisIterationEnv.
-    realm.getRunningContext().lexicalEnvironment = thisIterationEnv;
+    if (!ignorePop) realm.destroyScope(realm.getRunningContext());
+    realm.pushScope(thisIterationEnv);
   }
   // 2. Return undefined.
   return realm.intrinsics.undefined;
@@ -65,7 +71,7 @@ function ForBodyEvaluation(
   let V: Value = realm.intrinsics.undefined;
 
   // 2. Perform ? CreatePerIterationEnvironment(perIterationBindings).
-  CreatePerIterationEnvironment(realm, perIterationBindings);
+  CreatePerIterationEnvironment(realm, perIterationBindings, true);
   let env = realm.getRunningContext().lexicalEnvironment;
 
   // 3. Repeat
@@ -169,7 +175,7 @@ export default function(
       }
 
       // 7. Set the running execution context's LexicalEnvironment to loopEnv.
-      realm.getRunningContext().lexicalEnvironment = loopEnv;
+      realm.pushScope(loopEnv);
 
       // 8. Let forDcl be the result of evaluating LexicalDeclaration.
       let forDcl = loopEnv.evaluateCompletion(init, strictCode);
@@ -177,7 +183,7 @@ export default function(
       // 9. If forDcl is an abrupt completion, then
       if (forDcl instanceof AbruptCompletion) {
         // a. Set the running execution context's LexicalEnvironment to oldEnv.
-        realm.getRunningContext().lexicalEnvironment = oldEnv;
+        realm.popScope(oldEnv);
 
         // b. Return Completion(forDcl).
         throw forDcl;
@@ -192,7 +198,7 @@ export default function(
         bodyResult = ForBodyEvaluation(realm, test, update, body, perIterationLets, labelSet, strictCode);
       } finally {
         // 12. Set the running execution context's LexicalEnvironment to oldEnv.
-        realm.getRunningContext().lexicalEnvironment = oldEnv;
+        realm.popScope(oldEnv);
       }
       // 13. Return Completion(bodyResult).
       return bodyResult;

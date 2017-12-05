@@ -37,6 +37,7 @@ export class Logger {
     context.variableEnvironment = env;
     context.realm = realm;
     realm.pushContext(context);
+    realm.pushScope(env);
     // We use partial evaluation so that we can throw away any state mutations
     let oldErrorHandler = realm.errorHandler;
     let newErrorHandler;
@@ -70,6 +71,7 @@ export class Logger {
       return ((result: any): T);
     } finally {
       realm.errorHandler = oldErrorHandler;
+      realm.destroyScope(context);
       realm.popContext(context);
     }
   }

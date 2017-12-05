@@ -308,6 +308,37 @@ export class Realm {
     return context;
   }
 
+  // Puts the new LexicalEnvironment onto the current execution context (or the one specified)
+  pushScope(environment: LexicalEnvironment, context?: ExecutionContext) {
+    let executionContext = context ? context : this.getRunningContext();
+    let prevScope = executionContext.lexicalEnvironment;
+    executionContext.lexicalEnvironment = environment;
+    return prevScope;
+  }
+
+  // Destroys the LexicalEnvironment (scope) of the specified context (or the current execution context's)
+  popScope(prevEnvironment: LexicalEnvironment, context?: ExecutionContext) {
+    let execContext = context ? context : this.getRunningContext();
+    this.destroyScope(execContext);
+    if (execContext.lexicalEnvironment.parent !== null) invariant(execContext.lexicalEnvironment !== prevEnvironment);
+    execContext.lexicalEnvironment = prevEnvironment;
+  }
+
+  // Destroys a scope that may not be the running context's scope
+  // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
+  destroyScope(context: ExecutionContext) {
+    // Don't undo things to global scope
+    let modifiedBindings = this.modifiedBindings;
+    if (modifiedBindings && context.lexicalEnvironment.parent !== null) {
+      let environmentRecord = context.lexicalEnvironment.environmentRecord;
+      // To avoid importing DeclarativeEnvironmentRecord, just check for bindings
+      let bindings = (environmentRecord: any).bindings;
+      if (bindings)
+        for (let b of modifiedBindings.keys())
+          if (bindings[b.name] && bindings[b.name] === b) modifiedBindings.delete(b);
+    }
+  }
+
   pushContext(context: ExecutionContext): void {
     if (this.contextStack.length >= this.maxStackDepth) {
       throw new FatalError("Maximum stack depth exceeded");
@@ -329,14 +360,15 @@ export class Realm {
   wrapInGlobalEnv<T>(callback: () => T): T {
     let context = new ExecutionContext();
     context.isStrict = this.isStrict;
-    context.lexicalEnvironment = this.$GlobalEnv;
     context.variableEnvironment = this.$GlobalEnv;
     context.realm = this;
 
     this.pushContext(context);
+    this.pushScope(this.$GlobalEnv);
     try {
       return callback();
     } finally {
+      this.destroyScope(context);
       this.popContext(context);
     }
   }
