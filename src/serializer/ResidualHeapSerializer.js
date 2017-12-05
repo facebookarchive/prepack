@@ -54,7 +54,7 @@ import type {
   SerializedBody,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics } from "./types.js";
+import { TimingStatistics, SerializerStatistics, type AdditionalFunctionEffects } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -65,7 +65,6 @@ import { voidExpression, emptyExpression, constructorExpression, protoExpression
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
-import type { Effects } from "../realm.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -85,7 +84,7 @@ export class ResidualHeapSerializer {
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
     referencedDeclaredValues: Set<AbstractValue>,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void,
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     statistics: SerializerStatistics,
     react: ReactSerializerState
@@ -188,7 +187,7 @@ export class ResidualHeapSerializer {
   _options: SerializerOptions;
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, SerializedBody>;
-  additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
+  additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   react: ReactSerializerState;
 
@@ -1491,7 +1490,7 @@ export class ResidualHeapSerializer {
     let processAdditionalFunctionValuesFn = () => {
       let additionalFVEffects = this.additionalFunctionValuesAndEffects;
       if (additionalFVEffects) {
-        for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
+        for (let [additionalFunctionValue, { effects, transforms }] of additionalFVEffects.entries()) {
           let [
             result,
             generator,
@@ -1545,6 +1544,9 @@ export class ResidualHeapSerializer {
           this.currentAdditionalFunction = additionalFunctionValue;
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
+          for (let transform of transforms) {
+            transform(body);
+          }
           rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
           // re-resolve initialized modules to include things from additional functions
           this.modules.resolveInitializedModules();

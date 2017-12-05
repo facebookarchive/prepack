@@ -203,4 +203,12 @@ describe("Test React", () => {
       await runTest(directory, "class-root-with-instance-vars-2.js");
     });
   });
+
+  describe("Class component folding", () => {
+    let directory = "class-components";
+
+    it("Simple classes", async () => {
+      await runTest(directory, "simple-classes.js");
+    });
+  });
 });
