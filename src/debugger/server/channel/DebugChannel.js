@@ -8,10 +8,10 @@
  */
 
 /* @flow */
-import invariant from "./../../invariant.js";
-import { FileIOWrapper } from "./FileIOWrapper.js";
-import { DebugMessage } from "./DebugMessage.js";
-import { MessageMarshaller } from "./MessageMarshaller.js";
+import invariant from "./../../common/invariant.js";
+import { FileIOWrapper } from "./../../common/channel/FileIOWrapper.js";
+import { DebugMessage } from "./../../common/channel/DebugMessage.js";
+import { MessageMarshaller } from "./../../common/channel/MessageMarshaller.js";
 import type {
   DebuggerRequest,
   BreakpointsArguments,
@@ -20,7 +20,7 @@ import type {
   Variable,
   StoppedReason,
   EvaluateResult,
-} from "./../types.js";
+} from "./../../common/types.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {

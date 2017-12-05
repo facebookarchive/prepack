@@ -18,8 +18,8 @@ import { getDebuggerOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
-import { DebugChannel } from "./debugger/channel/DebugChannel.js";
-import { FileIOWrapper } from "./debugger/channel/FileIOWrapper.js";
+import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
+import { FileIOWrapper } from "./debugger/common/channel/FileIOWrapper.js";
 
 import fs from "fs";
 

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import invariant from "../../invariant.js";
+import invariant from "../invariant.js";
 
 const LENGTH_SEPARATOR = "--";
 

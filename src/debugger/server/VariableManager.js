@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { VariableContainer, Variable, EvaluateResult } from "./types.js";
+import type { Variable, EvaluateResult } from "./../common/types.js";
 import { ReferenceMap } from "./ReferenceMap.js";
 import {
   LexicalEnvironment,
@@ -17,7 +17,7 @@ import {
   DeclarativeEnvironmentRecord,
   ObjectEnvironmentRecord,
   GlobalEnvironmentRecord,
-} from "./../environment.js";
+} from "./../../environment.js";
 import {
   Value,
   ConcreteValue,
@@ -26,12 +26,14 @@ import {
   AbstractObjectValue,
   AbstractValue,
   StringValue,
-} from "./../values/index.js";
-import invariant from "./../invariant.js";
-import type { Realm } from "./../realm.js";
-import { IsDataDescriptor } from "./../methods/is.js";
-import { DebuggerError } from "./DebuggerError.js";
-import { Functions } from "./../singletons.js";
+} from "./../../values/index.js";
+import invariant from "./../common/invariant.js";
+import type { Realm } from "./../../realm.js";
+import { IsDataDescriptor } from "./../../methods/is.js";
+import { DebuggerError } from "./../common/DebuggerError.js";
+import { Functions } from "./../../singletons.js";
+
+type VariableContainer = LexicalEnvironment | ObjectValue | AbstractValue;
 
 // This class manages the handling of variable requests in the debugger
 // The DebugProtocol specifies collections of variables are to be fetched using a

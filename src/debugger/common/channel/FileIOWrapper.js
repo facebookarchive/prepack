@@ -10,15 +10,15 @@
 /* @flow */
 
 import fs from "fs";
-import path from "path";
 import { MessagePackager } from "./MessagePackager.js";
-import invariant from "../../invariant.js";
+import invariant from "../invariant.js";
 
 export class FileIOWrapper {
   constructor(isAdapter: boolean, inFilePath: string, outFilePath: string) {
-    // the paths are expected to be relative to Prepack top level directory
-    this._inFilePath = path.join(__dirname, "../../../", inFilePath);
-    this._outFilePath = path.join(__dirname, "../../../", outFilePath);
+    this._inFilePath = inFilePath;
+    this._outFilePath = outFilePath;
+    if (!fs.existsSync(this._inFilePath)) fs.openSync(this._inFilePath, "w");
+    if (!fs.existsSync(this._outFilePath)) fs.openSync(this._outFilePath, "w");
     this._packager = new MessagePackager(isAdapter);
     this._isAdapter = isAdapter;
   }

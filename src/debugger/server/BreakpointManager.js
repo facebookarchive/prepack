@@ -11,9 +11,9 @@
 
 import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
-import type { Breakpoint as BreakpointType } from "./types.js";
+import type { Breakpoint as BreakpointType } from "./../common/types.js";
 import { BabelNode } from "babel-types";
-import { IsStatement } from "./../methods/is.js";
+import { IsStatement } from "./../../methods/is.js";
 
 // Storing BreakpointStores for all source files
 export class BreakpointManager {

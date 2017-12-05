@@ -34,7 +34,7 @@ import type {
   EvaluateArguments,
   EvaluateResult,
 } from "./../types.js";
-import invariant from "./../../invariant.js";
+import invariant from "./../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
 
 export class MessageMarshaller {

@@ -11,10 +11,10 @@
 
 import { BreakpointManager } from "./BreakpointManager.js";
 import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
-import invariant from "../invariant.js";
+import invariant from "../common/invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
-import { DebugMessage } from "./channel/DebugMessage.js";
-import { DebuggerError } from "./DebuggerError.js";
+import { DebugMessage } from "./../common/channel/DebugMessage.js";
+import { DebuggerError } from "./../common/DebuggerError.js";
 import type {
   DebuggerRequest,
   StackframeArguments,
@@ -24,9 +24,9 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
-} from "./types.js";
-import type { Realm } from "./../realm.js";
-import { ExecutionContext } from "./../realm.js";
+} from "./../common/types.js";
+import type { Realm } from "./../../realm.js";
+import { ExecutionContext } from "./../../realm.js";
 import { VariableManager } from "./VariableManager.js";
 import { SteppingManager } from "./SteppingManager.js";
 import type { StoppableObject } from "./StopEventManager.js";
@@ -37,7 +37,7 @@ import {
   FunctionEnvironmentRecord,
   DeclarativeEnvironmentRecord,
   ObjectEnvironmentRecord,
-} from "./../environment.js";
+} from "./../../environment.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
