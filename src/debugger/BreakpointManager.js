@@ -14,16 +14,13 @@ import { Breakpoint } from "./Breakpoint.js";
 import type { Breakpoint as BreakpointType } from "./types.js";
 import { BabelNode } from "babel-types";
 import { IsStatement } from "./../methods/is.js";
-import type { DebugChannel } from "./channel/DebugChannel.js";
 
 // Storing BreakpointStores for all source files
 export class BreakpointManager {
-  constructor(channel: DebugChannel) {
-    this._channel = channel;
+  constructor() {
     this._breakpointMaps = new Map();
   }
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
-  _channel: DebugChannel;
 
   getStoppableBreakpoint(ast: BabelNode): void | Breakpoint {
     if (!IsStatement(ast)) return;

@@ -10,7 +10,7 @@
 /* @flow */
 
 import invariant from "./../invariant.js";
-import { DebugChannel } from "./channel/DebugChannel.js";
+import type { DebugChannel } from "./channel/DebugChannel.js";
 import { Breakpoint } from "./Breakpoint.js";
 import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
 import { BabelNode } from "babel-types";

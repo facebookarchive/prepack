@@ -10,21 +10,18 @@
 /* @flow */
 
 import { BabelNode } from "babel-types";
-import type { DebugChannel } from "./channel/DebugChannel.js";
 import invariant from "./../invariant.js";
 import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
 import type { Realm } from "./../realm.js";
 import type { StoppableObject } from "./StopEventManager.js";
 
 export class SteppingManager {
-  constructor(channel: DebugChannel, realm: Realm, keepOldSteppers?: boolean) {
-    this._channel = channel;
+  constructor(realm: Realm, keepOldSteppers?: boolean) {
     this._realm = realm;
     this._steppers = [];
     this._keepOldSteppers = false;
     if (keepOldSteppers) this._keepOldSteppers = true;
   }
-  _channel: DebugChannel;
   _realm: Realm;
   _keepOldSteppers: boolean;
   _steppers: Array<Stepper>;

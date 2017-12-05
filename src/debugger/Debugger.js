@@ -43,9 +43,9 @@ export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
     this._channel = channel;
     this._realm = realm;
-    this._breakpointManager = new BreakpointManager(this._channel);
+    this._breakpointManager = new BreakpointManager();
     this._variableManager = new VariableManager(realm);
-    this._stepManager = new SteppingManager(this._channel, this._realm, /* default discard old steppers */ false);
+    this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager(this._channel);
     this.waitForRun(undefined);
   }
