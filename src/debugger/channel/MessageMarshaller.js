@@ -29,6 +29,7 @@ import type {
   RunArguments,
   StackframeArguments,
   StepIntoArguments,
+  StepOverArguments,
   StoppedReason,
   EvaluateArguments,
   EvaluateResult,
@@ -97,6 +98,10 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.STEPINTO_COMMAND}`;
   }
 
+  marshallStepOverRequest(requestID: number): string {
+    return `${requestID} ${DebugMessage.STEPOVER_COMMAND}`;
+  }
+
   marshallEvaluateRequest(requestID: number, frameId: void | number, expression: string): string {
     let evalArgs: EvaluateArguments = {
       kind: "evaluate",
@@ -150,6 +155,13 @@ export class MessageMarshaller {
           kind: "stepInto",
         };
         args = stepIntoArgs;
+        break;
+      case DebugMessage.STEPOVER_COMMAND:
+        this._lastRunRequestID = requestID;
+        let stepOverArgs: StepOverArguments = {
+          kind: "stepOver",
+        };
+        args = stepOverArgs;
         break;
       case DebugMessage.EVALUATE_COMMAND:
         args = this._unmarshallEvaluateArguments(requestID, parts.slice(2).join(" "));
