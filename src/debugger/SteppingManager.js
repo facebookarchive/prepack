@@ -11,10 +11,10 @@
 
 import { BabelNode } from "babel-types";
 import type { DebugChannel } from "./channel/DebugChannel.js";
-import type { StoppedReason, SteppingType } from "./types.js";
 import invariant from "./../invariant.js";
 import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
 import type { Realm } from "./../realm.js";
+import type { StoppableObject } from "./StopEventManager.js";
 
 export class SteppingManager {
   constructor(channel: DebugChannel, realm: Realm, keepOldSteppers?: boolean) {
@@ -57,42 +57,19 @@ export class SteppingManager {
     );
   }
 
-  getStepperType(ast: BabelNode): void | SteppingType {
-    let completedStepperType = this._checkCompleteSteppers(ast);
-    if (completedStepperType) {
-      invariant(ast.loc && ast.loc.source);
-      this._channel.sendStoppedResponse(completedStepperType, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
-      return completedStepperType;
-    }
-    return undefined;
-  }
-
-  _checkCompleteSteppers(ast: BabelNode): void | SteppingType {
+  getAndDeleteCompletedSteppers(ast: BabelNode): Array<StoppableObject> {
+    invariant(ast.loc && ast.loc.source);
     let i = 0;
-    let completedStepperType;
+    let completedSteppers: Array<StoppableObject> = [];
     while (i < this._steppers.length) {
       let stepper = this._steppers[i];
       if (stepper.isComplete(ast, this._realm.contextStack.length)) {
-        if (stepper instanceof StepIntoStepper) completedStepperType = "Step Into";
-        if (stepper instanceof StepOverStepper) completedStepperType = "Step Over";
+        completedSteppers.push(stepper);
         this._steppers.splice(i, 1);
       } else {
         i++;
       }
     }
-    return completedStepperType;
-  }
-
-  onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
-    if (reason === "Breakpoint") {
-      // stopped for breakpoint
-      if (this._keepOldSteppers) {
-        // remove only steppers that would complete
-        this._checkCompleteSteppers(ast);
-      } else {
-        // remove all steppers
-        this._steppers = [];
-      }
-    }
+    return completedSteppers;
   }
 }

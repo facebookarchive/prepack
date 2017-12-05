@@ -22,7 +22,6 @@ import type {
   Stackframe,
   Scope,
   VariablesArguments,
-  StoppedReason,
   EvaluateArguments,
   SourceData,
 } from "./types.js";
@@ -30,6 +29,8 @@ import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
 import { VariableManager } from "./VariableManager.js";
 import { SteppingManager } from "./SteppingManager.js";
+import type { StoppableObject } from "./StopEventManager.js";
+import { StopEventManager } from "./StopEventManager.js";
 import {
   EnvironmentRecord,
   GlobalEnvironmentRecord,
@@ -45,7 +46,8 @@ export class DebugServer {
     this._breakpointManager = new BreakpointManager(this._channel);
     this._variableManager = new VariableManager(realm);
     this._stepManager = new SteppingManager(this._channel, this._realm, /* default discard old steppers */ false);
-    this.waitForRun(undefined, "Entry");
+    this._stopEventManager = new StopEventManager(this._channel);
+    this.waitForRun(undefined);
   }
   // the collection of breakpoints
   _breakpointManager: BreakpointManager;
@@ -54,14 +56,14 @@ export class DebugServer {
   _realm: Realm;
   _variableManager: VariableManager;
   _stepManager: SteppingManager;
+  _stopEventManager: StopEventManager;
   _lastExecuted: SourceData;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
   /* reason: the reason the debuggee is stopping
   */
-  waitForRun(ast: void | BabelNode, reason: StoppedReason) {
-    if (ast) this._onDebuggeeStop(ast, reason);
+  waitForRun(ast: void | BabelNode) {
     let keepRunning = false;
     let request;
     while (!keepRunning) {
@@ -73,21 +75,12 @@ export class DebugServer {
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
     if (this._checkAndUpdateLastExecuted(ast)) {
-      this.checkForBreakpoint(ast);
-      this.checkStepComplete(ast);
-    }
-  }
-
-  checkForBreakpoint(ast: BabelNode) {
-    if (this._breakpointManager.shouldStopOnBreakpoint(ast)) {
-      this.waitForRun(ast, "Breakpoint");
-    }
-  }
-
-  checkStepComplete(ast: BabelNode) {
-    let steppingType = this._stepManager.getStepperType(ast);
-    if (steppingType) {
-      this.waitForRun(ast, steppingType);
+      let stoppables: Array<StoppableObject> = this._stepManager.getAndDeleteCompletedSteppers(ast);
+      let breakpoint = this._breakpointManager.getStoppableBreakpoint(ast);
+      if (breakpoint) stoppables.push(breakpoint);
+      if (this._stopEventManager.shouldDebuggeeStop(ast, stoppables)) {
+        this.waitForRun(ast);
+      }
     }
   }
 
@@ -252,12 +245,6 @@ export class DebugServer {
   processEvaluateCommand(requestID: number, args: EvaluateArguments) {
     let evalResult = this._variableManager.evaluate(args.frameId, args.expression);
     this._channel.sendEvaluateResponse(requestID, evalResult);
-  }
-
-  // actions that need to happen when Prepack is going to be stopped
-  _onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
-    if (reason === "Entry") return;
-    this._stepManager.onDebuggeeStop(ast, reason);
   }
 
   // actions that need to happen before Prepack can resume

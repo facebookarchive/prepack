@@ -25,22 +25,19 @@ export class BreakpointManager {
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
   _channel: DebugChannel;
 
-  shouldStopOnBreakpoint(ast: BabelNode): boolean {
-    if (!IsStatement(ast)) return false;
+  getStoppableBreakpoint(ast: BabelNode): void | Breakpoint {
+    if (!IsStatement(ast)) return;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
       let filePath = location.source;
-      if (filePath === null) return false;
+      if (filePath === null) return;
       let lineNum = location.start.line;
       let colNum = location.start.column;
       // Check whether there is a breakpoint we need to stop on here
       let breakpoint = this._findStoppableBreakpoint(filePath, lineNum, colNum);
-      if (breakpoint === null) return false;
-      // Tell the adapter that Prepack has stopped on this breakpoint
-      this._channel.sendStoppedResponse("Breakpoint", breakpoint.filePath, breakpoint.line, breakpoint.column);
-      return true;
+      if (breakpoint === null) return;
+      return breakpoint;
     }
-    return false;
   }
 
   // Try to find a breakpoint at the given location and check if we should stop on it
