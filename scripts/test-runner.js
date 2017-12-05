@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import invariant from "../lib/invariant.js";
 let FatalError = require("../lib/errors.js").FatalError;
 let prepackSources = require("../lib/prepack-node.js").prepackSources;
 
@@ -133,13 +134,25 @@ function augmentCodeWithLazyObjectSupport(code, lazyRuntimeName) {
         ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
         return Reflect.get(target, prop);
       },
+      set: function(target, property, value, receiver) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.set(target, property, value, receiver);
+      },
       has: function(target, prop) {
         ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
         return Reflect.has(target, prop);
       },
+      getOwnPropertyDescriptor: function(target, prop) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.getOwnPropertyDescriptor(target, prop);
+      },
       ownKeys: function(target) {
         ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
         return Reflect.ownKeys(target);
+      },
+      defineProperty: function(target, property, descriptor) {
+        ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
+        return Reflect.defineProperty(target, property, descriptor);
       },
       isExtensible: function(target) {
         ${LAZY_OBJECTS_RUNTIME_NAME}.hydrateObject(target);
@@ -217,6 +230,28 @@ function execInContext(code) {
     },
   });
   return (result + logOutput).trim();
+}
+
+function parseFunctionOrderings(code: string): Array<number> {
+  const orders = [];
+  const functionOrderPattern = /Function ordering: (\d+)/g;
+  let match;
+  while ((match = functionOrderPattern.exec(code)) != null) {
+    orders.push(match[1]);
+  }
+  return orders;
+}
+
+function verifyFunctionOrderings(code: string): boolean {
+  const orders = parseFunctionOrderings(code);
+  for (let i = 1; i < orders.length; ++i) {
+    invariant(orders[i] !== orders[i - 1]);
+    if (orders[i] < orders[i - 1]) {
+      console.log(chalk.red(`Funtion ordering is not preserved: function ${orders[i - 1]} is before ${orders[i]}`));
+      return false;
+    }
+  }
+  return true;
 }
 
 function runTest(name, code, options, args) {
@@ -345,6 +380,9 @@ function runTest(name, code, options, args) {
       let i = code.indexOf(injectAtRuntime);
       addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
     }
+    if (args.es5) {
+      code = transformWithBabel(code, [], [["env", { forceAllTransforms: true, modules: false }]]);
+    }
     let unique = 27277;
     let oldUniqueSuffix = "";
     let expectedCode = code;
@@ -406,6 +444,9 @@ function runTest(name, code, options, args) {
         }
         if (expected !== actual) {
           console.log(chalk.red("Output mismatch!"));
+          break;
+        }
+        if (!verifyFunctionOrderings(codeToRun)) {
           break;
         }
         // Test the number of clone functions generated with the inital prepack call

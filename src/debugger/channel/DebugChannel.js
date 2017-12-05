@@ -12,7 +12,15 @@ import invariant from "./../../invariant.js";
 import { FileIOWrapper } from "./FileIOWrapper.js";
 import { DebugMessage } from "./DebugMessage.js";
 import { MessageMarshaller } from "./MessageMarshaller.js";
-import type { DebuggerRequest, Breakpoint, BreakpointsArguments, Stackframe, Scope, Variable } from "./../types.js";
+import type {
+  DebuggerRequest,
+  BreakpointsArguments,
+  Stackframe,
+  Scope,
+  Variable,
+  StoppedReason,
+  EvaluateResult,
+} from "./../types.js";
 
 //Channel used by the DebugServer in Prepack to communicate with the debug adapter
 export class DebugChannel {
@@ -67,14 +75,8 @@ export class DebugChannel {
     this.writeOut(this._marshaller.marshallBreakpointAcknowledge(requestID, messageType, args.breakpoints));
   }
 
-  sendBreakpointStopped(filePath: string, line: number, column: number): void {
-    let breakpointInfo: Breakpoint = {
-      kind: "breakpoint",
-      filePath: filePath,
-      line: line,
-      column: column,
-    };
-    this.writeOut(this._marshaller.marshallBreakpointStopped(breakpointInfo));
+  sendStoppedResponse(reason: StoppedReason, filePath: string, line: number, column: number): void {
+    this.writeOut(this._marshaller.marshallStoppedResponse(reason, filePath, line, column));
   }
 
   sendStackframeResponse(requestID: number, stackframes: Array<Stackframe>): void {
@@ -89,7 +91,12 @@ export class DebugChannel {
     this.writeOut(this._marshaller.marshallVariablesResponse(requestID, variables));
   }
 
-  sendPrepackFinish(): void {
-    this.writeOut(this._marshaller.marshallPrepackFinish());
+  sendEvaluateResponse(requestID: number, evalResult: EvaluateResult): void {
+    this.writeOut(this._marshaller.marshallEvaluateResponse(requestID, evalResult));
+  }
+
+  shutdown() {
+    this._ioWrapper.clearInFile();
+    this._ioWrapper.clearOutFile();
   }
 }

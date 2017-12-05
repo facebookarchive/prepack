@@ -19,11 +19,19 @@ import {
   FunctionValue,
   StringValue,
   ArrayValue,
+  ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import { type ReactSerializerState } from "../serializer/types.js";
+import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
 import invariant from "../invariant.js";
+import { Properties } from "../singletons.js";
+import traverse from "babel-traverse";
+import * as t from "babel-types";
+import type { BabelNodeStatement } from "babel-types";
+import { FatalError } from "../errors.js";
+
+let reactElementSymbolKey = "react.element";
 
 export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
@@ -35,6 +43,28 @@ export function isReactElement(val: Value): boolean {
     }
   }
   return false;
+}
+
+export function getReactElementSymbol(realm: Realm): SymbolValue {
+  let reactElementSymbol = realm.react.reactElementSymbol;
+  if (reactElementSymbol !== undefined) {
+    return reactElementSymbol;
+  }
+  let SymbolFor = realm.intrinsics.Symbol.properties.get("for");
+  if (SymbolFor !== undefined) {
+    let SymbolForDescriptor = SymbolFor.descriptor;
+
+    if (SymbolForDescriptor !== undefined) {
+      let SymbolForValue = SymbolForDescriptor.value;
+      if (SymbolForValue !== undefined && typeof SymbolForValue.$Call === "function") {
+        realm.react.reactElementSymbol = reactElementSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [
+          new StringValue(realm, reactElementSymbolKey),
+        ]);
+      }
+    }
+  }
+  invariant(reactElementSymbol instanceof SymbolValue, `ReactElement "$$typeof" property was not a symbol`);
+  return reactElementSymbol;
 }
 
 export function isTagName(ast: BabelNode): boolean {
@@ -103,4 +133,51 @@ export function mapOverArrayValue(realm: Realm, arrayValue: ArrayValue, mapFunc:
       mapFunc(elementValue, elementPropertyDescriptor);
     }
   }
+}
+
+export function convertSimpleClassComponentToFunctionalComponent(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue,
+  additionalFunctionEffects: AdditionalFunctionEffects
+): void {
+  let prototype = componentType.properties.get("prototype");
+  invariant(prototype);
+  invariant(prototype.descriptor);
+  prototype.descriptor.configurable = true;
+  Properties.DeletePropertyOrThrow(realm, componentType, "prototype");
+  // set the prototype back to an object
+  componentType.$Prototype = realm.intrinsics.FunctionPrototype;
+  // give the function the functional components params
+  componentType.$FormalParameters = [t.identifier("props"), t.identifier("context")];
+  // add a transform to occur after the additional function has serialized the body of the class
+  additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
+    // as this was a class before and is now a functional component, we need to replace
+    // this.props and this.context to props and context, via the function arugments
+    let funcNode = t.functionExpression(null, [], t.blockStatement(body));
+
+    traverse(
+      t.file(t.program([t.expressionStatement(funcNode)])),
+      {
+        "Identifier|ThisExpression"(path) {
+          let node = path.node;
+          if ((t.isIdentifier(node) && node.name === "this") || t.isThisExpression(node)) {
+            let parentPath = path.parentPath;
+            let parentNode = parentPath.node;
+
+            if (t.isMemberExpression(parentNode)) {
+              // remove the "this" from the member
+              parentPath.replaceWith(parentNode.property);
+            } else {
+              throw new FatalError(
+                `conversion of a simple class component to functional component failed due to "this" not being replaced`
+              );
+            }
+          }
+        },
+      },
+      undefined,
+      (undefined: any),
+      undefined
+    );
+  });
 }

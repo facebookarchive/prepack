@@ -27,6 +27,8 @@ export default function(
   let ConciseBody = ast.body;
   if (ConciseBody.type !== "BlockStatement") {
     ConciseBody = t.blockStatement([t.returnStatement(ConciseBody)]);
+    // Use original array function's location for the new concise body.
+    ConciseBody.loc = ast.body.loc;
   }
 
   // 1. If the function code for this ArrowFunction is strict mode code, let strict be true. Otherwise let strict be false.
@@ -40,6 +42,7 @@ export default function(
 
   // 4. Let closure be FunctionCreate(Arrow, parameters, ConciseBody, scope, strict).
   let closure = Functions.FunctionCreate(realm, "arrow", parameters, ConciseBody, scope, strict);
+  closure.loc = ast.loc;
 
   // 5. Return closure.
   return closure;

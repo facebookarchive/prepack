@@ -141,6 +141,8 @@ export class UISession {
           });
         } else if (event.body.reason.startsWith("breakpoint")) {
           this._uiOutput("Prepack stopped on: " + event.body.reason);
+        } else {
+          this._uiOutput(event.body.reason);
         }
       }
     }
@@ -158,6 +160,8 @@ export class UISession {
       this._processScopesResponse(((response: any): DebugProtocol.ScopesResponse));
     } else if (response.command === "variables") {
       this._processVariablesResponse(((response: any): DebugProtocol.VariablesResponse));
+    } else if (response.command === "evaluate") {
+      this._processEvaluateResponse(((response: any): DebugProtocol.EvaluateResponse));
     }
   }
 
@@ -205,6 +209,13 @@ export class UISession {
         this._uiOutput(`${variable.name}: ${variable.value} ${variable.variablesReference}`);
       }
     }
+  }
+
+  _processEvaluateResponse(response: DebugProtocol.EvaluateResponse) {
+    let evalInfo = response.body;
+    this._uiOutput("Type: " + (evalInfo.type || "unknown"));
+    this._uiOutput(evalInfo.result);
+    this._uiOutput("Variables Reference: " + evalInfo.variablesReference);
   }
 
   // execute a command if it is valid
@@ -270,6 +281,38 @@ export class UISession {
           variablesReference: varRef,
         };
         this._sendVariablesRequest(variableArgs);
+        break;
+      case "stepInto":
+        if (parts.length !== 1) return false;
+        let stepIntoArgs: DebugProtocol.StepInArguments = {
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStepIntoRequest(stepIntoArgs);
+        break;
+      case "stepOver":
+        if (parts.length !== 1) return false;
+        let stepOverArgs: DebugProtocol.NextArguments = {
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStepOverRequest(stepOverArgs);
+        break;
+      case "eval":
+        if (parts.length < 2) return false;
+        let evalFrameId = parseInt(parts[1], 10);
+        if (isNaN(evalFrameId)) {
+          let expression = parts.slice(1).join(" ");
+          let evaluateArgs: DebugProtocol.EvaluateArguments = {
+            expression: expression,
+          };
+          this._sendEvaluateRequest(evaluateArgs);
+        } else {
+          let expression = parts.slice(2).join(" ");
+          let evaluateArgs: DebugProtocol.EvaluateArguments = {
+            expression: expression,
+            frameId: evalFrameId,
+          };
+          this._sendEvaluateRequest(evaluateArgs);
+        }
         break;
       default:
         // invalid command
@@ -409,6 +452,39 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "variables",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStepIntoRequest(args: DebugProtocol.StepInArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "stepIn",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStepOverRequest(args: DebugProtocol.NextArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "next",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendEvaluateRequest(args: DebugProtocol.EvaluateArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "evaluate",
       arguments: args,
     };
     let json = JSON.stringify(message);

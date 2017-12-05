@@ -11,7 +11,6 @@
 
 import { BreakpointManager } from "./BreakpointManager.js";
 import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
-import { Breakpoint } from "./Breakpoint.js";
 import invariant from "../invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./channel/DebugMessage.js";
@@ -23,10 +22,14 @@ import type {
   Stackframe,
   Scope,
   VariablesArguments,
+  StoppedReason,
+  EvaluateArguments,
+  SourceData,
 } from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
 import { VariableManager } from "./VariableManager.js";
+import { SteppingManager } from "./SteppingManager.js";
 import {
   EnvironmentRecord,
   GlobalEnvironmentRecord,
@@ -37,29 +40,28 @@ import {
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm) {
-    this._breakpoints = new BreakpointManager();
-    this._previousExecutedLine = 0;
-    this._previousExecutedCol = 0;
-    this._lastRunRequestID = 0;
     this._channel = channel;
     this._realm = realm;
+    this._breakpointManager = new BreakpointManager(this._channel);
     this._variableManager = new VariableManager(realm);
-    this.waitForRun();
+    this._stepManager = new SteppingManager(this._channel, this._realm, /* default discard old steppers */ false);
+    this.waitForRun(undefined, "Entry");
   }
   // the collection of breakpoints
-  _breakpoints: BreakpointManager;
-  _previousExecutedFile: void | string;
-  _previousExecutedLine: number;
-  _previousExecutedCol: number;
+  _breakpointManager: BreakpointManager;
   // the channel to communicate with the adapter
   _channel: DebugChannel;
-  _lastRunRequestID: number;
   _realm: Realm;
   _variableManager: VariableManager;
+  _stepManager: SteppingManager;
+  _lastExecuted: SourceData;
+
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
+  /* reason: the reason the debuggee is stopping
   */
-  waitForRun(ast: void | BabelNode) {
+  waitForRun(ast: void | BabelNode, reason: StoppedReason) {
+    if (ast) this._onDebuggeeStop(ast, reason);
     let keepRunning = false;
     let request;
     while (!keepRunning) {
@@ -70,60 +72,22 @@ export class DebugServer {
 
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
-    this.checkForBreakpoint(ast);
-
-    // last step: set the current location as the previously executed line
-    if (ast.loc && ast.loc.source !== null) {
-      this._previousExecutedFile = ast.loc.source;
-      this._previousExecutedLine = ast.loc.start.line;
-      this._previousExecutedCol = ast.loc.start.column;
+    if (this._checkAndUpdateLastExecuted(ast)) {
+      this.checkForBreakpoint(ast);
+      this.checkStepComplete(ast);
     }
-  }
-
-  // Try to find a breakpoint at the given location and check if we should stop on it
-  findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
-    let breakpoint = this._breakpoints.getBreakpoint(filePath, lineNum, colNum);
-    if (breakpoint && breakpoint.enabled) {
-      // checking if this is the same file and line we stopped at last time
-      // if so, we should skip it this time
-      // Note: for the case when the debugger is supposed to stop on the same
-      // breakpoint consecutively (e.g. the statement is in a loop), some other
-      // ast node (e.g. block, loop) must have been checked in between so
-      // previousExecutedFile and previousExecutedLine will have changed
-      if (breakpoint.column !== 0) {
-        // this is a column breakpoint
-        if (
-          filePath === this._previousExecutedFile &&
-          lineNum === this._previousExecutedLine &&
-          colNum === this._previousExecutedCol
-        ) {
-          return null;
-        }
-      } else {
-        // this is a line breakpoint
-        if (filePath === this._previousExecutedFile && lineNum === this._previousExecutedLine) {
-          return null;
-        }
-      }
-      return breakpoint;
-    }
-    return null;
   }
 
   checkForBreakpoint(ast: BabelNode) {
-    if (ast.loc && ast.loc.source) {
-      let location = ast.loc;
-      let filePath = location.source;
-      if (filePath === null) return;
-      let lineNum = location.start.line;
-      let colNum = location.start.column;
-      // Check whether there is a breakpoint we need to stop on here
-      let breakpoint = this.findStoppableBreakpoint(filePath, lineNum, colNum);
-      if (breakpoint === null) return;
-      // Tell the adapter that Prepack has stopped on this breakpoint
-      this._channel.sendBreakpointStopped(breakpoint.filePath, breakpoint.line, breakpoint.column);
-      // Wait for the adapter to tell us to run again
-      this.waitForRun(ast);
+    if (this._breakpointManager.shouldStopOnBreakpoint(ast)) {
+      this.waitForRun(ast, "Breakpoint");
+    }
+  }
+
+  checkStepComplete(ast: BabelNode) {
+    let steppingType = this._stepManager.getStepperType(ast);
+    if (steppingType) {
+      this.waitForRun(ast, steppingType);
     }
   }
 
@@ -136,22 +100,22 @@ export class DebugServer {
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.addBreakpointMulti(args.breakpoints);
+        this._breakpointManager.addBreakpointMulti(args.breakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.removeBreakpointMulti(args.breakpoints);
+        this._breakpointManager.removeBreakpointMulti(args.breakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.enableBreakpointMulti(args.breakpoints);
+        this._breakpointManager.enableBreakpointMulti(args.breakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpoints.disableBreakpointMulti(args.breakpoints);
+        this._breakpointManager.disableBreakpointMulti(args.breakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
@@ -169,6 +133,20 @@ export class DebugServer {
       case DebugMessage.VARIABLES_COMMAND:
         invariant(args.kind === "variables");
         this.processVariablesCommand(requestID, args);
+        break;
+      case DebugMessage.STEPINTO_COMMAND:
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("in", ast);
+        this._onDebuggeeResume();
+        return true;
+      case DebugMessage.STEPOVER_COMMAND:
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("over", ast);
+        this._onDebuggeeResume();
+        return true;
+      case DebugMessage.EVALUATE_COMMAND:
+        invariant(args.kind === "evaluate");
+        this.processEvaluateCommand(requestID, args);
         break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
@@ -271,14 +249,49 @@ export class DebugServer {
     this._channel.sendVariablesResponse(requestID, variables);
   }
 
+  processEvaluateCommand(requestID: number, args: EvaluateArguments) {
+    let evalResult = this._variableManager.evaluate(args.frameId, args.expression);
+    this._channel.sendEvaluateResponse(requestID, evalResult);
+  }
+
+  // actions that need to happen when Prepack is going to be stopped
+  _onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
+    if (reason === "Entry") return;
+    this._stepManager.onDebuggeeStop(ast, reason);
+  }
+
   // actions that need to happen before Prepack can resume
   _onDebuggeeResume() {
     // resets the variable manager
     this._variableManager.clean();
   }
 
+  _checkAndUpdateLastExecuted(ast: BabelNode): boolean {
+    if (ast.loc && ast.loc.source) {
+      let filePath = ast.loc.source;
+      let line = ast.loc.start.line;
+      let column = ast.loc.start.column;
+      // check if the current location is same as the last one
+      if (
+        this._lastExecuted &&
+        filePath === this._lastExecuted.filePath &&
+        line === this._lastExecuted.line &&
+        column === this._lastExecuted.column
+      ) {
+        return false;
+      }
+      this._lastExecuted = {
+        filePath: filePath,
+        line: line,
+        column: column,
+      };
+      return true;
+    }
+    return false;
+  }
+
   shutdown() {
-    //let the adapter know Prepack is done running
-    this._channel.sendPrepackFinish();
+    // clean the channel pipes
+    this._channel.shutdown();
   }
 }

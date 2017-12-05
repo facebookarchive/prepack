@@ -12,7 +12,6 @@
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import type { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import { ToLength, HashSet, IsArray, Get } from "../methods/index.js";
 import {
@@ -41,6 +40,7 @@ import type {
   AdditionalFunctionInfo,
   FunctionInstance,
   ClassMethodInstance,
+  AdditionalFunctionEffects,
 } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
@@ -62,7 +62,7 @@ export class ResidualHeapVisitor {
     realm: Realm,
     logger: Logger,
     modules: Modules,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>
   ) {
     invariant(realm.useAbstractInterpretation);
     this.realm = realm;
@@ -102,7 +102,7 @@ export class ResidualHeapVisitor {
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Set<AbstractValue>;
   delayedVisitGeneratorEntries: Array<{| commonScope: Scope, generator: Generator, entry: GeneratorEntry |}>;
-  additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>;
+  additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
@@ -653,7 +653,7 @@ export class ResidualHeapVisitor {
   }
 
   visitAdditionalFunctionEffects() {
-    for (let [functionValue, effects] of this.additionalFunctionValuesAndEffects.entries()) {
+    for (let [functionValue, { effects }] of this.additionalFunctionValuesAndEffects.entries()) {
       let [
         result,
         generator,

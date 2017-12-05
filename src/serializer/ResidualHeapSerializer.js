@@ -56,7 +56,7 @@ import type {
   ClassMethodInstance,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics } from "./types.js";
+import { TimingStatistics, SerializerStatistics, type AdditionalFunctionEffects } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -72,7 +72,6 @@ import {
   withDescriptorValue,
   ClassProprtiesToIgnore,
 } from "./utils.js";
-import type { Effects } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 function commentStatement(text: string) {
@@ -94,7 +93,7 @@ export class ResidualHeapSerializer {
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
     referencedDeclaredValues: Set<AbstractValue>,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void,
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     statistics: SerializerStatistics,
     react: ReactSerializerState
@@ -200,7 +199,7 @@ export class ResidualHeapSerializer {
   _options: SerializerOptions;
   referencedDeclaredValues: Set<AbstractValue>;
   activeGeneratorBodies: Map<Generator, SerializedBody>;
-  additionalFunctionValuesAndEffects: Map<FunctionValue, Effects> | void;
+  additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   react: ReactSerializerState;
 
@@ -382,11 +381,27 @@ export class ResidualHeapSerializer {
       invariant(consequent instanceof AbstractValue);
       let alternate = absVal.args[2];
       invariant(alternate instanceof AbstractValue);
-      let oldBody = this.emitter.beginEmitting("consequent", { type: "ConditionalAssignmentBranch", entries: [] });
+      let oldBody = this.emitter.beginEmitting(
+        "consequent",
+        {
+          type: "ConditionalAssignmentBranch",
+          parentBody: undefined,
+          entries: [],
+        },
+        /*isChild*/ true
+      );
       this._emitPropertiesWithComputedNames(obj, consequent);
       let consequentBody = this.emitter.endEmitting("consequent", oldBody);
       let consequentStatement = t.blockStatement(consequentBody.entries);
-      oldBody = this.emitter.beginEmitting("alternate", { type: "ConditionalAssignmentBranch", entries: [] });
+      oldBody = this.emitter.beginEmitting(
+        "alternate",
+        {
+          type: "ConditionalAssignmentBranch",
+          parentBody: undefined,
+          entries: [],
+        },
+        /*isChild*/ true
+      );
       this._emitPropertiesWithComputedNames(obj, alternate);
       let alternateBody = this.emitter.endEmitting("alternate", oldBody);
       let alternateStatement = t.blockStatement(alternateBody.entries);
@@ -1583,8 +1598,8 @@ export class ResidualHeapSerializer {
   }
 
   _withGeneratorScope(generator: Generator, callback: SerializedBody => void): Array<BabelNodeStatement> {
-    let newBody = { type: "Generator", entries: [] };
-    let oldBody = this.emitter.beginEmitting(generator, newBody);
+    let newBody = { type: "Generator", parentBody: undefined, entries: [] };
+    let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ true);
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
@@ -1666,7 +1681,7 @@ export class ResidualHeapSerializer {
     let processAdditionalFunctionValuesFn = () => {
       let additionalFVEffects = this.additionalFunctionValuesAndEffects;
       if (additionalFVEffects) {
-        for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
+        for (let [additionalFunctionValue, { effects, transforms }] of additionalFVEffects.entries()) {
           let [
             result,
             generator,
@@ -1720,6 +1735,9 @@ export class ResidualHeapSerializer {
           this.currentAdditionalFunction = additionalFunctionValue;
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);
           invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
+          for (let transform of transforms) {
+            transform(body);
+          }
           rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
           // re-resolve initialized modules to include things from additional functions
           this.modules.resolveInitializedModules();

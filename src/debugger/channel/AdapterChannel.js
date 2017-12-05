@@ -46,8 +46,10 @@ export class AdapterChannel {
       this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE, dbgResponse);
     } else if (dbgResponse.result.kind === "breakpoint-add") {
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, dbgResponse.id, dbgResponse);
-    } else if (dbgResponse.result.kind === "breakpoint-stopped") {
-      this._eventEmitter.emit(DebugMessage.BREAKPOINT_STOPPED_RESPONSE, dbgResponse);
+    } else if (dbgResponse.result.kind === "stopped") {
+      this._eventEmitter.emit(DebugMessage.STOPPED_RESPONSE, dbgResponse);
+    } else if (dbgResponse.result.kind === "stepInto") {
+      this._eventEmitter.emit(DebugMessage.STEPINTO_RESPONSE, dbgResponse);
     }
     this._prepackWaiting = true;
     this._processRequestCallback(dbgResponse);
@@ -147,6 +149,24 @@ export class AdapterChannel {
 
   getVariables(requestID: number, variablesReference: number, callback: DebuggerResponse => void) {
     this._queue.enqueue(this._marshaller.marshallVariablesRequest(requestID, variablesReference));
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  stepInto(requestID: number, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallStepIntoRequest(requestID));
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  stepOver(requestID: number, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallStepOverRequest(requestID));
+    this.trySendNextRequest();
+    this._addRequestCallback(requestID, callback);
+  }
+
+  evaluate(requestID: number, frameId: void | number, expression: string, callback: DebuggerResponse => void) {
+    this._queue.enqueue(this._marshaller.marshallEvaluateRequest(requestID, frameId, expression));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }

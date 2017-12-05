@@ -9,7 +9,7 @@ rm ./StdIn-test.js
 
 # Prepack test empty input and check if it logs correct msg
 echo "" | node ./bin/prepack.js --out StdIn-test.js | grep "No source code to prepack" > /dev/null
-if [[ $? -ne 0 ]]; then
+if [[ $? -ne 1 ]]; then
     exit 1
 fi
 

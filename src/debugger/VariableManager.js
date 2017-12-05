@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { VariableContainer, Variable } from "./types.js";
+import type { VariableContainer, Variable, EvaluateResult } from "./types.js";
 import { ReferenceMap } from "./ReferenceMap.js";
 import {
   LexicalEnvironment,
@@ -25,10 +25,13 @@ import {
   ObjectValue,
   AbstractObjectValue,
   AbstractValue,
+  StringValue,
 } from "./../values/index.js";
 import invariant from "./../invariant.js";
 import type { Realm } from "./../realm.js";
 import { IsDataDescriptor } from "./../methods/is.js";
+import { DebuggerError } from "./DebuggerError.js";
+import { Functions } from "./../singletons.js";
 
 // This class manages the handling of variable requests in the debugger
 // The DebugProtocol specifies collections of variables are to be fetched using a
@@ -186,6 +189,44 @@ export class VariableManager {
       return variable;
     } else {
       invariant(false, "Concrete value must be primitive or object");
+    }
+  }
+
+  evaluate(frameId: void | number, expression: string): EvaluateResult {
+    let evalRealm = this._realm;
+    let isDirect = false;
+    let isStrict = false;
+    if (frameId !== undefined) {
+      if (frameId < 0 || frameId >= this._realm.contextStack.length) {
+        throw new DebuggerError("Invalid command", "Invalid value for frame ID");
+      }
+      // frameId's are in reverse order of context stack
+      let stackIndex = this._realm.contextStack.length - 1 - frameId;
+      let context = this._realm.contextStack[stackIndex];
+      isDirect = true;
+      isStrict = true;
+      evalRealm = context.realm;
+    }
+
+    let evalString = new StringValue(this._realm, expression);
+    try {
+      let value = Functions.PerformEval(this._realm, evalString, evalRealm, isStrict, isDirect);
+      let varInfo = this._getVariableFromValue(expression, value);
+      let result: EvaluateResult = {
+        kind: "evaluate",
+        displayValue: varInfo.value,
+        type: value.getType().name,
+        variablesReference: varInfo.variablesReference,
+      };
+      return result;
+    } catch (e) {
+      let result: EvaluateResult = {
+        kind: "evaluate",
+        displayValue: `Failed to evaluate: ${expression}`,
+        type: "unknown",
+        variablesReference: 0,
+      };
+      return result;
     }
   }
 

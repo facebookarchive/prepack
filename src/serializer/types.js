@@ -14,7 +14,7 @@ import { ConcreteValue, Value, ObjectValue } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
-import { Realm } from "../realm.js";
+import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
@@ -29,7 +29,13 @@ export type SerializedBodyType =
 
 export type SerializedBody = {
   type: SerializedBodyType,
+  parentBody: void | SerializedBody,
   entries: Array<BabelNodeStatement>,
+};
+
+export type AdditionalFunctionEffects = {
+  effects: Effects,
+  transforms: Array<Function>,
 };
 
 export type AdditionalFunctionInfo = {

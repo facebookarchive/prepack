@@ -24,7 +24,10 @@ export type DebuggerRequestArguments =
   | RunArguments
   | StackframeArguments
   | ScopesArguments
-  | VariablesArguments;
+  | VariablesArguments
+  | StepIntoArguments
+  | StepOverArguments
+  | EvaluateArguments;
 
 export type PrepackLaunchArguments = {
   kind: "launch",
@@ -74,6 +77,20 @@ export type VariablesArguments = {
   variablesReference: number,
 };
 
+export type StepIntoArguments = {
+  kind: "stepInto",
+};
+
+export type StepOverArguments = {
+  kind: "stepOver",
+};
+
+export type EvaluateArguments = {
+  kind: "evaluate",
+  frameId?: number,
+  expression: string,
+};
+
 export type DebuggerResponse = {
   id: number,
   result: DebuggerResponseResult,
@@ -83,10 +100,10 @@ export type DebuggerResponseResult =
   | ReadyResult
   | StackframeResult
   | BreakpointsAddResult
-  | BreakpointStoppedResult
+  | StoppedResult
   | ScopesResult
   | VariablesResult
-  | FinishResult;
+  | EvaluateResult;
 
 export type ReadyResult = {
   kind: "ready",
@@ -102,8 +119,9 @@ export type BreakpointsAddResult = {
   breakpoints: Array<Breakpoint>,
 };
 
-export type BreakpointStoppedResult = {
-  kind: "breakpoint-stopped",
+export type StoppedResult = {
+  kind: "stopped",
+  reason: StoppedReason,
   filePath: string,
   line: number,
   column: number,
@@ -130,8 +148,11 @@ export type VariablesResult = {
   variables: Array<Variable>,
 };
 
-export type FinishResult = {
-  kind: "finish",
+export type EvaluateResult = {
+  kind: "evaluate",
+  displayValue: string,
+  type: string,
+  variablesReference: number,
 };
 
 // any object that can contain a collection of variables
@@ -144,3 +165,12 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   debugInFilePath: string,
   debugOutFilePath: string,
 }
+
+export type SteppingType = "Step Into" | "Step Over";
+export type StoppedReason = "Entry" | "Breakpoint" | SteppingType;
+
+export type SourceData = {
+  filePath: string,
+  line: number,
+  column: number,
+};

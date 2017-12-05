@@ -5,4 +5,8 @@ let opt = n ? o : undefined;
 x = !!n;
 y = opt !== undefined;
 
-inspect = function() { return "" + x + " " + y; }
+if (!!n) {
+  z = n ? 10 : 20;
+}
+
+inspect = function() { return "" + x + " " + y + " " + z; }
