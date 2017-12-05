@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType} from "./types.js";
+import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -611,10 +611,9 @@ export class Realm {
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
     }
     if (completion.consequent instanceof AbruptCompletion) {
-      Path.pushInverseAndRefine(completion.joinCondition)
-    }
-    else if (completion.alternate instanceof AbruptCompletion) {
-      Path.pushAndRefine(completion.joinCondition)
+      Path.pushInverseAndRefine(completion.joinCondition);
+    } else if (completion.alternate instanceof AbruptCompletion) {
+      Path.pushAndRefine(completion.joinCondition);
     }
     return completion.value;
   }

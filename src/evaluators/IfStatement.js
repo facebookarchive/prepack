@@ -113,6 +113,7 @@ export function evaluateWithAbstractConditional(
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.
   realm.applyEffects(joinedEffects);
+
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);

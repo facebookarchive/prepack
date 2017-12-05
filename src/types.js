@@ -327,7 +327,7 @@ export type PathType = {
   withCondition<T>(condition: AbstractValue, evaluate: () => T): T,
   withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T,
   pushAndRefine(condition: AbstractValue): void,
-  pushInverseAndRefine(condition: AbstractValue): void
+  pushInverseAndRefine(condition: AbstractValue): void,
 };
 
 export type PropertiesType = {
