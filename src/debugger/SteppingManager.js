@@ -11,20 +11,29 @@
 
 import { BabelNode } from "babel-types";
 import type { DebugChannel } from "./channel/DebugChannel.js";
-import type { StoppedReason } from "./types.js";
+import type { StoppedReason, SteppingType } from "./types.js";
 import invariant from "./../invariant.js";
-import { StepIntoStepper } from "./Stepper.js";
+import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
+import type { Realm } from "./../realm.js";
 
 export class SteppingManager {
-  constructor(channel: DebugChannel) {
+  constructor(channel: DebugChannel, realm: Realm, keepOldSteppers?: boolean) {
     this._channel = channel;
+    this._realm = realm;
+    this._steppers = [];
+    this._keepOldSteppers = false;
+    if (keepOldSteppers) this._keepOldSteppers = true;
   }
   _channel: DebugChannel;
-  _stepInto: void | StepIntoStepper;
+  _realm: Realm;
+  _keepOldSteppers: boolean;
+  _steppers: Array<Stepper>;
 
   processStepCommand(kind: "in" | "over" | "out", currentNode: BabelNode) {
     if (kind === "in") {
       this._processStepIn(currentNode);
+    } else if (kind === "over") {
+      this._processStepOver(currentNode);
     }
     // TODO: implement stepOver and stepOut
   }
@@ -32,29 +41,58 @@ export class SteppingManager {
   _processStepIn(ast: BabelNode) {
     invariant(this._stepInto === undefined);
     invariant(ast.loc && ast.loc.source);
-    this._stepInto = new StepIntoStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column);
+    if (!this._keepOldSteppers) {
+      this._steppers = [];
+    }
+    this._steppers.push(new StepIntoStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column));
   }
 
-  isStepComplete(ast: BabelNode): boolean {
-    if (ast.loc && ast.loc.source) {
-      if (this._stepInto && this._stepInto.isComplete(ast)) {
-        this._stepInto = undefined;
-        this._channel.sendStoppedResponse("Step Into", ast.loc.source, ast.loc.start.line, ast.loc.start.column);
-        return true;
+  _processStepOver(ast: BabelNode) {
+    invariant(ast.loc && ast.loc.source);
+    if (!this._keepOldSteppers) {
+      this._steppers = [];
+    }
+    this._steppers.push(
+      new StepOverStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column, this._realm.contextStack.length)
+    );
+  }
+
+  getStepperType(ast: BabelNode): void | SteppingType {
+    let completedStepperType = this._checkCompleteSteppers(ast);
+    if (completedStepperType) {
+      invariant(ast.loc && ast.loc.source);
+      this._channel.sendStoppedResponse(completedStepperType, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
+      return completedStepperType;
+    }
+    return undefined;
+  }
+
+  _checkCompleteSteppers(ast: BabelNode): void | SteppingType {
+    let i = 0;
+    let completedStepperType;
+    while (i < this._steppers.length) {
+      let stepper = this._steppers[i];
+      if (stepper.isComplete(ast, this._realm.contextStack.length)) {
+        if (stepper instanceof StepIntoStepper) completedStepperType = "Step Into";
+        if (stepper instanceof StepOverStepper) completedStepperType = "Step Over";
+        this._steppers.splice(i, 1);
+      } else {
+        i++;
       }
     }
-    return false;
+    return completedStepperType;
   }
 
   onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
-    if (reason !== "Step Into") {
-      // stopped for another reason, e.g. breakpoint
-      if (this._stepInto !== undefined) {
-        // we're in the middle of a step into, but debuggee has stopped for another reason here first, so cancel this step into
-        this._stepInto = undefined;
+    if (reason === "Breakpoint") {
+      // stopped for breakpoint
+      if (this._keepOldSteppers) {
+        // remove only steppers that would complete
+        this._checkCompleteSteppers(ast);
+      } else {
+        // remove all steppers
+        this._steppers = [];
       }
     }
-
-    //TODO: handle other stepping related stopped reasons when they are implemented
   }
 }

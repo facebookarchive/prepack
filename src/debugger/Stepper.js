@@ -23,18 +23,11 @@ export class Stepper {
   }
   _stepStartData: SourceData;
 
-  isComplete(ast: BabelNode): boolean {
+  isComplete(ast: BabelNode, currentStackSize: number): boolean {
     invariant(false, "Abstract method, please override");
   }
-}
 
-export class StepIntoStepper extends Stepper {
-  constructor(filePath: string, line: number, column: number) {
-    super(filePath, line, column);
-  }
-
-  // Override
-  isComplete(ast: BabelNode): boolean {
+  isAstLocationChanged(ast: BabelNode) {
     // we should only step to statements
     if (!IsStatement(ast)) return false;
     let loc = ast.loc;
@@ -55,5 +48,37 @@ export class StepIntoStepper extends Stepper {
       return false;
     }
     return true;
+  }
+}
+
+export class StepIntoStepper extends Stepper {
+  constructor(filePath: string, line: number, column: number) {
+    super(filePath, line, column);
+  }
+
+  // Override
+  isComplete(ast: BabelNode, currentStackSize: number): boolean {
+    return this.isAstLocationChanged(ast);
+  }
+}
+
+export class StepOverStepper extends Stepper {
+  constructor(filePath: string, line: number, column: number, stackSize: number) {
+    super(filePath, line, column);
+    this._startStackSize = stackSize;
+  }
+  _startStackSize: number;
+
+  isComplete(ast: BabelNode, currentStackSize: number): boolean {
+    if (!this.isAstLocationChanged(ast)) return false;
+    if (currentStackSize <= this._startStackSize) {
+      // two cases here:
+      // if current stack length < starting stack length, the program must have
+      // hit an exception so this stepper is no longer relevant
+      // if current stack length === starting stack length, the program returned
+      // to the same stack depth, so a step over is complete
+      return true;
+    }
+    return false;
   }
 }
