@@ -16,10 +16,20 @@ import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { createAbstractObject, createAbstractObjectFromFlowTypes } from "../flow/abstractObjectFactories.js";
 import { valueIsClassComponent } from "./utils";
-import { ExpectedBailOut } from "./reconcilation.js";
+import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
+
+const lifecycleMethods = new Set([
+  "componentWillUnmount",
+  "componentDidMount",
+  "componentWillMount",
+  "componentDidUpdate",
+  "componentWillUpdate",
+  "componentDidCatch",
+  "componentWillReceiveProps",
+]);
 
 export function getInitialProps(
   realm: Realm,
@@ -88,6 +98,46 @@ export function getInitialContext(
     }
   }
   return createAbstractObjectFromFlowTypes(realm, contextName, contextTypes);
+}
+
+export function createSimpleClassInstance(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue,
+  props: ObjectValue | AbstractValue,
+  context: ObjectValue | AbstractValue
+): AbstractObjectValue {
+  let componentPrototype = Get(realm, componentType, "prototype");
+  invariant(componentPrototype instanceof ObjectValue);
+  // create an instance object and disable serialization as we don't want to output the internals we set below
+  let instance = new ObjectValue(realm, componentPrototype, "this", true);
+  let allowedPropertyAccess = new Set(["props", "context"]);
+  for (let [name] of componentPrototype.properties) {
+    if (lifecycleMethods.has(name)) {
+      // this error will result in the simple class falling back to a complex class
+      throw new SimpleClassBailOut("lifecycle methods are not supported on simple classes");
+    } else if (name !== "constructor") {
+      allowedPropertyAccess.add(name);
+      Properties.Set(realm, instance, name, Get(realm, componentPrototype, name), true);
+    }
+  }
+  // assign props
+  Properties.Set(realm, instance, "props", props, true);
+  // assign context
+  Properties.Set(realm, instance, "context", context, true);
+  // as this object is simple, we want to check if any access to anything other than
+  // "this.props" or "this.context" or methods on the class occur
+  let $GetOwnProperty = instance.$GetOwnProperty;
+  instance.$GetOwnProperty = P => {
+    if (!allowedPropertyAccess.has(P)) {
+      // this error will result in the simple class falling back to a complex class
+      throw new SimpleClassBailOut("access to basic class instance properties is not supported on simple classes");
+    }
+    return $GetOwnProperty.call(instance, P);
+  };
+  // enable serialization to support simple instance variables properties
+  instance.refuseSerialization = false;
+  // return the instance
+  return instance;
 }
 
 export function createClassInstance(

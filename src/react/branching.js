@@ -24,7 +24,7 @@ import {
 } from "../values/index.js";
 import { type ReactSerializerState } from "../serializer/types.js";
 import { isReactElement, addKeyToReactElement, mapOverArrayValue } from "./utils";
-import { ExpectedBailOut } from "./reconcilation.js";
+import { ExpectedBailOut } from "./errors.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
 // that results in a conditional path occuring. This can be problematic for reconcilation

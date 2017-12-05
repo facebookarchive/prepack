@@ -380,6 +380,9 @@ function runTest(name, code, options, args) {
       let i = code.indexOf(injectAtRuntime);
       addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
     }
+    if (args.es5) {
+      code = transformWithBabel(code, [], [["env", { forceAllTransforms: true, modules: false }]]);
+    }
     let unique = 27277;
     let oldUniqueSuffix = "";
     let expectedCode = code;

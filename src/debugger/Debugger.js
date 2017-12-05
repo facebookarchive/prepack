@@ -23,6 +23,8 @@ import type {
   Scope,
   VariablesArguments,
   StoppedReason,
+  EvaluateArguments,
+  SourceData,
 } from "./types.js";
 import type { Realm } from "./../realm.js";
 import { ExecutionContext } from "./../realm.js";
@@ -42,7 +44,7 @@ export class DebugServer {
     this._realm = realm;
     this._breakpointManager = new BreakpointManager(this._channel);
     this._variableManager = new VariableManager(realm);
-    this._stepManager = new SteppingManager(this._channel);
+    this._stepManager = new SteppingManager(this._channel, this._realm, /* default discard old steppers */ false);
     this.waitForRun(undefined, "Entry");
   }
   // the collection of breakpoints
@@ -52,6 +54,7 @@ export class DebugServer {
   _realm: Realm;
   _variableManager: VariableManager;
   _stepManager: SteppingManager;
+  _lastExecuted: SourceData;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -69,19 +72,22 @@ export class DebugServer {
 
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
-    this.checkForBreakpoint(ast);
-    this.checkStepComplete(ast);
+    if (this._checkAndUpdateLastExecuted(ast)) {
+      this.checkForBreakpoint(ast);
+      this.checkStepComplete(ast);
+    }
   }
 
   checkForBreakpoint(ast: BabelNode) {
-    if (this._breakpointManager.isValidBreakpoint(ast)) {
+    if (this._breakpointManager.shouldStopOnBreakpoint(ast)) {
       this.waitForRun(ast, "Breakpoint");
     }
   }
 
   checkStepComplete(ast: BabelNode) {
-    if (this._stepManager.isStepComplete(ast)) {
-      this.waitForRun(ast, "Step Into");
+    let steppingType = this._stepManager.getStepperType(ast);
+    if (steppingType) {
+      this.waitForRun(ast, steppingType);
     }
   }
 
@@ -133,6 +139,15 @@ export class DebugServer {
         this._stepManager.processStepCommand("in", ast);
         this._onDebuggeeResume();
         return true;
+      case DebugMessage.STEPOVER_COMMAND:
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("over", ast);
+        this._onDebuggeeResume();
+        return true;
+      case DebugMessage.EVALUATE_COMMAND:
+        invariant(args.kind === "evaluate");
+        this.processEvaluateCommand(requestID, args);
+        break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
     }
@@ -234,10 +249,14 @@ export class DebugServer {
     this._channel.sendVariablesResponse(requestID, variables);
   }
 
+  processEvaluateCommand(requestID: number, args: EvaluateArguments) {
+    let evalResult = this._variableManager.evaluate(args.frameId, args.expression);
+    this._channel.sendEvaluateResponse(requestID, evalResult);
+  }
+
   // actions that need to happen when Prepack is going to be stopped
   _onDebuggeeStop(ast: BabelNode, reason: StoppedReason) {
     if (reason === "Entry") return;
-    this._breakpointManager.onDebuggeeStop(ast, reason);
     this._stepManager.onDebuggeeStop(ast, reason);
   }
 
@@ -245,6 +264,30 @@ export class DebugServer {
   _onDebuggeeResume() {
     // resets the variable manager
     this._variableManager.clean();
+  }
+
+  _checkAndUpdateLastExecuted(ast: BabelNode): boolean {
+    if (ast.loc && ast.loc.source) {
+      let filePath = ast.loc.source;
+      let line = ast.loc.start.line;
+      let column = ast.loc.start.column;
+      // check if the current location is same as the last one
+      if (
+        this._lastExecuted &&
+        filePath === this._lastExecuted.filePath &&
+        line === this._lastExecuted.line &&
+        column === this._lastExecuted.column
+      ) {
+        return false;
+      }
+      this._lastExecuted = {
+        filePath: filePath,
+        line: line,
+        column: column,
+      };
+      return true;
+    }
+    return false;
   }
 
   shutdown() {

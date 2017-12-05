@@ -29,7 +29,10 @@ import type {
   RunArguments,
   StackframeArguments,
   StepIntoArguments,
+  StepOverArguments,
   StoppedReason,
+  EvaluateArguments,
+  EvaluateResult,
 } from "./../types.js";
 import invariant from "./../../invariant.js";
 import { DebuggerError } from "./../DebuggerError.js";
@@ -95,6 +98,25 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.STEPINTO_COMMAND}`;
   }
 
+  marshallStepOverRequest(requestID: number): string {
+    return `${requestID} ${DebugMessage.STEPOVER_COMMAND}`;
+  }
+
+  marshallEvaluateRequest(requestID: number, frameId: void | number, expression: string): string {
+    let evalArgs: EvaluateArguments = {
+      kind: "evaluate",
+      expression: expression,
+    };
+    if (frameId !== undefined) {
+      evalArgs.frameId = frameId;
+    }
+    return `${requestID} ${DebugMessage.EVALUATE_COMMAND} ${JSON.stringify(evalArgs)}`;
+  }
+
+  marshallEvaluateResponse(requestID: number, evalResult: EvaluateResult): string {
+    return `${requestID} ${DebugMessage.EVALUATE_RESPONSE} ${JSON.stringify(evalResult)}`;
+  }
+
   unmarshallRequest(message: string): DebuggerRequest {
     let parts = message.split(" ");
     // each request must have a length and a command
@@ -133,6 +155,16 @@ export class MessageMarshaller {
           kind: "stepInto",
         };
         args = stepIntoArgs;
+        break;
+      case DebugMessage.STEPOVER_COMMAND:
+        this._lastRunRequestID = requestID;
+        let stepOverArgs: StepOverArguments = {
+          kind: "stepOver",
+        };
+        args = stepOverArgs;
+        break;
+      case DebugMessage.EVALUATE_COMMAND:
+        args = this._unmarshallEvaluateArguments(requestID, parts.slice(2).join(" "));
         break;
       default:
         throw new DebuggerError("Invalid command", "Invalid command from adapter: " + command);
@@ -182,6 +214,14 @@ export class MessageMarshaller {
     return result;
   }
 
+  _unmarshallEvaluateArguments(requestID: number, responseString: string): EvaluateArguments {
+    let evalArgs = JSON.parse(responseString);
+    invariant(evalArgs.hasOwnProperty("kind"), "Evaluate arguments missing kind field");
+    invariant(evalArgs.hasOwnProperty("expression"), "Evaluate arguments missing expression field");
+    if (evalArgs.hasOwnProperty("frameId")) invariant(!isNaN(evalArgs.frameId));
+    return evalArgs;
+  }
+
   unmarshallResponse(message: string): DebuggerResponse {
     try {
       let parts = message.split(" ");
@@ -202,6 +242,8 @@ export class MessageMarshaller {
         dbgResult = this._unmarshallScopesResult(resultString);
       } else if (messageType === DebugMessage.VARIABLES_RESPONSE) {
         dbgResult = this._unmarshallVariablesResult(resultString);
+      } else if (messageType === DebugMessage.EVALUATE_RESPONSE) {
+        dbgResult = this._unmarshallEvaluateResult(resultString);
       } else {
         invariant(false, "Unexpected response type");
       }
@@ -261,6 +303,16 @@ export class MessageMarshaller {
       variables: variables,
     };
     return result;
+  }
+
+  _unmarshallEvaluateResult(resultString: string): EvaluateResult {
+    let evalResult = JSON.parse(resultString);
+    invariant(evalResult.hasOwnProperty("kind"), "eval result missing kind property");
+    invariant(evalResult.kind === "evaluate", "eval result is the wrong kind");
+    invariant(evalResult.hasOwnProperty("displayValue", "eval result missing display value property"));
+    invariant(evalResult.hasOwnProperty("type", "eval result missing type property"));
+    invariant(evalResult.hasOwnProperty("variablesReference", "eval result missing variablesReference property"));
+    return evalResult;
   }
 
   _unmarshallBreakpointsAddResult(resultString: string): BreakpointsAddResult {
