@@ -214,7 +214,7 @@ export class Referentializer {
 
           invariant(residualBinding.referentialized);
           if (residualBinding.declarativeEnvironmentRecord && residualBinding.scope) {
-            instance.scopeInstances.add(residualBinding.scope);
+            instance.scopeInstances.set(residualBinding.scope.name, residualBinding.scope);
           }
         }
       }
