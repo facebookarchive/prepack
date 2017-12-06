@@ -191,7 +191,7 @@ export type ReactSerializerState = {
 
 export type ObjectRefCount = {
   inComing: number, // The number of objects that references this object.
-  outGoing: number, // The number of children that are referenced by this object.
+  outGoing: number, // The number of objects that are referenced by this object.
 };
 
 export type SerializedResult = {

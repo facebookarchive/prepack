@@ -11,8 +11,8 @@
 
 import type { Logger } from "./logger.js";
 import type { Modules } from "./modules.js";
-import type { Realm, Effects } from "../realm.js";
-import type { ObjectRefCount } from "./types.js";
+import type { Realm } from "../realm.js";
+import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
 
 import invariant from "../invariant.js";
 import { Value, EmptyValue, FunctionValue } from "../values/index.js";
@@ -27,15 +27,15 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
     realm: Realm,
     logger: Logger,
     modules: Modules,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, Effects>
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>
   ) {
     super(realm, logger, modules, additionalFunctionValuesAndEffects);
     this._valueToEdgeRecord = new Map();
-    this._ancestors = [];
+    this._path = [];
   }
 
   _valueToEdgeRecord: Map<Value, ObjectRefCount>;
-  _ancestors: Array<Value>;
+  _path: Array<Value>; // Contains the path of nodes from root to current visiting node.
 
   getResult(): Map<Value, ObjectRefCount> {
     return this._valueToEdgeRecord;
@@ -50,16 +50,16 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
       return false;
     }
 
-    if (this._ancestors.length > 0) {
+    if (this._path.length > 0) {
       this._updateParentOutgoingEdgeCount();
     }
-    this._ancestors.push(val);
+    this._path.push(val);
 
     return this._updateValueIncomingEdgeCount(val);
   }
 
   _updateParentOutgoingEdgeCount() {
-    const parent = this._ancestors[this._ancestors.length - 1];
+    const parent = this._path[this._path.length - 1];
     const edgeRecord = this._valueToEdgeRecord.get(parent);
     invariant(edgeRecord);
     ++edgeRecord.outGoing;
@@ -84,7 +84,7 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
     if (this._shouldIgnore(val)) {
       return;
     }
-    invariant(this._ancestors.length > 0);
-    this._ancestors.pop();
+    invariant(this._path.length > 0);
+    this._path.pop();
   }
 }

@@ -12,8 +12,7 @@
 import type { Logger } from "./logger.js";
 import type { Modules } from "./modules.js";
 import type { Realm } from "../realm.js";
-import type { Effects } from "../realm.js";
-import type { ObjectRefCount } from "./types.js";
+import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
 
 import invariant from "../invariant.js";
 import {
@@ -49,7 +48,7 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     this._visitedValues = new Set();
     this._valueIds = new Map();
     this._idSeed = 0;
-    this._ancestors = [];
+    this._path = [];
     this._edges = [];
   }
 
@@ -57,7 +56,7 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
   _valueIds: Map<Value, number>;
   _idSeed: number;
   _visitedValues: Set<Value>;
-  _ancestors: Array<Value>;
+  _path: Array<Value>; // Contains the path of nodes from root to current visiting node.
   _edges: Array<Edge>;
 
   // Override.
@@ -79,8 +78,8 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     if (this._shouldIgnore(val)) {
       return;
     }
-    invariant(this._ancestors.length > 0);
-    this._ancestors.pop();
+    invariant(this._path.length > 0);
+    this._path.pop();
   }
 
   _getValueId(val: Value): number {
@@ -97,11 +96,11 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
   }
 
   _updateEdge(val: Value) {
-    if (this._ancestors.length > 0) {
-      const parent = this._ancestors[this._ancestors.length - 1];
+    if (this._path.length > 0) {
+      const parent = this._path[this._path.length - 1];
       this._edges.push({ fromId: this._getValueId(parent), toId: this._getValueId(val) });
     }
-    this._ancestors.push(val);
+    this._path.push(val);
   }
 
   _getValueLabel(val: Value): string {
