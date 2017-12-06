@@ -14,8 +14,8 @@ import type { LexicalEnvironment } from "../environment.js";
 import { FunctionEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
-import { ToPropertyKeyPartial, RequireObjectCoercible } from "../methods/index.js";
-import { Environment } from "../singletons.js";
+import { RequireObjectCoercible } from "../methods/index.js";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeMemberExpression } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -62,7 +62,7 @@ export default function SuperProperty(
     let propertyNameValue = Environment.GetValue(realm, propertyNameReference);
 
     // 3. Let propertyKey be ToPropertyKey(propertyNameValue).
-    let propertyKey = ToPropertyKeyPartial(realm, propertyNameValue);
+    let propertyKey = To.ToPropertyKeyPartial(realm, propertyNameValue);
 
     // 4. ReturnIfAbrupt(propertyKey).
 

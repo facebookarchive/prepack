@@ -11,7 +11,7 @@
 
 import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
-import { ToLength, IsArray, Get, IsAccessorDescriptor } from "../methods/index.js";
+import { IsArray, Get, IsAccessorDescriptor } from "../methods/index.js";
 import {
   ArrayValue,
   BoundFunctionValue,
@@ -65,6 +65,7 @@ import { voidExpression, emptyExpression, constructorExpression, protoExpression
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
+import { To } from "../singletons.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -814,7 +815,7 @@ export class ResidualHeapSerializer {
     // 1. array length is abstract.
     // 2. array length is concrete, but different from number of index properties
     //  we put into initialization list.
-    if (lenProperty instanceof AbstractValue || ToLength(realm, lenProperty) !== numberOfIndexProperties) {
+    if (lenProperty instanceof AbstractValue || To.ToLength(realm, lenProperty) !== numberOfIndexProperties) {
       this.emitter.emitNowOrAfterWaitingForDependencies([val], () => {
         this._assignProperty(
           () => t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),

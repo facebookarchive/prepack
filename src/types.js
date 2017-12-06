@@ -14,6 +14,7 @@ import type {
   AbstractValue,
   ArrayValue,
   BooleanValue,
+  ConcreteValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
@@ -21,11 +22,12 @@ import type {
   NativeFunctionValue,
   NullValue,
   NumberValue,
+  PrimitiveValue,
   StringValue,
   SymbolValue,
   UndefinedValue,
-  Value,
 } from "./values/index.js";
+import { Value } from "./values/index.js";
 import {
   AbruptCompletion,
   Completion,
@@ -870,4 +872,117 @@ export type WidenType = {
   // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
   // summary of the loop, regardless of how many iterations will be performed at runtime.
   equalsEffects(e1: Effects, e2: Effects): boolean,
+};
+
+export type numberOrValue = number | Value;
+
+export type ElementConvType = {
+  Int8: (Realm, numberOrValue) => number,
+  Int16: (Realm, numberOrValue) => number,
+  Int32: (Realm, numberOrValue) => number,
+  Uint8: (Realm, numberOrValue) => number,
+  Uint16: (Realm, numberOrValue) => number,
+  Uint32: (Realm, numberOrValue) => number,
+  Uint8Clamped: (Realm, numberOrValue) => number,
+};
+
+export type ToType = {
+  ElementConv: ElementConvType,
+
+  // ECMA262 7.1.5
+  ToInt32(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 7.1.6
+  ToUint32(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 7.1.7
+  ToInt16(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 7.1.8
+  ToUint16(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 7.1.9
+  ToInt8(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 7.1.10
+  ToUint8(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 7.1.11
+  ToUint8Clamp(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 19.3.3.1
+  thisBooleanValue(realm: Realm, value: Value): BooleanValue,
+
+  // ECMA262 20.1.3
+  thisNumberValue(realm: Realm, value: Value): NumberValue,
+
+  // ECMA262 21.1.3
+  thisStringValue(realm: Realm, value: Value): StringValue,
+
+  // ECMA262 6.2.4.5
+  ToPropertyDescriptor(realm: Realm, Obj: Value): Descriptor,
+
+  // ECMA262 7.1.13
+  ToObject(realm: Realm, arg: ConcreteValue): ObjectValue,
+
+  ToObjectPartial(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue,
+
+  // ECMA262 7.1.15
+  ToLength(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 7.1.4
+  ToInteger(realm: Realm, argument: numberOrValue): number,
+
+  // ECMA262 7.1.17
+  ToIndex(realm: Realm, value: number | ConcreteValue): number,
+
+  ToIndexPartial(realm: Realm, value: numberOrValue): number,
+
+  // ECMA262 7.1.3
+  ToNumber(realm: Realm, val: numberOrValue): number,
+
+  IsToNumberPure(realm: Realm, val: numberOrValue): boolean,
+
+  // ECMA262 7.1.1
+  ToPrimitive(realm: Realm, input: ConcreteValue, hint?: "default" | "string" | "number"): PrimitiveValue,
+
+  ToPrimitiveOrAbstract(
+    realm: Realm,
+    input: ConcreteValue,
+    hint?: "default" | "string" | "number"
+  ): AbstractValue | PrimitiveValue,
+
+  // Returns result type of ToPrimitive if it is pure (terminates, does not throw exception, does not read or write heap), otherwise undefined.
+  GetToPrimitivePureResultType(realm: Realm, input: Value): void | typeof Value,
+
+  IsToPrimitivePure(realm: Realm, input: Value): boolean,
+
+  // ECMA262 7.1.1
+  OrdinaryToPrimitive(realm: Realm, input: ObjectValue, hint: "string" | "number"): PrimitiveValue,
+
+  OrdinaryToPrimitiveOrAbstract(
+    realm: Realm,
+    input: ObjectValue,
+    hint: "string" | "number"
+  ): AbstractValue | PrimitiveValue,
+
+  // ECMA262 7.1.12
+  ToString(realm: Realm, val: string | ConcreteValue): string,
+
+  ToStringPartial(realm: Realm, val: string | Value): string,
+
+  ToStringValue(realm: Realm, val: Value): Value,
+
+  // ECMA262 7.1.2
+  ToBoolean(realm: Realm, val: ConcreteValue): boolean,
+
+  ToBooleanPartial(realm: Realm, val: Value): boolean,
+
+  // ECMA262 7.1.14
+  ToPropertyKey(realm: Realm, arg: ConcreteValue): SymbolValue | string /* but not StringValue */,
+
+  ToPropertyKeyPartial(realm: Realm, arg: Value): AbstractValue | SymbolValue | string /* but not StringValue */,
+
+  // ECMA262 7.1.16
+  CanonicalNumericIndexString(realm: Realm, argument: StringValue): number | void,
 };

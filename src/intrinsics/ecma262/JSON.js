@@ -23,23 +23,11 @@ import {
   UndefinedValue,
   Value,
 } from "../../values/index.js";
-import {
-  Call,
-  EnumerableOwnProperties,
-  Get,
-  HasSomeCompatibleType,
-  IsArray,
-  IsCallable,
-  ToInteger,
-  ToLength,
-  ToNumber,
-  ToString,
-  ToStringPartial,
-} from "../../methods/index.js";
+import { Call, EnumerableOwnProperties, Get, HasSomeCompatibleType, IsArray, IsCallable } from "../../methods/index.js";
 import { InternalizeJSONProperty } from "../../methods/json.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
-import { Create, Properties } from "../../singletons.js";
+import { Create, Properties, To } from "../../singletons.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
@@ -71,7 +59,7 @@ function SerializeJSONArray(realm: Realm, value: ObjectValue, context: Context):
   let partial = [];
 
   // 6. Let len be ? ToLength(? Get(value, "length")).
-  let len = ToLength(realm, Get(realm, value, "length"));
+  let len = To.ToLength(realm, Get(realm, value, "length"));
 
   // 7. Let index be 0.
   let index = 0;
@@ -248,11 +236,11 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
     // a. If value has a [[NumberData]] internal slot, then
     if (value.$NumberData) {
       // b. Let value be ? ToNumber(value).
-      value = new NumberValue(realm, ToNumber(realm, value));
+      value = new NumberValue(realm, To.ToNumber(realm, value));
     } else if (value.$StringData) {
       // c. Else if value has a [[StringData]] internal slot, then
       // d. Let value be ? ToString(value).
-      value = new StringValue(realm, ToString(realm, value));
+      value = new StringValue(realm, To.ToString(realm, value));
     } else if (value.$BooleanData) {
       // e. Else if value has a [[BooleanData]] internal slot, then
       // f. Let value be the value of the [[BooleanData]] internal slot of value.
@@ -276,7 +264,7 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
   if (value instanceof NumberValue) {
     // a. If value is finite, return ! ToString(value).
     if (isFinite(value.value)) {
-      return ToString(realm, value);
+      return To.ToString(realm, value);
     } else {
       // b. Else, return "null".
       return "null";
@@ -353,9 +341,9 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
     if (isArray === true) {
       clonedObj = Create.ObjectCreate(realm, realm.intrinsics.ArrayPrototype);
       let I = 0;
-      let len = ToLength(realm, Get(realm, val, "length"));
+      let len = To.ToLength(realm, Get(realm, val, "length"));
       while (I < len) {
-        let P = ToString(realm, new NumberValue(realm, I));
+        let P = To.ToString(realm, new NumberValue(realm, I));
         let newElement = Get(realm, val, P);
         if (!(newElement instanceof UndefinedValue)) {
           // TODO #1011: An abstract value that ultimately yields undefined should still be skipped
@@ -425,7 +413,7 @@ export default function(realm: Realm): ObjectValue {
           PropertyList = [];
 
           // ii. Let len be ? ToLength(? Get(replacer, "length")).
-          let len = ToLength(realm, Get(realm, replacer, "length"));
+          let len = To.ToLength(realm, Get(realm, replacer, "length"));
 
           // iii. Let k be 0.
           let k = 0;
@@ -444,12 +432,12 @@ export default function(realm: Realm): ObjectValue {
               item = v;
             } else if (v instanceof NumberValue) {
               // 4. Else if Type(v) is Number, let item be ! ToString(v).
-              item = new StringValue(realm, ToString(realm, v));
+              item = new StringValue(realm, To.ToString(realm, v));
             } else if (v instanceof ObjectValue) {
               // 5. Else if Type(v) is Object, then
               // a. If v has a [[StringData]] or [[NumberData]] internal slot, let item be ? ToString(v).
               if (v.$StringData || v.$NumberData) {
-                item = new StringValue(realm, ToString(realm, v));
+                item = new StringValue(realm, To.ToString(realm, v));
               }
             }
 
@@ -471,11 +459,11 @@ export default function(realm: Realm): ObjectValue {
       // a. If space has a [[NumberData]] internal slot, then
       if (space.$NumberData) {
         // i. Let space be ? ToNumber(space).
-        space = new NumberValue(realm, ToNumber(realm, space));
+        space = new NumberValue(realm, To.ToNumber(realm, space));
       } else if (space.$StringData) {
         // b. Else if space has a [[StringData]] internal slot, then
         // i. Let space be ? ToString(space).
-        space = new StringValue(realm, ToString(realm, space));
+        space = new StringValue(realm, To.ToString(realm, space));
       }
     }
 
@@ -483,7 +471,7 @@ export default function(realm: Realm): ObjectValue {
     // 6. If Type(space) is Number, then
     if (space instanceof NumberValue) {
       // a. Let space be min(10, ToInteger(space)).
-      space = new NumberValue(realm, Math.min(10, ToInteger(realm, space)));
+      space = new NumberValue(realm, Math.min(10, To.ToInteger(realm, space)));
 
       // b. Set gap to a String containing space occurrences of code unit 0x0020 (SPACE). This will be the empty String if space is less than 1.
       gap = Array(Math.max(0, space.value)).join(" ");
@@ -567,7 +555,7 @@ export default function(realm: Realm): ObjectValue {
       realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
     } else {
       // 1. Let JText be ? ToString(text).
-      let JText = ToStringPartial(realm, text);
+      let JText = To.ToStringPartial(realm, text);
 
       // 2. Parse JText interpreted as UTF-16 encoded Unicode points (6.1.4) as a JSON text as specified in ECMA-404. Throw a SyntaxError exception if JText is not a valid JSON text as defined in that specification.
       // 3. Let scriptText be the result of concatenating "(", JText, and ");".

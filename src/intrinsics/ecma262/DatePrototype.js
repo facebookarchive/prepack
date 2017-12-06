@@ -13,10 +13,6 @@ import type { Realm } from "../../realm.js";
 import { FatalError } from "../../errors.js";
 import { StringValue, ObjectValue, NumberValue } from "../../values/index.js";
 import {
-  ToNumber,
-  ToObject,
-  ToPrimitive,
-  ToInteger,
   Invoke,
   MakeTime,
   thisTimeValue,
@@ -37,8 +33,8 @@ import {
   MonthFromTime,
   msPerMinute,
   UTC,
-  OrdinaryToPrimitive,
 } from "../../methods/index.js";
+import { To } from "../../singletons";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -260,7 +256,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let dt be ? ToNumber(date).
-    let dt = ToNumber(realm, date);
+    let dt = To.ToNumber(realm, date);
 
     // 3. Let newDate be MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), dt), TimeWithinDay(t)).
     let newDate = MakeDate(
@@ -289,13 +285,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     t = isNaN(t) ? +0 : LocalTime(realm, t);
 
     // 3. Let y be ? ToNumber(year).
-    let y = ToNumber(realm, year);
+    let y = To.ToNumber(realm, year);
 
     // 4. If month is not specified, let m be MonthFromTime(t); otherwise, let m be ? ToNumber(month).
-    let m = argCount >= 2 ? ToNumber(realm, month) : MonthFromTime(realm, t);
+    let m = argCount >= 2 ? To.ToNumber(realm, month) : MonthFromTime(realm, t);
 
     // 5. If date is not specified, let dt be DateFromTime(t); otherwise, let dt be ? ToNumber(date).
-    let dt = argCount >= 3 ? ToNumber(realm, date) : DateFromTime(realm, t);
+    let dt = argCount >= 3 ? To.ToNumber(realm, date) : DateFromTime(realm, t);
 
     // 6. Let newDate be MakeDate(MakeDay(y, m, dt), TimeWithinDay(t)).
     let newDate = MakeDate(realm, MakeDay(realm, y, m, dt), TimeWithinDay(realm, t));
@@ -317,16 +313,16 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let h be ? ToNumber(hour).
-    let h = ToNumber(realm, hour);
+    let h = To.ToNumber(realm, hour);
 
     // 3. If min is not specified, let m be MinFromTime(t); otherwise, let m be ? ToNumber(min).
-    let m = argCount >= 2 ? ToNumber(realm, min) : MinFromTime(realm, t);
+    let m = argCount >= 2 ? To.ToNumber(realm, min) : MinFromTime(realm, t);
 
     // 4. If sec is not specified, let s be SecFromTime(t); otherwise, let s be ? ToNumber(sec).
-    let s = argCount >= 3 ? ToNumber(realm, sec) : SecFromTime(realm, t);
+    let s = argCount >= 3 ? To.ToNumber(realm, sec) : SecFromTime(realm, t);
 
     // 5. If ms is not specified, let milli be msFromTime(t); otherwise, let milli be ? ToNumber(ms).
-    let milli = argCount >= 4 ? ToNumber(realm, ms) : msFromTime(realm, t);
+    let milli = argCount >= 4 ? To.ToNumber(realm, ms) : msFromTime(realm, t);
 
     // 6. Let date be MakeDate(Day(t), MakeTime(h, m, s, milli)).
     let date = MakeDate(realm, Day(realm, t), MakeTime(realm, h, m, s, milli));
@@ -348,7 +344,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let ms be ? ToNumber(ms).
-    ms = ToNumber(realm, ms);
+    ms = To.ToNumber(realm, ms);
 
     // 3. Let time be MakeTime(HourFromTime(t), MinFromTime(t), SecFromTime(t), ms).
     let time = MakeTime(realm, HourFromTime(realm, t), MinFromTime(realm, t), SecFromTime(realm, t), ms);
@@ -370,13 +366,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let m be ? ToNumber(min).
-    let m = ToNumber(realm, min);
+    let m = To.ToNumber(realm, min);
 
     // 3. If sec is not specified, let s be SecFromTime(t); otherwise, let s be ? ToNumber(sec).
-    let s = argCount >= 2 ? ToNumber(realm, sec) : SecFromTime(realm, t);
+    let s = argCount >= 2 ? To.ToNumber(realm, sec) : SecFromTime(realm, t);
 
     // 4. If ms is not specified, let milli be msFromTime(t); otherwise, let milli be ? ToNumber(ms).
-    let milli = argCount >= 3 ? ToNumber(realm, ms) : msFromTime(realm, t);
+    let milli = argCount >= 3 ? To.ToNumber(realm, ms) : msFromTime(realm, t);
 
     // 5. Let date be MakeDate(Day(t), MakeTime(HourFromTime(t), m, s, milli)).
     let date = MakeDate(realm, Day(realm, t), MakeTime(realm, HourFromTime(realm, t), m, s, milli));
@@ -398,10 +394,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let m be ? ToNumber(month).
-    let m = ToNumber(realm, month);
+    let m = To.ToNumber(realm, month);
 
     // 3. If date is not specified, let dt be DateFromTime(t); otherwise, let dt be ? ToNumber(date).
-    let dt = argCount >= 2 ? ToNumber(realm, date) : DateFromTime(realm, t);
+    let dt = argCount >= 2 ? To.ToNumber(realm, date) : DateFromTime(realm, t);
 
     // 4. Let newDate be MakeDate(MakeDay(YearFromTime(t), m, dt), TimeWithinDay(t)).
     let newDate = MakeDate(realm, MakeDay(realm, YearFromTime(realm, t), m, dt), TimeWithinDay(realm, t));
@@ -423,10 +419,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let s be ? ToNumber(sec).
-    let s = ToNumber(realm, sec);
+    let s = To.ToNumber(realm, sec);
 
     // 3. If ms is not specified, let milli be msFromTime(t); otherwise, let milli be ? ToNumber(ms).
-    let milli = argCount >= 2 ? ToNumber(realm, ms) : msFromTime(realm, t);
+    let milli = argCount >= 2 ? To.ToNumber(realm, ms) : msFromTime(realm, t);
 
     // 4. Let date be MakeDate(Day(t), MakeTime(HourFromTime(t), MinFromTime(t), s, milli)).
     let date = MakeDate(realm, Day(realm, t), MakeTime(realm, HourFromTime(realm, t), MinFromTime(realm, t), s, milli));
@@ -448,7 +444,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let t be ? ToNumber(time).
-    let t = ToNumber(realm, time);
+    let t = To.ToNumber(realm, time);
 
     // 3. Let v be TimeClip(t).
     let v = TimeClip(realm, t);
@@ -467,7 +463,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let dt be ? ToNumber(date).
-    let dt = ToNumber(realm, date);
+    let dt = To.ToNumber(realm, date);
 
     // 3. Let newDate be MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), dt), TimeWithinDay(t)).
     let newDate = MakeDate(
@@ -496,13 +492,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (isNaN(t)) t = +0;
 
     // 3. Let y be ? ToNumber(year).
-    let y = ToNumber(realm, year);
+    let y = To.ToNumber(realm, year);
 
     // 4. If month is not specified, let m be MonthFromTime(t); otherwise, let m be ? ToNumber(month).
-    let m = argCount >= 2 ? ToNumber(realm, month) : MonthFromTime(realm, t);
+    let m = argCount >= 2 ? To.ToNumber(realm, month) : MonthFromTime(realm, t);
 
     // 5. If date is not specified, let dt be DateFromTime(t); otherwise, let dt be ? ToNumber(date).
-    let dt = argCount >= 3 ? ToNumber(realm, date) : DateFromTime(realm, t);
+    let dt = argCount >= 3 ? To.ToNumber(realm, date) : DateFromTime(realm, t);
 
     // 6. Let newDate be MakeDate(MakeDay(y, m, dt), TimeWithinDay(t)).
     let newDate = MakeDate(realm, MakeDay(realm, y, m, dt), TimeWithinDay(realm, t));
@@ -524,16 +520,16 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let h be ? ToNumber(hour).
-    let h = ToNumber(realm, hour);
+    let h = To.ToNumber(realm, hour);
 
     // 3. If min is not specified, let m be MinFromTime(t); otherwise, let m be ? ToNumber(min).
-    let m = argCount >= 2 ? ToNumber(realm, min) : MinFromTime(realm, t);
+    let m = argCount >= 2 ? To.ToNumber(realm, min) : MinFromTime(realm, t);
 
     // 4. If sec is not specified, let s be SecFromTime(t); otherwise, let s be ? ToNumber(sec).
-    let s = argCount >= 3 ? ToNumber(realm, sec) : SecFromTime(realm, t);
+    let s = argCount >= 3 ? To.ToNumber(realm, sec) : SecFromTime(realm, t);
 
     // 5. If ms is not specified, let milli be msFromTime(t); otherwise, let milli be ? ToNumber(ms).
-    let milli = argCount >= 4 ? ToNumber(realm, ms) : msFromTime(realm, t);
+    let milli = argCount >= 4 ? To.ToNumber(realm, ms) : msFromTime(realm, t);
 
     // 6. Let newDate be MakeDate(Day(t), MakeTime(h, m, s, milli)).
     let newDate = MakeDate(realm, Day(realm, t), MakeTime(realm, h, m, s, milli));
@@ -555,7 +551,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let milli be ? ToNumber(ms).
-    let milli = ToNumber(realm, ms);
+    let milli = To.ToNumber(realm, ms);
 
     // 3. Let time be MakeTime(HourFromTime(t), MinFromTime(t), SecFromTime(t), milli).
     let time = MakeTime(realm, HourFromTime(realm, t), MinFromTime(realm, t), SecFromTime(realm, t), milli);
@@ -577,7 +573,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let m be ? ToNumber(min).
-    let m = ToNumber(realm, min);
+    let m = To.ToNumber(realm, min);
 
     // 3. If sec is not specified, let s be SecFromTime(t).
     let s;
@@ -586,7 +582,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 4. Else,
       // a. Let s be ? ToNumber(sec).
-      s = ToNumber(realm, sec);
+      s = To.ToNumber(realm, sec);
     }
 
     // 5. If ms is not specified, let milli be msFromTime(t).
@@ -596,7 +592,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 6. Else,
       // a. Let milli be ? ToNumber(ms).
-      milli = ToNumber(realm, ms);
+      milli = To.ToNumber(realm, ms);
     }
 
     // 7. Let date be MakeDate(Day(t), MakeTime(HourFromTime(t), m, s, milli)).
@@ -619,7 +615,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let m be ? ToNumber(month).
-    let m = ToNumber(realm, month);
+    let m = To.ToNumber(realm, month);
 
     // 3. If date is not specified, let dt be DateFromTime(t).
     let dt;
@@ -628,7 +624,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 4. Else,
       // a. Let dt be ? ToNumber(date).
-      dt = ToNumber(realm, date);
+      dt = To.ToNumber(realm, date);
     }
 
     // 5. Let newDate be MakeDate(MakeDay(YearFromTime(t), m, dt), TimeWithinDay(t)).
@@ -651,7 +647,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(context instanceof ObjectValue);
 
     // 2. Let s be ? ToNumber(sec).
-    let s = ToNumber(realm, sec);
+    let s = To.ToNumber(realm, sec);
 
     // 3. If ms is not specified, let milli be msFromTime(t).
     let milli;
@@ -660,7 +656,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 4. Else,
       // a. Let milli be ? ToNumber(ms).
-      milli = ToNumber(realm, ms);
+      milli = To.ToNumber(realm, ms);
     }
 
     // 5. Let date be MakeDate(Day(t), MakeTime(HourFromTime(t), MinFromTime(t), s, milli)).
@@ -694,10 +690,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.3.4.37
   obj.defineNativeMethod("toJSON", 1, (context, [key]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context.throwIfNotConcrete());
 
     // 2. Let tv be ? ToPrimitive(O, hint Number).
-    let tv = ToPrimitive(realm, O, "number");
+    let tv = To.ToPrimitive(realm, O, "number");
 
     // 3. If Type(tv) is Number and tv is not finite, return null.
     if (tv instanceof NumberValue && !isFinite(tv.value)) {
@@ -788,7 +784,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       }
 
       // 6. Return ? OrdinaryToPrimitive(O, tryFirst).
-      return OrdinaryToPrimitive(realm, O, tryFirst);
+      return To.OrdinaryToPrimitive(realm, O, tryFirst);
     },
     { writable: false }
   );
@@ -815,7 +811,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     t = isNaN(t) ? +0 : LocalTime(realm, t);
 
     // 3. Let y be ? ToNumber(year).
-    let y = ToNumber(realm, year);
+    let y = To.ToNumber(realm, year);
 
     // 4. If y is NaN, set the [[DateValue]] internal slot of this Date object to NaN and return NaN.
     if (isNaN(y)) {
@@ -823,10 +819,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return realm.intrinsics.NaN;
     }
 
-    // 5. If y is not NaN and 0 ≤ ToInteger(y) ≤ 99, let yyyy be ToInteger(y) + 1900.
+    // 5. If y is not NaN and 0 ≤ To.ToInteger(y) ≤ 99, let yyyy be To.ToInteger(y) + 1900.
     let yyyy;
-    if (ToInteger(realm, y) < 99) {
-      yyyy = ToInteger(realm, y) + 1900;
+    if (To.ToInteger(realm, y) < 99) {
+      yyyy = To.ToInteger(realm, y) + 1900;
     } else {
       // 6. Else, let yyyy be y.
       yyyy = y;

@@ -15,11 +15,10 @@ import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { ToBoolean } from "../methods/index.js";
 import { Environment } from "../singletons.js";
 import type { BabelNodeLogicalExpression } from "babel-types";
 import invariant from "../invariant.js";
-import { Join, Path } from "../singletons.js";
+import { Join, Path, To } from "../singletons.js";
 
 export default function(
   ast: BabelNodeLogicalExpression,
@@ -31,7 +30,7 @@ export default function(
   let lval = Environment.GetValue(realm, lref);
 
   if (lval instanceof ConcreteValue) {
-    let lbool = ToBoolean(realm, lval);
+    let lbool = To.ToBoolean(realm, lval);
 
     if (ast.operator === "&&") {
       // ECMA262 12.13.3

@@ -14,8 +14,8 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
-import { IsAnonymousFunctionDefinition, HasOwnProperty, ToPropertyKey, ToString } from "../methods/index.js";
-import { Create, Environment, Functions, Properties } from "../singletons.js";
+import { IsAnonymousFunctionDefinition, HasOwnProperty } from "../methods/index.js";
+import { Create, Environment, Functions, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type {
   BabelNodeObjectExpression,
@@ -50,14 +50,14 @@ function EvalPropertyNamePartial(
     let propertyKeyName = Environment.GetValue(realm, env.evaluate(prop.key, strictCode));
     if (propertyKeyName instanceof AbstractValue) return propertyKeyName;
     invariant(propertyKeyName instanceof ConcreteValue);
-    return ToPropertyKey(realm, propertyKeyName);
+    return To.ToPropertyKey(realm, propertyKeyName);
   } else {
     if (prop.key.type === "Identifier") {
       return new StringValue(realm, prop.key.name);
     } else {
       let propertyKeyName = Environment.GetValue(realm, env.evaluate(prop.key, strictCode));
       invariant(propertyKeyName instanceof ConcreteValue); // syntax only allows literals if !prop.computed
-      return ToString(realm, propertyKeyName);
+      return To.ToString(realm, propertyKeyName);
     }
   }
 }

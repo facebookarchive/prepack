@@ -22,8 +22,8 @@ import {
   StringValue,
   UndefinedValue,
 } from "../../values/index.js";
-import { Get, GetFunctionRealm, ToBoolean, ToInteger, ToString } from "../../methods/index.js";
-import { Properties } from "../../singletons.js";
+import { Get, GetFunctionRealm } from "../../methods/index.js";
+import { Properties, To } from "../../singletons.js";
 import parse from "../../utils/parse.js";
 import type { BabelNodeFile } from "babel-types";
 
@@ -99,7 +99,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     invariant(args[0] instanceof ConcreteValue);
-    let code = ToString(realm, args[0]);
+    let code = To.ToString(realm, args[0]);
 
     let options = args[1];
     let filename = getFilenameArg(options);
@@ -245,7 +245,7 @@ export default function(realm: Realm): ObjectValue {
     if (value instanceof UndefinedValue) {
       return -1;
     }
-    let timeout = ToInteger(realm, value);
+    let timeout = To.ToInteger(realm, value);
 
     if (timeout <= 0) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.RangeError, "timeout must be a positive number");
@@ -267,7 +267,7 @@ export default function(realm: Realm): ObjectValue {
     if (value instanceof UndefinedValue) {
       return true;
     }
-    return ToBoolean(realm, value);
+    return To.ToBoolean(realm, value);
   }
 
   function getFilenameArg(options: Value): string {
@@ -287,7 +287,7 @@ export default function(realm: Realm): ObjectValue {
     if (value instanceof UndefinedValue) {
       return defaultFilename;
     }
-    return ToString(realm, value);
+    return To.ToString(realm, value);
   }
 
   function getCachedData(options: Value): Uint8Array {
@@ -328,7 +328,7 @@ export default function(realm: Realm): ObjectValue {
     }
     let value = Get(realm, options, "lineOffset");
     invariant(value instanceof ConcreteValue);
-    return value instanceof UndefinedValue ? defaultLineOffset : ToInteger(realm, value);
+    return value instanceof UndefinedValue ? defaultLineOffset : To.ToInteger(realm, value);
   }
 
   function getColumnOffsetArg(options: Value): number {
@@ -338,7 +338,7 @@ export default function(realm: Realm): ObjectValue {
     }
     let value = Get(realm, options, "columnOffset");
     invariant(value instanceof ConcreteValue);
-    return value instanceof UndefinedValue ? defaultColumnOffset : ToInteger(realm, value);
+    return value instanceof UndefinedValue ? defaultColumnOffset : To.ToInteger(realm, value);
   }
 
   function evalMachine(self: Value, timeout: number, displayErrors: boolean, breakOnSigint: boolean): Value {

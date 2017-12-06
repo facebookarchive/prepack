@@ -30,10 +30,9 @@ import {
 import { GetPrototypeFromConstructor } from "./get.js";
 import { IsConstructor, IsPropertyKey, IsArray } from "./is.js";
 import { Type, SameValue, RequireObjectCoercible } from "./abstract.js";
-import { ToStringPartial, ToLength } from "./to.js";
 import { Get, GetFunctionRealm } from "./get.js";
 import { Construct, MakeConstructor } from "./construct.js";
-import { Functions, Properties } from "../singletons.js";
+import { Functions, Properties, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
@@ -85,7 +84,7 @@ export class CreateImplementation {
     let str = RequireObjectCoercible(realm, string);
 
     // 2. Let S be ? ToString(str).
-    let S = ToStringPartial(realm, str);
+    let S = To.ToStringPartial(realm, str);
 
     // 3. Let p1 be the String value that is the concatenation of "<" and tag.
     let p1 = `<${tag}`;
@@ -93,7 +92,7 @@ export class CreateImplementation {
     // 4. If attribute is not the empty String, then
     if (attribute) {
       // a. Let V be ? ToString(value).
-      let V = ToStringPartial(realm, value);
+      let V = To.ToStringPartial(realm, value);
 
       // b. Let escapedV be the String value that is the same as V except that each occurrence of the code unit
       //    0x0022 (QUOTATION MARK) in V has been replaced with the six code unit sequence "&quot;".
@@ -651,7 +650,7 @@ export class CreateImplementation {
     }
 
     // 3. Let len be ? ToLength(? Get(obj, "length")).
-    let len = ToLength(realm, Get(realm, obj, "length"));
+    let len = To.ToLength(realm, Get(realm, obj, "length"));
 
     // 4. Let list be a new empty List.
     let list: Array<Value> = [];
@@ -732,7 +731,7 @@ export class CreateImplementation {
       let firstArg = args[0];
 
       // b. Let P be ? ToString(firstArg).
-      P = ToStringPartial(realm, firstArg);
+      P = To.ToStringPartial(realm, firstArg);
 
       // c. Let k be 1.
       let k = 1;
@@ -743,7 +742,7 @@ export class CreateImplementation {
         let nextArg = args[k];
 
         // ii. Let nextArgString be ? ToString(nextArg).
-        let nextArgString = ToStringPartial(realm, nextArg);
+        let nextArgString = To.ToStringPartial(realm, nextArg);
 
         // iii. Let P be the result of concatenating the previous value of P, the String "," (a comma), and nextArgString.
         P = P + "," + nextArgString;
@@ -757,7 +756,7 @@ export class CreateImplementation {
     }
 
     // 9. Let bodyText be ? ToString(bodyText).
-    bodyText = ToStringPartial(realm, bodyText);
+    bodyText = To.ToStringPartial(realm, bodyText);
 
     // 10. Let parameters be the result of parsing P, interpreted as UTF-16 encoded Unicode text as described in 6.1.4, using parameterGoal as the goal symbol. Throw a SyntaxError exception if the parse fails.
     // 11. Let body be the result of parsing bodyText, interpreted as UTF-16 encoded Unicode text as described in 6.1.4, using goal as the goal symbol. Throw a SyntaxError exception if the parse fails.

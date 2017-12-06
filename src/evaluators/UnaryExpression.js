@@ -27,8 +27,8 @@ import {
 } from "../values/index.js";
 import { Reference, EnvironmentRecord } from "../environment.js";
 import invariant from "../invariant.js";
-import { ToBoolean, ToObject, ToNumber, ToInt32, IsCallable, IsToNumberPure } from "../methods/index.js";
-import { Environment } from "../singletons.js";
+import { IsCallable } from "../methods/index.js";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeUnaryExpression } from "babel-types";
 
 function isInstance(proto, Constructor): boolean {
@@ -62,12 +62,12 @@ export default function(
     // 2. Return ? ToNumber(? GetValue(expr)).
     let value = Environment.GetValue(realm, expr);
     if (value instanceof AbstractValue) {
-      if (!IsToNumberPure(realm, value)) reportError();
+      if (!To.IsToNumberPure(realm, value)) reportError();
       return AbstractValue.createFromUnaryOp(realm, "+", value);
     }
     invariant(value instanceof ConcreteValue);
 
-    return new NumberValue(realm, ToNumber(realm, value));
+    return new NumberValue(realm, To.ToNumber(realm, value));
   } else if (ast.operator === "-") {
     // ECMA262 12.5.7.1
 
@@ -77,11 +77,11 @@ export default function(
     // 2. Let oldValue be ? ToNumber(? GetValue(expr)).
     let value = Environment.GetValue(realm, expr);
     if (value instanceof AbstractValue) {
-      if (!IsToNumberPure(realm, value)) reportError();
+      if (!To.IsToNumberPure(realm, value)) reportError();
       return AbstractValue.createFromUnaryOp(realm, "-", value);
     }
     invariant(value instanceof ConcreteValue);
-    let oldValue = ToNumber(realm, value);
+    let oldValue = To.ToNumber(realm, value);
 
     // 3. If oldValue is NaN, return NaN.
     if (isNaN(oldValue)) {
@@ -99,11 +99,11 @@ export default function(
     // 2. Let oldValue be ? ToInt32(? GetValue(expr)).
     let value = Environment.GetValue(realm, expr);
     if (value instanceof AbstractValue) {
-      if (!IsToNumberPure(realm, value)) reportError();
+      if (!To.IsToNumberPure(realm, value)) reportError();
       return AbstractValue.createFromUnaryOp(realm, "~", value);
     }
     invariant(value instanceof ConcreteValue);
-    let oldValue = ToInt32(realm, value);
+    let oldValue = To.ToInt32(realm, value);
 
     // 3. Return the result of applying bitwise complement to oldValue. The result is a signed 32-bit integer.
     return new NumberValue(realm, ~oldValue);
@@ -117,7 +117,7 @@ export default function(
     let value = Environment.GetValue(realm, expr);
     if (value instanceof AbstractValue) return AbstractValue.createFromUnaryOp(realm, "!", value);
     invariant(value instanceof ConcreteValue);
-    let oldValue = ToBoolean(realm, value);
+    let oldValue = To.ToBoolean(realm, value);
 
     // 3. If oldValue is true, return false.
     if (oldValue === true) return realm.intrinsics.false;
@@ -205,7 +205,7 @@ export default function(
       let base = Environment.GetBase(realm, ref);
       // Constructing the reference checks that base is coercible to an object hence
       invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
-      let baseObj = base instanceof ConcreteValue ? ToObject(realm, base) : base;
+      let baseObj = base instanceof ConcreteValue ? To.ToObject(realm, base) : base;
 
       // c. Let deleteStatus be ? baseObj.[[Delete]](GetReferencedName(ref)).
       let deleteStatus = baseObj.$Delete(Environment.GetReferencedName(realm, ref));

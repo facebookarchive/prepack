@@ -12,8 +12,8 @@
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
 import { ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
-import { Get, ToStringPartial, ToStringValue } from "../../methods/index.js";
-import { Create, Properties } from "../../singletons.js";
+import { Get } from "../../methods/index.js";
+import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 
@@ -36,7 +36,7 @@ export function describeLocation(
     }
 
     let name = callerFn.$Get("name", callerFn);
-    if (!name.mightBeUndefined()) displayName = ToStringPartial(realm, name);
+    if (!name.mightBeUndefined()) displayName = To.ToStringPartial(realm, name);
     else name.throwIfNotConcrete();
 
     if (env && env.$NewTarget) displayName = `new ${displayName}`;
@@ -68,11 +68,11 @@ function buildStack(realm: Realm, context: ObjectValue) {
   let lines = [];
   let header = "";
 
-  header += ToStringPartial(realm, Get(realm, context, "name"));
+  header += To.ToStringPartial(realm, Get(realm, context, "name"));
 
   let msg = Get(realm, context, "message");
   if (!msg.mightBeUndefined()) {
-    msg = ToStringPartial(realm, msg);
+    msg = To.ToStringPartial(realm, msg);
     if (msg) header += `: ${msg}`;
   } else {
     msg.throwIfNotConcrete();
@@ -116,7 +116,7 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
     // 3. If message is not undefined, then
     if (!message.mightBeUndefined()) {
       // a. Let msg be ? ToString(message).
-      let msg = message.getType() === StringValue ? message : ToStringValue(realm, message);
+      let msg = message.getType() === StringValue ? message : To.ToStringValue(realm, message);
 
       // b. Let msgDesc be the PropertyDescriptor{[[Value]]: msg, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
       let msgDesc = {

@@ -11,9 +11,9 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, UndefinedValue, StringValue, NullValue } from "../../values/index.js";
-import { ToObjectPartial } from "../../methods/to.js";
 import { IsArray } from "../../methods/is.js";
 import { Get } from "../../methods/get.js";
+import { To } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
@@ -30,7 +30,7 @@ export default function(realm: Realm): NativeFunctionValue {
       if (context instanceof NullValue) return new StringValue(realm, "[object Null]");
 
       // 3. Let O be ToObject(this value).
-      let O = ToObjectPartial(realm, context);
+      let O = To.ToObjectPartial(realm, context);
 
       let builtinTag;
 

@@ -30,9 +30,8 @@ import {
   IsConstructor,
   IsCallable,
 } from "../../methods/index.js";
-import { ToString, ToUint32, ToObject, ToLength } from "../../methods/to.js";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
-import { Create, Properties } from "../../singletons.js";
+import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -85,7 +84,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // 7. Else,
 
         // a. Let intLen be ToUint32(len).
-        intLen = ToUint32(realm, len.throwIfNotConcreteNumber());
+        intLen = To.ToUint32(realm, len.throwIfNotConcreteNumber());
 
         // b If intLen ≠ len, throw a RangeError exception.
         if (intLen !== len.value) {
@@ -123,7 +122,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // 8. Repeat, while k < numberOfArgs
       while (k < numberOfArgs) {
         // a. Let Pk be ! ToString(k).
-        let Pk = ToString(realm, new NumberValue(realm, k));
+        let Pk = To.ToString(realm, new NumberValue(realm, k));
 
         // b. Let itemK be items[k].
         let itemK = items[k];
@@ -187,8 +186,8 @@ export default function(realm: Realm): NativeFunctionValue {
         // a. Let kValue be items[k].
         let kValue = items[k];
 
-        // b. Let Pk be ! ToString(k).
-        let Pk = ToString(realm, new NumberValue(realm, k));
+        // b. Let Pk be ! To.ToString(k).
+        let Pk = To.ToString(realm, new NumberValue(realm, k));
 
         // c. Perform ? CreateDataPropertyOrThrow(A, Pk, kValue).
         Create.CreateDataPropertyOrThrow(realm, A, Pk, kValue);
@@ -267,7 +266,7 @@ export default function(realm: Realm): NativeFunctionValue {
           }
 
           // ii. Let Pk be ! ToString(k).
-          let Pk = ToString(realm, new NumberValue(realm, k));
+          let Pk = To.ToString(realm, new NumberValue(realm, k));
 
           // iii. Let next be ? IteratorStep(iterator).
           let next = IteratorStep(realm, iterator);
@@ -327,10 +326,10 @@ export default function(realm: Realm): NativeFunctionValue {
       invariant(items instanceof ObjectValue);
 
       // 7. Let arrayLike be ! ToObject(items).
-      let arrayLike = ToObject(realm, items);
+      let arrayLike = To.ToObject(realm, items);
 
       // 8. Let len be ? ToLength(? Get(arrayLike, "length")).
-      let len = ToLength(realm, Get(realm, arrayLike, "length"));
+      let len = To.ToLength(realm, Get(realm, arrayLike, "length"));
 
       let A;
       // 9. If IsConstructor(C) is true, then
@@ -350,7 +349,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // 12. Repeat, while k < len
       while (k < len) {
         // a. Let Pk be ! ToString(k).
-        let Pk = ToString(realm, new NumberValue(realm, k));
+        let Pk = To.ToString(realm, new NumberValue(realm, k));
 
         // b. Let kValue be ? Get(arrayLike, Pk).
         let kValue = Get(realm, arrayLike, Pk);

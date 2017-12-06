@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ToIndexPartial } from "../../methods/to.js";
+import { To } from "../../singletons.js";
 import { AllocateArrayBuffer } from "../../methods/arraybuffer.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -28,7 +28,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 2. Let byteLength be ToIndex(numberLength).
-      let byteLength = ToIndexPartial(realm, length);
+      let byteLength = To.ToIndexPartial(realm, length);
 
       // 3. Return ? AllocateArrayBuffer(NewTarget, byteLength).
       return AllocateArrayBuffer(realm, NewTarget, byteLength);

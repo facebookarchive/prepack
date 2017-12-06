@@ -10,9 +10,8 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { Create } from "../../singletons.js";
+import { Create, To } from "../../singletons.js";
 import { NumberValue, ObjectValue, UndefinedValue, StringValue } from "../../values/index.js";
-import { ToLength } from "../../methods/to.js";
 import { Get } from "../../methods/get.js";
 import invariant from "../../invariant.js";
 
@@ -60,7 +59,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 9. Else,
       // a. Let len be ? ToLength(? Get(a, "length")).
-      len = ToLength(realm, Get(realm, a, "length"));
+      len = To.ToLength(realm, Get(realm, a, "length"));
     }
 
     // 10. If index ≥ len, then

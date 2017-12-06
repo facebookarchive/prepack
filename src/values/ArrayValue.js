@@ -13,8 +13,7 @@ import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
 import { ObjectValue, StringValue, NumberValue, Value } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { ToUint32 } from "../methods/to.js";
-import { Properties } from "../singletons.js";
+import { Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 
 export default class ArrayValue extends ObjectValue {
@@ -63,7 +62,7 @@ export default class ArrayValue extends ObjectValue {
       oldLen = oldLen.value;
 
       // d. Let index be ! ToUint32(P).
-      let index = ToUint32(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
+      let index = To.ToUint32(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
 
       // e. If index ≥ oldLen and oldLenDesc.[[Writable]] is false, return false.
       if (index >= oldLen && oldLenDesc.writable === false) return false;

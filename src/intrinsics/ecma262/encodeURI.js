@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ToString } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import { StringValue } from "../../values/index.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -22,7 +22,7 @@ export default function(realm: Realm): NativeFunctionValue {
 
     uri = uri.throwIfNotConcrete();
     // 1. Let uriString be ? ToString(uri).
-    let uriString = ToString(realm, uri);
+    let uriString = To.ToString(realm, uri);
     // 2. Let unescapedURISet be a String containing one instance of each code unit valid in uriReserved and uriUnescaped plus "#".
     // 3. Return ? Encode(uriString, unescapedURISet).
     try {
