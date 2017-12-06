@@ -14,8 +14,12 @@ import type { DebugChannel } from "./channel/DebugChannel.js";
 import { Breakpoint } from "./Breakpoint.js";
 import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
 import { BabelNode } from "babel-types";
+import type { StoppedReason } from "./types.js";
 
 export type StoppableObject = Breakpoint | Stepper;
+
+// Manage whether the debuggee should stop
+// All stopping related logic is centralized here
 
 export class StopEventManager {
   constructor(channel: DebugChannel) {
@@ -23,8 +27,12 @@ export class StopEventManager {
   }
   _channel: DebugChannel;
 
-  shouldDebuggeeStop(ast: BabelNode, stoppables: Array<StoppableObject>): boolean {
-    if (stoppables.length === 0) return false;
+  // stoppables is a list of objects the debuggee should be stopped on
+  // (e.g. breakpoint, completed steppers). The debuggee should stop if there
+  // is at least one element in the list. Currently the reason of the first element
+  // is chosen as the reason sent to the UI
+  getDebuggeeStopReason(ast: BabelNode, stoppables: Array<StoppableObject>): void | StoppedReason {
+    if (stoppables.length === 0) return;
     let stoppable = stoppables[0];
     let stoppedReason;
     if (stoppable instanceof Breakpoint) {
@@ -36,8 +44,6 @@ export class StopEventManager {
     } else {
       invariant(false, "Invalid stoppable object");
     }
-    invariant(ast.loc && ast.loc.source);
-    this._channel.sendStoppedResponse(stoppedReason, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
-    return true;
+    return stoppedReason;
   }
 }

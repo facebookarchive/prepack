@@ -78,7 +78,10 @@ export class DebugServer {
       let stoppables: Array<StoppableObject> = this._stepManager.getAndDeleteCompletedSteppers(ast);
       let breakpoint = this._breakpointManager.getStoppableBreakpoint(ast);
       if (breakpoint) stoppables.push(breakpoint);
-      if (this._stopEventManager.shouldDebuggeeStop(ast, stoppables)) {
+      let reason = this._stopEventManager.getDebuggeeStopReason(ast, stoppables);
+      if (reason) {
+        invariant(ast.loc && ast.loc.source);
+        this._channel.sendStoppedResponse(reason, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
         this.waitForRun(ast);
       }
     }
