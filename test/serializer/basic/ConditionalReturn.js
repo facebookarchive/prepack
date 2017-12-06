@@ -1,4 +1,4 @@
-let b = global.__abstract ? _abstract("boolean", "true") : true;
+let b = global.__abstract ? __abstract("boolean", "true") : true;
 
 let n1;
 if (b) n1 = 5;
