@@ -46,7 +46,7 @@ export class DebugServer {
     this._breakpointManager = new BreakpointManager();
     this._variableManager = new VariableManager(realm);
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
-    this._stopEventManager = new StopEventManager(this._channel);
+    this._stopEventManager = new StopEventManager();
     this.waitForRun(undefined);
   }
   // the collection of breakpoints

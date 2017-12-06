@@ -10,7 +10,6 @@
 /* @flow */
 
 import invariant from "./../invariant.js";
-import type { DebugChannel } from "./channel/DebugChannel.js";
 import { Breakpoint } from "./Breakpoint.js";
 import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
 import { BabelNode } from "babel-types";
@@ -22,11 +21,6 @@ export type StoppableObject = Breakpoint | Stepper;
 // All stopping related logic is centralized here
 
 export class StopEventManager {
-  constructor(channel: DebugChannel) {
-    this._channel = channel;
-  }
-  _channel: DebugChannel;
-
   // stoppables is a list of objects the debuggee should be stopped on
   // (e.g. breakpoint, completed steppers). The debuggee should stop if there
   // is at least one element in the list. Currently the reason of the first element
