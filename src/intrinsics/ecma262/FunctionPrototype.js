@@ -23,8 +23,7 @@ import {
   ObjectValue,
 } from "../../values/index.js";
 import { Call } from "../../methods/call.js";
-import { ToInteger } from "../../methods/to.js";
-import { Create } from "../../singletons.js";
+import { Create, To } from "../../singletons.js";
 import { Get } from "../../methods/get.js";
 import { IsCallable } from "../../methods/is.js";
 import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
@@ -119,7 +118,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // c. Else,
         targetLen = targetLen.throwIfNotConcreteNumber();
         // i. Let targetLen be ToInteger(targetLen).
-        targetLen = ToInteger(realm, targetLen);
+        targetLen = To.ToInteger(realm, targetLen);
 
         // ii. Let L be the larger of 0 and the result of targetLen minus the number of elements of args.
         L = Math.max(0, targetLen - args.length);

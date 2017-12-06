@@ -13,9 +13,8 @@ import invariant from "../../invariant.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NumberValue, NativeFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
-import { ToInteger } from "../../methods/index.js";
 import { getNodeBufferFromTypedArray } from "./utils.js";
-import { Properties } from "../../singletons.js";
+import { Properties, To } from "../../singletons.js";
 
 declare var process: any;
 
@@ -66,7 +65,7 @@ export default function(realm: Realm): ObjectValue {
       let utf8Slice = new NativeFunctionValue(realm, "Buffer.prototype.utf8Slice", "utf8Slice", 0, (context, args) => {
         invariant(context instanceof ObjectValue);
         let self = getNodeBufferFromTypedArray(realm, context);
-        let decodedArgs = args.map((arg, i) => ToInteger(realm, arg));
+        let decodedArgs = args.map((arg, i) => To.ToInteger(realm, arg));
         let utf8String = nativeBufferPrototype.utf8Slice.apply(self, decodedArgs);
         return new StringValue(realm, utf8String);
       });
@@ -81,7 +80,7 @@ export default function(realm: Realm): ObjectValue {
             invariant(arg instanceof ObjectValue);
             return getNodeBufferFromTypedArray(realm, arg);
           } else {
-            return ToInteger(realm, arg);
+            return To.ToInteger(realm, arg);
           }
         });
         let bytesCopied = nativeBufferPrototype.copy.apply(self, decodedArgs);

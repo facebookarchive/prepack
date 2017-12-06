@@ -11,8 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue } from "../../values/index.js";
-import { ToNumber, ToInteger } from "../../methods/index.js";
-import { Create } from "../../singletons.js";
+import { Create, To } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 20.1.1
@@ -24,7 +23,7 @@ export default function(realm: Realm): NativeFunctionValue {
       n = realm.intrinsics.zero;
     } else {
       // 2. Else, let n be ? ToNumber(value).
-      n = new NumberValue(realm, ToNumber(realm, value));
+      n = new NumberValue(realm, To.ToNumber(realm, value));
     }
 
     // 3. If NewTarget is undefined, return n.
@@ -70,7 +69,7 @@ export default function(realm: Realm): NativeFunctionValue {
         return realm.intrinsics.false;
 
       // 3. Let integer be ToInteger(number).
-      let integer = ToInteger(realm, number);
+      let integer = To.ToInteger(realm, number);
 
       // 4. If integer is not equal to number, return false.
       if (integer !== number.value) return realm.intrinsics.false;
@@ -105,7 +104,7 @@ export default function(realm: Realm): NativeFunctionValue {
         return realm.intrinsics.false;
 
       // 3. Let integer be ToInteger(number).
-      let integer = ToInteger(realm, number);
+      let integer = To.ToInteger(realm, number);
 
       // 4. If integer is not equal to number, return false.
       if (integer !== number.value) return realm.intrinsics.false;

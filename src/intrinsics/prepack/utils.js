@@ -20,9 +20,9 @@ import {
   UndefinedValue,
 } from "../../values/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
-import { describeLocation } from "../ecma262/Error.js";
-import { ToStringPartial } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
+import { describeLocation } from "../ecma262/Error.js";
+import { To } from "../../singletons.js";
 import AbstractObjectValue from "../../values/AbstractObjectValue";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
@@ -41,7 +41,7 @@ export function parseTypeNameOrTemplate(
     }
     return { type, template: undefined };
   } else if (typeNameOrTemplate instanceof StringValue) {
-    let typeNameString = ToStringPartial(realm, typeNameOrTemplate);
+    let typeNameString = To.ToStringPartial(realm, typeNameOrTemplate);
     let type = Value.getTypeFromName(typeNameString);
     if (type === undefined) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
@@ -69,7 +69,7 @@ export function createAbstract(
   let { type, template } = parseTypeNameOrTemplate(realm, typeNameOrTemplate);
 
   let result;
-  let nameString = name ? ToStringPartial(realm, name) : "";
+  let nameString = name ? To.ToStringPartial(realm, name) : "";
   if (nameString === "") {
     let locString;
     for (let executionContext of realm.contextStack.slice().reverse()) {

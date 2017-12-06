@@ -12,12 +12,11 @@
 import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
 import { NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
-import { ToString, ToStringPartial, ToLength } from "./to.js";
 import { Get } from "./get.js";
 import { IsCallable } from "./is.js";
 import { Call } from "./call.js";
 import { HasCompatibleType, HasSomeCompatibleType } from "./has.js";
-import { Create, Properties } from "../singletons.js";
+import { Create, Properties, To } from "../singletons.js";
 
 // ECMA262 21.2.3.2.3
 export function RegExpCreate(realm: Realm, P: ?Value, F: ?Value): ObjectValue {
@@ -61,7 +60,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
     P = "";
   } else {
     // 2. Else, let P be ? ToString(pattern).
-    P = ToStringPartial(realm, pattern);
+    P = To.ToStringPartial(realm, pattern);
   }
 
   // 3. If flags is undefined, let F be the empty String.
@@ -70,7 +69,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
     F = "";
   } else {
     // 4. Else, let F be ? ToString(flags).
-    F = ToStringPartial(realm, flags);
+    F = To.ToStringPartial(realm, flags);
   }
 
   // 5. If F contains any code unit other than "g", "i", "m", "u", or "y" or if it contains the same code unit more than once, throw a SyntaxError exception.
@@ -197,7 +196,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
   let length = S.length;
 
   // 4. Let lastIndex be ? ToLength(? Get(R, "lastIndex")).
-  let lastIndex = ToLength(realm, Get(realm, R, "lastIndex"));
+  let lastIndex = To.ToLength(realm, Get(realm, R, "lastIndex"));
 
   // 5. Let flags be R.[[OriginalFlags]].
   let flags = R.$OriginalFlags;
@@ -327,7 +326,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
     }
 
     // e. Perform ! CreateDataProperty(A, ! ToString(i), capturedValue).
-    Create.CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, i)), capturedValue);
+    Create.CreateDataProperty(realm, A, To.ToString(realm, new NumberValue(realm, i)), capturedValue);
   }
 
   // 25. Return A.

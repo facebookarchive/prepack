@@ -13,8 +13,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import { evaluateWithAbstractConditional } from "./IfStatement.js";
-import { ToBoolean } from "../methods/index.js";
-import { Environment } from "../singletons.js";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeConditionalExpression } from "babel-types";
 import invariant from "../invariant.js";
 import type { Realm } from "../realm.js";
@@ -29,7 +28,7 @@ export default function(
   let exprValue = Environment.GetConditionValue(realm, exprRef);
 
   if (exprValue instanceof ConcreteValue) {
-    if (ToBoolean(realm, exprValue)) {
+    if (To.ToBoolean(realm, exprValue)) {
       return env.evaluate(ast.consequent, strictCode);
     } else {
       return env.evaluate(ast.alternate, strictCode);

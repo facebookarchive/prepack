@@ -11,19 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue, StringValue, SymbolValue } from "../../values/index.js";
-import {
-  Get,
-  GetPrototypeFromConstructor,
-  SymbolDescriptiveString,
-  ToInteger,
-  ToLength,
-  ToNumber,
-  ToObjectPartial,
-  ToString,
-  ToStringPartial,
-  ToUint16,
-} from "../../methods/index.js";
-import { Create } from "../../singletons.js";
+import { Get, GetPrototypeFromConstructor, SymbolDescriptiveString } from "../../methods/index.js";
+import { Create, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -42,7 +31,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // b. Let s be ? ToString(value).
-      s = new StringValue(realm, ToStringPartial(realm, value));
+      s = new StringValue(realm, To.ToStringPartial(realm, value));
     }
 
     // 3. If NewTarget is undefined, return s.
@@ -72,7 +61,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let next = codeUnits[nextIndex];
 
       // b. Let nextCU be ? ToUint16(next).
-      let nextCU = ToUint16(realm, next);
+      let nextCU = To.ToUint16(realm, next);
 
       // c. Append nextCU to the end of elements.
       elements.push(nextCU);
@@ -106,13 +95,13 @@ export default function(realm: Realm): NativeFunctionValue {
         let next = codePoints[nextIndex];
 
         // b. Let nextCP be ? ToNumber(next).
-        let nextCP = ToNumber(realm, next);
+        let nextCP = To.ToNumber(realm, next);
 
         // c. If SameValue(nextCP, ToInteger(nextCP)) is false, throw a RangeError exception.
-        if (nextCP !== ToInteger(realm, nextCP)) {
+        if (nextCP !== To.ToInteger(realm, nextCP)) {
           throw realm.createErrorThrowCompletion(
             realm.intrinsics.RangeError,
-            "SameValue(nextCP, ToInteger(nextCP)) is false"
+            "SameValue(nextCP, To.ToInteger(nextCP)) is false"
           );
         }
 
@@ -120,7 +109,7 @@ export default function(realm: Realm): NativeFunctionValue {
         if (nextCP < 0 || nextCP > 0x10ffff) {
           throw realm.createErrorThrowCompletion(
             realm.intrinsics.RangeError,
-            "SameValue(nextCP, ToInteger(nextCP)) is false"
+            "SameValue(nextCP, To.ToInteger(nextCP)) is false"
           );
         }
 
@@ -146,13 +135,13 @@ export default function(realm: Realm): NativeFunctionValue {
       let numberOfSubstitutions = substitutions.length;
 
       // 3. Let cooked be ? ToObject(template).
-      let cooked = ToObjectPartial(realm, template);
+      let cooked = To.ToObjectPartial(realm, template);
 
       // 4. Let raw be ? ToObject(? Get(cooked, "raw")).
-      let raw = ToObjectPartial(realm, Get(realm, cooked, "raw"));
+      let raw = To.ToObjectPartial(realm, Get(realm, cooked, "raw"));
 
       // 5. Let literalSegments be ? ToLength(? Get(raw, "length")).
-      let literalSegments = ToLength(realm, Get(realm, raw, "length"));
+      let literalSegments = To.ToLength(realm, Get(realm, raw, "length"));
 
       // 6. If literalSegments ≤ 0, return the empty string.
       if (literalSegments <= 0) return realm.intrinsics.emptyString;
@@ -166,10 +155,10 @@ export default function(realm: Realm): NativeFunctionValue {
       // 9. Repeat
       while (true) {
         // a. Let nextKey be ! ToString(nextIndex).
-        let nextKey = ToString(realm, new NumberValue(realm, nextIndex));
+        let nextKey = To.ToString(realm, new NumberValue(realm, nextIndex));
 
         // b. Let nextSeg be ? ToString(? Get(raw, nextKey)).
-        let nextSeg = ToStringPartial(realm, Get(realm, raw, nextKey));
+        let nextSeg = To.ToStringPartial(realm, Get(realm, raw, nextKey));
 
         // c. Append in order the code unit elements of nextSeg to the end of stringElements.
         stringElements = stringElements + nextSeg;
@@ -188,7 +177,7 @@ export default function(realm: Realm): NativeFunctionValue {
           next = realm.intrinsics.emptyString;
 
         // g. Let nextSub be ? ToString(next).
-        let nextSub = ToStringPartial(realm, next);
+        let nextSub = To.ToStringPartial(realm, next);
 
         // h. Append in order the code unit elements of nextSub to the end of stringElements.
         stringElements = stringElements + nextSub;

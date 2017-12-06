@@ -16,7 +16,7 @@ import { Realm, ExecutionContext } from "../lib/realm.js";
 import construct_realm from "../lib/construct_realm.js";
 import initializeGlobals from "../lib/globals.js";
 import { DetachArrayBuffer } from "../lib/methods/arraybuffer.js";
-import { ToStringPartial } from "../lib/methods/to.js";
+import { To } from "../lib/singletons.js";
 import { Get } from "../lib/methods/get.js";
 import invariant from "../lib/invariant.js";
 
@@ -744,7 +744,6 @@ function workerRun(args: WorkerProgramArgs) {
 
 function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResults: TestResult[]): void {
   if (err) {
-    // $FlowFixMe flow says "process.send" could be undefined
     process.send(new ErrorMessage(err));
   } else {
     let msg = new DoneMessage(test);
@@ -752,7 +751,6 @@ function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResu
       msg.testResults.push(t);
     }
     try {
-      // $FlowFixMe flow says "process.send" could be undefined
       process.send(msg);
     } catch (jsonCircularSerializationErr) {
       // JSON circular serialization, ThrowCompletion is too deep to be
@@ -764,7 +762,6 @@ function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResu
         }
       }
       // now try again
-      // $FlowFixMe flow says "process.send" could be undefined
       process.send(msg);
     }
   }
@@ -1018,9 +1015,9 @@ function runTest(
 
           if (err.value instanceof ObjectValue) {
             if (err.value.$HasProperty("stack")) {
-              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "stack"));
+              interpreterStack = To.ToStringPartial(realm, Get(realm, err.value, "stack"));
             } else {
-              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "message"));
+              interpreterStack = To.ToStringPartial(realm, Get(realm, err.value, "message"));
             }
             // filter out if the error stack is due to async
             if (interpreterStack.includes("async ")) {

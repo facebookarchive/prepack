@@ -11,7 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import { AbstractValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
-import { ToStringPartial, Get } from "../../methods/index.js";
+import { Get } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -45,7 +46,7 @@ export function build(name: string, realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. If name is undefined, let name be "Error"; otherwise let name be ? ToString(name).
-    let nameString = nameValue instanceof UndefinedValue ? "Error" : ToStringPartial(realm, nameValue);
+    let nameString = nameValue instanceof UndefinedValue ? "Error" : To.ToStringPartial(realm, nameValue);
 
     // 5. Let msg be ? Get(O, "message").
     let msg = Get(realm, O, "message");
@@ -54,7 +55,7 @@ export function build(name: string, realm: Realm, obj: ObjectValue): void {
     }
 
     // 6. If msg is undefined, let msg be the empty String; otherwise let msg be ? ToString(msg).
-    msg = msg instanceof UndefinedValue ? "" : ToStringPartial(realm, msg);
+    msg = msg instanceof UndefinedValue ? "" : To.ToStringPartial(realm, msg);
 
     // 7. If name is the empty String, return msg.
     if (nameString === "") return new StringValue(realm, msg);

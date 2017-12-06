@@ -10,9 +10,9 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ToIndexPartial, IsDetachedBuffer } from "../../methods/index.js";
+import { IsDetachedBuffer } from "../../methods/index.js";
 import { NativeFunctionValue, ObjectValue, UndefinedValue } from "../../values/index.js";
-import { Create } from "../../singletons.js";
+import { Create, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -40,7 +40,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 4. Let offset be ? ToIndex(byteOffset).
-      let offset = ToIndexPartial(realm, byteOffset);
+      let offset = To.ToIndexPartial(realm, byteOffset);
 
       // 5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, buffer)) {
@@ -64,7 +64,7 @@ export default function(realm: Realm): NativeFunctionValue {
       } else {
         // 9. Else,
         // a. Let viewByteLength be ? ToIndex(byteLength).
-        viewByteLength = ToIndexPartial(realm, byteLength);
+        viewByteLength = To.ToIndexPartial(realm, byteLength);
 
         // b. If offset+viewByteLength > bufferByteLength, throw a RangeError exception.
         if (offset + viewByteLength > bufferByteLength) {

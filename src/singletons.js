@@ -16,6 +16,7 @@ import type {
   JoinType,
   PathType,
   PropertiesType,
+  ToType,
   WidenType,
 } from "./types.js";
 
@@ -25,6 +26,7 @@ export let Functions: FunctionType = (null: any);
 export let Join: JoinType = (null: any);
 export let Path: PathType = (null: any);
 export let Properties: PropertiesType = (null: any);
+export let To: ToType = (null: any);
 export let Widen: WidenType = (null: any);
 
 export function setCreate(singleton: CreateType) {
@@ -49,6 +51,10 @@ export function setPath(singleton: PathType) {
 
 export function setProperties(singleton: PropertiesType) {
   Properties = singleton;
+}
+
+export function setTo(singleton: ToType) {
+  To = singleton;
 }
 
 export function setWiden(singleton: WidenType) {

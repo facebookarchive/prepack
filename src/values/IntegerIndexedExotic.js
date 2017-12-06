@@ -12,12 +12,11 @@
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
 import { ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "../values/index.js";
-import { CanonicalNumericIndexString, ToString } from "../methods/to.js";
 import { IsInteger, IsArrayIndex, IsAccessorDescriptor, IsDetachedBuffer, IsPropertyKey } from "../methods/is.js";
 import { OrdinaryGet } from "../methods/get.js";
 import { OrdinaryHasProperty } from "../methods/has.js";
 import { IntegerIndexedElementSet, IntegerIndexedElementGet } from "../methods/typedarray.js";
-import { Properties } from "../singletons.js";
+import { Properties, To } from "../singletons.js";
 import invariant from "../invariant";
 
 export default class IntegerIndexedExotic extends ObjectValue {
@@ -38,7 +37,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -77,7 +76,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -131,7 +130,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -195,7 +194,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 2. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -221,7 +220,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 2. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -260,7 +259,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 4. For each integer i starting with 0 such that i < len, in ascending order,
     for (let i = 0; i < len; ++i) {
       // a. Add ! ToString(i) as the last element of keys.
-      keys.push(new StringValue(this.$Realm, ToString(this.$Realm, new NumberValue(this.$Realm, i))));
+      keys.push(new StringValue(this.$Realm, To.ToString(this.$Realm, new NumberValue(this.$Realm, i))));
     }
 
     // 5. For each own property key P of O such that Type(P) is String and P is not an integer index, in ascending chronological order of property creation

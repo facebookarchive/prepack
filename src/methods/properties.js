@@ -45,16 +45,10 @@ import {
   MakeConstructor,
   SameValue,
   SameValuePartial,
-  ToBooleanPartial,
-  ToNumber,
-  ToObject,
-  ToObjectPartial,
-  ToPropertyDescriptor,
-  ToUint32,
 } from "../methods/index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
-import { Create, Environment, Functions, Join, Path } from "../singletons.js";
+import { Create, Environment, Functions, Join, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 
@@ -279,7 +273,7 @@ export class PropertiesImplementation {
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
       invariant(completion instanceof Value);
-      return ToBooleanPartial(realm, completion);
+      return To.ToBooleanPartial(realm, completion);
     }
 
     return OrdinarySetHelper();
@@ -774,7 +768,7 @@ export class PropertiesImplementation {
     invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue);
 
     // 2. Let props be ? ToObject(Properties).
-    let props = ToObject(realm, Properties.throwIfNotConcrete());
+    let props = To.ToObject(realm, Properties.throwIfNotConcrete());
 
     // 3. Let keys be ? props.[[OwnPropertyKeys]]().
     let keys = props.$OwnPropertyKeys();
@@ -795,7 +789,7 @@ export class PropertiesImplementation {
         let descObj = Get(realm, props, nextKey);
 
         // ii. Let desc be ? ToPropertyDescriptor(descObj).
-        let desc = ToPropertyDescriptor(realm, descObj);
+        let desc = To.ToPropertyDescriptor(realm, descObj);
 
         // iii. Append the pair (a two element List) consisting of nextKey and desc to the end of descriptors.
         descriptors.push([nextKey, desc]);
@@ -902,7 +896,7 @@ export class PropertiesImplementation {
         invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
         // ii. Set base to ToObject(base).
-        base = ToObjectPartial(realm, base);
+        base = To.ToObjectPartial(realm, base);
       }
       invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
@@ -943,10 +937,10 @@ export class PropertiesImplementation {
     let newLenDesc = Object.assign({}, Desc);
 
     // 3. Let newLen be ? ToUint32(Desc.[[Value]]).
-    let newLen = ToUint32(realm, DescValue);
+    let newLen = To.ToUint32(realm, DescValue);
 
     // 4. Let numberLen be ? ToNumber(Desc.[[Value]]).
-    let numberLen = ToNumber(realm, DescValue);
+    let numberLen = To.ToNumber(realm, DescValue);
 
     // 5. If newLen ≠ numberLen, throw a RangeError exception.
     if (newLen !== numberLen) {
