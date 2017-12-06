@@ -13,8 +13,8 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
-import { ToPropertyKeyPartial, RequireObjectCoercible } from "../methods/index.js";
-import { Environment } from "../singletons.js";
+import { RequireObjectCoercible } from "../methods/index.js";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeMemberExpression } from "babel-types";
 import SuperProperty from "./SuperProperty";
 
@@ -51,7 +51,7 @@ export default function(
   let bv = RequireObjectCoercible(realm, baseValue, ast.object.loc);
 
   // 6. Let propertyKey be ? ToPropertyKey(propertyNameValue).
-  let propertyKey = ToPropertyKeyPartial(realm, propertyNameValue);
+  let propertyKey = To.ToPropertyKeyPartial(realm, propertyNameValue);
 
   // 7. If the code matched by the syntactic production that is being evaluated is strict mode code, let strict be true, else let strict be false.
   let strict = strictCode;

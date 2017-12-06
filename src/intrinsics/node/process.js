@@ -23,9 +23,9 @@ import {
   ObjectValue,
   StringValue,
 } from "../../values/index.js";
-import { Get, ToString, ToInteger, ToBoolean } from "../../methods/index.js";
+import { Get } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
-import { Properties } from "../../singletons.js";
+import { Properties, To } from "../../singletons.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import initializeBuffer from "./buffer.js";
 import initializeContextify from "./contextify.js";
@@ -67,9 +67,9 @@ function initializeTTYWrap(realm) {
     0,
     (context, args, argCount, NewTarget) => {
       invariant(args[0] instanceof ConcreteValue);
-      let fd = ToInteger(realm, args[0]);
+      let fd = To.ToInteger(realm, args[0]);
       invariant(args[1] instanceof ConcreteValue);
-      let value = ToBoolean(realm, args[1]);
+      let value = To.ToBoolean(realm, args[1]);
 
       invariant(NewTarget, "TTY must be called as a constructor.");
 
@@ -120,7 +120,7 @@ function initializeTTYWrap(realm) {
   });
 
   obj.defineNativeMethod("guessHandleType", 0, (context, args) => {
-    let fd = ToInteger(realm, args[0]);
+    let fd = To.ToInteger(realm, args[0]);
     return new StringValue(realm, nativeTTYWrap.guessHandleType(fd));
     // TODO: Make this abstract so that changing the pipe at runtime is
     // possible. Currently this causes an introspection error.
@@ -141,7 +141,7 @@ function initializeTTYWrap(realm) {
   });
 
   obj.defineNativeMethod("isTTY", 0, (context, args) => {
-    let fd = ToInteger(realm, args[0]);
+    let fd = To.ToInteger(realm, args[0]);
     const isTTYtemplateSrc = `(process.binding('tty_wrap').isTTY(${fd}))`;
     const isTTYtemplate = buildExpressionTemplate(isTTYtemplateSrc);
     let val = AbstractValue.createFromTemplate(realm, isTTYtemplate, BooleanValue, [], isTTYtemplateSrc);
@@ -363,7 +363,7 @@ export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "process");
   obj.defineNativeMethod("binding", 1, (context, args) => {
     let arg0 = args.length < 1 ? realm.intrinsics.undefined : args[0];
-    let module = ToString(realm, arg0);
+    let module = To.ToString(realm, arg0);
     // TODO: Add the module to the moduleLoadList but don't track that
     // as a side-effect.
     switch (module) {

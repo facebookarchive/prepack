@@ -14,9 +14,8 @@ import type { DataBlock, ElementType } from "../types.js";
 import { Value, ObjectValue, NumberValue, EmptyValue, NullValue, UndefinedValue } from "../values/index.js";
 import { SpeciesConstructor } from "../methods/construct.js";
 import { IsConstructor } from "../methods/index.js";
-import { ToIndexPartial, ToBooleanPartial, ToNumber, ElementConv } from "./to.js";
 import { IsDetachedBuffer } from "../methods/is.js";
-import { Create, Properties } from "../singletons.js";
+import { Create, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { ElementSize } from "../types.js";
 
@@ -158,10 +157,10 @@ export function GetViewValue(
   invariant(view.$ViewedArrayBuffer);
 
   // 4. Let getIndex be ? ToIndex(requestIndex).
-  let getIndex = ToIndexPartial(realm, requestIndex);
+  let getIndex = To.ToIndexPartial(realm, requestIndex);
 
   // 5. Let littleEndian be ToBoolean(isLittleEndian).
-  let littleEndian = ToBooleanPartial(realm, isLittleEndian);
+  let littleEndian = To.ToBooleanPartial(realm, isLittleEndian);
 
   // 6. Let buffer be view.[[ViewedArrayBuffer]].
   let buffer = view.$ViewedArrayBuffer;
@@ -301,13 +300,13 @@ export function SetViewValue(
   invariant(view.$ViewedArrayBuffer);
 
   // 4. Let getIndex be ? ToIndex(requestIndex).
-  let getIndex = ToIndexPartial(realm, requestIndex);
+  let getIndex = To.ToIndexPartial(realm, requestIndex);
 
   // 5. Let numberValue be ? ToNumber(value).
-  let numberValue = ToNumber(realm, value);
+  let numberValue = To.ToNumber(realm, value);
 
   // 6. Let littleEndian be ToBoolean(isLittleEndian).
-  let littleEndian = ToBooleanPartial(realm, isLittleEndian);
+  let littleEndian = To.ToBooleanPartial(realm, isLittleEndian);
 
   // 7. Let buffer be view.[[ViewedArrayBuffer]].
   let buffer = view.$ViewedArrayBuffer;
@@ -446,7 +445,7 @@ export function SetValueInBuffer(
     let n = ElementSize[type];
 
     // b. Let convOp be the abstract operation named in the Conversion Operation column in Table 50 for Element Type type.
-    let convOp = ElementConv[type];
+    let convOp = To.ElementConv[type];
 
     // c. Let intValue be convOp(value).
     let intValue = convOp(realm, value);

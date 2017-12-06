@@ -24,8 +24,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Environment } from "../singletons.js";
-import { IsToPrimitivePure, GetToPrimitivePureResultType, IsToNumberPure } from "../methods/index.js";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -70,8 +69,8 @@ export function getPureBinaryOperationResultType(
     throw new FatalError();
   }
   if (op === "+") {
-    let ltype = GetToPrimitivePureResultType(realm, lval);
-    let rtype = GetToPrimitivePureResultType(realm, rval);
+    let ltype = To.GetToPrimitivePureResultType(realm, lval);
+    let rtype = To.GetToPrimitivePureResultType(realm, rval);
     if (ltype === undefined || rtype === undefined) {
       let loc = ltype === undefined ? lloc : rloc;
       let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
@@ -88,13 +87,13 @@ export function getPureBinaryOperationResultType(
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
-    return reportErrorIfNotPure(IsToPrimitivePure, BooleanValue);
+    return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "!=" || op === "==") {
     let ltype = lval.getType();
     let rtype = rval.getType();
     if (ltype === NullValue || ltype === UndefinedValue || rtype === NullValue || rtype === UndefinedValue)
       return BooleanValue;
-    return reportErrorIfNotPure(IsToPrimitivePure, BooleanValue);
+    return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "===" || op === "!==") {
     return BooleanValue;
   } else if (
@@ -110,7 +109,7 @@ export function getPureBinaryOperationResultType(
     op === "*" ||
     op === "-"
   ) {
-    return reportErrorIfNotPure(IsToNumberPure, NumberValue);
+    return reportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
       let error = new CompilerDiagnostic(

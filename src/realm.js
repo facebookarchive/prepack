@@ -27,13 +27,13 @@ import {
 } from "./values/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, Construct, ToString } from "./methods/index.js";
+import { cloneDescriptor, Construct } from "./methods/index.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { Environment, Functions, Join, Properties } from "./singletons.js";
+import { Environment, Functions, Join, Properties, To } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -615,7 +615,7 @@ export class Realm {
       let res = "";
       while (values.length) {
         let next = values.shift();
-        let nextString = ToString(realm, next);
+        let nextString = To.ToString(realm, next);
         res += nextString;
       }
       return res;

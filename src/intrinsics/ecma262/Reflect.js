@@ -11,15 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import { BooleanValue, ObjectValue, NullValue } from "../../values/index.js";
-import {
-  ToPropertyDescriptor,
-  Construct,
-  ToPropertyKey,
-  IsCallable,
-  Call,
-  IsConstructor,
-} from "../../methods/index.js";
-import { Create, Properties } from "../../singletons.js";
+import { Call, Construct, IsCallable, IsConstructor } from "../../methods/index.js";
+import { Create, Properties, To } from "../../singletons.js";
 
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Reflect");
@@ -72,10 +65,10 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. Let desc be ? ToPropertyDescriptor(attributes).
-    let desc = ToPropertyDescriptor(realm, attributes);
+    let desc = To.ToPropertyDescriptor(realm, attributes);
 
     // 4. Return ? target.[[DefineOwnProperty]](key, desc).
     return new BooleanValue(realm, target.$DefineOwnProperty(key, desc));
@@ -91,7 +84,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. Return ? target.[[Delete]](key).
     return new BooleanValue(realm, target.$Delete(key));
@@ -107,7 +100,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. If receiver is not present, then
     if (!receiver) {
@@ -129,7 +122,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. Let desc be ? target.[[GetOwnProperty]](key).
     let desc = target.$GetOwnProperty(key);
@@ -160,7 +153,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. Return ? target.[[HasProperty]](key).
     return new BooleanValue(realm, target.$HasProperty(key));
@@ -218,7 +211,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. If receiver is not present, then
     if (!receiver) {

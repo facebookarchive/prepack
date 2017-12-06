@@ -12,10 +12,8 @@
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
 import { ObjectValue, NumberValue, StringValue } from "../values/index.js";
-import { CanonicalNumericIndexString } from "../methods/to.js";
 import { IsInteger, IsArrayIndex } from "../methods/is.js";
-import { ToString, ToInteger } from "../methods/to.js";
-import { Properties } from "../singletons.js";
+import { Properties, To } from "../singletons.js";
 import invariant from "../invariant";
 
 export default class StringExotic extends ObjectValue {
@@ -40,7 +38,10 @@ export default class StringExotic extends ObjectValue {
     if (typeof P !== "string" && !(P instanceof StringValue)) return undefined;
 
     // 5. Let index be ! CanonicalNumericIndexString(P).
-    let index = CanonicalNumericIndexString(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
+    let index = To.CanonicalNumericIndexString(
+      this.$Realm,
+      typeof P === "string" ? new StringValue(this.$Realm, P) : P
+    );
 
     // 6. If index is undefined, return undefined.
     if (index === undefined || index === null) return undefined;
@@ -90,7 +91,7 @@ export default class StringExotic extends ObjectValue {
     // 4. For each integer i starting with 0 such that i < len, in ascending order,
     for (let i = 0; i < len; ++i) {
       // a. Add ! ToString(i) as the last element of keys.
-      keys.push(new StringValue(this.$Realm, ToString(this.$Realm, new NumberValue(this.$Realm, i))));
+      keys.push(new StringValue(this.$Realm, To.ToString(this.$Realm, new NumberValue(this.$Realm, i))));
     }
 
     // 5. For each own property key P of O such that P is an integer index and ToInteger(P) ≥ len, in ascending numeric index order,
@@ -98,7 +99,7 @@ export default class StringExotic extends ObjectValue {
     for (let key of properties
       .filter(x => IsArrayIndex(this.$Realm, x))
       .map(x => parseInt(x, 10))
-      .filter(x => ToInteger(this.$Realm, x) >= len)
+      .filter(x => To.ToInteger(this.$Realm, x) >= len)
       .sort((x, y) => x - y)) {
       // i. Add P as the last element of keys.
       keys.push(new StringValue(this.$Realm, key + ""));

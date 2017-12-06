@@ -12,11 +12,10 @@
 import invariant from "../../invariant.js";
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NumberValue, ObjectValue, StringValue } from "../../values/index.js";
-import { ToString, ToNumber } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import { getNodeBufferFromTypedArray } from "./utils.js";
-import { Properties } from "../../singletons.js";
+import { Properties, To } from "../../singletons.js";
 
 declare var process: any;
 
@@ -31,11 +30,11 @@ export default function(realm: Realm): ObjectValue {
     return realm.intrinsics.undefined;
   });
   obj.defineNativeMethod("internalModuleStat", 0, (context, args) => {
-    const fileName = ToString(realm, args[0]);
+    const fileName = To.ToString(realm, args[0]);
     return new NumberValue(realm, nativeFS.internalModuleStat(fileName));
   });
   obj.defineNativeMethod("lstat", 0, (context, args) => {
-    const path = ToString(realm, args[0]);
+    const path = To.ToString(realm, args[0]);
     invariant(args[1] instanceof ObjectValue);
     const buffer = getNodeBufferFromTypedArray(realm, args[1]);
     const float64buffer = new Float64Array(buffer.buffer);
@@ -43,7 +42,7 @@ export default function(realm: Realm): ObjectValue {
     return args[1];
   });
   obj.defineNativeMethod("fstat", 0, (context, args) => {
-    const fd = ToNumber(realm, args[0]);
+    const fd = To.ToNumber(realm, args[0]);
     invariant(args[1] instanceof ObjectValue);
     const buffer = getNodeBufferFromTypedArray(realm, args[1]);
     const float64buffer = new Float64Array(buffer.buffer);
@@ -51,29 +50,29 @@ export default function(realm: Realm): ObjectValue {
     return args[1];
   });
   obj.defineNativeMethod("open", 0, (context, args) => {
-    const path = ToString(realm, args[0]);
-    const flags = ToNumber(realm, args[1]);
-    const mode = ToNumber(realm, args[2]);
+    const path = To.ToString(realm, args[0]);
+    const flags = To.ToNumber(realm, args[1]);
+    const mode = To.ToNumber(realm, args[2]);
     const fd = nativeFS.open(path, flags, mode);
     return new NumberValue(realm, fd);
   });
   obj.defineNativeMethod("close", 0, (context, args) => {
-    const fd = ToNumber(realm, args[0]);
+    const fd = To.ToNumber(realm, args[0]);
     nativeFS.close(fd);
     return realm.intrinsics.undefined;
   });
   obj.defineNativeMethod("read", 0, (context, args) => {
-    const fd = ToNumber(realm, args[0]);
+    const fd = To.ToNumber(realm, args[0]);
     invariant(args[1] instanceof ObjectValue);
     const buffer = getNodeBufferFromTypedArray(realm, args[1]);
-    const offset = ToNumber(realm, args[2]);
-    const length = ToNumber(realm, args[3]);
-    const position = args[4] === realm.intrinsics.undefined ? undefined : ToNumber(realm, args[4]);
+    const offset = To.ToNumber(realm, args[2]);
+    const length = To.ToNumber(realm, args[3]);
+    const position = args[4] === realm.intrinsics.undefined ? undefined : To.ToNumber(realm, args[4]);
     const bytesRead = nativeFS.read(fd, buffer, offset, length, position);
     return new NumberValue(realm, bytesRead);
   });
   obj.defineNativeMethod("internalModuleReadFile", 0, (context, args) => {
-    const path = ToString(realm, args[0]);
+    const path = To.ToString(realm, args[0]);
     const result = nativeFS.internalModuleReadFile(path);
     if (result === undefined) {
       return realm.intrinsics.undefined;

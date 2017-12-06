@@ -25,15 +25,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
 } from "../values/index.js";
-import {
-  GetIterator,
-  HasSomeCompatibleType,
-  IsCallable,
-  IsPropertyKey,
-  IteratorStep,
-  IteratorValue,
-  ToObjectPartial,
-} from "./index.js";
+import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
 import {
   ReturnCompletion,
@@ -43,7 +35,7 @@ import {
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { construct_empty_effects } from "../realm.js";
-import { Create, Environment, Functions, Join } from "../singletons.js";
+import { Create, Environment, Functions, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
@@ -279,7 +271,7 @@ export function OrdinaryCallBindThis(
     } else {
       //  b. Else,
       // i. Let thisValue be ! ToObject(thisArgument).
-      thisValue = ToObjectPartial(calleeRealm, thisArgument);
+      thisValue = To.ToObjectPartial(calleeRealm, thisArgument);
 
       // ii. NOTE ToObject produces wrapper objects using calleeRealm.
     }

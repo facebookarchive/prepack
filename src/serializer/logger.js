@@ -11,9 +11,10 @@
 
 import { Realm, ExecutionContext } from "../realm.js";
 import { FatalError } from "../errors.js";
-import { ToStringPartial, Get, InstanceofOperator } from "../methods/index.js";
+import { Get, InstanceofOperator } from "../methods/index.js";
 import { Completion, ThrowCompletion } from "../completions.js";
 import { ObjectValue, StringValue, Value } from "../values/index.js";
+import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 
 export class Logger {
@@ -88,9 +89,13 @@ export class Logger {
       let object = ((value: any): ObjectValue);
       try {
         let err = new FatalError(
-          this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "message")), "(unknown message)", false)
+          this.tryQuery(() => To.ToStringPartial(realm, Get(realm, object, "message")), "(unknown message)", false)
         );
-        err.stack = this.tryQuery(() => ToStringPartial(realm, Get(realm, object, "stack")), "(unknown stack)", false);
+        err.stack = this.tryQuery(
+          () => To.ToStringPartial(realm, Get(realm, object, "stack")),
+          "(unknown stack)",
+          false
+        );
         console.error(err.message);
         console.error(err.stack);
         if (this.internalDebug && res instanceof ThrowCompletion) console.error(res.nativeStack);
@@ -108,7 +113,7 @@ export class Logger {
       }
     } else {
       try {
-        value = ToStringPartial(realm, value);
+        value = To.ToStringPartial(realm, value);
       } catch (err) {
         value = err.message;
       }

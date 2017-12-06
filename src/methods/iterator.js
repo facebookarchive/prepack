@@ -13,11 +13,11 @@ import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
 import { Completion, AbruptCompletion, ThrowCompletion } from "../completions.js";
 import { NativeFunctionValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
-import { Call, Get, GetMethod, Invoke, ToBooleanPartial } from "./index.js";
+import { Call, Get, GetMethod, Invoke } from "./index.js";
 import invariant from "../invariant.js";
 import type { IterationKind } from "../types.js";
 import { SameValue } from "./abstract.js";
-import { Create } from "../singletons.js";
+import { Create, To } from "../singletons.js";
 
 // ECMA262 7.4.1
 export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefined, method?: Value): ObjectValue {
@@ -69,7 +69,7 @@ export function IteratorComplete(realm: Realm, iterResult: ObjectValue): boolean
   invariant(iterResult instanceof ObjectValue, "expected obj");
 
   // 2. Return ToBoolean(? Get(iterResult, "done")).
-  return ToBooleanPartial(realm, Get(realm, iterResult, "done"));
+  return To.ToBooleanPartial(realm, Get(realm, iterResult, "done"));
 }
 
 // ECMA262 7.4.2

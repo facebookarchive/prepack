@@ -13,10 +13,10 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { Add, ToNumber, IsToNumberPure } from "../methods/index.js";
+import { Add } from "../methods/index.js";
 import { AbstractValue, NumberValue } from "../values/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
-import { Environment, Properties } from "../singletons.js";
+import { Environment, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 
 export default function(
@@ -33,7 +33,7 @@ export default function(
   // Let oldValue be ? ToNumber(? GetValue(expr)).
   let oldExpr = Environment.GetValue(realm, expr);
   if (oldExpr instanceof AbstractValue) {
-    if (!IsToNumberPure(realm, oldExpr)) {
+    if (!To.IsToNumberPure(realm, oldExpr)) {
       let error = new CompilerDiagnostic(
         "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
         ast.argument.loc,
@@ -52,7 +52,7 @@ export default function(
       return oldExpr;
     }
   }
-  let oldValue = ToNumber(realm, oldExpr);
+  let oldValue = To.ToNumber(realm, oldExpr);
 
   if (ast.prefix) {
     if (ast.operator === "++") {
