@@ -25,6 +25,7 @@ import { defaultOptions } from "./options";
 import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 import invariant from "./invariant.js";
 import type { DebugChannel } from "./debugger/channel/DebugChannel.js";
+import { version } from "../package.json";
 
 // IMPORTANT: This function is now deprecated and will go away in a future release.
 // Please use FatalError instead.
@@ -134,3 +135,5 @@ export function prepackFromAst(
   }
   return serialized;
 }
+
+export const prepackVersion = version;
