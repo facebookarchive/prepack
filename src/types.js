@@ -135,6 +135,8 @@ export type PropertyBinding = {
   descriptor?: Descriptor,
   object: ObjectValue | AbstractObjectValue,
   key: any,
+  // contains a build node that produces a member expression that resolves to this property binding (location)
+  pathNode?: AbstractValue,
 };
 
 export type LexicalEnvironmentTypes = "global" | "module" | "script" | "function" | "block" | "catch" | "loop" | "with";

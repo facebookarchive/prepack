@@ -582,7 +582,7 @@ export default class AbstractValue extends Value {
   // Creates a union of an abstract value with one or more concrete values.
   // The build node for the abstract values becomes the build node for the union.
   // Use this only to allow instrinsic abstract objects to be null and/or undefined.
-  static createAbstractConcreteUnion(realm: Realm, ...elements: Array<Value>) {
+  static createAbstractConcreteUnion(realm: Realm, ...elements: Array<Value>): AbstractValue {
     let concreteValues: Array<ConcreteValue> = (elements.filter(e => e instanceof ConcreteValue): any);
     invariant(concreteValues.length > 0 && concreteValues.length === elements.length - 1);
     let concreteSet = new Set(concreteValues);
@@ -604,14 +604,30 @@ export default class AbstractValue extends Value {
     return result;
   }
 
+  static createFromWidenedProperty(
+    realm: Realm,
+    resultTemplate: AbstractValue,
+    args: Array<Value>,
+    buildFunction: AbstractValueBuildNodeFunction
+  ): AbstractValue {
+    let types = resultTemplate.types;
+    let values = resultTemplate.values;
+    let [hash] = hashCall("widened property", ...args);
+    let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let result = new Constructor(realm, types, values, hash, args, buildFunction);
+    result.kind = "widened property";
+    result.expressionLocation = resultTemplate.expressionLocation;
+    return result;
+  }
+
   static createFromWidening(realm: Realm, value1: Value, value2: Value): AbstractValue {
     // todo: #1174 look at kind and figure out much narrower widenings
     let types = TypesDomain.joinValues(value1, value2);
     let values = ValuesDomain.topVal;
-    let [hash] = hashCall("widening");
+    let [hash] = hashCall("widened");
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let result = new Constructor(realm, types, values, hash, []);
-    result.kind = "widening";
+    result.kind = "widened";
     result.expressionLocation = value1.expressionLocation;
     return result;
   }

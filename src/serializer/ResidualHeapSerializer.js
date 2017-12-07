@@ -238,6 +238,7 @@ export class ResidualHeapSerializer {
     // inject properties
     for (let [key, propertyBinding] of properties) {
       invariant(propertyBinding);
+      if (propertyBinding.pathNode !== undefined) continue; // Property is assigned to inside loop
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; //deleted
       if (this.residualHeapInspector.canIgnoreProperty(obj, key)) continue;
@@ -650,11 +651,16 @@ export class ResidualHeapSerializer {
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
     invariant(!val.refuseSerialization);
-    if (val instanceof AbstractValue && val.kind === "widening") {
-      this.serializedValues.add(val);
-      let name = val.intrinsicName;
-      invariant(name !== undefined);
-      return t.identifier(name);
+    if (val instanceof AbstractValue) {
+      if (val.kind === "widened") {
+        this.serializedValues.add(val);
+        let name = val.intrinsicName;
+        invariant(name !== undefined);
+        return t.identifier(name);
+      } else if (val.kind === "widened property") {
+        this.serializedValues.add(val);
+        return this._serializeAbstractValueHelper(val);
+      }
     }
 
     let scopes = this.residualValues.get(val);
