@@ -9,31 +9,30 @@
 
 /* @flow */
 
-import {
-  DebugSession,
-  LoggingDebugSession,
-  InitializedEvent,
-  OutputEvent,
-  TerminatedEvent,
-  StoppedEvent,
-} from "vscode-debugadapter";
+import { DebugSession, InitializedEvent, OutputEvent, TerminatedEvent, StoppedEvent } from "vscode-debugadapter";
 import * as DebugProtocol from "vscode-debugprotocol";
-import { AdapterChannel } from "./../channel/AdapterChannel.js";
-import invariant from "./../../invariant.js";
-import { DebugMessage } from "./../channel/DebugMessage.js";
-import type { Breakpoint, DebuggerResponse, LaunchRequestArguments, PrepackLaunchArguments } from "./../types.js";
-import { DebuggerConstants } from "./../DebuggerConstants.js";
+import { AdapterChannel } from "./channel/AdapterChannel.js";
+import invariant from "./../common/invariant.js";
+import { DebugMessage } from "./../common/channel/DebugMessage.js";
+import type {
+  Breakpoint,
+  DebuggerResponse,
+  LaunchRequestArguments,
+  PrepackLaunchArguments,
+} from "./../common/types.js";
+import { DebuggerConstants } from "./../common/DebuggerConstants.js";
+import path from "path";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
 */
-class PrepackDebugSession extends LoggingDebugSession {
+class PrepackDebugSession extends DebugSession {
   /**
    * Creates a new debug adapter that is used for one debug session.
    * We configure the default implementation of a debug adapter here.
    */
   constructor() {
-    super("prepack");
+    super();
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
   }
@@ -99,12 +98,18 @@ class PrepackDebugSession extends LoggingDebugSession {
 
   // Override
   launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
+    let inFilePath = path.join(__dirname, "../common/", args.debugInFilePath);
+    let outFilePath = path.join(__dirname, "../common/", args.debugOutFilePath);
     // set up the communication channel
-    this._adapterChannel = new AdapterChannel(args.debugInFilePath, args.debugOutFilePath);
+    this._adapterChannel = new AdapterChannel(inFilePath, outFilePath);
     this._registerMessageCallbacks();
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",
-      ...args,
+      sourceFile: args.sourceFile,
+      prepackRuntime: args.prepackRuntime,
+      prepackArguments: args.prepackArguments,
+      debugInFilePath: inFilePath,
+      debugOutFilePath: outFilePath,
       outputCallback: (data: Buffer) => {
         let outputEvent = new OutputEvent(data.toString(), "stdout");
         this.sendEvent(outputEvent);
