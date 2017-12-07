@@ -158,8 +158,6 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   sourceFile: string,
   prepackRuntime: string,
   prepackArguments: Array<string>,
-  debugInFilePath: string,
-  debugOutFilePath: string,
 }
 
 export type SteppingType = "Step Into" | "Step Over";
