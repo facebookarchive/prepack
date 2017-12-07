@@ -83,7 +83,6 @@ export class ResidualFunctions {
       if (!additionalFunctionValueInfos.has(instance.functionValue)) this.addFunctionInstance(instance);
     }
     this.additionalFunctionValueNestedFunctions = additionalFunctionValueNestedFunctions;
-    this.generatedFunctionIds = new Set();
   }
 
   realm: Realm;
@@ -103,7 +102,6 @@ export class ResidualFunctions {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   referentializer: Referentializer;
-  generatedFunctionIds: Set<BabelNodeExpression>;
 
   addFunctionInstance(instance: FunctionInstance) {
     this.functionInstances.push(instance);
@@ -161,7 +159,6 @@ export class ResidualFunctions {
         factoryId = this.locationService.getLocation(instances[0].functionValue);
       }
 
-      if (factoryId) this.generatedFunctionIds.add(factoryId);
       const functionUniqueTag = ((functionBody: any): FunctionBodyAstNode).uniqueOrderedTag;
       invariant(functionUniqueTag);
 
@@ -243,7 +240,6 @@ export class ResidualFunctions {
         body = getFunctionBody(instance);
       }
       body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]));
-      this.generatedFunctionIds.add(funcId);
       let prototypeId = this.functionPrototypes.get(functionValue);
       if (prototypeId !== undefined) {
         let id = this.locationService.getLocation(functionValue);
@@ -476,10 +472,13 @@ export class ResidualFunctions {
           let { functionValue, residualFunctionBindings, insertionPoint } = instance;
           let functionId = this.locationService.getLocation(functionValue);
           invariant(functionId !== undefined);
+          let hasFunctionArg = false;
           let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
             let residualBinding = residualFunctionBindings.get(name);
             invariant(residualBinding);
             let serializedValue = residualBinding.serializedValue;
+            hasFunctionArg =
+              hasFunctionArg || (residualBinding.value && residualBinding.value instanceof FunctionValue);
             invariant(serializedValue);
             return serializedValue;
           });
@@ -489,7 +488,6 @@ export class ResidualFunctions {
           let funcNode;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
           invariant(insertionPoint !== undefined);
-          let hasFunctionArg = flatArgs.find(arg => this.generatedFunctionIds.has(arg)) !== undefined;
           if (
             // The same free variables in shared instances may refer to objects with different initialization values
             // so a stub forward function is needed during delay initializations.
