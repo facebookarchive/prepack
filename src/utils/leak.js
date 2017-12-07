@@ -13,6 +13,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import {
+  leakBinding,
   DeclarativeEnvironmentRecord,
   FunctionEnvironmentRecord,
   ObjectEnvironmentRecord,
@@ -39,7 +40,7 @@ class ObjectValueLeakingVisitor {
   // Values that has been visited.
   visitedValues: Set<Value>;
 
-  constructor(realm: Realm, objectsTrackedForLeaks: Set<ObjectValue>) {
+  constructor(objectsTrackedForLeaks: Set<ObjectValue>) {
     this.objectsTrackedForLeaks = objectsTrackedForLeaks;
     this.visitedValues = new Set();
   }
@@ -145,8 +146,7 @@ class ObjectValueLeakingVisitor {
       if (value) {
         this.visitValue(value);
       }
-      // TODO: Leaking needs to be reverted if we're tracking effects.
-      binding.hasLeaked = true;
+      leakBinding(binding);
     }
   }
 
@@ -351,7 +351,7 @@ export function leakValue(realm: Realm, value: Value, ast: BabelNodeExpression) 
     // object can safely be assumed to be deeply immutable as far as this
     // pure function is concerned. However, any mutable object needs to
     // be tainted as possibly having changed to anything.
-    let visitor = new ObjectValueLeakingVisitor(realm, objectsTrackedForLeaks);
+    let visitor = new ObjectValueLeakingVisitor(objectsTrackedForLeaks);
     visitor.visitValue(value);
   }
 }

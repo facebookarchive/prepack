@@ -56,11 +56,18 @@ import { TypesDomain, ValuesDomain } from "./domains/index.js";
 
 const sourceMap = require("source-map");
 
-export function deriveGetBinding(realm: Realm, binding: Binding) {
+function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
   return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
+}
+
+export function leakBinding(binding: Binding) {
+  let realm = binding.environment.realm;
+  if (!binding.hasLeaked) {
+    realm.recordModifiedBinding(binding).hasLeaked = true;
+  }
 }
 
 // ECMA262 8.1.1

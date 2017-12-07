@@ -38,7 +38,8 @@ import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatem
 import type { ReactSymbolTypes } from "./react/utils.js";
 import * as t from "babel-types";
 
-export type Bindings = Map<Binding, void | Value>;
+export type BindingEntry = { hasLeaked: boolean, value: void | Value };
+export type Bindings = Map<Binding, BindingEntry>;
 export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
@@ -577,7 +578,8 @@ export class Realm {
   // populate the loop body generator with assignments that will update the phiNodes
   _emitLocalAssignments(gen: Generator, bindings: Bindings) {
     let tvalFor: Map<any, AbstractValue> = new Map();
-    bindings.forEach((val, key, map) => {
+    bindings.forEach((binding, key, map) => {
+      let val = binding.value;
       if (val instanceof AbstractValue) {
         invariant(val._buildNode !== undefined);
         let tval = gen.derive(val.types, val.values, [val], ([n]) => n, {
@@ -586,7 +588,8 @@ export class Realm {
         tvalFor.set(key, tval);
       }
     });
-    bindings.forEach((val, key, map) => {
+    bindings.forEach((binding, key, map) => {
+      let val = binding.value;
       if (val instanceof AbstractValue) {
         let phiNode = key.phiNode;
         let tval = tvalFor.get(key);
@@ -840,7 +843,10 @@ export class Realm {
       throw new FatalError("Trying to modify a binding in read-only realm");
     }
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
-      this.modifiedBindings.set(binding, binding.value);
+      this.modifiedBindings.set(binding, {
+        hasLeaked: binding.hasLeaked,
+        value: binding.value,
+      });
     return binding;
   }
 
@@ -898,10 +904,15 @@ export class Realm {
   // the value the Binding had just before the call to this method.
   restoreBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach((val, key, m) => {
-      let v = key.value;
-      key.value = val;
-      m.set(key, v);
+    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
+      let l = binding.hasLeaked;
+      let v = binding.value;
+      binding.hasLeaked = hasLeaked;
+      binding.value = value;
+      m.set(binding, {
+        hasLeaked: l,
+        value: v,
+      });
     });
   }
 
