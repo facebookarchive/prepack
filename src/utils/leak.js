@@ -146,13 +146,7 @@ class ObjectValueLeakingVisitor {
         this.visitValue(value);
       }
       // TODO: Leaking needs to be reverted if we're tracking effects.
-      if (!binding.hasLeaked) {
-        binding.hasLeaked = true;
-        binding.initialValue = value;
-      }
-      // Delete the value. We will lazily set it to a derived abstract value
-      // if someone tries to read it after the abstract function call.
-      delete binding.value;
+      binding.hasLeaked = true;
     }
   }
 

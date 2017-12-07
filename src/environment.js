@@ -104,7 +104,6 @@ export type Binding = {
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
   hasLeaked: boolean,
-  initialValue?: Value,
 };
 
 // ECMA262 8.1.1.1
@@ -241,8 +240,9 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       if (binding.hasLeaked) {
         invariant(realm.generator);
         realm.generator.emitBindingAssignment(binding, V);
+      } else {
+        realm.recordModifiedBinding(binding).value = V;
       }
-      realm.recordModifiedBinding(binding).value = V;
     } else {
       // 6. Else,
       // a. Assert: This is an attempt to change the value of an immutable binding.
@@ -275,8 +275,8 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return the value currently bound to N in envRec.
-    if (binding.hasLeaked && !binding.value) {
-      binding.value = deriveGetBinding(realm, binding);
+    if (binding.hasLeaked) {
+      return deriveGetBinding(realm, binding);
     }
     invariant(binding.value);
     return binding.value;
