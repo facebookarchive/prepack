@@ -302,6 +302,10 @@ export class Realm {
     }
   }
 
+  hasRunningContext(): boolean {
+    return this.contextStack.length !== 0;
+  }
+
   getRunningContext(): ExecutionContext {
     let context = this.contextStack[this.contextStack.length - 1];
     invariant(context, "There's no running execution context");
