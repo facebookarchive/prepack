@@ -8,14 +8,14 @@
  */
 
 /* @flow */
-import { FileIOWrapper } from "./FileIOWrapper.js";
-import { MessageMarshaller } from "./MessageMarshaller.js";
+import { FileIOWrapper } from "./../../common/channel/FileIOWrapper.js";
+import { MessageMarshaller } from "./../../common/channel/MessageMarshaller.js";
 import Queue from "queue-fifo";
 import EventEmitter from "events";
-import invariant from "./../../invariant.js";
-import { DebugMessage } from "./DebugMessage.js";
+import invariant from "./../../common/invariant.js";
+import { DebugMessage } from "./../../common/channel/DebugMessage.js";
 import child_process from "child_process";
-import type { Breakpoint, DebuggerResponse, PrepackLaunchArguments } from "./../types.js";
+import type { Breakpoint, DebuggerResponse, PrepackLaunchArguments } from "./../../common/types.js";
 
 //Channel used by the debug adapter to communicate with Prepack
 export class AdapterChannel {
@@ -88,7 +88,6 @@ export class AdapterChannel {
   launch(requestID: number, args: PrepackLaunchArguments, callback: DebuggerResponse => void) {
     this.sendDebuggerStart(requestID);
     this.listenOnFile(this._processPrepackMessage.bind(this));
-
     let prepackCommand = [args.sourceFile].concat(args.prepackArguments);
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
     prepackCommand = prepackCommand.concat([

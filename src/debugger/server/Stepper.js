@@ -8,10 +8,10 @@
  */
 
 /* @flow */
-import type { SourceData } from "./types.js";
-import { IsStatement } from "./../methods/is.js";
+import type { SourceData } from "./../common/types.js";
+import { IsStatement } from "./../../methods/is.js";
 import { BabelNode } from "babel-types";
-import invariant from "./../invariant.js";
+import invariant from "./../common/invariant.js";
 
 export class Stepper {
   constructor(filePath: string, line: number, column: number) {

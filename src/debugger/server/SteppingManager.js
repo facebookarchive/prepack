@@ -10,9 +10,9 @@
 /* @flow */
 
 import { BabelNode } from "babel-types";
-import invariant from "./../invariant.js";
+import invariant from "./../common/invariant.js";
 import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
-import type { Realm } from "./../realm.js";
+import type { Realm } from "./../../realm.js";
 import type { StoppableObject } from "./StopEventManager.js";
 
 export class SteppingManager {
