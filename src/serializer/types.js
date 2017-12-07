@@ -53,6 +53,7 @@ export type FunctionInstance = {
   // Additional function that the function instance was declared inside of (if any)
   containingAdditionalFunction?: FunctionValue,
   scopeInstances: Set<ScopeBinding>,
+  initializationStatements: Array<BabelNodeStatement>,
 };
 
 export type FunctionInfo = {

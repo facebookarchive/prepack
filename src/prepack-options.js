@@ -36,6 +36,7 @@ export type PrepackOptions = {|
   residual?: boolean,
   serialize?: boolean,
   inlineExpressions?: boolean,
+  simpleClosures?: boolean,
   sourceMaps?: boolean,
   initializeMoreModules?: boolean,
   statsFile?: string,
@@ -90,6 +91,7 @@ export function getSerializerOptions({
   logModules = false,
   profile = false,
   inlineExpressions = false,
+  simpleClosures = false,
   initializeMoreModules = false,
   trace = false,
 }: PrepackOptions): SerializerOptions {
@@ -103,6 +105,7 @@ export function getSerializerOptions({
     logModules,
     profile,
     inlineExpressions,
+    simpleClosures,
     trace,
   };
   if (additionalFunctions) result.additionalFunctions = additionalFunctions;
