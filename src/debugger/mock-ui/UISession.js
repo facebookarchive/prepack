@@ -21,8 +21,6 @@ export type DebuggerCLIArguments = {
   prepackRuntime: string,
   sourceFile: string,
   prepackArguments: Array<string>,
-  debugInFilePath: string,
-  debugOutFilePath: string,
 };
 
 //separator for messages according to the protocol
@@ -39,8 +37,6 @@ export class UISession {
     this._prepackRuntime = args.prepackRuntime;
     this._sourceFile = args.sourceFile;
     this._prepackArguments = args.prepackArguments;
-    this._inFilePath = args.debugInFilePath;
-    this._outFilePath = args.debugOutFilePath;
     this._sequenceNum = 1;
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
@@ -51,10 +47,6 @@ export class UISession {
   _proc: Process;
   //path to the debug adapter
   _adapterPath: string;
-  // path to debugger input file
-  _inFilePath: string;
-  // path to debugger output file
-  _outFilePath: string;
   // the child (i.e. adapter) process
   _adapterProcess: child_process.ChildProcess;
 
@@ -177,8 +169,6 @@ export class UISession {
       prepackRuntime: this._prepackRuntime,
       sourceFile: this._sourceFile,
       prepackArguments: this._prepackArguments,
-      debugInFilePath: this._inFilePath,
-      debugOutFilePath: this._outFilePath,
     };
     this._sendLaunchRequest(launchArgs);
   }
