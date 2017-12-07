@@ -10,3 +10,4 @@ coverage*/
 facebook/test
 facebook/tutorial
 prepack.min.js
+!/docs/js/prepack.min.js
