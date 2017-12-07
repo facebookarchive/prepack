@@ -21,7 +21,6 @@ import type {
   PrepackLaunchArguments,
 } from "./../common/types.js";
 import { DebuggerConstants } from "./../common/DebuggerConstants.js";
-import path from "path";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
@@ -38,6 +37,17 @@ class PrepackDebugSession extends DebugSession {
   }
   _clientID: void | string;
   _adapterChannel: AdapterChannel;
+
+  _generateDebugFilePath(direction: "in" | "out") {
+    let time = Date.now();
+    let filePath = "/tmp/";
+    if (direction === "in") {
+      filePath += `prepack-debug-engine2adapter-${time}.txt`;
+    } else {
+      filePath += `prepack-debug-adapter2engine-${time}.txt`;
+    }
+    return filePath;
+  }
 
   _registerMessageCallbacks() {
     this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
@@ -98,8 +108,8 @@ class PrepackDebugSession extends DebugSession {
 
   // Override
   launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
-    let inFilePath = path.join(__dirname, "../common/", args.debugInFilePath);
-    let outFilePath = path.join(__dirname, "../common/", args.debugOutFilePath);
+    let inFilePath = this._generateDebugFilePath("in");
+    let outFilePath = this._generateDebugFilePath("out");
     // set up the communication channel
     this._adapterChannel = new AdapterChannel(inFilePath, outFilePath);
     this._registerMessageCallbacks();
