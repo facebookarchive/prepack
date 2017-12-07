@@ -196,7 +196,7 @@ function InternalConstruct(
   invariant(newTarget instanceof ObjectValue, "expected object");
 
   if (!realm.hasRunningContext()) {
-    invariant(realm.useAbstractInterpretation)
+    invariant(realm.useAbstractInterpretation);
     throw new FatalError("no running context");
   }
 
