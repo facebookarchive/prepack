@@ -181,7 +181,7 @@ export class SerializerStatistics {
 }
 
 export type LocationService = {
-  getLocation: Value => void | BabelNodeIdentifier,
+  getLocation: Value => BabelNodeIdentifier,
   createLocation: () => BabelNodeIdentifier,
 };
 

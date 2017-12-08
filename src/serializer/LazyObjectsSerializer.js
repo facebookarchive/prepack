@@ -184,15 +184,6 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       : super.getSerializeObjectIdentifier(val);
   }
 
-  // Override default behavior.
-  // Inside lazy objects callback, the lazy object identifier needs to be replaced with the
-  // parameter passed from the runtime.
-  getSerializeObjectIdentifierOptional(val: Value): void | BabelNodeIdentifier {
-    return val instanceof ObjectValue && this._isEmittingIntoLazyObjectInitializerBody(val)
-      ? this._callbackLazyObjectParam
-      : super.getSerializeObjectIdentifierOptional(val);
-  }
-
   // Override default serializer with lazy mode.
   serializeValueRawObject(obj: ObjectValue): BabelNodeExpression {
     this._lazyObjectInitializers.set(obj, this._serializeLazyObjectInitializer(obj));

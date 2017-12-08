@@ -55,16 +55,9 @@ export class ResidualHeapValueIdentifiers {
   }
 
   getIdentifierAndIncrementReferenceCount(val: Value): BabelNodeIdentifier {
-    let id = this.getIdentifierAndIncrementReferenceCountOptional(val);
-    invariant(id !== undefined, "Value Id cannot be null or undefined");
-    return id;
-  }
-
-  getIdentifierAndIncrementReferenceCountOptional(val: Value): void | BabelNodeIdentifier {
+    this.incrementReferenceCount(val);
     let id = this.refs.get(val);
-    if (id !== undefined) {
-      this.incrementReferenceCount(val);
-    }
+    invariant(id !== undefined, "Value Id cannot be null or undefined");
     return id;
   }
 

@@ -115,6 +115,7 @@ export class ResidualHeapSerializer {
     this.functionNameGenerator = this.preludeGenerator.createNameGenerator("$f_");
     this.requireReturns = new Map();
     this.serializedValues = new Set();
+    this._serializedValueWithIdentifiers = new Set();
     this.additionalFunctionValueNestedFunctions = new Set();
     this.residualFunctions = new ResidualFunctions(
       this.realm,
@@ -123,7 +124,7 @@ export class ResidualHeapSerializer {
       this.modules,
       this.requireReturns,
       {
-        getLocation: value => this.getSerializeObjectIdentifierOptional(value),
+        getLocation: value => this.getSerializeObjectIdentifier(value),
         createLocation: () => {
           let location = t.identifier(this.valueNameGenerator.generate("initialized"));
           this.currentFunctionBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
@@ -186,6 +187,7 @@ export class ResidualHeapSerializer {
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   serializedValues: Set<Value>;
+  _serializedValueWithIdentifiers: Set<Value>;
   residualFunctions: ResidualFunctions;
   _options: SerializerOptions;
   referencedDeclaredValues: Set<AbstractValue>;
@@ -400,11 +402,6 @@ export class ResidualHeapSerializer {
   // Overridable.
   getSerializeObjectIdentifier(val: Value) {
     return this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
-  }
-
-  // Overridable.
-  getSerializeObjectIdentifierOptional(val: Value) {
-    return this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCountOptional(val);
   }
 
   _emitProperty(
@@ -645,9 +642,8 @@ export class ResidualHeapSerializer {
     let scopes = this.residualValues.get(val);
     invariant(scopes !== undefined);
 
-    let ref = this.getSerializeObjectIdentifierOptional(val);
-    if (ref) {
-      return ref;
+    if (this._serializedValueWithIdentifiers.has(val)) {
+      return this.getSerializeObjectIdentifier(val);
     }
 
     this.serializedValues.add(val);
@@ -656,6 +652,7 @@ export class ResidualHeapSerializer {
       invariant(res !== undefined);
       return res;
     }
+    this._serializedValueWithIdentifiers.add(val);
 
     let target = this._getTarget(val, scopes);
 
