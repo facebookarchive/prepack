@@ -234,6 +234,13 @@ export class ResidualFunctions {
 
     let defineFunction = (instance, funcId, funcNode) => {
       let { functionValue } = instance;
+
+      if (instance.initializationStatements.length > 0) {
+        // always add initialization statements to insertion point
+        let initializationBody = getFunctionBody(instance);
+        Array.prototype.push.apply(initializationBody, instance.initializationStatements);
+      }
+
       let body;
       if (t.isFunctionExpression(funcNode)) {
         funcNodes.set(functionValue, ((funcNode: any): BabelNodeFunctionExpression));
@@ -242,7 +249,7 @@ export class ResidualFunctions {
         invariant(t.isCallExpression(funcNode)); // .bind call
         body = getFunctionBody(instance);
       }
-      for (let s of instance.initializationStatements) body.push(s);
+
       body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]));
       let prototypeId = this.functionPrototypes.get(functionValue);
       if (prototypeId !== undefined) {
