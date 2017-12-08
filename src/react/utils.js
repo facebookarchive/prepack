@@ -37,12 +37,16 @@ export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
     let realm = val.$Realm;
     let $$typeof = Get(realm, val, "$$typeof");
-    if ($$typeof instanceof SymbolValue) {
+    let globalObject = realm.$GlobalObject;
+    let globalSymbolValue = Get(realm, globalObject, "Symbol");
+
+    if (globalSymbolValue === realm.intrinsics.undefined) {
+      if ($$typeof instanceof NumberValue) {
+        return $$typeof.value === 0xeac7;
+      }
+    } else if ($$typeof instanceof SymbolValue) {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
       return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
-    }
-    if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && $$typeof instanceof NumberValue) {
-      return $$typeof.value === 0xeac7;
     }
   }
   return false;
