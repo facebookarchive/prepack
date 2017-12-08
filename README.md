@@ -40,6 +40,14 @@ $ prepack script.js --out script-processed.js
 
 Detailed instructions and the API can be found at [Prepack CLI: Getting Started](https://prepack.io/getting-started.html)
 
+### Plugins to other tools
+The following are a few plugins to other tools. They have been created and are maintained separately from Prepack itself. If you run into any issues with those plugins, please ask the plugin maintainers for support.
+
+- [A Rollup plugin for Prepack](https://www.npmjs.com/package/rollup-plugin-prepack)
+- [A Webpack plugin for Prepack](https://www.npmjs.com/package/prepack-webpack-plugin)
+- [A Visual Studio code plugin for Prepack](https://marketplace.visualstudio.com/items?itemName=RobinMalfait.prepack-vscode)
+- [A babel plugin which transforms Flow annotations into prepack model declarations](https://www.npmjs.com/package/babel-plugin-flow-prepack).
+
 ## Status
 
 - [test262 status on master branch](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/test262-status.txt?branch=master)
