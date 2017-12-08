@@ -134,6 +134,13 @@ export class Serializer {
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
+    const realmPreludeGenerator = this.realm.preludeGenerator;
+    invariant(realmPreludeGenerator);
+    const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
+      residualHeapVisitor.values.keys(),
+      realmPreludeGenerator.getValueNameGenerator()
+    );
+
     let heapGraph;
     if (this.options.heapGraph) {
       const heapRefCounter = new ResidualHeapRefCounter(
@@ -149,6 +156,7 @@ export class Serializer {
         this.logger,
         this.modules,
         additionalFunctionValuesAndEffects,
+        residualHeapValueIdentifiers,
         heapRefCounter.getResult()
       );
       heapGraphGenerator.visitRoots();
@@ -157,7 +165,6 @@ export class Serializer {
 
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
-    let residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers();
 
     if (this.options.inlineExpressions) {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();

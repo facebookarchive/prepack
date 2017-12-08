@@ -108,11 +108,11 @@ export class ResidualHeapSerializer {
     this._descriptors = new Map();
     this.needsEmptyVar = false;
     this.needsAuxiliaryConstructor = false;
-    this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
-    this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
-    this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
-    this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
-    this.functionNameGenerator = this.preludeGenerator.createNameGenerator("$f_");
+    this.valueNameGenerator = this.preludeGenerator.getValueNameGenerator();
+    this.descriptorNameGenerator = this.preludeGenerator.getDescriptorNameGenerator();
+    this.factoryNameGenerator = this.preludeGenerator.getFactoryNameGenerator();
+    this.intrinsicNameGenerator = this.preludeGenerator.getIntrinsicNameGenerator();
+    this.functionNameGenerator = this.preludeGenerator.getFunctionNameGenerator();
     this.requireReturns = new Map();
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
@@ -659,10 +659,11 @@ export class ResidualHeapSerializer {
     let name;
     if (val instanceof FunctionValue) name = this._getFunctionName(val);
     else name = this.valueNameGenerator.generate(val.__originalName || "");
-    let id = t.identifier(name);
-    this.residualHeapValueIdentifiers.setIdentifier(val, id);
+
     let oldBody = this.emitter.beginEmitting(val, target.body);
     let init = this._serializeValue(val);
+
+    let id = this.residualHeapValueIdentifiers.getIdentifier(val);
     let result = id;
     this.residualHeapValueIdentifiers.incrementReferenceCount(val);
 

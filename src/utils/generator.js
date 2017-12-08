@@ -460,6 +460,7 @@ export class PreludeGenerator {
     this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
     this.usesThis = false;
     this.declaredGlobals = new Set();
+    this.initNameGenerators();
   }
 
   prelude: Array<BabelNodeStatement>;
@@ -468,6 +469,40 @@ export class PreludeGenerator {
   nameGenerator: NameGenerator;
   usesThis: boolean;
   declaredGlobals: Set<string>;
+
+  _valueNameGenerator: NameGenerator;
+  _descriptorNameGenerator: NameGenerator;
+  _factoryNameGenerator: NameGenerator;
+  _intrinsicNameGenerator: NameGenerator;
+  _functionNameGenerator: NameGenerator;
+
+  initNameGenerators() {
+    this._valueNameGenerator = this.createNameGenerator("_");
+    this._descriptorNameGenerator = this.createNameGenerator("$$");
+    this._factoryNameGenerator = this.createNameGenerator("$_");
+    this._intrinsicNameGenerator = this.createNameGenerator("$i_");
+    this._functionNameGenerator = this.createNameGenerator("$f_");
+  }
+
+  getValueNameGenerator() {
+    return this._valueNameGenerator;
+  }
+
+  getDescriptorNameGenerator() {
+    return this._descriptorNameGenerator;
+  }
+
+  getFactoryNameGenerator() {
+    return this._factoryNameGenerator;
+  }
+
+  getIntrinsicNameGenerator() {
+    return this._intrinsicNameGenerator;
+  }
+
+  getFunctionNameGenerator() {
+    return this._functionNameGenerator;
+  }
 
   createNameGenerator(prefix: string): NameGenerator {
     return new NameGenerator(
