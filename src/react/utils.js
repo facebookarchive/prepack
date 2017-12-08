@@ -41,6 +41,9 @@ export function isReactElement(val: Value): boolean {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
       return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     }
+    if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && $$typeof instanceof NumberValue) {
+      return $$typeof.value === 0xeac7;
+    }
   }
   return false;
 }
