@@ -391,6 +391,7 @@ export class ResidualHeapVisitor {
 
     this.functionInstances.set(val, {
       residualFunctionBindings,
+      initializationStatements: [],
       functionValue: val,
       scopeInstances: new Set(),
     });

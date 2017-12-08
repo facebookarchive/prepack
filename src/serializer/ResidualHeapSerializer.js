@@ -119,6 +119,7 @@ export class ResidualHeapSerializer {
     this.residualFunctions = new ResidualFunctions(
       this.realm,
       this.statistics,
+      options,
       this.modules,
       this.requireReturns,
       {
@@ -133,6 +134,7 @@ export class ResidualHeapSerializer {
       this.preludeGenerator.createNameGenerator("__init_"),
       this.factoryNameGenerator,
       this.preludeGenerator.createNameGenerator("__scope_"),
+      this.preludeGenerator.createNameGenerator("$"),
       residualFunctionInfos,
       residualFunctionInstances,
       additionalFunctionValueInfos,

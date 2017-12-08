@@ -29,6 +29,7 @@ let prepackOptions = {
   maxStackDepth: 100,
   reactEnabled: true,
   inlineExpressions: true,
+  simpleClosures: true,
   omitInvariants: true,
 };
 
