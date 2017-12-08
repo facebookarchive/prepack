@@ -135,10 +135,13 @@ export class ResidualHeapVisitor {
 
     // visit properties
     for (let [propertyBindingKey, propertyBindingValue] of obj.properties) {
-      // we don't want to the $$typeof or _owner properties
+      // we don't want to the $$typeof or _owner/_store properties
       // as this is contained within the JSXElement, otherwise
       // they we be need to be emitted during serialization
-      if (kind === "ReactElement" && (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner")) {
+      if (
+        kind === "ReactElement" &&
+        (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner" || propertyBindingKey === "_store")
+      ) {
         continue;
       }
       invariant(propertyBindingValue);
