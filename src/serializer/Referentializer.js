@@ -159,6 +159,43 @@ export class Referentializer {
     ];
   }
 
+  referentializeBinding(residualBinding: ResidualFunctionBinding, name: string, instance: FunctionInstance): void {
+    if (this._options.simpleClosures) {
+      // When simpleClosures is enabled, then space for captured mutable bindings is allocated upfront.
+      let serializedBindingId = t.identifier(this._referentializedNameGenerator.generate(name));
+      let serializedValue = residualBinding.serializedValue;
+      invariant(serializedValue);
+      let declar = t.variableDeclaration("var", [t.variableDeclarator(serializedBindingId, serializedValue)]);
+      instance.initializationStatements.push(declar);
+      residualBinding.serializedValue = serializedBindingId;
+    } else {
+      // When simpleClosures is not enabled, then space for captured mutable bindings is allocated lazily.
+      let scope = this._getSerializedBindingScopeInstance(residualBinding);
+      let capturedScope = "__captured" + scope.name;
+      // Save the serialized value for initialization at the top of
+      // the factory.
+      // This can serialize more variables than are necessary to execute
+      // the function because every function serializes every
+      // modified variable of its parent scope. In some cases it could be
+      // an improvement to split these variables into multiple
+      // scopes.
+      const variableIndexInScope = scope.initializationValues.length;
+      invariant(residualBinding.serializedValue);
+      scope.initializationValues.push(residualBinding.serializedValue);
+      scope.capturedScope = capturedScope;
+
+      // Replace binding usage with scope references
+      residualBinding.serializedValue = t.memberExpression(
+        t.identifier(capturedScope),
+        t.numericLiteral(variableIndexInScope),
+        true // Array style access.
+      );
+    }
+
+    residualBinding.referentialized = true;
+    this.statistics.referentialized++;
+  }
+
   referentialize(
     unbound: Set<string>,
     instances: Array<FunctionInstance>,
@@ -177,40 +214,7 @@ export class Referentializer {
               // TODO #989: Fix additional functions and referentialization
               throw new FatalError("TODO: implement referentialization for prepacked functions");
             }
-            if (this._options.simpleClosures) {
-              // When simpleClosures is enabled, then space for captured mutable bindings is allocated upfront.
-              let serializedBindingId = t.identifier(this._referentializedNameGenerator.generate(name));
-              let serializedValue = residualBinding.serializedValue;
-              invariant(serializedValue);
-              let declar = t.variableDeclaration("var", [t.variableDeclarator(serializedBindingId, serializedValue)]);
-              instance.initializationStatements.push(declar);
-              residualBinding.serializedValue = serializedBindingId;
-            } else {
-              // When simpleClosures is not enabled, then space for captured mutable bindings is allocated lazily.
-              let scope = this._getSerializedBindingScopeInstance(residualBinding);
-              let capturedScope = "__captured" + scope.name;
-              // Save the serialized value for initialization at the top of
-              // the factory.
-              // This can serialize more variables than are necessary to execute
-              // the function because every function serializes every
-              // modified variable of its parent scope. In some cases it could be
-              // an improvement to split these variables into multiple
-              // scopes.
-              const variableIndexInScope = scope.initializationValues.length;
-              invariant(residualBinding.serializedValue);
-              scope.initializationValues.push(residualBinding.serializedValue);
-              scope.capturedScope = capturedScope;
-
-              // Replace binding usage with scope references
-              residualBinding.serializedValue = t.memberExpression(
-                t.identifier(capturedScope),
-                t.numericLiteral(variableIndexInScope),
-                true // Array style access.
-              );
-            }
-
-            residualBinding.referentialized = true;
-            this.statistics.referentialized++;
+            this.referentializeBinding(residualBinding, name, instance);
           }
 
           invariant(residualBinding.referentialized);

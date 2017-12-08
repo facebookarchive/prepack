@@ -674,12 +674,13 @@ export class ResidualHeapSerializer {
     invariant(residualBinding, "any referenced residual binding should have been visited");
 
     if (!residualBinding.referentialized) {
-      // TODO: For the lazy scope initialization feature, this scope may not have
-      // been initialized yet. We need to emit initialization code or disable
-      // this feature in this case.
-      let instance = residualFunctionInstances.get(residualBinding.referencedOnlyFromAdditionalFunctions);
-      this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding, instance);
+      let additionalFunction = residualBinding.referencedOnlyFromAdditionalFunctions;
+      invariant(additionalFunction, "residual bindings like this are only caused by leaked bindings in pure functions");
+      let instance = this.residualFunctionInstances.get(additionalFunction);
+      invariant(instance, "any serialized function must exist in the scope");
+      this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding.name, instance);
     }
+
     invariant(residualBinding.serializedValue);
     return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
   }
