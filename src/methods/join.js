@@ -458,7 +458,9 @@ export class JoinImplementation {
     let empty_effects = construct_empty_effects(realm);
     let v = realm.intrinsics.empty;
     if (c.consequent instanceof ReturnCompletion) {
-      let pathCondition = [(AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition): any)];
+      let negation = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition)
+      invariant(negation instanceof AbstractValue);
+      let pathCondition = [negation];
       let pnc = new PossiblyNormalCompletion(
         v,
         c.joinCondition,
