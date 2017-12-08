@@ -152,9 +152,8 @@ export class JoinImplementation {
     c: PossiblyNormalCompletion
   ): PossiblyNormalCompletion {
     //merge the two pathConditions
-    let mergedPath = [];
-    mergedPath = mergedPath.concat(pnc.pathCondtion);
-    mergedPath = mergedPath.concat(c.pathCondtion);
+    let composedPath = [];
+    composedPath = pnc.pathCondtions.concat(c.pathCondtions);
     let savedPathConditions = pnc.savedPathConditions;
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
@@ -167,7 +166,7 @@ export class JoinImplementation {
           pnc.consequentEffects,
           c,
           newAlternateEffects,
-          mergedPath,
+          composedPath,
           savedPathConditions,
           pnc.savedEffects
         );
@@ -183,7 +182,7 @@ export class JoinImplementation {
         pnc.consequentEffects,
         new_alternate,
         newAlternateEffects,
-        mergedPath,
+        composedPath,
         savedPathConditions,
         pnc.savedEffects
       );
@@ -199,7 +198,7 @@ export class JoinImplementation {
           newConsequentEffects,
           pnc.alternate,
           pnc.alternateEffects,
-          mergedPath,
+          composedPath,
           savedPathConditions,
           pnc.savedEffects
         );
@@ -215,7 +214,7 @@ export class JoinImplementation {
         newConsequentEffects,
         pnc.alternate,
         pnc.alternateEffects,
-        mergedPath,
+        composedPath,
         savedPathConditions,
         pnc.savedEffects
       );
@@ -459,8 +458,13 @@ export class JoinImplementation {
     let v = realm.intrinsics.empty;
     if (c.consequent instanceof ReturnCompletion) {
       let negation = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
+      // Simply negating the (known to be abstract) join condition should
+      // not become a concrete value
       invariant(negation instanceof AbstractValue);
-      let pathCondition = [negation];
+      let pathConditions = [negation];
+      if (c.alternate instanceof PossiblyNormalCompletion) {
+        pathConditions = pathConditions.concat(c.alternate.pathCondtions);
+      }
       let pnc = new PossiblyNormalCompletion(
         v,
         c.joinCondition,
@@ -468,7 +472,7 @@ export class JoinImplementation {
         empty_effects,
         c.alternate,
         c.alternateEffects,
-        pathCondition,
+        pathConditions,
         []
       );
       return [c.consequentEffects, pnc];
@@ -606,7 +610,7 @@ export class JoinImplementation {
       if (result2 instanceof PossiblyNormalCompletion) {
         value = result2.value;
         savedEffects = result2.savedEffects;
-        pathConditions = [joinCondition].concat(result2.pathCondtion);
+        pathConditions = [joinCondition].concat(result2.pathCondtions);
         savedPathConditions = result2.savedPathConditions;
       } else {
         pathConditions = [joinCondition];
@@ -632,7 +636,7 @@ export class JoinImplementation {
       if (result1 instanceof PossiblyNormalCompletion) {
         value = result1.value;
         savedEffects = result1.savedEffects;
-        pathConditions = [joinCondition].concat(result1.pathCondtion);
+        pathConditions = [joinCondition].concat(result1.pathCondtions);
         savedPathConditions = result1.savedPathConditions;
       } else {
         pathConditions = [joinCondition];

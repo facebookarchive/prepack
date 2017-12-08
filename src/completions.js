@@ -106,7 +106,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     consequentEffects: Effects,
     alternate: Completion | Value,
     alternateEffects: Effects,
-    pathCondtion: Array<AbstractValue>,
+    pathCondtions: Array<AbstractValue>,
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
@@ -138,7 +138,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     this.alternate = alternate;
     this.alternateEffects = alternateEffects;
     this.savedEffects = savedEffects;
-    this.pathCondtion = pathCondtion;
+    this.pathCondtions = pathCondtions;
     this.savedPathConditions = savedPathConditions;
   }
 
@@ -148,7 +148,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   alternate: Completion | Value;
   alternateEffects: Effects;
   savedEffects: void | Effects;
-  pathCondtion: Array<AbstractValue>;
+  pathCondtions: Array<AbstractValue>;
   savedPathConditions: Array<AbstractValue>;
 
   containsBreakOrContinue(): boolean {
