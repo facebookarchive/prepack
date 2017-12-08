@@ -20,16 +20,14 @@ import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import { FileIOWrapper } from "./debugger/common/channel/FileIOWrapper.js";
+import type { SerializedResult } from "./serializer/types.js";
 
 import fs from "fs";
 
 export * from "./prepack-node-environment";
 export * from "./prepack-standalone";
 
-export function prepackStdin(
-  options: PrepackOptions = defaultOptions,
-  callback: (any, ?{ code: string, map?: SourceMap }) => void
-) {
+export function prepackStdin(options: PrepackOptions = defaultOptions, callback: (any, ?SerializedResult) => void) {
   let sourceMapFilename = options.inputSourceMapFilename || "";
   process.stdin.setEncoding("utf8");
   process.stdin.resume();

@@ -18,6 +18,7 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import fs from "fs";
 import v8 from "v8";
 import { version } from "../package.json";
+import invariant from "./invariant";
 
 // Prepack helper
 declare var __residual: any;
@@ -56,6 +57,7 @@ function run(
     --residual               Produces the residual program that results after constant folding.
     --profile                Enables console logging of profile information of different phases of prepack.
     --statsFile              The name of the output file where statistics will be written to.
+    --heapGraphFilePath      The name of the output file where heap graph will be written to.
     --inlineExpressions      When generating code, tells prepack to avoid naming expressions when they are only used once,
                              and instead inline them where they are used.
     --simpleClosures         When generating code, tells prepack to not defer initializing closures
@@ -75,6 +77,7 @@ function run(
   let timeout: number;
   let additionalFunctions: Array<string>;
   let lazyObjectsRuntime: string;
+  let heapGraphFilePath: string;
   let debugInFilePath: string;
   let debugOutFilePath: string;
   let flags = {
@@ -156,9 +159,12 @@ function run(
         case "lazyObjectsRuntime":
           lazyObjectsRuntime = args.shift();
           break;
+        case "heapGraphFilePath":
+          heapGraphFilePath = args.shift();
+          break;
         case "help":
           console.log(
-            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ] [ --lazyObjectsRuntime lazyObjectsRuntimeName]" +
+            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ] [ --lazyObjectsRuntime lazyObjectsRuntimeName] [ --heapGraphFilePath heapGraphFilePath]" +
               Object.keys(flags).map(s => "[ --" + s + "]").join(" ") +
               "\n" +
               HELP_STR
@@ -191,6 +197,7 @@ function run(
       timeout: timeout,
       additionalFunctions: additionalFunctions,
       lazyObjectsRuntime: lazyObjectsRuntime,
+      heapGraphFilePath: heapGraphFilePath,
       enableDebugger: false, //always turn off debugger until debugger is fully built
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
@@ -280,6 +287,10 @@ function run(
       }
       if (outputSourceMap) {
         fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
+      }
+      if (heapGraphFilePath) {
+        invariant(serialized.heapGraph);
+        fs.writeFileSync(heapGraphFilePath, serialized.heapGraph);
       }
     }
   }
