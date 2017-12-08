@@ -179,6 +179,7 @@ export class Referentializer {
             }
 
             if (this._options.simpleClosures) {
+              // When simpleClosures is enabled, then space for captured mutable bindings is allocated upfront.
               let serializedBindingId = t.identifier(this._referentializedNameGenerator.generate(name));
               let serializedValue = residualBinding.serializedValue;
               invariant(serializedValue);
@@ -186,6 +187,7 @@ export class Referentializer {
               instance.initializationStatements.push(declar);
               residualBinding.serializedValue = serializedBindingId;
             } else {
+              // When simpleClosures is not enabled, then space for captured mutable bindings is allocated lazily.
               let scope = this._getSerializedBindingScopeInstance(residualBinding);
               let capturedScope = "__captured" + scope.name;
               // Save the serialized value for initialization at the top of

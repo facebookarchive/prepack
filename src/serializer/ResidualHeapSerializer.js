@@ -601,7 +601,7 @@ export class ResidualHeapSerializer {
         ).length;
       }
 
-      if (numAdditionalFunctionReferences > 0 || !this._options.delayInitializations) {
+      if (numAdditionalFunctionReferences > 0 || !this._options.delayInitializations || this._options.simpleClosures) {
         // We can just emit it into the current function body.
         return {
           body: this.currentFunctionBody,
