@@ -345,7 +345,6 @@ export class ResidualFunctions {
         for (let instance of instancesToSplice) {
           let { functionValue, residualFunctionBindings, scopeInstances } = instance;
           let id = this.locationService.getLocation(functionValue);
-          invariant(id !== undefined);
           let funcParams = params.slice();
           let funcNode = t.functionExpression(
             null,
@@ -475,7 +474,6 @@ export class ResidualFunctions {
         for (let instance of normalInstances) {
           let { functionValue, residualFunctionBindings, insertionPoint } = instance;
           let functionId = this.locationService.getLocation(functionValue);
-          invariant(functionId !== undefined);
           let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
             let residualBinding = residualFunctionBindings.get(name);
             invariant(residualBinding);
