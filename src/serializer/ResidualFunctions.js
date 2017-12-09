@@ -481,10 +481,14 @@ export class ResidualFunctions {
         for (let instance of normalInstances) {
           let { functionValue, residualFunctionBindings, insertionPoint } = instance;
           let functionId = this.locationService.getLocation(functionValue);
+          invariant(functionId !== undefined);
+          let hasFunctionArg = false;
           let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
             let residualBinding = residualFunctionBindings.get(name);
             invariant(residualBinding);
             let serializedValue = residualBinding.serializedValue;
+            hasFunctionArg =
+              hasFunctionArg || (residualBinding.value && residualBinding.value instanceof FunctionValue);
             invariant(serializedValue);
             return serializedValue;
           });
@@ -499,6 +503,7 @@ export class ResidualFunctions {
             // so a stub forward function is needed during delay initializations.
             this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
             usesThis ||
+            hasFunctionArg ||
             (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
             this.functionPrototypes.get(functionValue) !== undefined
           ) {
