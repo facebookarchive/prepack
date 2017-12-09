@@ -18,8 +18,8 @@ import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
 import { Environment } from "./singletons.js";
 import { ObjectValue } from "./values/index.js";
-import { DebugServer } from "./debugger/Debugger.js";
-import type { DebugChannel } from "./debugger/channel/DebugChannel.js";
+import { DebugServer } from "./debugger/server/Debugger.js";
+import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
 
 export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {

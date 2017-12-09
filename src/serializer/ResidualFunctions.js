@@ -12,6 +12,7 @@
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import { FunctionValue, type ECMAScriptSourceFunctionValue } from "../values/index.js";
+import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -46,6 +47,7 @@ export class ResidualFunctions {
   constructor(
     realm: Realm,
     statistics: SerializerStatistics,
+    options: SerializerOptions,
     modules: Modules,
     requireReturns: Map<number | string, BabelNodeExpression>,
     locationService: LocationService,
@@ -53,6 +55,7 @@ export class ResidualFunctions {
     initializerNameGenerator: NameGenerator,
     factoryNameGenerator: NameGenerator,
     scopeNameGenerator: NameGenerator,
+    referentializedNameGenerator: NameGenerator,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
@@ -77,7 +80,7 @@ export class ResidualFunctions {
     this.residualFunctionInfos = residualFunctionInfos;
     this.residualFunctionInstances = residualFunctionInstances;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
-    this.referentializer = new Referentializer(scopeNameGenerator, statistics);
+    this.referentializer = new Referentializer(options, scopeNameGenerator, referentializedNameGenerator, statistics);
     for (let instance of residualFunctionInstances.values()) {
       invariant(instance !== undefined);
       if (!additionalFunctionValueInfos.has(instance.functionValue)) this.addFunctionInstance(instance);
@@ -239,6 +242,7 @@ export class ResidualFunctions {
         invariant(t.isCallExpression(funcNode)); // .bind call
         body = getFunctionBody(instance);
       }
+      for (let s of instance.initializationStatements) body.push(s);
       body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]));
       let prototypeId = this.functionPrototypes.get(functionValue);
       if (prototypeId !== undefined) {
@@ -341,7 +345,6 @@ export class ResidualFunctions {
         for (let instance of instancesToSplice) {
           let { functionValue, residualFunctionBindings, scopeInstances } = instance;
           let id = this.locationService.getLocation(functionValue);
-          invariant(id !== undefined);
           let funcParams = params.slice();
           let funcNode = t.functionExpression(
             null,

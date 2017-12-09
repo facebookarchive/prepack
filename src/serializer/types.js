@@ -53,6 +53,7 @@ export type FunctionInstance = {
   // Additional function that the function instance was declared inside of (if any)
   containingAdditionalFunction?: FunctionValue,
   scopeInstances: Set<ScopeBinding>,
+  initializationStatements: Array<BabelNodeStatement>,
 };
 
 export type FunctionInfo = {
@@ -180,10 +181,23 @@ export class SerializerStatistics {
 }
 
 export type LocationService = {
-  getLocation: Value => void | BabelNodeIdentifier,
+  getLocation: Value => BabelNodeIdentifier,
   createLocation: () => BabelNodeIdentifier,
 };
 
 export type ReactSerializerState = {
   usedReactElementKeys: Set<string>,
+};
+
+export type ObjectRefCount = {
+  inComing: number, // The number of objects that references this object.
+  outGoing: number, // The number of objects that are referenced by this object.
+};
+
+export type SerializedResult = {
+  code: string,
+  map: void | SourceMap,
+  statistics?: SerializerStatistics,
+  timingStats?: TimingStatistics,
+  heapGraph?: string,
 };

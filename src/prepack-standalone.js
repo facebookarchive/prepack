@@ -17,15 +17,15 @@ import initializeGlobals from "./globals.js";
 import * as t from "babel-types";
 import { getRealmOptions, getSerializerOptions } from "./prepack-options";
 import { FatalError } from "./errors.js";
-import { SerializerStatistics, TimingStatistics } from "./serializer/types.js";
 import type { SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
 import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
 import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 import invariant from "./invariant.js";
-import type { DebugChannel } from "./debugger/channel/DebugChannel.js";
 import { version } from "../package.json";
+import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
+import type { SerializedResult } from "./serializer/types.js";
 
 // IMPORTANT: This function is now deprecated and will go away in a future release.
 // Please use FatalError instead.
@@ -42,7 +42,7 @@ export function prepackSources(
   sources: Array<SourceFile>,
   options: PrepackOptions = defaultOptions,
   debugChannel: DebugChannel | void = undefined
-): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
+): SerializedResult {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(realmOptions, debugChannel);
@@ -91,7 +91,7 @@ export function prepackString(
   code: string,
   sourceMap: string,
   options: PrepackOptions = defaultOptions
-): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
+): SerializedResult {
   return prepackSources([{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }], options);
 }
 

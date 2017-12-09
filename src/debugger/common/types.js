@@ -9,9 +9,7 @@
 
 /* @flow */
 
-import type { LexicalEnvironment } from "./../environment.js";
 import * as DebugProtocol from "vscode-debugprotocol";
-import { ObjectValue, AbstractValue } from "./../values/index.js";
 
 export type DebuggerRequest = {
   id: number,
@@ -155,15 +153,11 @@ export type EvaluateResult = {
   variablesReference: number,
 };
 
-// any object that can contain a collection of variables
-export type VariableContainer = LexicalEnvironment | ObjectValue | AbstractValue;
 export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   noDebug?: boolean,
   sourceFile: string,
   prepackRuntime: string,
   prepackArguments: Array<string>,
-  debugInFilePath: string,
-  debugOutFilePath: string,
 }
 
 export type SteppingType = "Step Into" | "Step Over";
