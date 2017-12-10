@@ -6,7 +6,7 @@ set -e
 ORIGIN_URI=$(git config remote.origin.url)
 
 SRC_BRANCH="master"
-SRC_DIR="docs"
+SRC_DIR="website"
 DEST_BRANCH="gh-pages"
 DEST_DIR="."
 

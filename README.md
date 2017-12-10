@@ -100,7 +100,7 @@ Instead of building, linting, type checking, testing separately, the following d
 
 ## How to edit the website
 
-The content for [prepack.io](https://prepack.io) resides in the [docs directory](https://github.com/facebook/prepack/tree/master/docs) of this repository. To make changes, submit a pull request, just like for any code changes.
+The content for [prepack.io](https://prepack.io) resides in the [website directory](https://github.com/facebook/prepack/tree/master/website) of this repository. To make changes, submit a pull request, just like for any code changes.
 
 In order to run the website locally at [localhost:8000](http://localhost:8000):
 1. Build prepack into the website: `yarn build-bundle && mv prepack.min.js website/js`
