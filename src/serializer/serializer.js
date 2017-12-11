@@ -138,7 +138,7 @@ export class Serializer {
     invariant(realmPreludeGenerator);
     const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
       residualHeapVisitor.values.keys(),
-      realmPreludeGenerator.getValueNameGenerator()
+      realmPreludeGenerator
     );
 
     let heapGraph;

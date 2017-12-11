@@ -460,7 +460,6 @@ export class PreludeGenerator {
     this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
     this.usesThis = false;
     this.declaredGlobals = new Set();
-    this._valueNameGenerator = this.createNameGenerator("_");
   }
 
   prelude: Array<BabelNodeStatement>;
@@ -469,13 +468,6 @@ export class PreludeGenerator {
   nameGenerator: NameGenerator;
   usesThis: boolean;
   declaredGlobals: Set<string>;
-
-  _valueNameGenerator: NameGenerator;
-
-  // Get singleton name generator for heap values.
-  getValueNameGenerator() {
-    return this._valueNameGenerator;
-  }
 
   createNameGenerator(prefix: string): NameGenerator {
     return new NameGenerator(
