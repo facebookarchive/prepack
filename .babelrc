@@ -1,6 +1,6 @@
 {
   "env": {
-    "prepack": {
+    "development": {
       "presets": [
         "env",
         "react"
