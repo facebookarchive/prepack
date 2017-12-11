@@ -109,19 +109,36 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     return val.__originalName || "";
   }
 
-  _generateDotGraph(nodes: Set<Value>, edges: Array<Edge>): string {
-    let content = "digraph{\n";
+  _generateGraphData(nodes: Set<Value>, edges: Array<Edge>): string {
+    let nodesData = [];
+    let edgesData = [];
 
-    for (const val of nodes) {
-      const nodeId = this._getValueId(val);
-      content += `  node${nodeId} [shape=${this._getValueShape(val)} label=${this._getValueLabel(val)}];\n`;
+    for (let node of nodes) {
+      const nodeId = this._getValueId(node);
+      let nodeData = {
+        id: `${nodeId}`,
+        label: this._getValueLabel(node),
+        shape: this._getValueShape(node),
+        color: this._getValueColor(node),
+      };
+      nodesData.push(nodeData);
     }
 
-    for (const edge of edges) {
-      content += `  node${edge.fromId} -> node${edge.toId};\n`;
+    for (let edge of edges) {
+      let edgeData = {
+        id: `${edge.fromId}-${edge.toId}`,
+        from: `${edge.fromId}`,
+        to: `${edge.toId}`,
+        arrows: "to",
+      };
+      edgesData.push(edgeData);
     }
-    content += "}";
-    return content;
+
+    let graphData = {
+      nodes: nodesData,
+      edges: edgesData,
+    };
+    return JSON.stringify(graphData);
   }
 
   // TODO: find a way to comment the meaning of shape => value mapping in final graph language.
@@ -130,20 +147,39 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     if (val instanceof FunctionValue) {
       shape = "circle";
     } else if (val instanceof AbstractValue) {
-      shape = "star";
-    } else if (val instanceof ProxyValue) {
-      shape = "house";
-    } else if (val instanceof SymbolValue) {
       shape = "diamond";
+    } else if (val instanceof ProxyValue) {
+      shape = "triangle";
+    } else if (val instanceof SymbolValue) {
+      shape = "star";
     } else if (val instanceof ObjectValue) {
       shape = "box";
     } else {
-      shape = "tripleoctagon";
+      shape = "ellipse";
+    }
+    return shape;
+  }
+
+  // TODO: find a way to comment the meaning of shape => value mapping in final graph language.
+  _getValueColor(val: Value): string {
+    let shape = null;
+    if (val instanceof FunctionValue) {
+      shape = "red";
+    } else if (val instanceof AbstractValue) {
+      shape = "green";
+    } else if (val instanceof ProxyValue) {
+      shape = "orange";
+    } else if (val instanceof SymbolValue) {
+      shape = "yellow";
+    } else if (val instanceof ObjectValue) {
+      shape = "#3BB9FF"; // light blue
+    } else {
+      shape = "grey";
     }
     return shape;
   }
 
   generateResult(): string {
-    return this._generateDotGraph(this._visitedValues, this._edges);
+    return this._generateGraphData(this._visitedValues, this._edges);
   }
 }
