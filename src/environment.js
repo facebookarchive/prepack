@@ -100,9 +100,11 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   constructor(realm: Realm) {
     super(realm);
     this.bindings = (Object.create(null): any);
+    this.frozen = false;
   }
 
   bindings: { [name: string]: Binding };
+  frozen: boolean;
 
   // ECMA262 8.1.1.1.1
   HasBinding(N: string): boolean {
@@ -118,6 +120,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.2
   CreateMutableBinding(N: string, D: boolean, isGlobal: boolean = false): Value {
+    invariant(!this.frozen);
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -142,6 +145,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.3
   CreateImmutableBinding(N: string, S: boolean, isGlobal: boolean = false): Value {
+    invariant(!this.frozen);
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -166,6 +170,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.4
   InitializeBinding(N: string, V: Value): Value {
+    invariant(!this.frozen);
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -186,6 +191,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.5
   SetMutableBinding(N: string, V: Value, S: boolean): Value {
+    invariant(!this.frozen);
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -257,6 +263,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.7
   DeleteBinding(N: string): boolean {
+    invariant(!this.frozen);
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -957,15 +964,28 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 }
 
 // ECMA262 8.1
+var uid = 0;
 export class LexicalEnvironment {
   constructor(realm: Realm) {
     invariant(realm, "expected realm");
     this.realm = realm;
+    this.destroyed = false;
+    this._sno = uid++;
   }
 
+  _sno: number;
+  destroyed: boolean;
   environmentRecord: EnvironmentRecord;
   parent: null | LexicalEnvironment;
   realm: Realm;
+
+  destroy() {
+    this.destroyed = true;
+    let envRec = this.environmentRecord;
+    if (this.environmentRecord instanceof DeclarativeEnvironmentRecord) {
+      this.environmentRecord.frozen = true;
+    }
+  }
 
   assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value) {
     let globalValue = this.evaluate(globalAst, false);
@@ -1077,10 +1097,10 @@ export class LexicalEnvironment {
     onParse: void | (BabelNodeFile => void) = undefined
   ): [AbruptCompletion | Value, any] {
     let context = new ExecutionContext();
+    context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
     this.realm.pushContext(context);
-    this.realm.pushScope(this);
     let res, code;
     try {
       let ast;
@@ -1088,8 +1108,10 @@ export class LexicalEnvironment {
       if (onParse) onParse(ast);
       res = this.evaluateCompletion(ast, false);
     } finally {
-      this.realm.destroyScope(context);
       this.realm.popContext(context);
+      this.realm.onDestroyScope(context.lexicalEnvironment);
+      if (!this.destroyed) this.realm.onDestroyScope(this);
+      invariant(this.realm.activeLexicalEnvironments.size === 0);
     }
     if (res instanceof AbruptCompletion) return [res, code];
 
@@ -1103,18 +1125,20 @@ export class LexicalEnvironment {
   ): AbruptCompletion | { code: string, map?: SourceMap } {
     let [ast, code] = this.concatenateAndParse(sources, sourceType);
     let context = new ExecutionContext();
+    context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
     this.realm.pushContext(context);
-    this.realm.pushScope(this);
     let partialAST;
     try {
       let res;
       [res, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
       if (res instanceof AbruptCompletion) return res;
     } finally {
-      this.realm.destroyScope(context);
       this.realm.popContext(context);
+      this.realm.onDestroyScope(context.lexicalEnvironment);
+      if (!this.destroyed) this.realm.onDestroyScope(this);
+      invariant(this.realm.activeLexicalEnvironments.size === 0);
     }
     invariant(partialAST.type === "File");
     let fileAst = ((partialAST: any): BabelNodeFile);
@@ -1131,11 +1155,11 @@ export class LexicalEnvironment {
     onParse: void | (BabelNodeFile => void) = undefined
   ): AbruptCompletion | Value {
     let context = new ExecutionContext();
+    context.lexicalEnvironment = this;
     context.variableEnvironment = this;
     context.realm = this.realm;
 
     this.realm.pushContext(context);
-    this.realm.pushScope(this);
 
     let ast, res;
     try {
@@ -1150,8 +1174,10 @@ export class LexicalEnvironment {
       this.fixup_filenames(ast);
       res = this.evaluateCompletion(ast, false);
     } finally {
-      this.realm.destroyScope(context);
       this.realm.popContext(context);
+      this.realm.onDestroyScope(context.lexicalEnvironment);
+      if (!this.destroyed) this.realm.onDestroyScope(this);
+      invariant(this.realm.activeLexicalEnvironments.size === 0);
     }
     if (res instanceof AbruptCompletion) return res;
 

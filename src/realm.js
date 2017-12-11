@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
+import { LexicalEnvironment, Reference, GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, Construct, ToString } from "./methods/index.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
@@ -175,6 +175,7 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
+    this.activeLexicalEnvironments = new Set();
   }
 
   start: number;
@@ -193,6 +194,8 @@ export class Realm {
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
+
+  activeLexicalEnvironments: Set<LexicalEnvironment>;
 
   // A list of abstract conditions that are known to be true in the current execution path.
   // For example, the abstract condition of an if statement is known to be true inside its true branch.
@@ -308,35 +311,23 @@ export class Realm {
     return context;
   }
 
-  // Puts the new LexicalEnvironment onto the current execution context (or the one specified)
-  pushScope(environment: LexicalEnvironment, context?: ExecutionContext) {
-    let executionContext = context ? context : this.getRunningContext();
-    let prevScope = executionContext.lexicalEnvironment;
-    executionContext.lexicalEnvironment = environment;
-    return prevScope;
-  }
-
-  // Destroys the LexicalEnvironment (scope) of the specified context (or the current execution context's)
-  popScope(prevEnvironment: LexicalEnvironment, context?: ExecutionContext) {
-    let execContext = context ? context : this.getRunningContext();
-    this.destroyScope(execContext);
-    if (execContext.lexicalEnvironment.parent !== null) invariant(execContext.lexicalEnvironment !== prevEnvironment);
-    execContext.lexicalEnvironment = prevEnvironment;
-  }
-
-  // Destroys a scope that may not be the running context's scope
+  // Call when a scope falls out of scope and should be destroyed.
   // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
-  destroyScope(context: ExecutionContext) {
-    // Don't undo things to global scope
+  onDestroyScope(lexicalEnvironment: LexicalEnvironment) {
+    invariant(this.activeLexicalEnvironments.has(lexicalEnvironment));
     let modifiedBindings = this.modifiedBindings;
-    if (modifiedBindings && context.lexicalEnvironment.parent !== null) {
-      let environmentRecord = context.lexicalEnvironment.environmentRecord;
-      // To avoid importing DeclarativeEnvironmentRecord, just check for bindings
-      let bindings = (environmentRecord: any).bindings;
-      if (bindings)
+    if (modifiedBindings) {
+      // Don't undo things to global scope because it's needed past its destruction point (for serialization)
+      let environmentRecord = lexicalEnvironment.environmentRecord;
+      if (environmentRecord instanceof DeclarativeEnvironmentRecord)
         for (let b of modifiedBindings.keys())
-          if (bindings[b.name] && bindings[b.name] === b) modifiedBindings.delete(b);
+          if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b)
+            modifiedBindings.delete(b);
     }
+
+    // Ensures if we call onDestroyScope too early, there will be a failure.
+    this.activeLexicalEnvironments.delete(lexicalEnvironment);
+    lexicalEnvironment.destroy();
   }
 
   pushContext(context: ExecutionContext): void {
@@ -364,11 +355,9 @@ export class Realm {
     context.realm = this;
 
     this.pushContext(context);
-    this.pushScope(this.$GlobalEnv);
     try {
       return callback();
     } finally {
-      this.destroyScope(context);
       this.popContext(context);
     }
   }

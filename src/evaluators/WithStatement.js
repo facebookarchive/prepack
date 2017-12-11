@@ -49,7 +49,7 @@ export default function(
   newEnv.environmentRecord.withEnvironment = true;
 
   // 6. Set the running execution context's LexicalEnvironment to newEnv.
-  realm.pushScope(newEnv);
+  realm.getRunningContext().lexicalEnvironment = newEnv;
 
   try {
     // 7. Let C be the result of evaluating Statement.
@@ -63,6 +63,7 @@ export default function(
     return res;
   } finally {
     // 8. Set the running execution context's LexicalEnvironment to oldEnv.
-    realm.popScope(oldEnv);
+    realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.onDestroyScope(newEnv);
   }
 }

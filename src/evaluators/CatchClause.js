@@ -43,7 +43,7 @@ export default function(
   }
 
   // 5. Set the running execution context's LexicalEnvironment to catchEnv.
-  realm.pushScope(catchEnv);
+  realm.getRunningContext().lexicalEnvironment = catchEnv;
 
   try {
     // 6. Let status be the result of performing BindingInitialization for CatchParameter passing thrownValue and catchEnv as arguments.
@@ -61,6 +61,7 @@ export default function(
     return B;
   } finally {
     // 9. Set the running execution context's LexicalEnvironment to oldEnv.
-    realm.popScope(oldEnv);
+    realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.onDestroyScope(catchEnv);
   }
 }

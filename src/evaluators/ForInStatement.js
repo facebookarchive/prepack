@@ -133,7 +133,7 @@ function emitResidualLoopIfSafe(
   invariant(ob.isSimpleObject());
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
   let blockEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
-  realm.pushScope(blockEnv);
+  realm.getRunningContext().lexicalEnvironment = blockEnv;
   try {
     let envRec = blockEnv.environmentRecord;
     invariant(envRec instanceof DeclarativeEnvironmentRecord, "expected declarative environment record");
@@ -225,7 +225,8 @@ function emitResidualLoopIfSafe(
     }
   } finally {
     // 6. Set the running execution context's LexicalEnvironment to oldEnv.
-    realm.popScope(oldEnv);
+    realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.onDestroyScope(blockEnv);
   }
 
   reportError(realm, obexpr.loc);

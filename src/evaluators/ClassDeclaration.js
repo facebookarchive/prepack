@@ -87,14 +87,14 @@ export function ClassDefinitionEvaluation(
   } else {
     // 6. Else
     // a. Set the running execution context’s LexicalEnvironment to classScope.
-    realm.pushScope(classScope);
+    realm.getRunningContext().lexicalEnvironment = classScope;
     let superclass = null;
     try {
       // b. Let superclass be the result of evaluating ClassHeritage.
       superclass = EvaluateClassHeritage(realm, ClassHeritage, strictCode);
     } finally {
       // c. Set the running execution context’s LexicalEnvironment to lex.
-      realm.popScope(lex);
+      realm.getRunningContext().lexicalEnvironment = lex;
     }
 
     // d. ReturnIfAbrupt(superclass).
@@ -192,7 +192,7 @@ export function ClassDefinitionEvaluation(
   }
 
   // 11. Set the running execution context’s LexicalEnvironment to classScope.
-  realm.pushScope(classScope);
+  realm.getRunningContext().lexicalEnvironment = classScope;
 
   let F;
   try {
@@ -244,7 +244,8 @@ export function ClassDefinitionEvaluation(
     }
   } finally {
     // 22. Set the running execution context’s LexicalEnvironment to lex.
-    realm.popScope(lex);
+    realm.getRunningContext().lexicalEnvironment = lex;
+    realm.onDestroyScope(classScope);
   }
 
   // 23. If className is not undefined, then

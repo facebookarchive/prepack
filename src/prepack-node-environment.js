@@ -61,10 +61,10 @@ export function prepackNodeCLISync(filename: string, options: PrepackOptions = d
   let serializer = new Serializer(realm, getSerializerOptions(options));
 
   let context = new ExecutionContext();
+  context.lexicalEnvironment = realm.$GlobalEnv;
   context.variableEnvironment = realm.$GlobalEnv;
   context.realm = realm;
   realm.pushContext(context);
-  realm.pushScope(realm.$GlobalEnv);
   let res;
   try {
     if (bootstrapFn.$Call) {
@@ -79,7 +79,6 @@ export function prepackNodeCLISync(filename: string, options: PrepackOptions = d
       throw new FatalError(err);
     }
   } finally {
-    realm.destroyScope(context);
     realm.popContext(context);
   }
   if (res instanceof Completion) {
@@ -89,6 +88,7 @@ export function prepackNodeCLISync(filename: string, options: PrepackOptions = d
       serializer.logger.logCompletion(res);
     } finally {
       realm.popContext(context);
+      realm.onDestroyScope(realm.$GlobalEnv);
     }
   }
 

@@ -111,8 +111,8 @@ function InternalCall(
     result = OrdinaryCallEvaluateBody(realm, F, argsList);
   } finally {
     // 8. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
-    realm.popScope(callerContext.lexicalEnvironment);
     realm.popContext(calleeContext);
+    realm.onDestroyScope(calleeContext.lexicalEnvironment);
     invariant(realm.getRunningContext() === callerContext);
 
     for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argsList, undefined, (result: any));
@@ -245,6 +245,7 @@ function InternalConstruct(
   } finally {
     // 12. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
     realm.popContext(calleeContext);
+    realm.onDestroyScope(calleeContext.lexicalEnvironment);
     invariant(realm.getRunningContext() === callerContext);
 
     for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argumentsList, newTarget, result);
@@ -638,7 +639,7 @@ export class FunctionImplementation {
     let lexEnvRec = lexEnv.environmentRecord;
 
     // 32. Set the LexicalEnvironment of calleeContext to lexEnv.
-    realm.pushScope(lexEnv);
+    calleeContext.lexicalEnvironment = lexEnv;
 
     // 33. Let lexDeclarations be the LexicallyScopedDeclarations of code.
     let lexDeclarations = [];
@@ -1048,10 +1049,10 @@ export class FunctionImplementation {
     evalCxt.variableEnvironment = varEnv;
 
     // 18. Set the evalCxt's LexicalEnvironment to lexEnv.
+    evalCxt.lexicalEnvironment = lexEnv;
 
     // 19. Push evalCxt on to the execution context stack; evalCxt is now the running execution context.
     realm.pushContext(evalCxt);
-    realm.pushScope(lexEnv);
 
     let result;
     try {
@@ -1089,8 +1090,8 @@ export class FunctionImplementation {
     } finally {
       // 23. Suspend evalCxt and remove it from the execution context stack.
       evalCxt.suspend();
-      realm.destroyScope(evalCxt);
       realm.popContext(evalCxt);
+      realm.onDestroyScope(evalCxt.lexicalEnvironment);
     }
 
     // 24. Resume the context that is now on the top of the execution context stack as the running execution context.
