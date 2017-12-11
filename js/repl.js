@@ -148,26 +148,20 @@ function compile() {
           code =
             '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
         }
-        var DOTstring = 'dinetwork {1 -> 1 -> 2; 2 -> 3; 2 -- 4; 2 -> 1 }';
-        var parsedData = vis.network.convertDot(DOTstring);
+        var graphData = JSON.parse(result.graph);
         var visData = {
-          nodes: parsedData.nodes,
-          edges: parsedData.edges
+          nodes: graphData.nodes,
+          edges: graphData.edges
         }
 
-        var visOptions = parsedData.options;
-
-        // you can extend the options like a normal JSON variable:
-        visOptions.nodes = {
-          color: 'red'
-        }
+        var visOptions = {};
 
         // create a network
         var modalNetwork = new vis.Network(graphModalContents, visData, visOptions);
+        modalNetwork.fit();
         graphModalDiv.style.display = "inline-block";
 
         var boxNetwork = new vis.Network(graphBox, visData, visOptions);
-
         output.setValue(code, -1);
       } else if (result.type === 'error') {
         let errors = result.data;
