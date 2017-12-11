@@ -13,6 +13,7 @@ import type { Logger } from "./logger.js";
 import type { Modules } from "./modules.js";
 import type { Realm } from "../realm.js";
 import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
+import type { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers";
 
 import invariant from "../invariant.js";
 import {
@@ -41,10 +42,12 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     logger: Logger,
     modules: Modules,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+    valueIdentifiers: ResidualHeapValueIdentifiers,
     valueToEdgeRecord: Map<Value, ObjectRefCount>
   ) {
     super(realm, logger, modules, additionalFunctionValuesAndEffects);
     this._valueToEdgeRecord = valueToEdgeRecord;
+    this._valueIdentifiers = valueIdentifiers;
     this._visitedValues = new Set();
     this._valueIds = new Map();
     this._idSeed = 0;
@@ -52,6 +55,7 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     this._edges = [];
   }
 
+  _valueIdentifiers: ResidualHeapValueIdentifiers;
   _valueToEdgeRecord: Map<Value, ObjectRefCount>;
   _valueIds: Map<Value, number>;
   _idSeed: number;
@@ -104,9 +108,10 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
   }
 
   _getValueLabel(val: Value): string {
-    // TODO: add object identifier in label.
     // TODO: does not use ref count yet, figure out how to best visualize it later.
-    return val.__originalName || "";
+    const serializedId = this._valueIdentifiers.getIdentifier(val);
+    invariant(serializedId);
+    return val.__originalName ? `${serializedId.name}(${val.__originalName})` : serializedId.name;
   }
 
   _generateGraphData(nodes: Set<Value>, edges: Array<Edge>): string {

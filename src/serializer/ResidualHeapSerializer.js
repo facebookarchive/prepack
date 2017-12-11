@@ -108,7 +108,6 @@ export class ResidualHeapSerializer {
     this._descriptors = new Map();
     this.needsEmptyVar = false;
     this.needsAuxiliaryConstructor = false;
-    this.valueNameGenerator = this.preludeGenerator.createNameGenerator("_");
     this.descriptorNameGenerator = this.preludeGenerator.createNameGenerator("$$");
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
     this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
@@ -126,7 +125,8 @@ export class ResidualHeapSerializer {
       {
         getLocation: value => this.getSerializeObjectIdentifier(value),
         createLocation: () => {
-          let location = t.identifier(this.valueNameGenerator.generate("initialized"));
+          const initializeConditionNameGenerator = this.preludeGenerator.createNameGenerator("_initialized");
+          let location = t.identifier(initializeConditionNameGenerator.generate());
           this.currentFunctionBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
           return location;
         },
@@ -171,7 +171,6 @@ export class ResidualHeapSerializer {
   _descriptors: Map<string, BabelNodeIdentifier>;
   needsEmptyVar: boolean;
   needsAuxiliaryConstructor: boolean;
-  valueNameGenerator: NameGenerator;
   descriptorNameGenerator: NameGenerator;
   factoryNameGenerator: NameGenerator;
   intrinsicNameGenerator: NameGenerator;
@@ -637,6 +636,18 @@ export class ResidualHeapSerializer {
     return { body, commonAncestor };
   }
 
+  _getValueDebugName(val: Value) {
+    let name;
+    if (val instanceof FunctionValue) {
+      name = this._getFunctionName(val);
+    } else {
+      const id = this.residualHeapValueIdentifiers.getIdentifier(val);
+      invariant(id);
+      name = id.name;
+    }
+    return name;
+  }
+
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
     invariant(!val.refuseSerialization);
     let scopes = this.residualValues.get(val);
@@ -656,20 +667,17 @@ export class ResidualHeapSerializer {
 
     let target = this._getTarget(val, scopes);
 
-    let name;
-    if (val instanceof FunctionValue) name = this._getFunctionName(val);
-    else name = this.valueNameGenerator.generate(val.__originalName || "");
-    let id = t.identifier(name);
-    this.residualHeapValueIdentifiers.setIdentifier(val, id);
     let oldBody = this.emitter.beginEmitting(val, target.body);
     let init = this._serializeValue(val);
+
+    let id = this.residualHeapValueIdentifiers.getIdentifier(val);
     let result = id;
     this.residualHeapValueIdentifiers.incrementReferenceCount(val);
 
     if (this.residualHeapValueIdentifiers.needsIdentifier(val)) {
       if (init) {
         if (this._options.debugScopes) {
-          let comment = `${name} referenced from scopes ${Array.from(scopes)
+          let comment = `${this._getValueDebugName(val)} referenced from scopes ${Array.from(scopes)
             .map(s => this._getScopeName(s))
             .join(",")}`;
           if (target.commonAncestor !== undefined)
