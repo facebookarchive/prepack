@@ -52,7 +52,7 @@ export type FunctionInstance = {
   insertionPoint?: BodyReference,
   // Additional function that the function instance was declared inside of (if any)
   containingAdditionalFunction?: FunctionValue,
-  scopeInstances: Set<ScopeBinding>,
+  scopeInstances: Map<string, ScopeBinding>,
   initializationStatements: Array<BabelNodeStatement>,
 };
 

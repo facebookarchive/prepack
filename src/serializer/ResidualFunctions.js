@@ -359,9 +359,9 @@ export class ResidualFunctions {
             ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
           );
           let scopeInitialization = [];
-          for (let scope of scopeInstances) {
+          for (let [scopeName, scope] of scopeInstances) {
             scopeInitialization.push(
-              t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id))])
+              t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scopeName), t.numericLiteral(scope.id))])
             );
             scopeInitialization = scopeInitialization.concat(
               this.referentializer.getReferentializedScopeInitialization(scope)
@@ -440,8 +440,8 @@ export class ResidualFunctions {
         }
 
         let scopeInitialization = [];
-        for (let scope of normalInstances[0].scopeInstances) {
-          factoryParams.push(t.identifier(scope.name));
+        for (let [scopeName, scope] of normalInstances[0].scopeInstances) {
+          factoryParams.push(t.identifier(scopeName));
           scopeInitialization = scopeInitialization.concat(
             this.referentializer.getReferentializedScopeInitialization(scope)
           );
@@ -492,8 +492,8 @@ export class ResidualFunctions {
             invariant(serializedValue);
             return serializedValue;
           });
-          for (let { id } of instance.scopeInstances) {
-            flatArgs.push(t.numericLiteral(id));
+          for (let entry of instance.scopeInstances) {
+            flatArgs.push(t.numericLiteral(entry[1].id));
           }
           let funcNode;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
