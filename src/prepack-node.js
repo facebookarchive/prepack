@@ -109,8 +109,7 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
   let debugChannel;
-  //flag to hide the debugger for now
-  if (options.enableDebugger && options.debugInFilePath && options.debugOutFilePath) {
+  if (options.debugInFilePath && options.debugOutFilePath) {
     let debugOptions = getDebuggerOptions(options);
     let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
     debugChannel = new DebugChannel(ioWrapper);
