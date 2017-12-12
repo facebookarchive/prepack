@@ -142,7 +142,9 @@ header, .repl-container {
 .record-container .record-button.delete:hover{
   background-color:#ef5b5b;
 }
-
+.record-container .record-button.graphBtn{
+  background-color: blue;
+}
 
 .record-container .record-input{
   right: 0px;
@@ -568,7 +570,7 @@ a.nav-item.is-brand {
 
 /* REPL */
 
-.input, .output {
+.input, .output, .graph {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -582,7 +584,36 @@ a.nav-item.is-brand {
 }
 
 .output {
-  right: 0;
+  left: 50%;
+}
+
+.graph {
+  display: none;
+  left: 66%;
+  background-color: white;
+  border-left: 1px solid #ddd;
+}
+.graphBar {
+  background-color: white;
+  height: 3%;
+  padding-top: 0;
+  vertical-align: center;
+}
+
+.graphBox {
+  background-color: #ddd;
+  height: 100%;
+}
+
+.legend {
+  text-align: center;
+  align: center;
+}
+
+.legend-table {
+  margin: 0 auto;
+  padding-bottom: 3%;
+  border-spacing: 5%;
 }
 
 .repl, .error {
