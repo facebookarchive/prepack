@@ -322,10 +322,10 @@ export class UISession {
       this._invalidCount++;
       //prevent stack overflow from recursion
       if (this._invalidCount >= 10) {
-        console.log("Too many invalid commands, shutting down...");
+        console.error("Too many invalid commands, shutting down...");
         this.shutdown();
       }
-      console.log("Invalid command: " + input);
+      console.error("Invalid command: " + input);
       this._reader.question("(dbg) ", (line: string) => {
         this._dispatch(line);
       });
