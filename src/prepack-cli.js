@@ -198,7 +198,6 @@ function run(
       additionalFunctions: additionalFunctions,
       lazyObjectsRuntime: lazyObjectsRuntime,
       heapGraphFilePath: heapGraphFilePath,
-      enableDebugger: false, //always turn off debugger until debugger is fully built
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
     },
