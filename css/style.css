@@ -605,6 +605,17 @@ a.nav-item.is-brand {
   height: 100%;
 }
 
+.legend {
+  text-align: center;
+  align: center;
+}
+
+.legend-table {
+  margin: 0 auto;
+  padding-bottom: 3%;
+  border-spacing: 5%;
+}
+
 .repl, .error {
   width: 100%;
   height: 100%;

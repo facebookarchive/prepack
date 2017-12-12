@@ -460,16 +460,19 @@ graphButton.addEventListener('click', () => {
   if (!showGraphDiv) {
     inputDiv.style.width = "33%";
     outputDiv.style.width = "33%";
+    graphDiv.style.width = "34%";
     outputDiv.style.left = "33%";
     graphDiv.style.display = "block";
     showGraphDiv = true;
     graphButton.innerHTML = "HIDE HEAP";
     if (drawGraphCallback !== null) {
       drawGraphCallback();
+      drawGraphCallback = null;
     }
   } else {
     inputDiv.style.width = "50%";
     outputDiv.style.width = "50%";
+    graphDiv.style.width = "50%";
     outputDiv.style.left = "50%";
     graphDiv.style.display = "none";
     showGraphDiv = false;
