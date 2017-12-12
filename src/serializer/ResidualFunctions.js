@@ -553,14 +553,6 @@ export class ResidualFunctions {
       prelude.unshift(this.referentializer.createCapturedScopesArrayInitialization(referentializationScope));
     }
 
-    for (let [additionalFunction, body] of additionalFunctionPreludes.entries()) {
-      invariant(additionalFunction);
-      let prelude = ((body: any): Array<BabelNodeStatement>);
-      let additionalBody = rewrittenAdditionalFunctions.get(additionalFunction);
-      invariant(additionalBody);
-      additionalBody.unshift(...prelude);
-    }
-
     for (let instance of this.functionInstances.reverse()) {
       let functionBody = functionBodies.get(instance);
       if (functionBody !== undefined) {
@@ -573,6 +565,14 @@ export class ResidualFunctions {
           ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>))
         );
       }
+    }
+
+    for (let [additionalFunction, body] of additionalFunctionPreludes.entries()) {
+      invariant(additionalFunction);
+      let prelude = ((body: any): Array<BabelNodeStatement>);
+      let additionalBody = rewrittenAdditionalFunctions.get(additionalFunction);
+      invariant(additionalBody);
+      additionalBody.unshift(...prelude);
     }
 
     // Inject initializer code for indexed vars into functions (for delay initializations)
