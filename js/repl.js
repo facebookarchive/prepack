@@ -128,7 +128,6 @@ function makeDemoSharable() {
 function compile() {
   clearTimeout(debounce);
   terminateWorker();
-  graphModalDiv.style.display = "none";
 
   errorOutput.innerHTML = '';
   errorOutput.style.display = 'none';
@@ -148,20 +147,19 @@ function compile() {
           code =
             '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
         }
-        var graphData = JSON.parse(result.graph);
-        var visData = {
-          nodes: graphData.nodes,
-          edges: graphData.edges
+        drawGraphCallback = () => {
+          var graphData = JSON.parse(result.graph);
+          var visData = {
+            nodes: graphData.nodes,
+            edges: graphData.edges
+          }
+
+          var visOptions = {};
+          var boxNetwork = new vis.Network(graphBox, visData, visOptions);
         }
-
-        var visOptions = {};
-
-        // create a network
-        var modalNetwork = new vis.Network(graphModalContents, visData, visOptions);
-        modalNetwork.fit();
-        graphModalDiv.style.display = "inline-block";
-
-        var boxNetwork = new vis.Network(graphBox, visData, visOptions);
+        if (showGraphDiv) {
+          drawGraphCallback();
+        }
         output.setValue(code, -1);
       } else if (result.type === 'error') {
         let errors = result.data;
@@ -221,25 +219,12 @@ var storage = window.localStorage;
 
 /** graph **/
 var graphButton = document.querySelector('#graphBtn');
-var graphModalDiv = document.getElementById('graphBtn');
-
-var graphModal = document.getElementById('graphModal');
-var graphModalContents = document.getElementById('graphModalContent');
-
 var graphBox = document.getElementById('graphBox');
-
-function setUpModal() {
-  graphModalDiv.style.display = "none";
-  graphButton.onclick = () => {
-    graphModal.style.display = "block";
-  };
-  window.onclick = function(event) {
-    if (event.target == graphModal) {
-          graphModal.style.display = "none";
-      }
-  }
-}
-setUpModal();
+var graphDiv = document.querySelector('#graph');
+var inputDiv = document.getElementById('inputDiv');
+var outputDiv = document.getElementById('outputDiv');
+var showGraphDiv = false;
+var drawGraphCallback = null;
 
 function changeDemosSelect(val) {
   if (!val.value) return;
@@ -469,4 +454,25 @@ saveButton.addEventListener('click', () => {
   setTimeout(() => {
     demoSelector.change(name);
   });
+});
+
+graphButton.addEventListener('click', () => {
+  if (!showGraphDiv) {
+    inputDiv.style.width = "33%";
+    outputDiv.style.width = "33%";
+    outputDiv.style.left = "33%";
+    graphDiv.style.display = "block";
+    showGraphDiv = true;
+    graphButton.innerHTML = "HIDE HEAP";
+    if (drawGraphCallback !== null) {
+      drawGraphCallback();
+    }
+  } else {
+    inputDiv.style.width = "50%";
+    outputDiv.style.width = "50%";
+    outputDiv.style.left = "50%";
+    graphDiv.style.display = "none";
+    showGraphDiv = false;
+    graphButton.innerHTML = "SHOW HEAP";
+  }
 });
