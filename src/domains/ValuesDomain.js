@@ -58,6 +58,19 @@ export default class ValuesDomain {
 
   _elements: void | Set<ConcreteValue>;
 
+  contains(x: ValuesDomain): boolean {
+    let elems = this._elements;
+    let xelems = x._elements;
+    if (elems === xelems) return true;
+    if (elems === undefined) return true;
+    if (xelems === undefined) return false;
+    if (elems.size < xelems.size) return false;
+    for (let e of xelems) {
+      if (!elems.has(e)) return false;
+    }
+    return true;
+  }
+
   isTop() {
     return this._elements === undefined;
   }
