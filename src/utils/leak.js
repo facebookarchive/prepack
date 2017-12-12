@@ -29,10 +29,76 @@ import {
   Value,
   ObjectValue,
   NativeFunctionValue,
+  ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import { TestIntegrityLevel } from "../methods/index.js";
+import * as t from "babel-types";
+import traverse from "babel-traverse";
+import type { BabelTraversePath } from "babel-traverse";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
+
+type LeakedFunctionInfo = {
+  unboundReads: Set<string>,
+  unboundWrites: Set<string>,
+};
+
+function visitName(path, state, name, read, write) {
+  // Is the name bound to some local identifier? If so, we don't need to do anything
+  if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
+
+  // Otherwise, let's record that there's an unbound identifier
+  if (read) state.unboundReads.add(name);
+  if (write) state.unboundWrites.add(name);
+}
+
+function ignorePath(path: BabelTraversePath) {
+  let parent = path.parent;
+  return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
+}
+
+let LeakedClosureRefVisitor = {
+  ReferencedIdentifier(path: BabelTraversePath, state: LeakedFunctionInfo) {
+    if (ignorePath(path)) return;
+
+    let innerName = path.node.name;
+    if (innerName === "arguments") {
+      return;
+    }
+    visitName(path, state, innerName, true, false);
+  },
+
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: LeakedFunctionInfo) {
+    let doesRead = path.node.operator !== "=";
+    for (let name in path.getBindingIdentifiers()) {
+      visitName(path, state, name, doesRead, true);
+    }
+  },
+};
+
+function getLeakedFunctionInfo(value: FunctionValue) {
+  // TODO: This should really be cached on a per AST basis in case we have
+  // many uses of the same closure. It should ideally share this cache
+  // and data with ResidualHeapVisitor.
+  invariant(value instanceof ECMAScriptSourceFunctionValue);
+  invariant(value.constructor === ECMAScriptSourceFunctionValue);
+  let functionInfo = {
+    unboundReads: new Set(),
+    unboundWrites: new Set(),
+  };
+  let formalParameters = value.$FormalParameters;
+  invariant(formalParameters != null);
+  let code = value.$ECMAScriptCode;
+  invariant(code != null);
+
+  traverse(
+    t.file(t.program([t.expressionStatement(t.functionExpression(null, formalParameters, code))])),
+    LeakedClosureRefVisitor,
+    null,
+    functionInfo
+  );
+  return functionInfo;
+}
 
 class ObjectValueLeakingVisitor {
   // ObjectValues to visit if they're reachable.
@@ -132,21 +198,32 @@ class ObjectValueLeakingVisitor {
     if (desc.set !== undefined) this.visitValue(desc.set);
   }
 
-  visitDeclarativeEnvironmentRecordBinding(record: DeclarativeEnvironmentRecord) {
-    // TODO: Only visit bindings that are actually referenced by the function value.
+  visitDeclarativeEnvironmentRecordBinding(
+    record: DeclarativeEnvironmentRecord,
+    remainingLeakedBindings: LeakedFunctionInfo
+  ) {
     let bindings = record.bindings;
     for (let bindingName of Object.keys(bindings)) {
       let binding = bindings[bindingName];
-      if (bindingName === "arguments") {
-        // The arguments binding is not reachable from another function.
-        // This special case will go away once we only taint referenced bindings.
-        continue;
+      // Check if this binding is referenced, and if so delete it from the set.
+      let isRead = remainingLeakedBindings.unboundReads.delete(bindingName);
+      let isWritten = remainingLeakedBindings.unboundWrites.delete(bindingName);
+      if (isRead) {
+        // If this binding can be read from the closure, its value has now leaked.
+        let value = binding.value;
+        if (value) {
+          this.visitValue(value);
+        }
       }
-      let value = binding.value;
-      if (value) {
-        this.visitValue(value);
+      if (isWritten || isRead) {
+        // If this binding could have been mutated from the closure, then the
+        // binding itself has now leaked, but not necessarily the value in it.
+        // TODO: We could tag a leaked binding as read and/or write. That way
+        // we don't have to leak values written to this binding if only writes
+        // have leaked. We also don't have to leak reads from this binding
+        // if it is only read from.
+        leakBinding(binding);
       }
-      leakBinding(binding);
     }
   }
 
@@ -194,6 +271,9 @@ class ObjectValueLeakingVisitor {
   }
 
   visitValueFunction(val: FunctionValue): void {
+    if (val.isLeakedObject()) {
+      return;
+    }
     this.visitObjectProperties(val);
 
     if (val instanceof BoundFunctionValue) {
@@ -207,6 +287,8 @@ class ObjectValueLeakingVisitor {
       !(val instanceof NativeFunctionValue),
       "all native function values should have already been created outside this pure function"
     );
+
+    let remainingLeakedBindings = getLeakedFunctionInfo(val);
 
     let environment = val.$Environment.parent;
     while (environment) {
@@ -222,20 +304,26 @@ class ObjectValueLeakingVisitor {
       );
       invariant(record instanceof DeclarativeEnvironmentRecord);
 
-      this.visitDeclarativeEnvironmentRecordBinding(record);
+      this.visitDeclarativeEnvironmentRecordBinding(record, remainingLeakedBindings);
 
       if (record instanceof FunctionEnvironmentRecord) {
-        // If this is a function environment, we visit the function object which if it is
-        // tracked will comeback here to visit its parent environment.
+        // If this is a function environment, which is not tracked for leaks,
+        // we can bail out because its bindings should not be mutated in a
+        // pure function.
         let fn = record.$FunctionObject;
-        this.visitValue(fn);
-        break;
+        if (!this.objectsTrackedForLeaks.has(fn)) {
+          break;
+        }
       }
       environment = environment.parent;
     }
   }
 
   visitValueObject(val: ObjectValue): void {
+    if (val.isLeakedObject()) {
+      return;
+    }
+
     let kind = val.getKind();
     this.visitObjectProperties(val, kind);
 
