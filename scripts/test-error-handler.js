@@ -77,16 +77,16 @@ function runTest(name: string, code: string): boolean {
     if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
     prepackFileSync([name], options);
     if (!recover) {
-      console.log(chalk.red("Serialization succeeded though it should have failed"));
+      console.error(chalk.red("Serialization succeeded though it should have failed"));
       return false;
     }
   } catch (e) {
     if (!(e instanceof FatalError)) {
-      console.log(chalk.red(`Unexpected error: ${e.message}`));
+      console.error(chalk.red(`Unexpected error: ${e.message}`));
     }
   }
   if (errors.length !== expectedErrors.length) {
-    console.log(chalk.red(`Expected ${expectedErrors.length} errors, but found ${errors.length}`));
+    console.error(chalk.red(`Expected ${expectedErrors.length} errors, but found ${errors.length}`));
     return false;
   }
 
@@ -100,7 +100,7 @@ function runTest(name: string, code: string): boolean {
         expected = JSON.stringify(expected);
       }
       if (expected !== actual) {
-        console.log(chalk.red(`Error ${i + 1}: Expected ${expected} errors, but found ${actual}`));
+        console.error(chalk.red(`Error ${i + 1}: Expected ${expected} errors, but found ${actual}`));
         return false;
       }
     }

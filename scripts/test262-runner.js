@@ -307,9 +307,9 @@ function main(): number {
     }
   } catch (e) {
     if (e instanceof ArgsParseError) {
-      console.log("Illegal argument: %s.\n%s", e.message, usage());
+      console.error("Illegal argument: %s.\n%s", e.message, usage());
     } else {
-      console.log(e);
+      console.error(e);
     }
     process.exit(1);
   }
@@ -429,7 +429,7 @@ function masterRunSingleProcess(
     handleTest(t, harnesses, args.timeout, (err, results) => {
       if (err) {
         if (args.verbose) {
-          console.log(err);
+          console.error(err);
         }
       } else {
         let ok = handleTestResults(groups, t, results);
@@ -493,8 +493,8 @@ function masterRunMultiProcess(
         let errMsg = ErrorMessage.fromObject(message);
         // just skip the error, thus skipping that test
         if (args.verbose) {
-          console.log(`An error occurred in worker #${worker.process.pid}:`);
-          console.log(errMsg.err);
+          console.error(`An error occurred in worker #${worker.process.pid}:`);
+          console.error(errMsg.err);
         }
         giveTask(worker);
         break;
@@ -594,7 +594,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
     if (args.verbose) {
       console.log(msg);
       if (errmsg) {
-        console.log(errmsg);
+        console.error(errmsg);
       }
     }
     if (group_es5_failed + group_es6_failed > 0) {
@@ -637,7 +637,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
 
   // exit status
   if (!args.filterString && (numPassedES5 < 11738 || numPassedES6 < 3981 || numTimeouts > 0)) {
-    console.log(chalk.red("Overall failure. Expected more tests to pass!"));
+    console.error(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
     // use 0 to avoid the npm error messages

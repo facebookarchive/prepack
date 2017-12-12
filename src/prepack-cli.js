@@ -251,7 +251,7 @@ function run(
       process.exit(1);
     }
     if (errors.size > 0) {
-      console.log("Errors found while prepacking");
+      console.error("Errors found while prepacking");
       let foundFatal = false;
       for (let [loc, error] of errors) {
         foundFatal = foundFatal || error.severity === "FatalError";
