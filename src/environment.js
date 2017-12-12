@@ -245,6 +245,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
       if (binding.hasLeaked) {
+        realm.leakValue(V);
         invariant(realm.generator);
         realm.generator.emitBindingAssignment(binding, V);
       } else {

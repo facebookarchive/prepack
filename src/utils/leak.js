@@ -31,7 +31,7 @@ import {
   NativeFunctionValue,
 } from "../values/index.js";
 import { TestIntegrityLevel } from "../methods/index.js";
-import type { BabelNodeExpression } from "babel-types";
+import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
 class ObjectValueLeakingVisitor {
@@ -323,12 +323,12 @@ class ObjectValueLeakingVisitor {
   }
 }
 
-function ensureFrozenValue(realm, value, ast) {
+function ensureFrozenValue(realm, value, loc) {
   // TODO: This should really check if it is recursively immutability.
   if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen")) {
     let diag = new CompilerDiagnostic(
       "Unfrozen object leaked before end of global code",
-      ast.loc,
+      loc,
       "PP0017",
       "RecoverableError"
     );
@@ -338,13 +338,13 @@ function ensureFrozenValue(realm, value, ast) {
 
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
-export function leakValue(realm: Realm, value: Value, ast: BabelNodeExpression) {
+export function leakValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
   let objectsTrackedForLeaks = realm.createdObjectsTrackedForLeaks;
   if (objectsTrackedForLeaks === undefined) {
     // We're not tracking a pure function. That means that we would track
     // everything as leaked. We'll assume that any object argument
     // is invalid unless it's frozen.
-    ensureFrozenValue(realm, value, ast);
+    ensureFrozenValue(realm, value, loc);
   } else {
     // If we're tracking a pure function, we can assume that only newly
     // created objects and bindings, within it, are mutable. Any other

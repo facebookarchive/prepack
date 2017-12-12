@@ -18,7 +18,6 @@ import { Value } from "../values/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment, Functions, Join } from "../singletons.js";
-import { leakValue } from "../utils/leak.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -114,7 +113,7 @@ function EvaluateCall(
     args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
     for (let arg of args) {
       if (arg !== func) {
-        leakValue(realm, arg, ast);
+        realm.leakValue(arg);
       }
     }
     return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {

@@ -159,6 +159,19 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   }
 }
 
+function leakDescriptor(realm: Realm, desc: Descriptor) {
+  if (desc.value) {
+    invariant(desc.value instanceof Value, "internal fields should not leak");
+    realm.leakValue(desc.value);
+  }
+  if (desc.get) {
+    realm.leakValue(desc.get);
+  }
+  if (desc.set) {
+    realm.leakValue(desc.set);
+  }
+}
+
 // Determines if an object with parent O may create its own property P.
 function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean {
   let ownDesc = O.$GetOwnProperty(P);
@@ -197,6 +210,7 @@ export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (O.isLeakedObject()) {
+      realm.leakValue(V);
       if (realm.generator) {
         realm.generator.emitPropertyAssignment(O, StringKey(P), V);
       }
@@ -594,6 +608,7 @@ export class PropertiesImplementation {
       invariant(extensible === true, "expected extensible to be true");
 
       if (O !== undefined && O.isLeakedObject() && P !== undefined) {
+        leakDescriptor(realm, Desc);
         if (realm.generator) {
           realm.generator.emitDefineProperty(O, StringKey(P), Desc);
         }
@@ -678,6 +693,7 @@ export class PropertiesImplementation {
     }
 
     if (O !== undefined && O.isLeakedObject() && P !== undefined) {
+      leakDescriptor(realm, Desc);
       if (realm.generator) {
         realm.generator.emitDefineProperty(O, StringKey(P), Desc);
       }
