@@ -650,6 +650,13 @@ export class ResidualHeapSerializer {
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
     invariant(!val.refuseSerialization);
+    if (val instanceof AbstractValue && val.kind === "widening") {
+      this.serializedValues.add(val);
+      let name = val.intrinsicName;
+      invariant(name !== undefined);
+      return t.identifier(name);
+    }
+
     let scopes = this.residualValues.get(val);
     invariant(scopes !== undefined);
 

@@ -93,6 +93,8 @@ export type Binding = {
   environment: EnvironmentRecord,
   name: string,
   isGlobal: boolean,
+  // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
+  phiNode?: AbstractValue,
 };
 
 // ECMA262 8.1.1.1
