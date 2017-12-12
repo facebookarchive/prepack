@@ -1554,7 +1554,7 @@ export class ResidualHeapSerializer {
               invariant(newVal);
               residualBinding.additionalValueSerialized = this.serializeValue(newVal);
             }
-            this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+            if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
           };
           this.currentAdditionalFunction = additionalFunctionValue;
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);

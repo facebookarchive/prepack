@@ -26,6 +26,7 @@ import {
   ObjectValue,
   AbstractObjectValue,
   NativeFunctionValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
@@ -653,7 +654,7 @@ export class ResidualHeapVisitor {
           }
         }
         invariant(result instanceof Value);
-        this.visitValue(result);
+        if (!(result instanceof UndefinedValue)) this.visitValue(result);
       };
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
       let code = functionValue.$ECMAScriptCode;
