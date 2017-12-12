@@ -613,12 +613,12 @@ export class Realm {
     if (completion.consequent instanceof AbruptCompletion) {
       Path.pushInverseAndRefine(completion.joinCondition);
       if (completion.alternate instanceof PossiblyNormalCompletion) {
-        completion.alternate.pathCondtions.forEach(Path.pushAndRefine);
+        completion.alternate.pathConditions.forEach(Path.pushAndRefine);
       }
     } else if (completion.alternate instanceof AbruptCompletion) {
       Path.pushAndRefine(completion.joinCondition);
       if (completion.consequent instanceof PossiblyNormalCompletion) {
-        completion.consequent.pathCondtions.forEach(Path.pushAndRefine);
+        completion.consequent.pathConditions.forEach(Path.pushAndRefine);
       }
     }
     return completion.value;
