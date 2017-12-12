@@ -46,7 +46,6 @@ export type PrepackOptions = {|
   trace?: boolean,
   uniqueSuffix?: string,
   maxStackDepth?: number,
-  enableDebugger?: boolean,
   debugInFilePath?: string,
   debugOutFilePath?: string,
 |};
