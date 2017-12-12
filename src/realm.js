@@ -175,6 +175,7 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
+    this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
   }
 
   start: number;
@@ -258,6 +259,7 @@ export class Realm {
   debuggerInstance: DebugServerType | void;
 
   nextGeneratorId: number = 0;
+  _abstractValuesDefined: Set<string>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -845,5 +847,13 @@ export class Realm {
       }
     }
     return errorHandler(diagnostic);
+  }
+
+  saveNameString(nameString: string): void {
+    this._abstractValuesDefined.add(nameString);
+  }
+
+  isNameStringUnique(nameString: string): boolean {
+    return !this._abstractValuesDefined.has(nameString);
   }
 }
