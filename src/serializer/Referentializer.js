@@ -81,7 +81,7 @@ export class Referentializer {
   }
 
   // Generate a shared function for accessing captured scope bindings.
-  // TODO: skip generating this function if the captured scope is not shared by multiple residual funcitons.
+  // TODO: skip generating this function if the captured scope is not shared by multiple residual functions.
   createCaptureScopeAccessFunction(referentializationScope: ReferentializationScope): BabelNodeStatement {
     const body = [];
     const selectorParam = t.identifier("selector");
