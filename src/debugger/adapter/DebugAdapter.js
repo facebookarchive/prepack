@@ -51,6 +51,7 @@ class PrepackDebugSession extends DebugSession {
 
   _registerMessageCallbacks() {
     this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
+      // Not all clients expect a StoppedEvent on entry. Only send for the ones which expect it
       if (this._clientID === DebuggerConstants.CLI_CLIENTID) {
         this.sendEvent(new StoppedEvent("entry", DebuggerConstants.PREPACK_THREAD_ID));
       }
