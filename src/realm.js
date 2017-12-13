@@ -36,7 +36,6 @@ import { Generator, PreludeGenerator } from "./utils/generator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
-import { leakValue } from "./utils/leak.js";
 import * as t from "babel-types";
 
 export type BindingEntry = { hasLeaked: boolean, value: void | Value };
@@ -927,10 +926,6 @@ export class Realm {
       propertyBinding.descriptor = desc;
       m.set(propertyBinding, d);
     });
-  }
-
-  leakValue(value: Value) {
-    leakValue(this, value, this.currentLocation);
   }
 
   // Provide the realm with maps in which to track modifications.

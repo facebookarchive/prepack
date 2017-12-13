@@ -328,7 +328,7 @@ function ensureFrozenValue(realm, value, loc) {
   if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen")) {
     let diag = new CompilerDiagnostic(
       "Unfrozen object leaked before end of global code",
-      loc,
+      loc || realm.currentLocation,
       "PP0017",
       "RecoverableError"
     );
@@ -338,20 +338,22 @@ function ensureFrozenValue(realm, value, loc) {
 
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
-export function leakValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
-  let objectsTrackedForLeaks = realm.createdObjectsTrackedForLeaks;
-  if (objectsTrackedForLeaks === undefined) {
-    // We're not tracking a pure function. That means that we would track
-    // everything as leaked. We'll assume that any object argument
-    // is invalid unless it's frozen.
-    ensureFrozenValue(realm, value, loc);
-  } else {
-    // If we're tracking a pure function, we can assume that only newly
-    // created objects and bindings, within it, are mutable. Any other
-    // object can safely be assumed to be deeply immutable as far as this
-    // pure function is concerned. However, any mutable object needs to
-    // be tainted as possibly having changed to anything.
-    let visitor = new ObjectValueLeakingVisitor(objectsTrackedForLeaks);
-    visitor.visitValue(value);
+export class LeakImplementation {
+  leakValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
+    let objectsTrackedForLeaks = realm.createdObjectsTrackedForLeaks;
+    if (objectsTrackedForLeaks === undefined) {
+      // We're not tracking a pure function. That means that we would track
+      // everything as leaked. We'll assume that any object argument
+      // is invalid unless it's frozen.
+      ensureFrozenValue(realm, value, loc);
+    } else {
+      // If we're tracking a pure function, we can assume that only newly
+      // created objects and bindings, within it, are mutable. Any other
+      // object can safely be assumed to be deeply immutable as far as this
+      // pure function is concerned. However, any mutable object needs to
+      // be tainted as possibly having changed to anything.
+      let visitor = new ObjectValueLeakingVisitor(objectsTrackedForLeaks);
+      visitor.visitValue(value);
+    }
   }
 }

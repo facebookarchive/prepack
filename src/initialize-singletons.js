@@ -14,6 +14,7 @@ import { CreateImplementation } from "./methods/create.js";
 import { EnvironmentImplementation } from "./methods/environment.js";
 import { FunctionImplementation } from "./methods/function.js";
 import { JoinImplementation } from "./methods/join.js";
+import { LeakImplementation } from "./utils/leak.js";
 import { PathImplementation } from "./utils/paths.js";
 import { PropertiesImplementation } from "./methods/properties.js";
 import { ToImplementation } from "./methods/to.js";
@@ -24,6 +25,7 @@ export default function() {
   Singletons.setEnvironment(new EnvironmentImplementation());
   Singletons.setFunctions(new FunctionImplementation());
   Singletons.setJoin(new JoinImplementation());
+  Singletons.setLeak((new LeakImplementation()));
   Singletons.setPath(new PathImplementation());
   Singletons.setProperties((new PropertiesImplementation(): any));
   Singletons.setTo((new ToImplementation(): any));

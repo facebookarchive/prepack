@@ -46,6 +46,7 @@ import type {
   BabelNodeObjectMethod,
   BabelNodePattern,
   BabelNodeVariableDeclaration,
+  BabelNodeSourceLocation,
 } from "babel-types";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
 
@@ -330,6 +331,10 @@ export type PathType = {
   withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T,
   pushAndRefine(condition: AbstractValue): void,
   pushInverseAndRefine(condition: AbstractValue): void,
+};
+
+export type LeakType = {
+  leakValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
 };
 
 export type PropertiesType = {

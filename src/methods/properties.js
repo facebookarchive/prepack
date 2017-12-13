@@ -48,7 +48,7 @@ import {
 } from "../methods/index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
-import { Create, Environment, Functions, Join, Path, To } from "../singletons.js";
+import { Create, Environment, Functions, Join, Leak, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 
@@ -162,13 +162,13 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
 function leakDescriptor(realm: Realm, desc: Descriptor) {
   if (desc.value) {
     invariant(desc.value instanceof Value, "internal fields should not leak");
-    realm.leakValue(desc.value);
+    Leak.leakValue(realm, desc.value);
   }
   if (desc.get) {
-    realm.leakValue(desc.get);
+    Leak.leakValue(realm, desc.get);
   }
   if (desc.set) {
-    realm.leakValue(desc.set);
+    Leak.leakValue(realm, desc.set);
   }
 }
 
@@ -210,7 +210,7 @@ export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (O.isLeakedObject()) {
-      realm.leakValue(V);
+      Leak.leakValue(realm, V);
       if (realm.generator) {
         realm.generator.emitPropertyAssignment(O, StringKey(P), V);
       }
