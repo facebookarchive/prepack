@@ -217,7 +217,7 @@ export class ResidualHeapSerializer {
   // symbols, properties, prototype.
   // For every created object that corresponds to a value,
   // this function should be invoked once.
-  // Thus, as a side effects, we gather statistics here on all emitted objects.
+  // Thus, as a side effect, we gather statistics here on all emitted objects.
   _emitObjectProperties(
     obj: ObjectValue,
     properties: Map<string, PropertyBinding> = obj.properties,
@@ -1360,7 +1360,7 @@ export class ResidualHeapSerializer {
       return this._serializeAbstractValueHelper(val);
     } else {
       // This abstract value's dependencies should all be declared
-      // but still need to check it again in case their serialized bodies are in different generator scope.
+      // but still need to check them again in case their serialized bodies are in different generator scope.
       this.emitter.emitNowOrAfterWaitingForDependencies(val.args, () => {
         const serializedValue = this._serializeAbstractValueHelper(val);
         let uid = this.getSerializeObjectIdentifier(val);
@@ -1516,7 +1516,7 @@ export class ResidualHeapSerializer {
           let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
           // result -- ignore TODO: return the result from the function somehow
           // Generator -- visit all entries
-          // Bindings -- only need to serialize bindings if they're captured by some nested function ??
+          // Bindings -- only need to serialize bindings if they're captured by some nested function?
           //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
           //          -- we don't overwrite anything they capture
           //          -- TODO: deal with these properly
