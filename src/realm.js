@@ -612,6 +612,16 @@ export class Realm {
     return completion.value;
   }
 
+  incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion) {
+    if (priorCompletion === undefined) return;
+    if (this.savedCompletion === undefined) {
+      this.savedCompletion = priorCompletion;
+      this.captureEffects(priorCompletion);
+    } else {
+      this.savedCompletion = Join.composePossiblyNormalCompletions(this, priorCompletion, this.savedCompletion);
+    }
+  }
+
   captureEffects(completion: PossiblyNormalCompletion) {
     if (completion.savedEffects !== undefined) {
       // Already called captureEffects, just carry on
