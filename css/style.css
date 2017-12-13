@@ -602,15 +602,22 @@ a.nav-item.is-brand {
 
 .graphBox {
   background-color: #ddd;
-  height: 100%;
+  height: 85%;
 }
 
-.legend {
+.graphLegend {
+  padding-top: 2%;
+  height: 15%;
+}
+
+.legend-header {
   text-align: center;
   align: center;
 }
 
 .legend-table {
+  text-align: center;
+  align: center;
   margin: 0 auto;
   padding-bottom: 3%;
   border-spacing: 5%;
