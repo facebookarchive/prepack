@@ -556,7 +556,7 @@ function run(args) {
     }
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.floor(passed / total * 100) || 0) + "%");
   return failed === 0;
 }
 
