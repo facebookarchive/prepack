@@ -65,7 +65,7 @@ function runSource(source) {
     // $FlowFixMe flow doesn't new Function
     fn(requireShim, moduleShim);
   } catch (e) {
-    console.log(codeAfterBabel);
+    console.error(codeAfterBabel);
     throw e;
   }
   return moduleShim.exports;

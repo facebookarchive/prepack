@@ -89,25 +89,25 @@ function runTest(name: string, code: string): boolean {
     if (name.endsWith("/bundle.js~")) (options: any).additionalFunctions = ["global.WildeBundle.prepareReact"];
     let serialized = prepackSources(sources, options);
     let new_map = serialized.map; // force source maps to get computed
-    if (!new_map) console.log(chalk.red("No source map"));
+    if (!new_map) console.error(chalk.red("No source map"));
     if (!serialized) {
-      console.log(chalk.red("Error during serialization"));
+      console.error(chalk.red("Error during serialization"));
       return false;
     } else {
       return true;
     }
   } catch (e) {
-    if (!(e instanceof FatalError)) console.log(e);
+    if (!(e instanceof FatalError)) console.error(e);
     return false;
   } finally {
     for (let [loc, error] of errors) {
-      console.log(
+      console.error(
         `${error.severity}: ${loc.source || ""} ${loc.start.line}:${loc.start.column +
           1} ${error.errorCode} ${error.message}`
       );
     }
     for (let error of errorList) {
-      console.log(`${error.severity}: ${error.errorCode} ${error.message}`);
+      console.error(`${error.severity}: ${error.errorCode} ${error.message}`);
     }
   }
 }
