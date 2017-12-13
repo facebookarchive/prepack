@@ -557,8 +557,7 @@ export class ResidualHeapSerializer {
 
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
   _getTarget(
-    val: Value,
-    scopes: Set<Scope>
+    val: Value
   ): {
     body: SerializedBody,
     usedOnlyByResidualFunctions?: true,
@@ -566,6 +565,9 @@ export class ResidualHeapSerializer {
     commonAncestor?: Scope,
     description?: string,
   } {
+    let scopes = this.residualValues.get(val);
+    invariant(scopes !== undefined);
+
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
 
@@ -657,9 +659,6 @@ export class ResidualHeapSerializer {
       return t.identifier(name);
     }
 
-    let scopes = this.residualValues.get(val);
-    invariant(scopes !== undefined);
-
     if (this._serializedValueWithIdentifiers.has(val)) {
       return this.getSerializeObjectIdentifier(val);
     }
@@ -672,7 +671,7 @@ export class ResidualHeapSerializer {
     }
     this._serializedValueWithIdentifiers.add(val);
 
-    let target = this._getTarget(val, scopes);
+    let target = this._getTarget(val);
 
     let oldBody = this.emitter.beginEmitting(val, target.body);
     let init = this._serializeValue(val);
@@ -684,6 +683,8 @@ export class ResidualHeapSerializer {
     if (this.residualHeapValueIdentifiers.needsIdentifier(val)) {
       if (init) {
         if (this._options.debugScopes) {
+          let scopes = this.residualValues.get(val);
+          invariant(scopes !== undefined);
           let comment = `${this._getValueDebugName(val)} referenced from scopes ${Array.from(scopes)
             .map(s => this._getScopeName(s))
             .join(",")}`;
@@ -1134,9 +1135,7 @@ export class ResidualHeapSerializer {
         invariant(bindingValue !== undefined);
         referencedValues.push(bindingValue);
         if (inAdditionalFunction) {
-          let scopes = this.residualValues.get(bindingValue);
-          invariant(scopes);
-          let { usedOnlyByAdditionalFunctions } = this._getTarget(bindingValue, scopes);
+          let { usedOnlyByAdditionalFunctions } = this._getTarget(bindingValue);
           if (usedOnlyByAdditionalFunctions)
             residualBinding.referencedOnlyFromAdditionalFunctions = this.currentAdditionalFunction;
         }
