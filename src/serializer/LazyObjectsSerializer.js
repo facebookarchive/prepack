@@ -44,10 +44,10 @@ const LAZY_OBJECTS_SERIALIZER_BODY_TYPE = "LazyObjectInitializer";
  * Objects are serialized into two parts:
  * 1. All lazy objects are created via lightweight LazyObjectsRuntime.createLazyObject() call.
  * 2. Lazy objects' property assignments are delayed in a callback function which is registered with the runtime.
- *    lazy objects rutnime will execute this callback to hydrate the lazy objects.
+ *    lazy objects runtime will execute this callback to hydrate the lazy objects.
  *
  * Currently only the raw objects are taking part in the lazy objects feature.
- * TODO: suppor for other objects, like array, regex etc...
+ * TODO: support for other objects, like array, regex etc...
  */
 export class LazyObjectsSerializer extends ResidualHeapSerializer {
   constructor(
