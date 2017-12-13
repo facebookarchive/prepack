@@ -1119,6 +1119,9 @@ export class FunctionImplementation {
   incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
+      if (savedCompletion.savedPathConditions) {
+        realm.pathConditions = savedCompletion.savedPathConditions;
+      }
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;
       if (c instanceof Value) {
