@@ -82,7 +82,7 @@ export function isReactComponent(name: string) {
   return name.length > 0 && name[0] === name[0].toUpperCase();
 }
 
-export function valueIsClassComponent(realm: Realm, value: Value) {
+export function valueIsClassComponent(realm: Realm, value: Value): boolean {
   if (!(value instanceof FunctionValue)) {
     return false;
   }
@@ -91,6 +91,18 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
     if (prototype instanceof ObjectValue) {
       return prototype.properties.has("isReactComponent");
     }
+  }
+  return false;
+}
+
+export function valueIsLegacyCreateClassComponent(realm: Realm, value: Value): boolean {
+  if (!(value instanceof FunctionValue)) {
+    return false;
+  }
+  let prototype = Get(realm, value, "prototype");
+
+  if (prototype instanceof ObjectValue) {
+    return prototype.properties.has("__reactAutoBindPairs");
   }
   return false;
 }
