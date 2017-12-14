@@ -14,7 +14,7 @@ import { ConcreteValue, Value } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
-import { Realm } from "../realm.js";
+import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
@@ -33,6 +33,11 @@ export type SerializedBody = {
   entries: Array<BabelNodeStatement>,
 };
 
+export type AdditionalFunctionEffects = {
+  effects: Effects,
+  transforms: Array<Function>,
+};
+
 export type AdditionalFunctionInfo = {
   functionValue: FunctionValue,
   captures: Set<string>,
@@ -47,7 +52,8 @@ export type FunctionInstance = {
   insertionPoint?: BodyReference,
   // Additional function that the function instance was declared inside of (if any)
   containingAdditionalFunction?: FunctionValue,
-  scopeInstances: Set<ScopeBinding>,
+  scopeInstances: Map<string, ScopeBinding>,
+  initializationStatements: Array<BabelNodeStatement>,
 };
 
 export type FunctionInfo = {
@@ -175,10 +181,23 @@ export class SerializerStatistics {
 }
 
 export type LocationService = {
-  getLocation: Value => void | BabelNodeIdentifier,
+  getLocation: Value => BabelNodeIdentifier,
   createLocation: () => BabelNodeIdentifier,
 };
 
 export type ReactSerializerState = {
   usedReactElementKeys: Set<string>,
+};
+
+export type ObjectRefCount = {
+  inComing: number, // The number of objects that references this object.
+  outGoing: number, // The number of objects that are referenced by this object.
+};
+
+export type SerializedResult = {
+  code: string,
+  map: void | SourceMap,
+  statistics?: SerializerStatistics,
+  timingStats?: TimingStatistics,
+  heapGraph?: string,
 };

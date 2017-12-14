@@ -179,7 +179,7 @@ export default class AbstractValue extends Value {
     if (!this.mightNotBeFalse()) return true; // false => val
     if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
     if (val instanceof AbstractValue) {
-      // Neither this (x) nor val (y) is a known value, so we need to some reasoning based on the structure
+      // Neither this (x) nor val (y) is a known value, so we need to do some reasoning based on the structure
       // x => !y if y => !x
       if (val.kind === "!") {
         let [y] = val.args;
@@ -191,6 +191,16 @@ export default class AbstractValue extends Value {
         let [x, y] = val.args;
         if (this.implies(x)) return y instanceof NullValue || y instanceof UndefinedValue;
         if (this.implies(y)) return x instanceof NullValue || x instanceof UndefinedValue;
+      }
+      // !!x => x
+      if (this.kind === "!") {
+        let [nx] = this.args;
+        invariant(nx instanceof AbstractValue);
+        if (nx.kind === "!") {
+          let [x] = nx.args;
+          invariant(x instanceof AbstractValue);
+          return x.equals(val);
+        }
       }
     }
     return false;
@@ -597,7 +607,7 @@ export default class AbstractValue extends Value {
   static createFromWidening(realm: Realm, value1: Value, value2: Value): AbstractValue {
     // todo: #1174 look at kind and figure out much narrower widenings
     let types = TypesDomain.joinValues(value1, value2);
-    let values = ValuesDomain.joinValues(realm, value1, value2);
+    let values = ValuesDomain.topVal;
     let [hash] = hashCall("widening");
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let result = new Constructor(realm, types, values, hash, []);

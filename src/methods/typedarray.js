@@ -25,7 +25,7 @@ import { AllocateArrayBuffer } from "../methods/arraybuffer.js";
 import { IsDetachedBuffer, IsInteger } from "../methods/is.js";
 import { GetValueFromBuffer, SetValueInBuffer } from "../methods/arraybuffer.js";
 import { Construct, SpeciesConstructor } from "../methods/construct.js";
-import { ToNumber } from "../methods/to.js";
+import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 
 export const ArrayElementSize = {
@@ -159,7 +159,7 @@ export function IntegerIndexedElementSet(realm: Realm, O: ObjectValue, index: nu
   );
 
   // 3. Let numValue be ? ToNumber(value).
-  let numValue = ToNumber(realm, value);
+  let numValue = To.ToNumber(realm, value);
 
   // 4. Let buffer be O.[[ViewedArrayBuffer]].
   let buffer = O.$ViewedArrayBuffer;

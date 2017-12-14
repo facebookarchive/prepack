@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, AbstractValue, BooleanValue } from "../../values/index.js";
-import { thisBooleanValue } from "../../methods/to.js";
+import { To } from "../../singletons.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -28,7 +28,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
     }
     // 1. Let b be ? thisBooleanValue(this value).
-    let b = thisBooleanValue(realm, context);
+    let b = To.thisBooleanValue(realm, context);
 
     // 2. If b is true, return "true"; else return "false".
     return new StringValue(realm, b.value ? "true" : "false");
@@ -37,6 +37,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.3.3.4
   obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? thisBooleanValue(this value).
-    return thisBooleanValue(realm, context);
+    return To.thisBooleanValue(realm, context);
   });
 }

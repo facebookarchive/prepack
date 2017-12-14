@@ -41,7 +41,6 @@ import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   GetV,
   GetThisValue,
-  ToObjectPartial,
   RequireObjectCoercible,
   HasSomeCompatibleType,
   GetIterator,
@@ -51,7 +50,7 @@ import {
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
 } from "./index.js";
-import { Create, Functions, Properties } from "../singletons.js";
+import { Create, Functions, Properties, To } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeVariableDeclaration,
@@ -133,8 +132,8 @@ export class EnvironmentImplementation {
         // i. Assert: In this case, base will never be null or undefined.
         invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
-        // ii. Let base be ToObject(base).
-        base = ToObjectPartial(realm, base);
+        // ii. Let base be To.ToObject(base).
+        base = To.ToObjectPartial(realm, base);
       }
       invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
@@ -866,7 +865,7 @@ export class EnvironmentImplementation {
           throw e;
         }
 
-        // f. Let status be CreateDataProperty(A, ! ToString(n), nextValue).
+        // f. Let status be CreateDataProperty(A, ! To.ToString(n), nextValue).
         let status = Create.CreateDataProperty(realm, A, n.toString(), nextValue);
 
         // g. Assert: status is true.
@@ -932,7 +931,7 @@ export class EnvironmentImplementation {
           throw e;
         }
 
-        // f. Let status be CreateDataProperty(A, ! ToString(n), nextValue).
+        // f. Let status be CreateDataProperty(A, ! To.ToString(n), nextValue).
         let status = Create.CreateDataProperty(realm, A, n.toString(), nextValue);
 
         // g. Assert: status is true.

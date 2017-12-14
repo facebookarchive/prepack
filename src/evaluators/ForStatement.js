@@ -13,9 +13,9 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Value, EmptyValue } from "../values/index.js";
 import { AbruptCompletion, BreakCompletion } from "../completions.js";
-import { ToBooleanPartial, UpdateEmpty } from "../methods/index.js";
+import { UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
-import { Environment } from "../singletons.js";
+import { Environment, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeForStatement } from "babel-types";
 
@@ -80,7 +80,7 @@ function ForBodyEvaluation(
       let testValue = Environment.GetValue(realm, testRef);
 
       // iii. If ToBoolean(testValue) is false, return NormalCompletion(V).
-      if (!ToBooleanPartial(realm, testValue)) return V;
+      if (!To.ToBooleanPartial(realm, testValue)) return V;
     }
 
     // b. Let result be the result of evaluating stmt.

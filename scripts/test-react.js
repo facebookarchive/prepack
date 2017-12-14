@@ -29,6 +29,7 @@ let prepackOptions = {
   maxStackDepth: 100,
   reactEnabled: true,
   inlineExpressions: true,
+  simpleClosures: true,
   omitInvariants: true,
 };
 
@@ -64,7 +65,7 @@ function runSource(source) {
     // $FlowFixMe flow doesn't new Function
     fn(requireShim, moduleShim);
   } catch (e) {
-    console.log(codeAfterBabel);
+    console.error(codeAfterBabel);
     throw e;
   }
   return moduleShim.exports;
@@ -201,6 +202,14 @@ describe("Test React", () => {
 
     it("Class component as root with instance variables #2", async () => {
       await runTest(directory, "class-root-with-instance-vars-2.js");
+    });
+  });
+
+  describe("Class component folding", () => {
+    let directory = "class-components";
+
+    it("Simple classes", async () => {
+      await runTest(directory, "simple-classes.js");
     });
   });
 });

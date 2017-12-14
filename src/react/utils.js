@@ -19,11 +19,17 @@ import {
   FunctionValue,
   StringValue,
   ArrayValue,
+  ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import { type ReactSerializerState } from "../serializer/types.js";
+import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
 import invariant from "../invariant.js";
+import { Properties } from "../singletons.js";
+import traverse from "babel-traverse";
+import * as t from "babel-types";
+import type { BabelNodeStatement } from "babel-types";
+import { FatalError } from "../errors.js";
 
 let reactElementSymbolKey = "react.element";
 
@@ -31,7 +37,14 @@ export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
     let realm = val.$Realm;
     let $$typeof = Get(realm, val, "$$typeof");
-    if ($$typeof instanceof SymbolValue) {
+    let globalObject = realm.$GlobalObject;
+    let globalSymbolValue = Get(realm, globalObject, "Symbol");
+
+    if (globalSymbolValue === realm.intrinsics.undefined) {
+      if ($$typeof instanceof NumberValue) {
+        return $$typeof.value === 0xeac7;
+      }
+    } else if ($$typeof instanceof SymbolValue) {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
       return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     }
@@ -69,7 +82,7 @@ export function isReactComponent(name: string) {
   return name.length > 0 && name[0] === name[0].toUpperCase();
 }
 
-export function valueIsClassComponent(realm: Realm, value: Value) {
+export function valueIsClassComponent(realm: Realm, value: Value): boolean {
   if (!(value instanceof FunctionValue)) {
     return false;
   }
@@ -78,6 +91,18 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
     if (prototype instanceof ObjectValue) {
       return prototype.properties.has("isReactComponent");
     }
+  }
+  return false;
+}
+
+export function valueIsLegacyCreateClassComponent(realm: Realm, value: Value): boolean {
+  if (!(value instanceof FunctionValue)) {
+    return false;
+  }
+  let prototype = Get(realm, value, "prototype");
+
+  if (prototype instanceof ObjectValue) {
+    return prototype.properties.has("__reactAutoBindPairs");
   }
   return false;
 }
@@ -127,4 +152,51 @@ export function mapOverArrayValue(realm: Realm, arrayValue: ArrayValue, mapFunc:
       mapFunc(elementValue, elementPropertyDescriptor);
     }
   }
+}
+
+export function convertSimpleClassComponentToFunctionalComponent(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue,
+  additionalFunctionEffects: AdditionalFunctionEffects
+): void {
+  let prototype = componentType.properties.get("prototype");
+  invariant(prototype);
+  invariant(prototype.descriptor);
+  prototype.descriptor.configurable = true;
+  Properties.DeletePropertyOrThrow(realm, componentType, "prototype");
+  // set the prototype back to an object
+  componentType.$Prototype = realm.intrinsics.FunctionPrototype;
+  // give the function the functional components params
+  componentType.$FormalParameters = [t.identifier("props"), t.identifier("context")];
+  // add a transform to occur after the additional function has serialized the body of the class
+  additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
+    // as this was a class before and is now a functional component, we need to replace
+    // this.props and this.context to props and context, via the function arugments
+    let funcNode = t.functionExpression(null, [], t.blockStatement(body));
+
+    traverse(
+      t.file(t.program([t.expressionStatement(funcNode)])),
+      {
+        "Identifier|ThisExpression"(path) {
+          let node = path.node;
+          if ((t.isIdentifier(node) && node.name === "this") || t.isThisExpression(node)) {
+            let parentPath = path.parentPath;
+            let parentNode = parentPath.node;
+
+            if (t.isMemberExpression(parentNode)) {
+              // remove the "this" from the member
+              parentPath.replaceWith(parentNode.property);
+            } else {
+              throw new FatalError(
+                `conversion of a simple class component to functional component failed due to "this" not being replaced`
+              );
+            }
+          }
+        },
+      },
+      undefined,
+      (undefined: any),
+      undefined
+    );
+  });
 }

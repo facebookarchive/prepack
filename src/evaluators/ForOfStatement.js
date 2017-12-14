@@ -29,12 +29,11 @@ import {
   IteratorStep,
   IteratorValue,
   IteratorClose,
-  ToObjectPartial,
   UpdateEmpty,
   DestructuringAssignmentEvaluation,
   GetIterator,
 } from "../methods/index.js";
-import { Environment, Properties } from "../singletons.js";
+import { Environment, Properties, To } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeForOfStatement,
@@ -154,7 +153,7 @@ export function ForInOfHeadEvaluation(
     }
 
     // b. Let obj be ToObject(exprValue).
-    let obj = ToObjectPartial(realm, exprValue);
+    let obj = To.ToObjectPartial(realm, exprValue);
 
     // c. Return ? EnumerateObjectProperties(obj).
     if (obj.isPartialObject() || obj instanceof AbstractObjectValue) {

@@ -11,7 +11,7 @@
 
 import { NumberValue, Value, ObjectValue } from "../values/index.js";
 import type { Realm } from "../realm.js";
-import { ToInteger } from "./to.js";
+import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 
 // Constants
@@ -198,16 +198,16 @@ export function MakeTime(realm: Realm, hour: number, min: number, sec: number, m
   if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms)) return NaN;
 
   // 2. Let h be ToInteger(hour).
-  let h = ToInteger(realm, new NumberValue(realm, hour));
+  let h = To.ToInteger(realm, new NumberValue(realm, hour));
 
   // 3. Let m be ToInteger(min).
-  let m = ToInteger(realm, new NumberValue(realm, min));
+  let m = To.ToInteger(realm, new NumberValue(realm, min));
 
   // 4. Let s be ToInteger(sec).
-  let s = ToInteger(realm, new NumberValue(realm, sec));
+  let s = To.ToInteger(realm, new NumberValue(realm, sec));
 
   // 5. Let milli be ToInteger(ms).
-  let milli = ToInteger(realm, new NumberValue(realm, ms));
+  let milli = To.ToInteger(realm, new NumberValue(realm, ms));
 
   // 6. Let t be h * msPerHour + m * msPerMinute + s * msPerSecond + milli, performing the arithmetic
   //    according to IEEE 754-2008 rules (that is, as if using the ECMAScript operators * and +).
@@ -223,13 +223,13 @@ export function MakeDay(realm: Realm, year: number, month: number, date: number)
   if (!isFinite(year) || !isFinite(month) || !isFinite(date)) return NaN;
 
   // 2. Let y be ToInteger(year).
-  let y = ToInteger(realm, new NumberValue(realm, year));
+  let y = To.ToInteger(realm, new NumberValue(realm, year));
 
   // 3. Let m be ToInteger(month).
-  let m = ToInteger(realm, new NumberValue(realm, month));
+  let m = To.ToInteger(realm, new NumberValue(realm, month));
 
   // 4. Let dt be ToInteger(date).
-  let dt = ToInteger(realm, new NumberValue(realm, date));
+  let dt = To.ToInteger(realm, new NumberValue(realm, date));
 
   // 5. Let ym be y + floor(m / 12).
   let ym = y + Math.floor(m / 12);
@@ -287,7 +287,7 @@ export function TimeClip(realm: Realm, time: number | Value): NumberValue {
   }
 
   // 3. Let clippedTime be ToInteger(time).
-  let clippedTime = ToInteger(realm, new NumberValue(realm, time));
+  let clippedTime = To.ToInteger(realm, new NumberValue(realm, time));
 
   // 4. If clippedTime is -0, let clippedTime be +0.
   if (Object.is(clippedTime, -0)) clippedTime = +0;

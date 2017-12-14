@@ -16,6 +16,7 @@ import { FunctionImplementation } from "./methods/function.js";
 import { JoinImplementation } from "./methods/join.js";
 import { PathImplementation } from "./utils/paths.js";
 import { PropertiesImplementation } from "./methods/properties.js";
+import { ToImplementation } from "./methods/to.js";
 import { WidenImplementation } from "./methods/widen.js";
 
 export default function() {
@@ -25,5 +26,6 @@ export default function() {
   Singletons.setJoin(new JoinImplementation());
   Singletons.setPath(new PathImplementation());
   Singletons.setProperties((new PropertiesImplementation(): any));
+  Singletons.setTo((new ToImplementation(): any));
   Singletons.setWiden((new WidenImplementation(): any));
 }

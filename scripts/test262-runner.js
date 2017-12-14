@@ -16,7 +16,7 @@ import { Realm, ExecutionContext } from "../lib/realm.js";
 import construct_realm from "../lib/construct_realm.js";
 import initializeGlobals from "../lib/globals.js";
 import { DetachArrayBuffer } from "../lib/methods/arraybuffer.js";
-import { ToStringPartial } from "../lib/methods/to.js";
+import { To } from "../lib/singletons.js";
 import { Get } from "../lib/methods/get.js";
 import invariant from "../lib/invariant.js";
 
@@ -307,9 +307,9 @@ function main(): number {
     }
   } catch (e) {
     if (e instanceof ArgsParseError) {
-      console.log("Illegal argument: %s.\n%s", e.message, usage());
+      console.error("Illegal argument: %s.\n%s", e.message, usage());
     } else {
-      console.log(e);
+      console.error(e);
     }
     process.exit(1);
   }
@@ -429,7 +429,7 @@ function masterRunSingleProcess(
     handleTest(t, harnesses, args.timeout, (err, results) => {
       if (err) {
         if (args.verbose) {
-          console.log(err);
+          console.error(err);
         }
       } else {
         let ok = handleTestResults(groups, t, results);
@@ -493,8 +493,8 @@ function masterRunMultiProcess(
         let errMsg = ErrorMessage.fromObject(message);
         // just skip the error, thus skipping that test
         if (args.verbose) {
-          console.log(`An error occurred in worker #${worker.process.pid}:`);
-          console.log(errMsg.err);
+          console.error(`An error occurred in worker #${worker.process.pid}:`);
+          console.error(errMsg.err);
         }
         giveTask(worker);
         break;
@@ -594,7 +594,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
     if (args.verbose) {
       console.log(msg);
       if (errmsg) {
-        console.log(errmsg);
+        console.error(errmsg);
       }
     }
     if (group_es5_failed + group_es6_failed > 0) {
@@ -636,8 +636,8 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 11798 || numPassedES6 < 5245 || numTimeouts > 0)) {
-    console.log(chalk.red("Overall failure. Expected more tests to pass!"));
+  if (!args.filterString && (numPassedES5 < 11738 || numPassedES6 < 3981 || numTimeouts > 0)) {
+    console.error(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
     // use 0 to avoid the npm error messages
@@ -744,7 +744,6 @@ function workerRun(args: WorkerProgramArgs) {
 
 function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResults: TestResult[]): void {
   if (err) {
-    // $FlowFixMe flow says "process.send" could be undefined
     process.send(new ErrorMessage(err));
   } else {
     let msg = new DoneMessage(test);
@@ -752,7 +751,6 @@ function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResu
       msg.testResults.push(t);
     }
     try {
-      // $FlowFixMe flow says "process.send" could be undefined
       process.send(msg);
     } catch (jsonCircularSerializationErr) {
       // JSON circular serialization, ThrowCompletion is too deep to be
@@ -764,7 +762,6 @@ function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResu
         }
       }
       // now try again
-      // $FlowFixMe flow says "process.send" could be undefined
       process.send(msg);
     }
   }
@@ -936,7 +933,7 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   $.defineNativeProperty("global", realm.$GlobalObject);
 
   let glob = ((realm.$GlobalObject: any): ObjectValue);
-  glob.defineNativeProperty("$", $);
+  glob.defineNativeProperty("$262", $);
   glob.defineNativeMethod("print", 1, (context, [arg]) => {
     return realm.intrinsics.undefined;
   });
@@ -1018,9 +1015,9 @@ function runTest(
 
           if (err.value instanceof ObjectValue) {
             if (err.value.$HasProperty("stack")) {
-              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "stack"));
+              interpreterStack = To.ToStringPartial(realm, Get(realm, err.value, "stack"));
             } else {
-              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "message"));
+              interpreterStack = To.ToStringPartial(realm, Get(realm, err.value, "message"));
             }
             // filter out if the error stack is due to async
             if (interpreterStack.includes("async ")) {
@@ -1155,6 +1152,24 @@ function filterFeatures(data: BannerData): boolean {
   if (features.includes("default-parameters")) return false;
   if (features.includes("generators")) return false;
   if (features.includes("generator")) return false;
+  if (features.includes("BigInt")) return false;
+  if (features.includes("class-fields")) return false;
+  if (features.includes("async-iteration")) return false;
+  if (features.includes("Function.prototype.toString")) return false;
+  if (features.includes("SharedArrayBuffer")) return false;
+  if (features.includes("cross-realm")) return false;
+  if (features.includes("atomics")) return false;
+  if (features.includes("u180e")) return false;
+  if (features.includes("Symbol.isConcatSpreadable")) return false;
+  if (features.includes("destructuring-binding")) return false;
+  if (features.includes("IsHTMLDDA")) return false;
+  if (features.includes("regexp-unicode-property-escapes")) return false;
+  if (features.includes("regexp-named-groups")) return false;
+  if (features.includes("regexp-lookbehind")) return false;
+  if (features.includes("regexp-dotall")) return false;
+  if (features.includes("optional-catch-binding")) return false;
+  if (features.includes("Symbol.asyncIterator")) return false;
+  if (features.includes("Promise.prototype.finally")) return false;
   return true;
 }
 

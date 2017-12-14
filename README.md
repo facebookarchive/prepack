@@ -40,6 +40,14 @@ $ prepack script.js --out script-processed.js
 
 Detailed instructions and the API can be found at [Prepack CLI: Getting Started](https://prepack.io/getting-started.html)
 
+### Plugins to other tools
+The following are a few plugins to other tools. They have been created and are maintained separately from Prepack itself. If you run into any issues with those plugins, please ask the plugin maintainers for support.
+
+- [A Rollup plugin for Prepack](https://www.npmjs.com/package/rollup-plugin-prepack)
+- [A Webpack plugin for Prepack](https://www.npmjs.com/package/prepack-webpack-plugin)
+- [A Visual Studio code plugin for Prepack](https://marketplace.visualstudio.com/items?itemName=RobinMalfait.prepack-vscode)
+- [A babel plugin which transforms Flow annotations into prepack model declarations](https://www.npmjs.com/package/babel-plugin-flow-prepack).
+
 ## Status
 
 - [test262 status on master branch](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/test262-status.txt?branch=master)
@@ -100,9 +108,11 @@ Instead of building, linting, type checking, testing separately, the following d
 
 ## How to edit the website
 
-The content for [prepack.io](https://prepack.io) resides in the [gh-pages branch](https://github.com/facebook/prepack/tree/gh-pages) of this repository. To make changes, submit a pull request, just like for any code changes. In order to run the website locally at [localhost:8000](http://localhost:8000), run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the cloned `gh-pages` branch.
+The content for [prepack.io](https://prepack.io) resides in the [website directory](https://github.com/facebook/prepack/tree/master/website) of this repository. To make changes, submit a pull request, just like for any code changes.
 
-At this time, a particular bundled version of Prepack is checked in to the `gh-pages` branch at `js/prepack.min.js`. To update the bundle, run `yarn build-bundle` from the `master` branch, and copy the resulting `prepack.min.js` file into the `gh-pages` branch into the `js` directory, and submit a pull request for that change.
+In order to run the website locally at [localhost:8000](http://localhost:8000):
+1. Build prepack into the website: `yarn build-bundle && mv prepack.min.js website/js`
+2. Run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the `website/` directory
 
 ## How to contribute
 

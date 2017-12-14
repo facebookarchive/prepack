@@ -21,15 +21,9 @@ import {
   InstanceofOperator,
   IsCallable,
   StrictEqualityComparison,
-  ToBoolean,
-  ToInt32,
-  ToNumber,
-  ToPrimitiveOrAbstract,
-  ToPropertyKey,
-  ToString,
-  ToUint32,
 } from "../methods/index.js";
 import type { Realm } from "../realm.js";
+import { To } from "../singletons.js";
 import {
   AbstractValue,
   BooleanValue,
@@ -63,6 +57,19 @@ export default class ValuesDomain {
   static topVal = new ValuesDomain(undefined);
 
   _elements: void | Set<ConcreteValue>;
+
+  contains(x: ValuesDomain): boolean {
+    let elems = this._elements;
+    let xelems = x._elements;
+    if (elems === xelems) return true;
+    if (elems === undefined) return true;
+    if (xelems === undefined) return false;
+    if (elems.size < xelems.size) return false;
+    for (let e of xelems) {
+      if (!elems.has(e)) return false;
+    }
+    return true;
+  }
 
   isTop() {
     return this._elements === undefined;
@@ -112,21 +119,21 @@ export default class ValuesDomain {
   static computeBinary(realm: Realm, op: BabelBinaryOperator, lval: ConcreteValue, rval: ConcreteValue): Value {
     if (op === "+") {
       // ECMA262 12.8.3 The Addition Operator
-      let lprim = ToPrimitiveOrAbstract(realm, lval);
-      let rprim = ToPrimitiveOrAbstract(realm, rval);
+      let lprim = To.ToPrimitiveOrAbstract(realm, lval);
+      let rprim = To.ToPrimitiveOrAbstract(realm, rval);
 
       if (lprim instanceof AbstractValue || rprim instanceof AbstractValue) {
         return AbstractValue.createFromBinaryOp(realm, op, lprim, rprim);
       }
 
       if (lprim instanceof StringValue || rprim instanceof StringValue) {
-        let lstr = ToString(realm, lprim);
-        let rstr = ToString(realm, rprim);
+        let lstr = To.ToString(realm, lprim);
+        let rstr = To.ToString(realm, rprim);
         return new StringValue(realm, lstr + rstr);
       }
 
-      let lnum = ToNumber(realm, lprim);
-      let rnum = ToNumber(realm, rprim);
+      let lnum = To.ToNumber(realm, lprim);
+      let rnum = To.ToNumber(realm, rprim);
       return Add(realm, lnum, rnum);
     } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
       // ECMA262 12.10.3
@@ -161,13 +168,13 @@ export default class ValuesDomain {
       }
     } else if (op === ">>>") {
       // ECMA262 12.9.5.1
-      let lnum = ToUint32(realm, lval);
-      let rnum = ToUint32(realm, rval);
+      let lnum = To.ToUint32(realm, lval);
+      let rnum = To.ToUint32(realm, rval);
 
       return new NumberValue(realm, lnum >>> rnum);
     } else if (op === "<<" || op === ">>") {
-      let lnum = ToInt32(realm, lval);
-      let rnum = ToUint32(realm, rval);
+      let lnum = To.ToInt32(realm, lval);
+      let rnum = To.ToUint32(realm, rval);
 
       if (op === "<<") {
         // ECMA262 12.9.3.1
@@ -180,17 +187,17 @@ export default class ValuesDomain {
       // ECMA262 12.6.3
 
       // 5. Let base be ? ToNumber(leftValue).
-      let base = ToNumber(realm, lval);
+      let base = To.ToNumber(realm, lval);
 
       // 6. Let exponent be ? ToNumber(rightValue).
-      let exponent = ToNumber(realm, rval);
+      let exponent = To.ToNumber(realm, rval);
 
       // 7. Return the result of Applying the ** operator with base and exponent as specified in 12.7.3.4.
       return new NumberValue(realm, Math.pow(base, exponent));
     } else if (op === "%" || op === "/" || op === "*" || op === "-") {
       // ECMA262 12.7.3
-      let lnum = ToNumber(realm, lval);
-      let rnum = ToNumber(realm, rval);
+      let lnum = To.ToNumber(realm, lval);
+      let rnum = To.ToNumber(realm, rval);
 
       if (isNaN(rnum)) return realm.intrinsics.NaN;
       if (isNaN(lnum)) return realm.intrinsics.NaN;
@@ -231,10 +238,10 @@ export default class ValuesDomain {
       // ECMA262 12.12.3
 
       // 5. Let lnum be ? ToInt32(lval).
-      let lnum: number = ToInt32(realm, lval);
+      let lnum: number = To.ToInt32(realm, lval);
 
       // 6. Let rnum be ? ToInt32(rval).
-      let rnum: number = ToInt32(realm, rval);
+      let rnum: number = To.ToInt32(realm, rval);
 
       // 7. Return the result of applying the bitwise operator @ to lnum and rnum. The result is a signed 32 bit integer.
       if (op === "&") {
@@ -253,7 +260,7 @@ export default class ValuesDomain {
       }
 
       // 6. Return ? HasProperty(rval, ToPropertyKey(lval)).
-      return new BooleanValue(realm, HasProperty(realm, rval, ToPropertyKey(realm, lval)));
+      return new BooleanValue(realm, HasProperty(realm, rval, To.ToPropertyKey(realm, lval)));
     } else if (op === "instanceof") {
       // ECMA262 12.10.3
 
@@ -299,7 +306,7 @@ export default class ValuesDomain {
   // Note that calling this can result in user code running, which can side-effect the heap.
   // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
   static computeLogical(realm: Realm, op: BabelNodeLogicalOperator, lval: ConcreteValue, rval: ConcreteValue): Value {
-    let lbool = ToBoolean(realm, lval);
+    let lbool = To.ToBoolean(realm, lval);
 
     if (op === "&&") {
       // ECMA262 12.13.3
@@ -318,12 +325,12 @@ export default class ValuesDomain {
       // ECMA262 12.5.6.1
       // 1. Let expr be the result of evaluating UnaryExpression.
       // 2. Return ? ToNumber(? GetValue(expr)).
-      return new NumberValue(realm, ToNumber(realm, value));
+      return new NumberValue(realm, To.ToNumber(realm, value));
     } else if (op === "-") {
       // ECMA262 12.5.7.1
       // 1. Let expr be the result of evaluating UnaryExpression.
       // 2. Let oldValue be ? ToNumber(? GetValue(expr)).
-      let oldValue = ToNumber(realm, value);
+      let oldValue = To.ToNumber(realm, value);
 
       // 3. If oldValue is NaN, return NaN.
       if (isNaN(oldValue)) {
@@ -336,7 +343,7 @@ export default class ValuesDomain {
       // ECMA262 12.5.8
       // 1. Let expr be the result of evaluating UnaryExpression.
       // 2. Let oldValue be ? ToInt32(? GetValue(expr)).
-      let oldValue = ToInt32(realm, value);
+      let oldValue = To.ToInt32(realm, value);
 
       // 3. Return the result of applying bitwise complement to oldValue. The result is a signed 32-bit integer.
       return new NumberValue(realm, ~oldValue);
@@ -344,7 +351,7 @@ export default class ValuesDomain {
       // ECMA262 12.6.9
       // 1. Let expr be the result of evaluating UnaryExpression.
       // 2. Let oldValue be ToBoolean(? GetValue(expr)).
-      let oldValue = ToBoolean(realm, value);
+      let oldValue = To.ToBoolean(realm, value);
 
       // 3. If oldValue is true, return false.
       if (oldValue === true) return realm.intrinsics.false;

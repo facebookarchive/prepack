@@ -31,8 +31,6 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
   let prepackRuntime = "";
   let prepackArguments = [];
   let sourceFile = "";
-  let debugInFilePath = "";
-  let debugOutFilePath = "";
 
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -52,23 +50,12 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
       prepackArguments = args.shift().split(" ");
     } else if (arg === "sourceFile") {
       sourceFile = args.shift();
-    } else if (arg === "debugInFilePath") {
-      debugInFilePath = args.shift();
-    } else if (arg === "debugOutFilePath") {
-      debugOutFilePath = args.shift();
     } else {
       console.error("Unknown argument: " + arg);
       process.exit(1);
     }
   }
-  if (debugInFilePath.length === 0) {
-    console.error("No debugger input file path provided!");
-    process.exit(1);
-  }
-  if (debugOutFilePath.length === 0) {
-    console.error("No debugger output file path provided!");
-    process.exit(1);
-  }
+
   if (adapterPath.length === 0) {
     console.error("No path to the debug adapter provided!");
     process.exit(1);
@@ -85,8 +72,6 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
     prepackRuntime: prepackRuntime,
     prepackArguments: prepackArguments,
     sourceFile: sourceFile,
-    debugInFilePath: debugInFilePath,
-    debugOutFilePath: debugOutFilePath,
   };
   return result;
 }

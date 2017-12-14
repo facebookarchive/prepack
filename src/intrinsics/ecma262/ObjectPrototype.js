@@ -11,21 +11,20 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, ObjectValue, BooleanValue, NullValue } from "../../values/index.js";
-import { ToPropertyKey, ToObject, ToObjectPartial } from "../../methods/to.js";
 import { SameValuePartial, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { Invoke } from "../../methods/call.js";
-import { Properties } from "../../singletons.js";
+import { Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.2
   obj.defineNativeMethod("hasOwnProperty", 1, (context, [V]) => {
     // 1. Let P be ? ToPropertyKey(V).
-    let P = ToPropertyKey(realm, V.throwIfNotConcrete());
+    let P = To.ToPropertyKey(realm, V.throwIfNotConcrete());
 
     // 2. Let O be ? ToObject(this value).
-    let O = ToObjectPartial(realm, context);
+    let O = To.ToObjectPartial(realm, context);
 
     // 3. Return ? HasOwnProperty(O, P).
     return new BooleanValue(realm, HasOwnProperty(realm, O, P));
@@ -38,7 +37,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     V = V.throwIfNotConcreteObject();
 
     // 2. Let O be ? ToObject(this value).
-    let O = ToObjectPartial(realm, context);
+    let O = To.ToObjectPartial(realm, context);
 
     // 3. Repeat
     while (true) {
@@ -58,10 +57,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.4
   obj.defineNativeMethod("propertyIsEnumerable", 1, (context, [V]) => {
     // 1. Let P be ? ToPropertyKey(V).
-    let P = ToPropertyKey(realm, V.throwIfNotConcrete());
+    let P = To.ToPropertyKey(realm, V.throwIfNotConcrete());
 
     // 2. Let O be ? ToObject(this value).
-    let O = ToObjectPartial(realm, context);
+    let O = To.ToObjectPartial(realm, context);
 
     // 3. Let desc be ? O.[[GetOwnProperty]](P).
     let desc = O.$GetOwnProperty(P);
@@ -89,14 +88,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.7
   obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? ToObject(this value).
-    return ToObjectPartial(realm, context);
+    return To.ToObjectPartial(realm, context);
   });
 
   obj.$DefineOwnProperty("__proto__", {
     // B.2.2.1.1
     get: new NativeFunctionValue(realm, undefined, "get __proto__", 0, context => {
       // 1. Let O be ? ToObject(this value).
-      let O = ToObject(realm, context.throwIfNotConcrete());
+      let O = To.ToObject(realm, context.throwIfNotConcrete());
 
       // 2. Return ? O.[[GetPrototypeOf]]().
       return O.$GetPrototypeOf();

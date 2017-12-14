@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue, NumberValue, AbstractValue } from "../../values/index.js";
-import { ToNumber, ToUint32, IsToNumberPure } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 
@@ -155,7 +155,7 @@ export default function(realm: Realm): ObjectValue {
       if (
         originalLength <= 26 &&
         args.some(arg => arg instanceof AbstractValue) &&
-        args.every(arg => IsToNumberPure(realm, arg))
+        args.every(arg => To.IsToNumberPure(realm, arg))
       ) {
         let r = buildMathTemplates.get(name);
         if (r === undefined) {
@@ -169,7 +169,7 @@ export default function(realm: Realm): ObjectValue {
 
       return new NumberValue(
         realm,
-        Math[name].apply(null, args.map((arg, i) => ToNumber(realm, arg.throwIfNotConcrete())))
+        Math[name].apply(null, args.map((arg, i) => To.ToNumber(realm, arg.throwIfNotConcrete())))
       );
     });
   }
@@ -181,15 +181,15 @@ export default function(realm: Realm): ObjectValue {
   obj.defineNativeMethod("imul", 2, (context, [x, y]) => {
     if (
       (x instanceof AbstractValue || y instanceof AbstractValue) &&
-      IsToNumberPure(realm, x) &&
-      IsToNumberPure(realm, y)
+      To.IsToNumberPure(realm, x) &&
+      To.IsToNumberPure(realm, y)
     ) {
       return AbstractValue.createFromTemplate(realm, imulTemplate, NumberValue, [x, y], imulTemplateSrc);
     }
 
     return new NumberValue(
       realm,
-      Math.imul(ToUint32(realm, x.throwIfNotConcrete()), ToUint32(realm, y.throwIfNotConcrete()))
+      Math.imul(To.ToUint32(realm, x.throwIfNotConcrete()), To.ToUint32(realm, y.throwIfNotConcrete()))
     );
   });
 

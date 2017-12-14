@@ -13,16 +13,14 @@ import readline from "readline";
 import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
-import { DebuggerConstants } from "./../DebuggerConstants";
-import { LaunchRequestArguments } from "./../types.js";
+import { DebuggerConstants } from "./../common/DebuggerConstants";
+import { LaunchRequestArguments } from "./../common/types.js";
 
 export type DebuggerCLIArguments = {
   adapterPath: string,
   prepackRuntime: string,
   sourceFile: string,
   prepackArguments: Array<string>,
-  debugInFilePath: string,
-  debugOutFilePath: string,
 };
 
 //separator for messages according to the protocol
@@ -39,8 +37,6 @@ export class UISession {
     this._prepackRuntime = args.prepackRuntime;
     this._sourceFile = args.sourceFile;
     this._prepackArguments = args.prepackArguments;
-    this._inFilePath = args.debugInFilePath;
-    this._outFilePath = args.debugOutFilePath;
     this._sequenceNum = 1;
     this._invalidCount = 0;
     this._dataHandler = new DataHandler();
@@ -51,10 +47,6 @@ export class UISession {
   _proc: Process;
   //path to the debug adapter
   _adapterPath: string;
-  // path to debugger input file
-  _inFilePath: string;
-  // path to debugger output file
-  _outFilePath: string;
   // the child (i.e. adapter) process
   _adapterProcess: child_process.ChildProcess;
 
@@ -132,18 +124,7 @@ export class UISession {
     } else if (event.event === "stopped") {
       this._prepackWaiting = true;
       if (event.body) {
-        if (event.body.reason === "entry") {
-          this._uiOutput("Prepack is ready");
-          this._prepackLaunched = true;
-          // start reading requests from the user
-          this._reader.question("(dbg) ", (input: string) => {
-            this._dispatch(input);
-          });
-        } else if (event.body.reason.startsWith("breakpoint")) {
-          this._uiOutput("Prepack stopped on: " + event.body.reason);
-        } else {
-          this._uiOutput(event.body.reason);
-        }
+        this._uiOutput(event.body.reason);
       }
     }
   }
@@ -151,6 +132,8 @@ export class UISession {
   _processResponse(response: DebugProtocol.Response) {
     if (response.command === "initialize") {
       this._processInitializeResponse(((response: any): DebugProtocol.InitializeResponse));
+    } else if (response.command === "launch") {
+      this._processLaunchResponse(((response: any): DebugProtocol.LaunchResponse));
     } else if (response.command === "threads") {
       this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
     } else if (response.command === "stackTrace") {
@@ -177,10 +160,18 @@ export class UISession {
       prepackRuntime: this._prepackRuntime,
       sourceFile: this._sourceFile,
       prepackArguments: this._prepackArguments,
-      debugInFilePath: this._inFilePath,
-      debugOutFilePath: this._outFilePath,
     };
     this._sendLaunchRequest(launchArgs);
+  }
+
+  _processLaunchResponse(response: DebugProtocol.LaunchResponse) {
+    this._uiOutput("Prepack is ready");
+    this._prepackLaunched = true;
+    this._prepackWaiting = true;
+    // start reading requests from the user
+    this._reader.question("(dbg) ", (input: string) => {
+      this._dispatch(input);
+    });
   }
 
   _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {
@@ -289,6 +280,13 @@ export class UISession {
         };
         this._sendStepIntoRequest(stepIntoArgs);
         break;
+      case "stepOver":
+        if (parts.length !== 1) return false;
+        let stepOverArgs: DebugProtocol.NextArguments = {
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStepOverRequest(stepOverArgs);
+        break;
       case "eval":
         if (parts.length < 2) return false;
         let evalFrameId = parseInt(parts[1], 10);
@@ -325,10 +323,10 @@ export class UISession {
       this._invalidCount++;
       //prevent stack overflow from recursion
       if (this._invalidCount >= 10) {
-        console.log("Too many invalid commands, shutting down...");
+        console.error("Too many invalid commands, shutting down...");
         this.shutdown();
       }
-      console.log("Invalid command: " + input);
+      console.error("Invalid command: " + input);
       this._reader.question("(dbg) ", (line: string) => {
         this._dispatch(line);
       });
@@ -456,6 +454,17 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "stepIn",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStepOverRequest(args: DebugProtocol.NextArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "next",
       arguments: args,
     };
     let json = JSON.stringify(message);

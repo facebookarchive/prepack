@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.14-alpha.0",
+  "version": "0.2.16-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -24,6 +24,7 @@
   "browser": "lib/prepack-standalone.js",
   "scripts": {
     "build": "babel src --out-dir lib --source-maps && yarn build-bundle",
+    "build-debugger": "BABEL_ENV=debugger babel src/debugger --out-dir lib/debugger --source-maps",
     "build-scripts": "babel scripts --out-dir lib --source-maps",
     "build-bundle": "webpack",
     "watch": "babel src scripts --out-dir lib --watch --source-maps",
@@ -36,6 +37,7 @@
     "test-sourcemaps": "babel-node scripts/generate-sourcemaps-test.js && bash < scripts/test-sourcemaps.sh",
     "test-test262": "babel-node scripts/test262-runner.js",
     "test-test262-nightly": "NIGHTLY_BUILD=true babel-node -- scripts/test262-runner.js",
+    "test-test262-new": "babel-node scripts/test262.js",
     "test-internal": "babel-node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 scripts/test-internal.js",
     "test-error-handler": "babel-node scripts/test-error-handler.js",
     "test-error-handler-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -o coverage-sourcemapped.error -t html",
@@ -100,6 +102,7 @@
     "react-test-renderer": "^16.0.0",
     "remap-istanbul": "^0.9.1",
     "source-map-support": "^0.4.6",
+    "test262-integrator": "^1.2.0",
     "uglify-js": "^2.6.2",
     "webpack": "^2.3.3"
   },

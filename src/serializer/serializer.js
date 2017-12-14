@@ -15,13 +15,12 @@ import type { SourceFile } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
 import generate from "babel-generator";
-import type SourceMap from "babel-generator";
 import traverseFast from "../utils/traverse-fast.js";
 import { stripFlowTypeAnnotations } from "../flow/utils.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics, ReactStatistics } from "./types.js";
-import type { ReactSerializerState } from "./types.js";
+import type { ReactSerializerState, SerializedResult } from "./types.js";
 import { Functions } from "./functions.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
@@ -31,6 +30,8 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
 import * as t from "babel-types";
+import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
+import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -94,15 +95,7 @@ export class Serializer {
     return code;
   }
 
-  init(
-    sources: Array<SourceFile>,
-    sourceMaps?: boolean = false
-  ): void | {
-    code: string,
-    map: void | SourceMap,
-    statistics?: SerializerStatistics,
-    timingStats?: TimingStatistics,
-  } {
+  init(sources: Array<SourceFile>, sourceMaps?: boolean = false): void | SerializedResult {
     // Phase 1: Let's interpret.
     let timingStats = this.options.profile ? new TimingStatistics() : undefined;
     if (timingStats !== undefined) {
@@ -141,9 +134,37 @@ export class Serializer {
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
+    const realmPreludeGenerator = this.realm.preludeGenerator;
+    invariant(realmPreludeGenerator);
+    const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
+      residualHeapVisitor.values.keys(),
+      realmPreludeGenerator
+    );
+
+    let heapGraph;
+    if (this.options.heapGraph) {
+      const heapRefCounter = new ResidualHeapRefCounter(
+        this.realm,
+        this.logger,
+        this.modules,
+        additionalFunctionValuesAndEffects
+      );
+      heapRefCounter.visitRoots();
+
+      const heapGraphGenerator = new ResidualHeapGraphGenerator(
+        this.realm,
+        this.logger,
+        this.modules,
+        additionalFunctionValuesAndEffects,
+        residualHeapValueIdentifiers,
+        heapRefCounter.getResult()
+      );
+      heapGraphGenerator.visitRoots();
+      heapGraph = heapGraphGenerator.generateResult();
+    }
+
     // Phase 2: Let's serialize the heap and generate code.
     // Serialize for the first time in order to gather reference counts
-    let residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers();
 
     if (this.options.inlineExpressions) {
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
@@ -206,6 +227,7 @@ export class Serializer {
       reactStatistics,
       statistics: residualHeapSerializer.statistics,
       timingStats: timingStats,
+      heapGraph,
     };
   }
 }
