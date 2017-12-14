@@ -48,6 +48,7 @@ import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { getSuggestedArrayLiteralLength } from "./utils.js";
 import { Environment, To } from "../singletons.js";
+import { valueIsReactLibraryObject } from "../react/utils.js";
 
 export type Scope = FunctionValue | Generator;
 
@@ -419,8 +420,18 @@ export class ResidualHeapVisitor {
       case "Number":
       case "String":
       case "Boolean":
-      case "ReactElement":
       case "ArrayBuffer":
+        return;
+      case "ReactElement":
+        // find and visit the React library
+        let reactLibraryObject = this.realm.react.reactLibraryObject;
+        if (reactLibraryObject === undefined) {
+          throw new FatalError("unable to visit createElement due to React not being referenced in scope");
+        }
+        if (this.realm.react.output === "create-element") {
+          let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
+          this.visitValue(reactCreateElement);
+        }
         return;
       case "Date":
         let dateValue = val.$DateValue;
@@ -451,8 +462,12 @@ export class ResidualHeapVisitor {
         return;
       default:
         if (kind !== "Object") this.logger.logError(val, `Object of kind ${kind} is not supported in residual heap.`);
-        if (this.$ParameterMap !== undefined)
+        if (this.$ParameterMap !== undefined) {
           this.logger.logError(val, `Arguments object is not supported in residual heap.`);
+        }
+        if (valueIsReactLibraryObject(this.realm, val)) {
+          this.realm.react.reactLibraryObject = val;
+        }
         return;
     }
   }

@@ -31,7 +31,7 @@ import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { FatalError } from "../errors.js";
 
-let reactElementSymbolKey = "react.element";
+export type ReactSymbolTypes = "react.element" | "react.symbol" | "react.portal" | "react.return" | "react.call";
 
 export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
@@ -52,10 +52,11 @@ export function isReactElement(val: Value): boolean {
   return false;
 }
 
-export function getReactElementSymbol(realm: Realm): SymbolValue {
-  let reactElementSymbol = realm.react.reactElementSymbol;
-  if (reactElementSymbol !== undefined) {
-    return reactElementSymbol;
+export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): SymbolValue {
+  let reactSymbol = realm.react.symbols.get(symbolKey);
+  if (reactSymbol !== undefined) {
+    invariant(reactSymbol instanceof SymbolValue);
+    return reactSymbol;
   }
   let SymbolFor = realm.intrinsics.Symbol.properties.get("for");
   if (SymbolFor !== undefined) {
@@ -64,14 +65,13 @@ export function getReactElementSymbol(realm: Realm): SymbolValue {
     if (SymbolForDescriptor !== undefined) {
       let SymbolForValue = SymbolForDescriptor.value;
       if (SymbolForValue !== undefined && typeof SymbolForValue.$Call === "function") {
-        realm.react.reactElementSymbol = reactElementSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [
-          new StringValue(realm, reactElementSymbolKey),
-        ]);
+        reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)]);
+        realm.react.symbols.set(symbolKey, reactSymbol);
       }
     }
   }
-  invariant(reactElementSymbol instanceof SymbolValue, `ReactElement "$$typeof" property was not a symbol`);
-  return reactElementSymbol;
+  invariant(reactSymbol instanceof SymbolValue, `Symbol("${symbolKey}") could not be found in realm`);
+  return reactSymbol;
 }
 
 export function isTagName(ast: BabelNode): boolean {
@@ -91,6 +91,31 @@ export function valueIsClassComponent(realm: Realm, value: Value): boolean {
     if (prototype instanceof ObjectValue) {
       return prototype.properties.has("isReactComponent");
     }
+  }
+  return false;
+}
+
+export function valueIsReactLibraryObject(realm: Realm, value: ObjectValue): boolean {
+  if (realm.react.reactLibraryObject === value) {
+    return true;
+  }
+  // we check that the object is the React or React-like library by checking for
+  // core properties that should exist on it
+  let reactVersion = Get(realm, value, "version");
+  let reactCreateElement = Get(realm, value, "createElement");
+  let reactCloneElement = Get(realm, value, "cloneElement");
+  let reactIsValidElement = Get(realm, value, "isValidElement");
+  let reactComponent = Get(realm, value, "Component");
+  let reactChildren = Get(realm, value, "Children");
+  if (
+    reactVersion instanceof StringValue &&
+    reactCreateElement instanceof FunctionValue &&
+    reactComponent instanceof FunctionValue &&
+    reactCloneElement instanceof FunctionValue &&
+    reactIsValidElement instanceof FunctionValue &&
+    reactChildren instanceof ObjectValue
+  ) {
+    return true;
   }
   return false;
 }

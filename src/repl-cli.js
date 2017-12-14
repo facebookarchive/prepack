@@ -48,6 +48,7 @@ function serialize(realm: Realm, res: Value | AbruptCompletion): any {
 
 let realm = construct_realm({
   reactEnabled: true,
+  reactOutput: "jsx",
 });
 initializeGlobals(realm);
 

@@ -11,9 +11,8 @@
 
 import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
-import { IsArray, Get, IsAccessorDescriptor } from "../methods/index.js";
+import { IsArray, Get } from "../methods/index.js";
 import {
-  ArrayValue,
   BoundFunctionValue,
   ProxyValue,
   SymbolValue,
@@ -29,8 +28,6 @@ import {
   NativeFunctionValue,
   UndefinedValue,
 } from "../values/index.js";
-import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
-import { isReactElement } from "../react/utils.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -66,6 +63,7 @@ import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
 import { To } from "../singletons.js";
+import { ResidualReactElements } from "./ResidualReactElements.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -116,6 +114,7 @@ export class ResidualHeapSerializer {
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
     this.additionalFunctionValueNestedFunctions = new Set();
+    this.residualReactElements = new ResidualReactElements(this.realm, this);
     this.residualFunctions = new ResidualFunctions(
       this.realm,
       this.statistics,
@@ -194,6 +193,7 @@ export class ResidualHeapSerializer {
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   react: ReactSerializerState;
+  residualReactElements: ResidualReactElements;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
@@ -855,106 +855,6 @@ export class ResidualHeapSerializer {
     return t.arrayExpression(initProperties);
   }
 
-  _serializeValueReactElementChild(child: Value): BabelNode {
-    if (isReactElement(child)) {
-      // if we know it's a ReactElement, we add the value to the serializedValues
-      // and short cut to get back the JSX expression so we don't emit additional data
-      // we do this to ensure child JSXElements can get keys assigned if needed
-      this.serializedValues.add(child);
-      let reactChild = this._serializeValueObject(((child: any): ObjectValue));
-      if (reactChild.leadingComments != null) {
-        return t.jSXExpressionContainer(reactChild);
-      }
-      return reactChild;
-    }
-    const expr = this.serializeValue(child);
-
-    if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
-      return t.jSXText(((expr: any).value: string) + "");
-    } else if (t.isJSXElement(expr)) {
-      return expr;
-    }
-    return t.jSXExpressionContainer(expr);
-  }
-
-  _serializeValueReactElement(val: ObjectValue): BabelNodeExpression {
-    let typeValue = Get(this.realm, val, "type");
-    let keyValue = Get(this.realm, val, "key");
-    let refValue = Get(this.realm, val, "ref");
-    let propsValue = Get(this.realm, val, "props");
-
-    invariant(typeValue !== null, "JSXElement type of null");
-
-    let identifier = convertExpressionToJSXIdentifier(this.serializeValue(typeValue), true);
-    let attributes = [];
-    let children = [];
-
-    if (keyValue !== null) {
-      let keyExpr = this.serializeValue(keyValue);
-      if (keyExpr.type !== "NullLiteral") {
-        attributes.push(convertKeyValueToJSXAttribute("key", keyExpr));
-      }
-    }
-
-    if (refValue !== null) {
-      let refExpr = this.serializeValue(refValue);
-      if (refExpr.type !== "NullLiteral") {
-        attributes.push(convertKeyValueToJSXAttribute("ref", refExpr));
-      }
-    }
-
-    if (propsValue instanceof ObjectValue) {
-      // the propsValue is visited to get the properties, but we don't emit it as the object
-      // is contained within a JSXOpeningElement
-      this.serializedValues.add(propsValue);
-      // have to case propsValue to ObjectValue or Flow complains that propsValues can be null/undefined
-      for (let [key, propertyBinding] of (propsValue: ObjectValue).properties) {
-        let desc = propertyBinding.descriptor;
-        if (desc === undefined) continue; // deleted
-        invariant(!IsAccessorDescriptor(this.realm, desc), "expected descriptor to be a non-accessor property");
-
-        invariant(key !== "key" && key !== "ref", `"${key}" is a reserved prop name`);
-
-        if (key === "children" && desc.value !== undefined) {
-          let childrenValue = desc.value;
-          if (childrenValue instanceof ArrayValue) {
-            this.serializedValues.add(childrenValue);
-            let childrenLength = Get(this.realm, childrenValue, "length");
-            let childrenLengthValue = 0;
-            if (childrenLength instanceof NumberValue) {
-              childrenLengthValue = childrenLength.value;
-              for (let i = 0; i < childrenLengthValue; i++) {
-                let child = Get(this.realm, childrenValue, "" + i);
-                if (child instanceof Value) {
-                  children.push(this._serializeValueReactElementChild(child));
-                } else {
-                  this.logger.logError(val, `JSXElement "props.children[${i}]" failed to serialize due to a non-value`);
-                }
-              }
-              continue;
-            }
-          }
-          // otherwise it must be a value, as desc.value !== undefined.
-          children.push(this._serializeValueReactElementChild(((childrenValue: any): Value)));
-          continue;
-        }
-        if (desc.value instanceof Value) {
-          attributes.push(convertKeyValueToJSXAttribute(key, this.serializeValue(desc.value)));
-        }
-      }
-    }
-    let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
-    let closingElement = t.jSXClosingElement(identifier);
-
-    let jsxElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
-    // if there has been a bail-out, we create an inline BlockComment node before the JSX element
-    if (val.$BailOutReason !== undefined) {
-      // $BailOutReason contains an optional string of what to print out in the comment
-      jsxElement.leadingComments = [({ type: "BlockComment", value: `${val.$BailOutReason}` }: any)];
-    }
-    return jsxElement;
-  }
-
   _serializeValueMap(val: ObjectValue): BabelNodeExpression {
     let kind = val.getKind();
     let elems = [];
@@ -1227,7 +1127,7 @@ export class ResidualHeapSerializer {
     ]);
   }
 
-  _serializeValueObject(val: ObjectValue): BabelNodeExpression {
+  serializeValueObject(val: ObjectValue): BabelNodeExpression {
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
     // in a special way that's handled alongside function serialization.
@@ -1292,7 +1192,7 @@ export class ResidualHeapSerializer {
       case "ArrayBuffer":
         return this._serializeValueArrayBuffer(val);
       case "ReactElement":
-        return this._serializeValueReactElement(val);
+        return this.residualReactElements.serializeReactElement(val);
       case "Map":
       case "WeakMap":
         return this._serializeValueMap(val);
@@ -1392,7 +1292,7 @@ export class ResidualHeapSerializer {
       return this._serializeValueSymbol(val);
     } else {
       invariant(val instanceof ObjectValue);
-      return this._serializeValueObject(val);
+      return this.serializeValueObject(val);
     }
   }
 

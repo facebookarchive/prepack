@@ -29,7 +29,7 @@ import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./enviro
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, Construct } from "./methods/index.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
-import type { Compatibility, RealmOptions } from "./options.js";
+import type { Compatibility, RealmOptions, ReactOutputTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
@@ -41,6 +41,7 @@ import type {
   BabelNodeLVal,
   BabelNodeStatement,
 } from "babel-types";
+import type { ReactSymbolTypes } from "./react/utils.js";
 import * as t from "babel-types";
 
 export type Bindings = Map<Binding, void | Value>;
@@ -173,9 +174,11 @@ export class Realm {
 
     this.react = {
       enabled: opts.reactEnabled || false,
+      output: opts.reactOutput || "create-element",
       flowRequired: true,
-      reactElementSymbol: undefined,
+      symbols: new Map(),
       currentOwner: undefined,
+      reactLibraryObject: undefined,
     };
 
     this.errorHandler = opts.errorHandler;
@@ -213,9 +216,11 @@ export class Realm {
 
   react: {
     enabled: boolean,
+    output?: ReactOutputTypes,
     flowRequired: boolean,
-    reactElementSymbol?: SymbolValue,
+    symbols: Map<ReactSymbolTypes, SymbolValue>,
     currentOwner?: ObjectValue,
+    reactLibraryObject?: ObjectValue,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
