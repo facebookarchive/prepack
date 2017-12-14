@@ -26,7 +26,7 @@ import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Generator } from "../utils/generator.js";
-import { AbstractValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
+import { AbstractValue, ArrayValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -236,12 +236,17 @@ export class WidenImplementation {
 
           // For now, we only handle loop invariant properties
           //i.e. properties where the member expresssion does not involve any values written to inside the loop.
-          //todo: handle the case where key is an abstract value.
           let key = b.key;
-          if (typeof key === "string") {
-            pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
-              t.memberExpression(o, t.identifier(key))
-            );
+          if (typeof key === "string" || !(key.mightNotBeString() && key.mightNotBeNumber())) {
+            if (typeof key === "string") {
+              pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
+                t.memberExpression(o, t.identifier(key))
+              );
+            } else {
+              pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object, key], ([o, p]) => {
+                return t.memberExpression(o, p, true);
+              });
+            }
             // The value of the property at the start of the loop needs to be written to the property
             // before the loop commences, otherwise the memberExpression will result in an undefined value.
             let generator = realm.generator;
@@ -249,9 +254,17 @@ export class WidenImplementation {
             let initVal = (b.descriptor && b.descriptor.value) || realm.intrinsics.empty;
             if (!(initVal instanceof Value)) throw new FatalError("todo: handle internal properties");
             if (!(initVal instanceof EmptyValue)) {
-              generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) =>
-                t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v)
-              );
+              if (key === "length" && b.object instanceof ArrayValue) {
+                // do nothing, the array length will already be initialized
+              } else if (typeof key === "string") {
+                generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) =>
+                  t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v)
+                );
+              } else {
+                generator.emitVoidExpression(rval.types, rval.values, [b.object, b.key, initVal], ([o, p, v]) =>
+                  t.assignmentExpression("=", t.memberExpression(o, p, true), v)
+                );
+              }
             }
           } else {
             throw new FatalError("todo: handle the case where key is an abstract value");
@@ -390,9 +403,9 @@ export class WidenImplementation {
   }
 
   _containsValues(val1: Value, val2: Value) {
-    if (val1 instanceof AbstractValue && val2 instanceof AbstractValue) {
-      if (val1.getType() !== val2.getType()) return false;
-      return val1.values.contains(val2.values);
+    if (val1 instanceof AbstractValue) {
+      if (!Value.isTypeCompatibleWith(val2.getType(), val1.getType())) return false;
+      return val1.values.containsValue(val2);
     }
     return val1.equals(val2);
   }
