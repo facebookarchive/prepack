@@ -80,7 +80,7 @@ export default function(
       let scope = env;
 
       // 3. Let funcEnv be NewDeclarativeEnvironment(scope).
-      let funcEnv = Environment.NewDeclarativeEnvironment(realm, scope);
+      let funcEnv = Environment.NewDeclarativeEnvironment(realm, scope, false);
 
       // 4. Let envRec be funcEnv's EnvironmentRecord.
       let envRec = funcEnv.environmentRecord;

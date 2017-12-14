@@ -104,6 +104,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   }
 
   bindings: { [name: string]: Binding };
+  // Frozen Records cannot have bindings created or deleted but can have bindings updated
   frozen: boolean;
 
   // ECMA262 8.1.1.1.1
@@ -170,7 +171,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.4
   InitializeBinding(N: string, V: Value): Value {
-    invariant(!this.frozen);
+    //invariant(!this.frozen);
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -191,7 +192,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.5
   SetMutableBinding(N: string, V: Value, S: boolean): Value {
-    invariant(!this.frozen);
+    // invariant(!this.frozen); We can mutate frozen bindings because of captured bindings.
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -964,7 +965,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 }
 
 // ECMA262 8.1
-var uid = 0;
+let uid = 0;
 export class LexicalEnvironment {
   constructor(realm: Realm) {
     invariant(realm, "expected realm");
@@ -981,7 +982,6 @@ export class LexicalEnvironment {
 
   destroy() {
     this.destroyed = true;
-    let envRec = this.environmentRecord;
     if (this.environmentRecord instanceof DeclarativeEnvironmentRecord) {
       this.environmentRecord.frozen = true;
     }
@@ -1175,9 +1175,9 @@ export class LexicalEnvironment {
       res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
-      this.realm.onDestroyScope(context.lexicalEnvironment);
-      if (!this.destroyed) this.realm.onDestroyScope(this);
-      invariant(this.realm.activeLexicalEnvironments.size === 0);
+      if (context.lexicalEnvironment !== this) this.realm.onDestroyScope(context.lexicalEnvironment);
+      // Avoid destroying this scope as execute may be called many times.
+      invariant(this.realm.activeLexicalEnvironments.size === 1);
     }
     if (res instanceof AbruptCompletion) return res;
 

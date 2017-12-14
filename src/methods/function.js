@@ -96,6 +96,7 @@ function InternalCall(
 
   // 4. Let calleeContext be PrepareForOrdinaryCall(F, undefined).
   let calleeContext = PrepareForOrdinaryCall(realm, F, undefined);
+  let calleeEnv = calleeContext.lexicalEnvironment;
 
   let result;
   try {
@@ -113,6 +114,7 @@ function InternalCall(
     // 8. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
     realm.popContext(calleeContext);
     realm.onDestroyScope(calleeContext.lexicalEnvironment);
+    if (calleeContext.lexicalEnvironment !== calleeEnv) realm.onDestroyScope(calleeEnv);
     invariant(realm.getRunningContext() === callerContext);
 
     for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argsList, undefined, (result: any));
@@ -220,6 +222,7 @@ function InternalConstruct(
 
   // 6. Let calleeContext be PrepareForOrdinaryCall(F, newTarget).
   let calleeContext = PrepareForOrdinaryCall(realm, F, newTarget);
+  let calleeEnv = calleeContext.lexicalEnvironment;
 
   // 7. Assert: calleeContext is now the running execution context.
   invariant(realm.getRunningContext() === calleeContext, "expected calleeContext to be running context");
@@ -246,6 +249,7 @@ function InternalConstruct(
     // 12. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
     realm.popContext(calleeContext);
     realm.onDestroyScope(calleeContext.lexicalEnvironment);
+    if (calleeContext.lexicalEnvironment !== calleeEnv) realm.onDestroyScope(calleeEnv);
     invariant(realm.getRunningContext() === callerContext);
 
     for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argumentsList, newTarget, result);

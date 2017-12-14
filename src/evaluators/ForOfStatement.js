@@ -320,8 +320,6 @@ export function ForInOfBodyEvaluation(
     // h. If status is an abrupt completion, then
     if (status instanceof AbruptCompletion) {
       // i. Set the running execution context's LexicalEnvironment to oldEnv.
-      let lexEnv = realm.getRunningContext().lexicalEnvironment;
-      realm.onDestroyScope(lexEnv);
       realm.getRunningContext().lexicalEnvironment = oldEnv;
 
       // ii. Return ? IteratorClose(iterator, status).
