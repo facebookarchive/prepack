@@ -38,11 +38,29 @@ Object.setPrototypeOf(InitializationError, Error);
 Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
 Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
 
+function validateOptions(options: PrepackOptions) {
+  if (
+    options.lazyObjectsRuntime &&
+    (options.additionalFunctions || options.delayInitializations || options.inlineExpressions)
+  ) {
+    console.error(
+      "lazy objects feature is incompatible with additionalFunctions, delayInitializations and inlineExpressions options"
+    );
+    process.exit(1);
+  }
+
+  if (options.inlineLazyObjects && !options.lazyObjectsRuntime) {
+    console.error("--inlineLazyObjects must be used together with --lazyObjectsRuntime");
+    process.exit(1);
+  }
+}
+
 export function prepackSources(
   sources: Array<SourceFile>,
   options: PrepackOptions = defaultOptions,
   debugChannel: DebugChannel | void = undefined
 ): SerializedResult {
+  validateOptions(options);
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(realmOptions, debugChannel);

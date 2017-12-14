@@ -10,7 +10,16 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
+import {
+  ProxyValue,
+  SymbolValue,
+  AbstractValue,
+  EmptyValue,
+  FunctionValue,
+  Value,
+  ObjectValue,
+  UndefinedValue,
+} from "../values/index.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -28,7 +37,7 @@ import type {
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
-import { SerializerStatistics, type AdditionalFunctionEffects } from "./types.js";
+import type { SerializerStatistics, AdditionalFunctionEffects, GraphNodeEdgeRecord } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -36,6 +45,7 @@ import type { Scope } from "./ResidualHeapVisitor.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { getOrDefault } from "./utils.js";
+import { IsArray } from "../methods/index.js";
 
 const LAZY_OBJECTS_SERIALIZER_BODY_TYPE = "LazyObjectInitializer";
 
@@ -64,7 +74,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     statistics: SerializerStatistics,
-    react: ReactSerializerState
+    react: ReactSerializerState,
+    heapGraphRecord: Map<Value, GraphNodeEdgeRecord>
   ) {
     super(
       realm,
@@ -82,6 +93,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       statistics,
       react
     );
+    this._heapGraphRecord = heapGraphRecord;
     this._lazyObjectIdSeed = 1;
     this._valueLazyIds = new Map();
     this._lazyObjectInitializers = new Map();
@@ -91,6 +103,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     this._initializationCallbackName = t.identifier("__initializerCallback");
   }
 
+  _heapGraphRecord: Map<Value, GraphNodeEdgeRecord>;
   _lazyObjectIdSeed: number;
   _valueLazyIds: Map<ObjectValue, number>;
   // Holds object's lazy initializer bodies.
@@ -103,6 +116,121 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
 
   _getValueLazyId(obj: ObjectValue): number {
     return getOrDefault(this._valueLazyIds, obj, () => this._lazyObjectIdSeed++);
+  }
+
+  _isLazyObject(val: Value) {
+    // Currently, only support lazy raw object.
+    return this._isRawObject(val);
+  }
+
+  // Must keep in-sync with ResidualHeapSerializer logic.
+  _isObject(val: Value) {
+    return !(
+      val instanceof AbstractValue ||
+      val.isIntrinsic() ||
+      val instanceof EmptyValue ||
+      val instanceof UndefinedValue ||
+      ResidualHeapInspector.isLeaf(val) ||
+      IsArray(this.realm, val) ||
+      val instanceof ProxyValue ||
+      val instanceof FunctionValue ||
+      val instanceof SymbolValue
+    );
+  }
+
+  // Must keep in-sync with ResidualHeapSerializer logic.
+  _isRawObject(val: Value) {
+    if (!this._isObject(val) || !(val instanceof ObjectValue) || val.originalConstructor !== undefined) {
+      return false;
+    }
+    invariant(val instanceof ObjectValue);
+
+    let kind = val.getKind();
+    switch (kind) {
+      case "RegExp":
+      case "Number":
+      case "String":
+      case "Boolean":
+      case "Date":
+      case "Float32Array":
+      case "Float64Array":
+      case "Int8Array":
+      case "Int16Array":
+      case "Int32Array":
+      case "Uint8Array":
+      case "Uint16Array":
+      case "Uint32Array":
+      case "Uint8ClampedArray":
+      case "DataView":
+      case "ArrayBuffer":
+      case "ReactElement":
+      case "Map":
+      case "WeakMap":
+      case "Set":
+      case "WeakSet":
+        return false;
+      default:
+        invariant(kind === "Object", "invariant established by visitor");
+        invariant(this.$ParameterMap === undefined, "invariant established by visitor");
+        let createViaAuxiliaryConstructor =
+          val.$Prototype !== this.realm.intrinsics.ObjectPrototype &&
+          this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
+          val.$Prototype instanceof ObjectValue;
+        return !createViaAuxiliaryConstructor;
+    }
+  }
+
+  // Override.
+  /**
+   * For lazy object(child) that is only referenced by another lazy object(parent), we can
+   * inline the child object into parent lazy object's lazy initializer body.
+   * This will remove the child object's refence's reference from global scope which
+   * will prevent some memory leak.
+   */
+  _getTarget(
+    val: Value
+  ): {
+    body: SerializedBody,
+    usedOnlyByResidualFunctions?: true,
+    usedOnlyByAdditionalFunctions?: boolean,
+    commonAncestor?: Scope,
+    description?: string,
+  } {
+    // Check if the feature is enabled.
+    if (!this._options.inlineLazyObjects) {
+      return super._getTarget(val);
+    }
+
+    let scopes = this.residualValues.get(val);
+    invariant(scopes !== undefined);
+
+    // All relevant values were visited in at least one scope.
+    invariant(scopes.size >= 1);
+
+    // If value is referenced from more than one scope it can't be inline.
+    if (scopes.size !== 1) {
+      return super._getTarget(val);
+    }
+
+    // TODO: in theory we can inline non-lazy objects into lazy object as well, but that will be done in
+    // future PR.
+    const valEdgeRecord = this._heapGraphRecord.get(val);
+    if (!this._isLazyObject(val) || !valEdgeRecord || valEdgeRecord.inComing.length !== 1) {
+      return super._getTarget(val);
+    }
+
+    const parentValue = valEdgeRecord.inComing[0];
+    invariant(parentValue);
+
+    // Don't bother inline it if the parent is not lazy object.
+    // Note: the assumption is that the parent object must have been visited before current object.
+    if (!(parentValue instanceof ObjectValue) || !this._lazyObjectInitializers.has(parentValue)) {
+      return super._getTarget(val);
+    }
+
+    const body = this._lazyObjectInitializers.get(parentValue);
+    invariant(body);
+    return { body };
   }
 
   // TODO: change to use _getTarget() to get the lazy objects initializer body.

@@ -13,12 +13,12 @@ if (!x) {
 
 let ob2 = { y: 2 };
 if (!x) {
-  Object.defineProperty(ob2, "x",
+  Object.defineProperty(ob2, "x2",
     { configurable: true, get: () => this._x, set: (v) => { this._x = v; } } );
 } else {
-  ob2.x = 123;
+  ob2.x2 = 123;
 }
-ob2.x = 456;
+ob2.x2 = 456;
 
 let ob3 = {  };
 if (x) {
@@ -52,4 +52,4 @@ try {
   z = "caught " + e;
 }
 
-inspect = function() { return ob.x + " " + ob.y + " " + ob2.x + " " + ob3.x + " " + ob3.e + " " + z; }
+inspect = function() { return ob.x + " " + ob.y + " " + ob2.x2 + " " + ob3.x + " " + ob3.e + " " + z; }

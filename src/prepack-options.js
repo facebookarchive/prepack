@@ -18,6 +18,7 @@ export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
   additionalFunctions?: Array<string>,
   lazyObjectsRuntime?: string,
+  inlineLazyObjects?: boolean,
   heapGraphFilePath?: string,
   compatibility?: Compatibility,
   debugNames?: boolean,
@@ -98,11 +99,13 @@ export function getSerializerOptions({
   simpleClosures = false,
   initializeMoreModules = false,
   trace = false,
+  inlineLazyObjects = false,
 }: PrepackOptions): SerializerOptions {
   let result: SerializerOptions = {
     delayInitializations,
     delayUnsupportedRequires,
     initializeMoreModules,
+    inlineLazyObjects,
     internalDebug,
     debugScopes,
     logStatistics,

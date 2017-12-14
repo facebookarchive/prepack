@@ -47,6 +47,7 @@ function run(
     --timeout                The amount of time in seconds until Prepack should time out.
     --additionalFunctions    Additional functions that should be prepacked (comma separated).
     --lazyObjectsRuntime     Enable lazy objects feature and specify the JS runtime that support this feature.
+    --inlineLazyObjects      Inline lazy objects into its parent lazy initializer scope(must be used together with --lazyObjectsRuntime).
     --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
                              Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
     --speculate              Enable speculative initialization of modules (for the module system Prepack has builtin
@@ -98,6 +99,7 @@ function run(
     profile: false,
     reactEnabled: false,
     reactOutput: "create-element",
+    inlineLazyObjects: false,
   };
 
   while (args.length) {
@@ -204,15 +206,6 @@ function run(
     },
     flags
   );
-  if (
-    lazyObjectsRuntime &&
-    (resolvedOptions.additionalFunctions || resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)
-  ) {
-    console.error(
-      "lazy objects feature is incompatible with additionalFunctions, delayInitializations and inlineExpressions options"
-    );
-    process.exit(1);
-  }
 
   let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
   function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
