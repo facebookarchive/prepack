@@ -459,7 +459,7 @@ export class NameGenerator {
       id = this.prefix + base62.encode(this.uidCounter++);
       if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
       if (this.debugNames) {
-        if (debugSuffix) id += "_" + debugSuffix.replace(/[.,:]/g, "_");
+        if (debugSuffix) id += "_" + debugSuffix.replace(/[.,:\(\)\"\'\[\]]/g, "_");
         else id += "_";
       }
     } while (this.forbiddenNames.has(id));
