@@ -616,6 +616,7 @@ export default class AbstractValue extends Value {
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let result = new Constructor(realm, types, values, hash, args, buildFunction);
     result.kind = "widened property";
+    result.mightBeEmpty = resultTemplate.mightBeEmpty;
     result.expressionLocation = resultTemplate.expressionLocation;
     return result;
   }
@@ -628,6 +629,7 @@ export default class AbstractValue extends Value {
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let result = new Constructor(realm, types, values, hash, []);
     result.kind = "widened";
+    result.mightBeEmpty = value1.mightHaveBeenDeleted() || value2.mightHaveBeenDeleted();
     result.expressionLocation = value1.expressionLocation;
     return result;
   }

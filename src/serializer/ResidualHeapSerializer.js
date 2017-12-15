@@ -1073,7 +1073,11 @@ export class ResidualHeapSerializer {
     if (prop.joinCondition !== undefined) return false;
     if ((obj instanceof FunctionValue && key === "prototype") || (obj.getKind() === "RegExp" && key === "lastIndex"))
       return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
-    else return !!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get;
+    else if (!!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get) {
+      return !(prop.value instanceof AbstractValue && prop.value.kind === "widened property");
+    } else {
+      return false;
+    }
   }
 
   _findLastObjectPrototype(obj: ObjectValue): ObjectValue {
@@ -1097,6 +1101,7 @@ export class ResidualHeapSerializer {
     const dummyProperties = new Set();
     let props = [];
     for (let [key, propertyBinding] of val.properties) {
+      if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
       let descriptor = propertyBinding.descriptor;
       if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
       if (this._canEmbedProperty(val, key, descriptor)) {
