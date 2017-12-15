@@ -139,12 +139,12 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
 }
 
 // a helper function to map over ArrayValues
-export function mapOverArrayValue(realm: Realm, arrayValue: ArrayValue, mapFunc: Function): void {
-  let lengthValue = Get(realm, arrayValue, "length");
+export function mapOverArrayValue(realm: Realm, array: ArrayValue, mapFunc: Function): void {
+  let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
   let length = lengthValue.value;
   for (let i = 0; i < length; i++) {
-    let elementProperty = arrayValue.properties.get("" + i);
+    let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
     let elementValue = elementPropertyDescriptor.value;
