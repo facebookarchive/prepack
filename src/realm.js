@@ -35,6 +35,7 @@ import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
+import type { ReactSymbolTypes } from "./react/utils.js";
 import * as t from "babel-types";
 
 export type Bindings = Map<Binding, void | Value>;

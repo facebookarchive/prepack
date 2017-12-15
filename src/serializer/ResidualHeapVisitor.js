@@ -426,10 +426,17 @@ export class ResidualHeapVisitor {
       case "ReactElement":
         // find and visit the React library
         let reactLibraryObject = this.realm.react.reactLibraryObject;
-        if (reactLibraryObject === undefined) {
-          throw new FatalError("unable to visit createElement due to React not being referenced in scope");
-        }
-        if (this.realm.react.output === "create-element") {
+        if (this.realm.react.output === "jsx") {
+          // React might not be defined in scope, i.e. another library is using JSX
+          // we don't throw an error as we should support JSX stand-alone
+          if (reactLibraryObject !== undefined) {
+            this.visitValue(reactLibraryObject);
+          }
+        } else if (this.realm.react.output === "create-element") {
+          // createElement output needs React in scope
+          if (reactLibraryObject === undefined) {
+            throw new FatalError("unable to visit createElement due to React not being referenced in scope");
+          }
           let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
           this.visitValue(reactCreateElement);
         }
@@ -466,7 +473,7 @@ export class ResidualHeapVisitor {
         if (this.$ParameterMap !== undefined) {
           this.logger.logError(val, `Arguments object is not supported in residual heap.`);
         }
-        if (valueIsReactLibraryObject(this.realm, val)) {
+        if (this.realm.react.enabled && valueIsReactLibraryObject(this.realm, val)) {
           this.realm.react.reactLibraryObject = val;
         }
         return;

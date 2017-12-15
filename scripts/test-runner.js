@@ -277,7 +277,10 @@ function runTest(name, code, options, args) {
   if (code.includes("// omit invariants")) options.omitInvariants = true;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
-  if (code.includes("// react")) options.reactEnabled = true;
+  if (code.includes("// react")) {
+    options.reactEnabled = true;
+    options.reactOutput = "jsx";
+  }
   if (code.includes("// throws introspection error")) {
     try {
       let realmOptions = {

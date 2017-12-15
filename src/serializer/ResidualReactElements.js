@@ -120,10 +120,11 @@ export class ResidualReactElements {
         }
       }
     }
+    let reactLibraryObject = this.realm.react.reactLibraryObject;
     if (this.reactOutput === "jsx") {
-      return this._serializeReactElementToJSXElement(val, typeValue, attributes, children);
+      return this._serializeReactElementToJSXElement(val, typeValue, attributes, children, reactLibraryObject);
     } else if (this.reactOutput === "create-element") {
-      return this._serializeReactElementToCreateElement(val, typeValue, attributes, children);
+      return this._serializeReactElementToCreateElement(val, typeValue, attributes, children, reactLibraryObject);
     }
     invariant(false, "Unknown reactOutput specified");
   }
@@ -147,9 +148,10 @@ export class ResidualReactElements {
     val: ObjectValue,
     typeValue: Value,
     attributes: Array<BabelNode>,
-    children: Array<BabelNode>
+    children: Array<BabelNode>,
+    reactLibraryObject?: ObjectValue
   ): BabelNodeExpression {
-    let reactLibraryObject = this.realm.react.reactLibraryObject;
+    // if there is no React library, then we should throw and error, as it is needed for createElement output
     if (reactLibraryObject === undefined) {
       throw new FatalError("unable to serialize JSX to createElement due to React not being referenced in scope");
     }
@@ -176,8 +178,12 @@ export class ResidualReactElements {
     val: ObjectValue,
     typeValue: Value,
     attributes: Array<BabelNode>,
-    children: Array<BabelNode>
+    children: Array<BabelNode>,
+    reactLibraryObject?: ObjectValue
   ): BabelNodeExpression {
+    if (reactLibraryObject !== undefined) {
+      this.serializeValue(reactLibraryObject);
+    }
     let identifier = convertExpressionToJSXIdentifier(this.serializeValue(typeValue), true);
     let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
     let closingElement = t.jSXClosingElement(identifier);
