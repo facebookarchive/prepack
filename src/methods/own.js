@@ -11,16 +11,16 @@
 
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
-import { Get, ToObject, IsArrayIndex } from "./index.js";
+import { Get, IsArrayIndex } from "./index.js";
 import { StringValue, ObjectValue, Value, ArrayValue } from "../values/index.js";
-import { Create, Properties } from "../singletons.js";
+import { Create, Properties, To } from "../singletons.js";
 
 import invariant from "../invariant.js";
 
 // ECMA262 19.1.2.8.1
 export function GetOwnPropertyKeys(realm: Realm, O: Value, Type: Function): ArrayValue {
   // 1. Let obj be ? ToObject(O).
-  let obj = ToObject(realm, O.throwIfNotConcrete());
+  let obj = To.ToObject(realm, O.throwIfNotConcrete());
 
   // 2. Let keys be ? obj.[[OwnPropertyKeys]]().
   let keys = obj.$OwnPropertyKeys();

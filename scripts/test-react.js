@@ -29,6 +29,7 @@ let prepackOptions = {
   maxStackDepth: 100,
   reactEnabled: true,
   inlineExpressions: true,
+  simpleClosures: true,
   omitInvariants: true,
 };
 
@@ -64,7 +65,7 @@ function runSource(source) {
     // $FlowFixMe flow doesn't new Function
     fn(requireShim, moduleShim);
   } catch (e) {
-    console.log(codeAfterBabel);
+    console.error(codeAfterBabel);
     throw e;
   }
   return moduleShim.exports;

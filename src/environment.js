@@ -49,8 +49,8 @@ import generate from "babel-generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
-import { ToBooleanPartial, HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
-import { Environment, Properties } from "./singletons.js";
+import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
+import { Environment, Properties, To } from "./singletons.js";
 import * as t from "babel-types";
 
 const sourceMap = require("source-map");
@@ -93,6 +93,8 @@ export type Binding = {
   environment: EnvironmentRecord,
   name: string,
   isGlobal: boolean,
+  // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
+  phiNode?: AbstractValue,
 };
 
 // ECMA262 8.1.1.1
@@ -328,7 +330,7 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
     // 7. If Type(unscopables) is Object, then
     if (unscopables instanceof ObjectValue || unscopables instanceof AbstractObjectValue) {
       // a. Let blocked be ToBoolean(? Get(unscopables, N)).
-      let blocked = ToBooleanPartial(realm, Get(realm, unscopables, N));
+      let blocked = To.ToBooleanPartial(realm, Get(realm, unscopables, N));
 
       // b. If blocked is true, return false.
       if (blocked) return false;

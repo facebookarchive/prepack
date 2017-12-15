@@ -91,7 +91,7 @@ function runTest(name, code) {
       if (result instanceof ThrowCompletion) throw result.value;
     } catch (err) {
       if (err instanceof FatalError) return true;
-      console.log(err);
+      console.error(err);
     }
     return false;
   } else {
@@ -124,7 +124,7 @@ return __result; }).call(this);`);
         for (let { positive, value, start } of markersToFind) {
           let found = newCode.indexOf(value, start) !== -1;
           if (found !== positive) {
-            console.log(chalk.red(`Output ${positive ? "does not contain" : "contains"} forbidden string: ${value}`));
+            console.error(chalk.red(`Output ${positive ? "does not contain" : "contains"} forbidden string: ${value}`));
             markersIssue = true;
           }
         }
@@ -132,7 +132,7 @@ return __result; }).call(this);`);
         actual = exec(`(function () { ${newCode}; // keep newline here as code may end with comment
           return __result; }).call(this);`);
         if (expected !== actual) {
-          console.log(chalk.red("Output mismatch!"));
+          console.error(chalk.red("Output mismatch!"));
           break;
         }
         if (oldCode === newCode) {
@@ -142,10 +142,10 @@ return __result; }).call(this);`);
         oldCode = newCode;
       }
       if (i === max) {
-        console.log(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
+        console.error(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
       }
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
     console.log(chalk.underline("original code"));
     console.log(code);
@@ -176,7 +176,7 @@ function run() {
     else failed++;
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.floor(passed / total * 100) || 0) + "%");
   return failed === 0;
 }
 

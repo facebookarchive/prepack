@@ -21,7 +21,7 @@ import {
   Value,
   ECMAScriptSourceFunctionValue,
 } from "../../values/index.js";
-import { ToStringPartial } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import { ValuesDomain } from "../../domains/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
@@ -286,13 +286,13 @@ export default function(realm: Realm): void {
           let generator = realm.generator;
           invariant(generator);
 
-          let key = ToStringPartial(realm, propertyName);
+          let key = To.ToStringPartial(realm, propertyName);
           let propertyIdentifier = generator.getAsPropertyNameExpression(key);
           let computed = !t.isIdentifier(propertyIdentifier);
           let condition = ([objectNode, valueNode]) =>
             t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
           if (invariantOptions) {
-            let invariantOptionString = ToStringPartial(realm, invariantOptions);
+            let invariantOptionString = To.ToStringPartial(realm, invariantOptions);
             switch (invariantOptionString) {
               case "VALUE_DEFINED_INVARIANT":
                 condition = ([objectNode, valueNode]) =>

@@ -12,7 +12,7 @@
 import { Reference } from "../environment.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
-import { ToStringPartial, Get } from "../methods/index.js";
+import { Get } from "../methods/index.js";
 import { ThrowCompletion, AbruptCompletion } from "../completions.js";
 import {
   FunctionValue,
@@ -25,6 +25,7 @@ import {
   ObjectValue,
   AbstractValue,
 } from "../values/index.js";
+import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 
 function describeValue(realm: Realm, v: Value): string {
@@ -32,7 +33,7 @@ function describeValue(realm: Realm, v: Value): string {
   if (v instanceof UndefinedValue) return "undefined";
   if (v instanceof NullValue) return "null";
   if (v instanceof StringValue) return `"${v.value}"`; // TODO: proper escaping
-  if (v instanceof FunctionValue) return ToStringPartial(realm, Get(realm, v, "name")) || "(anonymous function)";
+  if (v instanceof FunctionValue) return To.ToStringPartial(realm, Get(realm, v, "name")) || "(anonymous function)";
   if (v instanceof ObjectValue) return "(some object)";
   if (v instanceof AbstractValue) return "(some abstract value)";
   invariant(false);

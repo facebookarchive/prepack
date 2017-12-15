@@ -37,7 +37,14 @@ export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
     let realm = val.$Realm;
     let $$typeof = Get(realm, val, "$$typeof");
-    if ($$typeof instanceof SymbolValue) {
+    let globalObject = realm.$GlobalObject;
+    let globalSymbolValue = Get(realm, globalObject, "Symbol");
+
+    if (globalSymbolValue === realm.intrinsics.undefined) {
+      if ($$typeof instanceof NumberValue) {
+        return $$typeof.value === 0xeac7;
+      }
+    } else if ($$typeof instanceof SymbolValue) {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
       return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     }
@@ -75,7 +82,7 @@ export function isReactComponent(name: string) {
   return name.length > 0 && name[0] === name[0].toUpperCase();
 }
 
-export function valueIsClassComponent(realm: Realm, value: Value) {
+export function valueIsClassComponent(realm: Realm, value: Value): boolean {
   if (!(value instanceof FunctionValue)) {
     return false;
   }
@@ -84,6 +91,18 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
     if (prototype instanceof ObjectValue) {
       return prototype.properties.has("isReactComponent");
     }
+  }
+  return false;
+}
+
+export function valueIsLegacyCreateClassComponent(realm: Realm, value: Value): boolean {
+  if (!(value instanceof FunctionValue)) {
+    return false;
+  }
+  let prototype = Get(realm, value, "prototype");
+
+  if (prototype instanceof ObjectValue) {
+    return prototype.properties.has("__reactAutoBindPairs");
   }
   return false;
 }

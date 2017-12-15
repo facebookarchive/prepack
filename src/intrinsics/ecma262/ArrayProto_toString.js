@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ToObjectPartial } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import { Get } from "../../methods/get.js";
 import { Call } from "../../methods/call.js";
 import { IsCallable } from "../../methods/is.js";
@@ -25,7 +25,7 @@ export default function(realm: Realm): NativeFunctionValue {
     0,
     context => {
       // 1. Let array be ? ToObject(this value).
-      let array = ToObjectPartial(realm, context);
+      let array = To.ToObjectPartial(realm, context);
 
       // 2. Let func be ? Get(array, "join").
       let func = Get(realm, array, "join");

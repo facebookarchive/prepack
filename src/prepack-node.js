@@ -18,18 +18,16 @@ import { getDebuggerOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
-import { DebugChannel } from "./debugger/channel/DebugChannel.js";
-import { FileIOWrapper } from "./debugger/channel/FileIOWrapper.js";
+import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
+import { FileIOWrapper } from "./debugger/common/channel/FileIOWrapper.js";
+import type { SerializedResult } from "./serializer/types.js";
 
 import fs from "fs";
 
 export * from "./prepack-node-environment";
 export * from "./prepack-standalone";
 
-export function prepackStdin(
-  options: PrepackOptions = defaultOptions,
-  callback: (any, ?{ code: string, map?: SourceMap }) => void
-) {
+export function prepackStdin(options: PrepackOptions = defaultOptions, callback: (any, ?SerializedResult) => void) {
   let sourceMapFilename = options.inputSourceMapFilename || "";
   process.stdin.setEncoding("utf8");
   process.stdin.resume();
@@ -111,8 +109,7 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
   let debugChannel;
-  //flag to hide the debugger for now
-  if (options.enableDebugger && options.debugInFilePath && options.debugOutFilePath) {
+  if (options.debugInFilePath && options.debugOutFilePath) {
     let debugOptions = getDebuggerOptions(options);
     let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
     debugChannel = new DebugChannel(ioWrapper);

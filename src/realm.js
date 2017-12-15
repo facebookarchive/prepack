@@ -27,13 +27,13 @@ import {
 } from "./values/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, Construct, ToString } from "./methods/index.js";
+import { cloneDescriptor, Construct } from "./methods/index.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
 import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { Environment, Functions, Join, Properties } from "./singletons.js";
+import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -177,6 +177,7 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
+    this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
   }
 
   start: number;
@@ -262,6 +263,7 @@ export class Realm {
   debuggerInstance: DebugServerType | void;
 
   nextGeneratorId: number = 0;
+  _abstractValuesDefined: Set<string>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -306,6 +308,10 @@ export class Realm {
     }
   }
 
+  hasRunningContext(): boolean {
+    return this.contextStack.length !== 0;
+  }
+
   getRunningContext(): ExecutionContext {
     let context = this.contextStack[this.contextStack.length - 1];
     invariant(context, "There's no running execution context");
@@ -320,10 +326,12 @@ export class Realm {
   }
 
   popContext(context: ExecutionContext): void {
-    let modifiedBindings = this.modifiedBindings;
-    if (modifiedBindings !== undefined) {
-      for (let b of modifiedBindings.keys()) {
-        if (b.environment.$FunctionObject === context.function) modifiedBindings.delete(b);
+    if (context.function !== undefined) {
+      let modifiedBindings = this.modifiedBindings;
+      if (modifiedBindings !== undefined) {
+        for (let b of modifiedBindings.keys()) {
+          if (b.environment.$FunctionObject === context.function) modifiedBindings.delete(b);
+        }
       }
     }
     let c = this.contextStack.pop();
@@ -453,6 +461,119 @@ export class Realm {
     }
   }
 
+  evaluateWithUndoForDiagnostic(f: () => Value): CompilerDiagnostic | Value {
+    if (!this.useAbstractInterpretation) return f();
+    let savedHandler = this.errorHandler;
+    let diagnostic;
+    try {
+      this.errorHandler = d => {
+        diagnostic = d;
+        return "Fail";
+      };
+      let effects = this.evaluateForEffects(f);
+      this.applyEffects(effects);
+      let resultVal = effects[0];
+      if (resultVal instanceof AbruptCompletion) throw resultVal;
+      if (resultVal instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        resultVal = this.composeWithSavedCompletion(resultVal);
+      }
+      invariant(resultVal instanceof Value);
+      return resultVal;
+    } catch (e) {
+      if (diagnostic !== undefined) return diagnostic;
+      throw e;
+    } finally {
+      this.errorHandler = savedHandler;
+    }
+  }
+
+  evaluateForFixpointEffects(
+    loopContinueTest: () => Value,
+    loopBody: () => EvaluationResult
+  ): void | [Effects, Effects] {
+    try {
+      let effects1 = this.evaluateForEffects((loopBody: any));
+      while (true) {
+        this.restoreBindings(effects1[2]);
+        this.restoreProperties(effects1[3]);
+        let effects2 = this.evaluateForEffects(() => {
+          let test = loopContinueTest();
+          if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
+          return (loopBody(): any);
+        });
+        this.restoreBindings(effects1[2]);
+        this.restoreProperties(effects1[3]);
+        if (Widen.containsEffects(effects1, effects2)) {
+          // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
+          // result in any more values being added to abstract domains and hence a fixpoint has been reached.
+          // Generate code using effects2 because its expressions have not been widened away.
+          let [, gen, bindings2, pbindings2] = effects2;
+          this._emitLocalAssignments(gen, bindings2);
+          this._emitPropertAssignments(gen, pbindings2);
+          return [effects1, effects2];
+        }
+        effects1 = Widen.widenEffects(this, effects1, effects2);
+      }
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  // populate the loop body generator with assignments that will update the phiNodes
+  _emitLocalAssignments(gen: Generator, bindings: Bindings) {
+    let tvalFor: Map<any, AbstractValue> = new Map();
+    bindings.forEach((val, key, map) => {
+      if (val instanceof AbstractValue) {
+        invariant(val._buildNode !== undefined);
+        let tval = gen.derive(val.types, val.values, [val], ([n]) => n, {
+          skipInvariant: true,
+        });
+        tvalFor.set(key, tval);
+      }
+    });
+    bindings.forEach((val, key, map) => {
+      if (val instanceof AbstractValue) {
+        let phiNode = key.phiNode;
+        let tval = tvalFor.get(key);
+        invariant(tval !== undefined);
+        gen.emitStatement([tval], ([v]) => {
+          invariant(phiNode !== undefined);
+          let id = phiNode.buildNode([]);
+          return t.expressionStatement(t.assignmentExpression("=", (id: any), v));
+        });
+      }
+    });
+  }
+
+  // populate the loop body generator with assignments that will update properties modified inside the loop
+  _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings) {
+    let tvalFor: Map<any, AbstractValue> = new Map();
+    pbindings.forEach((val, key, map) => {
+      let value = val && val.value;
+      if (value instanceof AbstractValue) {
+        invariant(value._buildNode !== undefined);
+        let tval = gen.derive(value.types, value.values, [value], ([n]) => n, {
+          skipInvariant: true,
+        });
+        tvalFor.set(key, tval);
+      }
+    });
+    pbindings.forEach((val, key, map) => {
+      let path = key.pathNode;
+      let tval = tvalFor.get(key);
+      invariant(tval !== undefined);
+      gen.emitStatement([key.object, tval], ([o, v]) => {
+        invariant(path !== undefined);
+        let lh = path.buildNode([o]);
+        return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+      });
+    });
+  }
+
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
     let [, pg, pb, pp, po] = priorEffects;
     let [sc, sg, sb, sp, so] = subsequentEffects;
@@ -497,11 +618,33 @@ export class Realm {
   composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
     if (this.savedCompletion === undefined) {
       this.savedCompletion = completion;
+      this.savedCompletion.savedPathConditions = this.pathConditions;
       this.captureEffects(completion);
     } else {
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
     }
+    if (completion.consequent instanceof AbruptCompletion) {
+      Path.pushInverseAndRefine(completion.joinCondition);
+      if (completion.alternate instanceof PossiblyNormalCompletion) {
+        completion.alternate.pathConditions.forEach(Path.pushAndRefine);
+      }
+    } else if (completion.alternate instanceof AbruptCompletion) {
+      Path.pushAndRefine(completion.joinCondition);
+      if (completion.consequent instanceof PossiblyNormalCompletion) {
+        completion.consequent.pathConditions.forEach(Path.pushAndRefine);
+      }
+    }
     return completion.value;
+  }
+
+  incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion) {
+    if (priorCompletion === undefined) return;
+    if (this.savedCompletion === undefined) {
+      this.savedCompletion = priorCompletion;
+      this.captureEffects(priorCompletion);
+    } else {
+      this.savedCompletion = Join.composePossiblyNormalCompletions(this, priorCompletion, this.savedCompletion);
+    }
   }
 
   captureEffects(completion: PossiblyNormalCompletion) {
@@ -619,7 +762,7 @@ export class Realm {
       let res = "";
       while (values.length) {
         let next = values.shift();
-        let nextString = ToString(realm, next);
+        let nextString = To.ToString(realm, next);
         res += nextString;
       }
       return res;
@@ -845,5 +988,13 @@ export class Realm {
       }
     }
     return errorHandler(diagnostic);
+  }
+
+  saveNameString(nameString: string): void {
+    this._abstractValuesDefined.add(nameString);
+  }
+
+  isNameStringUnique(nameString: string): boolean {
+    return !this._abstractValuesDefined.has(nameString);
   }
 }

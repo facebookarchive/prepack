@@ -14,8 +14,8 @@ import { LexicalEnvironment, ObjectEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion } from "../completions.js";
 import { AbstractValue, ObjectValue, Value } from "../values/index.js";
-import { ToObjectPartial, UpdateEmpty } from "../methods/index.js";
-import { Environment } from "../singletons.js";
+import { UpdateEmpty } from "../methods/index.js";
+import { Environment, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeWithStatement } from "babel-types";
 
@@ -36,7 +36,7 @@ export default function(
     let error = new CompilerDiagnostic("with object must be a known value", loc, "PP0007", "RecoverableError");
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
-  let obj = ToObjectPartial(realm, val);
+  let obj = To.ToObjectPartial(realm, val);
 
   // 3. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = env;

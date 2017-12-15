@@ -1,4 +1,5 @@
 // serialized function clone count: 0
+// does not contain:__scope_2_unique27277, __scope_2_unique27277
 function f (x) {
   var valueA = 0;
   var valueB = 1;

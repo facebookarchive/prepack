@@ -11,6 +11,7 @@
 
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
+import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
 import {
@@ -193,6 +194,11 @@ function InternalConstruct(
 
   // 2. Assert: Type(newTarget) is Object.
   invariant(newTarget instanceof ObjectValue, "expected object");
+
+  if (!realm.hasRunningContext()) {
+    invariant(realm.useAbstractInterpretation);
+    throw new FatalError("no running context");
+  }
 
   // 3. Let callerContext be the running execution context.
   let callerContext = realm.getRunningContext();
@@ -1113,6 +1119,9 @@ export class FunctionImplementation {
   incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
+      if (savedCompletion.savedPathConditions) {
+        realm.pathConditions = savedCompletion.savedPathConditions;
+      }
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;
       if (c instanceof Value) {

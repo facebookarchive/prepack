@@ -20,10 +20,11 @@ import {
   UndefinedValue,
 } from "../../values/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
-import { describeLocation } from "../ecma262/Error.js";
-import { ToStringPartial } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
+import { describeLocation } from "../ecma262/Error.js";
+import { To } from "../../singletons.js";
 import AbstractObjectValue from "../../values/AbstractObjectValue";
+import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
 const throwTemplate = buildExpressionTemplate(throwTemplateSrc);
@@ -41,7 +42,7 @@ export function parseTypeNameOrTemplate(
     }
     return { type, template: undefined };
   } else if (typeNameOrTemplate instanceof StringValue) {
-    let typeNameString = ToStringPartial(realm, typeNameOrTemplate);
+    let typeNameString = To.ToStringPartial(realm, typeNameOrTemplate);
     let type = Value.getTypeFromName(typeNameString);
     if (type === undefined) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
@@ -69,24 +70,33 @@ export function createAbstract(
   let { type, template } = parseTypeNameOrTemplate(realm, typeNameOrTemplate);
 
   let result;
-  let nameString = name ? ToStringPartial(realm, name) : "";
+  let locString,
+    loc = null;
+  for (let executionContext of realm.contextStack.slice().reverse()) {
+    let caller = executionContext.caller;
+    loc = executionContext.loc;
+    locString = describeLocation(
+      realm,
+      caller ? caller.function : undefined,
+      caller ? caller.lexicalEnvironment : undefined,
+      loc
+    );
+    if (locString !== undefined) break;
+  }
+  let nameString = name ? To.ToStringPartial(realm, name) : "";
   if (nameString === "") {
-    let locString;
-    for (let executionContext of realm.contextStack.slice().reverse()) {
-      let caller = executionContext.caller;
-      locString = describeLocation(
-        realm,
-        caller ? caller.function : undefined,
-        caller ? caller.lexicalEnvironment : undefined,
-        executionContext.loc
-      );
-      if (locString !== undefined) break;
-    }
     let locVal = new StringValue(realm, locString || "(unknown location)");
     let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
     result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
   } else {
-    let kind = "__abstract_" + nameString; // assume name is unique TODO #1155: check this
+    let kind = "__abstract_" + nameString;
+    if (!realm.isNameStringUnique(nameString)) {
+      let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
+      realm.handleError(error);
+      throw new FatalError();
+    } else {
+      realm.saveNameString(nameString);
+    }
     result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(nameString), type, [], kind);
     result.intrinsicName = nameString;
   }

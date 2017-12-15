@@ -22,7 +22,7 @@ import { DetachArrayBuffer } from "../lib/methods/arraybuffer.js";
 import construct_realm from "../lib/construct_realm.js";
 import { ObjectValue, StringValue } from "../lib/values/index.js";
 import { Realm, ExecutionContext } from "../lib/realm.js";
-import { ToStringPartial } from "../lib/methods/to.js";
+import { To } from "../lib/singletons.js";
 import { Get } from "../lib/methods/get.js";
 
 const filters = yaml.safeLoad(fs.readFileSync(path.join(__dirname, "./test262-filters.yml"), "utf8"));
@@ -131,9 +131,9 @@ function execute(timeout: number, test: TestObject): Result {
 
           if (err.value instanceof ObjectValue) {
             if (err.value.$HasProperty("stack")) {
-              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "stack"));
+              interpreterStack = To.ToStringPartial(realm, Get(realm, err.value, "stack"));
             } else {
-              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "message"));
+              interpreterStack = To.ToStringPartial(realm, Get(realm, err.value, "message"));
             }
             // filter out if the error stack is due to async
             if (interpreterStack.includes("async ")) {

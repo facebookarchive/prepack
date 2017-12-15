@@ -13,7 +13,6 @@ import { FatalError } from "../errors.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
-import { ToBooleanPartial, ToUint32, ToString } from "./to.js";
 import { Get } from "./get.js";
 import {
   FunctionValue,
@@ -27,6 +26,7 @@ import {
   AbstractValue,
   AbstractObjectValue,
 } from "../values/index.js";
+import { To } from "../singletons.js";
 import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
@@ -43,7 +43,7 @@ export function IsConcatSpreadable(realm: Realm, O: Value): boolean {
   let spreadable = Get(realm, O, realm.intrinsics.SymbolIsConcatSpreadable);
 
   // 3. If spreadable is not undefined, return ToBoolean(spreadable).
-  if (!spreadable.mightBeUndefined()) return ToBooleanPartial(realm, spreadable);
+  if (!spreadable.mightBeUndefined()) return To.ToBooleanPartial(realm, spreadable);
   spreadable.throwIfNotConcrete();
 
   // 4. Return ? IsArray(O).
@@ -205,7 +205,7 @@ export function IsRegExp(realm: Realm, argument: Value): boolean {
   let isRegExp = Get(realm, argument, realm.intrinsics.SymbolMatch);
 
   // 3. If isRegExp is not undefined, return ToBoolean(isRegExp).
-  if (isRegExp !== undefined) return ToBooleanPartial(realm, isRegExp) === true;
+  if (isRegExp !== undefined) return To.ToBooleanPartial(realm, isRegExp) === true;
 
   // 4. If argument has a [[RegExpMatcher]] internal slot, return true.
   if (argument.$RegExpMatcher) return true;
@@ -312,8 +312,8 @@ export function IsArrayIndex(realm: Realm, P: PropertyKeyValue): boolean {
     return false;
   }
 
-  let i = ToUint32(realm, new StringValue(realm, key));
-  return i !== Math.pow(2, 32) - 1 && ToString(realm, new NumberValue(realm, i)) === key;
+  let i = To.ToUint32(realm, new StringValue(realm, key));
+  return i !== Math.pow(2, 32) - 1 && To.ToString(realm, new NumberValue(realm, i)) === key;
 }
 
 // ECMA262 25.4.1.6

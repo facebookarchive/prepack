@@ -18,6 +18,7 @@ export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
   additionalFunctions?: Array<string>,
   lazyObjectsRuntime?: string,
+  heapGraphFilePath?: string,
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
@@ -36,6 +37,7 @@ export type PrepackOptions = {|
   residual?: boolean,
   serialize?: boolean,
   inlineExpressions?: boolean,
+  simpleClosures?: boolean,
   sourceMaps?: boolean,
   initializeMoreModules?: boolean,
   statsFile?: string,
@@ -44,7 +46,6 @@ export type PrepackOptions = {|
   trace?: boolean,
   uniqueSuffix?: string,
   maxStackDepth?: number,
-  enableDebugger?: boolean,
   debugInFilePath?: string,
   debugOutFilePath?: string,
 |};
@@ -82,6 +83,7 @@ export function getRealmOptions({
 export function getSerializerOptions({
   additionalFunctions,
   lazyObjectsRuntime,
+  heapGraphFilePath,
   delayInitializations = false,
   delayUnsupportedRequires = false,
   internalDebug = false,
@@ -90,6 +92,7 @@ export function getSerializerOptions({
   logModules = false,
   profile = false,
   inlineExpressions = false,
+  simpleClosures = false,
   initializeMoreModules = false,
   trace = false,
 }: PrepackOptions): SerializerOptions {
@@ -103,7 +106,9 @@ export function getSerializerOptions({
     logModules,
     profile,
     inlineExpressions,
+    simpleClosures,
     trace,
+    heapGraph: !!heapGraphFilePath,
   };
   if (additionalFunctions) result.additionalFunctions = additionalFunctions;
   if (lazyObjectsRuntime !== undefined) {

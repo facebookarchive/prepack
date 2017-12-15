@@ -11,14 +11,13 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, BooleanValue } from "../../values/index.js";
-import { Create } from "../../singletons.js";
-import { ToBooleanPartial } from "../../methods/to.js";
+import { Create, To } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.3.1.1
   let func = new NativeFunctionValue(realm, "Boolean", "Boolean", 1, (context, [value], argCount, NewTarget) => {
     // 1. Let b be ToBoolean(value).
-    let b = new BooleanValue(realm, ToBooleanPartial(realm, value));
+    let b = new BooleanValue(realm, To.ToBooleanPartial(realm, value));
 
     // 2. If NewTarget is undefined, return b.
     if (!NewTarget) return b;
