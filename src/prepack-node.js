@@ -34,14 +34,21 @@ export function prepackStdin(options: PrepackOptions = defaultOptions, callback:
   process.stdin.on("data", function(code) {
     fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
       if (mapErr) {
-        console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+        //if no sourcemap was provided we silently ignore
+        if (sourceMapFilename !== "") console.warn(`No sourcemap found at ${sourceMapFilename}.`);
         sourceMap = "";
       }
       let filename = "no-filename-specified";
       let serialized;
       try {
         serialized = prepackSources(
-          [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
+          [
+            {
+              filePath: filename,
+              fileContents: code,
+              sourceMapContents: sourceMap,
+            },
+          ],
           options
         );
       } catch (err) {
@@ -77,7 +84,13 @@ export function prepackFile(
       let serialized;
       try {
         serialized = prepackSources(
-          [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
+          [
+            {
+              filePath: filename,
+              fileContents: code,
+              sourceMapContents: sourceMap,
+            },
+          ],
           options
         );
       } catch (err) {
@@ -106,7 +119,11 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     } catch (_e) {
       if (options.inputSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
-    return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
+    return {
+      filePath: filename,
+      fileContents: code,
+      sourceMapContents: sourceMap,
+    };
   });
   let debugChannel;
   if (options.debugInFilePath && options.debugOutFilePath) {

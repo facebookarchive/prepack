@@ -1060,11 +1060,30 @@ export class LexicalEnvironment {
         if (e instanceof ThrowCompletion) {
           let error = e.value;
           if (error instanceof ObjectValue) {
+            // this handler supports a nice source printing, handling stdin and input files.
+            this.realm.errorHandler = diagnostic => {
+              // flow makes me do this
+              let location = diagnostic.location || { source: "" };
+              let locationSource = location.source || "";
+              let sourceMessage;
+              switch (locationSource) {
+                case "":
+                  sourceMessage = "unknown source";
+                  break;
+                case "no-filename-specified":
+                  sourceMessage = "stdin";
+                  break;
+                default:
+                  sourceMessage = `input file ${locationSource}`;
+                  break;
+              }
+              console.error(`${diagnostic.message} found in ${sourceMessage}`);
+              return "Fail";
+            };
             let message = error.$Get("message", error);
             e.location.source = source.filePath;
             let err = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
-            this.realm.handleError(err);
-            throw new FatalError("syntax error");
+            if (this.realm.handleError(err) === "Fail") throw new FatalError();
           }
         }
         throw e;
