@@ -42,13 +42,7 @@ export function prepackStdin(options: PrepackOptions = defaultOptions, callback:
       let serialized;
       try {
         serialized = prepackSources(
-          [
-            {
-              filePath: filename,
-              fileContents: code,
-              sourceMapContents: sourceMap,
-            },
-          ],
+          [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options
         );
       } catch (err) {
@@ -84,13 +78,7 @@ export function prepackFile(
       let serialized;
       try {
         serialized = prepackSources(
-          [
-            {
-              filePath: filename,
-              fileContents: code,
-              sourceMapContents: sourceMap,
-            },
-          ],
+          [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options
         );
       } catch (err) {
@@ -119,11 +107,7 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     } catch (_e) {
       if (options.inputSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
-    return {
-      filePath: filename,
-      fileContents: code,
-      sourceMapContents: sourceMap,
-    };
+    return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
   let debugChannel;
   if (options.debugInFilePath && options.debugOutFilePath) {
