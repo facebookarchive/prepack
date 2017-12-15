@@ -63,6 +63,11 @@ export type FunctionInfo = {
   usesThis: boolean,
 };
 
+export type LazilyHoistedNodes = {
+  id: BabelNodeIdentifier,
+  nodes: Array<{ id: BabelNodeIdentifier, astNode: BabelNode }>,
+};
+
 export type FactoryFunctionInfo = { factoryId: BabelNodeIdentifier, functionInfo: FunctionInfo };
 
 export type ResidualFunctionBinding = {
