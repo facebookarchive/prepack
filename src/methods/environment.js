@@ -397,6 +397,7 @@ export class EnvironmentImplementation {
   NewObjectEnvironment(realm: Realm, O: ObjectValue | AbstractObjectValue, E: LexicalEnvironment): LexicalEnvironment {
     // 1. Let env be a new Lexical Environment.
     let env = new LexicalEnvironment(realm);
+    realm.activeLexicalEnvironments.add(env);
 
     // 2. Let envRec be a new object Environment Record containing O as the binding object.
     let envRec = new ObjectEnvironmentRecord(realm, O);

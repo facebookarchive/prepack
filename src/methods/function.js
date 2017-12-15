@@ -592,6 +592,7 @@ export class FunctionImplementation {
 
       // b. Let varEnv be NewDeclarativeEnvironment(env).
       varEnv = Environment.NewDeclarativeEnvironment(realm, env);
+      realm.activeLexicalEnvironments.delete(varEnv);
 
       // c. Let varEnvRec be varEnv's EnvironmentRecord.
       varEnvRec = varEnv.environmentRecord;
@@ -643,6 +644,7 @@ export class FunctionImplementation {
     } else {
       // 30. Else, let lexEnv be varEnv.
       lexEnv = varEnv;
+      realm.activeLexicalEnvironments.add(varEnv);
     }
 
     // 31. Let lexEnvRec be lexEnv's EnvironmentRecord.
