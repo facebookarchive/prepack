@@ -49,9 +49,10 @@ import type {
   AdditionalFunctionInfo,
   ReactSerializerState,
   SerializedBody,
+  AdditionalFunctionEffects,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics, type AdditionalFunctionEffects } from "./types.js";
+import { TimingStatistics, SerializerStatistics, BodyReference } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -62,6 +63,7 @@ import { voidExpression, emptyExpression, constructorExpression, protoExpression
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
+import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
 import { ResidualReactElements } from "./ResidualReactElements.js";
 
@@ -582,7 +584,10 @@ export class ResidualHeapSerializer {
         if (scope === this.realm.generator) {
           // This value is used from the main generator scope. This means that we need to emit the value and its
           // initialization code into the main body, and cannot delay initialization.
-          return { body: this.currentFunctionBody, description: "this.realm.generator" };
+          return {
+            body: this.currentFunctionBody,
+            description: "this.realm.generator",
+          };
         }
         generators.push(scope);
       }
@@ -678,7 +683,6 @@ export class ResidualHeapSerializer {
     this._serializedValueWithIdentifiers.add(val);
 
     let target = this._getTarget(val);
-
     let oldBody = this.emitter.beginEmitting(val, target.body);
     let init = this._serializeValue(val);
 
@@ -1025,7 +1029,13 @@ export class ResidualHeapSerializer {
     let undelay = () => {
       if (--delayed === 0) {
         invariant(instance);
-        instance.insertionPoint = this.emitter.getBodyReference();
+        // hoist if we are in an additionalFunction
+        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val)) {
+          instance.insertionPoint = new BodyReference(this.mainBody, this.mainBody.entries.length);
+          instance.containingAdditionalFunction = undefined;
+        } else {
+          instance.insertionPoint = this.emitter.getBodyReference();
+        }
       }
     };
     for (let [boundName, residualBinding] of residualBindings) {
@@ -1133,7 +1143,7 @@ export class ResidualHeapSerializer {
     ]);
   }
 
-  serializeValueObject(val: ObjectValue): BabelNodeExpression {
+  serializeValueObject(val: ObjectValue): BabelNodeExpression | void {
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
     // in a special way that's handled alongside function serialization.
@@ -1198,7 +1208,8 @@ export class ResidualHeapSerializer {
       case "ArrayBuffer":
         return this._serializeValueArrayBuffer(val);
       case "ReactElement":
-        return this.residualReactElements.serializeReactElement(val);
+        this.residualReactElements.serializeReactElement(val);
+        return;
       case "Map":
       case "WeakMap":
         return this._serializeValueMap(val);
@@ -1460,6 +1471,26 @@ export class ResidualHeapSerializer {
               residualBinding.additionalValueSerialized = this.serializeValue(newVal);
             }
             if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+            if (this.residualReactElements.lazilyHoistedNodes !== undefined) {
+              let { id, nodes, createElementIdentifier } = this.residualReactElements.lazilyHoistedNodes;
+              // create a function that initializes all the hoisted nodes
+              let func = t.functionExpression(
+                null,
+                // use createElementIdentifier if it's not null
+                createElementIdentifier ? [createElementIdentifier] : [],
+                t.blockStatement(
+                  nodes.map(node => t.expressionStatement(t.assignmentExpression("=", node.id, node.astNode)))
+                )
+              );
+              // push it to the mainBody of the module
+              this.mainBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(id, func)]));
+              // output all the empty variable declarations that will hold the nodes lazily
+              this.mainBody.entries.push(
+                ...nodes.map(node => t.variableDeclaration("var", [t.variableDeclarator(node.id)]))
+              );
+              // reset the lazilyHoistedNodes so other additional functions work
+              this.residualReactElements.lazilyHoistedNodes = undefined;
+            }
           };
           this.currentAdditionalFunction = additionalFunctionValue;
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);

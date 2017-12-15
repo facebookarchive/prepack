@@ -11,7 +11,7 @@
 
 import { Realm } from "../realm.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
-import { isReactElement } from "../react/utils.js";
+import { canHoistReactElement } from "../react/hoisting.js";
 import { Get, IsAccessorDescriptor } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
@@ -21,6 +21,7 @@ import { Logger } from "./logger.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors";
 import type { ReactOutputTypes } from "../options.js";
+import type { LazilyHoistedNodes } from "./types.js";
 
 export class ResidualReactElements {
   constructor(realm: Realm, residualHeapSerializer: ResidualHeapSerializer) {
@@ -28,12 +29,14 @@ export class ResidualReactElements {
     this.residualHeapSerializer = residualHeapSerializer;
     this.logger = residualHeapSerializer.logger;
     this.reactOutput = realm.react.output || "create-element";
+    this.lazilyHoistedNodes = undefined;
   }
 
   realm: Realm;
   logger: Logger;
   reactOutput: ReactOutputTypes;
   residualHeapSerializer: ResidualHeapSerializer;
+  lazilyHoistedNodes: void | LazilyHoistedNodes;
 
   serializeReactElement(val: ObjectValue): BabelNodeExpression {
     let typeValue = Get(this.realm, val, "type");
@@ -123,12 +126,65 @@ export class ResidualReactElements {
       }
     }
     let reactLibraryObject = this.realm.react.reactLibraryObject;
+    let id = this.residualHeapSerializer.getSerializeObjectIdentifier(val);
+    let createElementIdentifier = null;
+    let reactElement;
+
     if (this.reactOutput === "jsx") {
-      return this._serializeReactElementToJSXElement(val, typeValue, attributes, children, reactLibraryObject);
+      reactElement = this._serializeReactElementToJSXElement(val, typeValue, attributes, children, reactLibraryObject);
     } else if (this.reactOutput === "create-element") {
-      return this._serializeReactElementToCreateElement(val, typeValue, attributes, children, reactLibraryObject);
+      // if there is no React library, then we should throw and error, as it is needed for createElement output
+      if (reactLibraryObject === undefined) {
+        throw new FatalError("unable to serialize JSX to createElement due to React not being referenced in scope");
+      }
+      let createElement = Get(this.realm, reactLibraryObject, "createElement");
+      createElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
+
+      reactElement = this._serializeReactElementToCreateElement(
+        val,
+        typeValue,
+        attributes,
+        children,
+        createElementIdentifier
+      );
+    } else {
+      invariant(false, "Unknown reactOutput specified");
     }
-    invariant(false, "Unknown reactOutput specified");
+    // if we are hoisting this React element, put the assignment in the body
+    // also ensure we are in an additional function
+    if (
+      this.residualHeapSerializer.currentFunctionBody !== this.residualHeapSerializer.mainBody &&
+      canHoistReactElement(this.realm, val)
+    ) {
+      // if the currentHoistedReactElements is not defined, we create it an emit the function call
+      // this should only occur once per additional function
+      if (this.lazilyHoistedNodes === undefined) {
+        let funcId = t.identifier(this.residualHeapSerializer.functionNameGenerator.generate());
+        this.lazilyHoistedNodes = {
+          id: funcId,
+          createElementIdentifier: createElementIdentifier,
+          nodes: [],
+        };
+        let statement = t.expressionStatement(
+          t.logicalExpression(
+            "&&",
+            t.binaryExpression("===", id, t.unaryExpression("void", t.numericLiteral(0), true)),
+            // pass the createElementIdentifier if it's not null
+            t.callExpression(funcId, createElementIdentifier ? [createElementIdentifier] : [])
+          )
+        );
+        this.residualHeapSerializer.emitter.emit(statement);
+      }
+      // we then push the reactElement and its id into our list of elements to process after
+      // the current additional function has serialzied
+      invariant(this.lazilyHoistedNodes !== undefined);
+      invariant(Array.isArray(this.lazilyHoistedNodes.nodes));
+      this.lazilyHoistedNodes.nodes.push({ id, astNode: reactElement });
+    } else {
+      let declar = t.variableDeclaration("var", [t.variableDeclarator(id, reactElement)]);
+      this.residualHeapSerializer.emitter.emit(declar);
+    }
+    return reactElement;
   }
 
   _addSerializedValueToJSXAttriutes(prop: string, expr: any, attributes: Array<BabelNode>): void {
@@ -151,14 +207,8 @@ export class ResidualReactElements {
     typeValue: Value,
     attributes: Array<BabelNode>,
     children: Array<BabelNode>,
-    reactLibraryObject?: ObjectValue
+    createElementIdentifier: BabelNodeIdentifier
   ): BabelNodeExpression {
-    // if there is no React library, then we should throw and error, as it is needed for createElement output
-    if (reactLibraryObject === undefined) {
-      throw new FatalError("unable to serialize JSX to createElement due to React not being referenced in scope");
-    }
-    let createElement = Get(this.realm, reactLibraryObject, "createElement");
-    let createElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
     let typeIdentifier = this.residualHeapSerializer.serializeValue(typeValue);
     let createElementArguments = [typeIdentifier];
     // check if we need to add attributes
@@ -183,7 +233,7 @@ export class ResidualReactElements {
     typeValue: Value,
     attributes: Array<BabelNode>,
     children: Array<BabelNode>,
-    reactLibraryObject?: ObjectValue
+    reactLibraryObject: void | ObjectValue
   ): BabelNodeExpression {
     if (reactLibraryObject !== undefined) {
       this.residualHeapSerializer.serializeValue(reactLibraryObject);
@@ -206,17 +256,6 @@ export class ResidualReactElements {
   }
 
   _serializeReactElementChild(child: Value): BabelNode {
-    if (isReactElement(child)) {
-      // if we know it's a ReactElement, we add the value to the serializedValues
-      // and short cut to get back the JSX expression so we don't emit additional data
-      // we do this to ensure child JSXElements can get keys assigned if needed
-      this.residualHeapSerializer.serializedValues.add(child);
-      let reactChild = this.residualHeapSerializer.serializeValueObject(((child: any): ObjectValue));
-      if (reactChild.leadingComments != null && this.reactOutput === "jsx") {
-        return t.jSXExpressionContainer(reactChild);
-      }
-      return reactChild;
-    }
     const expr = this.residualHeapSerializer.serializeValue(child);
 
     if (this.reactOutput === "jsx") {

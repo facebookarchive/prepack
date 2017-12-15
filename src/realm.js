@@ -173,6 +173,8 @@ export class Realm {
       symbols: new Map(),
       currentOwner: undefined,
       reactLibraryObject: undefined,
+      hoistableReactElements: new WeakMap(),
+      hoistableFunctions: new WeakMap(),
     };
 
     this.errorHandler = opts.errorHandler;
@@ -215,6 +217,8 @@ export class Realm {
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     currentOwner?: ObjectValue,
     reactLibraryObject?: ObjectValue,
+    hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    hoistableFunctions: WeakMap<FunctionValue, boolean>,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;

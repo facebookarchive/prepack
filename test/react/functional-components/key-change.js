@@ -30,17 +30,17 @@ var Stateful = (function (superclass) {
   return Stateful;
 }(React.Component));
 
-function App(props: {switch: boolean}) {
+function App(props: {switch: boolean, x: any}) {
   if (props.switch) {
     return (
       <div>
-        <Stateful key='hi'>Hi</Stateful>
+        <Stateful key='hi' x={props.x}>Hi</Stateful>
       </div>
     );
   }
   return (
     <div>
-      <Stateful key='bye'>Bye</Stateful>
+      <Stateful key='bye' x={props.x}>Bye</Stateful>
     </div>
   );
 }
