@@ -1060,30 +1060,25 @@ export class LexicalEnvironment {
         if (e instanceof ThrowCompletion) {
           let error = e.value;
           if (error instanceof ObjectValue) {
-            // this handler supports a nice source printing, handling stdin and input files.
-            this.realm.errorHandler = diagnostic => {
-              // flow makes me do this
-              let location = diagnostic.location || { source: "" };
-              let locationSource = location.source || "";
-              let sourceMessage;
-              switch (locationSource) {
-                case "":
-                  sourceMessage = "unknown source";
-                  break;
-                case "no-filename-specified":
-                  sourceMessage = "stdin";
-                  break;
-                default:
-                  sourceMessage = `input file ${locationSource}`;
-                  break;
-              }
-              console.error(`${diagnostic.message} found in ${sourceMessage}`);
-              return "Fail";
-            };
             let message = error.$Get("message", error);
+            // a nicer error message for parse errors.
+            let sourceMessage;
             e.location.source = source.filePath;
-            let err = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
-            if (this.realm.handleError(err) === "Fail") throw new FatalError();
+            switch (e.location.source) {
+              case "":
+                sourceMessage = "unknown source";
+                break;
+              case "no-filename-specified":
+                sourceMessage = "stdin";
+                break;
+              default:
+                sourceMessage = `input file ${e.location.source}`;
+                break;
+            }
+            message.value = `Syntax error in ${sourceMessage}: ${message.value}`;
+            let diagnostic = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
+            this.realm.handleError(diagnostic);
+            throw new FatalError(message.value);
           }
         }
         throw e;
