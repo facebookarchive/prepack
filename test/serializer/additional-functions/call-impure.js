@@ -1,4 +1,5 @@
 // additional functions
+// abstract effects
 
 let forEach = global.__abstract ? __abstract('function', '(function(callback) { callback("a", 0); callback("b", 1); })') : function(callback) { callback("a", 0); callback("b", 1); };
 let set = global.__abstract ? __abstract('function', '(function(obj, name, value) { obj[name] = value; })') : function(obj, name, value) { obj[name] = value; };

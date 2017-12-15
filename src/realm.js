@@ -131,6 +131,7 @@ export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual;
+    this.trackLeaks = opts.abstractEffectsInAdditionalFunctions;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
     }
@@ -189,6 +190,7 @@ export class Realm {
   isReadOnly: boolean;
   isStrict: boolean;
   useAbstractInterpretation: boolean;
+  trackLeaks: boolean;
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
@@ -400,6 +402,9 @@ export class Realm {
   // also won't have effects on any objects or bindings that weren't created in this
   // call.
   evaluatePure<T>(f: () => T) {
+    if (!this.trackLeaks) {
+      return f();
+    }
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every

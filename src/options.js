@@ -44,6 +44,7 @@ export type SerializerOptions = {
   profile?: boolean,
   inlineExpressions?: boolean,
   simpleClosures?: boolean,
+  abstractEffectsInAdditionalFunctions?: boolean,
   trace?: boolean,
   heapGraph?: boolean,
 };
