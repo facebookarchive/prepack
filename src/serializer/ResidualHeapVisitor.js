@@ -466,7 +466,7 @@ export class ResidualHeapVisitor {
         if (this.$ParameterMap !== undefined) {
           this.logger.logError(val, `Arguments object is not supported in residual heap.`);
         }
-        if (this.realm.react.enabled && valueIsReactLibraryObject(this.realm, val)) {
+        if (this.realm.react.enabled && valueIsReactLibraryObject(this.realm, val, this.logger)) {
           this.realm.react.reactLibraryObject = val;
         }
         return;
@@ -734,11 +734,18 @@ export class ResidualHeapVisitor {
       if (reactLibraryObject !== undefined) {
         this.visitValue(reactLibraryObject);
       }
-      //this.delayedVisitGeneratorEntries.push({ commonScope, generator, entry });
     } else if (this.realm.react.output === "create-element") {
+      function throwError() {
+        throw new FatalError("unable to visit createElement due to React not being referenced in scope");
+      }
       // createElement output needs React in scope
       if (reactLibraryObject === undefined) {
-        throw new FatalError("unable to visit createElement due to React not being referenced in scope");
+        throwError();
+      }
+      invariant(reactLibraryObject instanceof ObjectValue);
+      let createElement = reactLibraryObject.properties.get("createElement");
+      if (createElement === undefined || createElement.descriptor === undefined) {
+        throwError();
       }
       let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
       this.visitValue(reactCreateElement);

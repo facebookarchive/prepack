@@ -30,6 +30,7 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { FatalError } from "../errors.js";
+import type { Logger } from "../serializer/logger.js";
 
 export type ReactSymbolTypes = "react.element" | "react.symbol" | "react.portal" | "react.return" | "react.call";
 
@@ -55,7 +56,6 @@ export function isReactElement(val: Value): boolean {
 export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): SymbolValue {
   let reactSymbol = realm.react.symbols.get(symbolKey);
   if (reactSymbol !== undefined) {
-    invariant(reactSymbol instanceof SymbolValue);
     return reactSymbol;
   }
   let SymbolFor = realm.intrinsics.Symbol.properties.get("for");
@@ -95,27 +95,35 @@ export function valueIsClassComponent(realm: Realm, value: Value): boolean {
   return false;
 }
 
-export function valueIsReactLibraryObject(realm: Realm, value: ObjectValue): boolean {
+export function valueIsReactLibraryObject(realm: Realm, value: ObjectValue, logger: Logger): boolean {
   if (realm.react.reactLibraryObject === value) {
     return true;
   }
   // we check that the object is the React or React-like library by checking for
   // core properties that should exist on it
-  let reactVersion = Get(realm, value, "version");
-  let reactCreateElement = Get(realm, value, "createElement");
-  let reactCloneElement = Get(realm, value, "cloneElement");
-  let reactIsValidElement = Get(realm, value, "isValidElement");
-  let reactComponent = Get(realm, value, "Component");
-  let reactChildren = Get(realm, value, "Children");
-  if (
-    reactVersion instanceof StringValue &&
-    reactCreateElement instanceof FunctionValue &&
-    reactComponent instanceof FunctionValue &&
-    reactCloneElement instanceof FunctionValue &&
-    reactIsValidElement instanceof FunctionValue &&
-    reactChildren instanceof ObjectValue
-  ) {
-    return true;
+  let reactVersion = logger.tryQuery(() => Get(realm, value, "version"), undefined, false);
+  if (!(reactVersion instanceof StringValue)) {
+    return false;
+  }
+  let reactCreateElement = logger.tryQuery(() => Get(realm, value, "createElement"), undefined, false);
+  if (!(reactCreateElement instanceof FunctionValue)) {
+    return false;
+  }
+  let reactCloneElement = logger.tryQuery(() => Get(realm, value, "cloneElement"), undefined, false);
+  if (!(reactCloneElement instanceof FunctionValue)) {
+    return false;
+  }
+  let reactIsValidElement = logger.tryQuery(() => Get(realm, value, "isValidElement"), undefined, false);
+  if (!(reactIsValidElement instanceof FunctionValue)) {
+    return false;
+  }
+  let reactComponent = logger.tryQuery(() => Get(realm, value, "Component"), undefined, false);
+  if (!(reactComponent instanceof FunctionValue)) {
+    return false;
+  }
+  let reactChildren = logger.tryQuery(() => Get(realm, value, "Children"), undefined, false);
+  if (!(reactChildren instanceof ObjectValue)) {
+    return false;
   }
   return false;
 }
