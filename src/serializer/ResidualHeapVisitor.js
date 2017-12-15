@@ -81,6 +81,7 @@ export class ResidualHeapVisitor {
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
+    this.shouldVisitReactLibrary = false;
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
     this.additionalFunctionValueInfos = new Map();
@@ -106,6 +107,7 @@ export class ResidualHeapVisitor {
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
+  shouldVisitReactLibrary: boolean;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -424,22 +426,7 @@ export class ResidualHeapVisitor {
       case "ArrayBuffer":
         return;
       case "ReactElement":
-        // find and visit the React library
-        let reactLibraryObject = this.realm.react.reactLibraryObject;
-        if (this.realm.react.output === "jsx") {
-          // React might not be defined in scope, i.e. another library is using JSX
-          // we don't throw an error as we should support JSX stand-alone
-          if (reactLibraryObject !== undefined) {
-            this.visitValue(reactLibraryObject);
-          }
-        } else if (this.realm.react.output === "create-element") {
-          // createElement output needs React in scope
-          if (reactLibraryObject === undefined) {
-            throw new FatalError("unable to visit createElement due to React not being referenced in scope");
-          }
-          let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
-          this.visitValue(reactCreateElement);
-        }
+        this.shouldVisitReactLibrary = true;
         return;
       case "Date":
         let dateValue = val.$DateValue;
@@ -719,5 +706,28 @@ export class ResidualHeapVisitor {
     this.visitGenerator(generator);
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
     this.realm.evaluateAndRevertInGlobalEnv(this.visitAdditionalFunctionEffects.bind(this));
+    if (this.realm.react.enabled && this.shouldVisitReactLibrary) {
+      this._visitReactLibrary();
+    }
+  }
+
+  _visitReactLibrary() {
+    // find and visit the React library
+    let reactLibraryObject = this.realm.react.reactLibraryObject;
+    if (this.realm.react.output === "jsx") {
+      // React might not be defined in scope, i.e. another library is using JSX
+      // we don't throw an error as we should support JSX stand-alone
+      if (reactLibraryObject !== undefined) {
+        this.visitValue(reactLibraryObject);
+      }
+      //this.delayedVisitGeneratorEntries.push({ commonScope, generator, entry });
+    } else if (this.realm.react.output === "create-element") {
+      // createElement output needs React in scope
+      if (reactLibraryObject === undefined) {
+        throw new FatalError("unable to visit createElement due to React not being referenced in scope");
+      }
+      let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
+      this.visitValue(reactCreateElement);
+    }
   }
 }
