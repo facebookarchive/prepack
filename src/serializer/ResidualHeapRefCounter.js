@@ -87,4 +87,10 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
     invariant(this._path.length > 0);
     this._path.pop();
   }
+
+  // Override.
+  visitRoots(): void {
+    super.visitRoots();
+    invariant(this._path.length === 0, "Path should be balanced empty after traversal.");
+  }
 }

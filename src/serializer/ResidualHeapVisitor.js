@@ -504,6 +504,7 @@ export class ResidualHeapVisitor {
     if (val instanceof AbstractValue) {
       let equivalentValue = this.equivalenceSet.add(val);
       if (this.preProcessValue(equivalentValue)) this.visitAbstractValue(equivalentValue);
+      this.postProcessValue(equivalentValue);
       return (equivalentValue: any);
     }
     if (val instanceof ObjectValue && isReactElement(val)) {
