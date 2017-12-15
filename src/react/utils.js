@@ -30,7 +30,6 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { FatalError } from "../errors.js";
-import type { Logger } from "../serializer/logger.js";
 
 export type ReactSymbolTypes = "react.element" | "react.symbol" | "react.portal" | "react.return" | "react.call";
 
@@ -95,7 +94,8 @@ export function valueIsClassComponent(realm: Realm, value: Value): boolean {
   return false;
 }
 
-export function valueIsReactLibraryObject(realm: Realm, value: ObjectValue, logger: Logger): boolean {
+// logger isn't typed otherwise it will increase flow cycle length :()
+export function valueIsReactLibraryObject(realm: Realm, value: ObjectValue, logger: any): boolean {
   if (realm.react.reactLibraryObject === value) {
     return true;
   }

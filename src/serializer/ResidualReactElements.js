@@ -126,8 +126,15 @@ export class ResidualReactElements {
       }
     }
     let reactLibraryObject = this.realm.react.reactLibraryObject;
+    let shouldHoist =
+      this.residualHeapSerializer.currentFunctionBody !== this.residualHeapSerializer.mainBody &&
+      canHoistReactElement(this.realm, val);
+
     let id = this.residualHeapSerializer.getSerializeObjectIdentifier(val);
-    let createElementIdentifier = null;
+    // this identifier is used as the deafult, but also passed to the hoisted factory function
+    let originalCreateElementIdentifier = null;
+    // this name is used when hoisting, and is passed into the factory function, rather than the original
+    let hoistedCreateElementIdentifier = null;
     let reactElement;
 
     if (this.reactOutput === "jsx") {
@@ -138,31 +145,38 @@ export class ResidualReactElements {
         throw new FatalError("unable to serialize JSX to createElement due to React not being referenced in scope");
       }
       let createElement = Get(this.realm, reactLibraryObject, "createElement");
-      createElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
+      originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
+      if (shouldHoist) {
+        // if we haven't created a lazilyHoistedNodes before, then this is the first time
+        // so we only create the hoisted identifier once
+        if (this.lazilyHoistedNodes === undefined) {
+          // create a new unique instance
+          hoistedCreateElementIdentifier = t.identifier(this.residualHeapSerializer.intrinsicNameGenerator.generate());
+        } else {
+          hoistedCreateElementIdentifier = this.lazilyHoistedNodes.createElementIdentifier;
+        }
+      }
 
       reactElement = this._serializeReactElementToCreateElement(
         val,
         typeValue,
         attributes,
         children,
-        createElementIdentifier
+        shouldHoist ? hoistedCreateElementIdentifier : originalCreateElementIdentifier
       );
     } else {
       invariant(false, "Unknown reactOutput specified");
     }
     // if we are hoisting this React element, put the assignment in the body
     // also ensure we are in an additional function
-    if (
-      this.residualHeapSerializer.currentFunctionBody !== this.residualHeapSerializer.mainBody &&
-      canHoistReactElement(this.realm, val)
-    ) {
+    if (shouldHoist) {
       // if the currentHoistedReactElements is not defined, we create it an emit the function call
       // this should only occur once per additional function
       if (this.lazilyHoistedNodes === undefined) {
         let funcId = t.identifier(this.residualHeapSerializer.functionNameGenerator.generate());
         this.lazilyHoistedNodes = {
           id: funcId,
-          createElementIdentifier: createElementIdentifier,
+          createElementIdentifier: hoistedCreateElementIdentifier,
           nodes: [],
         };
         let statement = t.expressionStatement(
@@ -170,7 +184,7 @@ export class ResidualReactElements {
             "&&",
             t.binaryExpression("===", id, t.unaryExpression("void", t.numericLiteral(0), true)),
             // pass the createElementIdentifier if it's not null
-            t.callExpression(funcId, createElementIdentifier ? [createElementIdentifier] : [])
+            t.callExpression(funcId, originalCreateElementIdentifier ? [originalCreateElementIdentifier] : [])
           )
         );
         this.residualHeapSerializer.emitter.emit(statement);
