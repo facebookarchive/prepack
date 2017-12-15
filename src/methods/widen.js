@@ -122,7 +122,7 @@ export class WidenImplementation {
     let widen = (b: Binding, v1: void | Value, v2: void | Value) => {
       invariant(v2 !== undefined); // Local variables are not going to get deleted as a result of widening
       let result = this.widenValues(realm, v1 || b.value, v2);
-      if (result instanceof AbstractValue && result.kind === "widening") {
+      if (result instanceof AbstractValue && result.kind === "widened") {
         let phiNode = b.phiNode;
         if (phiNode === undefined) {
           // Create a temporal location for binding
@@ -183,7 +183,7 @@ export class WidenImplementation {
     c2: CreatedObjects
   ): PropertyBindings {
     let widen = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
-      invariant(d1 !== undefined || d2 !== undefined, "widenMaps ensures that this cannot happen");
+      if (d1 === undefined && d2 === undefined) return undefined;
       // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
       if (d1 === undefined) {
         if (b.object instanceof ObjectValue && c2.has(b.object)) return d2; // no widen
@@ -210,7 +210,31 @@ export class WidenImplementation {
         }
         invariant(d2 !== undefined);
       }
-      return this.widenDescriptors(realm, d1, d2);
+      let result = this.widenDescriptors(realm, d1, d2);
+      if (result && result.value instanceof AbstractValue && result.value.kind === "widened") {
+        let rval = result.value;
+        let pathNode = b.pathNode;
+        if (pathNode === undefined) {
+          //Since properties already have mutable storage locations associated with them, we do not
+          //need phi nodes. What we need is an abstract value with a build node that results in a memberExpression
+          //that resolves to the storage location of the property.
+
+          // For now, we only handle loop invariant properties
+          //i.e. properties where the member expresssion does not involve any values written to inside the loop.
+          //todo: handle the case where key is an abstract value.
+          let key = b.key;
+          if (typeof key === "string") {
+            pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
+              t.memberExpression(o, t.identifier(key))
+            );
+          } else {
+            throw new FatalError("todo: handle the case where key is an abstract value");
+          }
+          b.pathNode = pathNode;
+        }
+        result.value = pathNode;
+      }
+      return result;
     };
     return this.widenMaps(m1, m2, widen);
   }
@@ -218,7 +242,11 @@ export class WidenImplementation {
   widenDescriptors(realm: Realm, d1: void | Descriptor, d2: Descriptor): void | Descriptor {
     if (d1 === undefined) {
       // d2 is a property written to only in the (n+1)th iteration
-      return d2; // no widening needed. Note that another fixed point iteration will occur.
+      if (!IsDataDescriptor(realm, d2)) return d2; // accessor properties need not be widened.
+      let dc = cloneDescriptor(d2);
+      invariant(dc !== undefined);
+      dc.value = this.widenValues(realm, d2.value, d2.value);
+      return dc;
     } else {
       if (equalDescriptors(d1, d2)) {
         if (!IsDataDescriptor(realm, d1)) return d1; // identical accessor properties need not be widened.
@@ -274,17 +302,16 @@ export class WidenImplementation {
   }
 
   containsPropertyBindings(m1: PropertyBindings, m2: PropertyBindings): boolean {
-    let equalsPropertyBinding = (d1: void | Descriptor, d2: void | Descriptor) => {
-      if (d1 === undefined || d2 === undefined) return false;
-      let [v1, v2] = [d1.value, d2.value];
+    let containsPropertyBinding = (d1: void | Descriptor, d2: void | Descriptor) => {
+      let [v1, v2] = [d1 && d1.value, d2 && d2.value];
       if (v1 === undefined) return v2 === undefined;
-      if (v1 instanceof Value && v2 instanceof Value && !this._containsValues(v1, v2)) return false;
+      if (v1 instanceof Value && v2 instanceof Value) return this._containsValues(v1, v2);
       if (Array.isArray(v1) && Array.isArray(v2)) {
         return this._containsArray(((v1: any): Array<Value>), ((v2: any): Array<Value>));
       }
-      return false;
+      return v2 === undefined;
     };
-    return this.containsMap(m1, m2, equalsPropertyBinding);
+    return this.containsMap(m1, m2, containsPropertyBinding);
   }
 
   _containsArray(
