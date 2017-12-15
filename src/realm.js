@@ -34,13 +34,7 @@ import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
-import type {
-  BabelNode,
-  BabelNodeIdentifier,
-  BabelNodeSourceLocation,
-  BabelNodeLVal,
-  BabelNodeStatement,
-} from "babel-types";
+import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
 export type Bindings = Map<Binding, void | Value>;
@@ -512,11 +506,10 @@ export class Realm {
         if (Widen.containsEffects(effects1, effects2)) {
           // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
-          let [, , bindings1, pbindings1] = effects1;
-          if (pbindings1.size > 0) return undefined;
+          // Generate code using effects2 because its expressions have not been widened away.
           let [, gen, bindings2, pbindings2] = effects2;
-          if (pbindings2.size > 0) return undefined;
-          this._emitLocalAssignments(gen, bindings1, bindings2);
+          this._emitLocalAssignments(gen, bindings2);
+          this._emitPropertAssignments(gen, pbindings2);
           return [effects1, effects2];
         }
         effects1 = Widen.widenEffects(this, effects1, effects2);
@@ -527,18 +520,9 @@ export class Realm {
   }
 
   // populate the loop body generator with assignments that will update the phiNodes
-  _emitLocalAssignments(gen: Generator, bindings1: Bindings, bindings2: Bindings) {
-    // bindings1 maps local bindings to widened values whose build nodes return the identity of the correspoding phiNodes
-    // bindings2 maps local bindings to the unwidened values whose build nodes result in expressions that reference phiNodes
-    let idFor: Map<any, BabelNodeIdentifier> = new Map();
-    bindings1.forEach((val, key, map) => {
-      if (val instanceof AbstractValue && val.kind === "widening") {
-        let id = val.buildNode([]);
-        idFor.set(key, (id: any));
-      }
-    });
+  _emitLocalAssignments(gen: Generator, bindings: Bindings) {
     let tvalFor: Map<any, AbstractValue> = new Map();
-    bindings2.forEach((val, key, map) => {
+    bindings.forEach((val, key, map) => {
       if (val instanceof AbstractValue) {
         invariant(val._buildNode !== undefined);
         let tval = gen.derive(val.types, val.values, [val], ([n]) => n, {
@@ -547,17 +531,42 @@ export class Realm {
         tvalFor.set(key, tval);
       }
     });
-    bindings2.forEach((val, key, map) => {
+    bindings.forEach((val, key, map) => {
       if (val instanceof AbstractValue) {
-        let id = idFor.get(key);
-        invariant(id !== undefined);
+        let phiNode = key.phiNode;
         let tval = tvalFor.get(key);
         invariant(tval !== undefined);
         gen.emitStatement([tval], ([v]) => {
-          invariant(id !== undefined);
-          return t.expressionStatement(t.assignmentExpression("=", id, v));
+          invariant(phiNode !== undefined);
+          let id = phiNode.buildNode([]);
+          return t.expressionStatement(t.assignmentExpression("=", (id: any), v));
         });
       }
+    });
+  }
+
+  // populate the loop body generator with assignments that will update properties modified inside the loop
+  _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings) {
+    let tvalFor: Map<any, AbstractValue> = new Map();
+    pbindings.forEach((val, key, map) => {
+      let value = val && val.value;
+      if (value instanceof AbstractValue) {
+        invariant(value._buildNode !== undefined);
+        let tval = gen.derive(value.types, value.values, [value], ([n]) => n, {
+          skipInvariant: true,
+        });
+        tvalFor.set(key, tval);
+      }
+    });
+    pbindings.forEach((val, key, map) => {
+      let path = key.pathNode;
+      let tval = tvalFor.get(key);
+      invariant(tval !== undefined);
+      gen.emitStatement([key.object, tval], ([o, v]) => {
+        invariant(path !== undefined);
+        let lh = path.buildNode([o]);
+        return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+      });
     });
   }
 

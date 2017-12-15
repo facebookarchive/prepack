@@ -157,7 +157,7 @@ export default class AbstractObjectValue extends AbstractValue {
         desc.value = Join.joinValuesAsConditional(this.$Realm, cond, d1Value, d2Value);
       }
       return desc;
-    } else if (this.kind === "widening") {
+    } else if (this.kind === "widened") {
       // This abstract object was created by repeated assignments of freshly allocated objects to the same binding inside a loop
       let [ob1, ob2] = this.args; // ob1: summary of iterations 1...n, ob2: summary of iteration n+1
       invariant(ob1 instanceof ObjectValue);
