@@ -646,7 +646,7 @@ export class FunctionImplementation {
     } else {
       // 30. Else, let lexEnv be varEnv.
       lexEnv = varEnv;
-      // Since we previously removed varEnv, make sure to re-add it when it's used. 
+      // Since we previously removed varEnv, make sure to re-add it when it's used.
       realm.activeLexicalEnvironments.add(varEnv);
     }
 
