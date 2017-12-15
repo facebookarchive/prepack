@@ -1,26 +1,10 @@
 {
-  "env": {
-    "development": {
-      "presets": [
-        "env",
-        "react"
-      ],
-      "plugins": [
-        "transform-class-properties",
-        "transform-object-rest-spread"
-      ]
-    },
-    "debugger": {
-      "presets": [["env", {
-          "targets": {
-            "node": "current"
-          }
-        }],
-      "react"],
-      "plugins": [
-        "transform-class-properties",
-        "transform-object-rest-spread"
-      ]
-    }
-  }
+  "presets": [
+    "env",
+    "react"
+  ],
+  "plugins": [
+    "transform-class-properties",
+    "transform-object-rest-spread"
+  ]
 }

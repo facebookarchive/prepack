@@ -24,7 +24,6 @@
   "browser": "lib/prepack-standalone.js",
   "scripts": {
     "build": "babel src --out-dir lib --source-maps && yarn build-bundle",
-    "build-debugger": "BABEL_ENV=debugger babel src/debugger --out-dir lib/debugger --source-maps",
     "build-scripts": "babel scripts --out-dir lib --source-maps",
     "build-bundle": "webpack",
     "watch": "babel src scripts --out-dir lib --watch --source-maps",
