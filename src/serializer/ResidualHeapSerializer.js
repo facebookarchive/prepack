@@ -217,7 +217,7 @@ export class ResidualHeapSerializer {
   // symbols, properties, prototype.
   // For every created object that corresponds to a value,
   // this function should be invoked once.
-  // Thus, as a side effects, we gather statistics here on all emitted objects.
+  // Thus, as a side effect, we gather statistics here on all emitted objects.
   _emitObjectProperties(
     obj: ObjectValue,
     properties: Map<string, PropertyBinding> = obj.properties,
@@ -558,8 +558,7 @@ export class ResidualHeapSerializer {
 
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
   _getTarget(
-    val: Value,
-    scopes: Set<Scope>
+    val: Value
   ): {
     body: SerializedBody,
     usedOnlyByResidualFunctions?: true,
@@ -567,6 +566,9 @@ export class ResidualHeapSerializer {
     commonAncestor?: Scope,
     description?: string,
   } {
+    let scopes = this.residualValues.get(val);
+    invariant(scopes !== undefined);
+
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
 
@@ -663,9 +665,6 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let scopes = this.residualValues.get(val);
-    invariant(scopes !== undefined);
-
     if (this._serializedValueWithIdentifiers.has(val)) {
       return this.getSerializeObjectIdentifier(val);
     }
@@ -678,7 +677,7 @@ export class ResidualHeapSerializer {
     }
     this._serializedValueWithIdentifiers.add(val);
 
-    let target = this._getTarget(val, scopes);
+    let target = this._getTarget(val);
 
     let oldBody = this.emitter.beginEmitting(val, target.body);
     let init = this._serializeValue(val);
@@ -690,6 +689,8 @@ export class ResidualHeapSerializer {
     if (this.residualHeapValueIdentifiers.needsIdentifier(val)) {
       if (init) {
         if (this._options.debugScopes) {
+          let scopes = this.residualValues.get(val);
+          invariant(scopes !== undefined);
           let comment = `${this._getValueDebugName(val)} referenced from scopes ${Array.from(scopes)
             .map(s => this._getScopeName(s))
             .join(",")}`;
@@ -1140,9 +1141,7 @@ export class ResidualHeapSerializer {
         invariant(bindingValue !== undefined);
         referencedValues.push(bindingValue);
         if (inAdditionalFunction) {
-          let scopes = this.residualValues.get(bindingValue);
-          invariant(scopes);
-          let { usedOnlyByAdditionalFunctions } = this._getTarget(bindingValue, scopes);
+          let { usedOnlyByAdditionalFunctions } = this._getTarget(bindingValue);
           if (usedOnlyByAdditionalFunctions)
             residualBinding.referencedOnlyFromAdditionalFunctions = this.currentAdditionalFunction;
         }
@@ -1366,7 +1365,7 @@ export class ResidualHeapSerializer {
       return this._serializeAbstractValueHelper(val);
     } else {
       // This abstract value's dependencies should all be declared
-      // but still need to check it again in case their serialized bodies are in different generator scope.
+      // but still need to check them again in case their serialized bodies are in different generator scope.
       this.emitter.emitNowOrAfterWaitingForDependencies(val.args, () => {
         const serializedValue = this._serializeAbstractValueHelper(val);
         let uid = this.getSerializeObjectIdentifier(val);
@@ -1522,7 +1521,7 @@ export class ResidualHeapSerializer {
           let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
           // result -- ignore TODO: return the result from the function somehow
           // Generator -- visit all entries
-          // Bindings -- only need to serialize bindings if they're captured by some nested function ??
+          // Bindings -- only need to serialize bindings if they're captured by some nested function?
           //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
           //          -- we don't overwrite anything they capture
           //          -- TODO: deal with these properly

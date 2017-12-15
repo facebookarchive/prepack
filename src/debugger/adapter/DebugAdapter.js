@@ -50,9 +50,6 @@ class PrepackDebugSession extends DebugSession {
   }
 
   _registerMessageCallbacks() {
-    this._adapterChannel.registerChannelEvent(DebugMessage.PREPACK_READY_RESPONSE, (response: DebuggerResponse) => {
-      this.sendEvent(new StoppedEvent("entry", DebuggerConstants.PREPACK_THREAD_ID));
-    });
     this._adapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
       invariant(result.kind === "stopped");

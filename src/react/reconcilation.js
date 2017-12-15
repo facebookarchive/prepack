@@ -79,7 +79,7 @@ export class Reconciler {
             let diagnostic = new CompilerDiagnostic(
               `__registerReactComponentRoot() failed due to - ${error.message}`,
               this.realm.currentLocation,
-              "PP0019",
+              "PP0020",
               "FatalError"
             );
             this.realm.handleError(diagnostic);

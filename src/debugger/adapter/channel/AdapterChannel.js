@@ -42,9 +42,7 @@ export class AdapterChannel {
 
   _processPrepackMessage(message: string) {
     let dbgResponse = this._marshaller.unmarshallResponse(message);
-    if (dbgResponse.result.kind === "ready") {
-      this._eventEmitter.emit(DebugMessage.PREPACK_READY_RESPONSE, dbgResponse);
-    } else if (dbgResponse.result.kind === "breakpoint-add") {
+    if (dbgResponse.result.kind === "breakpoint-add") {
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, dbgResponse.id, dbgResponse);
     } else if (dbgResponse.result.kind === "stopped") {
       this._eventEmitter.emit(DebugMessage.STOPPED_RESPONSE, dbgResponse);

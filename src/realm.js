@@ -33,7 +33,7 @@ import type { Compatibility, RealmOptions } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { Environment, Functions, Join, Properties, To, Widen } from "./singletons.js";
+import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -614,11 +614,33 @@ export class Realm {
   composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
     if (this.savedCompletion === undefined) {
       this.savedCompletion = completion;
+      this.savedCompletion.savedPathConditions = this.pathConditions;
       this.captureEffects(completion);
     } else {
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
     }
+    if (completion.consequent instanceof AbruptCompletion) {
+      Path.pushInverseAndRefine(completion.joinCondition);
+      if (completion.alternate instanceof PossiblyNormalCompletion) {
+        completion.alternate.pathConditions.forEach(Path.pushAndRefine);
+      }
+    } else if (completion.alternate instanceof AbruptCompletion) {
+      Path.pushAndRefine(completion.joinCondition);
+      if (completion.consequent instanceof PossiblyNormalCompletion) {
+        completion.consequent.pathConditions.forEach(Path.pushAndRefine);
+      }
+    }
     return completion.value;
+  }
+
+  incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion) {
+    if (priorCompletion === undefined) return;
+    if (this.savedCompletion === undefined) {
+      this.savedCompletion = priorCompletion;
+      this.captureEffects(priorCompletion);
+    } else {
+      this.savedCompletion = Join.composePossiblyNormalCompletions(this, priorCompletion, this.savedCompletion);
+    }
   }
 
   captureEffects(completion: PossiblyNormalCompletion) {
