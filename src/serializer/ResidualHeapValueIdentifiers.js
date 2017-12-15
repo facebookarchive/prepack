@@ -19,7 +19,7 @@ import * as t from "babel-types";
 // This class can optionally track how often such value identifiers are referenced
 // when pass 1 is activated, which is usually followed by pass 2 in which
 // unneeded identifiers (those which were only ever referenced once) are
-// eliminated as  the defining expression can be inlined.
+// eliminated as the defining expression can be inlined.
 export class ResidualHeapValueIdentifiers {
   constructor(values: Iterator<Value>, preludeGenerator: PreludeGenerator) {
     this.collectValToRefCountOnly = false;

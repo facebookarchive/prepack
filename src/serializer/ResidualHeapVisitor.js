@@ -52,7 +52,7 @@ import { Environment, To } from "../singletons.js";
 export type Scope = FunctionValue | Generator;
 
 /* This class visits all values that are reachable in the residual heap.
-   In particular, this "filters out" values that are...
+   In particular, this "filters out" values that are:
    - captured by a DeclarativeEnvironmentRecord, but not actually used by any closure.
    - Unmodified prototype objects
    TODO #680: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
@@ -145,6 +145,7 @@ export class ResidualHeapVisitor {
       ) {
         continue;
       }
+      if (propertyBindingKey.pathNode !== undefined) continue; // property is written to inside a loop
       invariant(propertyBindingValue);
       this.visitObjectProperty(propertyBindingValue);
     }
@@ -507,7 +508,7 @@ export class ResidualHeapVisitor {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
-      // ...except for a few that come into existance as templates for abstract objects (TODO #882).
+      // ...except for a few that come into existence as templates for abstract objects (TODO #882).
       if (val.isTemplate) this.preProcessValue(val);
       else
         this._withScope(this.commonScope, () => {

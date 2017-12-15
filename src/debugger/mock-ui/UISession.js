@@ -124,18 +124,7 @@ export class UISession {
     } else if (event.event === "stopped") {
       this._prepackWaiting = true;
       if (event.body) {
-        if (event.body.reason === "entry") {
-          this._uiOutput("Prepack is ready");
-          this._prepackLaunched = true;
-          // start reading requests from the user
-          this._reader.question("(dbg) ", (input: string) => {
-            this._dispatch(input);
-          });
-        } else if (event.body.reason.startsWith("breakpoint")) {
-          this._uiOutput("Prepack stopped on: " + event.body.reason);
-        } else {
-          this._uiOutput(event.body.reason);
-        }
+        this._uiOutput(event.body.reason);
       }
     }
   }
@@ -143,6 +132,8 @@ export class UISession {
   _processResponse(response: DebugProtocol.Response) {
     if (response.command === "initialize") {
       this._processInitializeResponse(((response: any): DebugProtocol.InitializeResponse));
+    } else if (response.command === "launch") {
+      this._processLaunchResponse(((response: any): DebugProtocol.LaunchResponse));
     } else if (response.command === "threads") {
       this._processThreadsResponse(((response: any): DebugProtocol.ThreadsResponse));
     } else if (response.command === "stackTrace") {
@@ -171,6 +162,16 @@ export class UISession {
       prepackArguments: this._prepackArguments,
     };
     this._sendLaunchRequest(launchArgs);
+  }
+
+  _processLaunchResponse(response: DebugProtocol.LaunchResponse) {
+    this._uiOutput("Prepack is ready");
+    this._prepackLaunched = true;
+    this._prepackWaiting = true;
+    // start reading requests from the user
+    this._reader.question("(dbg) ", (input: string) => {
+      this._dispatch(input);
+    });
   }
 
   _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {

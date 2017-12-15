@@ -25,6 +25,7 @@ onmessage = function(e) {
       filename: 'repl',
       timeout: 1000,
       serialize: true,
+      heapGraphFilePath: "/tmp/foo.txt", /* this path will not be used, it is needed to trigger the graph computation */
       errorHandler,
     };
     for (var property in e.data.options) {
@@ -34,7 +35,7 @@ onmessage = function(e) {
     }
     var result = Prepack.prepackSources(sources, options);
     if (result && !buffer.length) {
-      postMessage({ type: 'success', data: result.code });
+      postMessage({ type: 'success', data: result.code, graph: result.heapGraph });
     } else {
       // A well-defined error occurred.
       postMessage({ type: 'error', data: buffer });

@@ -43,7 +43,7 @@ function shouldVisit(node, data) {
   return (node: any)._renamedOnce !== data;
 }
 
-// replaceWith causes the node to be re-analysed, so to prevent double replacement
+// replaceWith causes the node to be re-analyzed, so to prevent double replacement
 // we add this property on the node to mark it such that it does not get replaced
 // again on this pass
 // TODO: Make this work when replacing with arbitrary BabelNodeExpressions. Currently
