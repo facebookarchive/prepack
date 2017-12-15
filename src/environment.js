@@ -173,7 +173,6 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.4
   InitializeBinding(N: string, V: Value): Value {
-    //invariant(!this.frozen);
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -194,7 +193,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.5
   SetMutableBinding(N: string, V: Value, S: boolean): Value {
-    // invariant(!this.frozen); We can mutate frozen bindings because of captured bindings.
+    // We can mutate frozen bindings because of captured bindings.
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
