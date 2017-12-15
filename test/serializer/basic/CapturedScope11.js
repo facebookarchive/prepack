@@ -17,6 +17,5 @@ inspect = function() {
   let res1 = g[0]() + " " + g[1]() + " " + g[2]() + " " + g[3]();
   addit_funs.forEach((x) => x());
   let res2 = g[0]() + " " + g[1]() + " " + g[2]() + " " + g[3]();
-  return res1 + res2;
-  //return res1 + " " + res2;
+  return res1 + " " + res2;
 }

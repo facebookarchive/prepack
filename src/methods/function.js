@@ -592,6 +592,8 @@ export class FunctionImplementation {
 
       // b. Let varEnv be NewDeclarativeEnvironment(env).
       varEnv = Environment.NewDeclarativeEnvironment(realm, env);
+      // At this point we haven't set any context's lexical environment to varEnv (and we might never do so),
+      // so it shouldn't be active
       realm.activeLexicalEnvironments.delete(varEnv);
 
       // c. Let varEnvRec be varEnv's EnvironmentRecord.
@@ -644,6 +646,7 @@ export class FunctionImplementation {
     } else {
       // 30. Else, let lexEnv be varEnv.
       lexEnv = varEnv;
+      // Since we previously removed varEnv, make sure to re-add it when it's used. 
       realm.activeLexicalEnvironments.add(varEnv);
     }
 

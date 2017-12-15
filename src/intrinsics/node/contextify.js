@@ -368,7 +368,8 @@ export default function(realm: Realm): ObjectValue {
     } finally {
       context.suspend();
       realm.popContext(context);
-      realm.onDestroyScope(realm.$GlobalEnv);
+      invariant(context.lexicalEnvironment === realm.$GlobalEnv);
+      realm.onDestroyScope(context.lexicalEnvironment);
     }
     invariant(realm.getRunningContext() === previousContext);
     previousContext.resume();

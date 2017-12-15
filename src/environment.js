@@ -972,10 +972,11 @@ export class LexicalEnvironment {
     invariant(realm, "expected realm");
     this.realm = realm;
     this.destroyed = false;
-    this._sno = uid++;
+    this._uid = uid++;
   }
 
-  _sno: number;
+  // For debugging it is convenient to have an ID for each of these.
+  _uid: number;
   destroyed: boolean;
   environmentRecord: EnvironmentRecord;
   parent: null | LexicalEnvironment;
@@ -983,6 +984,8 @@ export class LexicalEnvironment {
 
   destroy() {
     this.destroyed = true;
+    // Once the containing environment is destroyed, we can no longer add or remove entries from the environmentRecord
+    // (but we can update existing values).
     if (this.environmentRecord instanceof DeclarativeEnvironmentRecord) {
       this.environmentRecord.frozen = true;
     }
@@ -1176,8 +1179,8 @@ export class LexicalEnvironment {
       res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
+      // Avoid destroying "this" scope as execute may be called many times.
       if (context.lexicalEnvironment !== this) this.realm.onDestroyScope(context.lexicalEnvironment);
-      // Avoid destroying this scope as execute may be called many times.
       invariant(this.realm.activeLexicalEnvironments.size === 1);
     }
     if (res instanceof AbruptCompletion) return res;

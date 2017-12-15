@@ -178,7 +178,9 @@ export default function(
       // 9. If forDcl is an abrupt completion, then
       if (forDcl instanceof AbruptCompletion) {
         // a. Set the running execution context's LexicalEnvironment to oldEnv.
-        realm.onDestroyScope(realm.getRunningContext().lexicalEnvironment);
+        let currentEnv = realm.getRunningContext().lexicalEnvironment;
+        invariant(currentEnv);
+        realm.onDestroyScope(currentEnv);
         realm.getRunningContext().lexicalEnvironment = oldEnv;
 
         // b. Return Completion(forDcl).
