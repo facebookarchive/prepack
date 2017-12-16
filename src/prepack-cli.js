@@ -97,6 +97,7 @@ function run(
     residual: false,
     profile: false,
     reactEnabled: false,
+    reactOutput: "create-element",
   };
 
   while (args.length) {

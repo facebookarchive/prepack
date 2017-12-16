@@ -48,7 +48,7 @@ import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { getSuggestedArrayLiteralLength } from "./utils.js";
 import { Environment, To } from "../singletons.js";
-import { isReactElement } from "../react/utils.js";
+import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 
@@ -83,6 +83,7 @@ export class ResidualHeapVisitor {
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
+    this.shouldVisitReactLibrary = false;
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
@@ -109,6 +110,7 @@ export class ResidualHeapVisitor {
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
+  shouldVisitReactLibrary: boolean;
   reactElementEquivalenceSet: ReactElementSet;
 
   _withScope(scope: Scope, f: () => void) {
@@ -428,6 +430,7 @@ export class ResidualHeapVisitor {
       case "ArrayBuffer":
         return;
       case "ReactElement":
+        this.shouldVisitReactLibrary = true;
         // check we can hoist a React Element
         canHoistReactElement(this.realm, val, this);
         return;
@@ -460,8 +463,12 @@ export class ResidualHeapVisitor {
         return;
       default:
         if (kind !== "Object") this.logger.logError(val, `Object of kind ${kind} is not supported in residual heap.`);
-        if (this.$ParameterMap !== undefined)
+        if (this.$ParameterMap !== undefined) {
           this.logger.logError(val, `Arguments object is not supported in residual heap.`);
+        }
+        if (this.realm.react.enabled && valueIsReactLibraryObject(this.realm, val, this.logger)) {
+          this.realm.react.reactLibraryObject = val;
+        }
         return;
     }
   }
@@ -714,5 +721,35 @@ export class ResidualHeapVisitor {
     this.visitGenerator(generator);
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
     this.realm.evaluateAndRevertInGlobalEnv(this.visitAdditionalFunctionEffects.bind(this));
+    if (this.realm.react.enabled && this.shouldVisitReactLibrary) {
+      this._visitReactLibrary();
+    }
+  }
+
+  _visitReactLibrary() {
+    // find and visit the React library
+    let reactLibraryObject = this.realm.react.reactLibraryObject;
+    if (this.realm.react.output === "jsx") {
+      // React might not be defined in scope, i.e. another library is using JSX
+      // we don't throw an error as we should support JSX stand-alone
+      if (reactLibraryObject !== undefined) {
+        this.visitValue(reactLibraryObject);
+      }
+    } else if (this.realm.react.output === "create-element") {
+      function throwError() {
+        throw new FatalError("unable to visit createElement due to React not being referenced in scope");
+      }
+      // createElement output needs React in scope
+      if (reactLibraryObject === undefined) {
+        throwError();
+      }
+      invariant(reactLibraryObject instanceof ObjectValue);
+      let createElement = reactLibraryObject.properties.get("createElement");
+      if (createElement === undefined || createElement.descriptor === undefined) {
+        throwError();
+      }
+      let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
+      this.visitValue(reactCreateElement);
+    }
   }
 }
