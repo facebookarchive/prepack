@@ -1063,11 +1063,10 @@ export class LexicalEnvironment {
             let message = error.$Get("message", error);
             message.value = `Syntax error: ${message.value}`;
             e.location.source = source.filePath;
-            // the position is not located properly on the type
+            // the position was not located properly on the
             // syntax errors happen on one given position, so start position = end position
-            const position: BabelNodePosition = e.location;
-            e.location.start = position;
-            e.location.end = position;
+            e.location.start = { line: e.location.line, column: e.location.column };
+            e.location.end = { line: e.location.line, column: e.location.column };
             let diagnostic = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
             this.realm.handleError(diagnostic);
             throw new FatalError(message.value);
