@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions } from "./options";
+import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions, ReactOutputTypes } from "./options";
 import { Realm } from "./realm.js";
 import invariant from "./invariant.js";
 
@@ -34,6 +34,7 @@ export type PrepackOptions = {|
   outputFilename?: string,
   profile?: boolean,
   reactEnabled?: boolean,
+  reactOutput?: ReactOutputTypes,
   residual?: boolean,
   serialize?: boolean,
   inlineExpressions?: boolean,
@@ -58,6 +59,7 @@ export function getRealmOptions({
   omitInvariants = false,
   uniqueSuffix,
   reactEnabled,
+  reactOutput,
   residual,
   serialize = !residual,
   strictlyMonotonicDateNow,
@@ -72,6 +74,7 @@ export function getRealmOptions({
     omitInvariants,
     uniqueSuffix,
     reactEnabled,
+    reactOutput,
     residual,
     serialize,
     strictlyMonotonicDateNow,

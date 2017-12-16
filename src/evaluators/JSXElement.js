@@ -24,7 +24,7 @@ import type {
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
 import { ArrayValue, StringValue, Value, NumberValue, ObjectValue } from "../values/index.js";
-import { getReactElementSymbol } from "../react/utils.js";
+import { getReactSymbol } from "../react/utils.js";
 import { convertJSXExpressionToIdentifier } from "../react/jsx.js";
 import * as t from "babel-types";
 import { Get } from "../methods/index.js";
@@ -306,7 +306,7 @@ function createReactProps(
 
 function createReactElement(realm: Realm, type: Value, key: Value, ref: Value, props: ObjectValue): ObjectValue {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactElementSymbol(realm));
+  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
   Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
   Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
