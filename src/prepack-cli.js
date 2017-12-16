@@ -227,16 +227,34 @@ function run(
     let serialized = prepackFileSync(inputFilenames, resolvedOptions);
     processSerializedCode(null, serialized);
   } catch (x) {
-    console.error(x.message);
-    console.error(x.stack);
-    process.exit(1);
+    //FatalErrors must have generated clear CompilerDiagnostic and can safely go to the next codeblock.
+    if (x instanceof FatalError) {
+      invariant(errors.size > 0, "FatalError must generate at least one CompilerDiagnostic");
+    } else {
+      console.error(x.stack);
+      process.exit(1);
+    }
   } finally {
     if (errors.size > 0) {
+      console.error("Errors found while prepacking");
       let foundFatal = false;
       for (let [loc, error] of errors) {
+        let sourceMessage = "";
+        switch (loc.source) {
+          case "":
+            sourceMessage = "In an unknown source file";
+            break;
+          case "no-filename-specified":
+            sourceMessage = "In stdin";
+            break;
+          default:
+            sourceMessage = `In input file ${loc.source}`;
+            break;
+        }
+
         foundFatal = foundFatal || error.severity === "FatalError";
         console.error(
-          `${loc.source || ""}(${loc.start.line}:${loc.start.column +
+          `${sourceMessage}(${loc.start.line}:${loc.start.column +
             1}) ${error.severity} ${error.errorCode}: ${error.message}` +
             ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
         );
@@ -246,18 +264,35 @@ function run(
   }
 
   function processSerializedCode(err, serialized) {
-    if (err) {
+    if (err && !(err instanceof FatalError)) {
       console.error(err);
       process.exit(1);
+    }
+    if (err instanceof FatalError) {
+      invariant(errors.size > 0, "FatalError must generate at least one CompilerDiagnostic");
     }
     if (errors.size > 0) {
       console.error("Errors found while prepacking");
       let foundFatal = false;
       for (let [loc, error] of errors) {
         foundFatal = foundFatal || error.severity === "FatalError";
+        let sourceMessage;
+        switch (loc.source) {
+          case "":
+            sourceMessage = "In an unknown source file";
+            break;
+          case "no-filename-specified":
+            sourceMessage = "In stdin";
+            break;
+          default:
+            sourceMessage = `In input file ${loc.source}`;
+            break;
+        }
         console.error(
-          `${loc.source || ""}(${loc.start.line}:${loc.start.column +
-            1}) ${error.severity} ${error.errorCode}: ${error.message}`
+          `${sourceMessage || ""}:(${loc.start.line}:${loc.start.column +
+            1}) ${error.severity} ${error.errorCode}: ${error.message}` +
+            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
+
         );
       }
       if (foundFatal) process.exit(1);

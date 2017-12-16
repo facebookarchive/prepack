@@ -17,7 +17,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # Prepack test input and check if it exits with signal 1
-(echo "{}()" | node ./bin/prepack.js --out StdInError-test.js  2>&1 1>/dev/null ) | grep "Syntax error in stdin: Unexpected token (1:3)" > /dev/null
+(echo "{}()" | node ./bin/prepack.js --out StdInError-test.js  2>&1 1>/dev/null ) | grep "In stdin:(1:4) FatalError PP1004: Syntax error: Unexpected token (1:3)" > /dev/null
 if [[ $? -ne 0 ]]; then
     echo "Stdin test failed: cat ./test/std-in/StdInError.js | node ./bin/prepack.js --out StdInError-test.js didn't return the expected error"
     # If the test failed, rerun and show the output

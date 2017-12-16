@@ -1061,22 +1061,10 @@ export class LexicalEnvironment {
           let error = e.value;
           if (error instanceof ObjectValue) {
             let message = error.$Get("message", error);
-            // a nicer error message for parse errors.
-            let sourceMessage;
-            e.location.source = source.filePath;
-            switch (e.location.source) {
-              case "":
-                sourceMessage = "unknown source";
-                break;
-              case "no-filename-specified":
-                sourceMessage = "stdin";
-                break;
-              default:
-                sourceMessage = `input file ${e.location.source}`;
-                break;
-            }
-            message.value = `Syntax error in ${sourceMessage}: ${message.value}`;
-            let diagnostic = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
+            // syntax errors happen on one given position, so start position = end position
+            const location = { source: source.filePath, start: e.location, end: e.location };
+            message.value = `Syntax error: ${message.value}`;
+            let diagnostic = new CompilerDiagnostic(message.value, location, "PP1004", "FatalError");
             this.realm.handleError(diagnostic);
             throw new FatalError(message.value);
           }
