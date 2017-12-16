@@ -248,7 +248,8 @@ function run(
             sourceMessage = "In stdin";
             break;
           default:
-            sourceMessage = `In input file ${loc.source}`;
+            // flow made me do this || ""
+            sourceMessage = `In input file ${loc.source || ""}`;
             break;
         }
 
@@ -285,14 +286,13 @@ function run(
             sourceMessage = "In stdin";
             break;
           default:
-            sourceMessage = `In input file ${loc.source}`;
+            sourceMessage = `In input file ${loc.source || ""}`;
             break;
         }
         console.error(
           `${sourceMessage || ""}:(${loc.start.line}:${loc.start.column +
             1}) ${error.severity} ${error.errorCode}: ${error.message}` +
             ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
-
         );
       }
       if (foundFatal) process.exit(1);
