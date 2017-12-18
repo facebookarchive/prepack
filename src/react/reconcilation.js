@@ -25,7 +25,7 @@ import {
   AbstractObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, valueIsClassComponent, mapOverArrayValue } from "./utils";
+import { isReactElement, valueIsClassComponent, mapOverArrayValue, valueIsLegacyCreateClassComponent } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -79,7 +79,7 @@ export class Reconciler {
             let diagnostic = new CompilerDiagnostic(
               `__registerReactComponentRoot() failed due to - ${error.message}`,
               this.realm.currentLocation,
-              "PP0019",
+              "PP0020",
               "FatalError"
             );
             this.realm.handleError(diagnostic);
@@ -153,8 +153,10 @@ export class Reconciler {
     let value;
     let childContext = context;
 
-    // first we check if it's a class component
-    if (valueIsClassComponent(this.realm, componentType)) {
+    // first we check if it's a legacy class component
+    if (valueIsLegacyCreateClassComponent(this.realm, componentType)) {
+      throw new ExpectedBailOut("components created with create-react-class are not supported");
+    } else if (valueIsClassComponent(this.realm, componentType)) {
       // We first need to know what type of class component we're dealing with.
       // A "simple" class component is defined as:
       //

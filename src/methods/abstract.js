@@ -26,12 +26,12 @@ import {
   ConcreteValue,
   AbstractValue,
 } from "../values/index.js";
-import { ToPrimitive, ToNumber, ToBooleanPartial } from "./to.js";
 import { Call } from "./call.js";
 import { IsCallable } from "./is.js";
 import { Completion, ReturnCompletion, ThrowCompletion } from "../completions.js";
 import { GetMethod, Get } from "./get.js";
 import { HasCompatibleType } from "./has.js";
+import { To } from "../singletons.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -100,17 +100,17 @@ export function AbstractRelationalComparison(
   // 1. If the LeftFirst flag is true, then
   if (LeftFirst) {
     // a. Let px be ? ToPrimitive(x, hint Number).
-    px = ToPrimitive(realm, x, "number");
+    px = To.ToPrimitive(realm, x, "number");
 
     // b. Let py be ? ToPrimitive(y, hint Number).
-    py = ToPrimitive(realm, y, "number");
+    py = To.ToPrimitive(realm, y, "number");
   } else {
     // 2. Else the order of evaluation needs to be reversed to preserve left to right evaluation
     // a. Let py be ? ToPrimitive(y, hint Number).
-    py = ToPrimitive(realm, y, "number");
+    py = To.ToPrimitive(realm, y, "number");
 
     // b. Let px be ? ToPrimitive(x, hint Number).
-    px = ToPrimitive(realm, x, "number");
+    px = To.ToPrimitive(realm, x, "number");
   }
 
   // 3. If both px and py are Strings, then
@@ -138,10 +138,10 @@ export function AbstractRelationalComparison(
   } else {
     // 4. Else,
     // a. Let nx be ? ToNumber(px). Because px and py are primitive values evaluation order is not important.
-    let nx = ToNumber(realm, px);
+    let nx = To.ToNumber(realm, px);
 
     // b. Let ny be ? ToNumber(py).
-    let ny = ToNumber(realm, py);
+    let ny = To.ToNumber(realm, py);
 
     // c. If nx is NaN, return undefined.
     if (isNaN(nx)) return realm.intrinsics.undefined;
@@ -199,32 +199,32 @@ export function AbstractEqualityComparison(realm: Realm, x: ConcreteValue, y: Co
 
   // 4. If Type(x) is Number and Type(y) is String, return the result of the comparison x == ToNumber(y).
   if (x instanceof NumberValue && y instanceof StringValue) {
-    return AbstractEqualityComparison(realm, x, new NumberValue(realm, ToNumber(realm, y)));
+    return AbstractEqualityComparison(realm, x, new NumberValue(realm, To.ToNumber(realm, y)));
   }
 
   // 5. If Type(x) is String and Type(y) is Number, return the result of the comparison ToNumber(x) == y.
   if (x instanceof StringValue && y instanceof NumberValue) {
-    return AbstractEqualityComparison(realm, new NumberValue(realm, ToNumber(realm, x)), y);
+    return AbstractEqualityComparison(realm, new NumberValue(realm, To.ToNumber(realm, x)), y);
   }
 
   // 6. If Type(x) is Boolean, return the result of the comparison ToNumber(x) == y.
   if (x instanceof BooleanValue) {
-    return AbstractEqualityComparison(realm, new NumberValue(realm, ToNumber(realm, x)), y);
+    return AbstractEqualityComparison(realm, new NumberValue(realm, To.ToNumber(realm, x)), y);
   }
 
   // 7. If Type(y) is Boolean, return the result of the comparison x == ToNumber(y).
   if (y instanceof BooleanValue) {
-    return AbstractEqualityComparison(realm, x, new NumberValue(realm, ToNumber(realm, y)));
+    return AbstractEqualityComparison(realm, x, new NumberValue(realm, To.ToNumber(realm, y)));
   }
 
   // 8. If Type(x) is either String, Number, or Symbol and Type(y) is Object, return the result of the comparison x == ToPrimitive(y).
   if ((x instanceof StringValue || x instanceof NumberValue || x instanceof SymbolValue) && y instanceof ObjectValue) {
-    return AbstractEqualityComparison(realm, x, ToPrimitive(realm, y));
+    return AbstractEqualityComparison(realm, x, To.ToPrimitive(realm, y));
   }
 
   // 9. If Type(x) is Object and Type(y) is either String, Number, or Symbol, return the result of the comparison ToPrimitive(x) == y.
   if (x instanceof ObjectValue && (y instanceof StringValue || y instanceof NumberValue || y instanceof SymbolValue)) {
-    return AbstractEqualityComparison(realm, ToPrimitive(realm, x), y);
+    return AbstractEqualityComparison(realm, To.ToPrimitive(realm, x), y);
   }
 
   // 10. Return false.
@@ -420,7 +420,7 @@ export function InstanceofOperator(realm: Realm, O: Value, C: Value): boolean {
   // 3. If instOfHandler is not undefined, then
   if (!(instOfHandler instanceof UndefinedValue)) {
     // a. Return ToBoolean(? Call(instOfHandler, C, « O »)).
-    return ToBooleanPartial(realm, Call(realm, instOfHandler, C, [O]));
+    return To.ToBooleanPartial(realm, Call(realm, instOfHandler, C, [O]));
   }
 
   // 4. If IsCallable(C) is false, throw a TypeError exception.

@@ -31,13 +31,20 @@ import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { FatalError } from "../errors.js";
 
-let reactElementSymbolKey = "react.element";
+export type ReactSymbolTypes = "react.element" | "react.symbol" | "react.portal" | "react.return" | "react.call";
 
 export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
     let realm = val.$Realm;
     let $$typeof = Get(realm, val, "$$typeof");
-    if ($$typeof instanceof SymbolValue) {
+    let globalObject = realm.$GlobalObject;
+    let globalSymbolValue = Get(realm, globalObject, "Symbol");
+
+    if (globalSymbolValue === realm.intrinsics.undefined) {
+      if ($$typeof instanceof NumberValue) {
+        return $$typeof.value === 0xeac7;
+      }
+    } else if ($$typeof instanceof SymbolValue) {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
       return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     }
@@ -45,10 +52,10 @@ export function isReactElement(val: Value): boolean {
   return false;
 }
 
-export function getReactElementSymbol(realm: Realm): SymbolValue {
-  let reactElementSymbol = realm.react.reactElementSymbol;
-  if (reactElementSymbol !== undefined) {
-    return reactElementSymbol;
+export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): SymbolValue {
+  let reactSymbol = realm.react.symbols.get(symbolKey);
+  if (reactSymbol !== undefined) {
+    return reactSymbol;
   }
   let SymbolFor = realm.intrinsics.Symbol.properties.get("for");
   if (SymbolFor !== undefined) {
@@ -57,14 +64,13 @@ export function getReactElementSymbol(realm: Realm): SymbolValue {
     if (SymbolForDescriptor !== undefined) {
       let SymbolForValue = SymbolForDescriptor.value;
       if (SymbolForValue !== undefined && typeof SymbolForValue.$Call === "function") {
-        realm.react.reactElementSymbol = reactElementSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [
-          new StringValue(realm, reactElementSymbolKey),
-        ]);
+        reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)]);
+        realm.react.symbols.set(symbolKey, reactSymbol);
       }
     }
   }
-  invariant(reactElementSymbol instanceof SymbolValue, `ReactElement "$$typeof" property was not a symbol`);
-  return reactElementSymbol;
+  invariant(reactSymbol instanceof SymbolValue, `Symbol("${symbolKey}") could not be found in realm`);
+  return reactSymbol;
 }
 
 export function isTagName(ast: BabelNode): boolean {
@@ -75,7 +81,7 @@ export function isReactComponent(name: string) {
   return name.length > 0 && name[0] === name[0].toUpperCase();
 }
 
-export function valueIsClassComponent(realm: Realm, value: Value) {
+export function valueIsClassComponent(realm: Realm, value: Value): boolean {
   if (!(value instanceof FunctionValue)) {
     return false;
   }
@@ -84,6 +90,52 @@ export function valueIsClassComponent(realm: Realm, value: Value) {
     if (prototype instanceof ObjectValue) {
       return prototype.properties.has("isReactComponent");
     }
+  }
+  return false;
+}
+
+// logger isn't typed otherwise it will increase flow cycle length :()
+export function valueIsReactLibraryObject(realm: Realm, value: ObjectValue, logger: any): boolean {
+  if (realm.react.reactLibraryObject === value) {
+    return true;
+  }
+  // we check that the object is the React or React-like library by checking for
+  // core properties that should exist on it
+  let reactVersion = logger.tryQuery(() => Get(realm, value, "version"), undefined, false);
+  if (!(reactVersion instanceof StringValue)) {
+    return false;
+  }
+  let reactCreateElement = logger.tryQuery(() => Get(realm, value, "createElement"), undefined, false);
+  if (!(reactCreateElement instanceof FunctionValue)) {
+    return false;
+  }
+  let reactCloneElement = logger.tryQuery(() => Get(realm, value, "cloneElement"), undefined, false);
+  if (!(reactCloneElement instanceof FunctionValue)) {
+    return false;
+  }
+  let reactIsValidElement = logger.tryQuery(() => Get(realm, value, "isValidElement"), undefined, false);
+  if (!(reactIsValidElement instanceof FunctionValue)) {
+    return false;
+  }
+  let reactComponent = logger.tryQuery(() => Get(realm, value, "Component"), undefined, false);
+  if (!(reactComponent instanceof FunctionValue)) {
+    return false;
+  }
+  let reactChildren = logger.tryQuery(() => Get(realm, value, "Children"), undefined, false);
+  if (!(reactChildren instanceof ObjectValue)) {
+    return false;
+  }
+  return false;
+}
+
+export function valueIsLegacyCreateClassComponent(realm: Realm, value: Value): boolean {
+  if (!(value instanceof FunctionValue)) {
+    return false;
+  }
+  let prototype = Get(realm, value, "prototype");
+
+  if (prototype instanceof ObjectValue) {
+    return prototype.properties.has("__reactAutoBindPairs");
   }
   return false;
 }
@@ -120,12 +172,12 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
 }
 
 // a helper function to map over ArrayValues
-export function mapOverArrayValue(realm: Realm, arrayValue: ArrayValue, mapFunc: Function): void {
-  let lengthValue = Get(realm, arrayValue, "length");
+export function mapOverArrayValue(realm: Realm, array: ArrayValue, mapFunc: Function): void {
+  let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
   let length = lengthValue.value;
   for (let i = 0; i < length; i++) {
-    let elementProperty = arrayValue.properties.get("" + i);
+    let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
     let elementValue = elementPropertyDescriptor.value;

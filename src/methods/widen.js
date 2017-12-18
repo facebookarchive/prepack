@@ -21,6 +21,7 @@ import { Generator } from "../utils/generator.js";
 import { AbstractValue, ObjectValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
+import * as t from "babel-types";
 
 export class WidenImplementation {
   _widenArrays(
@@ -92,15 +93,14 @@ export class WidenImplementation {
       invariant(val instanceof Value);
       return val;
     }
-    if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
+    if (result1 instanceof PossiblyNormalCompletion || result2 instanceof PossiblyNormalCompletion) {
       //todo: #1174 figure out how to deal with loops that have embedded conditional exits
       // widen join pathConditions
       // widen normal result and Effects
       // use abrupt part of result2, depend stability to make this safe. See below.
       throw new FatalError();
     }
-    // todo: #1174 figure out what a stable result is and how to check it
-    invariant(false, "widening should happen only after result type has stablized");
+    invariant(false);
   }
 
   widenMaps<K, V>(m1: Map<K, void | V>, m2: Map<K, void | V>, widen: (K, void | V, void | V) => V): Map<K, void | V> {
@@ -120,7 +120,25 @@ export class WidenImplementation {
 
   widenBindings(realm: Realm, m1: Bindings, m2: Bindings): Bindings {
     let widen = (b: Binding, v1: void | Value, v2: void | Value) => {
-      let result = this.widenValues(realm, v1 || b.value, v2 || b.value);
+      invariant(v2 !== undefined); // Local variables are not going to get deleted as a result of widening
+      let result = this.widenValues(realm, v1 || b.value, v2);
+      if (result instanceof AbstractValue && result.kind === "widened") {
+        let phiNode = b.phiNode;
+        if (phiNode === undefined) {
+          // Create a temporal location for binding
+          let generator = realm.generator;
+          invariant(generator !== undefined);
+          phiNode = generator.derive(result.types, result.values, [v1 || realm.intrinsics.undefined], ([n]) => n, {
+            skipInvariant: true,
+          });
+          b.phiNode = phiNode;
+        }
+        // Let the widened value be a reference to the phiNode of the binding
+        invariant(phiNode.intrinsicName !== undefined);
+        let phiName = phiNode.intrinsicName;
+        result.intrinsicName = phiName;
+        result._buildNode = args => t.identifier(phiName);
+      }
       invariant(result instanceof Value);
       return result;
     };
@@ -165,7 +183,7 @@ export class WidenImplementation {
     c2: CreatedObjects
   ): PropertyBindings {
     let widen = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
-      invariant(d1 !== undefined || d2 !== undefined, "widenMaps ensures that this cannot happen");
+      if (d1 === undefined && d2 === undefined) return undefined;
       // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
       if (d1 === undefined) {
         if (b.object instanceof ObjectValue && c2.has(b.object)) return d2; // no widen
@@ -192,7 +210,31 @@ export class WidenImplementation {
         }
         invariant(d2 !== undefined);
       }
-      return this.widenDescriptors(realm, d1, d2);
+      let result = this.widenDescriptors(realm, d1, d2);
+      if (result && result.value instanceof AbstractValue && result.value.kind === "widened") {
+        let rval = result.value;
+        let pathNode = b.pathNode;
+        if (pathNode === undefined) {
+          //Since properties already have mutable storage locations associated with them, we do not
+          //need phi nodes. What we need is an abstract value with a build node that results in a memberExpression
+          //that resolves to the storage location of the property.
+
+          // For now, we only handle loop invariant properties
+          //i.e. properties where the member expresssion does not involve any values written to inside the loop.
+          //todo: handle the case where key is an abstract value.
+          let key = b.key;
+          if (typeof key === "string") {
+            pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
+              t.memberExpression(o, t.identifier(key))
+            );
+          } else {
+            throw new FatalError("todo: handle the case where key is an abstract value");
+          }
+          b.pathNode = pathNode;
+        }
+        result.value = pathNode;
+      }
+      return result;
     };
     return this.widenMaps(m1, m2, widen);
   }
@@ -200,7 +242,11 @@ export class WidenImplementation {
   widenDescriptors(realm: Realm, d1: void | Descriptor, d2: Descriptor): void | Descriptor {
     if (d1 === undefined) {
       // d2 is a property written to only in the (n+1)th iteration
-      return d2; // no widening needed. Note that another fixed point iteration will occur.
+      if (!IsDataDescriptor(realm, d2)) return d2; // accessor properties need not be widened.
+      let dc = cloneDescriptor(d2);
+      invariant(dc !== undefined);
+      dc.value = this.widenValues(realm, d2.value, d2.value);
+      return dc;
     } else {
       if (equalDescriptors(d1, d2)) {
         if (!IsDataDescriptor(realm, d1)) return d1; // identical accessor properties need not be widened.
@@ -216,67 +262,68 @@ export class WidenImplementation {
     }
   }
 
-  // If e2 is the result of a loop iteration starting with effects e1 and it has the same elements as e1,
+  // If e2 is the result of a loop iteration starting with effects e1 and it has a subset of elements of e1,
   // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
   // summary of the loop, regardless of how many iterations will be performed at runtime.
-  equalsEffects(e1: Effects, e2: Effects): boolean {
+  containsEffects(e1: Effects, e2: Effects): boolean {
     let [result1, , bindings1, properties1] = e1;
     let [result2, , bindings2, properties2] = e2;
 
-    if (!this.equalsResults(result1, result2)) return false;
-    if (!this.equalsBindings(bindings1, bindings2)) return false;
-    if (!this.equalsPropertyBindings(properties1, properties2)) return false;
+    if (!this.containsResults(result1, result2)) return false;
+    if (!this.containsBindings(bindings1, bindings2)) return false;
+    if (!this.containsPropertyBindings(properties1, properties2)) return false;
     return true;
   }
 
-  equalsResults(result1: EvaluationResult, result2: EvaluationResult): boolean {
-    if (result1 instanceof Value && result2 instanceof Value) return result1.equals(result2);
+  containsResults(result1: EvaluationResult, result2: EvaluationResult): boolean {
+    if (result1 instanceof Value && result2 instanceof Value) return this._containsValues(result1, result2);
     return false;
   }
 
-  equalsMap<K, V>(m1: Map<K, void | V>, m2: Map<K, void | V>, f: (void | V, void | V) => boolean): boolean {
-    m1.forEach((val1, key, map1) => {
-      let val2 = m2.get(key);
-      if (val2 === undefined || !f(val2, val1)) return false;
-    });
-    m2.forEach((val2, key, map2) => {
-      if (!m1.has(key)) return false;
-    });
+  containsMap<K, V>(m1: Map<K, void | V>, m2: Map<K, void | V>, f: (void | V, void | V) => boolean): boolean {
+    for (const [key1, val1] of m1.entries()) {
+      if (val1 === undefined) continue; // deleted
+      let val2 = m2.get(key1);
+      if (val2 === undefined) continue; // A key that disappears has been widened away into the unknown key
+      if (!f(val2, val1)) return false;
+    }
+    for (const key2 of m2.keys()) {
+      if (!m1.has(key2)) return false;
+    }
     return true;
   }
 
-  equalsBindings(m1: Bindings, m2: Bindings): boolean {
-    let equalsBinding = (v1: void | Value, v2: void | Value) => {
-      if (v1 === undefined || v2 === undefined || !v1.equals(v2)) return false;
+  containsBindings(m1: Bindings, m2: Bindings): boolean {
+    let containsBinding = (v1: void | Value, v2: void | Value) => {
+      if (v1 === undefined || v2 === undefined || !this._containsValues(v1, v2)) return false;
       return true;
     };
-    return this.equalsMap(m1, m2, equalsBinding);
+    return this.containsMap(m1, m2, containsBinding);
   }
 
-  equalsPropertyBindings(m1: PropertyBindings, m2: PropertyBindings): boolean {
-    let equalsPropertyBinding = (d1: void | Descriptor, d2: void | Descriptor) => {
-      if (d1 === undefined || d2 === undefined) return false;
-      let [v1, v2] = [d1.value, d2.value];
+  containsPropertyBindings(m1: PropertyBindings, m2: PropertyBindings): boolean {
+    let containsPropertyBinding = (d1: void | Descriptor, d2: void | Descriptor) => {
+      let [v1, v2] = [d1 && d1.value, d2 && d2.value];
       if (v1 === undefined) return v2 === undefined;
-      if (v1 instanceof Value && v2 instanceof Value && !v1.equals(v2)) return false;
+      if (v1 instanceof Value && v2 instanceof Value) return this._containsValues(v1, v2);
       if (Array.isArray(v1) && Array.isArray(v2)) {
-        return this._equalsArray(((v1: any): Array<Value>), ((v2: any): Array<Value>));
+        return this._containsArray(((v1: any): Array<Value>), ((v2: any): Array<Value>));
       }
-      return false;
+      return v2 === undefined;
     };
-    return this.equalsMap(m1, m2, equalsPropertyBinding);
+    return this.containsMap(m1, m2, containsPropertyBinding);
   }
 
-  _equalsArray(
+  _containsArray(
     v1: void | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
     v2: void | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): boolean {
     let e = (v1 && v1[0]) || (v2 && v2[0]);
-    if (e instanceof Value) return this._equalsArraysOfValue((v1: any), (v2: any));
-    else return this._equalsArrayOfsMapEntries((v1: any), (v2: any));
+    if (e instanceof Value) return this._containsArraysOfValue((v1: any), (v2: any));
+    else return this._containsArrayOfsMapEntries((v1: any), (v2: any));
   }
 
-  _equalsArraysOfValue(
+  _containsArraysOfValue(
     realm: Realm,
     a1: void | Array<{ $Key: void | Value, $Value: void | Value }>,
     a2: void | Array<{ $Key: void | Value, $Value: void | Value }>
@@ -290,7 +337,7 @@ export class WidenImplementation {
         if (key2 !== undefined) return false;
       } else {
         if (key1 instanceof Value && key2 instanceof Value && key1.equals(key2)) {
-          if (val1 instanceof Value && val2 instanceof Value && val1.equals(val2)) continue;
+          if (val1 instanceof Value && val2 instanceof Value && this._containsValues(val1, val2)) continue;
         }
         return false;
       }
@@ -298,12 +345,20 @@ export class WidenImplementation {
     return true;
   }
 
-  _equalsArrayOfsMapEntries(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean {
+  _containsArrayOfsMapEntries(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean {
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     for (let i = 0; i < n; i++) {
       let [val1, val2] = [a1 && a1[i], a2 && a2[i]];
-      if (val1 instanceof Value && val2 instanceof Value && !val1.equals(val2)) return false;
+      if (val1 instanceof Value && val2 instanceof Value && !this._containsValues(val1, val2)) return false;
     }
     return false;
+  }
+
+  _containsValues(val1: Value, val2: Value) {
+    if (val1 instanceof AbstractValue && val2 instanceof AbstractValue) {
+      if (val1.getType() !== val2.getType()) return false;
+      return val1.values.contains(val2.values);
+    }
+    return val1.equals(val2);
   }
 }

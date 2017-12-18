@@ -13,10 +13,9 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import { FatalError } from "../errors.js";
 import { ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
-import { ToBoolean } from "../methods/index.js";
 import { Realm } from "../realm.js";
 import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
-import { Path } from "../singletons.js";
+import { Path, To } from "../singletons.js";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,
@@ -192,10 +191,10 @@ function simplifyEquality(realm: Realm, equality: AbstractValue): Value {
 
 function makeBoolean(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation = undefined): Value {
   if (value.getType() === BooleanValue) return value;
-  if (value instanceof ConcreteValue) return new BooleanValue(realm, ToBoolean(realm, value));
+  if (value instanceof ConcreteValue) return new BooleanValue(realm, To.ToBoolean(realm, value));
   invariant(value instanceof AbstractValue);
   let v = AbstractValue.createFromUnaryOp(realm, "!", value, true, value.expressionLocation);
-  if (v instanceof ConcreteValue) return new BooleanValue(realm, !ToBoolean(realm, v));
+  if (v instanceof ConcreteValue) return new BooleanValue(realm, !To.ToBoolean(realm, v));
   invariant(v instanceof AbstractValue);
   return AbstractValue.createFromUnaryOp(realm, "!", v, true, loc || value.expressionLocation);
 }

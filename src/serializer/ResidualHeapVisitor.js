@@ -13,7 +13,7 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
-import { ToLength, HashSet, IsArray, Get } from "../methods/index.js";
+import { HashSet, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
   ProxyValue,
@@ -26,6 +26,7 @@ import {
   ObjectValue,
   AbstractObjectValue,
   NativeFunctionValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
@@ -47,12 +48,15 @@ import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { getSuggestedArrayLiteralLength, withDescriptorValue, ClassProprtiesToIgnore } from "./utils.js";
-import { Environment } from "../singletons.js";
+import { Environment, To } from "../singletons.js";
+import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
+import { canHoistReactElement } from "../react/hoisting.js";
+import ReactElementSet from "../react/ReactElementSet.js";
 
 export type Scope = FunctionValue | Generator;
 
 /* This class visits all values that are reachable in the residual heap.
-   In particular, this "filters out" values that are...
+   In particular, this "filters out" values that are:
    - captured by a DeclarativeEnvironmentRecord, but not actually used by any closure.
    - Unmodified prototype objects
    TODO #680: Figure out minimal set of values that need to be kept alive for WeakSet and WeakMap instances.
@@ -81,8 +85,10 @@ export class ResidualHeapVisitor {
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
+    this.shouldVisitReactLibrary = false;
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
+    this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
   }
 
@@ -107,6 +113,8 @@ export class ResidualHeapVisitor {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
+  shouldVisitReactLibrary: boolean;
+  reactElementEquivalenceSet: ReactElementSet;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -138,10 +146,13 @@ export class ResidualHeapVisitor {
 
     // visit properties
     for (let [propertyBindingKey, propertyBindingValue] of obj.properties) {
-      // we don't want to the $$typeof or _owner properties
+      // we don't want to the $$typeof or _owner/_store properties
       // as this is contained within the JSXElement, otherwise
       // they we be need to be emitted during serialization
-      if (kind === "ReactElement" && (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner")) {
+      if (
+        kind === "ReactElement" &&
+        (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner" || propertyBindingKey === "_store")
+      ) {
         continue;
       }
       // we don't want to visit these as we handle the serialization ourselves
@@ -155,6 +166,7 @@ export class ResidualHeapVisitor {
       ) {
         continue;
       }
+      if (propertyBindingKey.pathNode !== undefined) continue; // property is written to inside a loop
       invariant(propertyBindingValue);
       this.visitObjectProperty(propertyBindingValue);
     }
@@ -265,7 +277,7 @@ export class ResidualHeapVisitor {
     let lenProperty = Get(realm, val, "length");
     if (
       lenProperty instanceof AbstractValue ||
-      ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
+      To.ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
     ) {
       this.visitValue(lenProperty);
     }
@@ -411,8 +423,9 @@ export class ResidualHeapVisitor {
     }
     this.functionInstances.set(val, {
       residualFunctionBindings,
+      initializationStatements: [],
       functionValue: val,
-      scopeInstances: new Set(),
+      scopeInstances: new Map(),
     });
   }
 
@@ -499,8 +512,12 @@ export class ResidualHeapVisitor {
       case "Number":
       case "String":
       case "Boolean":
-      case "ReactElement":
       case "ArrayBuffer":
+        return;
+      case "ReactElement":
+        this.shouldVisitReactLibrary = true;
+        // check we can hoist a React Element
+        canHoistReactElement(this.realm, val, this);
         return;
       case "Date":
         let dateValue = val.$DateValue;
@@ -531,8 +548,12 @@ export class ResidualHeapVisitor {
         return;
       default:
         if (kind !== "Object") this.logger.logError(val, `Object of kind ${kind} is not supported in residual heap.`);
-        if (this.$ParameterMap !== undefined)
+        if (this.$ParameterMap !== undefined) {
           this.logger.logError(val, `Arguments object is not supported in residual heap.`);
+        }
+        if (this.realm.react.enabled && valueIsReactLibraryObject(this.realm, val, this.logger)) {
+          this.realm.react.reactLibraryObject = val;
+        }
         return;
     }
   }
@@ -554,6 +575,15 @@ export class ResidualHeapVisitor {
     }
   }
 
+  // Overridable hook for pre-visiting the value.
+  // Return false will tell visitor to skip visiting children of this node.
+  preProcessValue(val: Value): boolean {
+    return this._mark(val);
+  }
+
+  // Overridable hook for post-visiting the value.
+  postProcessValue(val: Value) {}
+
   _mark(val: Value): boolean {
     let scopes = this.values.get(val);
     if (scopes === undefined) this.values.set(val, (scopes = new Set()));
@@ -565,8 +595,14 @@ export class ResidualHeapVisitor {
   visitEquivalentValue<T: Value>(val: T): T {
     if (val instanceof AbstractValue) {
       let equivalentValue = this.equivalenceSet.add(val);
-      if (this._mark(equivalentValue)) this.visitAbstractValue(equivalentValue);
+      if (this.preProcessValue(equivalentValue)) this.visitAbstractValue(equivalentValue);
+      this.postProcessValue(equivalentValue);
       return (equivalentValue: any);
+    }
+    if (val instanceof ObjectValue && isReactElement(val)) {
+      let equivalentReactElementValue = this.reactElementEquivalenceSet.add(val);
+      if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
+      return (equivalentReactElementValue: any);
     }
     this.visitValue(val);
     return val;
@@ -575,32 +611,32 @@ export class ResidualHeapVisitor {
   visitValue(val: Value): void {
     invariant(!val.refuseSerialization);
     if (val instanceof AbstractValue) {
-      if (this._mark(val)) this.visitAbstractValue(val);
+      if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
-      // ...except for a few that come into existance as templates for abstract objects (TODO #882).
-      if (val.isTemplate) this._mark(val);
+      // ...except for a few that come into existence as templates for abstract objects (TODO #882).
+      if (val.isTemplate) this.preProcessValue(val);
       else
         this._withScope(this.commonScope, () => {
-          this._mark(val);
+          this.preProcessValue(val);
         });
     } else if (val instanceof EmptyValue) {
-      this._mark(val);
+      this.preProcessValue(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {
-      this._mark(val);
+      this.preProcessValue(val);
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
-      if (this._mark(val)) this.visitValueArray(val);
+      if (this.preProcessValue(val)) this.visitValueArray(val);
     } else if (val instanceof ProxyValue) {
-      if (this._mark(val)) this.visitValueProxy(val);
+      if (this.preProcessValue(val)) this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
       // Function declarations should get hoisted in common scope so that instances only get allocated once
       this._withScope(this.commonScope, () => {
         invariant(val instanceof FunctionValue);
-        if (this._mark(val)) this.visitValueFunction(val);
+        if (this.preProcessValue(val)) this.visitValueFunction(val);
       });
     } else if (val instanceof SymbolValue) {
-      if (this._mark(val)) this.visitValueSymbol(val);
+      if (this.preProcessValue(val)) this.visitValueSymbol(val);
     } else {
       invariant(val instanceof ObjectValue);
 
@@ -609,12 +645,13 @@ export class ResidualHeapVisitor {
       if (val.originalConstructor !== undefined) {
         this._withScope(this.commonScope, () => {
           invariant(val instanceof ObjectValue);
-          if (this._mark(val)) this.visitValueObject(val);
+          if (this.preProcessValue(val)) this.visitValueObject(val);
         });
       } else {
-        if (this._mark(val)) this.visitValueObject(val);
+        if (this.preProcessValue(val)) this.visitValueObject(val);
       }
     }
+    this.postProcessValue(val);
   }
 
   visitGlobalBinding(key: string): ResidualFunctionBinding {
@@ -684,6 +721,8 @@ export class ResidualHeapVisitor {
       // Allows us to emit function declarations etc. inside of this additional
       // function instead of adding them at global scope
       this.commonScope = functionValue;
+      let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
+      this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
       let modifiedBindingInfo = new Map();
       let visitPropertiesAndBindings = () => {
         for (let propertyBinding of modifiedProperties.keys()) {
@@ -724,7 +763,7 @@ export class ResidualHeapVisitor {
           }
         }
         invariant(result instanceof Value);
-        this.visitValue(result);
+        if (!(result instanceof UndefinedValue)) this.visitValue(result);
       };
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
       let code = functionValue.$ECMAScriptCode;
@@ -743,6 +782,7 @@ export class ResidualHeapVisitor {
       this._withScope(generator, visitPropertiesAndBindings);
       this.realm.restoreBindings(modifiedBindings);
       this.realm.restoreProperties(modifiedProperties);
+      this.reactElementEquivalenceSet = oldReactElementEquivalenceSet;
     }
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value
@@ -766,5 +806,35 @@ export class ResidualHeapVisitor {
     this.visitGenerator(generator);
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
     this.realm.evaluateAndRevertInGlobalEnv(this.visitAdditionalFunctionEffects.bind(this));
+    if (this.realm.react.enabled && this.shouldVisitReactLibrary) {
+      this._visitReactLibrary();
+    }
+  }
+
+  _visitReactLibrary() {
+    // find and visit the React library
+    let reactLibraryObject = this.realm.react.reactLibraryObject;
+    if (this.realm.react.output === "jsx") {
+      // React might not be defined in scope, i.e. another library is using JSX
+      // we don't throw an error as we should support JSX stand-alone
+      if (reactLibraryObject !== undefined) {
+        this.visitValue(reactLibraryObject);
+      }
+    } else if (this.realm.react.output === "create-element") {
+      function throwError() {
+        throw new FatalError("unable to visit createElement due to React not being referenced in scope");
+      }
+      // createElement output needs React in scope
+      if (reactLibraryObject === undefined) {
+        throwError();
+      }
+      invariant(reactLibraryObject instanceof ObjectValue);
+      let createElement = reactLibraryObject.properties.get("createElement");
+      if (createElement === undefined || createElement.descriptor === undefined) {
+        throwError();
+      }
+      let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
+      this.visitValue(reactCreateElement);
+    }
   }
 }

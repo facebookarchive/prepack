@@ -9,7 +9,6 @@
 
 /* @flow */
 
-export * from "./to.js";
 export * from "./abstract.js";
 export * from "./call.js";
 export * from "./construct.js";

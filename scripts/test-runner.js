@@ -247,7 +247,7 @@ function verifyFunctionOrderings(code: string): boolean {
   for (let i = 1; i < orders.length; ++i) {
     invariant(orders[i] !== orders[i - 1]);
     if (orders[i] < orders[i - 1]) {
-      console.log(chalk.red(`Funtion ordering is not preserved: function ${orders[i - 1]} is before ${orders[i]}`));
+      console.error(chalk.red(`Funtion ordering is not preserved: function ${orders[i - 1]} is before ${orders[i]}`));
       return false;
     }
   }
@@ -272,11 +272,15 @@ function runTest(name, code, options, args) {
     uniqueSuffix: "",
   });
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
+  if (code.includes("// simple closures")) options.simpleClosures = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   if (code.includes("// omit invariants")) options.omitInvariants = true;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
-  if (code.includes("// react")) options.reactEnabled = true;
+  if (code.includes("// react")) {
+    options.reactEnabled = true;
+    options.reactOutput = "jsx";
+  }
   if (code.includes("// throws introspection error")) {
     try {
       let realmOptions = {
@@ -299,14 +303,14 @@ function runTest(name, code, options, args) {
       let sources = [{ filePath: name, fileContents: code }];
       let serialized = serializer.init(sources, false);
       if (!serialized) {
-        console.log(chalk.red("Error during serialization"));
+        console.error(chalk.red("Error during serialization"));
       } else {
-        console.log(chalk.red("Test should have caused introspection error!"));
+        console.error(chalk.red("Test should have caused introspection error!"));
       }
     } catch (err) {
       if (err instanceof FatalError) return true;
-      console.log("Test should have caused introspection error, but instead caused a different internal error!");
-      console.log(err);
+      console.error("Test should have caused introspection error, but instead caused a different internal error!");
+      console.error(err);
     }
     return false;
   } else if (code.includes("// cannot serialize")) {
@@ -317,25 +321,25 @@ function runTest(name, code, options, args) {
         return true;
       }
     }
-    console.log(chalk.red("Test should have caused error during serialization!"));
+    console.error(chalk.red("Test should have caused error during serialization!"));
     return false;
   } else if (code.includes("// no effect")) {
     try {
       let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
       if (!serialized) {
-        console.log(chalk.red("Error during serialization!"));
+        console.error(chalk.red("Error during serialization!"));
         return false;
       }
       if (!serialized.code.trim()) {
         return true;
       }
-      console.log(chalk.red("Generated code should be empty but isn't!"));
-      console.log(chalk.underline("original code"));
-      console.log(code);
-      console.log(chalk.underline(`generated code`));
-      console.log(serialized.code);
+      console.error(chalk.red("Generated code should be empty but isn't!"));
+      console.error(chalk.underline("original code"));
+      console.error(code);
+      console.error(chalk.underline(`generated code`));
+      console.error(serialized.code);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
     return false;
   } else if (code.includes("// Copies of ")) {
@@ -347,19 +351,19 @@ function runTest(name, code, options, args) {
     try {
       let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
       if (!serialized) {
-        console.log(chalk.red("Error during serialization!"));
+        console.error(chalk.red("Error during serialization!"));
         return false;
       }
       let regex = new RegExp(value, "gi");
       let matches = serialized.code.match(regex);
       if (!matches || matches.length !== count) {
-        console.log(
+        console.error(
           chalk.red(`Wrong number of occurrances of ${value} got ${matches ? matches.length : 0} instead of ${count}`)
         );
         return false;
       }
     } catch (err) {
-      console.log(err);
+      console.error(err);
       return false;
     }
     return true;
@@ -407,7 +411,7 @@ function runTest(name, code, options, args) {
         let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
         if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
         if (!serialized) {
-          console.log(chalk.red("Error during serialization!"));
+          console.error(chalk.red("Error during serialization!"));
           break;
         }
         let newCode = serialized.code;
@@ -418,7 +422,7 @@ function runTest(name, code, options, args) {
         for (let { positive, value, start } of markersToFind) {
           let found = newCode.indexOf(value, start) !== -1;
           if (found !== positive) {
-            console.log(chalk.red(`Output ${positive ? "does not contain" : "contains"} forbidden string: ${value}`));
+            console.error(chalk.red(`Output ${positive ? "does not contain" : "contains"} forbidden string: ${value}`));
             markersIssue = true;
           }
         }
@@ -443,7 +447,7 @@ function runTest(name, code, options, args) {
           actual = "" + e;
         }
         if (expected !== actual) {
-          console.log(chalk.red("Output mismatch!"));
+          console.error(chalk.red("Output mismatch!"));
           break;
         }
         if (!verifyFunctionOrderings(codeToRun)) {
@@ -453,7 +457,7 @@ function runTest(name, code, options, args) {
         if (i === 0 && functionCloneCountMatch) {
           let functionCount = parseInt(functionCloneCountMatch[1], 10);
           if (serialized.statistics && functionCount !== serialized.statistics.functionClones) {
-            console.log(
+            console.error(
               chalk.red(
                 `Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${serialized
                   .statistics.functionClones}`
@@ -479,10 +483,10 @@ function runTest(name, code, options, args) {
           // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
           return true;
         }
-        console.log(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
+        console.error(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
       }
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
     console.log(chalk.underline("original code"));
     console.log(code);
@@ -555,7 +559,7 @@ function run(args) {
     }
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.floor(passed / total * 100) || 0) + "%");
   return failed === 0;
 }
 
@@ -598,9 +602,9 @@ function main(): number {
     }
   } catch (e) {
     if (e instanceof ArgsParseError) {
-      console.log("Illegal argument: %s.\n%s", e.message, usage());
+      console.error("Illegal argument: %s.\n%s", e.message, usage());
     } else {
-      console.log(e);
+      console.error(e);
     }
     return 1;
   }

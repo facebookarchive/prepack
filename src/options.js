@@ -13,6 +13,7 @@ import type { ErrorHandler } from "./errors.js";
 
 export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps" | "node-cli" | "react-mocks";
 export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"];
+export type ReactOutputTypes = "create-element" | "jsx";
 
 export type RealmOptions = {
   compatibility?: Compatibility,
@@ -27,6 +28,7 @@ export type RealmOptions = {
   timeout?: number,
   maxStackDepth?: number,
   reactEnabled?: boolean,
+  reactOutput?: ReactOutputTypes,
 };
 
 export type SerializerOptions = {
@@ -41,7 +43,9 @@ export type SerializerOptions = {
   logModules?: boolean,
   profile?: boolean,
   inlineExpressions?: boolean,
+  simpleClosures?: boolean,
   trace?: boolean,
+  heapGraph?: boolean,
 };
 
 export type PartialEvaluatorOptions = {

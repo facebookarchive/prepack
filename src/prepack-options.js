@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions } from "./options";
+import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions, ReactOutputTypes } from "./options";
 import { Realm } from "./realm.js";
 import invariant from "./invariant.js";
 
@@ -18,6 +18,7 @@ export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
   additionalFunctions?: Array<string>,
   lazyObjectsRuntime?: string,
+  heapGraphFilePath?: string,
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
@@ -33,9 +34,11 @@ export type PrepackOptions = {|
   outputFilename?: string,
   profile?: boolean,
   reactEnabled?: boolean,
+  reactOutput?: ReactOutputTypes,
   residual?: boolean,
   serialize?: boolean,
   inlineExpressions?: boolean,
+  simpleClosures?: boolean,
   sourceMaps?: boolean,
   initializeMoreModules?: boolean,
   statsFile?: string,
@@ -44,7 +47,6 @@ export type PrepackOptions = {|
   trace?: boolean,
   uniqueSuffix?: string,
   maxStackDepth?: number,
-  enableDebugger?: boolean,
   debugInFilePath?: string,
   debugOutFilePath?: string,
 |};
@@ -57,6 +59,7 @@ export function getRealmOptions({
   omitInvariants = false,
   uniqueSuffix,
   reactEnabled,
+  reactOutput,
   residual,
   serialize = !residual,
   strictlyMonotonicDateNow,
@@ -71,6 +74,7 @@ export function getRealmOptions({
     omitInvariants,
     uniqueSuffix,
     reactEnabled,
+    reactOutput,
     residual,
     serialize,
     strictlyMonotonicDateNow,
@@ -82,6 +86,7 @@ export function getRealmOptions({
 export function getSerializerOptions({
   additionalFunctions,
   lazyObjectsRuntime,
+  heapGraphFilePath,
   delayInitializations = false,
   delayUnsupportedRequires = false,
   internalDebug = false,
@@ -90,6 +95,7 @@ export function getSerializerOptions({
   logModules = false,
   profile = false,
   inlineExpressions = false,
+  simpleClosures = false,
   initializeMoreModules = false,
   trace = false,
 }: PrepackOptions): SerializerOptions {
@@ -103,7 +109,9 @@ export function getSerializerOptions({
     logModules,
     profile,
     inlineExpressions,
+    simpleClosures,
     trace,
+    heapGraph: !!heapGraphFilePath,
   };
   if (additionalFunctions) result.additionalFunctions = additionalFunctions;
   if (lazyObjectsRuntime !== undefined) {

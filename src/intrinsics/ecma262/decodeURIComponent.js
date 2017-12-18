@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ToString } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import { StringValue } from "../../values/index.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -23,7 +23,7 @@ export default function(realm: Realm): NativeFunctionValue {
     encodedURIComponent = encodedURIComponent.throwIfNotConcrete();
 
     // 1. Let componentString be ? ToString(uri).
-    let componentString = ToString(realm, encodedURIComponent);
+    let componentString = To.ToString(realm, encodedURIComponent);
 
     // 2. Let reservedURIComponentSet be the empty String.
     // 3. Return ? Encode(componentString, unescapedURIComponentSet).

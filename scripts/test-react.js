@@ -19,196 +19,202 @@ let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
-let reactTestRoot = path.join(__dirname, "../test/react/");
-let prepackOptions = {
-  compatibility: "react-mocks",
-  errorHandler: diag => "Fail",
-  internalDebug: true,
-  serialize: true,
-  uniqueSuffix: "",
-  maxStackDepth: 100,
-  reactEnabled: true,
-  inlineExpressions: true,
-  omitInvariants: true,
-};
-
-function compileSourceWithPrepack(source) {
-  let code = `(function(){${source}})()`;
-  let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
-  if (serialized == null || serialized.reactStatistics == null) {
-    throw new Error("React test runner failed during serialization");
-  }
-  return {
-    compiledSource: serialized.code,
-    statistics: serialized.reactStatistics,
+function runTestSuite(outputJsx) {
+  let reactTestRoot = path.join(__dirname, "../test/react/");
+  let prepackOptions = {
+    compatibility: "react-mocks",
+    internalDebug: true,
+    serialize: true,
+    uniqueSuffix: "",
+    maxStackDepth: 100,
+    reactEnabled: true,
+    reactOutput: outputJsx ? "jsx" : "create-element",
+    inlineExpressions: true,
+    simpleClosures: true,
+    omitInvariants: true,
   };
-}
 
-function runSource(source) {
-  let codeAfterBabel = babel.transform(source, {
-    presets: ["babel-preset-react"],
-    plugins: ["transform-object-rest-spread"],
-  }).code;
-  /* eslint-disable no-new-func */
-  let fn = new Function("require", "module", codeAfterBabel);
-  let moduleShim = { exports: null };
-  let requireShim = name => {
-    switch (name) {
-      case "react":
-        return React;
-      default:
-        throw new Error(`Unrecognized import: "${name}".`);
+  function compileSourceWithPrepack(source) {
+    let code = `(function(){${source}})()`;
+    let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
+    if (serialized == null || serialized.reactStatistics == null) {
+      throw new Error("React test runner failed during serialization");
     }
-  };
-  try {
-    // $FlowFixMe flow doesn't new Function
-    fn(requireShim, moduleShim);
-  } catch (e) {
-    console.log(codeAfterBabel);
-    throw e;
+    return {
+      compiledSource: serialized.code,
+      statistics: serialized.reactStatistics,
+    };
   }
-  return moduleShim.exports;
-}
 
-async function runTest(directory, name) {
-  let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
-  let compiledSource = compileSourceWithPrepack(source).compiledSource;
-
-  let A = runSource(source);
-  expect(typeof A).toBe("function");
-  let B = runSource(compiledSource);
-  expect(typeof B).toBe("function");
-
-  let rendererA = ReactTestRenderer.create(null);
-  let rendererB = ReactTestRenderer.create(null);
-
-  if (A == null || B == null) {
-    throw new Error("React test runner issue");
-  }
-  // // Use the original version of the test in case transforming messes it up.
-  let { getTrials } = A;
-  // // Run tests that assert the rendered output matches.
-  let resultA = getTrials(rendererA, A);
-  let resultB = getTrials(rendererB, B);
-
-  // // the test has returned many values for us to check
-  for (let i = 0; i < resultA.length; i++) {
-    let [nameA, valueA] = resultA[i];
-    let [nameB, valueB] = resultB[i];
-    expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
-    expect(nameB).toEqual(nameA);
-  }
-}
-
-// Jest tests
-let originalConsoleError = console.error;
-
-describe("Test React", () => {
-  describe("Functional component folding", () => {
-    let directory = "functional-components";
-
-    it("Simple", async () => {
-      await runTest(directory, "simple.js");
-    });
-
-    it("Simple children", async () => {
-      await runTest(directory, "simple-children.js");
-    });
-
-    it("Simple refs", async () => {
-      await runTest(directory, "simple-refs.js");
-    });
-
-    it("Conditional", async () => {
-      await runTest(directory, "conditional.js");
-    });
-
-    it("Key nesting", async () => {
-      await runTest(directory, "key-nesting.js");
-    });
-
-    it("Key nesting 2", async () => {
-      await runTest(directory, "key-nesting-2.js");
-    });
-
-    it("Key nesting 3", async () => {
-      await runTest(directory, "key-nesting-3.js");
-    });
-
-    it("Key change", async () => {
-      await runTest(directory, "key-change.js");
-    });
-
-    it("Component type change", async () => {
-      await runTest(directory, "type-change.js");
-    });
-
-    it("Component type same", async () => {
-      await runTest(directory, "type-same.js");
-    });
-
-    it("Dynamic props", async () => {
-      await runTest(directory, "dynamic-props.js");
-    });
-
-    it("Dynamic context", async () => {
-      await runTest(directory, "dynamic-context.js");
-    });
-
-    it("React.cloneElement", async () => {
-      await runTest(directory, "clone-element.js");
-    });
-
-    it("Return text", async () => {
-      await runTest(directory, "return-text.js");
-    });
-
-    it("Return undefined", async () => {
-      // this test will cause a React console.error to show
-      // we monkey patch it to stop it polluting the test output
-      // with a false-negative error
-      global.console.error = () => {};
-      try {
-        await runTest(directory, "return-undefined.js");
-      } finally {
-        global.console.error = originalConsoleError;
+  function runSource(source) {
+    let transformedSource = babel.transform(source, {
+      presets: ["babel-preset-react"],
+      plugins: ["transform-object-rest-spread"],
+    }).code;
+    /* eslint-disable no-new-func */
+    let fn = new Function("require", "module", transformedSource);
+    let moduleShim = { exports: null };
+    let requireShim = name => {
+      switch (name) {
+        case "react":
+          return React;
+        default:
+          throw new Error(`Unrecognized import: "${name}".`);
       }
+    };
+    try {
+      // $FlowFixMe flow doesn't new Function
+      fn(requireShim, moduleShim);
+    } catch (e) {
+      console.error(transformedSource);
+      throw e;
+    }
+    return moduleShim.exports;
+  }
+
+  async function runTest(directory, name) {
+    let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
+    let { compiledSource } = compileSourceWithPrepack(source);
+
+    let A = runSource(source);
+    expect(typeof A).toBe("function");
+    let B = runSource(compiledSource);
+    expect(typeof B).toBe("function");
+
+    let rendererA = ReactTestRenderer.create(null);
+    let rendererB = ReactTestRenderer.create(null);
+
+    if (A == null || B == null) {
+      throw new Error("React test runner issue");
+    }
+    // // Use the original version of the test in case transforming messes it up.
+    let { getTrials } = A;
+    // // Run tests that assert the rendered output matches.
+    let resultA = getTrials(rendererA, A);
+    let resultB = getTrials(rendererB, B);
+
+    // // the test has returned many values for us to check
+    for (let i = 0; i < resultA.length; i++) {
+      let [nameA, valueA] = resultA[i];
+      let [nameB, valueB] = resultB[i];
+      expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
+      expect(nameB).toEqual(nameA);
+    }
+  }
+
+  // Jest tests
+  let originalConsoleError = console.error;
+
+  describe(`Test React (${outputJsx ? "JSX" : "create-element"})`, () => {
+    describe("Functional component folding", () => {
+      let directory = "functional-components";
+
+      it("Simple", async () => {
+        await runTest(directory, "simple.js");
+      });
+
+      it("Simple children", async () => {
+        await runTest(directory, "simple-children.js");
+      });
+
+      it("Simple refs", async () => {
+        await runTest(directory, "simple-refs.js");
+      });
+
+      it("Conditional", async () => {
+        await runTest(directory, "conditional.js");
+      });
+
+      it("Key nesting", async () => {
+        await runTest(directory, "key-nesting.js");
+      });
+
+      it("Key nesting 2", async () => {
+        await runTest(directory, "key-nesting-2.js");
+      });
+
+      it("Key nesting 3", async () => {
+        await runTest(directory, "key-nesting-3.js");
+      });
+
+      it("Key change", async () => {
+        await runTest(directory, "key-change.js");
+      });
+
+      it("Component type change", async () => {
+        await runTest(directory, "type-change.js");
+      });
+
+      it("Component type same", async () => {
+        await runTest(directory, "type-same.js");
+      });
+
+      it("Dynamic props", async () => {
+        await runTest(directory, "dynamic-props.js");
+      });
+
+      it("Dynamic context", async () => {
+        await runTest(directory, "dynamic-context.js");
+      });
+
+      it("React.cloneElement", async () => {
+        await runTest(directory, "clone-element.js");
+      });
+
+      it("Return text", async () => {
+        await runTest(directory, "return-text.js");
+      });
+
+      it("Return undefined", async () => {
+        // this test will cause a React console.error to show
+        // we monkey patch it to stop it polluting the test output
+        // with a false-negative error
+        global.console.error = () => {};
+        try {
+          await runTest(directory, "return-undefined.js");
+        } finally {
+          global.console.error = originalConsoleError;
+        }
+      });
+
+      it("Class component as root", async () => {
+        await runTest(directory, "class-root.js");
+      });
+
+      it("Class component as root with multiple render methods", async () => {
+        await runTest(directory, "class-root-with-render-methods.js");
+      });
+
+      it("Class component as root with props", async () => {
+        await runTest(directory, "class-root-with-props.js");
+      });
+
+      it("Class component as root with state", async () => {
+        await runTest(directory, "class-root-with-state.js");
+      });
+
+      it("Class component as root with refs", async () => {
+        await runTest(directory, "class-root-with-refs.js");
+      });
+
+      it("Class component as root with instance variables", async () => {
+        await runTest(directory, "class-root-with-instance-vars.js");
+      });
+
+      it("Class component as root with instance variables #2", async () => {
+        await runTest(directory, "class-root-with-instance-vars-2.js");
+      });
     });
 
-    it("Class component as root", async () => {
-      await runTest(directory, "class-root.js");
-    });
+    describe("Class component folding", () => {
+      let directory = "class-components";
 
-    it("Class component as root with multiple render methods", async () => {
-      await runTest(directory, "class-root-with-render-methods.js");
-    });
-
-    it("Class component as root with props", async () => {
-      await runTest(directory, "class-root-with-props.js");
-    });
-
-    it("Class component as root with state", async () => {
-      await runTest(directory, "class-root-with-state.js");
-    });
-
-    it("Class component as root with refs", async () => {
-      await runTest(directory, "class-root-with-refs.js");
-    });
-
-    it("Class component as root with instance variables", async () => {
-      await runTest(directory, "class-root-with-instance-vars.js");
-    });
-
-    it("Class component as root with instance variables #2", async () => {
-      await runTest(directory, "class-root-with-instance-vars-2.js");
+      it("Simple classes", async () => {
+        await runTest(directory, "simple-classes.js");
+      });
     });
   });
+}
 
-  describe("Class component folding", () => {
-    let directory = "class-components";
-
-    it("Simple classes", async () => {
-      await runTest(directory, "simple-classes.js");
-    });
-  });
-});
+runTestSuite(true);
+runTestSuite(false);

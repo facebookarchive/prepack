@@ -13,8 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { StringValue } from "../values/index.js";
-import { ToStringPartial } from "../methods/index.js";
-import { Environment } from "../singletons.js";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
 
 // ECMA262 12.2.9
@@ -34,7 +33,7 @@ export default function(
     // add expression
     let expr = ast.expressions[i];
     if (expr) {
-      str += ToStringPartial(realm, Environment.GetValue(realm, env.evaluate(expr, strictCode)));
+      str += To.ToStringPartial(realm, Environment.GetValue(realm, env.evaluate(expr, strictCode)));
     }
   }
 

@@ -28,7 +28,6 @@ import {
 import { Reference } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { SetIntegrityLevel } from "./integrity.js";
-import { ToString } from "./to.js";
 import {
   Call,
   HasSomeCompatibleType,
@@ -36,9 +35,8 @@ import {
   IsCallable,
   IsDataDescriptor,
   IsPropertyKey,
-  ToObjectPartial,
 } from "./index.js";
-import { Create, Environment, Join, Path } from "../singletons.js";
+import { Create, Environment, Join, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
 
@@ -367,7 +365,7 @@ export function GetV(realm: Realm, V: Value, P: PropertyKeyValue): Value {
   invariant(IsPropertyKey(realm, P), "Not a valid property key");
 
   // 2. Let O be ? ToObject(V).
-  let O = ToObjectPartial(realm, V);
+  let O = To.ToObjectPartial(realm, V);
 
   // 3. Return ? O.[[Get]](P, V).
   return O.$Get(P, V);
@@ -457,7 +455,7 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
   // 10. Repeat while index < count
   while (index < count) {
     // a. Let prop be ! ToString(index).
-    let prop = ToString(realm, new NumberValue(realm, index));
+    let prop = To.ToString(realm, new NumberValue(realm, index));
 
     // b. Let cookedValue be the String value cookedStrings[index].
     let cookedValue = new StringValue(realm, cookedStrings[index]);

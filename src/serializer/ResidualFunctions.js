@@ -12,6 +12,7 @@
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import { FunctionValue, type ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
+import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -47,6 +48,7 @@ export class ResidualFunctions {
   constructor(
     realm: Realm,
     statistics: SerializerStatistics,
+    options: SerializerOptions,
     modules: Modules,
     requireReturns: Map<number | string, BabelNodeExpression>,
     locationService: LocationService,
@@ -54,6 +56,7 @@ export class ResidualFunctions {
     initializerNameGenerator: NameGenerator,
     factoryNameGenerator: NameGenerator,
     scopeNameGenerator: NameGenerator,
+    referentializedNameGenerator: NameGenerator,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
@@ -81,7 +84,7 @@ export class ResidualFunctions {
     this.residualFunctionInstances = residualFunctionInstances;
     this.residualClassMethodInstances = residualClassMethodInstances;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
-    this.referentializer = new Referentializer(scopeNameGenerator, statistics);
+    this.referentializer = new Referentializer(options, scopeNameGenerator, referentializedNameGenerator, statistics);
     for (let instance of residualFunctionInstances.values()) {
       invariant(instance !== undefined);
       if (!additionalFunctionValueInfos.has(instance.functionValue)) this.addFunctionInstance(instance);
@@ -196,18 +199,17 @@ export class ResidualFunctions {
     let functionBodies = new Map();
     // these need to get spliced in at the end
     let additionalFunctionPreludes = new Map();
-    function getFunctionBody(instance: FunctionInstance): Array<BabelNodeStatement> {
-      let b = functionBodies.get(instance);
-      if (b === undefined) functionBodies.set(instance, (b = []));
-      return b;
-    }
+    let additionalFunctionModifiedBindingsSegment: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
+    let getModifiedBindingsSegment = additionalFunction =>
+      getOrDefault(additionalFunctionModifiedBindingsSegment, additionalFunction, () => []);
+    let getFunctionBody = (instance: FunctionInstance): Array<BabelNodeStatement> =>
+      getOrDefault(functionBodies, instance, () => []);
     let globalPrelude = this.prelude;
     function getPrelude(instance: FunctionInstance): Array<BabelNodeStatement> {
       let additionalFunction = instance.containingAdditionalFunction;
       let b;
       if (additionalFunction) {
-        b = additionalFunctionPreludes.get(additionalFunction);
-        if (b === undefined) additionalFunctionPreludes.set(additionalFunction, (b = []));
+        b = getOrDefault(additionalFunctionPreludes, additionalFunction, () => []);
       } else {
         b = globalPrelude;
       }
@@ -237,6 +239,13 @@ export class ResidualFunctions {
 
     let defineFunction = (instance, funcId, funcOrClassNode) => {
       let { functionValue } = instance;
+
+      if (instance.initializationStatements.length > 0) {
+        // always add initialization statements to insertion point
+        let initializationBody = getFunctionBody(instance);
+        Array.prototype.push.apply(initializationBody, instance.initializationStatements);
+      }
+
       let body;
       if (t.isFunctionExpression(funcOrClassNode)) {
         funcNodes.set(functionValue, ((funcOrClassNode: any): BabelNodeFunctionExpression));
@@ -269,8 +278,7 @@ export class ResidualFunctions {
         if (!residualBinding.referentialized) continue;
 
         // Find the proper prelude to emit to (global vs additional function's prelude)
-        let prelude = additionalFunctionPreludes.get(funcValue);
-        if (prelude === undefined) additionalFunctionPreludes.set(funcValue, (prelude = []));
+        let bodySegment = getModifiedBindingsSegment(funcValue);
 
         // binding has been referentialized, so setup the scope to be able to
         // access bindings from other __captured_scopes initializers
@@ -279,9 +287,9 @@ export class ResidualFunctions {
             t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
           ]);
           let init = this.referentializer.getReferentializedScopeInitialization(scope);
-          prelude.push(decl);
+          bodySegment.push(decl);
           // flow forces me to do this
-          Array.prototype.push.apply(prelude, init);
+          Array.prototype.push.apply(bodySegment, init);
         }
 
         let newValue = residualBinding.additionalValueSerialized;
@@ -291,7 +299,7 @@ export class ResidualFunctions {
         invariant(t.isLVal(binding_reference), "Referentialized values are always LVals");
         // This mutation is safe because it should always be either a global identifier (for global bindings)
         // or an accessor to a referentialized value.
-        prelude.push(t.expressionStatement(t.assignmentExpression("=", binding_reference, newValue)));
+        bodySegment.push(t.expressionStatement(t.assignmentExpression("=", binding_reference, newValue)));
       }
     }
 
@@ -461,10 +469,10 @@ export class ResidualFunctions {
               ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
             );
             let scopeInitialization = [];
-            for (let scope of scopeInstances) {
+            for (let [scopeName, scope] of scopeInstances) {
               scopeInitialization.push(
                 t.variableDeclaration("var", [
-                  t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
+                  t.variableDeclarator(t.identifier(scopeName), t.numericLiteral(scope.id)),
                 ])
               );
               scopeInitialization = scopeInitialization.concat(
@@ -548,8 +556,8 @@ export class ResidualFunctions {
         }
 
         let scopeInitialization = [];
-        for (let scope of normalInstances[0].scopeInstances) {
-          factoryParams.push(t.identifier(scope.name));
+        for (let [scopeName, scope] of normalInstances[0].scopeInstances) {
+          factoryParams.push(t.identifier(scopeName));
           scopeInitialization = scopeInitialization.concat(
             this.referentializer.getReferentializedScopeInitialization(scope)
           );
@@ -590,15 +598,18 @@ export class ResidualFunctions {
           let { functionValue, residualFunctionBindings, insertionPoint } = instance;
           let functionId = this.locationService.getLocation(functionValue);
           invariant(functionId !== undefined);
+          let hasFunctionArg = false;
           let flatArgs: Array<BabelNodeExpression> = factoryNames.map(name => {
             let residualBinding = residualFunctionBindings.get(name);
             invariant(residualBinding);
             let serializedValue = residualBinding.serializedValue;
+            hasFunctionArg =
+              hasFunctionArg || (residualBinding.value && residualBinding.value instanceof FunctionValue);
             invariant(serializedValue);
             return serializedValue;
           });
-          for (let { id } of instance.scopeInstances) {
-            flatArgs.push(t.numericLiteral(id));
+          for (let entry of instance.scopeInstances) {
+            flatArgs.push(t.numericLiteral(entry[1].id));
           }
           let funcNode;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
@@ -608,6 +619,7 @@ export class ResidualFunctions {
             // so a stub forward function is needed during delay initializations.
             this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
             usesThis ||
+            hasFunctionArg ||
             (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
             this.functionPrototypes.get(functionValue) !== undefined
           ) {
@@ -647,22 +659,10 @@ export class ResidualFunctions {
       // Get the prelude for this additional function value
       if (referentializationScope !== "GLOBAL") {
         let additionalFunction = referentializationScope;
-        prelude = additionalFunctionPreludes.get(additionalFunction);
-        if (!prelude) {
-          prelude = [];
-          additionalFunctionPreludes.set(additionalFunction, prelude);
-        }
+        prelude = getOrDefault(additionalFunctionPreludes, additionalFunction, () => []);
       }
       prelude.unshift(this.referentializer.createCaptureScopeAccessFunction(referentializationScope));
       prelude.unshift(this.referentializer.createCapturedScopesArrayInitialization(referentializationScope));
-    }
-
-    for (let [additionalFunction, body] of additionalFunctionPreludes.entries()) {
-      invariant(additionalFunction);
-      let prelude = ((body: any): Array<BabelNodeStatement>);
-      let additionalBody = rewrittenAdditionalFunctions.get(additionalFunction);
-      invariant(additionalBody);
-      additionalBody.unshift(...prelude);
     }
 
     for (let instance of this.functionInstances.reverse()) {
@@ -676,6 +676,20 @@ export class ResidualFunctions {
           insertionPoint.body.entries,
           ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>))
         );
+      }
+    }
+
+    for (let [additionalFunction, body] of rewrittenAdditionalFunctions.entries()) {
+      let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
+      let prelude = additionalFunctionPreludes.get(additionalFunction);
+      if (prelude) body.unshift(...prelude);
+      if (bodySegment) {
+        if (body.length > 0 && t.isReturnStatement(body[body.length - 1])) {
+          let returnStatement = body.pop();
+          body.push(...bodySegment, returnStatement);
+        } else {
+          body.push(...bodySegment);
+        }
       }
     }
 

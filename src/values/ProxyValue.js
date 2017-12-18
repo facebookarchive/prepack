@@ -13,11 +13,10 @@ import { Realm } from "../realm.js";
 import { Value, SymbolValue, NullValue, ObjectValue, UndefinedValue, StringValue } from "./index.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import invariant from "../invariant.js";
-import { ToBooleanPartial, ToPropertyDescriptor } from "../methods/to.js";
 import { SameValue, SameValuePartial, SamePropertyKey } from "../methods/abstract.js";
 import { GetMethod } from "../methods/get.js";
 import { IsExtensible, IsPropertyKey, IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
-import { Create, Properties } from "../singletons.js";
+import { Create, Properties, To } from "../singletons.js";
 import { Call } from "../methods/call.js";
 
 function FindPropertyKey(realm: Realm, keys: Array<PropertyKeyValue>, key: PropertyKeyValue): number {
@@ -139,7 +138,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, V »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target, V]));
+    let booleanTrapResult = To.ToBooleanPartial(realm, Call(realm, trap, handler, [target, V]));
 
     // 9. If booleanTrapResult is false, return false.
     if (!booleanTrapResult) return false;
@@ -191,7 +190,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 7. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target]));
+    let booleanTrapResult = To.ToBooleanPartial(realm, Call(realm, trap, handler, [target]));
 
     // 8. Let targetResult be ? target.[[IsExtensible]]().
     invariant(target instanceof ObjectValue);
@@ -235,7 +234,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 7. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target]));
+    let booleanTrapResult = To.ToBooleanPartial(realm, Call(realm, trap, handler, [target]));
 
     // 8. If booleanTrapResult is true, then
     if (booleanTrapResult) {
@@ -325,7 +324,7 @@ export default class ProxyValue extends ObjectValue {
     let extensibleTarget = IsExtensible(realm, target);
 
     // 13. Let resultDesc be ? ToPropertyDescriptor(trapResultObj).
-    let resultDesc = ToPropertyDescriptor(realm, trapResultObj);
+    let resultDesc = To.ToPropertyDescriptor(realm, trapResultObj);
 
     // 14. Call CompletePropertyDescriptor(resultDesc).
     Properties.CompletePropertyDescriptor(realm, resultDesc);
@@ -386,7 +385,7 @@ export default class ProxyValue extends ObjectValue {
     let descObj = Properties.FromPropertyDescriptor(realm, Desc);
 
     // 9. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P, descObj »)).
-    let booleanTrapResult = ToBooleanPartial(
+    let booleanTrapResult = To.ToBooleanPartial(
       realm,
       Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, descObj])
     );
@@ -472,7 +471,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P »)).
-    let booleanTrapResult = ToBooleanPartial(
+    let booleanTrapResult = To.ToBooleanPartial(
       realm,
       Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P])
     );
@@ -609,7 +608,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P, V, Receiver »)).
-    let booleanTrapResult = ToBooleanPartial(
+    let booleanTrapResult = To.ToBooleanPartial(
       realm,
       Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, V, Receiver])
     );
@@ -680,7 +679,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P »)).
-    let booleanTrapResult = ToBooleanPartial(
+    let booleanTrapResult = To.ToBooleanPartial(
       realm,
       Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P])
     );

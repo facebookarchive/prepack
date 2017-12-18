@@ -14,12 +14,12 @@ import { parseExpression } from "babylon";
 import { ObjectValue, ECMAScriptFunctionValue, ECMAScriptSourceFunctionValue } from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import { Environment } from "../../singletons.js";
-import { getReactElementSymbol } from "../../react/utils.js";
+import { getReactSymbol } from "../../react/utils.js";
 import invariant from "../../invariant";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
 let reactCode = `
-  function createReact(REACT_ELEMENT_TYPE, ReactCurrentOwner) {
+  function createReact(REACT_ELEMENT_TYPE, REACT_SYMBOL_TYPE, ReactCurrentOwner) {
     var hasOwnProperty = Object.prototype.hasOwnProperty;
     var RESERVED_PROPS = {
       key: true,
@@ -241,9 +241,11 @@ let reactCode = `
       },
       Component,
       PureComponent,
+      Fragment: REACT_SYMBOL_TYPE,
       createElement,
       cloneElement,
       isValidElement,
+      version: "16.2.0",
     };
   }
 `;
@@ -261,24 +263,40 @@ export function createMockReact(realm: Realm): ObjectValue {
   // this is to get around Flow getting confused
   let factory = reactFactory.$Call;
   invariant(factory !== undefined);
-  let reactValue = factory(realm.intrinsics.undefined, [getReactElementSymbol(realm), currentOwner]);
+  let reactValue = factory(realm.intrinsics.undefined, [
+    getReactSymbol("react.element", realm),
+    getReactSymbol("react.symbol", realm),
+    currentOwner,
+  ]);
   reactValue.intrinsicName = `require("react")`;
   invariant(reactValue instanceof ObjectValue);
 
   let reactComponentValue = Get(realm, reactValue, "Component");
   reactComponentValue.intrinsicName = `require("react").Component`;
   invariant(reactComponentValue instanceof ECMAScriptFunctionValue);
+  let reactPureComponentValue = Get(realm, reactValue, "PureComponent");
+  reactPureComponentValue.intrinsicName = `require("react").PureComponent`;
+  invariant(reactPureComponentValue instanceof ECMAScriptFunctionValue);
   reactComponentValue.$FunctionKind = "normal";
   invariant(reactComponentValue instanceof ObjectValue);
 
   let reactComponentPrototypeValue = Get(realm, reactComponentValue, "prototype");
   reactComponentPrototypeValue.intrinsicName = `require("react").Component.prototype`;
 
+  let reactPureComponentPrototypeValue = Get(realm, reactPureComponentValue, "prototype");
+  reactPureComponentPrototypeValue.intrinsicName = `require("react").PureComponent.prototype`;
+
   let reactCloneElementValue = Get(realm, reactValue, "cloneElement");
   reactCloneElementValue.intrinsicName = `require("react").cloneElement`;
 
   let reactCreateElementValue = Get(realm, reactValue, "createElement");
   reactCreateElementValue.intrinsicName = `require("react").createElement`;
+
+  let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
+  reactIsValidElementValue.intrinsicName = `require("react").isValidElement`;
+
+  let reactChildrenValue = Get(realm, reactValue, "Children");
+  reactChildrenValue.intrinsicName = `require("react").Children`;
 
   return reactValue;
 }

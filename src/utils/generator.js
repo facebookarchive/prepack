@@ -197,6 +197,21 @@ export class Generator {
     );
   }
 
+  // test must be a temporal value, which means that it must have a defined intrinsicName
+  emitDoWhileStatement(test: AbstractValue, body: Generator) {
+    this._addEntry({
+      args: [],
+      buildNode: function([], context: SerializationContext) {
+        let testId = test.intrinsicName;
+        invariant(testId !== undefined);
+        let statements = context.serializeGenerator(body);
+        let block = t.blockStatement(statements);
+        return t.doWhileStatement(t.identifier(testId), block);
+      },
+      dependencies: [body],
+    });
+  }
+
   emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
@@ -425,6 +440,13 @@ export class Generator {
   }
 }
 
+// some characters are invalid within a JavaScript identifier,
+// such as: . , : ( ) ' " ` [ ] -
+// so we replace these character instacnes with an underscore
+function replaceInvalidCharactersWithUnderscore(string: string) {
+  return string.replace(/[.,:\(\)\"\'\`\[\]\-]/g, "_");
+}
+
 export class NameGenerator {
   constructor(forbiddenNames: Set<string>, debugNames: boolean, uniqueSuffix: string, prefix: string) {
     this.prefix = prefix;
@@ -444,7 +466,7 @@ export class NameGenerator {
       id = this.prefix + base62.encode(this.uidCounter++);
       if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
       if (this.debugNames) {
-        if (debugSuffix) id += "_" + debugSuffix.replace(/[.,:]/g, "_");
+        if (debugSuffix) id += "_" + replaceInvalidCharactersWithUnderscore(debugSuffix);
         else id += "_";
       }
     } while (this.forbiddenNames.has(id));

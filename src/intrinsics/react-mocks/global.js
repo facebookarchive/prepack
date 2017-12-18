@@ -33,7 +33,12 @@ export default function(realm: Realm): void {
     value: new NativeFunctionValue(realm, "global.require", "require", 0, (context, [requireNameVal]) => {
       invariant(requireNameVal instanceof StringValue);
       if (requireNameVal.value === "react" || requireNameVal.value === "React") {
-        return createMockReact(realm);
+        if (realm.react.reactLibraryObject === undefined) {
+          let reactLibraryObject = createMockReact(realm);
+          realm.react.reactLibraryObject = reactLibraryObject;
+          return reactLibraryObject;
+        }
+        return realm.react.reactLibraryObject;
       }
       let requireName = `require("${requireNameVal.value}")`;
       let type = Value.getTypeFromName("function");
