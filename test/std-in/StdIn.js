@@ -1,8 +1,9 @@
+// @flow
 function hello() {
-  return 'Hello';
+  return "Hello";
 }
 function world() {
-  return 'world';
+  return "world";
 }
-let greeting = hello() + ' ' + world();
-console.log(greeting + ' from std-in!');
+let greeting = hello() + " " + world();
+console.log(greeting + " from std-in");
