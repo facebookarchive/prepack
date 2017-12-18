@@ -220,6 +220,36 @@ function run(
     return "Recover";
   }
 
+  function printDiagnostics() {
+    let foundFatal = false;
+    if (errors.size > 0) {
+      console.error("Errors found while prepacking");
+      for (let [loc, error] of errors) {
+        let sourceMessage = "";
+        switch (loc.source) {
+          case "":
+            sourceMessage = "In an unknown source file";
+            break;
+          case "no-filename-specified":
+            sourceMessage = "In stdin";
+            break;
+          default:
+            // flow made me do this || ""
+            sourceMessage = `In input file ${loc.source || ""}`;
+            break;
+        }
+
+        foundFatal = foundFatal || error.severity === "FatalError";
+        console.error(
+          `${sourceMessage}(${loc.start.line}:${loc.start.column +
+            1}) ${error.severity} ${error.errorCode}: ${error.message}` +
+            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
+        );
+      }
+    }
+    return foundFatal;
+  }
+
   try {
     if (inputFilenames.length === 0) {
       prepackStdin(resolvedOptions, processSerializedCode);
@@ -227,42 +257,35 @@ function run(
     }
     let serialized = prepackFileSync(inputFilenames, resolvedOptions);
     processSerializedCode(null, serialized);
-  } catch (x) {
-    console.error(x.message);
-    console.error(x.stack);
-    process.exit(1);
-  } finally {
-    if (errors.size > 0) {
-      let foundFatal = false;
-      for (let [loc, error] of errors) {
-        foundFatal = foundFatal || error.severity === "FatalError";
-        console.error(
-          `${loc.source || ""}(${loc.start.line}:${loc.start.column +
-            1}) ${error.severity} ${error.errorCode}: ${error.message}` +
-            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
-        );
-      }
-      if (foundFatal) process.exit(1);
+  } catch (err) {
+    //FatalErrors must have generated at least one CompilerDiagnostic.
+    if (err instanceof FatalError) {
+      invariant(errors.size > 0, "FatalError must generate at least one CompilerDiagnostic");
+    } else {
+      // if it is not a FatalError, it means prepack failed, and we should display the CompilerDiagnostics and stack trace.
+      printDiagnostics();
+      console.error(err.stack);
+      process.exit(1);
     }
+  } finally {
+    const foundFatal = printDiagnostics();
+    if (foundFatal) process.exit(1);
   }
 
   function processSerializedCode(err, serialized) {
-    if (err) {
+    //FatalErrors must have generated at least one CompilerDiagnostic.
+    if (err && err instanceof FatalError) {
+      invariant(errors.size > 0, "FatalError must generate at least one CompilerDiagnostic");
+    }
+    if (err && !(err instanceof FatalError)) {
+      // if it is not a FatalError, it means prepack failed, and we should display the CompilerDiagnostics and stack trace.
+      printDiagnostics();
       console.error(err);
       process.exit(1);
     }
-    if (errors.size > 0) {
-      console.error("Errors found while prepacking");
-      let foundFatal = false;
-      for (let [loc, error] of errors) {
-        foundFatal = foundFatal || error.severity === "FatalError";
-        console.error(
-          `${loc.source || ""}(${loc.start.line}:${loc.start.column +
-            1}) ${error.severity} ${error.errorCode}: ${error.message}`
-        );
-      }
-      if (foundFatal) process.exit(1);
-    }
+    // we print the non-fatal diagnostics. We test again if there is any FatalError-level CompilerDiagnostics that wouldn't have thrown a FatalError.
+    const foundFatal = printDiagnostics();
+    if (foundFatal) process.exit(1);
     if (serialized) {
       if (serialized.code === "") {
         console.error("Prepack returned empty code.");

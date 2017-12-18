@@ -34,7 +34,8 @@ export function prepackStdin(options: PrepackOptions = defaultOptions, callback:
   process.stdin.on("data", function(code) {
     fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
       if (mapErr) {
-        console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+        //if no sourcemap was provided we silently ignore
+        if (sourceMapFilename !== "") console.warn(`No sourcemap found at ${sourceMapFilename}.`);
         sourceMap = "";
       }
       let filename = "no-filename-specified";
