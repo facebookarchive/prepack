@@ -510,20 +510,28 @@ export class ToImplementation {
     return this.ToIndex(realm, typeof value === "number" ? value : value.throwIfNotConcrete());
   }
 
-  // ECMA262 7.1.3
   ToNumber(realm: Realm, val: numberOrValue): number {
+    const num = this.ToNumberOrAbstract(realm, val);
+    if (typeof num !== "number") {
+      AbstractValue.reportIntrospectionError(num);
+      throw new FatalError();
+    }
+    return num;
+  }
+
+  // ECMA262 7.1.3
+  ToNumberOrAbstract(realm: Realm, val: numberOrValue | AbstractValue): AbstractValue | number {
     if (typeof val === "number") {
       return val;
     } else if (val instanceof AbstractValue) {
-      AbstractValue.reportIntrospectionError(val);
-      throw new FatalError();
+      return val;
     } else if (val instanceof UndefinedValue) {
       return NaN;
     } else if (val instanceof NullValue) {
       return +0;
     } else if (val instanceof ObjectValue) {
-      let prim = this.ToPrimitive(realm, val, "number");
-      return this.ToNumber(realm, prim);
+      let prim = this.ToPrimitiveOrAbstract(realm, val, "number");
+      return this.ToNumberOrAbstract(realm, prim);
     } else if (val instanceof BooleanValue) {
       if (val.value === true) {
         return 1;

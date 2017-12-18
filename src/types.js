@@ -945,6 +945,8 @@ export type ToType = {
   // ECMA262 7.1.3
   ToNumber(realm: Realm, val: numberOrValue): number,
 
+  ToNumberOrAbstract(realm: Realm, val: numberOrValue): number | AbstractValue,
+
   IsToNumberPure(realm: Realm, val: numberOrValue): boolean,
 
   // ECMA262 7.1.1

@@ -196,8 +196,13 @@ export default class ValuesDomain {
       return new NumberValue(realm, Math.pow(base, exponent));
     } else if (op === "%" || op === "/" || op === "*" || op === "-") {
       // ECMA262 12.7.3
-      let lnum = To.ToNumber(realm, lval);
-      let rnum = To.ToNumber(realm, rval);
+      let lnum = To.ToNumberOrAbstract(realm, lval);
+      let rnum = To.ToNumberOrAbstract(realm, rval);
+      if (lnum instanceof AbstractValue || rnum instanceof AbstractValue) {
+        const lnumVal = lnum instanceof AbstractValue ? lnum : new NumberValue(realm, lnum);
+        const rnumVal = rnum instanceof AbstractValue ? rnum : new NumberValue(realm, rnum);
+        return AbstractValue.createFromBinaryOp(realm, op, lnumVal, rnumVal);
+      }
 
       if (isNaN(rnum)) return realm.intrinsics.NaN;
       if (isNaN(lnum)) return realm.intrinsics.NaN;
