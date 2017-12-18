@@ -179,8 +179,8 @@ export default function(
       if (forDcl instanceof AbruptCompletion) {
         // a. Set the running execution context's LexicalEnvironment to oldEnv.
         let currentEnv = realm.getRunningContext().lexicalEnvironment;
-        invariant(currentEnv === loopEnv);
         realm.onDestroyScope(currentEnv);
+        if (currentEnv !== loopEnv) invariant(loopEnv.destroyed);
         realm.getRunningContext().lexicalEnvironment = oldEnv;
 
         // b. Return Completion(forDcl).
@@ -196,7 +196,9 @@ export default function(
         bodyResult = ForBodyEvaluation(realm, test, update, body, perIterationLets, labelSet, strictCode);
       } finally {
         // 12. Set the running execution context's LexicalEnvironment to oldEnv.
-        realm.onDestroyScope(realm.getRunningContext().lexicalEnvironment);
+        let currentEnv = realm.getRunningContext().lexicalEnvironment;
+        realm.onDestroyScope(currentEnv);
+        if (currentEnv !== loopEnv) invariant(loopEnv.destroyed);
         realm.getRunningContext().lexicalEnvironment = oldEnv;
       }
       // 13. Return Completion(bodyResult).

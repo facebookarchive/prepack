@@ -365,6 +365,7 @@ export class Realm {
   wrapInGlobalEnv<T>(callback: () => T): T {
     let context = new ExecutionContext();
     context.isStrict = this.isStrict;
+    context.lexicalEnvironment = this.$GlobalEnv;
     context.variableEnvironment = this.$GlobalEnv;
     context.realm = this;
 
