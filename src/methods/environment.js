@@ -178,9 +178,10 @@ export class EnvironmentImplementation {
   }
 
   // ECMA262 8.1.2.2
-  NewDeclarativeEnvironment(realm: Realm, E: LexicalEnvironment): LexicalEnvironment {
+  NewDeclarativeEnvironment(realm: Realm, E: LexicalEnvironment, active: boolean = true): LexicalEnvironment {
     // 1. Let env be a new Lexical Environment.
     let env = new LexicalEnvironment(realm);
+    if (active) realm.activeLexicalEnvironments.add(env);
 
     // 2. Let envRec be a new declarative Environment Record containing no bindings.
     let envRec = new DeclarativeEnvironmentRecord(realm);
@@ -383,6 +384,7 @@ export class EnvironmentImplementation {
 
     // 9. Set env's EnvironmentRecord to globalRec.
     env.environmentRecord = globalRec;
+    realm.activeLexicalEnvironments.add(env);
 
     // 10. Set the outer lexical environment reference of env to null.
     env.parent = null;
@@ -395,6 +397,7 @@ export class EnvironmentImplementation {
   NewObjectEnvironment(realm: Realm, O: ObjectValue | AbstractObjectValue, E: LexicalEnvironment): LexicalEnvironment {
     // 1. Let env be a new Lexical Environment.
     let env = new LexicalEnvironment(realm);
+    realm.activeLexicalEnvironments.add(env);
 
     // 2. Let envRec be a new object Environment Record containing O as the binding object.
     let envRec = new ObjectEnvironmentRecord(realm, O);
@@ -422,6 +425,7 @@ export class EnvironmentImplementation {
 
     // 3. Let env be a new Lexical Environment.
     let env = new LexicalEnvironment(realm);
+    realm.activeLexicalEnvironments.add(env);
 
     // 4. Let envRec be a new function Environment Record containing no bindings.
     let envRec = new FunctionEnvironmentRecord(realm);

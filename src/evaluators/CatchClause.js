@@ -62,5 +62,6 @@ export default function(
   } finally {
     // 9. Set the running execution context's LexicalEnvironment to oldEnv.
     realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.onDestroyScope(catchEnv);
   }
 }
