@@ -131,7 +131,7 @@ export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual;
-    this.trackLeaks = opts.abstractEffectsInAdditionalFunctions;
+    this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
     }

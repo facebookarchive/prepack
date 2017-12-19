@@ -25,7 +25,7 @@ export default function() {
   Singletons.setEnvironment(new EnvironmentImplementation());
   Singletons.setFunctions(new FunctionImplementation());
   Singletons.setJoin(new JoinImplementation());
-  Singletons.setLeak((new LeakImplementation()));
+  Singletons.setLeak(new LeakImplementation());
   Singletons.setPath(new PathImplementation());
   Singletons.setProperties((new PropertiesImplementation(): any));
   Singletons.setTo((new ToImplementation(): any));
