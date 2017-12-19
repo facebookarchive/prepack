@@ -102,9 +102,12 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   constructor(realm: Realm) {
     super(realm);
     this.bindings = (Object.create(null): any);
+    this.frozen = false;
   }
 
   bindings: { [name: string]: Binding };
+  // Frozen Records cannot have bindings created or deleted but can have bindings updated
+  frozen: boolean;
 
   // ECMA262 8.1.1.1.1
   HasBinding(N: string): boolean {
@@ -120,6 +123,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.2
   CreateMutableBinding(N: string, D: boolean, isGlobal: boolean = false): Value {
+    invariant(!this.frozen);
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -144,6 +148,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.3
   CreateImmutableBinding(N: string, S: boolean, isGlobal: boolean = false): Value {
+    invariant(!this.frozen);
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -188,6 +193,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.5
   SetMutableBinding(N: string, V: Value, S: boolean): Value {
+    // We can mutate frozen bindings because of captured bindings.
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -259,6 +265,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.7
   DeleteBinding(N: string): boolean {
+    invariant(!this.frozen);
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -959,15 +966,30 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 }
 
 // ECMA262 8.1
+let uid = 0;
 export class LexicalEnvironment {
   constructor(realm: Realm) {
     invariant(realm, "expected realm");
     this.realm = realm;
+    this.destroyed = false;
+    this._uid = uid++;
   }
 
+  // For debugging it is convenient to have an ID for each of these.
+  _uid: number;
+  destroyed: boolean;
   environmentRecord: EnvironmentRecord;
   parent: null | LexicalEnvironment;
   realm: Realm;
+
+  destroy() {
+    this.destroyed = true;
+    // Once the containing environment is destroyed, we can no longer add or remove entries from the environmentRecord
+    // (but we can update existing values).
+    if (this.environmentRecord instanceof DeclarativeEnvironmentRecord) {
+      this.environmentRecord.frozen = true;
+    }
+  }
 
   assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value) {
     let globalValue = this.evaluate(globalAst, false);
@@ -1096,6 +1118,9 @@ export class LexicalEnvironment {
       res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
+      this.realm.onDestroyScope(context.lexicalEnvironment);
+      if (!this.destroyed) this.realm.onDestroyScope(this);
+      invariant(this.realm.activeLexicalEnvironments.size === 0);
     }
     if (res instanceof AbruptCompletion) return [res, code];
 
@@ -1120,6 +1145,9 @@ export class LexicalEnvironment {
       if (res instanceof AbruptCompletion) return res;
     } finally {
       this.realm.popContext(context);
+      this.realm.onDestroyScope(context.lexicalEnvironment);
+      if (!this.destroyed) this.realm.onDestroyScope(this);
+      invariant(this.realm.activeLexicalEnvironments.size === 0);
     }
     invariant(partialAST.type === "File");
     let fileAst = ((partialAST: any): BabelNodeFile);
@@ -1156,6 +1184,9 @@ export class LexicalEnvironment {
       res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
+      // Avoid destroying "this" scope as execute may be called many times.
+      if (context.lexicalEnvironment !== this) this.realm.onDestroyScope(context.lexicalEnvironment);
+      invariant(this.realm.activeLexicalEnvironments.size === 1);
     }
     if (res instanceof AbruptCompletion) return res;
 

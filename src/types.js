@@ -570,7 +570,7 @@ export type EnvironmentType = {
   IsUnresolvableReference(realm: Realm, V: Reference): boolean,
 
   // ECMA262 8.1.2.2
-  NewDeclarativeEnvironment(realm: Realm, E: LexicalEnvironment): LexicalEnvironment,
+  NewDeclarativeEnvironment(realm: Realm, E: LexicalEnvironment, active?: boolean): LexicalEnvironment,
 
   BoundNames(realm: Realm, node: BabelNode): Array<string>,
 

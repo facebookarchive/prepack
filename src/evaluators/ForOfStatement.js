@@ -135,6 +135,8 @@ export function ForInOfHeadEvaluation(
     exprRef = env.evaluate(expr, strictCode);
   } finally {
     // 4. Set the running execution context's LexicalEnvironment to oldEnv.
+    let lexEnv = realm.getRunningContext().lexicalEnvironment;
+    if (lexEnv !== oldEnv) realm.onDestroyScope(lexEnv);
     realm.getRunningContext().lexicalEnvironment = oldEnv;
   }
   env = oldEnv;
@@ -328,6 +330,9 @@ export function ForInOfBodyEvaluation(
     invariant(result instanceof Value || result instanceof AbruptCompletion);
 
     // j. Set the running execution context's LexicalEnvironment to oldEnv.
+
+    let lexEnv = realm.getRunningContext().lexicalEnvironment;
+    if (lexEnv !== oldEnv) realm.onDestroyScope(lexEnv);
     realm.getRunningContext().lexicalEnvironment = oldEnv;
     env = oldEnv;
 

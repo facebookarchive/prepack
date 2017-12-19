@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
+import { LexicalEnvironment, Reference, GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, Construct } from "./methods/index.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
@@ -180,6 +180,7 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
+    this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
   }
 
@@ -199,6 +200,8 @@ export class Realm {
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
+
+  activeLexicalEnvironments: Set<LexicalEnvironment>;
 
   // A list of abstract conditions that are known to be true in the current execution path.
   // For example, the abstract condition of an if statement is known to be true inside its true branch.
@@ -326,6 +329,25 @@ export class Realm {
     let context = this.contextStack[this.contextStack.length - 1];
     invariant(context, "There's no running execution context");
     return context;
+  }
+
+  // Call when a scope falls out of scope and should be destroyed.
+  // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
+  onDestroyScope(lexicalEnvironment: LexicalEnvironment) {
+    invariant(this.activeLexicalEnvironments.has(lexicalEnvironment));
+    let modifiedBindings = this.modifiedBindings;
+    if (modifiedBindings) {
+      // Don't undo things to global scope because it's needed past its destruction point (for serialization)
+      let environmentRecord = lexicalEnvironment.environmentRecord;
+      if (environmentRecord instanceof DeclarativeEnvironmentRecord)
+        for (let b of modifiedBindings.keys())
+          if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b)
+            modifiedBindings.delete(b);
+    }
+
+    // Ensures if we call onDestroyScope too early, there will be a failure.
+    this.activeLexicalEnvironments.delete(lexicalEnvironment);
+    lexicalEnvironment.destroy();
   }
 
   pushContext(context: ExecutionContext): void {
