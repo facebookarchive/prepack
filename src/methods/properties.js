@@ -338,10 +338,6 @@ export class PropertiesImplementation {
 
           // iii. Let valueDesc be the PropertyDescriptor{[[Value]]: V}.
           let valueDesc = { value: V };
-          if (weakDeletion) {
-            valueDesc = existingDescriptor;
-            valueDesc.value = V;
-          }
 
           // iv. Return ? Receiver.[[DefineOwnProperty]](P, valueDesc).
           if (weakDeletion || existingDescValue.mightHaveBeenDeleted()) {
@@ -350,6 +346,8 @@ export class PropertiesImplementation {
             // and that redefining the property with valueDesc will not change the
             // attributes of the property, so we delete it to make things nice for $DefineOwnProperty.
             Receiver.$Delete(P);
+            valueDesc = existingDescriptor;
+            valueDesc.value = V;
           }
           return Receiver.$DefineOwnProperty(P, valueDesc);
         } else {
