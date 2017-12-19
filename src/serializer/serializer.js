@@ -47,7 +47,8 @@ export class Serializer {
       this.logger,
       this.statistics,
       !!serializerOptions.logModules,
-      !!serializerOptions.delayUnsupportedRequires
+      !!serializerOptions.delayUnsupportedRequires,
+      !!serializerOptions.accelerateUnsupportedRequires
     );
     this.functions = new Functions(this.realm, serializerOptions.additionalFunctions, this.modules.moduleTracer);
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));

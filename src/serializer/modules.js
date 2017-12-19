@@ -188,6 +188,7 @@ export class ModuleTracer extends Tracer {
                     `accelerated initialization of conditional module ${nestedModuleId} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`
                   );
                   if (
+                    this.modules.accelerateUnsupportedRequires &&
                     nestedEffects !== undefined &&
                     nestedEffects[0] instanceof Value &&
                     this.modules.isModuleInitialized(nestedModuleId)
@@ -288,7 +289,8 @@ export class Modules {
     logger: Logger,
     statistics: SerializerStatistics,
     logModules: boolean,
-    delayUnsupportedRequires: boolean
+    delayUnsupportedRequires: boolean,
+    accelerateUnsupportedRequires: boolean
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -299,6 +301,7 @@ export class Modules {
     this.initializedModules = new Map();
     realm.tracers.push((this.moduleTracer = new ModuleTracer(this, statistics, logModules)));
     this.delayUnsupportedRequires = delayUnsupportedRequires;
+    this.accelerateUnsupportedRequires = accelerateUnsupportedRequires;
     this.disallowDelayingRequiresOverride = false;
   }
 
@@ -311,6 +314,7 @@ export class Modules {
   initializedModules: Map<number | string, Value>;
   active: boolean;
   delayUnsupportedRequires: boolean;
+  accelerateUnsupportedRequires: boolean;
   disallowDelayingRequiresOverride: boolean;
   moduleTracer: ModuleTracer;
 

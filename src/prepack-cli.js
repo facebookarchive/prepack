@@ -91,6 +91,7 @@ function run(
     logModules: false,
     delayInitializations: false,
     delayUnsupportedRequires: false,
+    accelerateUnsupportedRequires: true,
     internalDebug: false,
     debugScopes: false,
     serialize: false,
