@@ -50,9 +50,11 @@ import type {
   ReactSerializerState,
   SerializedBody,
   AdditionalFunctionEffects,
+  TimingStatistics,
+  SerializerStatistics,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics, BodyReference } from "./types.js";
+import { BodyReference } from "./types.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";

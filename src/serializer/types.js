@@ -13,6 +13,7 @@ import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
 import { ConcreteValue, Value } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
+import type { Generator } from "../utils/generator.js";
 import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
@@ -29,7 +30,7 @@ export type SerializedBodyType =
 
 export type SerializedBody = {
   type: SerializedBodyType,
-  parentBody: void | SerializedBody,
+  parentBody: void | SerializedBody, // Parent generator's body.
   entries: Array<BabelNodeStatement>,
 };
 
@@ -195,9 +196,9 @@ export type ReactSerializerState = {
   usedReactElementKeys: Set<string>,
 };
 
-export type ObjectRefCount = {
-  inComing: number, // The number of objects that references this object.
-  outGoing: number, // The number of objects that are referenced by this object.
+export type GraphNodeEdgeRecord = {
+  inComing: Array<Generator | Value>, // The objects/generators that directly references this object.
+  outGoing: Array<Value>, // The objects that are directly referenced by this object.
 };
 
 export type SerializedResult = {

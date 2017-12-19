@@ -270,6 +270,7 @@ function runTest(name, code, options, args) {
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
+    inlineLazyObjects: !!options.lazyObjectsRuntime,
   });
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// simple closures")) options.simpleClosures = true;
@@ -298,6 +299,7 @@ function runTest(name, code, options, args) {
         internalDebug: true,
         additionalFunctions: options.additionalFunctions,
         lazyObjectsRuntime: options.lazyObjectsRuntime,
+        inlineLazyObjects: options.inlineLazyObjects,
       };
       let serializer = new Serializer(realm, serializerOptions);
       let sources = [{ filePath: name, fileContents: code }];

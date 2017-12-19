@@ -30,7 +30,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
 import * as t from "babel-types";
-import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
+import { ResidualHeapGraphRecord } from "./ResidualHeapGraphRecord";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 
 export class Serializer {
@@ -141,23 +141,27 @@ export class Serializer {
       realmPreludeGenerator
     );
 
-    let heapGraph;
-    if (this.options.heapGraph) {
-      const heapRefCounter = new ResidualHeapRefCounter(
+    let heapGraphRecord = null;
+    if (this.options.heapGraph || this.options.lazyObjectsRuntime) {
+      heapGraphRecord = new ResidualHeapGraphRecord(
         this.realm,
         this.logger,
         this.modules,
         additionalFunctionValuesAndEffects
       );
-      heapRefCounter.visitRoots();
+      heapGraphRecord.visitRoots();
+    }
 
+    let heapGraph;
+    if (this.options.heapGraph) {
+      invariant(heapGraphRecord);
       const heapGraphGenerator = new ResidualHeapGraphGenerator(
         this.realm,
         this.logger,
         this.modules,
         additionalFunctionValuesAndEffects,
         residualHeapValueIdentifiers,
-        heapRefCounter.getResult()
+        heapGraphRecord.getResult()
       );
       heapGraphGenerator.visitRoots();
       heapGraph = heapGraphGenerator.generateResult();
@@ -192,23 +196,44 @@ export class Serializer {
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
-    const TargetSerializer = this.options.lazyObjectsRuntime != null ? LazyObjectsSerializer : ResidualHeapSerializer;
-    let residualHeapSerializer = new TargetSerializer(
-      this.realm,
-      this.logger,
-      this.modules,
-      residualHeapValueIdentifiers,
-      residualHeapVisitor.inspector,
-      residualHeapVisitor.values,
-      residualHeapVisitor.functionInstances,
-      residualHeapVisitor.functionInfos,
-      this.options,
-      residualHeapVisitor.referencedDeclaredValues,
-      additionalFunctionValuesAndEffects,
-      residualHeapVisitor.additionalFunctionValueInfos,
-      this.statistics,
-      this.react
-    );
+    let residualHeapSerializer = null;
+    if (this.options.lazyObjectsRuntime != null) {
+      invariant(heapGraphRecord);
+      residualHeapSerializer = new LazyObjectsSerializer(
+        this.realm,
+        this.logger,
+        this.modules,
+        residualHeapValueIdentifiers,
+        residualHeapVisitor.inspector,
+        residualHeapVisitor.values,
+        residualHeapVisitor.functionInstances,
+        residualHeapVisitor.functionInfos,
+        this.options,
+        residualHeapVisitor.referencedDeclaredValues,
+        additionalFunctionValuesAndEffects,
+        residualHeapVisitor.additionalFunctionValueInfos,
+        this.statistics,
+        this.react,
+        heapGraphRecord.getResult()
+      );
+    } else {
+      residualHeapSerializer = new ResidualHeapSerializer(
+        this.realm,
+        this.logger,
+        this.modules,
+        residualHeapValueIdentifiers,
+        residualHeapVisitor.inspector,
+        residualHeapVisitor.values,
+        residualHeapVisitor.functionInstances,
+        residualHeapVisitor.functionInfos,
+        this.options,
+        residualHeapVisitor.referencedDeclaredValues,
+        additionalFunctionValuesAndEffects,
+        residualHeapVisitor.additionalFunctionValueInfos,
+        this.statistics,
+        this.react
+      );
+    }
 
     let ast = residualHeapSerializer.serialize();
     if (this.realm.react.enabled && this.realm.react.flowRequired) {
