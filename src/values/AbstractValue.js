@@ -245,7 +245,7 @@ export default class AbstractValue extends Value {
   mightBeNull(): boolean {
     let valueType = this.getType();
     if (valueType === NullValue) return true;
-    if (valueType !== Value) return false;
+    if (valueType !== PrimitiveValue && valueType !== Value) return false;
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(NullValue);
   }
@@ -253,23 +253,23 @@ export default class AbstractValue extends Value {
   mightNotBeNull(): boolean {
     let valueType = this.getType();
     if (valueType === NullValue) return false;
-    if (valueType !== Value) return true;
+    if (valueType !== PrimitiveValue && valueType !== Value) return true;
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(NullValue);
   }
 
   mightBeNumber(): boolean {
     let valueType = this.getType();
-    if (valueType === NumberValue) return true;
-    if (valueType !== Value) return false;
+    if (Value.isTypeCompatibleWith(valueType, NumberValue)) return true;
+    if (valueType !== PrimitiveValue && valueType !== Value) return false;
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(NumberValue);
   }
 
   mightNotBeNumber(): boolean {
     let valueType = this.getType();
-    if (valueType === NumberValue) return false;
-    if (valueType !== Value) return true;
+    if (Value.isTypeCompatibleWith(valueType, NumberValue)) return false;
+    if (valueType !== PrimitiveValue && valueType !== Value) return true;
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(NumberValue);
   }
@@ -293,7 +293,7 @@ export default class AbstractValue extends Value {
   mightBeString(): boolean {
     let valueType = this.getType();
     if (valueType === StringValue) return true;
-    if (valueType !== Value) return false;
+    if (valueType !== PrimitiveValue && valueType !== Value) return false;
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(StringValue);
   }
@@ -301,7 +301,7 @@ export default class AbstractValue extends Value {
   mightNotBeString(): boolean {
     let valueType = this.getType();
     if (valueType === StringValue) return false;
-    if (valueType !== Value) return true;
+    if (valueType !== PrimitiveValue && valueType !== Value) return true;
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(StringValue);
   }
@@ -309,7 +309,7 @@ export default class AbstractValue extends Value {
   mightBeUndefined(): boolean {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return true;
-    if (valueType !== Value) return false;
+    if (valueType !== PrimitiveValue && valueType !== Value) return false;
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(UndefinedValue);
   }
@@ -317,7 +317,7 @@ export default class AbstractValue extends Value {
   mightNotBeUndefined(): boolean {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return false;
-    if (valueType !== Value) return true;
+    if (valueType !== PrimitiveValue && valueType !== Value) return true;
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(UndefinedValue);
   }

@@ -33,6 +33,7 @@ import type { Compatibility, RealmOptions, ReactOutputTypes } from "./options.js
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
+import { emptyExpression, voidExpression } from "./utils/internalizer.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import type { ReactSymbolTypes } from "./react/utils.js";
@@ -583,15 +584,38 @@ export class Realm {
 
   // populate the loop body generator with assignments that will update properties modified inside the loop
   _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings) {
+    function isSelfReferential(value: Value, pathNode: void | AbstractValue): boolean {
+      if (value === pathNode) return true;
+      if (value instanceof AbstractValue && pathNode !== undefined) {
+        for (let v of value.args) {
+          if (isSelfReferential(v, pathNode)) return true;
+        }
+      }
+      return false;
+    }
+
     let tvalFor: Map<any, AbstractValue> = new Map();
     pbindings.forEach((val, key, map) => {
       let value = val && val.value;
       if (value instanceof AbstractValue) {
         invariant(value._buildNode !== undefined);
-        let tval = gen.derive(value.types, value.values, [value], ([n]) => n, {
-          skipInvariant: true,
-        });
-        tval.mightBeEmpty = value.mightBeEmpty;
+        let tval = gen.derive(
+          value.types,
+          value.values,
+          [key.object, value],
+          ([o, n]) => {
+            invariant(value instanceof Value);
+            if (value.mightHaveBeenDeleted() && isSelfReferential(value, key.pathNode)) {
+              let inTest = t.binaryExpression("in", t.stringLiteral(key.key), o);
+              let addEmpty = t.conditionalExpression(inTest, n, emptyExpression);
+              n = t.logicalExpression("||", n, addEmpty);
+            }
+            return n;
+          },
+          {
+            skipInvariant: true,
+          }
+        );
         tvalFor.set(key, tval);
       }
     });
@@ -599,19 +623,24 @@ export class Realm {
       let path = key.pathNode;
       let tval = tvalFor.get(key);
       invariant(tval !== undefined);
-      let mightBeEmpty = tval.mightBeEmpty;
-      gen.emitStatement([key.object, tval], ([o, v]) => {
+      invariant(val !== undefined);
+      let value = val.value;
+      invariant(value instanceof Value);
+      let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
+      let mightBeUndefined = value.mightBeUndefined();
+      gen.emitStatement([key.object, tval, this.intrinsics.empty], ([o, v, e]) => {
         invariant(path !== undefined);
         let lh = path.buildNode([o]);
         let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
-        if (mightBeEmpty) {
-          // If o does not have property key.key and v === undefined, omit the assignment (at runtime)
-          // if (v !== undefined || key.key in o) r
+        if (mightHaveBeenDeleted) {
           invariant(typeof key.key === "string"); // for now
-          let inTest = t.binaryExpression("in", t.stringLiteral(key.key), o);
-          let vDefined = t.binaryExpression("!==", v, t.unaryExpression("void", t.numericLiteral(0)));
-          let guard = t.logicalExpression("||", vDefined, inTest);
-          return t.ifStatement(guard, r);
+          // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
+          let emptyTest = t.binaryExpression("===", v, e);
+          let undefinedTest = t.binaryExpression("===", v, voidExpression);
+          let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key.key), o));
+          let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
+          let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
+          return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
         }
         return r;
       });
