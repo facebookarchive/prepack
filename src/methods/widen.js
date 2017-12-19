@@ -18,7 +18,7 @@ import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Generator } from "../utils/generator.js";
-import { AbstractValue, ObjectValue, Value } from "../values/index.js";
+import { AbstractValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -128,7 +128,7 @@ export class WidenImplementation {
           // Create a temporal location for binding
           let generator = realm.generator;
           invariant(generator !== undefined);
-          phiNode = generator.derive(result.types, result.values, [v1 || realm.intrinsics.undefined], ([n]) => n, {
+          phiNode = generator.derive(result.types, result.values, [b.value || realm.intrinsics.undefined], ([n]) => n, {
             skipInvariant: true,
           });
           b.phiNode = phiNode;
@@ -167,11 +167,7 @@ export class WidenImplementation {
     ) {
       return v1; // no need to widen a loop invariant value
     } else {
-      return AbstractValue.createFromWidening(
-        realm,
-        v1 || realm.intrinsics.undefined,
-        v2 || realm.intrinsics.undefined
-      );
+      return AbstractValue.createFromWidening(realm, v1 || realm.intrinsics.empty, v2 || realm.intrinsics.undefined);
     }
   }
 
@@ -195,6 +191,11 @@ export class WidenImplementation {
         } else {
           // no write to property in nth iteration, use the value from the (n-1)th iteration
           d1 = b.descriptor;
+          if (d1 === undefined) {
+            d1 = cloneDescriptor(d2);
+            invariant(d1 !== undefined);
+            d1.value = realm.intrinsics.empty;
+          }
         }
       }
       if (d2 === undefined) {
@@ -227,6 +228,17 @@ export class WidenImplementation {
             pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
               t.memberExpression(o, t.identifier(key))
             );
+            // The value of the property at the start of the loop needs to be written to the property
+            // before the loop commences, otherwise the memberExpression will result in an undefined value.
+            let generator = realm.generator;
+            invariant(generator !== undefined);
+            let initVal = (b.descriptor && b.descriptor.value) || realm.intrinsics.empty;
+            if (!(initVal instanceof Value)) throw new FatalError("todo: handle internal properties");
+            if (!(initVal instanceof EmptyValue)) {
+              generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) =>
+                t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v)
+              );
+            }
           } else {
             throw new FatalError("todo: handle the case where key is an abstract value");
           }

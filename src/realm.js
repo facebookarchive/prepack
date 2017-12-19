@@ -283,7 +283,12 @@ export class Realm {
     invariant(globrec instanceof GlobalEnvironmentRecord);
     let dclrec = globrec.$DeclarativeRecord;
 
-    return dclrec.HasBinding(key) ? dclrec.GetBindingValue(key, false) : undefined;
+    try {
+      return dclrec.HasBinding(key) ? dclrec.GetBindingValue(key, false) : undefined;
+    } catch (e) {
+      if (e instanceof FatalError) return undefined;
+      throw e;
+    }
   }
 
   /*
@@ -564,6 +569,7 @@ export class Realm {
         let tval = gen.derive(value.types, value.values, [value], ([n]) => n, {
           skipInvariant: true,
         });
+        tval.mightBeEmpty = value.mightBeEmpty;
         tvalFor.set(key, tval);
       }
     });
@@ -571,10 +577,21 @@ export class Realm {
       let path = key.pathNode;
       let tval = tvalFor.get(key);
       invariant(tval !== undefined);
+      let mightBeEmpty = tval.mightBeEmpty;
       gen.emitStatement([key.object, tval], ([o, v]) => {
         invariant(path !== undefined);
         let lh = path.buildNode([o]);
-        return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+        let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+        if (mightBeEmpty) {
+          // If o does not have property key.key and v === undefined, omit the assignment (at runtime)
+          // if (v !== undefined || key.key in o) r
+          invariant(typeof key.key === "string"); // for now
+          let inTest = t.binaryExpression("in", t.stringLiteral(key.key), o);
+          let vDefined = t.binaryExpression("!==", v, t.unaryExpression("void", t.numericLiteral(0)));
+          let guard = t.logicalExpression("||", vDefined, inTest);
+          return t.ifStatement(guard, r);
+        }
+        return r;
       });
     });
   }
