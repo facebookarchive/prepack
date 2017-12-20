@@ -3,8 +3,10 @@
   <head>
     <title>Prepack &middot; Partial evaluator for JavaScript</title>
     <script src="js/prism.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
     <link rel="stylesheet" href="css/style.css"/>
-    <link rel="stylesheet" href="css/select-theme-dark.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tether-select/1.1.1/css/select-theme-dark.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css"/>
     <script>
       (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
         (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
@@ -41,7 +43,6 @@
 
       </div>
     </nav>
-
     <div class="record-container">
       <div class="select-record-input">
         <select class="select-record">
@@ -59,24 +60,41 @@
         <input id="recordName" placeholder="demo name"/>
         <div id="saveBtn" class="record-button save">SAVE</div>
         <div id="deleteBtn" class="record-button delete">DELETE</div>
+        <div id="graphBtn" class="record-button graphBtn">SHOW HEAP</div>
       </div>
     </div>
     <div class="repl-container">
-      <div class="input">
+      <div id="inputDiv" class="input">
         <div class="repl"></div>
       </div>
 
-      <div class="output">
+      <div id="outputDiv" class="output">
         <div class="repl"></div>
         <div class="error"></div>
+      </div>
+      <div id="graph" class ="graph">
+        <div id="graphBox" class="graphBox"></div>
+        <div class="graphLegend">
+          <h3 class="legend-header">Legend</h3>
+          <table class = "legend-table" cellspacing="10px">
+            <tr>
+              <td><img src="static/images/red_circle.png" height=42 width=42> <div>Function Value </div></td>
+              <td><img src="static/images/blue_box.png" height=42 width=42><div>Object Value </div></td>
+              <td><img src="static/images/green_diamond.png" height=42 width=42><div>Abstract Value </div></td>
+              <td><img src="static/images/yellow_star.png" height=42 width=42><div>Symbol Value</div></td>
+              <td><img src="static/images/orange_triangle.png" height=42 width=42><div>Proxy Value</div></td>
+              <td><img src="static/images/grey_ellipse.png" height=42 width=42><div>Other</div></td>
+            </tr>
+          </table>
+        </div>
       </div>
     </div>
 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
-    <script src="js/tether.min.js"></script>
-    <script src="js/select.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.3/js/tether.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tether-select/1.1.1/js/select.min.js"></script>
     <script src="js/repl.js"></script>
     <script src="js/toggle_menu.js"></script>
   </body>

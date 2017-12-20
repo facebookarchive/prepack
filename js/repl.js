@@ -49,7 +49,7 @@ var optionsConfig = [
     name: "reactEnabled",
     defaultVal: false,
     description: "Enables experimental support for React features, such as JSX syntax."
-  },  
+  },
 ];
 
 var demos = [];
@@ -147,6 +147,19 @@ function compile() {
           code =
             '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
         }
+        drawGraphCallback = () => {
+          var graphData = JSON.parse(result.graph);
+          var visData = {
+            nodes: graphData.nodes,
+            edges: graphData.edges
+          }
+
+          var visOptions = {};
+          var boxNetwork = new vis.Network(graphBox, visData, visOptions);
+        }
+        if (showGraphDiv) {
+          drawGraphCallback();
+        }
         output.setValue(code, -1);
       } else if (result.type === 'error') {
         let errors = result.data;
@@ -182,6 +195,7 @@ function compile() {
 
     worker.postMessage({code: input.getValue(), options: options});
   }, 500);
+
 }
 
 var output = createEditor(replOutput);
@@ -202,6 +216,15 @@ var optionsButton = document.querySelector('#optionsMenuButton');
 var saveButton = document.querySelector('#saveBtn');
 var deleteButton = document.querySelector('#deleteBtn');
 var storage = window.localStorage;
+
+/** graph **/
+var graphButton = document.querySelector('#graphBtn');
+var graphBox = document.getElementById('graphBox');
+var graphDiv = document.querySelector('#graph');
+var inputDiv = document.getElementById('inputDiv');
+var outputDiv = document.getElementById('outputDiv');
+var showGraphDiv = false;
+var drawGraphCallback = null;
 
 function changeDemosSelect(val) {
   if (!val.value) return;
@@ -431,4 +454,28 @@ saveButton.addEventListener('click', () => {
   setTimeout(() => {
     demoSelector.change(name);
   });
+});
+
+graphButton.addEventListener('click', () => {
+  if (!showGraphDiv) {
+    inputDiv.style.width = "33%";
+    outputDiv.style.width = "33%";
+    graphDiv.style.width = "34%";
+    outputDiv.style.left = "33%";
+    graphDiv.style.display = "block";
+    showGraphDiv = true;
+    graphButton.innerHTML = "HIDE HEAP";
+    if (drawGraphCallback !== null) {
+      drawGraphCallback();
+      drawGraphCallback = null;
+    }
+  } else {
+    inputDiv.style.width = "50%";
+    outputDiv.style.width = "50%";
+    graphDiv.style.width = "50%";
+    outputDiv.style.left = "50%";
+    graphDiv.style.display = "none";
+    showGraphDiv = false;
+    graphButton.innerHTML = "SHOW HEAP";
+  }
 });
