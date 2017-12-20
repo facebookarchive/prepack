@@ -1070,6 +1070,7 @@ export class ResidualHeapSerializer {
     for (let [boundName, residualBinding] of residualBindings) {
       let referencedValues = [];
       let serializeBindingFunc;
+      invariant(residualBinding);
       if (!residualBinding.declarativeEnvironmentRecord) {
         serializeBindingFunc = () => this._serializeGlobalBinding(boundName, residualBinding);
       } else {

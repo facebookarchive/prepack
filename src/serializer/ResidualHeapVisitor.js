@@ -46,7 +46,7 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
-import { getSuggestedArrayLiteralLength } from "./utils.js";
+import { commonAncestorOf, getSuggestedArrayLiteralLength, getOrDefault } from "./utils.js";
 import { Environment, To } from "../singletons.js";
 import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
 import { canHoistReactElement } from "../react/hoisting.js";
@@ -88,6 +88,8 @@ export class ResidualHeapVisitor {
     this.equivalenceSet = new HashSet();
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
+    this.inAdditionalFunction = false;
+    this.reVisitSet = new Set();
   }
 
   realm: Realm;
@@ -112,6 +114,14 @@ export class ResidualHeapVisitor {
   equivalenceSet: HashSet<AbstractValue>;
   shouldVisitReactLibrary: boolean;
   reactElementEquivalenceSet: ReactElementSet;
+
+  // We only want to add to reVisitSet when we're in an additional function
+  inAdditionalFunction: boolean;
+  // Tracks objects + functions that were visited from inside additional functions that need to be serialized in a
+  // parent scope of the additional function (e.g. functions/objects only used from additional functions that were
+  // declared outside the additional function need to be serialized in the additional function's parent scope for
+  // identity to work).
+  reVisitSet: Set<ObjectValue>;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -237,26 +247,6 @@ export class ResidualHeapVisitor {
     if (desc.set !== undefined) this.visitValue(desc.set);
   }
 
-  visitDeclarativeEnvironmentRecordBinding(r: DeclarativeEnvironmentRecord, n: string): ResidualFunctionBinding {
-    let residualFunctionBindings = this.declarativeEnvironmentRecordsBindings.get(r);
-    if (!residualFunctionBindings) {
-      residualFunctionBindings = new Map();
-      this.declarativeEnvironmentRecordsBindings.set(r, residualFunctionBindings);
-    }
-    let residualFunctionBinding = residualFunctionBindings.get(n);
-    if (!residualFunctionBinding) {
-      let realm = this.realm;
-      let binding = r.bindings[n];
-      invariant(!binding.deletable);
-      let value = (binding.initialized && binding.value) || realm.intrinsics.undefined;
-      residualFunctionBinding = { value, modified: false, declarativeEnvironmentRecord: r };
-      residualFunctionBindings.set(n, residualFunctionBinding);
-    }
-    invariant(residualFunctionBinding.value !== undefined);
-    residualFunctionBinding.value = this.visitEquivalentValue(residualFunctionBinding.value);
-    return residualFunctionBinding;
-  }
-
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
     const realm = this.realm;
@@ -312,7 +302,8 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitValueFunction(val: FunctionValue): void {
+  visitValueFunction(val: FunctionValue, parentScope: Scope): void {
+    if (this.inAdditionalFunction) this.reVisitSet.add(val);
     this.visitObjectProperties(val);
 
     if (val instanceof BoundFunctionValue) {
@@ -327,11 +318,16 @@ export class ResidualHeapVisitor {
     invariant(val instanceof ECMAScriptSourceFunctionValue);
     invariant(val.constructor === ECMAScriptSourceFunctionValue);
     let formalParameters = val.$FormalParameters;
-    invariant(formalParameters != null);
     let code = val.$ECMAScriptCode;
-    invariant(code != null);
 
     let functionInfo = this.functionInfos.get(code);
+    let residualFunctionBindings = new Map();
+    this.functionInstances.set(val, {
+      residualFunctionBindings,
+      initializationStatements: [],
+      functionValue: val,
+      scopeInstances: new Map(),
+    });
 
     if (!functionInfo) {
       functionInfo = {
@@ -340,8 +336,6 @@ export class ResidualHeapVisitor {
         usesArguments: false,
         usesThis: false,
       };
-      this.functionInfos.set(code, functionInfo);
-
       let state = {
         tryQuery: this.logger.tryQuery.bind(this.logger),
         val,
@@ -355,6 +349,7 @@ export class ResidualHeapVisitor {
         null,
         state
       );
+      this.functionInfos.set(code, functionInfo);
 
       if (val.isResidual && functionInfo.unbound.size) {
         if (!val.isUnsafeResidual) {
@@ -369,47 +364,81 @@ export class ResidualHeapVisitor {
       }
     }
 
-    let residualFunctionBindings = new Map();
-    this._withScope(val, () => {
-      invariant(functionInfo);
-      for (let innerName of functionInfo.unbound) {
-        let residualFunctionBinding;
-        let doesNotMatter = true;
-        let reference = this.logger.tryQuery(
-          () => Environment.ResolveBinding(this.realm, innerName, doesNotMatter, val.$Environment),
-          undefined,
-          false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the common scope. */
-        );
-        if (
-          reference === undefined ||
-          Environment.IsUnresolvableReference(this.realm, reference) ||
-          reference.base instanceof GlobalEnvironmentRecord
-        ) {
-          residualFunctionBinding = this.visitGlobalBinding(innerName);
-        } else {
-          invariant(!Environment.IsUnresolvableReference(this.realm, reference));
-          let referencedBase = reference.base;
-          let referencedName: string = (reference.referencedName: any);
-          if (typeof referencedName !== "string") {
-            throw new FatalError("TODO: do not know how to visit reference with symbol");
-          }
-          invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
-          residualFunctionBinding = this.visitDeclarativeEnvironmentRecordBinding(referencedBase, referencedName);
+    let additionalFunctionEffects = this.additionalFunctionValuesAndEffects.get(val);
+    if (additionalFunctionEffects) {
+      this._visitAdditionalFunction(val, additionalFunctionEffects, parentScope);
+    } else {
+      this._withScope(val, () => {
+        invariant(functionInfo);
+        for (let innerName of functionInfo.unbound) {
+          let residualBinding = this.visitBinding(val, innerName);
+          invariant(residualBinding !== undefined);
+          residualFunctionBindings.set(innerName, residualBinding);
+          if (functionInfo.modified.has(innerName)) residualBinding.modified = true;
         }
-        residualFunctionBindings.set(innerName, residualFunctionBinding);
-        if (functionInfo.modified.has(innerName)) residualFunctionBinding.modified = true;
-      }
-    });
+      });
+    }
+  }
 
-    this.functionInstances.set(val, {
-      residualFunctionBindings,
-      initializationStatements: [],
-      functionValue: val,
-      scopeInstances: new Map(),
-    });
+  // Visits a binding, if createBinding is true, will always return a ResidualFunctionBinding
+  // otherwise visits + returns the binding only if one already exists.
+  visitBinding(val: FunctionValue, name: string, createBinding: boolean = true): ResidualFunctionBinding | void {
+    let residualFunctionBinding;
+    let doesNotMatter = true;
+    let reference = this.logger.tryQuery(
+      () => Environment.ResolveBinding(this.realm, name, doesNotMatter, val.$Environment),
+      undefined,
+      false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the common scope. */
+    );
+    let getFromMap = createBinding ? getOrDefault : (map, key, defaultFn) => map.get(key);
+    if (
+      reference === undefined ||
+      Environment.IsUnresolvableReference(this.realm, reference) ||
+      reference.base instanceof GlobalEnvironmentRecord
+    ) {
+      // Global Binding
+      residualFunctionBinding = getFromMap(
+        this.globalBindings,
+        name,
+        () =>
+          ({
+            value: this.realm.getGlobalLetBinding(name),
+            modified: true,
+            declarativeEnvironmentRecord: null,
+          }: ResidualFunctionBinding)
+      );
+    } else {
+      // DeclarativeEnvironmentRecord binding
+      invariant(!Environment.IsUnresolvableReference(this.realm, reference));
+      let referencedBase = reference.base;
+      let referencedName: string = (reference.referencedName: any);
+      if (typeof referencedName !== "string") {
+        throw new FatalError("TODO: do not know how to visit reference with symbol");
+      }
+      invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
+      let residualFunctionBindings = getOrDefault(
+        this.declarativeEnvironmentRecordsBindings,
+        referencedBase,
+        () => new Map()
+      );
+      residualFunctionBinding = getFromMap(residualFunctionBindings, referencedName, (): ResidualFunctionBinding => {
+        invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
+        let binding = referencedBase.bindings[referencedName];
+        invariant(!binding.deletable);
+        return {
+          value: (binding.initialized && binding.value) || this.realm.intrinsics.undefined,
+          modified: false,
+          declarativeEnvironmentRecord: referencedBase,
+        };
+      });
+    }
+    if (residualFunctionBinding && residualFunctionBinding.value)
+      residualFunctionBinding.value = this.visitEquivalentValue(residualFunctionBinding.value);
+    return residualFunctionBinding;
   }
 
   visitValueObject(val: ObjectValue): void {
+    if (this.inAdditionalFunction) this.reVisitSet.add(val);
     let kind = val.getKind();
     this.visitObjectProperties(val, kind);
 
@@ -546,9 +575,10 @@ export class ResidualHeapVisitor {
       if (this.preProcessValue(val)) this.visitValueProxy(val);
     } else if (val instanceof FunctionValue) {
       // Function declarations should get hoisted in common scope so that instances only get allocated once
+      let parentScope = this.scope;
       this._withScope(this.commonScope, () => {
         invariant(val instanceof FunctionValue);
-        if (this.preProcessValue(val)) this.visitValueFunction(val);
+        if (this.preProcessValue(val)) this.visitValueFunction(val, parentScope);
       });
     } else if (val instanceof SymbolValue) {
       if (this.preProcessValue(val)) this.visitValueSymbol(val);
@@ -567,17 +597,6 @@ export class ResidualHeapVisitor {
       }
     }
     this.postProcessValue(val);
-  }
-
-  visitGlobalBinding(key: string): ResidualFunctionBinding {
-    let binding = this.globalBindings.get(key);
-    if (!binding) {
-      let value = this.realm.getGlobalLetBinding(key);
-      binding = ({ value, modified: true, declarativeEnvironmentRecord: null }: ResidualFunctionBinding);
-      this.globalBindings.set(key, binding);
-    }
-    if (binding.value) binding.value = this.visitEquivalentValue(binding.value);
-    return binding;
   }
 
   createGeneratorVisitCallbacks(generator: Generator, commonScope: Scope): VisitEntryCallbacks {
@@ -604,8 +623,32 @@ export class ResidualHeapVisitor {
     });
   }
 
-  visitAdditionalFunctionEffects() {
-    for (let [functionValue, { effects }] of this.additionalFunctionValuesAndEffects.entries()) {
+  _visitAdditionalFunction(
+    functionValue: FunctionValue,
+    additionalEffects: AdditionalFunctionEffects,
+    parentScope: Scope
+  ) {
+    // Get Instance + Info
+    invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+    let code = functionValue.$ECMAScriptCode;
+    let functionInfo = this.functionInfos.get(code);
+    invariant(functionInfo !== undefined);
+    let funcInstance = this.functionInstances.get(functionValue);
+    invariant(funcInstance !== undefined);
+
+    // Set Visitor state
+    // Allows us to emit function declarations etc. inside of this additional
+    // function instead of adding them at global scope
+    let prevCommonScope = this.commonScope;
+    this.commonScope = functionValue;
+    let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
+    this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
+    this.inAdditionalFunction = true;
+    let prevReVisit = this.reVisitSet;
+    this.reVisitSet = new Set();
+
+    let _visitAdditionalFunctionEffects = () => {
+      let { effects } = additionalEffects;
       let [
         result,
         generator,
@@ -633,11 +676,6 @@ export class ResidualHeapVisitor {
         modifiedProperties,
         createdObjects,
       ]);
-      // Allows us to emit function declarations etc. inside of this additional
-      // function instead of adding them at global scope
-      this.commonScope = functionValue;
-      let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
-      this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
       let modifiedBindingInfo = new Map();
       let visitPropertiesAndBindings = () => {
         for (let propertyBinding of modifiedProperties.keys()) {
@@ -649,44 +687,40 @@ export class ResidualHeapVisitor {
           this.visitObjectProperty(binding);
         }
         // Handing of ModifiedBindings
-        for (let additionalBinding of modifiedBindings.keys()) {
-          //let modifiedBinding: Binding = ((additionalBinding: any): Binding);
+        for (let [additionalBinding, previousValue] of modifiedBindings) {
           let modifiedBinding = additionalBinding;
           let residualBinding;
-          if (modifiedBinding.isGlobal) {
-            residualBinding = this.globalBindings.get(modifiedBinding.name);
-          } else {
-            let containingEnv = modifiedBinding.environment;
-            invariant(containingEnv instanceof DeclarativeEnvironmentRecord);
-            let bindMap = this.declarativeEnvironmentRecordsBindings.get(containingEnv);
-            if (bindMap) residualBinding = bindMap.get(modifiedBinding.name);
-          }
-          // Only visit it if there is already a binding (no binding means that
-          // the additional function created the binding)
-          if (residualBinding && modifiedBinding.value !== residualBinding.value) {
-            let newValue = modifiedBinding.value;
-            invariant(newValue);
-            this.visitValue(newValue);
-            residualBinding.modified = true;
-            // This should be enforced by checkThatFunctionsAreIndependent
-            invariant(
-              !residualBinding.additionalFunctionOverridesValue,
-              "We should only have one additional function value modifying any given residual binding"
-            );
-            residualBinding.additionalFunctionOverridesValue = true;
-            modifiedBindingInfo.set(modifiedBinding, residualBinding);
-          }
+          this._withScope(functionValue, () => {
+            // Also visit the original value of the binding
+            residualBinding = this.visitBinding(functionValue, modifiedBinding.name);
+            invariant(residualBinding !== undefined);
+            // Fixup the binding to have the correct value
+            // No previousValue means this is a binding for a nested function
+            if (previousValue && previousValue.value)
+              residualBinding.value = this.visitEquivalentValue(previousValue.value);
+            invariant(functionInfo !== undefined);
+            if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
+          });
+          invariant(residualBinding !== undefined);
+          invariant(funcInstance !== undefined);
+          funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
+          let newValue = modifiedBinding.value;
+          invariant(newValue);
+          this.visitValue(newValue);
+          residualBinding.modified = true;
+          // This should be enforced by checkThatFunctionsAreIndependent
+          invariant(
+            !residualBinding.additionalFunctionOverridesValue,
+            "We should only have one additional function value modifying any given residual binding"
+          );
+          if (previousValue && previousValue.value) residualBinding.additionalFunctionOverridesValue = functionValue;
+          modifiedBindingInfo.set(modifiedBinding, residualBinding);
         }
         invariant(result instanceof Value);
         if (!(result instanceof UndefinedValue)) this.visitValue(result);
       };
-      invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-      let code = functionValue.$ECMAScriptCode;
-      invariant(code != null);
-      let functionInfo = this.functionInfos.get(code);
-      invariant(functionInfo);
-      let funcInstance = this.functionInstances.get(functionValue);
-      invariant(funcInstance);
+      invariant(funcInstance !== undefined);
+      invariant(functionInfo !== undefined);
       this.additionalFunctionValueInfos.set(functionValue, {
         functionValue,
         captures: functionInfo.unbound,
@@ -695,10 +729,53 @@ export class ResidualHeapVisitor {
       });
       this.visitGenerator(generator);
       this._withScope(generator, visitPropertiesAndBindings);
+
+      // Remove any modifications to CreatedObjects -- these are fine being serialized inside the additional function
+      this.reVisitSet = new Set([...this.reVisitSet].filter(x => !createdObjects.has(x)));
+
       this.realm.restoreBindings(modifiedBindings);
       this.realm.restoreProperties(modifiedProperties);
-      this.reactElementEquivalenceSet = oldReactElementEquivalenceSet;
+      return this.realm.intrinsics.undefined;
+    };
+    this.realm.evaluateAndRevertInGlobalEnv(_visitAdditionalFunctionEffects);
+
+    // Cleanup
+    this.commonScope = prevCommonScope;
+    this.reactElementEquivalenceSet = oldReactElementEquivalenceSet;
+    this._withScope(
+      parentScope,
+      // Re-visit any bindings corresponding to unbound values or values closed over from outside additional function
+      // they're serialized in the correct scope
+      () => {
+        invariant(functionInfo !== undefined);
+        invariant(funcInstance !== undefined);
+        for (let value of this.reVisitSet) {
+          // Populate old reVisitSet because we switched them out
+          prevReVisit.add(value);
+          this.visitValue(value);
+        }
+        for (let innerName of functionInfo.unbound) {
+          let residualBinding = this.visitBinding(functionValue, innerName, false);
+          if (residualBinding) {
+            residualBinding.modified = true;
+            funcInstance.residualFunctionBindings.set(innerName, residualBinding);
+          }
+        }
+        this.reVisitSet = prevReVisit;
+      }
+    );
+    this.inAdditionalFunction = false;
+  }
+
+  visitRoots(): void {
+    let generator = this.realm.generator;
+    invariant(generator);
+    this.visitGenerator(generator);
+    for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
+    if (this.realm.react.enabled && this.shouldVisitReactLibrary) {
+      this._visitReactLibrary();
     }
+
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value
     let oldDelayedEntries = [];
@@ -712,17 +789,18 @@ export class ResidualHeapVisitor {
         });
       }
     }
-    return this.realm.intrinsics.undefined;
-  }
 
-  visitRoots(): void {
-    let generator = this.realm.generator;
-    invariant(generator);
-    this.visitGenerator(generator);
-    for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
-    this.realm.evaluateAndRevertInGlobalEnv(this.visitAdditionalFunctionEffects.bind(this));
-    if (this.realm.react.enabled && this.shouldVisitReactLibrary) {
-      this._visitReactLibrary();
+    // Artificially add reVisitSet to generators so that they can get serialized in parent scopes of additionalFunctions
+    // if necessary.
+    for (let value of this.reVisitSet) {
+      let scopes = this.values.get(value);
+      invariant(scopes);
+      scopes = [...scopes];
+      let generators = scopes.filter(x => x instanceof Generator);
+      invariant(generators.length > 0);
+      let commonAncestor = scopes.reduce((x, y) => commonAncestorOf(x, y), generators[0]);
+      invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
+      commonAncestor.appendDependencies([value]);
     }
   }
 

@@ -61,7 +61,7 @@ export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, Serializat
 export type GeneratorEntry = {
   declared?: AbstractValue,
   args: Array<Value>,
-  buildNode: GeneratorBuildNodeFunction,
+  buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
 };
@@ -119,6 +119,13 @@ export class Generator {
 
   empty() {
     return this._entries.length === 0;
+  }
+
+  // Will force the array of Values to be serialized but not emit anything for a buildNode
+  appendDependencies(values: Array<Value>) {
+    this._addEntry({
+      args: values,
+    });
   }
 
   emitGlobalDeclaration(key: string, value: Value) {
@@ -395,7 +402,7 @@ export class Generator {
     for (let entry of this._entries) {
       if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
         let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
-        context.emit(entry.buildNode(nodes, context));
+        if (entry.buildNode) context.emit(entry.buildNode(nodes, context));
         if (entry.declared !== undefined) context.declare(entry.declared);
       }
     }

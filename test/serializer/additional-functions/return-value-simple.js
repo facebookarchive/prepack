@@ -6,6 +6,7 @@ global.z = 100;
 
 function additional1() {
   let x = 5;
+  var q = 5;
   return 23;
 }
 
