@@ -133,6 +133,7 @@ export class Realm {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual;
     this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
+    this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
     }
@@ -194,6 +195,7 @@ export class Realm {
   useAbstractInterpretation: boolean;
   trackLeaks: boolean;
   debugNames: void | boolean;
+  isInPureTryStatement: boolean; // TODO(1264): Remove this once we implement proper exception handling in abstract calls.
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
