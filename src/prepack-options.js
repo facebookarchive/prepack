@@ -17,6 +17,7 @@ import invariant from "./invariant.js";
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
   additionalFunctions?: Array<string>,
+  abstractEffectsInAdditionalFunctions?: boolean,
   lazyObjectsRuntime?: string,
   heapGraphFilePath?: string,
   compatibility?: Compatibility,
@@ -52,6 +53,7 @@ export type PrepackOptions = {|
 |};
 
 export function getRealmOptions({
+  abstractEffectsInAdditionalFunctions = false,
   compatibility = "browser",
   debugNames = false,
   errorHandler,
@@ -67,6 +69,7 @@ export function getRealmOptions({
   maxStackDepth,
 }: PrepackOptions): RealmOptions {
   return {
+    abstractEffectsInAdditionalFunctions,
     compatibility,
     debugNames,
     errorHandler,

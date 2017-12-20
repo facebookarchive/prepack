@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
+import type { Binding } from "../environment.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -42,12 +43,18 @@ import { nullExpression } from "./internalizer.js";
 
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
+  serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
 };
+
+export type DerivedExpressionBuildNodeFunction = (
+  Array<BabelNodeExpression>,
+  SerializationContext
+) => BabelNodeExpression;
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
@@ -134,6 +141,20 @@ export class Generator {
       args: [],
       buildNode: ([]) =>
         t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode))),
+    });
+  }
+
+  emitBindingAssignment(binding: Binding, value: Value) {
+    this._addEntry({
+      args: [value],
+      buildNode: ([valueNode], context) =>
+        t.expressionStatement(
+          t.assignmentExpression(
+            "=",
+            (context.serializeBinding(binding): BabelNodeIdentifier | BabelNodeMemberExpression),
+            valueNode
+          )
+        ),
     });
   }
 
@@ -304,7 +325,7 @@ export class Generator {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
     optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
@@ -318,12 +339,12 @@ export class Generator {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>) => {
+      buildNode: (nodes: Array<BabelNodeExpression>, context: SerializationContext) => {
         return t.variableDeclaration("var", [
           t.variableDeclarator(
             id,
             (buildNode_: any) instanceof Function
-              ? ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes)
+              ? ((buildNode_: any): DerivedExpressionBuildNodeFunction)(nodes, context)
               : ((buildNode_: any): BabelNodeExpression)
           ),
         ]);

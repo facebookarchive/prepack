@@ -48,9 +48,18 @@ import {
 } from "../methods/index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
-import { Create, Environment, Functions, Join, Path, To } from "../singletons.js";
+import { Create, Environment, Functions, Join, Leak, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
+
+function StringKey(key: PropertyKeyValue): string {
+  if (key instanceof StringValue) key = key.value;
+  if (typeof key !== "string") {
+    // The generator currently only supports string keys.
+    throw new FatalError();
+  }
+  return key;
+}
 
 function InternalDescriptorPropertyToValue(realm: Realm, value: void | boolean | Value) {
   if (value === undefined) return realm.intrinsics.undefined;
@@ -98,6 +107,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (!O.isIntrinsic()) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
+  invariant(!O.isLeakedObject()); // leaked objects are never updated
   invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
   invariant(propertyBinding !== undefined); // The callers ensure this
@@ -149,6 +159,19 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   }
 }
 
+function leakDescriptor(realm: Realm, desc: Descriptor) {
+  if (desc.value) {
+    invariant(desc.value instanceof Value, "internal fields should not leak");
+    Leak.leakValue(realm, desc.value);
+  }
+  if (desc.get) {
+    Leak.leakValue(realm, desc.get);
+  }
+  if (desc.set) {
+    Leak.leakValue(realm, desc.set);
+  }
+}
+
 // Determines if an object with parent O may create its own property P.
 function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean {
   let ownDesc = O.$GetOwnProperty(P);
@@ -186,6 +209,14 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
 export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
+    if (O.isLeakedObject()) {
+      Leak.leakValue(realm, V);
+      if (realm.generator) {
+        realm.generator.emitPropertyAssignment(O, StringKey(P), V);
+      }
+      return true;
+    }
+
     let weakDeletion = V.mightHaveBeenDeleted();
 
     // 1. Assert: IsPropertyKey(P) is true.
@@ -448,10 +479,24 @@ export class PropertiesImplementation {
     let desc = O.$GetOwnProperty(P);
 
     // 3. If desc is undefined, return true.
-    if (!desc) return true;
+    if (!desc) {
+      if (O.isLeakedObject()) {
+        if (realm.generator) {
+          realm.generator.emitPropertyDelete(O, StringKey(P));
+        }
+      }
+      return true;
+    }
 
     // 4. If desc.[[Configurable]] is true, then
     if (desc.configurable) {
+      if (O.isLeakedObject()) {
+        if (realm.generator) {
+          realm.generator.emitPropertyDelete(O, StringKey(P));
+        }
+        return true;
+      }
+
       // a. Remove the own property with name P from O.
       let key = InternalGetPropertiesKey(P);
       let map = InternalGetPropertiesMap(O, P);
@@ -562,6 +607,14 @@ export class PropertiesImplementation {
       // b. Assert: extensible is true.
       invariant(extensible === true, "expected extensible to be true");
 
+      if (O !== undefined && O.isLeakedObject() && P !== undefined) {
+        leakDescriptor(realm, Desc);
+        if (realm.generator) {
+          realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+        }
+        return true;
+      }
+
       // c. If IsGenericDescriptor(Desc) is true or IsDataDescriptor(Desc) is true, then
       if (IsGenericDescriptor(realm, Desc) || IsDataDescriptor(realm, Desc)) {
         // i. If O is not undefined, create an own data property named P of object O whose [[Value]],
@@ -637,6 +690,14 @@ export class PropertiesImplementation {
       if ("enumerable" in Desc && Desc.enumerable !== current.enumerable) {
         return false;
       }
+    }
+
+    if (O !== undefined && O.isLeakedObject() && P !== undefined) {
+      leakDescriptor(realm, Desc);
+      if (realm.generator) {
+        realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+      }
+      return true;
     }
 
     let oldDesc = current;
@@ -1042,6 +1103,16 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.5.1
   OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void {
+    if (O.isLeakedObject()) {
+      invariant(realm.generator);
+      let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
+      let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
+        t.memberExpression(node, pname, !t.isIdentifier(pname))
+      );
+      // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
+      return { configurable: true, enumerable: true, value: absVal, writable: true };
+    }
+
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected a property key");
 
@@ -1059,7 +1130,7 @@ export class PropertiesImplementation {
             let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
               t.memberExpression(node, pname, !t.isIdentifier(pname))
             );
-            return { configurabe: true, enumerable: true, value: absVal, writable: true };
+            return { configurable: true, enumerable: true, value: absVal, writable: true };
           } else {
             invariant(P instanceof SymbolValue);
             // Simple objects don't have symbol properties
@@ -1132,6 +1203,10 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.2.1
   OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectValue | NullValue): boolean {
+    if (O.isLeakedObject()) {
+      throw new FatalError();
+    }
+
     // 1. Assert: Either Type(V) is Object or Type(V) is Null.
     invariant(V instanceof ObjectValue || V instanceof NullValue);
 

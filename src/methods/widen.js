@@ -11,7 +11,15 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import type {
+  Bindings,
+  BindingEntry,
+  Effects,
+  EvaluationResult,
+  PropertyBindings,
+  CreatedObjects,
+  Realm,
+} from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
@@ -103,8 +111,8 @@ export class WidenImplementation {
     invariant(false);
   }
 
-  widenMaps<K, V>(m1: Map<K, void | V>, m2: Map<K, void | V>, widen: (K, void | V, void | V) => V): Map<K, void | V> {
-    let m3: Map<K, void | V> = new Map();
+  widenMaps<K, V>(m1: Map<K, V>, m2: Map<K, V>, widen: (K, void | V, void | V) => V): Map<K, V> {
+    let m3: Map<K, V> = new Map();
     m1.forEach((val1, key, map1) => {
       let val2 = m2.get(key);
       let val3 = widen(key, val1, val2);
@@ -119,9 +127,15 @@ export class WidenImplementation {
   }
 
   widenBindings(realm: Realm, m1: Bindings, m2: Bindings): Bindings {
-    let widen = (b: Binding, v1: void | Value, v2: void | Value) => {
-      invariant(v2 !== undefined); // Local variables are not going to get deleted as a result of widening
-      let result = this.widenValues(realm, v1 || b.value, v2);
+    let widen = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
+      let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
+      let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
+      let hasLeaked = l1 || l2; // If either has leaked, then this binding has leaked.
+      let v1 = b1 === undefined || b1.value === undefined ? b.value : b1.value;
+      invariant(b2 !== undefined); // Local variables are not going to get deleted as a result of widening
+      let v2 = b2.value;
+      invariant(v2 !== undefined);
+      let result = this.widenValues(realm, v1, v2);
       if (result instanceof AbstractValue && result.kind === "widened") {
         let phiNode = b.phiNode;
         if (phiNode === undefined) {
@@ -140,7 +154,7 @@ export class WidenImplementation {
         result._buildNode = args => t.identifier(phiName);
       }
       invariant(result instanceof Value);
-      return result;
+      return { hasLeaked, value: result };
     };
     return this.widenMaps(m1, m2, widen);
   }
@@ -292,7 +306,7 @@ export class WidenImplementation {
     return false;
   }
 
-  containsMap<K, V>(m1: Map<K, void | V>, m2: Map<K, void | V>, f: (void | V, void | V) => boolean): boolean {
+  containsMap<K, V>(m1: Map<K, V>, m2: Map<K, V>, f: (void | V, void | V) => boolean): boolean {
     for (const [key1, val1] of m1.entries()) {
       if (val1 === undefined) continue; // deleted
       let val2 = m2.get(key1);
@@ -306,8 +320,17 @@ export class WidenImplementation {
   }
 
   containsBindings(m1: Bindings, m2: Bindings): boolean {
-    let containsBinding = (v1: void | Value, v2: void | Value) => {
-      if (v1 === undefined || v2 === undefined || !this._containsValues(v1, v2)) return false;
+    let containsBinding = (b1: void | BindingEntry, b2: void | BindingEntry) => {
+      if (
+        b1 === undefined ||
+        b2 === undefined ||
+        b1.value === undefined ||
+        b2.value === undefined ||
+        !this._containsValues(b1.value, b2.value) ||
+        b1.hasLeaked !== b2.hasLeaked
+      ) {
+        return false;
+      }
       return true;
     };
     return this.containsMap(m1, m2, containsBinding);
