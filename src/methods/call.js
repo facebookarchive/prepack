@@ -471,6 +471,7 @@ export function PrepareForTailCall(realm: Realm) {
 
   // 3. Pop leafContext from the execution context stack. The execution context now on the
   //    top of the stack becomes the running execution context.
+  realm.onDestroyScope(leafContext.lexicalEnvironment);
   realm.popContext(leafContext);
 
   // TODO #1008 4. Assert: leafContext has no further use. It will never be activated as the running execution context.

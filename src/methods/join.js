@@ -11,7 +11,15 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import type {
+  Bindings,
+  BindingEntry,
+  Effects,
+  EvaluationResult,
+  PropertyBindings,
+  CreatedObjects,
+  Realm,
+} from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
 import {
@@ -675,8 +683,8 @@ export class JoinImplementation {
   // Creates a single map that joins together maps m1 and m2 using the given join
   // operator. If an entry is present in one map but not the other, the missing
   // entry is treated as if it were there and its value were undefined.
-  joinMaps<K, V>(m1: Map<K, void | V>, m2: Map<K, void | V>, join: (K, void | V, void | V) => V): Map<K, void | V> {
-    let m3: Map<K, void | V> = new Map();
+  joinMaps<K, V>(m1: Map<K, V>, m2: Map<K, V>, join: (K, void | V, void | V) => V): Map<K, V> {
+    let m3: Map<K, V> = new Map();
     m1.forEach((val1, key, map1) => {
       let val2 = m2.get(key);
       let val3 = join(key, val1, val2);
@@ -698,12 +706,15 @@ export class JoinImplementation {
     let getAbstractValue = (v1: void | Value, v2: void | Value) => {
       return this.joinValuesAsConditional(realm, joinCondition, v1, v2);
     };
-    let join = (b: Binding, v1: void | Value, v2: void | Value) => {
-      if (v1 === undefined) v1 = b.value;
-      if (v2 === undefined) v2 = b.value;
-      let result = this.joinValues(realm, v1, v2, getAbstractValue);
-      invariant(result instanceof Value);
-      return result;
+    let join = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
+      let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
+      let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
+      let v1 = b1 === undefined ? b.value : b1.value;
+      let v2 = b2 === undefined ? b.value : b2.value;
+      let hasLeaked = l1 || l2; // If either has leaked, then this binding has leaked.
+      let value = this.joinValues(realm, v1, v2, getAbstractValue);
+      invariant(value instanceof Value);
+      return { hasLeaked, value };
     };
     return this.joinMaps(m1, m2, join);
   }

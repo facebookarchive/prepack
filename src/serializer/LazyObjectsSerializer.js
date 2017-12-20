@@ -27,6 +27,7 @@ import type {
   ReactSerializerState,
   ClassMethodInstance,
   AdditionalFunctionEffects,
+  ResidualFunctionBinding,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
@@ -38,6 +39,7 @@ import type { Scope } from "./ResidualHeapVisitor.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { getOrDefault } from "./utils.js";
+import type { DeclarativeEnvironmentRecord } from "../environment.js";
 
 const LAZY_OBJECTS_SERIALIZER_BODY_TYPE = "LazyObjectInitializer";
 
@@ -66,6 +68,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     referencedDeclaredValues: Set<AbstractValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
+    declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
     statistics: SerializerStatistics,
     react: ReactSerializerState
   ) {
@@ -83,6 +86,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
       additionalFunctionValueInfos,
+      declarativeEnvironmentRecordsBindings,
       statistics,
       react
     );

@@ -32,7 +32,6 @@ import { CompilerDiagnostic, FatalError } from "./errors.js";
 import { defaultOptions } from "./options";
 import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
-import { Value } from "./values/index.js";
 import {
   AbstractValue,
   NullValue,
@@ -44,16 +43,32 @@ import {
   AbstractObjectValue,
   StringValue,
   UndefinedValue,
+  Value,
 } from "./values/index.js";
 import generate from "babel-generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
-import { Environment, Properties, To } from "./singletons.js";
+import { Environment, Leak, Properties, To } from "./singletons.js";
 import * as t from "babel-types";
+import { TypesDomain, ValuesDomain } from "./domains/index.js";
 
 const sourceMap = require("source-map");
+
+function deriveGetBinding(realm: Realm, binding: Binding) {
+  let types = TypesDomain.topVal;
+  let values = ValuesDomain.topVal;
+  invariant(realm.generator !== undefined);
+  return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
+}
+
+export function leakBinding(binding: Binding) {
+  let realm = binding.environment.realm;
+  if (!binding.hasLeaked) {
+    realm.recordModifiedBinding(binding).hasLeaked = true;
+  }
+}
 
 // ECMA262 8.1.1
 export class EnvironmentRecord {
@@ -95,6 +110,7 @@ export type Binding = {
   isGlobal: boolean,
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
+  hasLeaked: boolean,
 };
 
 // ECMA262 8.1.1.1
@@ -102,9 +118,12 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   constructor(realm: Realm) {
     super(realm);
     this.bindings = (Object.create(null): any);
+    this.frozen = false;
   }
 
   bindings: { [name: string]: Binding };
+  // Frozen Records cannot have bindings created or deleted but can have bindings updated
+  frozen: boolean;
 
   // ECMA262 8.1.1.1.1
   HasBinding(N: string): boolean {
@@ -120,6 +139,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.2
   CreateMutableBinding(N: string, D: boolean, isGlobal: boolean = false): Value {
+    invariant(!this.frozen);
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -136,6 +156,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      hasLeaked: false,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -144,6 +165,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.3
   CreateImmutableBinding(N: string, S: boolean, isGlobal: boolean = false): Value {
+    invariant(!this.frozen);
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -160,6 +182,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      hasLeaked: false,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -188,6 +211,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
   // ECMA262 8.1.1.1.5
   SetMutableBinding(N: string, V: Value, S: boolean): Value {
+    // We can mutate frozen bindings because of captured bindings.
     let realm = this.realm;
 
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
@@ -220,7 +244,13 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
-      realm.recordModifiedBinding(binding).value = V;
+      if (binding.hasLeaked) {
+        Leak.leakValue(realm, V);
+        invariant(realm.generator);
+        realm.generator.emitBindingAssignment(binding, V);
+      } else {
+        realm.recordModifiedBinding(binding).value = V;
+      }
     } else {
       // 6. Else,
       // a. Assert: This is an attempt to change the value of an immutable binding.
@@ -253,12 +283,16 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return the value currently bound to N in envRec.
+    if (binding.hasLeaked) {
+      return deriveGetBinding(realm, binding);
+    }
     invariant(binding.value);
     return binding.value;
   }
 
   // ECMA262 8.1.1.1.7
   DeleteBinding(N: string): boolean {
+    invariant(!this.frozen);
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -959,15 +993,30 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 }
 
 // ECMA262 8.1
+let uid = 0;
 export class LexicalEnvironment {
   constructor(realm: Realm) {
     invariant(realm, "expected realm");
     this.realm = realm;
+    this.destroyed = false;
+    this._uid = uid++;
   }
 
+  // For debugging it is convenient to have an ID for each of these.
+  _uid: number;
+  destroyed: boolean;
   environmentRecord: EnvironmentRecord;
   parent: null | LexicalEnvironment;
   realm: Realm;
+
+  destroy() {
+    this.destroyed = true;
+    // Once the containing environment is destroyed, we can no longer add or remove entries from the environmentRecord
+    // (but we can update existing values).
+    if (this.environmentRecord instanceof DeclarativeEnvironmentRecord) {
+      this.environmentRecord.frozen = true;
+    }
+  }
 
   assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value) {
     let globalValue = this.evaluate(globalAst, false);
@@ -1061,10 +1110,15 @@ export class LexicalEnvironment {
           let error = e.value;
           if (error instanceof ObjectValue) {
             let message = error.$Get("message", error);
+            message.value = `Syntax error: ${message.value}`;
             e.location.source = source.filePath;
-            let err = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
-            this.realm.handleError(err);
-            throw new FatalError("syntax error");
+            // the position was not located properly on the
+            // syntax errors happen on one given position, so start position = end position
+            e.location.start = { line: e.location.line, column: e.location.column };
+            e.location.end = { line: e.location.line, column: e.location.column };
+            let diagnostic = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
+            this.realm.handleError(diagnostic);
+            throw new FatalError(message.value);
           }
         }
         throw e;
@@ -1091,6 +1145,9 @@ export class LexicalEnvironment {
       res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
+      this.realm.onDestroyScope(context.lexicalEnvironment);
+      if (!this.destroyed) this.realm.onDestroyScope(this);
+      invariant(this.realm.activeLexicalEnvironments.size === 0);
     }
     if (res instanceof AbruptCompletion) return [res, code];
 
@@ -1115,6 +1172,9 @@ export class LexicalEnvironment {
       if (res instanceof AbruptCompletion) return res;
     } finally {
       this.realm.popContext(context);
+      this.realm.onDestroyScope(context.lexicalEnvironment);
+      if (!this.destroyed) this.realm.onDestroyScope(this);
+      invariant(this.realm.activeLexicalEnvironments.size === 0);
     }
     invariant(partialAST.type === "File");
     let fileAst = ((partialAST: any): BabelNodeFile);
@@ -1151,6 +1211,9 @@ export class LexicalEnvironment {
       res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
+      // Avoid destroying "this" scope as execute may be called many times.
+      if (context.lexicalEnvironment !== this) this.realm.onDestroyScope(context.lexicalEnvironment);
+      invariant(this.realm.activeLexicalEnvironments.size === 1);
     }
     if (res instanceof AbruptCompletion) return res;
 

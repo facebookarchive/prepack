@@ -46,6 +46,7 @@ import type {
   BabelNodeObjectMethod,
   BabelNodePattern,
   BabelNodeVariableDeclaration,
+  BabelNodeSourceLocation,
 } from "babel-types";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
 
@@ -332,6 +333,10 @@ export type PathType = {
   pushInverseAndRefine(condition: AbstractValue): void,
 };
 
+export type LeakType = {
+  leakValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
+};
+
 export type PropertiesType = {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean,
@@ -570,7 +575,7 @@ export type EnvironmentType = {
   IsUnresolvableReference(realm: Realm, V: Reference): boolean,
 
   // ECMA262 8.1.2.2
-  NewDeclarativeEnvironment(realm: Realm, E: LexicalEnvironment): LexicalEnvironment,
+  NewDeclarativeEnvironment(realm: Realm, E: LexicalEnvironment, active?: boolean): LexicalEnvironment,
 
   BoundNames(realm: Realm, node: BabelNode): Array<string>,
 
@@ -944,6 +949,8 @@ export type ToType = {
 
   // ECMA262 7.1.3
   ToNumber(realm: Realm, val: numberOrValue): number,
+
+  ToNumberOrAbstract(realm: Realm, val: numberOrValue): number | AbstractValue,
 
   IsToNumberPure(realm: Realm, val: numberOrValue): boolean,
 

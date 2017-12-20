@@ -184,7 +184,9 @@ export class Functions {
       // When that happens we cannot prepack the bundle.
       // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
 
-      let effects = this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer);
+      let effects = this.realm.evaluatePure(() =>
+        this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer)
+      );
       let additionalFunctionEffects = this._createAdditionalEffects(effects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);
     }

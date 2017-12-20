@@ -34,6 +34,7 @@ export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings
     // e. Let thisIterationEnv be NewDeclarativeEnvironment(outer).
     let thisIterationEnv = Environment.NewDeclarativeEnvironment(realm, outer);
     // f. Let thisIterationEnvRec be thisIterationEnv's EnvironmentRecord.
+    realm.onDestroyScope(lastIterationEnv);
     let thisIterationEnvRec = thisIterationEnv.environmentRecord;
     // g. For each element bn of perIterationBindings do,
     for (let bn of perIterationBindings) {
@@ -177,6 +178,9 @@ export default function(
       // 9. If forDcl is an abrupt completion, then
       if (forDcl instanceof AbruptCompletion) {
         // a. Set the running execution context's LexicalEnvironment to oldEnv.
+        let currentEnv = realm.getRunningContext().lexicalEnvironment;
+        realm.onDestroyScope(currentEnv);
+        if (currentEnv !== loopEnv) invariant(loopEnv.destroyed);
         realm.getRunningContext().lexicalEnvironment = oldEnv;
 
         // b. Return Completion(forDcl).
@@ -192,6 +196,9 @@ export default function(
         bodyResult = ForBodyEvaluation(realm, test, update, body, perIterationLets, labelSet, strictCode);
       } finally {
         // 12. Set the running execution context's LexicalEnvironment to oldEnv.
+        let currentEnv = realm.getRunningContext().lexicalEnvironment;
+        realm.onDestroyScope(currentEnv);
+        if (currentEnv !== loopEnv) invariant(loopEnv.destroyed);
         realm.getRunningContext().lexicalEnvironment = oldEnv;
       }
       // 13. Return Completion(bodyResult).

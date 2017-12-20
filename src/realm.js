@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import { LexicalEnvironment, Reference, GlobalEnvironmentRecord } from "./environment.js";
+import { LexicalEnvironment, Reference, GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, Construct } from "./methods/index.js";
 import { Completion, ThrowCompletion, AbruptCompletion, PossiblyNormalCompletion } from "./completions.js";
@@ -34,11 +34,12 @@ import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import type { ReactSymbolTypes } from "./react/utils.js";
+import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
-export type Bindings = Map<Binding, void | Value>;
+export type BindingEntry = { hasLeaked: boolean, value: void | Value };
+export type Bindings = Map<Binding, BindingEntry>;
 export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
@@ -130,6 +131,7 @@ export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual;
+    this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
     }
@@ -180,6 +182,7 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
+    this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
   }
 
@@ -187,6 +190,7 @@ export class Realm {
   isReadOnly: boolean;
   isStrict: boolean;
   useAbstractInterpretation: boolean;
+  trackLeaks: boolean;
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
@@ -196,9 +200,12 @@ export class Realm {
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
+  createdObjectsTrackedForLeaks: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
+
+  activeLexicalEnvironments: Set<LexicalEnvironment>;
 
   // A list of abstract conditions that are known to be true in the current execution path.
   // For example, the abstract condition of an if statement is known to be true inside its true branch.
@@ -283,7 +290,12 @@ export class Realm {
     invariant(globrec instanceof GlobalEnvironmentRecord);
     let dclrec = globrec.$DeclarativeRecord;
 
-    return dclrec.HasBinding(key) ? dclrec.GetBindingValue(key, false) : undefined;
+    try {
+      return dclrec.HasBinding(key) ? dclrec.GetBindingValue(key, false) : undefined;
+    } catch (e) {
+      if (e instanceof FatalError) return undefined;
+      throw e;
+    }
   }
 
   /*
@@ -321,6 +333,25 @@ export class Realm {
     let context = this.contextStack[this.contextStack.length - 1];
     invariant(context, "There's no running execution context");
     return context;
+  }
+
+  // Call when a scope falls out of scope and should be destroyed.
+  // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
+  onDestroyScope(lexicalEnvironment: LexicalEnvironment) {
+    invariant(this.activeLexicalEnvironments.has(lexicalEnvironment));
+    let modifiedBindings = this.modifiedBindings;
+    if (modifiedBindings) {
+      // Don't undo things to global scope because it's needed past its destruction point (for serialization)
+      let environmentRecord = lexicalEnvironment.environmentRecord;
+      if (environmentRecord instanceof DeclarativeEnvironmentRecord)
+        for (let b of modifiedBindings.keys())
+          if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b)
+            modifiedBindings.delete(b);
+    }
+
+    // Ensures if we call onDestroyScope too early, there will be a failure.
+    this.activeLexicalEnvironments.delete(lexicalEnvironment);
+    lexicalEnvironment.destroy();
   }
 
   pushContext(context: ExecutionContext): void {
@@ -364,6 +395,27 @@ export class Realm {
 
   deleteGlobalBinding(name: string) {
     this.$GlobalEnv.environmentRecord.DeleteBinding(name);
+  }
+
+  // Evaluate a context as if it won't have any side-effects outside of any objects
+  // that it created itself. This promises that any abstract functions inside of it
+  // also won't have effects on any objects or bindings that weren't created in this
+  // call.
+  evaluatePure<T>(f: () => T) {
+    if (!this.trackLeaks) {
+      return f();
+    }
+    let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+    // Track all objects (including function closures) created during
+    // this call. This will be used to make the assumption that every
+    // *other* object is unchanged (pure). These objects are marked
+    // as leaked if they're passed to abstract functions.
+    this.createdObjectsTrackedForLeaks = new Set();
+    try {
+      return f();
+    } finally {
+      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+    }
   }
 
   // Evaluate the given ast in a sandbox and return the evaluation results
@@ -531,7 +583,8 @@ export class Realm {
   // populate the loop body generator with assignments that will update the phiNodes
   _emitLocalAssignments(gen: Generator, bindings: Bindings) {
     let tvalFor: Map<any, AbstractValue> = new Map();
-    bindings.forEach((val, key, map) => {
+    bindings.forEach((binding, key, map) => {
+      let val = binding.value;
       if (val instanceof AbstractValue) {
         invariant(val._buildNode !== undefined);
         let tval = gen.derive(val.types, val.values, [val], ([n]) => n, {
@@ -540,7 +593,8 @@ export class Realm {
         tvalFor.set(key, tval);
       }
     });
-    bindings.forEach((val, key, map) => {
+    bindings.forEach((binding, key, map) => {
+      let val = binding.value;
       if (val instanceof AbstractValue) {
         let phiNode = key.phiNode;
         let tval = tvalFor.get(key);
@@ -564,6 +618,7 @@ export class Realm {
         let tval = gen.derive(value.types, value.values, [value], ([n]) => n, {
           skipInvariant: true,
         });
+        tval.mightBeEmpty = value.mightBeEmpty;
         tvalFor.set(key, tval);
       }
     });
@@ -571,10 +626,21 @@ export class Realm {
       let path = key.pathNode;
       let tval = tvalFor.get(key);
       invariant(tval !== undefined);
+      let mightBeEmpty = tval.mightBeEmpty;
       gen.emitStatement([key.object, tval], ([o, v]) => {
         invariant(path !== undefined);
         let lh = path.buildNode([o]);
-        return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+        let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+        if (mightBeEmpty) {
+          // If o does not have property key.key and v === undefined, omit the assignment (at runtime)
+          // if (v !== undefined || key.key in o) r
+          invariant(typeof key.key === "string"); // for now
+          let inTest = t.binaryExpression("in", t.stringLiteral(key.key), o);
+          let vDefined = t.binaryExpression("!==", v, t.unaryExpression("void", t.numericLiteral(0)));
+          let guard = t.logicalExpression("||", vDefined, inTest);
+          return t.ifStatement(guard, r);
+        }
+        return r;
       });
     });
   }
@@ -782,7 +848,10 @@ export class Realm {
       throw new FatalError("Trying to modify a binding in read-only realm");
     }
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
-      this.modifiedBindings.set(binding, binding.value);
+      this.modifiedBindings.set(binding, {
+        hasLeaked: binding.hasLeaked,
+        value: binding.value,
+      });
     return binding;
   }
 
@@ -821,6 +890,9 @@ export class Realm {
     if (this.createdObjects !== undefined) {
       this.createdObjects.add(object);
     }
+    if (this.createdObjectsTrackedForLeaks !== undefined) {
+      this.createdObjectsTrackedForLeaks.add(object);
+    }
   }
 
   // Returns the current values of modifiedBindings and modifiedProperties
@@ -837,10 +909,15 @@ export class Realm {
   // the value the Binding had just before the call to this method.
   restoreBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach((val, key, m) => {
-      let v = key.value;
-      key.value = val;
-      m.set(key, v);
+    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
+      let l = binding.hasLeaked;
+      let v = binding.value;
+      binding.hasLeaked = hasLeaked;
+      binding.value = value;
+      m.set(binding, {
+        hasLeaked: l,
+        value: v,
+      });
     });
   }
 

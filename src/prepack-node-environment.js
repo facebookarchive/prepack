@@ -88,6 +88,7 @@ export function prepackNodeCLISync(filename: string, options: PrepackOptions = d
       serializer.logger.logCompletion(res);
     } finally {
       realm.popContext(context);
+      realm.onDestroyScope(realm.$GlobalEnv);
     }
   }
 
