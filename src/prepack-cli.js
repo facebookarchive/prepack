@@ -46,6 +46,7 @@ function run(
     --maxStackDepth          Specify the maximum call stack depth.
     --timeout                The amount of time in seconds until Prepack should time out.
     --additionalFunctions    Additional functions that should be prepacked (comma separated).
+    --abstractEffectsInAdditionalFunctions Experimental flag to allow abstract effectful function calls.
     --lazyObjectsRuntime     Enable lazy objects feature and specify the JS runtime that support this feature.
     --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
                              Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
@@ -87,6 +88,7 @@ function run(
     omitInvariants: false,
     inlineExpressions: false,
     simpleClosures: false,
+    abstractEffectsInAdditionalFunctions: false,
     logStatistics: false,
     logModules: false,
     delayInitializations: false,

@@ -66,6 +66,8 @@ import { commonAncestorOf, getSuggestedArrayLiteralLength } from "./utils.js";
 import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
 import { ResidualReactElements } from "./ResidualReactElements.js";
+import type { Binding } from "../environment.js";
+import { DeclarativeEnvironmentRecord } from "../environment.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -87,6 +89,7 @@ export class ResidualHeapSerializer {
     referencedDeclaredValues: Set<AbstractValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
+    declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
     statistics: SerializerStatistics,
     react: ReactSerializerState
   ) {
@@ -154,6 +157,7 @@ export class ResidualHeapSerializer {
     this.activeGeneratorBodies = new Map();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
+    this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
     this.functionNames = new Map();
   }
 
@@ -194,6 +198,7 @@ export class ResidualHeapSerializer {
   activeGeneratorBodies: Map<Generator, SerializedBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
+  declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
   react: ReactSerializerState;
   residualReactElements: ResidualReactElements;
 
@@ -654,6 +659,30 @@ export class ResidualHeapSerializer {
       name = id.name;
     }
     return name;
+  }
+
+  serializeBinding(binding: Binding): BabelNodeIdentifier | BabelNodeMemberExpression {
+    let record = binding.environment;
+    invariant(record instanceof DeclarativeEnvironmentRecord, "only declarative environments has bindings");
+
+    let residualFunctionBindings = this.declarativeEnvironmentRecordsBindings.get(record);
+    invariant(
+      residualFunctionBindings,
+      "all bindings that create abstract values must have at least one call emitted to the generator so the function environment should have been visited"
+    );
+    let residualBinding = residualFunctionBindings.get(binding.name);
+    invariant(residualBinding, "any referenced residual binding should have been visited");
+
+    if (!residualBinding.referentialized) {
+      let additionalFunction = residualBinding.referencedOnlyFromAdditionalFunctions;
+      invariant(additionalFunction, "residual bindings like this are only caused by leaked bindings in pure functions");
+      let instance = this.residualFunctionInstances.get(additionalFunction);
+      invariant(instance, "any serialized function must exist in the scope");
+      this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding.name, instance);
+    }
+
+    invariant(residualBinding.serializedValue);
+    return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
@@ -1357,6 +1386,7 @@ export class ResidualHeapSerializer {
     // or repeated so that they are accessible and defined from all using scopes
     let context = {
       serializeValue: this.serializeValue.bind(this),
+      serializeBinding: this.serializeBinding.bind(this),
       serializeGenerator: (generator: Generator): Array<BabelNodeStatement> => {
         let statements = this._withGeneratorScope(generator, () => generator.serialize(context));
         if (this._options.debugScopes) {

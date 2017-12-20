@@ -29,6 +29,7 @@ export type RealmOptions = {
   maxStackDepth?: number,
   reactEnabled?: boolean,
   reactOutput?: ReactOutputTypes,
+  abstractEffectsInAdditionalFunctions?: boolean,
 };
 
 export type SerializerOptions = {

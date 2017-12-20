@@ -32,7 +32,6 @@ import { CompilerDiagnostic, FatalError } from "./errors.js";
 import { defaultOptions } from "./options";
 import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
-import { Value } from "./values/index.js";
 import {
   AbstractValue,
   NullValue,
@@ -44,16 +43,32 @@ import {
   AbstractObjectValue,
   StringValue,
   UndefinedValue,
+  Value,
 } from "./values/index.js";
 import generate from "babel-generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
-import { Environment, Properties, To } from "./singletons.js";
+import { Environment, Leak, Properties, To } from "./singletons.js";
 import * as t from "babel-types";
+import { TypesDomain, ValuesDomain } from "./domains/index.js";
 
 const sourceMap = require("source-map");
+
+function deriveGetBinding(realm: Realm, binding: Binding) {
+  let types = TypesDomain.topVal;
+  let values = ValuesDomain.topVal;
+  invariant(realm.generator !== undefined);
+  return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
+}
+
+export function leakBinding(binding: Binding) {
+  let realm = binding.environment.realm;
+  if (!binding.hasLeaked) {
+    realm.recordModifiedBinding(binding).hasLeaked = true;
+  }
+}
 
 // ECMA262 8.1.1
 export class EnvironmentRecord {
@@ -95,6 +110,7 @@ export type Binding = {
   isGlobal: boolean,
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
+  hasLeaked: boolean,
 };
 
 // ECMA262 8.1.1.1
@@ -140,6 +156,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      hasLeaked: false,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -165,6 +182,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      hasLeaked: false,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -226,7 +244,13 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
-      realm.recordModifiedBinding(binding).value = V;
+      if (binding.hasLeaked) {
+        Leak.leakValue(realm, V);
+        invariant(realm.generator);
+        realm.generator.emitBindingAssignment(binding, V);
+      } else {
+        realm.recordModifiedBinding(binding).value = V;
+      }
     } else {
       // 6. Else,
       // a. Assert: This is an attempt to change the value of an immutable binding.
@@ -259,6 +283,9 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return the value currently bound to N in envRec.
+    if (binding.hasLeaked) {
+      return deriveGetBinding(realm, binding);
+    }
     invariant(binding.value);
     return binding.value;
   }
