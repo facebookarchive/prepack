@@ -24,6 +24,10 @@ onmessage = function(e) {
       compatibility: 'browser',
       filename: 'repl',
       timeout: 1000,
+      maxStackDepth: 100,
+      reactOutput: "jsx",
+      omitInvariants: true,
+      internalDebug: true,
       serialize: true,
       heapGraphFilePath: "/tmp/foo.txt", /* this path will not be used, it is needed to trigger the graph computation */
       errorHandler,

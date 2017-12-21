@@ -75,7 +75,6 @@ header, .repl-container {
 .record-container .options-menu-record{
   display: none;
   vertical-align: top;
-  z-index: 20;
   background: #1c1c1c;
   color: white;
   border-radius: 3px;

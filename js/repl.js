@@ -40,7 +40,7 @@ var optionsConfig = [
   {
     type: "choice",
     name: "compatibility",
-    choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"],
+    choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli", "react-mocks"],
     defaultVal: "browser",
     description: "The target environment for Prepack"
   },
@@ -49,6 +49,12 @@ var optionsConfig = [
     name: "reactEnabled",
     defaultVal: false,
     description: "Enables experimental support for React features, such as JSX syntax."
+  },
+  {
+    type: "boolean",
+    name: "simpleClosures",
+    defaultVal: true,
+    description: "Disables optimizations on closures to make the output code simpler."
   },
 ];
 
