@@ -311,7 +311,7 @@ export class WidenImplementation {
       if (val1 === undefined) continue; // deleted
       let val2 = m2.get(key1);
       if (val2 === undefined) continue; // A key that disappears has been widened away into the unknown key
-      if (!f(val2, val1)) return false;
+      if (!f(val1, val2)) return false;
     }
     for (const key2 of m2.keys()) {
       if (!m1.has(key2)) return false;
