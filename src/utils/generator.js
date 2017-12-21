@@ -61,6 +61,7 @@ export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, Serializat
 export type GeneratorEntry = {
   declared?: AbstractValue,
   args: Array<Value>,
+  // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
@@ -122,7 +123,7 @@ export class Generator {
   }
 
   // Will force the array of Values to be serialized but not emit anything for a buildNode
-  appendDependencies(values: Array<Value>) {
+  appendRoots(values: Array<Value>) {
     this._addEntry({
       args: values,
     });

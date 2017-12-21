@@ -347,7 +347,7 @@ function runTest(name, code, options, args) {
       console.error(err.stack);
     }
     return false;
-  } else if (code.includes("// Copies of ")) {
+  } else if (code.includes("// Copies of ") && !options.simpleClosures) {
     let marker = "// Copies of ";
     let searchStart = code.indexOf(marker);
     let searchEnd = code.indexOf(":", searchStart);
@@ -361,7 +361,7 @@ function runTest(name, code, options, args) {
       }
       let regex = new RegExp(value, "gi");
       let matches = serialized.code.match(regex);
-      if (!options.simpleClosures && (!matches || matches.length !== count)) {
+      if (!matches || matches.length !== count) {
         console.error(
           chalk.red(`Wrong number of occurrances of ${value} got ${matches ? matches.length : 0} instead of ${count}`)
         );
