@@ -312,6 +312,7 @@ function runTest(name, code, options, args) {
       if (err instanceof FatalError) return true;
       console.error("Test should have caused introspection error, but instead caused a different internal error!");
       console.error(err);
+      console.error(err.stack);
     }
     return false;
   } else if (code.includes("// cannot serialize")) {
@@ -321,6 +322,8 @@ function runTest(name, code, options, args) {
       if (err instanceof FatalError) {
         return true;
       }
+      console.error(err);
+      console.error(err.stack);
     }
     console.error(chalk.red("Test should have caused error during serialization!"));
     return false;
@@ -341,9 +344,10 @@ function runTest(name, code, options, args) {
       console.error(serialized.code);
     } catch (err) {
       console.error(err);
+      console.error(err.stack);
     }
     return false;
-  } else if (code.includes("// Copies of ")) {
+  } else if (code.includes("// Copies of ") && !options.simpleClosures) {
     let marker = "// Copies of ";
     let searchStart = code.indexOf(marker);
     let searchEnd = code.indexOf(":", searchStart);
@@ -365,6 +369,7 @@ function runTest(name, code, options, args) {
       }
     } catch (err) {
       console.error(err);
+      console.error(err.stack);
       return false;
     }
     return true;
@@ -391,6 +396,7 @@ function runTest(name, code, options, args) {
     let unique = 27277;
     let oldUniqueSuffix = "";
     let expectedCode = code;
+    let actualStack;
     if (compileJSXWithBabel) {
       expectedCode = transformWithBabel(expectedCode, ["transform-react-jsx"]);
     }
@@ -425,6 +431,7 @@ function runTest(name, code, options, args) {
           if (found !== positive) {
             console.error(chalk.red(`Output ${positive ? "does not contain" : "contains"} forbidden string: ${value}`));
             markersIssue = true;
+            console.error(newCode);
           }
         }
         if (markersIssue) break;
@@ -446,6 +453,7 @@ function runTest(name, code, options, args) {
         } catch (e) {
           // always compare strings.
           actual = "" + e;
+          actualStack = e.stack;
         }
         if (expected !== actual) {
           console.error(chalk.red("Output mismatch!"));
@@ -455,7 +463,7 @@ function runTest(name, code, options, args) {
           break;
         }
         // Test the number of clone functions generated with the inital prepack call
-        if (i === 0 && functionCloneCountMatch) {
+        if (i === 0 && functionCloneCountMatch && !options.simpleClosures) {
           let functionCount = parseInt(functionCloneCountMatch[1], 10);
           if (serialized.statistics && functionCount !== serialized.statistics.functionClones) {
             console.error(
@@ -488,6 +496,7 @@ function runTest(name, code, options, args) {
       }
     } catch (err) {
       console.error(err);
+      console.error(err.stack);
     }
     console.log(chalk.underline("original code"));
     console.log(code);
@@ -499,6 +508,7 @@ function runTest(name, code, options, args) {
     }
     console.log(chalk.underline("output of inspect() on last generated code iteration"));
     console.log(actual);
+    if (actualStack) console.log(actualStack);
     return false;
   }
 }
@@ -545,16 +555,21 @@ function run(args) {
       test.name.includes("additional-functions") ||
       test.name.includes("react");
 
-    for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime] of [
-      [false, false, undefined],
-      [true, true, undefined],
-      [false, false, args.lazyObjectsRuntime],
-    ]) {
+    const fastPermutations = [[false, false, undefined, false]];
+    const fullPermutations = [
+      [false, false, undefined, false],
+      [false, false, undefined, true],
+      [false, true, undefined, true],
+      [true, true, undefined, false],
+      [false, false, args.lazyObjectsRuntime, false],
+    ];
+    const flagPermutations = args.fast ? fastPermutations : fullPermutations;
+    for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures] of flagPermutations) {
       if ((skipLazyObjects || args.noLazySupport) && lazyObjectsRuntime) {
         continue;
       }
       total++;
-      let options = { delayInitializations, inlineExpressions, lazyObjectsRuntime };
+      let options = { delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures };
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
     }
@@ -573,6 +588,7 @@ class ProgramArgs {
   es5: boolean;
   lazyObjectsRuntime: string;
   noLazySupport: boolean;
+  fast: boolean;
   constructor(
     debugNames: boolean,
     verbose: boolean,
@@ -580,7 +596,8 @@ class ProgramArgs {
     outOfProcessRuntime: string,
     es5: boolean,
     lazyObjectsRuntime: string,
-    noLazySupport: boolean
+    noLazySupport: boolean,
+    fast: boolean
   ) {
     this.debugNames = debugNames;
     this.verbose = verbose;
@@ -589,6 +606,7 @@ class ProgramArgs {
     this.es5 = es5;
     this.lazyObjectsRuntime = lazyObjectsRuntime;
     this.noLazySupport = noLazySupport;
+    this.fast = fast;
   }
 }
 
@@ -634,7 +652,7 @@ class ArgsParseError {
 function argsParse(): ProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     string: ["filter", "outOfProcessRuntime"],
-    boolean: ["debugNames", "verbose", "es5"],
+    boolean: ["debugNames", "verbose", "es5", "fast"],
     default: {
       debugNames: false,
       verbose: false,
@@ -644,6 +662,7 @@ function argsParse(): ProgramArgs {
       // to run tests. If not a seperate node context used.
       lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME,
       noLazySupport: false,
+      fast: false,
     },
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
@@ -654,6 +673,9 @@ function argsParse(): ProgramArgs {
   }
   if (typeof parsedArgs.es5 !== "boolean") {
     throw new ArgsParseError("es5 must be a boolean (either --es5 or not)");
+  }
+  if (typeof parsedArgs.fast !== "boolean") {
+    throw new ArgsParseError("fast must be a boolean (either --fast or not)");
   }
   if (typeof parsedArgs.filter !== "string") {
     throw new ArgsParseError(
@@ -676,7 +698,8 @@ function argsParse(): ProgramArgs {
     parsedArgs.outOfProcessRuntime,
     parsedArgs.es5,
     parsedArgs.lazyObjectsRuntime,
-    parsedArgs.noLazySupport
+    parsedArgs.noLazySupport,
+    parsedArgs.fast
   );
   return programArgs;
 }

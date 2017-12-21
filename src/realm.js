@@ -184,6 +184,7 @@ export class Realm {
     this.globalSymbolRegistry = [];
     this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
+    this.debugNames = opts.debugNames;
   }
 
   start: number;
@@ -191,6 +192,7 @@ export class Realm {
   isStrict: boolean;
   useAbstractInterpretation: boolean;
   trackLeaks: boolean;
+  debugNames: void | boolean;
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
