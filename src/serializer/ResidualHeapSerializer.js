@@ -331,6 +331,7 @@ export class ResidualHeapSerializer {
   }
 
   _getNestedAbstractValues(absVal: AbstractValue, values: Array<Value>): Array<Value> {
+    if (absVal.kind === "widened property") return values;
     invariant(absVal.args.length === 3);
     let cond = absVal.args[0];
     invariant(cond instanceof AbstractValue);
@@ -356,6 +357,7 @@ export class ResidualHeapSerializer {
   }
 
   _emitPropertiesWithComputedNames(obj: ObjectValue, absVal: AbstractValue) {
+    if (absVal.kind === "widened property") return;
     invariant(absVal.args.length === 3);
     let cond = absVal.args[0];
     invariant(cond instanceof AbstractValue);
@@ -870,15 +872,17 @@ export class ResidualHeapSerializer {
     // 2. array length is concrete, but different from number of index properties
     //  we put into initialization list.
     if (lenProperty instanceof AbstractValue || To.ToLength(realm, lenProperty) !== numberOfIndexProperties) {
-      this.emitter.emitNowOrAfterWaitingForDependencies([val], () => {
-        this._assignProperty(
-          () => t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),
-          () => {
-            return this.serializeValue(lenProperty);
-          },
-          false /*mightHaveBeenDeleted*/
-        );
-      });
+      if (!(lenProperty instanceof AbstractValue) || lenProperty.kind !== "widened property") {
+        this.emitter.emitNowOrAfterWaitingForDependencies([val], () => {
+          this._assignProperty(
+            () => t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),
+            () => {
+              return this.serializeValue(lenProperty);
+            },
+            false /*mightHaveBeenDeleted*/
+          );
+        });
+      }
       remainingProperties.delete("length");
     }
   }

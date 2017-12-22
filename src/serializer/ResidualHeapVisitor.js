@@ -211,6 +211,7 @@ export class ResidualHeapVisitor {
   }
 
   visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
+    if (absVal.kind === "widened property") return;
     invariant(absVal.args.length === 3);
     let cond = absVal.args[0];
     invariant(cond instanceof AbstractValue);
