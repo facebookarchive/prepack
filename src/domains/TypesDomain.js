@@ -42,13 +42,12 @@ export default class TypesDomain {
 
   // return the type of the result in the case where there is no exception
   static binaryOp(op: BabelBinaryOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
-    //todo #999: goto top only if op === "+"
     let lType = left._type;
     let rType = right._type;
-    if (lType === undefined || rType === undefined) return TypesDomain.topVal;
     let resultType = Value;
     switch (op) {
       case "+":
+        if (lType === undefined || rType === undefined) return TypesDomain.topVal;
         if (Value.isTypeCompatibleWith(lType, StringValue) || Value.isTypeCompatibleWith(rType, StringValue))
           resultType = StringValue;
         else if (Value.isTypeCompatibleWith(lType, NumberValue) && Value.isTypeCompatibleWith(rType, NumberValue))
