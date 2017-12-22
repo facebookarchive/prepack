@@ -13,6 +13,7 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import type { Realm } from "../realm.js";
 import {
   AbstractObjectValue,
+  ArrayValue,
   BooleanValue,
   ConcreteValue,
   EmptyValue,
@@ -68,6 +69,8 @@ export default class Value {
         return NumberValue;
       case "object":
         return ObjectValue;
+      case "array":
+        return ArrayValue;
       case "function":
         return FunctionValue;
       default:
