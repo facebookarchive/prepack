@@ -247,6 +247,9 @@ function run(
             1}) ${error.severity} ${error.errorCode}: ${error.message}` +
             ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
         );
+        if (foundFatal) {
+          console.error(error.callStack || "");
+        }
       }
     }
     return foundFatal;
