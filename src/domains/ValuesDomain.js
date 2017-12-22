@@ -71,6 +71,14 @@ export default class ValuesDomain {
     return true;
   }
 
+  containsValue(x: Value): boolean {
+    let elems = this._elements;
+    if (elems === undefined) return true; // Top contains everything
+    if (x instanceof AbstractValue) return this.contains(x.values);
+    invariant(x instanceof ConcreteValue);
+    return elems.has(x);
+  }
+
   isTop() {
     return this._elements === undefined;
   }

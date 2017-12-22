@@ -572,8 +572,8 @@ export class Realm {
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
           // Generate code using effects2 because its expressions have not been widened away.
           let [, gen, bindings2, pbindings2] = effects2;
-          this._emitLocalAssignments(gen, bindings2);
           this._emitPropertAssignments(gen, pbindings2);
+          this._emitLocalAssignments(gen, bindings2);
           return [effects1, effects2];
         }
         effects1 = Widen.widenEffects(this, effects1, effects2);
@@ -634,7 +634,7 @@ export class Realm {
           [key.object, value],
           ([o, n]) => {
             invariant(value instanceof Value);
-            if (value.mightHaveBeenDeleted() && isSelfReferential(value, key.pathNode)) {
+            if (typeof key.key === "string" && value.mightHaveBeenDeleted() && isSelfReferential(value, key.pathNode)) {
               let inTest = t.binaryExpression("in", t.stringLiteral(key.key), o);
               let addEmpty = t.conditionalExpression(inTest, n, emptyExpression);
               n = t.logicalExpression("||", n, addEmpty);
@@ -651,28 +651,34 @@ export class Realm {
     pbindings.forEach((val, key, map) => {
       let path = key.pathNode;
       let tval = tvalFor.get(key);
-      invariant(tval !== undefined);
       invariant(val !== undefined);
       let value = val.value;
       invariant(value instanceof Value);
       let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
       let mightBeUndefined = value.mightBeUndefined();
-      gen.emitStatement([key.object, tval, this.intrinsics.empty], ([o, v, e]) => {
-        invariant(path !== undefined);
-        let lh = path.buildNode([o]);
-        let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
-        if (mightHaveBeenDeleted) {
-          invariant(typeof key.key === "string"); // for now
-          // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
-          let emptyTest = t.binaryExpression("===", v, e);
-          let undefinedTest = t.binaryExpression("===", v, voidExpression);
-          let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key.key), o));
-          let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
-          let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
-          return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
-        }
-        return r;
-      });
+      if (typeof key.key === "string") {
+        gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
+          invariant(path !== undefined);
+          let lh = path.buildNode([o, t.identifier(key.key)]);
+          let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+          if (mightHaveBeenDeleted) {
+            // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
+            let emptyTest = t.binaryExpression("===", v, e);
+            let undefinedTest = t.binaryExpression("===", v, voidExpression);
+            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key.key), o));
+            let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
+            let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
+            return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
+          }
+          return r;
+        });
+      } else {
+        gen.emitStatement([key.object, key.key, tval || value, this.intrinsics.empty], ([o, p, v, e]) => {
+          invariant(path !== undefined);
+          let lh = path.buildNode([o, p]);
+          return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+        });
+      }
     });
   }
 

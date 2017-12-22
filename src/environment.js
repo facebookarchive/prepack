@@ -1352,7 +1352,7 @@ export class Reference {
     );
     this.base = base;
     this.referencedName = refName;
-    invariant(!(refName instanceof AbstractValue) || !refName.mightNotBeString());
+    invariant(!(refName instanceof AbstractValue) || !(refName.mightNotBeString() && refName.mightNotBeNumber()));
     this.strict = strict;
     this.thisValue = thisValue;
     invariant(thisValue === undefined || !(base instanceof EnvironmentRecord));
