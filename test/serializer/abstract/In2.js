@@ -1,6 +1,6 @@
 // throws introspection error
 
-var b = global.__abstract ? __abstract("boolean", true) : true;
+var b = global.__abstract ? __abstract("boolean", "true") : true;
 var p = global.__abstract ? __abstract("string", '("abc")') : "abc";
 
 x1 = "xyz" in {};
