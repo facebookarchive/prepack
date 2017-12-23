@@ -12,6 +12,7 @@
 import invariant from "../lib/invariant.js";
 let FatalError = require("../lib/errors.js").FatalError;
 let prepackSources = require("../lib/prepack-node.js").prepackSources;
+import type { PrepackOptions } from "../lib/prepack-options";
 
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
@@ -254,7 +255,7 @@ function verifyFunctionOrderings(code: string): boolean {
   return true;
 }
 
-function runTest(name, code, options, args) {
+function runTest(name, code, options: PrepackOptions, args) {
   console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
@@ -271,7 +272,7 @@ function runTest(name, code, options, args) {
   }
   let compileJSXWithBabel = code.includes("// babel:jsx");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
-  options = Object.assign({}, options, {
+  options = ((Object.assign({}, options, {
     compatibility,
     debugNames: args.debugNames,
     initializeMoreModules,
@@ -280,7 +281,7 @@ function runTest(name, code, options, args) {
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
-  });
+  }): any): PrepackOptions); // Since PrepackOptions is an exact type I have to cast
   if (code.includes("// throws introspection error")) {
     try {
       let realmOptions = {
@@ -424,10 +425,14 @@ function runTest(name, code, options, args) {
         let matchesIssue = false;
         for (let [pattern, count] of copiesToFind) {
           let matches = serialized.code.match(pattern);
-          if ((!matches && count > 0) || matches.length !== count) {
+          if ((!matches && count > 0) || (matches && matches.length !== count)) {
             matchesIssue = true;
             console.error(
-              chalk.red(`Wrong number of occurrances of ${value} got ${matches ? matches.length : 0} instead of ${count}`)
+              chalk.red(
+                `Wrong number of occurrances of ${pattern.toString()} got ${matches
+                  ? matches.length
+                  : 0} instead of ${count}`
+              )
             );
             console.error(newCode);
           }
@@ -552,9 +557,7 @@ function run(args) {
     const isSimpleClosureTest = test.file.includes("// simple closures");
     // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
     const skipLazyObjects =
-      test.file.includes("// skip lazy objects") ||
-      isAdditionalFunctionTest ||
-      test.name.includes("react");
+      test.file.includes("// skip lazy objects") || isAdditionalFunctionTest || test.name.includes("react");
 
     let flagPermutations = [
       [false, false, undefined, isSimpleClosureTest],
@@ -562,8 +565,8 @@ function run(args) {
       [false, false, args.lazyObjectsRuntime, isSimpleClosureTest],
     ];
     if (isAdditionalFunctionTest || isCaptureTest) {
-      flagPermutations.push([false, false, undefined, true])
-      flagPermutations.push([false, true, undefined, true])
+      flagPermutations.push([false, false, undefined, true]);
+      flagPermutations.push([false, true, undefined, true]);
     }
     if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
     for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures] of flagPermutations) {
