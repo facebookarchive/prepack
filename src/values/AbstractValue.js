@@ -567,7 +567,8 @@ export default class AbstractValue extends Value {
     realm: Realm,
     resultType: typeof Value,
     args: Array<Value>,
-    buildFunction: AbstractValueBuildNodeFunction
+    buildFunction: AbstractValueBuildNodeFunction,
+    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
     let values = ValuesDomain.topVal;
@@ -575,7 +576,7 @@ export default class AbstractValue extends Value {
     if (resultType === UndefinedValue) {
       return realm.generator.emitVoidExpression(types, values, args, buildFunction);
     } else {
-      return realm.generator.derive(types, values, args, buildFunction);
+      return realm.generator.derive(types, values, args, buildFunction, optionalArgs);
     }
   }
 

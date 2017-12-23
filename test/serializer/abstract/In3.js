@@ -1,6 +1,6 @@
 // throws introspection error
 
-var b = global.__abstract ? __abstract("boolean", true) : true;
+var b = global.__abstract ? __abstract("boolean", "true") : true;
 var a0 = { "4": 5 };
 var a1 = global.__abstract ? __abstract(a0, "({ '4': 5 })") : a0;
 if (global.__makeSimple) global.__makeSimple(a1);

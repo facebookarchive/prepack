@@ -1,6 +1,6 @@
 // does not contain:===
 (function() {
-  let x = global.__abstract? global.__abstract("boolean", true): true;
+  let x = global.__abstract? global.__abstract("boolean", "true"): true;
   let a = {};
   if (x) {
       a = 100;

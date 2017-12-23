@@ -1,7 +1,7 @@
 // recover-from-errors
 // expected errors: [{"location":{"start":{"line":13,"column":12},"end":{"line":13,"column":14},"identifierName":"a2","source":"test/error-handler/in2.js"},"severity":"RecoverableError","errorCode":"PP0004"}]
 
-var b = global.__abstract ? __abstract("boolean", true) : true;
+var b = global.__abstract ? __abstract("boolean", "true") : true;
 var a0 = { "4": 5 };
 var a1 = global.__makeSimple ? __makeSimple({ '4': 5 }) : a0;
 

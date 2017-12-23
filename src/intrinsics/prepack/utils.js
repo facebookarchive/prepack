@@ -83,29 +83,28 @@ export function createAbstract(
     );
     if (locString !== undefined) break;
   }
-  let nameString = name ? To.ToStringPartial(realm, name) : "";
-  if (nameString === "") {
+  if (!name) {
     let locVal = new StringValue(realm, locString || "(unknown location)");
     let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
     result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
   } else {
-    let kind = "__abstract_" + nameString;
-    if (!realm.isNameStringUnique(nameString)) {
+    let kind = "__abstract_" + name;
+    if (!realm.isNameStringUnique(name)) {
       let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
       realm.handleError(error);
       throw new FatalError();
     } else {
-      realm.saveNameString(nameString);
+      realm.saveNameString(name);
     }
-    result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(nameString), type, [], kind);
-    result.intrinsicName = nameString;
+    result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [], kind);
+    result.intrinsicName = name;
   }
 
   if (template) result.values = new ValuesDomain(new Set([template]));
   if (template && !(template instanceof FunctionValue)) {
     // why exclude functions?
     template.makePartial();
-    if (nameString) realm.rebuildNestedProperties(result, nameString);
+    if (name) realm.rebuildNestedProperties(result, name);
   }
 
   if (additionalValues.length > 0)
