@@ -12,6 +12,7 @@
 import invariant from "../lib/invariant.js";
 let FatalError = require("../lib/errors.js").FatalError;
 let prepackSources = require("../lib/prepack-node.js").prepackSources;
+import type { PrepackOptions } from "../lib/prepack-options";
 
 let Serializer = require("../lib/serializer/index.js").default;
 let construct_realm = require("../lib/construct_realm.js").default;
@@ -254,25 +255,12 @@ function verifyFunctionOrderings(code: string): boolean {
   return true;
 }
 
-function runTest(name, code, options, args) {
+function runTest(name, code, options: PrepackOptions, args) {
   console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
-  let compileJSXWithBabel = code.includes("// babel:jsx");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
-  let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
-  options = Object.assign({}, options, {
-    compatibility,
-    debugNames: args.debugNames,
-    initializeMoreModules,
-    delayUnsupportedRequires,
-    errorHandler: diag => "Fail",
-    internalDebug: true,
-    serialize: true,
-    uniqueSuffix: "",
-  });
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
-  if (code.includes("// simple closures")) options.simpleClosures = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   if (code.includes("// omit invariants")) options.omitInvariants = true;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
@@ -282,6 +270,18 @@ function runTest(name, code, options, args) {
     options.reactEnabled = true;
     options.reactOutput = "jsx";
   }
+  let compileJSXWithBabel = code.includes("// babel:jsx");
+  let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
+  options = ((Object.assign({}, options, {
+    compatibility,
+    debugNames: args.debugNames,
+    initializeMoreModules,
+    delayUnsupportedRequires,
+    errorHandler: diag => "Fail",
+    internalDebug: true,
+    serialize: true,
+    uniqueSuffix: "",
+  }): any): PrepackOptions); // Since PrepackOptions is an exact type I have to cast
   if (code.includes("// throws introspection error")) {
     try {
       let realmOptions = {
@@ -347,32 +347,6 @@ function runTest(name, code, options, args) {
       console.error(err.stack);
     }
     return false;
-  } else if (code.includes("// Copies of ") && !options.simpleClosures) {
-    let marker = "// Copies of ";
-    let searchStart = code.indexOf(marker);
-    let searchEnd = code.indexOf(":", searchStart);
-    let value = code.substring(searchStart + marker.length, searchEnd);
-    let count = parseInt(code.substring(searchEnd + 1, code.indexOf("\n", searchStart)), 10);
-    try {
-      let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
-      if (!serialized) {
-        console.error(chalk.red("Error during serialization!"));
-        return false;
-      }
-      let regex = new RegExp(value, "gi");
-      let matches = serialized.code.match(regex);
-      if (!matches || matches.length !== count) {
-        console.error(
-          chalk.red(`Wrong number of occurrances of ${value} got ${matches ? matches.length : 0} instead of ${count}`)
-        );
-        return false;
-      }
-    } catch (err) {
-      console.error(err);
-      console.error(err.stack);
-      return false;
-    }
-    return true;
   } else {
     let expected, actual;
     let codeIterations = [];
@@ -382,6 +356,19 @@ function runTest(name, code, options, args) {
         let i = code.indexOf(marker);
         let value = code.substring(i + marker.length, code.indexOf("\n", i));
         markersToFind.push({ positive, value, start: i + marker.length });
+      }
+    }
+    let copiesToFind = new Map();
+    const copyMarker = "// Copies of ";
+    if (!options.simpleClosures) {
+      let searchStart = code.indexOf(copyMarker);
+      while (searchStart !== -1) {
+        let searchEnd = code.indexOf(":", searchStart);
+        let value = code.substring(searchStart + copyMarker.length, searchEnd);
+        let newline = code.indexOf("\n", searchStart);
+        let count = parseInt(code.substring(searchEnd + 1, newline), 10);
+        copiesToFind.set(new RegExp(value, "gi"), count);
+        searchStart = code.indexOf(copyMarker, newline);
       }
     }
     let addedCode = "";
@@ -409,12 +396,13 @@ function runTest(name, code, options, args) {
       }
 
       let i = 0;
-      let max = addedCode ? 1 : 4;
+      const singleIterationOnly = addedCode || copiesToFind.size > 0 || args.fast;
+      let max = singleIterationOnly ? 1 : 4;
       let oldCode = code;
       let anyDelayedValues = false;
       for (; i < max; i++) {
         let newUniqueSuffix = `_unique${unique++}`;
-        options.uniqueSuffix = newUniqueSuffix;
+        if (!singleIterationOnly) options.uniqueSuffix = newUniqueSuffix;
         let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
         if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
         if (!serialized) {
@@ -434,7 +422,22 @@ function runTest(name, code, options, args) {
             console.error(newCode);
           }
         }
-        if (markersIssue) break;
+        let matchesIssue = false;
+        for (let [pattern, count] of copiesToFind) {
+          let matches = serialized.code.match(pattern);
+          if ((!matches && count > 0) || (matches && matches.length !== count)) {
+            matchesIssue = true;
+            console.error(
+              chalk.red(
+                `Wrong number of occurrances of ${pattern.toString()} got ${matches
+                  ? matches.length
+                  : 0} instead of ${count}`
+              )
+            );
+            console.error(newCode);
+          }
+        }
+        if (markersIssue || matchesIssue) break;
         let codeToRun = addedCode + newCode;
         if (!execSpec && options.lazyObjectsRuntime !== undefined) {
           codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
@@ -475,6 +478,7 @@ function runTest(name, code, options, args) {
             break;
           }
         }
+        if (singleIterationOnly) return true;
         if (
           oldCode.replace(new RegExp(oldUniqueSuffix, "g"), "") ===
             newCode.replace(new RegExp(newUniqueSuffix, "g"), "") ||
@@ -486,7 +490,6 @@ function runTest(name, code, options, args) {
         oldCode = newCode;
         oldUniqueSuffix = newUniqueSuffix;
       }
-      if (i === 1) return true;
       if (i === max) {
         if (anyDelayedValues) {
           // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
@@ -549,21 +552,23 @@ function run(args) {
     if (args.es5 && test.file.includes("// es6")) continue;
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
+    const isAdditionalFunctionTest = test.name.includes("additional-functions");
+    const isCaptureTest = test.name.includes("Closure") || test.name.includes("Capture");
+    const isSimpleClosureTest = test.file.includes("// simple closures");
     // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
     const skipLazyObjects =
-      test.file.includes("// skip lazy objects") ||
-      test.name.includes("additional-functions") ||
-      test.name.includes("react");
+      test.file.includes("// skip lazy objects") || isAdditionalFunctionTest || test.name.includes("react");
 
-    const fastPermutations = [[false, false, undefined, false]];
-    const fullPermutations = [
-      [false, false, undefined, false],
-      [false, false, undefined, true],
-      [false, true, undefined, true],
-      [true, true, undefined, false],
-      [false, false, args.lazyObjectsRuntime, false],
+    let flagPermutations = [
+      [false, false, undefined, isSimpleClosureTest],
+      [true, true, undefined, isSimpleClosureTest],
+      [false, false, args.lazyObjectsRuntime, isSimpleClosureTest],
     ];
-    const flagPermutations = args.fast ? fastPermutations : fullPermutations;
+    if (isAdditionalFunctionTest || isCaptureTest) {
+      flagPermutations.push([false, false, undefined, true]);
+      flagPermutations.push([false, true, undefined, true]);
+    }
+    if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
     for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures] of flagPermutations) {
       if ((skipLazyObjects || args.noLazySupport) && lazyObjectsRuntime) {
         continue;
