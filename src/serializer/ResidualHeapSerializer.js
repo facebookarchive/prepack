@@ -1510,26 +1510,9 @@ export class ResidualHeapSerializer {
               residualBinding.additionalValueSerialized = this.serializeValue(newVal);
             }
             if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
-            if (this.residualReactElements.lazilyHoistedNodes !== undefined) {
-              let { id, nodes, createElementIdentifier } = this.residualReactElements.lazilyHoistedNodes;
-              // create a function that initializes all the hoisted nodes
-              let func = t.functionExpression(
-                null,
-                // use createElementIdentifier if it's not null
-                createElementIdentifier ? [createElementIdentifier] : [],
-                t.blockStatement(
-                  nodes.map(node => t.expressionStatement(t.assignmentExpression("=", node.id, node.astNode)))
-                )
-              );
-              // push it to the mainBody of the module
-              this.mainBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(id, func)]));
-              // output all the empty variable declarations that will hold the nodes lazily
-              this.mainBody.entries.push(
-                ...nodes.map(node => t.variableDeclaration("var", [t.variableDeclarator(node.id)]))
-              );
-              // reset the lazilyHoistedNodes so other additional functions work
-              this.residualReactElements.lazilyHoistedNodes = undefined;
-            }
+
+            const lazyHoistedReactNodes = this.residualReactElements.serializeLazyHoistedNodes();
+            Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
           };
           this.currentAdditionalFunction = additionalFunctionValue;
           let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);
