@@ -24,6 +24,7 @@ export type PrepackOptions = {|
   debugNames?: boolean,
   delayInitializations?: boolean,
   delayUnsupportedRequires?: boolean,
+  accelerateUnsupportedRequires?: boolean,
   inputSourceMapFilename?: string,
   internalDebug?: boolean,
   debugScopes?: boolean,
@@ -92,6 +93,7 @@ export function getSerializerOptions({
   heapGraphFilePath,
   delayInitializations = false,
   delayUnsupportedRequires = false,
+  accelerateUnsupportedRequires = true,
   internalDebug = false,
   debugScopes = false,
   logStatistics = false,
@@ -105,6 +107,7 @@ export function getSerializerOptions({
   let result: SerializerOptions = {
     delayInitializations,
     delayUnsupportedRequires,
+    accelerateUnsupportedRequires,
     initializeMoreModules,
     internalDebug,
     debugScopes,
