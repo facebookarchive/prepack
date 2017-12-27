@@ -29,14 +29,14 @@ export class ResidualReactElements {
     this.residualHeapSerializer = residualHeapSerializer;
     this.logger = residualHeapSerializer.logger;
     this.reactOutput = realm.react.output || "create-element";
-    this.lazilyHoistedNodes = undefined;
+    this._lazilyHoistedNodes = undefined;
   }
 
   realm: Realm;
   logger: Logger;
   reactOutput: ReactOutputTypes;
   residualHeapSerializer: ResidualHeapSerializer;
-  lazilyHoistedNodes: void | LazilyHoistedNodes;
+  _lazilyHoistedNodes: void | LazilyHoistedNodes;
 
   serializeReactElement(val: ObjectValue): BabelNodeExpression {
     let typeValue = Get(this.realm, val, "type");
@@ -147,13 +147,13 @@ export class ResidualReactElements {
       let createElement = Get(this.realm, reactLibraryObject, "createElement");
       originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
       if (shouldHoist) {
-        // if we haven't created a lazilyHoistedNodes before, then this is the first time
+        // if we haven't created a _lazilyHoistedNodes before, then this is the first time
         // so we only create the hoisted identifier once
-        if (this.lazilyHoistedNodes === undefined) {
+        if (this._lazilyHoistedNodes === undefined) {
           // create a new unique instance
           hoistedCreateElementIdentifier = t.identifier(this.residualHeapSerializer.intrinsicNameGenerator.generate());
         } else {
-          hoistedCreateElementIdentifier = this.lazilyHoistedNodes.createElementIdentifier;
+          hoistedCreateElementIdentifier = this._lazilyHoistedNodes.createElementIdentifier;
         }
       }
 
@@ -172,9 +172,9 @@ export class ResidualReactElements {
     if (shouldHoist) {
       // if the currentHoistedReactElements is not defined, we create it an emit the function call
       // this should only occur once per additional function
-      if (this.lazilyHoistedNodes === undefined) {
+      if (this._lazilyHoistedNodes === undefined) {
         let funcId = t.identifier(this.residualHeapSerializer.functionNameGenerator.generate());
-        this.lazilyHoistedNodes = {
+        this._lazilyHoistedNodes = {
           id: funcId,
           createElementIdentifier: hoistedCreateElementIdentifier,
           nodes: [],
@@ -191,9 +191,9 @@ export class ResidualReactElements {
       }
       // we then push the reactElement and its id into our list of elements to process after
       // the current additional function has serialzied
-      invariant(this.lazilyHoistedNodes !== undefined);
-      invariant(Array.isArray(this.lazilyHoistedNodes.nodes));
-      this.lazilyHoistedNodes.nodes.push({ id, astNode: reactElement });
+      invariant(this._lazilyHoistedNodes !== undefined);
+      invariant(Array.isArray(this._lazilyHoistedNodes.nodes));
+      this._lazilyHoistedNodes.nodes.push({ id, astNode: reactElement });
     } else {
       let declar = t.variableDeclaration("var", [t.variableDeclarator(id, reactElement)]);
       this.residualHeapSerializer.emitter.emit(declar);
@@ -283,5 +283,26 @@ export class ResidualReactElements {
       return expr;
     }
     invariant(false, "Unknown reactOutput specified");
+  }
+
+  serializeLazyHoistedNodes() {
+    const entries = [];
+    if (this._lazilyHoistedNodes !== undefined) {
+      let { id, nodes, createElementIdentifier } = this._lazilyHoistedNodes;
+      // create a function that initializes all the hoisted nodes
+      let func = t.functionExpression(
+        null,
+        // use createElementIdentifier if it's not null
+        createElementIdentifier ? [createElementIdentifier] : [],
+        t.blockStatement(nodes.map(node => t.expressionStatement(t.assignmentExpression("=", node.id, node.astNode))))
+      );
+      // push it to the mainBody of the module
+      entries.push(t.variableDeclaration("var", [t.variableDeclarator(id, func)]));
+      // output all the empty variable declarations that will hold the nodes lazily
+      entries.push(...nodes.map(node => t.variableDeclaration("var", [t.variableDeclarator(node.id)])));
+      // reset the _lazilyHoistedNodes so other additional functions work
+      this._lazilyHoistedNodes = undefined;
+    }
+    return entries;
   }
 }
