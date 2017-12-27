@@ -255,6 +255,10 @@ function verifyFunctionOrderings(code: string): boolean {
   return true;
 }
 
+function unescapleUniqueSuffix(code: string, uniqueSuffix?: string) {
+  return uniqueSuffix != null ? code.replace(new RegExp(uniqueSuffix, "g"), "") : code;
+}
+
 function runTest(name, code, options: PrepackOptions, args) {
   console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
@@ -443,7 +447,7 @@ function runTest(name, code, options: PrepackOptions, args) {
           codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
         }
         if (args.verbose) console.log(codeToRun);
-        codeIterations.push(codeToRun);
+        codeIterations.push(unescapleUniqueSuffix(codeToRun, options.uniqueSuffix));
         if (args.es5) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
@@ -480,8 +484,7 @@ function runTest(name, code, options: PrepackOptions, args) {
         }
         if (singleIterationOnly) return true;
         if (
-          oldCode.replace(new RegExp(oldUniqueSuffix, "g"), "") ===
-            newCode.replace(new RegExp(newUniqueSuffix, "g"), "") ||
+          unescapleUniqueSuffix(oldCode, oldUniqueSuffix) === unescapleUniqueSuffix(newCode, newUniqueSuffix) ||
           delayUnsupportedRequires
         ) {
           // The generated code reached a fixed point!
