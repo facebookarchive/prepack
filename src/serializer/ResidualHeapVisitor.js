@@ -730,11 +730,12 @@ export class ResidualHeapVisitor {
         instance: funcInstance,
       });
       this.visitGenerator(generator);
-      this._withScope(generator, visitPropertiesAndBindings);
+      // All modified properties and bindings should be accessible
+      // from its containing additional function scope.
+      this._withScope(functionValue, visitPropertiesAndBindings);
 
       // Remove any modifications to CreatedObjects -- these are fine being serialized inside the additional function
       this.additionalRoots = new Set([...this.additionalRoots].filter(x => !createdObjects.has(x)));
-
       this.realm.restoreBindings(modifiedBindings);
       this.realm.restoreProperties(modifiedProperties);
       return this.realm.intrinsics.undefined;
@@ -798,9 +799,10 @@ export class ResidualHeapVisitor {
       let scopes = this.values.get(value);
       invariant(scopes);
       scopes = [...scopes];
-      let generators = scopes.filter(x => x instanceof Generator);
-      invariant(generators.length > 0);
-      let commonAncestor = scopes.reduce((x, y) => commonAncestorOf(x, y), generators[0]);
+      invariant(scopes.length > 0);
+      invariant(scopes[0]);
+      const firstGenerator = scopes[0] instanceof Generator ? scopes[0] : scopes[0].getParent();
+      let commonAncestor = scopes.reduce((x, y) => commonAncestorOf(x, y), firstGenerator);
       invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
       commonAncestor.appendRoots([value]);
     }

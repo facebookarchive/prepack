@@ -102,7 +102,9 @@ function canHoistAbstract(realm: Realm, abstract: AbstractValue, residualHeapVis
   // we can safely hoist abstracts that are created in the common scope
   if (scopes !== undefined) {
     for (let scope of scopes) {
-      if (scope === residualHeapVisitor.commonScope) {
+      const currentAdditionalFunction = residualHeapVisitor.commonScope;
+      invariant(currentAdditionalFunction instanceof FunctionValue);
+      if (scope === currentAdditionalFunction.parent) {
         return true;
       }
     }
