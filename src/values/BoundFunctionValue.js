@@ -23,6 +23,11 @@ export default class BoundFunctionValue extends FunctionValue {
   $BoundThis: Value;
   $BoundArguments: Array<Value>;
 
+  // Override.
+  getName(): string {
+    return "Bound";
+  }
+
   hasDefaultLength(): boolean {
     let f = this.$BoundTargetFunction;
     if (!(f instanceof FunctionValue) || !f.hasDefaultLength()) return false;

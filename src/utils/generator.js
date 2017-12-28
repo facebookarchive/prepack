@@ -81,7 +81,7 @@ function serializeBody(generator: Generator, context: SerializationContext): Bab
 }
 
 export class Generator {
-  constructor(realm: Realm) {
+  constructor(realm: Realm, name: void | string) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -90,6 +90,7 @@ export class Generator {
     this.realm = realm;
     this._entries = [];
     this.id = realm.nextGeneratorId++;
+    this._name = name;
   }
 
   realm: Realm;
@@ -97,6 +98,11 @@ export class Generator {
   preludeGenerator: PreludeGenerator;
   parent: void | Generator;
   id: number;
+  _name: void | string;
+
+  getName(): string {
+    return this._name || `#${this.id}`;
+  }
 
   getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
     // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
