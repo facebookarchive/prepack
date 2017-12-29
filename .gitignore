@@ -5,6 +5,7 @@
 npm-debug.log
 .DS_Store
 build/
+tmp_website_build/
 coverage*/
 .vscode
 facebook/test
