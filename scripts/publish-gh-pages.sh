@@ -10,8 +10,8 @@ SRC_DIR="website"
 DEST_BRANCH="gh-pages"
 DEST_DIR="."
 
-TMP_DIR="$PWD/build" # careful, the script will rm -rf this directory
-                     # make sure it's an absolute path
+TMP_DIR="$PWD/tmp_website_build" # careful, the script will rm -rf this directory
+                                 # make sure it's an absolute path
 SRC_CLONE_DIR="$TMP_DIR/master"
 DEST_CLONE_DIR="$TMP_DIR/gh-pages"
 
@@ -30,6 +30,11 @@ print_ok() { print_green "[ OK ]\n"; }
 print_error() { print_red "[ ERROR ]\n"; }
 pushd_quiet() { pushd $1 > /dev/null; }
 popd_quiet() { popd $1 > /dev/null; }
+remove_tmp_dir() {
+  if [ -d $TMP_DIR ]; then
+    rm -rf $TMP_DIR
+  fi
+}
 
 echo ---------------------------------------------------------------------------
 echo "This script will erase the content of the destination branch and replace \
@@ -54,9 +59,7 @@ fi
 
 # Clean build directory to fetch a fresh copy of the branches everytime the
 # script is run. Stateless scripts are easier to debug.
-if [ -d $TMP_DIR ]; then
-  rm -rf $TMP_DIR
-fi
+remove_tmp_dir
 
 print_green "Cloning source branch from remote..."
 git clone --single-branch -b $SRC_BRANCH $ORIGIN_URI $SRC_CLONE_DIR
@@ -106,7 +109,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   popd_quiet
   print_ok
 else
-  print_error
   echo "Operation aborted. Changes have not been pushed to origin/$DEST_BRANCH."
-  echo "Commit can be pushed manually from $DEST_CLONE_DIR."
+  print_error
 fi
+
+print_green "Cleanup! Removing temporary files..."
+remove_tmp_dir
+print_ok
