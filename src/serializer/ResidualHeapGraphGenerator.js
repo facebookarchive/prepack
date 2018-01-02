@@ -14,6 +14,7 @@ import type { Modules } from "./modules.js";
 import type { Realm } from "../realm.js";
 import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
 import type { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers";
+import type { HeapGraphFormat } from "../types";
 
 import invariant from "../invariant.js";
 import {
@@ -114,7 +115,20 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     return val.__originalName ? `${serializedId.name}(${val.__originalName})` : serializedId.name;
   }
 
-  _generateGraphData(nodes: Set<Value>, edges: Array<Edge>): string {
+  _generateDotGraphData(nodes: Set<Value>, edges: Array<Edge>): string {
+    let content = "digraph{\n";
+    for (const val of nodes) {
+      const nodeId = this._getValueId(val);
+      content += `  node${nodeId} [shape=${this._getValueShape(val)} label=${this._getValueLabel(val)}];\n`;
+    }
+    for (const edge of edges) {
+      content += `  node${edge.fromId} -> node${edge.toId};\n`;
+    }
+    content += "}";
+    return content;
+  }
+
+  _generateVisJSGraphData(nodes: Set<Value>, edges: Array<Edge>): string {
     let nodesData = [];
     let edgesData = [];
 
@@ -129,9 +143,9 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
       nodesData.push(nodeData);
     }
 
-    for (let edge of edges) {
+    for (let [index, edge] of edges.entries()) {
       let edgeData = {
-        id: `${edge.fromId}-${edge.toId}`,
+        id: index,
         from: `${edge.fromId}`,
         to: `${edge.toId}`,
         arrows: "to",
@@ -184,7 +198,9 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     return shape;
   }
 
-  generateResult(): string {
-    return this._generateGraphData(this._visitedValues, this._edges);
+  generateResult(heapGraphFormat: HeapGraphFormat): string {
+    return heapGraphFormat === "DotLanguage"
+      ? this._generateDotGraphData(this._visitedValues, this._edges)
+      : this._generateVisJSGraphData(this._visitedValues, this._edges);
   }
 }

@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import type { HeapGraphFormat } from "./types";
 import type { ErrorHandler } from "./errors.js";
 
 export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps" | "node-cli" | "react-mocks";
@@ -47,7 +48,7 @@ export type SerializerOptions = {
   inlineExpressions?: boolean,
   simpleClosures?: boolean,
   trace?: boolean,
-  heapGraph?: boolean,
+  heapGraphFormat?: HeapGraphFormat,
 };
 
 export type PartialEvaluatorOptions = {
