@@ -19,7 +19,7 @@ export type PrepackOptions = {|
   additionalFunctions?: Array<string>,
   abstractEffectsInAdditionalFunctions?: boolean,
   lazyObjectsRuntime?: string,
-  heapGraphFilePath?: string,
+  heapGraphFormat?: "DotLanguage" | "VISJS",
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
@@ -90,7 +90,7 @@ export function getRealmOptions({
 export function getSerializerOptions({
   additionalFunctions,
   lazyObjectsRuntime,
-  heapGraphFilePath,
+  heapGraphFormat,
   delayInitializations = false,
   delayUnsupportedRequires = false,
   accelerateUnsupportedRequires = true,
@@ -117,11 +117,13 @@ export function getSerializerOptions({
     inlineExpressions,
     simpleClosures,
     trace,
-    heapGraph: !!heapGraphFilePath,
   };
   if (additionalFunctions) result.additionalFunctions = additionalFunctions;
   if (lazyObjectsRuntime !== undefined) {
     result.lazyObjectsRuntime = lazyObjectsRuntime;
+  }
+  if (heapGraphFormat !== undefined) {
+    result.heapGraphFormat = heapGraphFormat;
   }
   return result;
 }
