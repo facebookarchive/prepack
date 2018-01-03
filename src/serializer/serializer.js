@@ -37,7 +37,7 @@ export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
     invariant(realm.useAbstractInterpretation);
     // Start tracking mutations
-    realm.generator = new Generator(realm);
+    realm.generator = new Generator(realm, "main");
 
     this.realm = realm;
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
