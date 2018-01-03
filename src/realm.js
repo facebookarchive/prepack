@@ -424,16 +424,22 @@ export class Realm {
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
-  evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, state?: any): Effects {
-    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state);
+  evaluateNodeForEffects(
+    ast: BabelNode,
+    strictCode: boolean,
+    env: LexicalEnvironment,
+    state?: any,
+    generatorName?: string
+  ): Effects {
+    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
   evaluateAndRevertInGlobalEnv(func: () => Value): void {
     this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
   }
 
-  evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any): Effects {
-    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state));
+  evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any, generatorName?: string): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state, generatorName));
   }
 
   partiallyEvaluateNodeForEffects(
@@ -452,13 +458,13 @@ export class Realm {
     return [effects, nodeAst, nodeIO];
   }
 
-  evaluateForEffects(f: () => Completion | Value, state: any): Effects {
+  evaluateForEffects(f: () => Completion | Value, state: any, generatorName: void | string): Effects {
     // Save old state and set up empty state for ast
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
     let saved_completion = this.savedCompletion;
-    this.generator = new Generator(this);
+    this.generator = new Generator(this, generatorName);
     this.createdObjects = new Set();
     this.savedCompletion = undefined; // while in this call, we only explore the normal path.
 

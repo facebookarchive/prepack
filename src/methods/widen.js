@@ -86,7 +86,7 @@ export class WidenImplementation {
     let bindings = this.widenBindings(realm, bindings1, bindings2);
     let properties = this.widenPropertyBindings(realm, properties1, properties2, createdObj1, createdObj2);
     let createdObjects = new Set(); // Top, since the empty set knows nothing. There is no other choice for widen.
-    let generator = new Generator(realm); // code subject to widening will be generated somewhere else
+    let generator = new Generator(realm, "widen"); // code subject to widening will be generated somewhere else
     return [result, generator, bindings, properties, createdObjects];
   }
 

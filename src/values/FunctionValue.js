@@ -35,6 +35,10 @@ export default class FunctionValue extends ObjectValue {
   // Allows for residual function with inference of parameters
   isUnsafeResidual: void | true;
 
+  getName(): string {
+    throw new Error("Abstract method");
+  }
+
   getKind(): ObjectKind {
     return "Function";
   }

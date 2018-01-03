@@ -158,7 +158,6 @@ export class ResidualHeapSerializer {
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
-    this.functionNames = new Map();
   }
 
   emitter: Emitter;
@@ -206,19 +205,6 @@ export class ResidualHeapSerializer {
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   currentAdditionalFunction: void | FunctionValue;
-  functionNames: Map<FunctionValue, string>;
-
-  _getFunctionName(f: FunctionValue): string {
-    let n = this.functionNames.get(f);
-    if (n === undefined) this.functionNames.set(f, (n = this.functionNameGenerator.generate(f.__originalName || "")));
-    return n;
-  }
-
-  _getScopeName(s: Scope): string {
-    if (s instanceof Generator) return `#${s.id}`;
-    invariant(s instanceof FunctionValue);
-    return this._getFunctionName(s);
-  }
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -628,7 +614,7 @@ export class ResidualHeapSerializer {
           functionValues,
           val
         );
-        return { body, usedOnlyByResidualFunctions: true, description: "initializer" };
+        return { body, usedOnlyByResidualFunctions: true, description: "delay_initializer" };
       }
     }
 
@@ -654,7 +640,7 @@ export class ResidualHeapSerializer {
   _getValueDebugName(val: Value) {
     let name;
     if (val instanceof FunctionValue) {
-      name = this._getFunctionName(val);
+      name = val.getName();
     } else {
       const id = this.residualHeapValueIdentifiers.getIdentifier(val);
       invariant(id);
@@ -726,11 +712,10 @@ export class ResidualHeapSerializer {
         if (this._options.debugScopes) {
           let scopes = this.residualValues.get(val);
           invariant(scopes !== undefined);
-          let comment = `${this._getValueDebugName(val)} referenced from scopes ${Array.from(scopes)
-            .map(s => this._getScopeName(s))
-            .join(",")}`;
+          const scopeList = Array.from(scopes).map(s => `"${s.getName()}"`).join(",");
+          let comment = `${this._getValueDebugName(val)} referenced from scopes [${scopeList}]`;
           if (target.commonAncestor !== undefined)
-            comment = `${comment} with common ancestor ${this._getScopeName(target.commonAncestor)}`;
+            comment = `${comment} with common ancestor: ${target.commonAncestor.getName()}`;
           if (target.description !== undefined) comment = `${comment} => ${target.description} `;
           this.emitter.emit(commentStatement(comment));
         }
@@ -1381,7 +1366,16 @@ export class ResidualHeapSerializer {
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
-    return this.emitter.endEmitting(generator, oldBody).entries;
+    const statements = this.emitter.endEmitting(generator, oldBody).entries;
+    if (this._options.debugScopes) {
+      let comment = `generator "${generator.getName()}"`;
+      if (generator.parent !== undefined) {
+        comment = `${comment} with parent "${generator.parent.getName()}"`;
+      }
+      statements.unshift(commentStatement("begin " + comment));
+      statements.push(commentStatement("end " + comment));
+    }
+    return statements;
   }
 
   _getContext(): SerializationContext {
@@ -1391,17 +1385,8 @@ export class ResidualHeapSerializer {
     let context = {
       serializeValue: this.serializeValue.bind(this),
       serializeBinding: this.serializeBinding.bind(this),
-      serializeGenerator: (generator: Generator): Array<BabelNodeStatement> => {
-        let statements = this._withGeneratorScope(generator, () => generator.serialize(context));
-        if (this._options.debugScopes) {
-          let comment = `generator ${this._getScopeName(generator)}`;
-          if (generator.parent !== undefined)
-            comment = `${comment} with parent ${this._getScopeName(generator.parent)}`;
-          statements.unshift(commentStatement("begin " + comment));
-          statements.push(commentStatement("end " + comment));
-        }
-        return statements;
-      },
+      serializeGenerator: (generator: Generator): Array<BabelNodeStatement> =>
+        this._withGeneratorScope(generator, () => generator.serialize(context)),
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },

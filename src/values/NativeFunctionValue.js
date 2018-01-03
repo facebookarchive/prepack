@@ -101,6 +101,11 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
   callback: NativeFunctionCallback;
   length: number;
 
+  // Override.
+  getName(): string {
+    return this.name;
+  }
+
   callCallback(
     context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
     argsList: Array<Value>,
