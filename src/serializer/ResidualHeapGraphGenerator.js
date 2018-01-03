@@ -14,7 +14,6 @@ import type { Modules } from "./modules.js";
 import type { Realm } from "../realm.js";
 import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
 import type { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers";
-import type { HeapGraphFormat } from "../types";
 
 import invariant from "../invariant.js";
 import {
@@ -198,7 +197,7 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     return shape;
   }
 
-  generateResult(heapGraphFormat: HeapGraphFormat): string {
+  generateResult(heapGraphFormat: "DotLanguage" | "VISJS"): string {
     return heapGraphFormat === "DotLanguage"
       ? this._generateDotGraphData(this._visitedValues, this._edges)
       : this._generateVisJSGraphData(this._visitedValues, this._edges);

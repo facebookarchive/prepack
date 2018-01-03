@@ -997,6 +997,3 @@ export type ToType = {
   // ECMA262 7.1.16
   CanonicalNumericIndexString(realm: Realm, argument: StringValue): number | void,
 };
-
-// VIS.JS is used by https://prepack.io REPL to visualize the graph.
-export type HeapGraphFormat = "DotLanguage" | "VISJS";

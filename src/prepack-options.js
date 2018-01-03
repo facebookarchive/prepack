@@ -9,7 +9,6 @@
 
 /* @flow */
 
-import type { HeapGraphFormat } from "./types";
 import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions, ReactOutputTypes } from "./options";
 import { Realm } from "./realm.js";
@@ -20,7 +19,7 @@ export type PrepackOptions = {|
   additionalFunctions?: Array<string>,
   abstractEffectsInAdditionalFunctions?: boolean,
   lazyObjectsRuntime?: string,
-  heapGraphFormat?: HeapGraphFormat,
+  heapGraphFormat?: "DotLanguage" | "VISJS",
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
