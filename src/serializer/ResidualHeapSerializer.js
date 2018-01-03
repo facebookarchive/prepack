@@ -206,12 +206,6 @@ export class ResidualHeapSerializer {
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   currentAdditionalFunction: void | FunctionValue;
 
-  _getScopeName(s: Scope): string {
-    if (s instanceof Generator) return s.getName();
-    invariant(s instanceof FunctionValue);
-    return s.getName();
-  }
-
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
   // For every created object that corresponds to a value,
@@ -718,10 +712,10 @@ export class ResidualHeapSerializer {
         if (this._options.debugScopes) {
           let scopes = this.residualValues.get(val);
           invariant(scopes !== undefined);
-          const scopeList = Array.from(scopes).map(s => `"${this._getScopeName(s)}"`).join(",");
+          const scopeList = Array.from(scopes).map(s => `"${s.getName()}"`).join(",");
           let comment = `${this._getValueDebugName(val)} referenced from scopes [${scopeList}]`;
           if (target.commonAncestor !== undefined)
-            comment = `${comment} with common ancestor: ${this._getScopeName(target.commonAncestor)}`;
+            comment = `${comment} with common ancestor: ${target.commonAncestor.getName()}`;
           if (target.description !== undefined) comment = `${comment} => ${target.description} `;
           this.emitter.emit(commentStatement(comment));
         }
@@ -1374,9 +1368,9 @@ export class ResidualHeapSerializer {
     this.activeGeneratorBodies.delete(generator);
     const statements = this.emitter.endEmitting(generator, oldBody).entries;
     if (this._options.debugScopes) {
-      let comment = `generator "${this._getScopeName(generator)}"`;
+      let comment = `generator "${generator.getName()}"`;
       if (generator.parent !== undefined) {
-        comment = `${comment} with parent "${this._getScopeName(generator.parent)}"`;
+        comment = `${comment} with parent "${generator.parent.getName()}"`;
       }
       statements.unshift(commentStatement("begin " + comment));
       statements.push(commentStatement("end " + comment));
