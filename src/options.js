@@ -47,7 +47,7 @@ export type SerializerOptions = {
   inlineExpressions?: boolean,
   simpleClosures?: boolean,
   trace?: boolean,
-  heapGraph?: boolean,
+  heapGraphFormat?: "DotLanguage" | "VISJS",
 };
 
 export type PartialEvaluatorOptions = {

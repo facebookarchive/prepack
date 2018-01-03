@@ -201,7 +201,7 @@ function run(
       timeout: timeout,
       additionalFunctions: additionalFunctions,
       lazyObjectsRuntime: lazyObjectsRuntime,
-      heapGraphFilePath: heapGraphFilePath,
+      heapGraphFormat: "DotLanguage",
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
     },

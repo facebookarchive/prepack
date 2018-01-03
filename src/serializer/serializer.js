@@ -143,7 +143,7 @@ export class Serializer {
     );
 
     let heapGraph;
-    if (this.options.heapGraph) {
+    if (this.options.heapGraphFormat) {
       const heapRefCounter = new ResidualHeapRefCounter(
         this.realm,
         this.logger,
@@ -161,7 +161,8 @@ export class Serializer {
         heapRefCounter.getResult()
       );
       heapGraphGenerator.visitRoots();
-      heapGraph = heapGraphGenerator.generateResult();
+      invariant(this.options.heapGraphFormat);
+      heapGraph = heapGraphGenerator.generateResult(this.options.heapGraphFormat);
     }
 
     // Phase 2: Let's serialize the heap and generate code.
