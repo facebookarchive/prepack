@@ -214,6 +214,7 @@ function EvaluateCall(
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
 
   try {
+    realm.currentLocation = ast.loc; // this helps us to detect recursive calls
     return EvaluateDirectCallWithArgList(realm, strictCode, env, ref, func, thisValue, argList, tailCall);
   } catch (err) {
     if (err instanceof Completion) return err;

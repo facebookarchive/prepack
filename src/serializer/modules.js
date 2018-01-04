@@ -170,10 +170,12 @@ export class ModuleTracer extends Tracer {
             do {
               try {
                 effects = realm.evaluateForEffects(() => performCall(), this);
-              } catch (e) {}
+              } catch (e) {
+                e;
+              }
 
               acceleratedModuleIds = [];
-              if (isTopLevelRequire) {
+              if (isTopLevelRequire && effects !== undefined && !(effects[0] instanceof AbruptCompletion)) {
                 // We gathered all effects, but didn't apply them yet.
                 // Let's check if there was any call to `require` in a
                 // evaluate-for-effects context. If so, try to initialize
