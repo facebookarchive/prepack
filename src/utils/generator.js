@@ -16,6 +16,7 @@ import {
   AbstractValue,
   BooleanValue,
   ConcreteValue,
+  ECMAScriptSourceFunctionValue,
   FunctionValue,
   NullValue,
   NumberValue,
@@ -340,13 +341,19 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: string,
+      isPure?: boolean,
+      returnValueOf?: ECMAScriptSourceFunctionValue,
+      skipInvariant?: boolean,
+    |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
+    if (optionalArgs && optionalArgs.returnValueOf) options.returnValueOf = optionalArgs.returnValueOf;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let res = new Constructor(this.realm, types, values, 0, [], id, options);
     this._addEntry({

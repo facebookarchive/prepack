@@ -1,4 +1,4 @@
-// throws introspection error
+// does not contain: typeof
 let n = global.__abstract ? global.__abstract("number", "4") : 4;
 
 function fibonacci(x) {

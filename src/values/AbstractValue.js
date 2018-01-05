@@ -26,6 +26,7 @@ import {
   AbstractObjectValue,
   BooleanValue,
   ConcreteValue,
+  ECMAScriptSourceFunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
@@ -51,7 +52,7 @@ export default class AbstractValue extends Value {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, intrinsicName?: string |}
+    optionalArgs?: {| kind?: string, intrinsicName?: string, returnValueOf?: ECMAScriptSourceFunctionValue |}
   ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
@@ -65,6 +66,7 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
+    this.returnValueOf = optionalArgs ? optionalArgs.returnValueOf : undefined;
   }
 
   hashValue: number;
@@ -72,6 +74,9 @@ export default class AbstractValue extends Value {
   types: TypesDomain;
   values: ValuesDomain;
   mightBeEmpty: boolean;
+  // If this value is the result of invoking a recursive function that is still being analyzed, store the function here.
+  // Use it to record optimistic assumptions made of the function's return value, so that they can be enforced later.
+  returnValueOf: void | ECMAScriptSourceFunctionValue;
   args: Array<Value>;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
@@ -385,9 +390,11 @@ export default class AbstractValue extends Value {
     kind?: string
   ): AbstractValue {
     let leftTypes, leftValues;
+    let leftReturnValueOf, rightReturnValueOf;
     if (left instanceof AbstractValue) {
       leftTypes = left.types;
       leftValues = left.values;
+      leftReturnValueOf = left.returnValueOf;
     } else {
       leftTypes = new TypesDomain(left.getType());
       invariant(left instanceof ConcreteValue);
@@ -398,6 +405,7 @@ export default class AbstractValue extends Value {
     if (right instanceof AbstractValue) {
       rightTypes = right.types;
       rightValues = right.values;
+      rightReturnValueOf = right.returnValueOf;
     } else {
       rightTypes = new TypesDomain(right.getType());
       invariant(right instanceof ConcreteValue);
@@ -415,6 +423,7 @@ export default class AbstractValue extends Value {
     );
     result.kind = kind || op;
     result.expressionLocation = loc;
+    result.returnValueOf = leftReturnValueOf || rightReturnValueOf;
     return result;
   }
 
@@ -478,7 +487,10 @@ export default class AbstractValue extends Value {
     result.expressionLocation = loc;
     if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
     if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
-    if (result.mightBeEmpty) return result;
+    if (left instanceof AbstractValue) result.returnValueOf = left.returnValueOf;
+    if (right instanceof AbstractValue && result.returnValueOf === undefined)
+      result.returnValueOf = right.returnValueOf;
+    if (result.mightBeEmpty || result.returnValueOf !== undefined) return result;
     return realm.simplifyAndRefineAbstractValue(result);
   }
 
@@ -551,7 +563,12 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: string,
+      isPure?: boolean,
+      returnValueOf?: ECMAScriptSourceFunctionValue,
+      skipInvariant?: boolean,
+    |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
@@ -568,7 +585,12 @@ export default class AbstractValue extends Value {
     resultType: typeof Value,
     args: Array<Value>,
     buildFunction: AbstractValueBuildNodeFunction,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: string,
+      isPure?: boolean,
+      returnValueOf?: ECMAScriptSourceFunctionValue,
+      skipInvariant?: boolean,
+    |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
     let values = ValuesDomain.topVal;

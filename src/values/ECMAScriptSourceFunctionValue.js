@@ -28,6 +28,7 @@ export default class ECMAScriptSourceFunctionValue extends ECMAScriptFunctionVal
   $HasComputedName: ?boolean;
   $HasEmptyConstructor: ?boolean;
   loc: ?BabelNodeSourceLocation;
+  returnValueShouldBePrimitive: boolean;
 
   // Override.
   getName(): string {
