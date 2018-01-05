@@ -24,7 +24,19 @@ import type { BabelNodeTryStatement } from "babel-types";
 import invariant from "../invariant.js";
 
 export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
-  let blockRes = env.evaluateCompletionDeref(ast.block, strictCode);
+  let wasInPureTryStatement = realm.isInPureTryStatement;
+  if (realm.createdObjectsTrackedForLeaks) {
+    // TODO(1264): This is used to issue a warning if we have abstract function calls in here.
+    // We might not need it once we have full support for handling potential errors. Even
+    // then we might need it to know whether we should bother tracking error handling.
+    realm.isInPureTryStatement = true;
+  }
+  let blockRes;
+  try {
+    blockRes = env.evaluateCompletionDeref(ast.block, strictCode);
+  } finally {
+    realm.isInPureTryStatement = wasInPureTryStatement;
+  }
 
   let handlerRes = blockRes;
   let handler = ast.handler;
