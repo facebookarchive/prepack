@@ -135,14 +135,25 @@ function EvaluateCall(
   }
 
   if (func instanceof AbstractValue) {
+    let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
     if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
-      let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
       let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
       if (realm.handleError(error) === "Fail") throw new FatalError();
     } else if (func.kind === "conditional") {
       return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
     } else {
       // Assume that it is a safe function. TODO #705: really?
+    }
+    if (realm.isInPureTryStatement) {
+      // TODO(1264): We should be able to preserve error handling on abstract throw
+      // but currently we just issue a recoverable error instead.
+      let diag = new CompilerDiagnostic(
+        "Possibly throwing function call inside try/catch",
+        loc,
+        "PP0021",
+        "RecoverableError"
+      );
+      if (realm.handleError(diag) !== "Recover") throw new FatalError();
     }
     return generateRuntimeCall();
   }
