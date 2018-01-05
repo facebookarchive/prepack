@@ -367,11 +367,11 @@ export class WidenImplementation {
     v2: void | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): boolean {
     let e = (v1 && v1[0]) || (v2 && v2[0]);
-    if (e instanceof Value) return this._containsArraysOfValue((v1: any), (v2: any));
+    if (e instanceof Value) return this.containsArraysOfValue((v1: any), (v2: any));
     else return this._containsArrayOfsMapEntries((v1: any), (v2: any));
   }
 
-  _containsArraysOfValue(
+  _containsArrayOfsMapEntries(
     realm: Realm,
     a1: void | Array<{ $Key: void | Value, $Value: void | Value }>,
     a2: void | Array<{ $Key: void | Value, $Value: void | Value }>
@@ -393,13 +393,13 @@ export class WidenImplementation {
     return true;
   }
 
-  _containsArrayOfsMapEntries(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean {
+  containsArraysOfValue(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean {
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     for (let i = 0; i < n; i++) {
       let [val1, val2] = [a1 && a1[i], a2 && a2[i]];
       if (val1 instanceof Value && val2 instanceof Value && !this._containsValues(val1, val2)) return false;
     }
-    return false;
+    return true;
   }
 
   _containsValues(val1: Value, val2: Value) {

@@ -877,6 +877,8 @@ export type WidenType = {
     v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
 
+  containsArraysOfValue(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean,
+
   // If e2 is the result of a loop iteration starting with effects e1 and it has a subset of elements of e1,
   // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
   // summary of the loop, regardless of how many iterations will be performed at runtime.
