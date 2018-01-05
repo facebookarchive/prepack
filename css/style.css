@@ -656,3 +656,8 @@ a.nav-item.is-brand {
 .oss-logo {
   height: 45px;
 }
+
+/* TETHER SELECT */
+.select.select-theme-dark {
+  z-index: 100;
+}
