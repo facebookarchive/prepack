@@ -9,11 +9,13 @@
 
 /* @flow */
 
-import type { ObjectValue } from "../values/index.js";
+import type { ObjectValue, SymbolValue } from "../values/index.js";
 import type { Realm } from "../realm.js";
 
+import type { Descriptor } from "../types.js";
 import invariant from "../invariant.js";
 import { IsArray, IsArrayIndex } from "../methods/index.js";
+import { Logger } from "./logger.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -80,4 +82,32 @@ export function getOrDefault<K, V>(map: Map<K, V>, key: K, defaultFn: () => V): 
   if (value === undefined) map.set(key, (value = defaultFn()));
   invariant(value !== undefined);
   return value;
+}
+
+export function withDescriptorValue(
+  propertyNameOrSymbol: string | SymbolValue,
+  descriptor: void | Descriptor,
+  func: Function
+): void {
+  if (descriptor !== undefined) {
+    if (descriptor.value !== undefined) {
+      func(propertyNameOrSymbol, descriptor.value, "value");
+    } else {
+      if (descriptor.get !== undefined) {
+        func(propertyNameOrSymbol, descriptor.get, "get");
+      }
+      if (descriptor.set !== undefined) {
+        func(propertyNameOrSymbol, descriptor.set, "set");
+      }
+    }
+  }
+}
+
+export const ClassPropertiesToIgnore: Set<string> = new Set(["arguments", "name", "caller"]);
+
+export function canIgnoreClassLengthProperty(val: ObjectValue, desc: Descriptor, logger: Logger) {
+  if (desc.value === undefined) {
+    logger.logError(val, "Functions with length accessor properties are not supported in residual heap.");
+  }
+  return true;
 }

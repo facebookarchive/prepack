@@ -10,31 +10,22 @@ function Child(props) {
   return <span><SubChild title={props.title} /></span>;
 }
 
-// we can't use ES2015 classes in Prepack yet (they don't serialize)
-// so we have to use ES5 instead
-var App = (function (superclass) {
-  function App () {
-		superclass.apply(this, arguments);
-		this.state = {
-			title: "It works!",
-		};
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      title: "It works!",
+    };
   }
-
-  if ( superclass ) {
-    App.__proto__ = superclass;
-  }
-  App.prototype = Object.create( superclass && superclass.prototype );
-  App.prototype.constructor = App;
-  App.prototype.render = function render () {
+  render() {
     return <Child title={this.state.title} />;
-  };
-  App.getTrials = function(renderer, Root) {
-    renderer.update(<Root />);
-    return [['render with class root and props', renderer.toJSON()]];
-  };
+  }
+}
 
-  return App;
-}(React.Component));
+App.getTrials = function(renderer, Root) {
+  renderer.update(<Root />);
+  return [['render with class root and props', renderer.toJSON()]];
+};
 
 if (this.__registerReactComponentRoot) {
   __registerReactComponentRoot(App);

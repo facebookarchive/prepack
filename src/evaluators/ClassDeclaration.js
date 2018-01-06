@@ -150,11 +150,15 @@ export function ClassDefinitionEvaluation(
     // 7. Let proto be ObjectCreate(protoParent).
     let proto = Create.ObjectCreate(realm, protoParent);
 
+    // Provide a hint that this prototype is that of a class
+    proto.$IsClassPrototype = true;
+
     // react. Check the Flow class paramater annotations, stored in "superTypeParameters"
     if (realm.react.enabled && realm.react.flowRequired && ast.superTypeParameters) {
       proto.$SuperTypeParameters = ast.superTypeParameters;
     }
     let constructor;
+    let emptyConstructor = false;
     let ClassBody: Array<BabelNodeClassMethod> = [];
     for (let elem of ast.body.body) {
       if (elem.type === "ClassMethod") {
@@ -163,6 +167,7 @@ export function ClassDefinitionEvaluation(
     }
     // 8. If ClassBody opt is not present, let constructor be empty.
     if (ClassBody.length === 0) {
+      emptyConstructor = true;
       constructor = realm.intrinsics.empty;
     } else {
       // 9. Else, let constructor be ConstructorMethod of ClassBody.
@@ -204,6 +209,9 @@ export function ClassDefinitionEvaluation(
 
       // 14. Let F be constructorInfo.[[closure]]
       F = constructorInfo.$Closure;
+
+      // Assign the empty constructor boolean
+      F.$HasEmptyConstructor = emptyConstructor;
 
       // 15. If ClassHeritage opt is present, set F’s [[ConstructorKind]] internal slot to "derived".
       if (ast.superClass) {

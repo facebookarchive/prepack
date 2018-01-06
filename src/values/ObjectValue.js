@@ -35,7 +35,7 @@ import {
   Value,
 } from "./index.js";
 import { isReactElement } from "../react/utils.js";
-import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
+import { ECMAScriptSourceFunctionValue, type NativeFunctionCallback } from "./index.js";
 import {
   IsDataDescriptor,
   OrdinaryOwnPropertyKeys,
@@ -76,6 +76,7 @@ export default class ObjectValue extends ConcreteValue {
     this.properties = new Map();
     this.symbols = new Map();
     this.refuseSerialization = refuseSerialization;
+    this.$IsClassPrototype = false;
   }
 
   static trackedPropertyNames = [
@@ -262,6 +263,9 @@ export default class ObjectValue extends ConcreteValue {
 
   // ReactElement
   $BailOutReason: void | string;
+
+  // ES2015 classes
+  $IsClassPrototype: boolean;
 
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();
