@@ -47,6 +47,16 @@ import {
 import { Join, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
+import * as t from "babel-types";
+
+function isWidenedValue(v: void | Value) {
+  if (!(v instanceof AbstractValue)) return false;
+  if (v.kind === "widened" || v.kind === "widened property") return true;
+  for (let a of v.args) {
+    if (isWidenedValue(a)) return true;
+  }
+  return false;
+}
 
 export default class ObjectValue extends ConcreteValue {
   constructor(
@@ -545,13 +555,18 @@ export default class ObjectValue extends ConcreteValue {
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     // We assume that simple objects have no getter/setter properties.
-    if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
+    if (this !== Receiver || !this.isSimpleObject() || (P.mightNotBeString() && P.mightNotBeNumber())) {
       AbstractValue.reportIntrospectionError(P, "TODO: #1021");
       throw new FatalError();
     }
     // If all else fails, use this expression
     let result;
     if (this.isPartialObject()) {
+      if (isWidenedValue(P)) {
+        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
+          t.memberExpression(o, p, true)
+        );
+      }
       result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression");
       result.args = [this, P];
     } else {
@@ -590,6 +605,17 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   specializeJoin(absVal: AbstractValue, propName: Value): Value {
+    if (absVal.kind === "widened property") {
+      let ob = absVal.args[0];
+      if (propName instanceof StringValue) {
+        let pName = propName.value;
+        let pNumber = +pName;
+        if (pName === pNumber + "") propName = new NumberValue(this.$Realm, pNumber);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(this.$Realm, absVal.getType(), [ob, propName], ([o, p]) => {
+        return t.memberExpression(o, p, true);
+      });
+    }
     invariant(absVal.args.length === 3 && absVal.kind === "conditional");
     let generic_cond = absVal.args[0];
     invariant(generic_cond instanceof AbstractValue);
@@ -615,6 +641,8 @@ export default class ObjectValue extends ConcreteValue {
 
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
+    let pIsLoopVar = isWidenedValue(P);
+    let pIsNumeric = Value.isTypeCompatibleWith(P.getType(), NumberValue);
 
     function createTemplate(realm: Realm, propName: AbstractValue) {
       return AbstractValue.createFromBinaryOp(
@@ -629,7 +657,7 @@ export default class ObjectValue extends ConcreteValue {
 
     // We assume that simple objects have no getter/setter properties and
     // that all properties are writable.
-    if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
+    if (this !== Receiver || !this.isSimpleObject() || (P.mightNotBeString() && P.mightNotBeNumber())) {
       AbstractValue.reportIntrospectionError(P, "TODO #1021");
       throw new FatalError();
     }
@@ -639,7 +667,7 @@ export default class ObjectValue extends ConcreteValue {
       prop = {
         descriptor: undefined,
         object: this,
-        key: "",
+        key: P,
       };
       this.unknownProperty = prop;
     } else {
@@ -649,7 +677,7 @@ export default class ObjectValue extends ConcreteValue {
     let desc = prop.descriptor;
     if (desc === undefined) {
       let newVal = V;
-      if (!(V instanceof UndefinedValue)) {
+      if (!(V instanceof UndefinedValue) && !isWidenedValue(P)) {
         // join V with undefined, using a property name test as the condition
         let cond = createTemplate(this.$Realm, P);
         newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
@@ -666,15 +694,28 @@ export default class ObjectValue extends ConcreteValue {
       invariant(oldVal instanceof Value);
       let newVal = oldVal;
       if (!(V instanceof UndefinedValue)) {
-        let cond = createTemplate(this.$Realm, P);
-        newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+        if (isWidenedValue(P)) {
+          newVal = V; // It will be widened later on
+        } else {
+          let cond = createTemplate(this.$Realm, P);
+          newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+        }
       }
       desc.value = newVal;
     }
 
     // Since we don't know the name of the property we are writing to, we also need
     // to perform weak updates of all of the known properties.
+    // First clear out this.unknownProperty so that helper routines know its OK to update the properties
+    let savedUnknownProperty = this.unknownProperty;
+    this.unknownProperty = undefined;
     for (let [key, propertyBinding] of this.properties) {
+      if (pIsLoopVar && pIsNumeric) {
+        // Delete numeric properties and don't do weak updates on other properties.
+        if (key !== +key + "") continue;
+        this.properties.delete(key);
+        continue;
+      }
       let oldVal = this.$Realm.intrinsics.empty;
       if (propertyBinding.descriptor && propertyBinding.descriptor.value) {
         oldVal = propertyBinding.descriptor.value;
@@ -684,6 +725,7 @@ export default class ObjectValue extends ConcreteValue {
       let newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
       Properties.OrdinarySet(this.$Realm, this, key, newVal, Receiver);
     }
+    this.unknownProperty = savedUnknownProperty;
 
     return true;
   }

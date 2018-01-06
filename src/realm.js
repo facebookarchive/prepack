@@ -33,6 +33,7 @@ import type { Compatibility, RealmOptions, ReactOutputTypes } from "./options.js
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
+import { emptyExpression, voidExpression } from "./utils/internalizer.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
@@ -132,6 +133,7 @@ export class Realm {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual;
     this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
+    this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
     }
@@ -184,6 +186,7 @@ export class Realm {
     this.globalSymbolRegistry = [];
     this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
+    this.debugNames = opts.debugNames;
   }
 
   start: number;
@@ -191,6 +194,8 @@ export class Realm {
   isStrict: boolean;
   useAbstractInterpretation: boolean;
   trackLeaks: boolean;
+  debugNames: void | boolean;
+  isInPureTryStatement: boolean; // TODO(1264): Remove this once we implement proper exception handling in abstract calls.
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
@@ -421,16 +426,22 @@ export class Realm {
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.
-  evaluateNodeForEffects(ast: BabelNode, strictCode: boolean, env: LexicalEnvironment, state?: any): Effects {
-    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state);
+  evaluateNodeForEffects(
+    ast: BabelNode,
+    strictCode: boolean,
+    env: LexicalEnvironment,
+    state?: any,
+    generatorName?: string
+  ): Effects {
+    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
   evaluateAndRevertInGlobalEnv(func: () => Value): void {
     this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
   }
 
-  evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any): Effects {
-    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state));
+  evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any, generatorName?: string): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state, generatorName));
   }
 
   partiallyEvaluateNodeForEffects(
@@ -449,13 +460,13 @@ export class Realm {
     return [effects, nodeAst, nodeIO];
   }
 
-  evaluateForEffects(f: () => Completion | Value, state: any): Effects {
+  evaluateForEffects(f: () => Completion | Value, state: any, generatorName: void | string): Effects {
     // Save old state and set up empty state for ast
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
     let saved_completion = this.savedCompletion;
-    this.generator = new Generator(this);
+    this.generator = new Generator(this, generatorName);
     this.createdObjects = new Set();
     this.savedCompletion = undefined; // while in this call, we only explore the normal path.
 
@@ -569,8 +580,8 @@ export class Realm {
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
           // Generate code using effects2 because its expressions have not been widened away.
           let [, gen, bindings2, pbindings2] = effects2;
-          this._emitLocalAssignments(gen, bindings2);
           this._emitPropertAssignments(gen, pbindings2);
+          this._emitLocalAssignments(gen, bindings2);
           return [effects1, effects2];
         }
         effects1 = Widen.widenEffects(this, effects1, effects2);
@@ -610,38 +621,72 @@ export class Realm {
 
   // populate the loop body generator with assignments that will update properties modified inside the loop
   _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings) {
+    function isSelfReferential(value: Value, pathNode: void | AbstractValue): boolean {
+      if (value === pathNode) return true;
+      if (value instanceof AbstractValue && pathNode !== undefined) {
+        for (let v of value.args) {
+          if (isSelfReferential(v, pathNode)) return true;
+        }
+      }
+      return false;
+    }
+
     let tvalFor: Map<any, AbstractValue> = new Map();
     pbindings.forEach((val, key, map) => {
       let value = val && val.value;
       if (value instanceof AbstractValue) {
         invariant(value._buildNode !== undefined);
-        let tval = gen.derive(value.types, value.values, [value], ([n]) => n, {
-          skipInvariant: true,
-        });
-        tval.mightBeEmpty = value.mightBeEmpty;
+        let tval = gen.derive(
+          value.types,
+          value.values,
+          [key.object, value],
+          ([o, n]) => {
+            invariant(value instanceof Value);
+            if (typeof key.key === "string" && value.mightHaveBeenDeleted() && isSelfReferential(value, key.pathNode)) {
+              let inTest = t.binaryExpression("in", t.stringLiteral(key.key), o);
+              let addEmpty = t.conditionalExpression(inTest, n, emptyExpression);
+              n = t.logicalExpression("||", n, addEmpty);
+            }
+            return n;
+          },
+          {
+            skipInvariant: true,
+          }
+        );
         tvalFor.set(key, tval);
       }
     });
     pbindings.forEach((val, key, map) => {
       let path = key.pathNode;
       let tval = tvalFor.get(key);
-      invariant(tval !== undefined);
-      let mightBeEmpty = tval.mightBeEmpty;
-      gen.emitStatement([key.object, tval], ([o, v]) => {
-        invariant(path !== undefined);
-        let lh = path.buildNode([o]);
-        let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
-        if (mightBeEmpty) {
-          // If o does not have property key.key and v === undefined, omit the assignment (at runtime)
-          // if (v !== undefined || key.key in o) r
-          invariant(typeof key.key === "string"); // for now
-          let inTest = t.binaryExpression("in", t.stringLiteral(key.key), o);
-          let vDefined = t.binaryExpression("!==", v, t.unaryExpression("void", t.numericLiteral(0)));
-          let guard = t.logicalExpression("||", vDefined, inTest);
-          return t.ifStatement(guard, r);
-        }
-        return r;
-      });
+      invariant(val !== undefined);
+      let value = val.value;
+      invariant(value instanceof Value);
+      let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
+      let mightBeUndefined = value.mightBeUndefined();
+      if (typeof key.key === "string") {
+        gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
+          invariant(path !== undefined);
+          let lh = path.buildNode([o, t.identifier(key.key)]);
+          let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+          if (mightHaveBeenDeleted) {
+            // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
+            let emptyTest = t.binaryExpression("===", v, e);
+            let undefinedTest = t.binaryExpression("===", v, voidExpression);
+            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key.key), o));
+            let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
+            let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
+            return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
+          }
+          return r;
+        });
+      } else {
+        gen.emitStatement([key.object, key.key, tval || value, this.intrinsics.empty], ([o, p, v, e]) => {
+          invariant(path !== undefined);
+          let lh = path.buildNode([o, p]);
+          return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+        });
+      }
     });
   }
 

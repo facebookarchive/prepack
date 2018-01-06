@@ -61,7 +61,8 @@ export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, Serializat
 export type GeneratorEntry = {
   declared?: AbstractValue,
   args: Array<Value>,
-  buildNode: GeneratorBuildNodeFunction,
+  // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
+  buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
 };
@@ -80,7 +81,7 @@ function serializeBody(generator: Generator, context: SerializationContext): Bab
 }
 
 export class Generator {
-  constructor(realm: Realm) {
+  constructor(realm: Realm, name: void | string) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -89,6 +90,7 @@ export class Generator {
     this.realm = realm;
     this._entries = [];
     this.id = realm.nextGeneratorId++;
+    this._name = name;
   }
 
   realm: Realm;
@@ -96,6 +98,11 @@ export class Generator {
   preludeGenerator: PreludeGenerator;
   parent: void | Generator;
   id: number;
+  _name: void | string;
+
+  getName(): string {
+    return this._name || `#${this.id}`;
+  }
 
   getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
     // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
@@ -119,6 +126,13 @@ export class Generator {
 
   empty() {
     return this._entries.length === 0;
+  }
+
+  // Will force the array of Values to be serialized but not emit anything for a buildNode
+  appendRoots(values: Array<Value>) {
+    this._addEntry({
+      args: values,
+    });
   }
 
   emitGlobalDeclaration(key: string, value: Value) {
@@ -395,7 +409,7 @@ export class Generator {
     for (let entry of this._entries) {
       if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
         let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
-        context.emit(entry.buildNode(nodes, context));
+        if (entry.buildNode) context.emit(entry.buildNode(nodes, context));
         if (entry.declared !== undefined) context.declare(entry.declared);
       }
     }

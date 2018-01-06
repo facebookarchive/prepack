@@ -12,13 +12,15 @@
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
-import { AbstractValue, ObjectValue, StringValue, Value } from "./index.js";
+import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value } from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
 import { Join, Widen } from "../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
+import NumberValue from "./NumberValue";
+import * as t from "babel-types";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(
@@ -35,6 +37,8 @@ export default class AbstractObjectValue extends AbstractValue {
       for (let element of this.values.getElements()) invariant(element instanceof ObjectValue);
     }
   }
+
+  cachedIsSimpleObject: void | boolean;
 
   getTemplate(): ObjectValue {
     for (let element of this.values.getElements()) {
@@ -55,6 +59,11 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   isSimpleObject(): boolean {
+    if (this.cachedIsSimpleObject === undefined) this.cachedIsSimpleObject = this._elementsAreSimpleObjects();
+    return this.cachedIsSimpleObject;
+  }
+
+  _elementsAreSimpleObjects(): boolean {
     if (this.values.isTop()) return false;
     let result;
     for (let element of this.values.getElements()) {
@@ -104,14 +113,13 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeSimple(): void {
-    if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this);
-      throw new FatalError();
+    if (!this.values.isTop()) {
+      for (let element of this.values.getElements()) {
+        invariant(element instanceof ObjectValue);
+        element.makeSimple();
+      }
     }
-    for (let element of this.values.getElements()) {
-      invariant(element instanceof ObjectValue);
-      return element.makeSimple();
-    }
+    this.cachedIsSimpleObject = true;
   }
 
   throwIfNotObject(): AbstractObjectValue {
@@ -305,6 +313,22 @@ export default class AbstractObjectValue extends AbstractValue {
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
+      if (this.isSimpleObject() && this.isIntrinsic()) {
+        let type = Value;
+        if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
+        return AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          type,
+          [this],
+          ([o]) => {
+            invariant(typeof P === "string");
+            return t.memberExpression(o, t.identifier(P));
+          },
+          {
+            skipInvariant: true,
+          }
+        );
+      }
       AbstractValue.reportIntrospectionError(this, P);
       throw new FatalError();
     }
@@ -362,6 +386,11 @@ export default class AbstractObjectValue extends AbstractValue {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
+      if (this.isSimpleObject() && this.isIntrinsic()) {
+        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
+          t.memberExpression(o, p, true)
+        );
+      }
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }

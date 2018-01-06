@@ -37,7 +37,7 @@ export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
     invariant(realm.useAbstractInterpretation);
     // Start tracking mutations
-    realm.generator = new Generator(realm);
+    realm.generator = new Generator(realm, "main");
 
     this.realm = realm;
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
@@ -47,7 +47,8 @@ export class Serializer {
       this.logger,
       this.statistics,
       !!serializerOptions.logModules,
-      !!serializerOptions.delayUnsupportedRequires
+      !!serializerOptions.delayUnsupportedRequires,
+      !!serializerOptions.accelerateUnsupportedRequires
     );
     this.functions = new Functions(this.realm, serializerOptions.additionalFunctions, this.modules.moduleTracer);
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));
@@ -142,7 +143,7 @@ export class Serializer {
     );
 
     let heapGraph;
-    if (this.options.heapGraph) {
+    if (this.options.heapGraphFormat) {
       const heapRefCounter = new ResidualHeapRefCounter(
         this.realm,
         this.logger,
@@ -160,7 +161,8 @@ export class Serializer {
         heapRefCounter.getResult()
       );
       heapGraphGenerator.visitRoots();
-      heapGraph = heapGraphGenerator.generateResult();
+      invariant(this.options.heapGraphFormat);
+      heapGraph = heapGraphGenerator.generateResult(this.options.heapGraphFormat);
     }
 
     // Phase 2: Let's serialize the heap and generate code.

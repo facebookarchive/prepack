@@ -25,7 +25,7 @@ exec("flow check --profile", function(error, stdout, stderr) {
       filen
   ... more flow output after unindented line
   */
-  let start = stderr.indexOf("cycle detected among the following files");
+  let start = stderr.indexOf("cycle detected among the following nodes");
   let lines = stderr.substr(start).split("\n").splice(1);
   let found_ecma = false;
   let found_realm = false;

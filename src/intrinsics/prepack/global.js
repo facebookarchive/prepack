@@ -14,12 +14,13 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BooleanValue,
+  ConcreteValue,
+  ECMAScriptSourceFunctionValue,
   FunctionValue,
   NativeFunctionValue,
-  ConcreteValue,
   ObjectValue,
+  StringValue,
   Value,
-  ECMAScriptSourceFunctionValue,
 } from "../../values/index.js";
 import { To } from "../../singletons.js";
 import { ValuesDomain } from "../../domains/index.js";
@@ -29,10 +30,13 @@ import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
-  return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) =>
-    // this line really confuses Flow
-    createAbstract(realm, typeNameOrTemplate, ((name: any): string | void), ...additionalValues)
-  );
+  return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
+    if (name instanceof StringValue) name = name.value;
+    if (name !== undefined && typeof name !== "string") {
+      throw new TypeError("intrinsic name argument is not a string");
+    }
+    return createAbstract(realm, typeNameOrTemplate, name, ...additionalValues);
+  });
 }
 
 export default function(realm: Realm): void {

@@ -1,7 +1,7 @@
 // recover-from-errors
 // expected errors: [{"location":{"start":{"line":9,"column":16},"end":{"line":9,"column":17},"identifierName":"b","source":"test/error-handler/in1.js"},"severity":"RecoverableError","errorCode":"PP0003"}, {"location":{"start":{"line":14,"column":12},"end":{"line":14,"column":13},"identifierName":"b","source":"test/error-handler/in1.js"},"severity":"RecoverableError","errorCode":"PP0003"}]
 
-var b = global.__abstract ? __abstract("boolean", true) : true;
+var b = global.__abstract ? __abstract("boolean", "true") : true;
 var p = global.__abstract ? __abstract("string", '("abc")') : "abc";
 
 x1 = "xyz" in {};

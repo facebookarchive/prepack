@@ -26,7 +26,7 @@ import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Generator } from "../utils/generator.js";
-import { AbstractValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
+import { AbstractValue, ArrayValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -86,7 +86,7 @@ export class WidenImplementation {
     let bindings = this.widenBindings(realm, bindings1, bindings2);
     let properties = this.widenPropertyBindings(realm, properties1, properties2, createdObj1, createdObj2);
     let createdObjects = new Set(); // Top, since the empty set knows nothing. There is no other choice for widen.
-    let generator = new Generator(realm); // code subject to widening will be generated somewhere else
+    let generator = new Generator(realm, "widen"); // code subject to widening will be generated somewhere else
     return [result, generator, bindings, properties, createdObjects];
   }
 
@@ -236,12 +236,17 @@ export class WidenImplementation {
 
           // For now, we only handle loop invariant properties
           //i.e. properties where the member expresssion does not involve any values written to inside the loop.
-          //todo: handle the case where key is an abstract value.
           let key = b.key;
-          if (typeof key === "string") {
-            pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
-              t.memberExpression(o, t.identifier(key))
-            );
+          if (typeof key === "string" || !(key.mightNotBeString() && key.mightNotBeNumber())) {
+            if (typeof key === "string") {
+              pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
+                t.memberExpression(o, t.identifier(key))
+              );
+            } else {
+              pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object, key], ([o, p]) => {
+                return t.memberExpression(o, p, true);
+              });
+            }
             // The value of the property at the start of the loop needs to be written to the property
             // before the loop commences, otherwise the memberExpression will result in an undefined value.
             let generator = realm.generator;
@@ -249,9 +254,17 @@ export class WidenImplementation {
             let initVal = (b.descriptor && b.descriptor.value) || realm.intrinsics.empty;
             if (!(initVal instanceof Value)) throw new FatalError("todo: handle internal properties");
             if (!(initVal instanceof EmptyValue)) {
-              generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) =>
-                t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v)
-              );
+              if (key === "length" && b.object instanceof ArrayValue) {
+                // do nothing, the array length will already be initialized
+              } else if (typeof key === "string") {
+                generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) =>
+                  t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v)
+                );
+              } else {
+                generator.emitVoidExpression(rval.types, rval.values, [b.object, b.key, initVal], ([o, p, v]) =>
+                  t.assignmentExpression("=", t.memberExpression(o, p, true), v)
+                );
+              }
             }
           } else {
             throw new FatalError("todo: handle the case where key is an abstract value");
@@ -311,7 +324,7 @@ export class WidenImplementation {
       if (val1 === undefined) continue; // deleted
       let val2 = m2.get(key1);
       if (val2 === undefined) continue; // A key that disappears has been widened away into the unknown key
-      if (!f(val2, val1)) return false;
+      if (!f(val1, val2)) return false;
     }
     for (const key2 of m2.keys()) {
       if (!m1.has(key2)) return false;
@@ -354,11 +367,11 @@ export class WidenImplementation {
     v2: void | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): boolean {
     let e = (v1 && v1[0]) || (v2 && v2[0]);
-    if (e instanceof Value) return this._containsArraysOfValue((v1: any), (v2: any));
+    if (e instanceof Value) return this.containsArraysOfValue((v1: any), (v2: any));
     else return this._containsArrayOfsMapEntries((v1: any), (v2: any));
   }
 
-  _containsArraysOfValue(
+  _containsArrayOfsMapEntries(
     realm: Realm,
     a1: void | Array<{ $Key: void | Value, $Value: void | Value }>,
     a2: void | Array<{ $Key: void | Value, $Value: void | Value }>
@@ -380,19 +393,19 @@ export class WidenImplementation {
     return true;
   }
 
-  _containsArrayOfsMapEntries(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean {
+  containsArraysOfValue(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean {
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     for (let i = 0; i < n; i++) {
       let [val1, val2] = [a1 && a1[i], a2 && a2[i]];
       if (val1 instanceof Value && val2 instanceof Value && !this._containsValues(val1, val2)) return false;
     }
-    return false;
+    return true;
   }
 
   _containsValues(val1: Value, val2: Value) {
-    if (val1 instanceof AbstractValue && val2 instanceof AbstractValue) {
-      if (val1.getType() !== val2.getType()) return false;
-      return val1.values.contains(val2.values);
+    if (val1 instanceof AbstractValue) {
+      if (!Value.isTypeCompatibleWith(val2.getType(), val1.getType())) return false;
+      return val1.values.containsValue(val2);
     }
     return val1.equals(val2);
   }

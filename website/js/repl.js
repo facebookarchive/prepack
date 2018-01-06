@@ -40,15 +40,28 @@ var optionsConfig = [
   {
     type: "choice",
     name: "compatibility",
-    choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"],
+    choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli", "react-mocks"],
     defaultVal: "browser",
     description: "The target environment for Prepack"
   },
   {
     type: "boolean",
+    name: "omitInvariants",
+    defaultVal: true,
+    description: "Do not add invariant conditionals that throw on possible runtime errors."
+  },
+  {
+    type: "boolean",
     name: "reactEnabled",
-    defaultVal: false,
-    description: "Enables experimental support for React features, such as JSX syntax."
+    defaultVal: true,
+    description: "Enables support for React features, such as JSX syntax."
+  },
+  {
+    type: "choice",
+    name: "reactOutput",
+    choices: ["jsx", "create-element"],
+    defaultVal: "jsx",
+    description: "Specifies the serialization output of JSX nodes when React mode is enabled."
   },
 ];
 

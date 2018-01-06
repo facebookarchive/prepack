@@ -185,7 +185,11 @@ export class Functions {
       // There may also be warnings reported for errors that happen inside imported modules that can be postponed.
 
       let effects = this.realm.evaluatePure(() =>
-        this.realm.evaluateNodeForEffectsInGlobalEnv(call, this.moduleTracer)
+        this.realm.evaluateNodeForEffectsInGlobalEnv(
+          call,
+          this.moduleTracer,
+          `additional function(${funcValue.getName()})`
+        )
       );
       let additionalFunctionEffects = this._createAdditionalEffects(effects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);

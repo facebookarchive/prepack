@@ -12,7 +12,7 @@
 import type { ErrorHandler } from "./errors.js";
 
 export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps" | "node-cli" | "react-mocks";
-export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli"];
+export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli", "react-mocks"];
 export type ReactOutputTypes = "create-element" | "jsx";
 
 export type RealmOptions = {
@@ -37,6 +37,7 @@ export type SerializerOptions = {
   lazyObjectsRuntime?: string,
   delayInitializations?: boolean,
   delayUnsupportedRequires?: boolean,
+  accelerateUnsupportedRequires?: boolean,
   initializeMoreModules?: boolean,
   internalDebug?: boolean,
   debugScopes?: boolean,
@@ -46,7 +47,7 @@ export type SerializerOptions = {
   inlineExpressions?: boolean,
   simpleClosures?: boolean,
   trace?: boolean,
-  heapGraph?: boolean,
+  heapGraphFormat?: "DotLanguage" | "VISJS",
 };
 
 export type PartialEvaluatorOptions = {

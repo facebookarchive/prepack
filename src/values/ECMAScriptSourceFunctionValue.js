@@ -11,8 +11,10 @@
 
 import type { Realm } from "../realm.js";
 import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } from "babel-types";
+import type { FunctionBodyAstNode } from "../types.js";
 import { ECMAScriptFunctionValue } from "./index.js";
 import * as t from "babel-types";
+import invariant from "../invariant";
 
 /* Non built-in ECMAScript function objects with source code */
 export default class ECMAScriptSourceFunctionValue extends ECMAScriptFunctionValue {
@@ -26,6 +28,14 @@ export default class ECMAScriptSourceFunctionValue extends ECMAScriptFunctionVal
   $HasComputedName: ?boolean;
   $HasEmptyConstructor: ?boolean;
   loc: ?BabelNodeSourceLocation;
+
+  // Override.
+  getName(): string {
+    const uniqueTag = ((this.$ECMAScriptCode: any): FunctionBodyAstNode).uniqueOrderedTag;
+    // Should only be called after the function is initialized.
+    invariant(uniqueTag);
+    return this.__originalName ? this.__originalName : `f#${uniqueTag}`;
+  }
 
   hasDefaultLength(): boolean {
     let params = this.$FormalParameters;

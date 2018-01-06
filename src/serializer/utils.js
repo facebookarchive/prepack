@@ -15,6 +15,7 @@ import type { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
 import invariant from "../invariant.js";
 import { IsArray, IsArrayIndex } from "../methods/index.js";
+import { Logger } from "./logger.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -102,4 +103,11 @@ export function withDescriptorValue(
   }
 }
 
-export const ClassProprtiesToIgnore: Set<string> = new Set(["arguments", "name", "caller", "length"]);
+export const ClassPropertiesToIgnore: Set<string> = new Set(["arguments", "name", "caller"]);
+
+export function canIgnoreClassLengthProperty(val: ObjectValue, desc: Descriptor, logger: Logger) {
+  if (desc.value === undefined) {
+    logger.logError(val, "Functions with length accessor properties are not supported in residual heap.");
+  }
+  return true;
+}
