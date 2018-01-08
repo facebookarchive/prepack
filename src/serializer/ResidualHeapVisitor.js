@@ -40,13 +40,21 @@ import type {
   FunctionInfo,
   AdditionalFunctionInfo,
   FunctionInstance,
+  ClassMethodInstance,
   AdditionalFunctionEffects,
 } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "./logger.js";
 import { Modules } from "./modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
-import { commonAncestorOf, getSuggestedArrayLiteralLength, getOrDefault } from "./utils.js";
+import {
+  commonAncestorOf,
+  getSuggestedArrayLiteralLength,
+  getOrDefault,
+  ClassPropertiesToIgnore,
+  withDescriptorValue,
+  canIgnoreClassLengthProperty,
+} from "./utils.js";
 import { Environment, To } from "../singletons.js";
 import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
 import { canHoistReactElement } from "../react/hoisting.js";
@@ -75,6 +83,7 @@ export class ResidualHeapVisitor {
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.globalBindings = new Map();
     this.functionInfos = new Map();
+    this.classMethodInstances = new Map();
     this.functionInstances = new Map();
     this.values = new Map();
     let generator = this.realm.generator;
@@ -112,6 +121,7 @@ export class ResidualHeapVisitor {
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
+  classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   shouldVisitReactLibrary: boolean;
   reactElementEquivalenceSet: ReactElementSet;
 
@@ -159,6 +169,17 @@ export class ResidualHeapVisitor {
       if (
         kind === "ReactElement" &&
         (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner" || propertyBindingKey === "_store")
+      ) {
+        continue;
+      }
+      // we don't want to visit these as we handle the serialization ourselves
+      // via a different logic route for classes
+      if (
+        obj.$FunctionKind === "classConstructor" &&
+        (propertyBindingKey === "arguments" ||
+          propertyBindingKey === "length" ||
+          propertyBindingKey === "name" ||
+          propertyBindingKey === "caller")
       ) {
         continue;
       }
@@ -375,10 +396,24 @@ export class ResidualHeapVisitor {
           let residualBinding = this.visitBinding(val, innerName);
           invariant(residualBinding !== undefined);
           residualFunctionBindings.set(innerName, residualBinding);
-          if (functionInfo.modified.has(innerName)) residualBinding.modified = true;
+          if (functionInfo.modified.has(innerName)) {
+            residualBinding.modified = true;
+          }
         }
       });
     }
+    if (val.$FunctionKind === "classConstructor") {
+      let homeObject = val.$HomeObject;
+      if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
+        this._visitClass(val, homeObject);
+      }
+    }
+    this.functionInstances.set(val, {
+      residualFunctionBindings,
+      initializationStatements: [],
+      functionValue: val,
+      scopeInstances: new Map(),
+    });
   }
 
   // Visits a binding, if createBinding is true, will always return a ResidualFunctionBinding
@@ -433,9 +468,81 @@ export class ResidualHeapVisitor {
         };
       });
     }
-    if (residualFunctionBinding && residualFunctionBinding.value)
+    if (residualFunctionBinding && residualFunctionBinding.value) {
       residualFunctionBinding.value = this.visitEquivalentValue(residualFunctionBinding.value);
+    }
     return residualFunctionBinding;
+  }
+
+  _visitClass(classFunc: ECMAScriptSourceFunctionValue, classPrototype: ObjectValue): void {
+    let visitClassMethod = (propertyNameOrSymbol, methodFunc, methodType, isStatic) => {
+      if (methodFunc instanceof ECMAScriptSourceFunctionValue) {
+        // if the method does not have a $HomeObject, it's not a class method
+        if (methodFunc.$HomeObject !== undefined) {
+          if (methodFunc !== classFunc) {
+            this._visitClassMethod(methodFunc, methodType, classPrototype, !!isStatic);
+          }
+        }
+      }
+    };
+    for (let [propertyName, method] of classPrototype.properties) {
+      withDescriptorValue(propertyName, method.descriptor, visitClassMethod);
+    }
+    for (let [symbol, method] of classPrototype.symbols) {
+      withDescriptorValue(symbol, method.descriptor, visitClassMethod);
+    }
+    if (classPrototype.properties.has("constructor")) {
+      let constructor = classPrototype.properties.get("constructor");
+
+      invariant(constructor !== undefined);
+      // check if the constructor was deleted, as it can't really be deleted
+      // it just gets set to empty (the default again)
+      if (constructor.descriptor === undefined) {
+        classFunc.$HasEmptyConstructor = true;
+      } else {
+        let visitClassProperty = (propertyNameOrSymbol, methodFunc, methodType) => {
+          visitClassMethod(propertyNameOrSymbol, methodFunc, methodType, true);
+        };
+        // check if we have any static methods we need to include
+        let constructorFunc = Get(this.realm, classPrototype, "constructor");
+        invariant(constructorFunc instanceof ObjectValue);
+        for (let [propertyName, method] of constructorFunc.properties) {
+          if (
+            !ClassPropertiesToIgnore.has(propertyName) &&
+            method.descriptor !== undefined &&
+            !(
+              propertyName === "length" && canIgnoreClassLengthProperty(constructorFunc, method.descriptor, this.logger)
+            )
+          ) {
+            withDescriptorValue(propertyName, method.descriptor, visitClassProperty);
+          }
+        }
+      }
+    }
+    this.classMethodInstances.set(classFunc, {
+      classPrototype,
+      methodType: "constructor",
+      classSuperNode: undefined,
+      classMethodIsStatic: false,
+      classMethodKeyNode: undefined,
+      classMethodComputed: false,
+    });
+  }
+
+  _visitClassMethod(
+    methodFunc: ECMAScriptSourceFunctionValue,
+    methodType: "get" | "set" | "value",
+    classPrototype: ObjectValue,
+    isStatic: boolean
+  ): void {
+    this.classMethodInstances.set(methodFunc, {
+      classPrototype,
+      methodType: methodType === "value" ? "method" : methodType,
+      classSuperNode: undefined,
+      classMethodIsStatic: isStatic,
+      classMethodKeyNode: undefined,
+      classMethodComputed: !!methodFunc.$HasComputedName,
+    });
   }
 
   visitValueObject(val: ObjectValue): void {

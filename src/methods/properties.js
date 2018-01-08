@@ -1341,6 +1341,9 @@ export class PropertiesImplementation {
       // 3. Perform SetFunctionName(methodDef.[[closure]], methodDef.[[key]]).
       Functions.SetFunctionName(realm, methodDef.$Closure, methodDef.$Key);
 
+      // If the AST name was computed, give the hint to the closure
+      methodDef.$Closure.$HasComputedName = !!MethodDefinition.computed;
+
       // 4. Let desc be the Property Descriptor{[[Value]]: methodDef.[[closure]], [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
       let desc: Descriptor = { value: methodDef.$Closure, writable: true, enumerable: enumerable, configurable: true };
 
@@ -1419,6 +1422,9 @@ export class PropertiesImplementation {
       // 8. Perform SetFunctionName(closure, propKey, "get").
       Functions.SetFunctionName(realm, closure, propKey, "get");
 
+      // If the AST name was computed, give the hint to the closure
+      closure.$HasComputedName = !!MethodDefinition.computed;
+
       // 9. Let desc be the PropertyDescriptor{[[Get]]: closure, [[Enumerable]]: enumerable, [[Configurable]]: true}.
       let desc = {
         get: closure,
@@ -1456,6 +1462,9 @@ export class PropertiesImplementation {
 
       // 7. Perform SetFunctionName(closure, propKey, "set").
       Functions.SetFunctionName(realm, closure, propKey, "set");
+
+      // If the AST name was computed, give the hint to the closure
+      closure.$HasComputedName = !!MethodDefinition.computed;
 
       // 8. Let desc be the PropertyDescriptor{[[Set]]: closure, [[Enumerable]]: enumerable, [[Configurable]]: true}.
       let desc = {

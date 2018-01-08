@@ -11,7 +11,7 @@
 
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import { FunctionValue, type ECMAScriptSourceFunctionValue } from "../values/index.js";
+import { FunctionValue, type ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
 import type {
@@ -22,6 +22,7 @@ import type {
   BabelNodeLVal,
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
+  BabelNodeClassExpression,
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { NameGenerator } from "../utils/generator.js";
@@ -33,13 +34,13 @@ import { ClosureRefReplacer } from "./visitors.js";
 import { Modules } from "./modules.js";
 import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js";
 import { nullExpression } from "../utils/internalizer.js";
-import type { LocationService } from "./types.js";
+import type { LocationService, ClassMethodInstance } from "./types.js";
 import { Referentializer } from "./Referentializer.js";
 import { getOrDefault } from "./utils.js";
 
 type ResidualFunctionsResult = {
-  unstrictFunctionBodies: Array<BabelNodeFunctionExpression>,
-  strictFunctionBodies: Array<BabelNodeFunctionExpression>,
+  unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
+  strictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
   requireStatistics: { replaced: number, count: number },
 };
 
@@ -58,6 +59,7 @@ export class ResidualFunctions {
     referentializedNameGenerator: NameGenerator,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
+    residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     additionalFunctionValueNestedFunctions: Set<FunctionValue>
   ) {
@@ -71,6 +73,7 @@ export class ResidualFunctions {
     this.functionPrototypes = new Map();
     this.firstFunctionUsages = new Map();
     this.functions = new Map();
+    this.classes = new Map();
     this.functionInstances = [];
     this.residualFunctionInitializers = new ResidualFunctionInitializers(
       locationService,
@@ -79,6 +82,7 @@ export class ResidualFunctions {
     );
     this.residualFunctionInfos = residualFunctionInfos;
     this.residualFunctionInstances = residualFunctionInstances;
+    this.residualClassMethodInstances = residualClassMethodInstances;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
     this.referentializer = new Referentializer(options, scopeNameGenerator, referentializedNameGenerator, statistics);
     for (let instance of residualFunctionInstances.values()) {
@@ -99,10 +103,12 @@ export class ResidualFunctions {
   functionPrototypes: Map<FunctionValue, BabelNodeIdentifier>;
   firstFunctionUsages: Map<FunctionValue, BodyReference>;
   functions: Map<BabelNodeBlockStatement, Array<FunctionInstance>>;
+  classes: Map<ObjectValue, BabelNodeClassExpression>;
   functionInstances: Array<FunctionInstance>;
   residualFunctionInitializers: ResidualFunctionInitializers;
   residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
+  residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   referentializer: Referentializer;
@@ -233,7 +239,7 @@ export class ResidualFunctions {
       );
     }
 
-    let defineFunction = (instance, funcId, funcNode) => {
+    let defineFunction = (instance, funcId, funcOrClassNode) => {
       let { functionValue } = instance;
 
       if (instance.initializationStatements.length > 0) {
@@ -243,15 +249,14 @@ export class ResidualFunctions {
       }
 
       let body;
-      if (t.isFunctionExpression(funcNode)) {
-        funcNodes.set(functionValue, ((funcNode: any): BabelNodeFunctionExpression));
+      if (t.isFunctionExpression(funcOrClassNode)) {
+        funcNodes.set(functionValue, ((funcOrClassNode: any): BabelNodeFunctionExpression));
         body = getPrelude(instance);
       } else {
-        invariant(t.isCallExpression(funcNode)); // .bind call
+        invariant(t.isCallExpression(funcOrClassNode) || t.isClassExpression(funcOrClassNode)); // .bind call
         body = getFunctionBody(instance);
       }
-
-      body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcNode)]));
+      body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcOrClassNode)]));
       let prototypeId = this.functionPrototypes.get(functionValue);
       if (prototypeId !== undefined) {
         let id = this.locationService.getLocation(functionValue);
@@ -313,19 +318,60 @@ export class ResidualFunctions {
       // rewritten functions shouldn't have references fixed up because the body,
       // consists of serialized code. For simplicity we emit their instances in a naive way
       let functionBody = t.blockStatement(rewrittenBody);
+      let funcParams = params.slice();
+      let funcOrClassNode;
 
+      if (this.residualClassMethodInstances.has(funcValue)) {
+        let classMethodInstance = this.residualClassMethodInstances.get(funcValue);
+        invariant(classMethodInstance);
+        let {
+          methodType,
+          classMethodKeyNode,
+          classSuperNode,
+          classMethodComputed,
+          classPrototype,
+          classMethodIsStatic,
+        } = classMethodInstance;
+
+        let isConstructor = methodType === "constructor";
+        invariant(classPrototype instanceof ObjectValue);
+        invariant(classMethodKeyNode && (t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode)));
+        // we use the classPrototype as the key to get the class expression ast node
+        funcOrClassNode = this._getOrCreateClassNode(classPrototype);
+        let classMethod = t.classMethod(
+          methodType,
+          classMethodKeyNode,
+          funcParams,
+          functionBody,
+          classMethodComputed,
+          classMethodIsStatic
+        );
+        // add the class method to the class expression node body
+        if (isConstructor) {
+          funcOrClassNode.body.body.unshift(classMethod);
+        } else {
+          funcOrClassNode.body.body.push(classMethod);
+        }
+        // we only return the funcOrClassNode if this is the constructor
+        if (!isConstructor) {
+          continue;
+        }
+        // handle the class super
+        if (classSuperNode !== undefined) {
+          funcOrClassNode.superClass = classSuperNode;
+        }
+      } else {
+        funcOrClassNode = t.functionExpression(null, funcParams, functionBody);
+      }
       let id = this.locationService.getLocation(funcValue);
       invariant(id !== undefined);
-      let funcParams = params.slice();
-      let funcNode = t.functionExpression(null, funcParams, functionBody);
 
       if (funcValue.$Strict) {
-        strictFunctionBodies.push(funcNode);
+        strictFunctionBodies.push(funcOrClassNode);
       } else {
-        unstrictFunctionBodies.push(funcNode);
+        unstrictFunctionBodies.push(funcOrClassNode);
       }
-
-      defineFunction(instance, id, funcNode);
+      defineFunction(instance, id, funcOrClassNode);
     }
 
     // Process normal functions
@@ -351,40 +397,112 @@ export class ResidualFunctions {
 
         for (let instance of instancesToSplice) {
           let { functionValue, residualFunctionBindings, scopeInstances } = instance;
-          let id = this.locationService.getLocation(functionValue);
-          let funcParams = params.slice();
-          let funcNode = t.functionExpression(
-            null,
-            funcParams,
-            ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-          );
-          let scopeInitialization = [];
-          for (let [scopeName, scope] of scopeInstances) {
-            scopeInitialization.push(
-              t.variableDeclaration("var", [t.variableDeclarator(t.identifier(scopeName), t.numericLiteral(scope.id))])
-            );
-            scopeInitialization = scopeInitialization.concat(
-              this.referentializer.getReferentializedScopeInitialization(scope)
-            );
-          }
-          funcNode.body.body = scopeInitialization.concat(funcNode.body.body);
+          let funcOrClassNode;
 
-          traverse(t.file(t.program([t.expressionStatement(funcNode)])), ClosureRefReplacer, null, {
-            residualFunctionBindings,
-            modified,
-            requireReturns: this.requireReturns,
-            requireStatistics,
-            isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
-            factoryFunctionInfos,
-          });
+          if (this.residualClassMethodInstances.has(functionValue)) {
+            let classMethodInstance = this.residualClassMethodInstances.get(functionValue);
+            invariant(classMethodInstance);
+            let {
+              classSuperNode,
+              classMethodKeyNode,
+              methodType,
+              classMethodComputed,
+              classPrototype,
+              classMethodIsStatic,
+            } = classMethodInstance;
+
+            let isConstructor = methodType === "constructor";
+            invariant(classPrototype instanceof ObjectValue);
+            invariant(classMethodKeyNode);
+            invariant(t.isExpression(classMethodKeyNode) || t.isIdentifier(classMethodKeyNode));
+            // we use the classPrototype as the key to get the class expression ast node
+            funcOrClassNode = this._getOrCreateClassNode(classPrototype);
+            // if we are dealing with a constructor, don't serialize it if the original
+            // had an empty user-land constructor (because we create a constructor behind the scenes for them)
+            let hasEmptyConstructor = !!functionValue.$HasEmptyConstructor;
+            if (!isConstructor || (isConstructor && !hasEmptyConstructor)) {
+              let methodParams = params.slice();
+              let methodBody = ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement);
+              // create the class method AST
+              let classMethod = t.classMethod(
+                methodType,
+                classMethodKeyNode,
+                methodParams,
+                methodBody,
+                classMethodComputed,
+                classMethodIsStatic
+              );
+              // traverse and replace refs in the class method
+              traverse(
+                t.file(
+                  t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])
+                ),
+                ClosureRefReplacer,
+                null,
+                {
+                  residualFunctionBindings,
+                  modified,
+                  requireReturns: this.requireReturns,
+                  requireStatistics,
+                  isRequire: this.modules.getIsRequire(methodParams, [functionValue]),
+                  factoryFunctionInfos,
+                }
+              );
+              // add the class method to the class expression node body
+              if (isConstructor) {
+                funcOrClassNode.body.body.unshift(classMethod);
+              } else {
+                funcOrClassNode.body.body.push(classMethod);
+              }
+            }
+            // we only return the funcOrClassNode if this is the constructor
+            if (!isConstructor) {
+              continue;
+            }
+            // handle the class super
+            if (classSuperNode !== undefined) {
+              funcOrClassNode.superClass = classSuperNode;
+            }
+          } else {
+            let funcParams = params.slice();
+            funcOrClassNode = t.functionExpression(
+              null,
+              funcParams,
+              ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+            );
+            let scopeInitialization = [];
+            for (let [scopeName, scope] of scopeInstances) {
+              scopeInitialization.push(
+                t.variableDeclaration("var", [
+                  t.variableDeclarator(t.identifier(scopeName), t.numericLiteral(scope.id)),
+                ])
+              );
+              scopeInitialization = scopeInitialization.concat(
+                this.referentializer.getReferentializedScopeInitialization(scope)
+              );
+            }
+            funcOrClassNode.body.body = scopeInitialization.concat(funcOrClassNode.body.body);
+
+            traverse(t.file(t.program([t.expressionStatement(funcOrClassNode)])), ClosureRefReplacer, null, {
+              residualFunctionBindings,
+              modified,
+              requireReturns: this.requireReturns,
+              requireStatistics,
+              isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
+              factoryFunctionInfos,
+            });
+          }
+          let id = this.locationService.getLocation(functionValue);
+          invariant(id !== undefined);
 
           if (functionValue.$Strict) {
-            strictFunctionBodies.push(funcNode);
+            strictFunctionBodies.push(funcOrClassNode);
           } else {
-            unstrictFunctionBodies.push(funcNode);
+            unstrictFunctionBodies.push(funcOrClassNode);
           }
-
-          defineFunction(instance, id, funcNode);
+          invariant(id !== undefined);
+          invariant(funcOrClassNode !== undefined);
+          defineFunction(instance, id, funcOrClassNode);
         }
       };
 
@@ -589,5 +707,16 @@ export class ResidualFunctions {
     }
 
     return { unstrictFunctionBodies, strictFunctionBodies, requireStatistics };
+  }
+  _getOrCreateClassNode(classPrototype: ObjectValue): BabelNodeClassExpression {
+    if (!this.classes.has(classPrototype)) {
+      let funcOrClassNode = t.classExpression(null, null, t.classBody([]), []);
+      this.classes.set(classPrototype, funcOrClassNode);
+      return funcOrClassNode;
+    } else {
+      let funcOrClassNode = this.classes.get(classPrototype);
+      invariant(funcOrClassNode && t.isClassExpression(funcOrClassNode));
+      return funcOrClassNode;
+    }
   }
 }
