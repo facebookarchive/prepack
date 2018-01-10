@@ -414,23 +414,6 @@ export class JoinImplementation {
     return new PossiblyNormalCompletion(rv, rJoinCondition, rc, rce, ra, rae, [], []);
   }
 
-  joinAndRemoveNestedReturnCompletions(
-    realm: Realm,
-    c: AbruptCompletion
-  ): AbruptCompletion | PossiblyNormalCompletion | Value {
-    if (c instanceof ReturnCompletion) {
-      return c.value;
-    }
-    if (c instanceof JoinedAbruptCompletions) {
-      let c1 = this.joinAndRemoveNestedReturnCompletions(realm, c.consequent);
-      let c2 = this.joinAndRemoveNestedReturnCompletions(realm, c.alternate);
-      c.consequentEffects[0] = c1;
-      c.alternateEffects[0] = c2;
-      return this.joinResults(realm, c.joinCondition, c1, c2, c.consequentEffects, c.alternateEffects);
-    }
-    return c;
-  }
-
   joinEffectsAndPromoteNestedReturnCompletions(
     realm: Realm,
     c: Completion | Value,
@@ -510,6 +493,10 @@ export class JoinImplementation {
 
   unbundleReturnCompletion(realm: Realm, c: JoinedAbruptCompletions): [Effects, PossiblyNormalCompletion] {
     let empty_effects = construct_empty_effects(realm);
+    // The nested generators are already reachable from the current generator
+    // so there is no need to keep tracking them separately and doing so would cause them to be serialized twice.
+    c.alternateEffects[1] = new Generator(realm);
+    c.consequentEffects[1] = new Generator(realm);
     let v = realm.intrinsics.empty;
     if (c.consequent instanceof ReturnCompletion) {
       let negation = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
