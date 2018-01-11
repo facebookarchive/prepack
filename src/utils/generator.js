@@ -77,6 +77,7 @@ export type VisitEntryCallbacks = {|
 
 function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
   let statements = context.serializeGenerator(generator);
+  if (statements.length === 1 && statements[0].type === "BlockStatement") return (statements[0]: any);
   return t.blockStatement(statements);
 }
 
@@ -409,7 +410,17 @@ export class Generator {
     for (let entry of this._entries) {
       if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
         let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
-        if (entry.buildNode) context.emit(entry.buildNode(nodes, context));
+        if (entry.buildNode) {
+          let node = entry.buildNode(nodes, context);
+          if (node.type === "BlockStatement") {
+            let block: BabelNodeBlockStatement = (node: any);
+            let statements = block.body;
+            if (statements.length === 1) {
+              node = statements[0];
+            }
+          }
+          context.emit(node);
+        }
         if (entry.declared !== undefined) context.declare(entry.declared);
       }
     }
@@ -439,6 +450,12 @@ export class Generator {
       args: [],
       buildNode: function(args, context: SerializationContext) {
         let statements = context.serializeGenerator(other);
+        if (statements.length === 1) {
+          let statement = statements[0];
+          if (leadingComment.length > 0)
+            statement.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
+          return statement;
+        }
         let block = t.blockStatement(statements);
         if (leadingComment.length > 0) block.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
         return block;
@@ -454,6 +471,7 @@ export class Generator {
         let statements = [];
         if (!generator1.empty()) statements.push(serializeBody(generator1, context));
         if (!generator2.empty()) statements.push(serializeBody(generator2, context));
+        if (statements.length === 1) return statements[0];
         return t.blockStatement(statements);
       },
       dependencies: [generator1, generator2],
