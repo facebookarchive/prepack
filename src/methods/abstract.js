@@ -74,6 +74,10 @@ export function RequireObjectCoercible(
   argLoc?: ?BabelNodeSourceLocation
 ): AbstractValue | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue {
   if (arg instanceof AbstractValue && (arg.mightBeNull() || arg.mightBeUndefined())) {
+    if (realm.isInPureScope()) {
+      // In a pure function it is ok to throw if this happens to be null or undefined.
+      return arg;
+    }
     if (argLoc) {
       let error = new CompilerDiagnostic("member expression object is unknown", argLoc, "PP0012", "FatalError");
       realm.handleError(error);

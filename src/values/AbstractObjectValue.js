@@ -9,14 +9,14 @@
 
 /* @flow */
 
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value } from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
-import { Join, Widen } from "../singletons.js";
+import { Join, Widen, Leak } from "../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 import NumberValue from "./NumberValue";
@@ -313,13 +313,29 @@ export default class AbstractObjectValue extends AbstractValue {
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
-      if (this.isSimpleObject() && this.isIntrinsic()) {
+      if ((this.isSimpleObject() && this.isIntrinsic()) || this.$Realm.isInPureScope()) {
+        if (!this.isSimpleObject()) {
+          if (this.$Realm.isInPureTryStatement) {
+            // TODO(1264): We should be able to preserve error handling on abstract throw
+            // but currently we just issue a recoverable error instead.
+            let diag = new CompilerDiagnostic(
+              "Possibly throwing getter inside try/catch",
+              this.$Realm.currentLocation,
+              "PP0021",
+              "RecoverableError"
+            );
+            if (this.$Realm.handleError(diag) !== "Recover") throw new FatalError();
+          }
+          // This object might have leaked to a getter.
+          Leak.leakValue(this.$Realm, this);
+        }
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
+        let object = this.kind === "sentinel ToObject" ? this.args[0] : this;
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
-          [this],
+          [object],
           ([o]) => {
             invariant(typeof P === "string");
             return t.memberExpression(o, t.identifier(P));
