@@ -137,8 +137,13 @@ function EvaluateCall(
   if (func instanceof AbstractValue) {
     let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
     if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
-      let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
-      if (realm.handleError(error) === "Fail") throw new FatalError();
+      if (!realm.isInPureScope()) {
+        // If this is not a function, this call might throw which can change the state of the program.
+        // If this is called from a pure function it is safe, unless in a try/catch which has a
+        // separate error below.
+        let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
+        if (realm.handleError(error) === "Fail") throw new FatalError();
+      }
     } else if (func.kind === "conditional") {
       return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
     } else {
