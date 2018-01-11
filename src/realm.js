@@ -423,6 +423,10 @@ export class Realm {
     }
   }
 
+  isInPureScope() {
+    return !!this.createdObjectsTrackedForLeaks;
+  }
+
   // Evaluate the given ast in a sandbox and return the evaluation results
   // in the form of a completion, a code generator, a map of changed variable
   // bindings and a map of changed property bindings.

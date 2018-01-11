@@ -25,7 +25,7 @@ import invariant from "../invariant.js";
 
 export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   let wasInPureTryStatement = realm.isInPureTryStatement;
-  if (realm.createdObjectsTrackedForLeaks) {
+  if (realm.isInPureScope()) {
     // TODO(1264): This is used to issue a warning if we have abstract function calls in here.
     // We might not need it once we have full support for handling potential errors. Even
     // then we might need it to know whether we should bother tracking error handling.
