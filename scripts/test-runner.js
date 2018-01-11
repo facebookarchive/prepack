@@ -556,11 +556,15 @@ function run(args) {
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
     const isAdditionalFunctionTest = test.name.includes("additional-functions");
+    const isPureFunctionTest = test.name.includes("pure-functions");
     const isCaptureTest = test.name.includes("Closure") || test.name.includes("Capture");
     const isSimpleClosureTest = test.file.includes("// simple closures");
     // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
     const skipLazyObjects =
-      test.file.includes("// skip lazy objects") || isAdditionalFunctionTest || test.name.includes("react");
+      test.file.includes("// skip lazy objects") ||
+      isAdditionalFunctionTest ||
+      isPureFunctionTest ||
+      test.name.includes("react");
 
     let flagPermutations = [
       [false, false, undefined, isSimpleClosureTest],
