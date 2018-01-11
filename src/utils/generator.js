@@ -468,9 +468,9 @@ export class Generator {
     this._addEntry({
       args: [],
       buildNode: function([], context) {
-        let statements = [];
-        if (!generator1.empty()) statements.push(serializeBody(generator1, context));
-        if (!generator2.empty()) statements.push(serializeBody(generator2, context));
+        let statements1 = generator1.empty() ? [] : context.serializeGenerator(generator1);
+        let statements2 = generator2.empty() ? [] : context.serializeGenerator(generator2);
+        let statements = statements1.concat(statements2);
         if (statements.length === 1) return statements[0];
         return t.blockStatement(statements);
       },
