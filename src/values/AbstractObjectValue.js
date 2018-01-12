@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value } from "./index.js";
@@ -313,22 +313,7 @@ export default class AbstractObjectValue extends AbstractValue {
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
-      if ((this.isSimpleObject() && this.isIntrinsic()) || this.$Realm.isInPureScope()) {
-        if (!this.isSimpleObject()) {
-          if (this.$Realm.isInPureTryStatement) {
-            // TODO(1264): We should be able to preserve error handling on abstract throw
-            // but currently we just issue a recoverable error instead.
-            let diag = new CompilerDiagnostic(
-              "Possibly throwing getter inside try/catch",
-              this.$Realm.currentLocation,
-              "PP0021",
-              "RecoverableError"
-            );
-            if (this.$Realm.handleError(diag) !== "Recover") throw new FatalError();
-          }
-          // This object might have leaked to a getter.
-          Leak.leakValue(this.$Realm, this);
-        }
+      let generateAbstractGet = () => {
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
         let object = this.kind === "sentinel ToObject" ? this.args[0] : this;
@@ -343,6 +328,18 @@ export default class AbstractObjectValue extends AbstractValue {
           {
             skipInvariant: true,
           }
+        );
+      };
+      if (this.isSimpleObject() && this.isIntrinsic()) {
+        return generateAbstractGet();
+      } else if (this.$Realm.isInPureScope()) {
+        // This object might have leaked to a getter.
+        Leak.leakValue(this.$Realm, this);
+        // The getter might throw anything.
+        return this.$Realm.evaluateWithPossibleThrowCompletion(
+          generateAbstractGet,
+          TypesDomain.topVal,
+          ValuesDomain.topVal
         );
       }
       AbstractValue.reportIntrospectionError(this, P);
