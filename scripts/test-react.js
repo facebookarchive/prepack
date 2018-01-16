@@ -213,6 +213,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-classes.js");
       });
 
+      it("Simple classes #2", async () => {
+        await runTest(directory, "simple-classes-2.js");
+      });
+
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
       });
