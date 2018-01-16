@@ -367,6 +367,53 @@ export class JoinImplementation {
     }
   }
 
+  joinPossiblyNormalCompletions(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    c: PossiblyNormalCompletion,
+    a: PossiblyNormalCompletion
+  ): PossiblyNormalCompletion {
+    let rJoinCondition: Value;
+    let cp: [Effects, Effects];
+    let ap: [Effects, Effects];
+    if (c.consequent instanceof AbruptCompletion) {
+      if (a.consequent instanceof AbruptCompletion) {
+        rJoinCondition = AbstractValue.createFromLogicalOp(realm, "&&", c.joinCondition, a.joinCondition);
+        cp = [c.consequentEffects, a.consequentEffects];
+        ap = [c.alternateEffects, a.alternateEffects];
+      } else {
+        let notA = AbstractValue.createFromUnaryOp(realm, "!", a.joinCondition);
+        rJoinCondition = AbstractValue.createFromLogicalOp(realm, "&&", c.joinCondition, notA);
+        cp = [c.consequentEffects, a.alternateEffects];
+        ap = [c.alternateEffects, a.consequentEffects];
+      }
+    } else {
+      let notC = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
+      if (a.consequent instanceof AbruptCompletion) {
+        rJoinCondition = AbstractValue.createFromLogicalOp(realm, "&&", notC, a.joinCondition);
+        cp = [c.alternateEffects, a.consequentEffects];
+        ap = [c.consequentEffects, a.alternateEffects];
+      } else {
+        let notA = AbstractValue.createFromUnaryOp(realm, "!", a.joinCondition);
+        rJoinCondition = AbstractValue.createFromLogicalOp(realm, "&&", notC, notA);
+        cp = [c.alternateEffects, a.alternateEffects];
+        ap = [c.consequentEffects, a.consequentEffects];
+      }
+    }
+    invariant(rJoinCondition instanceof AbstractValue); // the transformations will not result in tautologies
+    let [ce1, ce2] = cp;
+    let [ae1, ae2] = ap;
+    let rce = this.joinEffects(realm, joinCondition, ce1, ce2);
+    let rae = this.joinEffects(realm, joinCondition, ae1, ae2);
+    let rc = rce[0];
+    invariant(rc instanceof Value || rc instanceof Completion);
+    let ra = rae[0];
+    invariant(ra instanceof Value || ra instanceof Completion);
+    let rv = ra instanceof PossiblyNormalCompletion ? ra.value : ra;
+    invariant(rv instanceof Value);
+    return new PossiblyNormalCompletion(rv, rJoinCondition, rc, rce, ra, rae, [], []);
+  }
+
   joinAndRemoveNestedReturnCompletions(
     realm: Realm,
     c: AbruptCompletion
@@ -605,7 +652,7 @@ export class JoinImplementation {
       return val;
     }
     if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
-      return this.composePossiblyNormalCompletions(realm, result1, result2);
+      return this.joinPossiblyNormalCompletions(realm, joinCondition, result1, result2);
     }
     if (result1 instanceof AbruptCompletion) {
       let value = result2;
