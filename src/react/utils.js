@@ -21,7 +21,7 @@ import {
   ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
-import { Descriptor } from "../methods/descriptor";
+import type { Descriptor } from "../types";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
