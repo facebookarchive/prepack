@@ -400,7 +400,7 @@ export class ToImplementation {
     invariant(false);
   }
 
-  _WrapAbstractInObject(realm: Realm, arg: AbstractValue): ObjectValue {
+  _WrapAbstractInObject(realm: Realm, arg: AbstractValue): ObjectValue | AbstractObjectValue {
     let obj;
     switch (arg.types.getType()) {
       case NumberValue:
@@ -428,7 +428,16 @@ export class ToImplementation {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
 
       default:
-        obj = arg.throwIfNotConcreteObject();
+        if (realm.isInPureScope()) {
+          // Create a placeholder value to represent the ObjectValue that we would've
+          // received, but this object should never leak so as an optimization we will
+          // let operations on top of this object force the ToObject operations instead.
+          obj = AbstractValue.createFromType(realm, ObjectValue, "sentinel ToObject");
+          invariant(obj instanceof AbstractObjectValue);
+          obj.args = [arg];
+        } else {
+          obj = arg.throwIfNotConcreteObject();
+        }
         break;
     }
     return obj;

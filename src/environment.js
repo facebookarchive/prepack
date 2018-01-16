@@ -53,6 +53,7 @@ import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from
 import { Environment, Leak, Properties, To } from "./singletons.js";
 import * as t from "babel-types";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
+import PrimitiveValue from "./values/PrimitiveValue";
 
 const sourceMap = require("source-map");
 
@@ -1326,9 +1327,18 @@ export class LexicalEnvironment {
 export type BaseValue = void | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue | EnvironmentRecord;
 export type ReferenceName = string | SymbolValue;
 
-export function canBecomeAnObject(base: Value): boolean {
+export function mightBecomeAnObject(base: Value): boolean {
   let type = base.getType();
-  return type === BooleanValue || type === StringValue || type === SymbolValue || type === NumberValue;
+  // The top Value type might be able to become an object. We let it
+  // pass and error later if it can't.
+  return (
+    type === Value ||
+    type === PrimitiveValue ||
+    type === BooleanValue ||
+    type === StringValue ||
+    type === SymbolValue ||
+    type === NumberValue
+  );
 }
 
 export class Reference {
@@ -1348,7 +1358,7 @@ export class Reference {
         base === undefined ||
         base instanceof ObjectValue ||
         base instanceof EnvironmentRecord ||
-        canBecomeAnObject(base)
+        mightBecomeAnObject(base)
     );
     this.base = base;
     this.referencedName = refName;

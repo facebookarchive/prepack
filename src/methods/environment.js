@@ -127,6 +127,11 @@ export class EnvironmentImplementation {
 
     // 5. If IsPropertyReference(V) is true, then
     if (this.IsPropertyReference(realm, V)) {
+      if (base instanceof AbstractValue) {
+        // Ensure that abstract values are coerced to objects. This might yield
+        // an operation that might throw.
+        base = To.ToObjectPartial(realm, base);
+      }
       // a. If HasPrimitiveBase(V) is true, then
       if (this.HasPrimitiveBase(realm, V)) {
         // i. Assert: In this case, base will never be null or undefined.

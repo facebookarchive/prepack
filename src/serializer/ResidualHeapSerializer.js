@@ -1488,7 +1488,10 @@ export class ResidualHeapSerializer {
   }
 
   _serializeAbstractValue(val: AbstractValue): void | BabelNodeExpression {
-    invariant(val.kind !== "sentinel member expression", "invariant established by visitor");
+    invariant(
+      val.kind !== "sentinel member expression" && val.kind !== "sentinel ToObject",
+      "invariant established by visitor"
+    );
     if (val.hasIdentifier()) {
       return this._serializeAbstractValueHelper(val);
     } else {
