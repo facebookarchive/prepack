@@ -80,8 +80,6 @@ export class Functions {
     return calls;
   }
 
-  // __reactComponentRoots
-
   __generateAdditionalFunctions(globalKey: string) {
     let recordedAdditionalFunctions: Map<FunctionValue, string> = new Map();
     let realm = this.realm;
