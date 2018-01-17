@@ -32,6 +32,7 @@ function runTestSuite(outputJsx) {
     inlineExpressions: true,
     simpleClosures: true,
     omitInvariants: true,
+    abstractEffectsInAdditionalFunctions: true,
   };
 
   function compileSourceWithPrepack(source) {
@@ -111,6 +112,14 @@ function runTestSuite(outputJsx) {
 
       it("Simple", async () => {
         await runTest(directory, "simple.js");
+      });
+
+      it("Simple 2", async () => {
+        await runTest(directory, "simple-2.js");
+      });
+
+      it("Simple 3", async () => {
+        await runTest(directory, "simple-3.js");
       });
 
       it("Simple children", async () => {
