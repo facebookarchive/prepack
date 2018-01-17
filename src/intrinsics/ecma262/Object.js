@@ -302,16 +302,17 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 9.1.2.16
-  func.defineNativeMethod("values", 1, (context, [O]) => {
-    // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+    func.defineNativeMethod("values", 1, (context, [O]) => {
+      // 1. Let obj be ? ToObject(O).
+      let obj = To.ToObject(realm, O.throwIfNotConcrete());
 
-    // 2. Let nameList be ? EnumerableOwnProperties(obj, "value").
-    let nameList = EnumerableOwnProperties(realm, obj, "value");
+      // 2. Let nameList be ? EnumerableOwnProperties(obj, "value").
+      let nameList = EnumerableOwnProperties(realm, obj, "value");
 
-    // 3. Return CreateArrayFromList(nameList).
-    return Create.CreateArrayFromList(realm, nameList);
-  });
+      // 3. Return CreateArrayFromList(nameList).
+      return Create.CreateArrayFromList(realm, nameList);
+    });
 
   // ECMA262 19.1.2.17
   func.defineNativeMethod("entries", 1, (context, [O]) => {
