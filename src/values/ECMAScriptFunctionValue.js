@@ -24,6 +24,10 @@ export default class ECMAScriptFunctionValue extends FunctionValue {
   $ThisMode: "lexical" | "strict" | "global";
   $HomeObject: void | ObjectValue;
   $FunctionKind: "normal" | "classConstructor" | "generator";
+  // If a function is called during abstract interpretation in a way that could lead to infinite recursion
+  // then record the call site and actual arguments here when starting the call and use the record to
+  // detect a subsequent recursive call happening at the same source location while the first call is stil active.
+  // Be sure to clean this up when the function call that created it completes.
   activeArguments: void | Map<BabelNodeSourceLocation, [number, Array<Value>]>;
   isSelfRecursive: boolean;
 }

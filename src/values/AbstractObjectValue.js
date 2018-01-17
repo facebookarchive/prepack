@@ -12,7 +12,7 @@
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
-import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value } from "./index.js";
+import { AbstractValue, ArrayValue, ECMAScriptSourceFunctionValue, ObjectValue, StringValue, Value } from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
@@ -30,7 +30,7 @@ export default class AbstractObjectValue extends AbstractValue {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, intrinsicName?: string |}
+    optionalArgs?: {| kind?: string, intrinsicName?: string, returnValueOf?: ECMAScriptSourceFunctionValue |}
   ) {
     super(realm, types, values, hashValue, args, buildNode, optionalArgs);
     if (!values.isTop()) {

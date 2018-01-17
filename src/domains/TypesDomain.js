@@ -87,8 +87,16 @@ export default class TypesDomain {
   static joinValues(v1: void | Value, v2: void | Value): TypesDomain {
     if (v1 === undefined && v2 === undefined) return new TypesDomain(UndefinedValue);
     if (v1 === undefined || v2 === undefined) return TypesDomain.topVal;
-    if (v1 instanceof AbstractValue) return v1.types.joinWith(v2.getType());
-    if (v2 instanceof AbstractValue) return v2.types.joinWith(v1.getType());
+    if (v1 instanceof AbstractValue) {
+      // if one part of a conditional is the result of an abstract recursive call, ignore its (unknown) type
+      if (v1.returnValueOf !== undefined) return new TypesDomain(v2.getType());
+      if (v2 instanceof AbstractValue && v2.returnValueOf !== undefined) return new TypesDomain(v1.getType());
+      return v1.types.joinWith(v2.getType());
+    }
+    if (v2 instanceof AbstractValue) {
+      if (v2.returnValueOf !== undefined) return new TypesDomain(v1.getType());
+      return v2.types.joinWith(v1.getType());
+    }
     return new TypesDomain(v1.getType()).joinWith(v2.getType());
   }
 

@@ -12,18 +12,19 @@
 import type { PropertyKeyValue } from "../types.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
 import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
 import {
-  FunctionValue,
-  ECMAScriptSourceFunctionValue,
-  ObjectValue,
-  NullValue,
-  UndefinedValue,
-  NativeFunctionValue,
   AbstractObjectValue,
   AbstractValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  NativeFunctionValue,
+  NullValue,
+  ObjectValue,
+  PrimitiveValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
@@ -332,15 +333,45 @@ export function OrdinaryCallEvaluateBody(
       try {
         F.isSelfRecursive = false;
         let effects = realm.evaluateForEffects(guardedCall);
+        let c = effects[0];
+        let v = c instanceof ReturnCompletion ? c.value : realm.intrinsics.undefined;
         if (F.isSelfRecursive) {
-          AbstractValue.reportIntrospectionError(F, "call to function that calls itself");
-          throw new FatalError();
           //todo: need to emit a specialized function that temporally captures the heap state at this point
+          let fullArgs = [F].concat(argumentsList);
+          let optionalArgs: any = { skipInvariant: true };
+          if (v instanceof AbstractValue) {
+            if (v.kind !== undefined) optionalArgs.kind = v.kind;
+            if (v.returnValueOf !== undefined) optionalArgs.returnValueOf = v.returnValueOf;
+          }
+          c = AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            v.getType(),
+            fullArgs,
+            nodes => {
+              let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+              return t.callExpression(nodes[0], fun_args);
+            },
+            optionalArgs
+          );
+          realm.applyEffects(effects);
+          return new ReturnCompletion(c);
         } else {
           realm.applyEffects(effects);
-          let c = effects[0];
           return processResult(() => {
             invariant(c instanceof Value || c instanceof AbruptCompletion);
+            if (F.returnValueShouldBePrimitive) {
+              if (!(v instanceof Value) || !Value.isTypeCompatibleWith(v.getType(), PrimitiveValue)) {
+                let loc = realm.currentLocation;
+                let diagnostic = new CompilerDiagnostic(
+                  "Return value should be primitive",
+                  loc,
+                  "PP0022",
+                  "FatalError"
+                );
+                realm.handleError(diagnostic);
+                throw new FatalError();
+              }
+            }
             return c;
           });
         }
@@ -360,7 +391,18 @@ export function OrdinaryCallEvaluateBody(
             if (Widen.containsArraysOfValue(realm, previousArguments, widenedArgumentsList)) {
               // Reached a fixed point. Executing this call will not add any knowledge
               // about the effects of the original call.
-              return AbstractValue.createFromType(realm, Value, "widened return result");
+              let fullArgs = [F].concat(argumentsList);
+              let r = AbstractValue.createTemporalFromBuildFunction(
+                realm,
+                Value,
+                fullArgs,
+                nodes => {
+                  let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+                  return t.callExpression(nodes[0], fun_args);
+                },
+                { returnValueOf: F, skipInvariant: true }
+              );
+              return new ReturnCompletion(r);
             } else {
               argumentsList = widenedArgumentsList;
             }

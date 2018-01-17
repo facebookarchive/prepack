@@ -20,6 +20,7 @@ import {
   NullValue,
   NumberValue,
   ObjectValue,
+  PrimitiveValue,
   StringValue,
   UndefinedValue,
   Value,
@@ -80,12 +81,13 @@ export function getPureBinaryOperationResultType(
         rtype = rval.getType();
         if (ltype === StringValue || rtype === StringValue) return StringValue;
         if (ltype === NumberValue && rtype === NumberValue) return NumberValue;
-        return Value;
+        return PrimitiveValue;
       }
       throw new FatalError();
     }
     if (ltype === StringValue || rtype === StringValue) return StringValue;
-    return NumberValue;
+    if (ltype === NumberValue && rtype === NumberValue) return NumberValue;
+    return PrimitiveValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
     return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "!=" || op === "==") {
