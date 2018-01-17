@@ -720,11 +720,6 @@ export type JoinType = {
     v: Value
   ): void,
 
-  joinAndRemoveNestedReturnCompletions(
-    realm: Realm,
-    c: AbruptCompletion
-  ): AbruptCompletion | PossiblyNormalCompletion | Value,
-
   joinEffectsAndPromoteNestedReturnCompletions(
     realm: Realm,
     c: Completion | Value,
