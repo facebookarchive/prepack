@@ -14,6 +14,7 @@ import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value } from "../values/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
 import { Reference } from "../environment.js";
@@ -139,8 +140,7 @@ function EvaluateCall(
     if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
       if (!realm.isInPureScope()) {
         // If this is not a function, this call might throw which can change the state of the program.
-        // If this is called from a pure function it is safe, unless in a try/catch which has a
-        // separate error below.
+        // If this is called from a pure function we handle it using evaluateWithPossiblyAbruptCompletion.
         let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
         if (realm.handleError(error) === "Fail") throw new FatalError();
       }
@@ -149,16 +149,9 @@ function EvaluateCall(
     } else {
       // Assume that it is a safe function. TODO #705: really?
     }
-    if (realm.isInPureTryStatement) {
-      // TODO(1264): We should be able to preserve error handling on abstract throw
-      // but currently we just issue a recoverable error instead.
-      let diag = new CompilerDiagnostic(
-        "Possibly throwing function call inside try/catch",
-        loc,
-        "PP0021",
-        "RecoverableError"
-      );
-      if (realm.handleError(diag) !== "Recover") throw new FatalError();
+    if (realm.isInPureScope()) {
+      // In pure functions we allow abstract functions to throw, which this might.
+      return realm.evaluateWithPossibleThrowCompletion(generateRuntimeCall, TypesDomain.topVal, ValuesDomain.topVal);
     }
     return generateRuntimeCall();
   }
