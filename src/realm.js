@@ -25,6 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
+import type { TypesDomain, ValuesDomain } from "./domains/index.js";
 import { LexicalEnvironment, Reference, GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, Construct } from "./methods/index.js";
@@ -425,6 +426,33 @@ export class Realm {
 
   isInPureScope() {
     return !!this.createdObjectsTrackedForLeaks;
+  }
+
+  // Evaluate some code that might generate temporal values knowing that it might end in an abrupt
+  // completion. We only need to support ThrowCompletion for now but this can be expanded to support other
+  // abrupt completions.
+  evaluateWithPossibleThrowCompletion(f: () => Value, thrownTypes: TypesDomain, thrownValues: ValuesDomain): Value {
+    // The cases when we need this are only when we might invoke unknown code such as abstract
+    // funtions, getters, custom coercion etc. It is possible we can use this in other cases
+    // where something might throw a built-in error but can never issue arbitrary code such as
+    // calling something that might not be a function. For now we only use it in pure functions.
+    invariant(this.isInPureScope(), "only abstract abrupt completion in pure functions");
+
+    // TODO(1264): We should create a new generator for this scope and wrap it in a try/catch.
+    // We could use the outcome of that as the join condition for a PossiblyNormalCompletion.
+    // We should then compose that with the saved completion and move on to the normal route.
+    // Currently we just issue a recoverable error instead if this might matter.
+    let value = f();
+    if (this.isInPureTryStatement) {
+      let diag = new CompilerDiagnostic(
+        "Possible throw inside try/catch is not yet supported",
+        this.currentLocation,
+        "PP0021",
+        "RecoverableError"
+      );
+      if (this.handleError(diag) !== "Recover") throw new FatalError();
+    }
+    return value;
   }
 
   // Evaluate the given ast in a sandbox and return the evaluation results
