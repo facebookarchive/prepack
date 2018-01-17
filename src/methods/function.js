@@ -14,13 +14,7 @@ import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import {
-  Completion,
-  ReturnCompletion,
-  AbruptCompletion,
-  JoinedAbruptCompletions,
-  NormalCompletion,
-} from "../completions.js";
+import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
@@ -124,9 +118,6 @@ function InternalCall(
   // 9. If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
   if (result instanceof ReturnCompletion) {
     return result.value;
-  }
-  if (result instanceof JoinedAbruptCompletions) {
-    result = Join.joinAndRemoveNestedReturnCompletions(realm, result);
   }
 
   // 10. ReturnIfAbrupt(result).  or if possibly abrupt
