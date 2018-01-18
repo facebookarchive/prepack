@@ -159,6 +159,7 @@ export class JoinImplementation {
     pnc: PossiblyNormalCompletion,
     c: PossiblyNormalCompletion
   ): PossiblyNormalCompletion {
+    invariant(c.savedEffects === undefined); // the caller should ensure this
     //merge the two pathConditions
     let composedPath = [];
     composedPath = pnc.pathConditions.concat(c.pathConditions);
@@ -240,6 +241,7 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         pnc.alternate = v;
+        pnc.alternateEffects[0] = v;
         pnc.alternateEffects = realm.composeEffects(pnc.alternateEffects, subsequentEffects);
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
@@ -248,6 +250,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof Value) {
         pnc.consequent = v;
+        pnc.consequentEffects[0] = v;
         pnc.consequentEffects = realm.composeEffects(pnc.consequentEffects, subsequentEffects);
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
@@ -302,8 +305,9 @@ export class JoinImplementation {
       }
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
       let alternate_effects = this.joinPossiblyNormalCompletionWithAbruptCompletion(realm, pnc.alternate, ac, e);
+      let composedEffects = realm.composeEffects(pnc.alternateEffects, alternate_effects);
       invariant(pnc.consequent instanceof AbruptCompletion);
-      return this.joinEffects(realm, pnc.joinCondition, pnc.consequentEffects, alternate_effects);
+      return this.joinEffects(realm, pnc.joinCondition, pnc.consequentEffects, composedEffects);
     } else {
       invariant(pnc.alternate instanceof AbruptCompletion);
       if (pnc.consequent instanceof Value) {
@@ -316,8 +320,9 @@ export class JoinImplementation {
       }
       invariant(pnc.consequent instanceof PossiblyNormalCompletion);
       let consequent_effects = this.joinPossiblyNormalCompletionWithAbruptCompletion(realm, pnc.consequent, ac, e);
+      let composedEffects = realm.composeEffects(pnc.consequentEffects, consequent_effects);
       invariant(pnc.alternate instanceof AbruptCompletion);
-      return this.joinEffects(realm, pnc.joinCondition, consequent_effects, pnc.alternateEffects);
+      return this.joinEffects(realm, pnc.joinCondition, composedEffects, pnc.alternateEffects);
     }
   }
 
@@ -330,6 +335,7 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         pnc.alternate = this.joinValuesAsConditional(realm, joinCondition, pnc.alternate, v);
+        pnc.alternateEffects[0] = pnc.alternate;
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
         this.joinPossiblyNormalCompletionWithValue(realm, joinCondition, pnc.alternate, v);
@@ -337,6 +343,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof Value) {
         pnc.consequent = this.joinValuesAsConditional(realm, joinCondition, pnc.consequent, v);
+        pnc.consequentEffects[0] = pnc.consequent;
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.joinPossiblyNormalCompletionWithValue(realm, joinCondition, pnc.consequent, v);
@@ -353,6 +360,7 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         pnc.alternate = this.joinValuesAsConditional(realm, joinCondition, v, pnc.alternate);
+        pnc.alternateEffects[0] = pnc.alternate;
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
         this.joinValueWithPossiblyNormalCompletion(realm, joinCondition, pnc.alternate, v);
@@ -360,6 +368,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof Value) {
         pnc.consequent = this.joinValuesAsConditional(realm, joinCondition, v, pnc.consequent);
+        pnc.consequentEffects[0] = pnc.consequent;
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.joinValueWithPossiblyNormalCompletion(realm, joinCondition, pnc.consequent, v);
