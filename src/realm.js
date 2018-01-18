@@ -791,6 +791,16 @@ export class Realm {
       this.savedCompletion = priorCompletion;
       this.captureEffects(priorCompletion);
     } else {
+      invariant(priorCompletion.savedEffects !== undefined);
+      let savedEffects = this.savedCompletion.savedEffects;
+      invariant(savedEffects !== undefined);
+      this.restoreBindings(savedEffects[2]);
+      this.restoreProperties(savedEffects[3]);
+      Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, priorCompletion, savedEffects);
+      this.restoreBindings(savedEffects[2]);
+      this.restoreProperties(savedEffects[3]);
+      invariant(this.savedCompletion !== undefined);
+      this.savedCompletion.savedEffects = undefined;
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, priorCompletion, this.savedCompletion);
     }
   }

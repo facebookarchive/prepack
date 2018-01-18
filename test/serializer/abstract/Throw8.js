@@ -26,7 +26,7 @@ var x = 1;
 try {
   call(fn);
   x = 2;
-  //call(fn);
+  call(fn);
   x = 3;
 } catch (err) {
 }
