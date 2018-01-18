@@ -214,7 +214,7 @@ export class ResidualHeapVisitor {
     let kind = obj.getKind();
     if (proto === this.realm.intrinsics[kind + "Prototype"]) return;
 
-    if (!obj.$IsClassPrototype || (obj.$IsClassPrototype && proto !== this.realm.intrinsics.null)) {
+    if (!obj.$IsClassPrototype || proto !== this.realm.intrinsics.null) {
       this.visitValue(proto);
     }
   }
