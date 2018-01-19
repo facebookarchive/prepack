@@ -132,7 +132,7 @@ export function construct_empty_effects(realm: Realm): Effects {
 export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
-    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual;
+    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
     this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {

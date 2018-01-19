@@ -67,7 +67,7 @@ export class Serializer {
   statistics: SerializerStatistics;
   react: ReactSerializerState;
 
-  _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false) {
+  _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false): { [string]: string } {
     let realm = this.realm;
     let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
@@ -220,6 +220,7 @@ export class Serializer {
     if (this.realm.react.enabled && this.realm.react.flowRequired) {
       stripFlowTypeAnnotations(ast);
     }
+    // the signature for generate is not complete, hence the any
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
     if (timingStats !== undefined) {
       timingStats.serializePassTime = Date.now() - timingStats.serializePassTime;

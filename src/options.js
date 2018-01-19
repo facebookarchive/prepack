@@ -16,6 +16,7 @@ export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-ma
 export type ReactOutputTypes = "create-element" | "jsx";
 
 export type RealmOptions = {
+  check?: boolean,
   compatibility?: Compatibility,
   debugNames?: boolean,
   errorHandler?: ErrorHandler,

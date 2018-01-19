@@ -25,7 +25,10 @@ import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 import invariant from "./invariant.js";
 import { version } from "../package.json";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
-import type { SerializedResult } from "./serializer/types.js";
+import { type SerializedResult, SerializerStatistics } from "./serializer/types.js";
+import { Modules } from "./utils/modules.js";
+import { Logger } from "./utils/logger.js";
+import { Generator } from "./utils/generator.js";
 
 // IMPORTANT: This function is now deprecated and will go away in a future release.
 // Please use FatalError instead.
@@ -51,7 +54,22 @@ export function prepackSources(
     options.additionalGlobals(realm);
   }
 
-  if (options.serialize || !options.residual) {
+  if (options.check) {
+    realm.generator = new Generator(realm, "main");
+    let logger = new Logger(realm, !!options.internalDebug);
+    let modules = new Modules(
+      realm,
+      logger,
+      new SerializerStatistics(),
+      !!options.logModules,
+      !!options.delayUnsupportedRequires,
+      !!options.accelerateUnsupportedRequires
+    );
+    let [result] = realm.$GlobalEnv.executeSources(sources);
+    if (result instanceof AbruptCompletion) throw result;
+    checkResidualFunctions(modules);
+    return { code: "", map: undefined };
+  } else if (options.serialize || !options.residual) {
     let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sources, options.sourceMaps);
 
@@ -74,14 +92,12 @@ export function prepackSources(
     ];
     let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
     if (result instanceof AbruptCompletion) throw result;
-    // $FlowFixMe This looks like a Flow bug
-    return result;
+    return { ...result };
   } else {
     invariant(options.residual);
     let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
     if (result instanceof AbruptCompletion) throw result;
-    // $FlowFixMe This looks like a Flow bug
-    return result;
+    return { ...result };
   }
 }
 
@@ -134,6 +150,12 @@ export function prepackFromAst(
     throw new FatalError("serializer failed");
   }
   return serialized;
+}
+
+function checkResidualFunctions(modules: Modules) {
+  modules.resolveInitializedModules();
+  modules.initializeMoreModules();
+  //todo: find residual functions and execute them for effects
 }
 
 export const prepackVersion = version;
