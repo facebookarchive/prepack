@@ -31,7 +31,7 @@ import invariant from "../invariant.js";
 import type { FunctionInfo, FactoryFunctionInfo, FunctionInstance, AdditionalFunctionInfo } from "./types.js";
 import { BodyReference, AreSameResidualBinding, SerializerStatistics } from "./types.js";
 import { ClosureRefReplacer } from "./visitors.js";
-import { Modules } from "./modules.js";
+import { Modules } from "../utils/modules.js";
 import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js";
 import { nullExpression } from "../utils/internalizer.js";
 import type { LocationService, ClassMethodInstance } from "./types.js";

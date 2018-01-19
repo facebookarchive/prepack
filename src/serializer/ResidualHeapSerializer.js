@@ -55,8 +55,8 @@ import type {
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics, BodyReference } from "./types.js";
-import { Logger } from "./logger.js";
-import { Modules } from "./modules.js";
+import { Logger } from "../utils/logger.js";
+import { Modules } from "../utils/modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
 import type { Scope } from "./ResidualHeapVisitor.js";

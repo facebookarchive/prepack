@@ -15,7 +15,7 @@ import type { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
 import invariant from "../invariant.js";
 import { IsArray, IsArrayIndex } from "../methods/index.js";
-import { Logger } from "./logger.js";
+import { Logger } from "../utils/logger.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
