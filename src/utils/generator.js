@@ -34,6 +34,7 @@ import invariant from "../invariant.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
+  BabelNodeThisExpression,
   BabelNodeStatement,
   BabelNodeMemberExpression,
   BabelNodeVariableDeclaration,
@@ -553,10 +554,18 @@ export class PreludeGenerator {
     );
   }
 
-  convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeMemberExpression {
+  convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeThisExpression | BabelNodeMemberExpression {
     return str
       .split(".")
-      .map(name => (name === "global" ? this.memoizeReference(name) : t.identifier(name)))
+      .map(name => {
+        if (name === "global") {
+          return this.memoizeReference(name);
+        } else if (name === "this") {
+          return t.thisExpression();
+        } else {
+          return t.identifier(name);
+        }
+      })
       .reduce((obj, prop) => t.memberExpression(obj, prop));
   }
 
