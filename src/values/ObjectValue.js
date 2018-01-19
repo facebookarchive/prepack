@@ -35,6 +35,7 @@ import {
   Value,
 } from "./index.js";
 import { isReactElement } from "../react/utils.js";
+import buildExpressionTemplate from "../utils/builder.js";
 import { ECMAScriptSourceFunctionValue, type NativeFunctionCallback } from "./index.js";
 import {
   IsDataDescriptor,
@@ -57,6 +58,9 @@ function isWidenedValue(v: void | Value) {
   }
   return false;
 }
+
+const lengthTemplateSrc = "(A).length";
+const lengthTemplate = buildExpressionTemplate(lengthTemplateSrc);
 
 export default class ObjectValue extends ConcreteValue {
   constructor(
@@ -553,6 +557,10 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
+    if (Receiver instanceof AbstractValue && Receiver.getType() === StringValue && P === "length") {
+      return AbstractValue.createFromTemplate(this.$Realm, lengthTemplate, NumberValue, [Receiver], lengthTemplateSrc);
+    }
+
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     // We assume that simple objects have no getter/setter properties.
     if (this !== Receiver || !this.isSimpleObject() || (P.mightNotBeString() && P.mightNotBeNumber())) {
