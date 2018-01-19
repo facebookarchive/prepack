@@ -39,6 +39,7 @@ import {
   BooleanValue,
   FunctionValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   AbstractObjectValue,
   StringValue,
@@ -1324,7 +1325,15 @@ export class LexicalEnvironment {
 // the referenced name and the Boolean valued strict reference flag. The base value is either undefined, an Object,
 // a Boolean, a String, a Symbol, a Number, or an Environment Record. A base value of undefined indicates that the
 // Reference could not be resolved to a binding. The referenced name is a String or Symbol value.
-export type BaseValue = void | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue | EnvironmentRecord;
+export type BaseValue =
+  | void
+  | ObjectValue
+  | BooleanValue
+  | StringValue
+  | SymbolValue
+  | NumberValue
+  | IntegralValue
+  | EnvironmentRecord;
 export type ReferenceName = string | SymbolValue;
 
 export function mightBecomeAnObject(base: Value): boolean {
@@ -1337,7 +1346,8 @@ export function mightBecomeAnObject(base: Value): boolean {
     type === BooleanValue ||
     type === StringValue ||
     type === SymbolValue ||
-    type === NumberValue
+    type === NumberValue ||
+    type === IntegralValue
   );
 }
 

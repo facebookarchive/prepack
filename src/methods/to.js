@@ -25,6 +25,7 @@ import {
   ConcreteValue,
   NullValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   PrimitiveValue,
   StringValue,
@@ -403,6 +404,7 @@ export class ToImplementation {
   _WrapAbstractInObject(realm: Realm, arg: AbstractValue): ObjectValue | AbstractObjectValue {
     let obj;
     switch (arg.types.getType()) {
+      case IntegralValue:
       case NumberValue:
         obj = new ObjectValue(realm, realm.intrinsics.NumberPrototype);
         obj.$NumberData = arg;

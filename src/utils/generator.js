@@ -19,6 +19,7 @@ import {
   FunctionValue,
   NullValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   StringValue,
   SymbolValue,
@@ -376,6 +377,7 @@ export class Generator {
     else if (type === StringValue) typeofString = "string";
     else if (type === BooleanValue) typeofString = "boolean";
     else if (type === NumberValue) typeofString = "number";
+    else if (type === IntegralValue) typeofString = "number";
     else if (type === SymbolValue) typeofString = "symbol";
     else if (type === ObjectValue) typeofString = "object";
     if (typeofString !== undefined) {

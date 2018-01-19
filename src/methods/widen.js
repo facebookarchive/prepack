@@ -404,7 +404,11 @@ export class WidenImplementation {
 
   _containsValues(val1: Value, val2: Value) {
     if (val1 instanceof AbstractValue) {
-      if (!Value.isTypeCompatibleWith(val2.getType(), val1.getType())) return false;
+      if (
+        !Value.isTypeCompatibleWith(val2.getType(), val1.getType()) &&
+        !Value.isTypeCompatibleWith(val1.getType(), val2.getType())
+      )
+        return false;
       return val1.values.containsValue(val2);
     }
     return val1.equals(val2);

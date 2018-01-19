@@ -12,14 +12,13 @@
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
-import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value } from "./index.js";
+import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value, NumberValue } from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
 import { Join, Widen, Leak } from "../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
-import NumberValue from "./NumberValue";
 import * as t from "babel-types";
 
 export default class AbstractObjectValue extends AbstractValue {
