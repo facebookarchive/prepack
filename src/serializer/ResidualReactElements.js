@@ -17,7 +17,7 @@ import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
 import { ArrayValue, NumberValue, Value, ObjectValue } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
-import { Logger } from "./logger.js";
+import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors";
 import type { ReactOutputTypes } from "../options.js";

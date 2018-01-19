@@ -32,8 +32,8 @@ import type {
 import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
 import { SerializerStatistics } from "./types.js";
-import { Logger } from "./logger.js";
-import { Modules } from "./modules.js";
+import { Logger } from "../utils/logger.js";
+import { Modules } from "../utils/modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";

@@ -26,7 +26,7 @@ import {
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
-import { ModuleTracer } from "./modules.js";
+import { ModuleTracer } from "../utils/modules.js";
 import buildTemplate from "babel-template";
 import { ReactStatistics, type ReactSerializerState } from "./types";
 import { Reconciler } from "../react/reconcilation.js";

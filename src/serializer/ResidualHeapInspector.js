@@ -24,7 +24,7 @@ import {
   UndefinedValue,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { Logger } from "./logger.js";
+import { Logger } from "../utils/logger.js";
 
 export class ResidualHeapInspector {
   constructor(realm: Realm, logger: Logger) {

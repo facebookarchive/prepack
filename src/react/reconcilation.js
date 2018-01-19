@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm, type Effects } from "../realm.js";
-import { ModuleTracer } from "../serializer/modules.js";
+import { ModuleTracer } from "../utils/modules.js";
 import {
   ECMAScriptSourceFunctionValue,
   Value,

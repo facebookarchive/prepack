@@ -44,8 +44,8 @@ import type {
   AdditionalFunctionEffects,
 } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
-import { Logger } from "./logger.js";
-import { Modules } from "./modules.js";
+import { Logger } from "../utils/logger.js";
+import { Modules } from "../utils/modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import {
   commonAncestorOf,

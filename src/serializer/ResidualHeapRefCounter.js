@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import type { Logger } from "./logger.js";
-import type { Modules } from "./modules.js";
+import type { Logger } from "../utils/logger.js";
+import type { Modules } from "../utils/modules.js";
 import type { Realm } from "../realm.js";
 import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
 
