@@ -117,7 +117,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.3
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("copyWithin", 2, (context, [target, start, end]) => {
       // 1. Let O be ? ToObject(this value).
       let O = To.ToObject(realm, context.throwIfNotConcrete());
@@ -478,7 +478,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.11
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("includes", 1, (context, [searchElement, fromIndex]) => {
       // 1. Let O be ? ToObject(this value).
       let O = To.ToObject(realm, context.throwIfNotConcrete());
