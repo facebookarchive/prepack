@@ -21,7 +21,7 @@ import * as t from "babel-types";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
-import { SerializerStatistics } from "./types.js";
+import { SerializerStatistics } from "../serializer/types.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
