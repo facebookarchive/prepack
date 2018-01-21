@@ -55,6 +55,7 @@ function run(
     --trace                  Traces the order of module initialization.
     --serialize              Serializes the partially evaluated global environment as a program that recreates it.
                              (default = true)
+    --check                  Check whole program for diagnostic messages. Do not serialize or produce residual code.
     --residual               Produces the residual program that results after constant folding.
     --profile                Enables console logging of profile information of different phases of prepack.
     --statsFile              The name of the output file where statistics will be written to.
@@ -98,6 +99,7 @@ function run(
     debugScopes: false,
     serialize: false,
     residual: false,
+    check: false,
     profile: false,
     reactEnabled: false,
     reactOutput: "create-element",
@@ -188,6 +190,10 @@ function run(
     }
   }
   if (!flags.serialize && !flags.residual) flags.serialize = true;
+  if (flags.check) {
+    flags.serialize = false;
+    flags.residual = false;
+  }
 
   let resolvedOptions = Object.assign(
     {},

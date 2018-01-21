@@ -26,6 +26,7 @@
     "build": "babel src --out-dir lib --source-maps && yarn build-bundle",
     "build-scripts": "babel scripts --out-dir lib --source-maps",
     "build-bundle": "webpack",
+    "precheck": "node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 lib/prepack-cli.js --accelerateUnsupportedRequires --check --compatibility jsc-600-1-4-17 --delayUnsupportedRequires --mathRandomSeed 0 ",
     "watch": "babel src scripts --out-dir lib --watch --source-maps",
     "lint": "eslint src scripts",
     "flow": "flow check",
