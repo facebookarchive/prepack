@@ -288,9 +288,10 @@ export class ResidualHeapSerializer {
         invariant(proto);
         let serializedProto = this.serializeValue(proto);
         let uid = this.getSerializeObjectIdentifier(obj);
-        const fetchedPrototype = this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION)
-          ? t.memberExpression(uid, protoExpression)
-          : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
+        const fetchedPrototype =
+          this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) || this.realm.isCompatibleWith("mobile")
+            ? t.memberExpression(uid, protoExpression)
+            : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
         let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
         let throwblock = t.blockStatement([
           t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("unexpected prototype")])),
@@ -305,7 +306,7 @@ export class ResidualHeapSerializer {
       invariant(proto);
       let serializedProto = this.serializeValue(proto);
       let uid = this.getSerializeObjectIdentifier(obj);
-      if (!this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION))
+      if (!this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) && !this.realm.isCompatibleWith("mobile"))
         this.emitter.emit(
           t.expressionStatement(
             t.callExpression(this.preludeGenerator.memoizeReference("Object.setPrototypeOf"), [uid, serializedProto])

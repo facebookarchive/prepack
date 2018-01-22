@@ -21,12 +21,13 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
-  global.$DefineOwnProperty("console", {
-    value: initializeConsole(realm),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+  if (!realm.isCompatibleWith("mobile"))
+    global.$DefineOwnProperty("console", {
+      value: initializeConsole(realm),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
 
   global.$DefineOwnProperty("self", {
     value: global,
