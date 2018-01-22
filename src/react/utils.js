@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
+import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeBlockStatement } from "babel-types";
 import {
   Value,
   NumberValue,
@@ -18,7 +18,6 @@ import {
   SymbolValue,
   FunctionValue,
   StringValue,
-  ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import type { Descriptor } from "../types";
@@ -173,7 +172,7 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
 }
 
 // a helper function to map over ArrayValues
-export function mapOverArrayValue(realm: Realm, array: ArrayValue, mapFunc: Function): void {
+export function forEachArrayValue(realm: Realm, array: ObjectValue, mapFunc: Function): void {
   let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
   let length = lengthValue.value;
@@ -183,7 +182,7 @@ export function mapOverArrayValue(realm: Realm, array: ArrayValue, mapFunc: Func
     invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
     let elementValue = elementPropertyDescriptor.value;
     if (elementValue instanceof Value) {
-      mapFunc(elementValue, elementPropertyDescriptor);
+      mapFunc(elementValue, elementPropertyDescriptor, i);
     }
   }
 }
@@ -253,4 +252,74 @@ export function convertSimpleClassComponentToFunctionalComponent(
       undefined
     );
   });
+}
+
+export function removeInvalidNodesFromConstructor(classPrototypeConstructor: ECMAScriptSourceFunctionValue): void {
+  traverse(
+    t.file(t.program([t.functionDeclaration(t.identifier("dummy"), [], classPrototypeConstructor.$ECMAScriptCode)])),
+    {
+      Super(path) {
+        let parentPath = path.parentPath;
+        if (parentPath) {
+          let node = parentPath.node;
+
+          if (t.isCallExpression(node)) {
+            parentPath.remove();
+          }
+        }
+      },
+    },
+    undefined,
+    (undefined: any),
+    undefined
+  );
+}
+
+export function replaceThisReferences(functionBody: BabelNodeBlockStatement): void {
+  traverse(
+    t.file(t.program([t.functionDeclaration(t.identifier("dummy"), [], functionBody)])),
+    {
+      "ThisExpression|Identifier": function(path) {
+        if (t.isThisExpression(path.node) || path.node.name === "this") {
+          path.replaceWith(t.identifier("instance"));
+        }
+      },
+    },
+    undefined,
+    (undefined: any),
+    undefined
+  );
+}
+
+export function getThisAssignments(functionBody: BabelNodeBlockStatement): Set<string> {
+  let assignments = new Set();
+  traverse(
+    t.file(t.program([t.functionDeclaration(t.identifier("dummy"), [], functionBody)])),
+    {
+      "ThisExpression|Identifier": function(path) {
+        if (t.isThisExpression(path.node) || path.node.name === "this") {
+          let parentPath = path.parentPath;
+          let parentNode = parentPath.node;
+
+          if (parentPath && t.isMemberExpression(parentNode) && parentPath.parentPath) {
+            let topNode = parentPath.parentPath.node;
+
+            if (t.isAssignmentExpression(topNode) && topNode.operator === "=") {
+              let thisObjectProperty = parentNode.property;
+
+              while (t.isMemberExpression(thisObjectProperty)) {
+                thisObjectProperty = thisObjectProperty.object;
+              }
+              invariant(t.isIdentifier(thisObjectProperty));
+              assignments.add(thisObjectProperty.name);
+            }
+          }
+        }
+      },
+    },
+    undefined,
+    (undefined: any),
+    undefined
+  );
+  return assignments;
 }

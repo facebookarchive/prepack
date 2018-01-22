@@ -23,7 +23,7 @@ import {
   ObjectValue,
 } from "../values/index.js";
 import { type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, addKeyToReactElement, mapOverArrayValue } from "./utils";
+import { isReactElement, addKeyToReactElement, forEachArrayValue } from "./utils";
 import { ExpectedBailOut } from "./errors.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
@@ -56,7 +56,7 @@ export class BranchState {
     } else if (value instanceof ObjectValue && isReactElement(value)) {
       addKeyToReactElement(realm, reactSerializerState, value);
     } else if (value instanceof ArrayValue) {
-      mapOverArrayValue(realm, value, elementValue => {
+      forEachArrayValue(realm, value, elementValue => {
         this._applyBranchedLogicValue(realm, reactSerializerState, elementValue);
       });
     } else if (value instanceof AbstractValue) {
