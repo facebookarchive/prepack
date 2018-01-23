@@ -16,7 +16,6 @@ import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
 import generate from "babel-generator";
 import traverseFast from "../utils/traverse-fast.js";
-import { stripFlowTypeAnnotations } from "../flow/utils.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics, ReactStatistics } from "./types.js";
@@ -217,9 +216,7 @@ export class Serializer {
     );
 
     let ast = residualHeapSerializer.serialize();
-    if (this.realm.react.enabled && this.realm.react.flowRequired) {
-      stripFlowTypeAnnotations(ast);
-    }
+
     // the signature for generate is not complete, hence the any
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
     if (timingStats !== undefined) {

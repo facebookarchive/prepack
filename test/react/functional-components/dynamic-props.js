@@ -6,7 +6,7 @@ function Fn(props) {
   return <div>Hello {props[props.dynamicKey]}</div>;
 }
 
-function App(props: {dynamicKey: string}) {
+function App(props) {
   return <Fn foo="World" dynamicKey={props.dynamicKey} />;
 }
 

@@ -13,14 +13,13 @@ import type { Realm } from "../../realm.js";
 import { AbstractValue, NativeFunctionValue, Value, StringValue } from "../../values/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import { createMockReact } from "./mocks.js";
-import { createAbstractObject } from "../../flow/abstractObjectFactories.js";
 import invariant from "../../invariant";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
   // module.exports support
-  let moduleValue = createAbstractObject(realm, "module", null);
+  let moduleValue = AbstractValue.createAbstractObject(realm, "module");
   global.$DefineOwnProperty("module", {
     value: moduleValue,
     writable: true,
