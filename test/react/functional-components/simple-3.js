@@ -6,7 +6,7 @@ function A(props) {
   return <div>Hello {props.x}</div>;
 }
 
-function App(props: any) {
+function App(props) {
   return (
     <div>
       <A x={props.toString()} />
