@@ -16,12 +16,13 @@ import initializeConsole from "../common/console.js";
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
-  global.$DefineOwnProperty("console", {
-    value: initializeConsole(realm),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+  if (!realm.isCompatibleWith("mobile"))
+    global.$DefineOwnProperty("console", {
+      value: initializeConsole(realm),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
 
   for (let name of [
     "document",

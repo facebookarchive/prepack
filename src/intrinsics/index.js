@@ -205,7 +205,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.ObjectProto_toString = initializeObjectProto_toString(realm);
 
   //
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     i.TypedArrayProto_values = initializeTypedArrayProto_values(realm);
 
   //
@@ -233,12 +233,12 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.MapPrototype = new ObjectValue(realm, i.ObjectPrototype, "Map.prototype");
   i.SetPrototype = new ObjectValue(realm, i.ObjectPrototype, "Set.prototype");
   i.WeakMapPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakMap.prototype");
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     i.WeakSetPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakSet.prototype");
   }
 
   // typed array prototypes
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     i.TypedArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "TypedArray.prototype");
   i.Float32ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float32Array.prototype");
   i.Float64ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float64Array.prototype");
@@ -277,7 +277,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initialize__IntrospectionErrorPrototype(realm, i.__IntrospectionErrorPrototype);
   initializeDataViewPrototype(realm, i.DataViewPrototype);
   initializeWeakMapPrototype(realm, i.WeakMapPrototype);
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     initializeTypedArrayPrototype(realm, i.TypedArrayPrototype);
     initializeWeakSetPrototype(realm, i.WeakSetPrototype);
   }
@@ -315,7 +315,8 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.Symbol = initializeSymbol(realm);
   i.JSON = initializeJSON(realm);
   i.Proxy = initializeProxy(realm);
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) i.Reflect = initializeReflect(realm);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    i.Reflect = initializeReflect(realm);
   i.Promise = initializePromise(realm);
   i.DataView = initializeDataView(realm);
 
@@ -323,13 +324,14 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.Set = initializeSet(realm);
   i.Map = initializeMap(realm);
   i.WeakMap = initializeWeakMap(realm);
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     i.WeakSet = initializeWeakSet(realm);
   }
   i.ArrayBuffer = initializeArrayBuffer(realm);
 
   // typed arrays
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) i.TypedArray = initializeTypedArray(realm);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    i.TypedArray = initializeTypedArray(realm);
   i.Float32Array = initializeFloat32Array(realm);
   i.Float64Array = initializeFloat64Array(realm);
   i.Int8Array = initializeInt8Array(realm);
@@ -384,7 +386,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     "Uint32Array",
     "ArrayBuffer",
   ];
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     builtins = builtins.concat(["WeakSet", "TypedArray"]);
   }
 
