@@ -155,7 +155,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 22.1.2.3
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     func.defineNativeMethod("of", 0, (context, [...items], argCount) => {
       // 1. Let len be the actual number of arguments passed to this function.
       let len = argCount;
@@ -204,7 +204,7 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 22.1.2.1
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     func.defineNativeMethod("from", 1, (context, [items, mapfn, thisArg], argCount) => {
       // 1. Let C be the this value.
       let C = context;

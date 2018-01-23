@@ -98,6 +98,7 @@ export class ResidualHeapInspector {
         if (
           desc.value !== undefined &&
           !this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) &&
+          !this.realm.isCompatibleWith("mobile") &&
           (desc.value instanceof AbstractValue ||
             (val.__originalName && val.__originalName !== "" && desc.value.value !== val.__originalName))
         )

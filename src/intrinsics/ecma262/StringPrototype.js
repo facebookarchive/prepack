@@ -78,7 +78,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.3
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("codePointAt", 1, (context, [pos]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
@@ -134,7 +134,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.6
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("endsWith", 1, (context, [searchString, endPosition]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
@@ -185,7 +185,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     });
 
   // ECMA262 21.1.3.7
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("includes", 1, (context, [searchString, position]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
@@ -335,7 +335,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.12
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("normalize", 0, (context, [form]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
@@ -361,7 +361,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     });
 
   // ECMA262 21.1.3.13
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("padEnd", 1, (context, [maxLength, fillString]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
@@ -399,7 +399,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     });
 
   // ECMA262 21.1.3.14
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("padStart", 1, (context, [maxLength, fillString]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
@@ -437,7 +437,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     });
 
   // ECMA262 21.1.3.13
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("repeat", 1, (context, [count]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
@@ -730,7 +730,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.18
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("startsWith", 1, (context, [searchString, position]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
@@ -812,7 +812,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     // 2. Let S be ToString(O)
     let S = To.ToString(realm, O.throwIfNotConcrete());
 
-    if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+    if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) || realm.isCompatibleWith("mobile")) {
       locales = undefined;
     } else {
       // TODO #1013 filter locales for only serialisable values
