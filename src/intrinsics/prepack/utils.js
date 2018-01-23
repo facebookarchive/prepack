@@ -24,7 +24,6 @@ import { ValuesDomain } from "../../domains/index.js";
 import { describeLocation } from "../ecma262/Error.js";
 import { To } from "../../singletons.js";
 import AbstractObjectValue from "../../values/AbstractObjectValue";
-import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
@@ -111,23 +110,4 @@ export function createAbstract(
   if (additionalValues.length > 0)
     result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
   return result;
-}
-
-export function createAbstractObject(realm: Realm, name: string, template?: ObjectValue): AbstractObjectValue {
-  let value;
-  if (template === undefined) {
-    template = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-  }
-  template.makePartial();
-  template.makeSimple();
-  if (name) {
-    value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
-    value.intrinsicName = name;
-  } else {
-    value = createAbstract(realm, template, name);
-  }
-  value.values = new ValuesDomain(new Set([template]));
-  realm.rebuildNestedProperties(value, name);
-  invariant(value instanceof AbstractObjectValue);
-  return value;
 }

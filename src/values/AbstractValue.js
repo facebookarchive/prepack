@@ -21,6 +21,7 @@ import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
+import buildExpressionTemplate from "../utils/builder.js";
 
 import {
   AbstractObjectValue,
@@ -671,5 +672,20 @@ export default class AbstractValue extends Value {
     let message = `This operation is not yet supported on ${identity} ${location}`;
 
     return realm.reportIntrospectionError(message);
+  }
+
+  static createAbstractObject(realm: Realm, name: string, template?: ObjectValue): AbstractObjectValue {
+    let value;
+    if (template === undefined) {
+      template = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    }
+    template.makePartial();
+    template.makeSimple();
+    value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
+    value.intrinsicName = name;
+    value.values = new ValuesDomain(new Set([template]));
+    realm.rebuildNestedProperties(value, name);
+    invariant(value instanceof AbstractObjectValue);
+    return value;
   }
 }

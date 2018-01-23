@@ -13,7 +13,6 @@ import { Realm } from "../realm.js";
 import { ECMAScriptSourceFunctionValue, AbstractValue, ObjectValue, AbstractObjectValue } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { createAbstractObject } from "../intrinsics/prepack/utils.js";
 import { valueIsClassComponent } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get } from "../methods/index.js";
@@ -43,7 +42,7 @@ export function getInitialProps(realm: Realm, componentType: ECMAScriptSourceFun
       }
     }
   }
-  let value = createAbstractObject(realm, propsName || "props");
+  let value = AbstractValue.createAbstractObject(realm, propsName || "props");
   invariant(value instanceof AbstractObjectValue);
   return value;
 }
@@ -67,8 +66,7 @@ export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceF
       }
     }
   }
-  let value = createAbstractObject(realm, contextName || "context");
-  invariant(value instanceof AbstractObjectValue);
+  let value = AbstractValue.createAbstractObject(realm, contextName || "context");
   return value;
 }
 
@@ -128,9 +126,9 @@ export function createClassInstance(
     }
   }
   // assign state
-  Properties.Set(realm, instance, "state", createAbstractObject(realm, "this.state"), true);
+  Properties.Set(realm, instance, "state", AbstractValue.createAbstractObject(realm, "this.state"), true);
   // assign refs
-  Properties.Set(realm, instance, "refs", createAbstractObject(realm, "this.refs"), true);
+  Properties.Set(realm, instance, "refs", AbstractValue.createAbstractObject(realm, "this.refs"), true);
   // assign props
   Properties.Set(realm, instance, "props", props, true);
   // assign context
@@ -138,7 +136,7 @@ export function createClassInstance(
   // enable serialization to support simple instance variables properties
   instance.refuseSerialization = false;
   // return the instance in an abstract object
-  let value = createAbstractObject(realm, "this", instance);
+  let value = AbstractValue.createAbstractObject(realm, "this", instance);
   invariant(value instanceof AbstractObjectValue);
   return value;
 }
