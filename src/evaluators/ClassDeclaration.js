@@ -153,10 +153,6 @@ export function ClassDefinitionEvaluation(
     // Provide a hint that this prototype is that of a class
     proto.$IsClassPrototype = true;
 
-    // react. Check the Flow class paramater annotations, stored in "superTypeParameters"
-    if (realm.react.enabled && realm.react.flowRequired && ast.superTypeParameters) {
-      proto.$SuperTypeParameters = ast.superTypeParameters;
-    }
     let constructor;
     let emptyConstructor = false;
     let ClassBody: Array<BabelNodeClassMethod> = [];

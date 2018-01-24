@@ -30,7 +30,7 @@ var Stateful = (function (superclass) {
   return Stateful;
 }(React.Component));
 
-function App(props: {switch: boolean, x: any}) {
+function App(props) {
   if (props.switch) {
     return (
       <div>

@@ -17,7 +17,7 @@ function Override(props) {
   });
 }
 
-function App(props: {show: boolean}) {
+function App(props) {
   return (
     <Override overrideShow={props.show}>
       <MaybeShow show={true}>

@@ -6,7 +6,7 @@ function A(props) {
 	return props.children;
 }
 
-function App(props: any) {
+function App(props) {
   return (
     <A>
       <A>

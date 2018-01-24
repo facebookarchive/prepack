@@ -30,9 +30,6 @@ export default function(
     let plugins = [];
     if (realm.react.enabled) {
       plugins.push("jsx");
-      if (realm.react.flowRequired) {
-        plugins.push("flow");
-      }
     }
     let ast = parse(code, { filename, sourceType, startLine, plugins });
     traverseFast(ast, node => {

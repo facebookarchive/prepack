@@ -11,10 +11,8 @@
 
 import { Realm } from "../realm.js";
 import { ECMAScriptSourceFunctionValue, AbstractValue, ObjectValue, AbstractObjectValue } from "../values/index.js";
-import { flowAnnotationToObjectTypeTemplate } from "../flow/utils.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { createAbstractObject, createAbstractObjectFromFlowTypes } from "../flow/abstractObjectFactories.js";
 import { valueIsClassComponent } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get } from "../methods/index.js";
@@ -31,22 +29,10 @@ const lifecycleMethods = new Set([
   "componentWillReceiveProps",
 ]);
 
-export function getInitialProps(
-  realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue
-): ObjectValue | AbstractObjectValue {
+export function getInitialProps(realm: Realm, componentType: ECMAScriptSourceFunctionValue): AbstractObjectValue {
   let propsName = null;
-  let propTypes = null;
   if (valueIsClassComponent(realm, componentType)) {
     propsName = "this.props";
-    // if flow is not required, do not try to construct the object from Flow types
-    if (realm.react.flowRequired) {
-      // it's a class component, so we need to check the type on for props of the component prototype
-      let superTypeParameters = componentType.$SuperTypeParameters;
-      if (superTypeParameters !== undefined) {
-        throw new ExpectedBailOut("props on class components not yet supported");
-      }
-    }
   } else {
     // otherwise it's a functional component, where the first paramater of the function is "props" (if it exists)
     if (componentType.$FormalParameters.length > 0) {
@@ -54,26 +40,15 @@ export function getInitialProps(
       if (t.isIdentifier(firstParam)) {
         propsName = ((firstParam: any): BabelNodeIdentifier).name;
       }
-      // if flow is not required, do not try to construct the object from Flow types
-      if (realm.react.flowRequired) {
-        let propsTypeAnnotation = firstParam.typeAnnotation !== undefined && firstParam.typeAnnotation;
-        // we expect that if there's a props paramater, it should always have Flow annotations
-        if (!propsTypeAnnotation) {
-          throw new ExpectedBailOut(`root component missing Flow type annotations for the "props" paramater`);
-        }
-        propTypes = flowAnnotationToObjectTypeTemplate(propsTypeAnnotation);
-      }
     }
   }
-  return createAbstractObjectFromFlowTypes(realm, propsName, propTypes);
+  let value = AbstractValue.createAbstractObject(realm, propsName || "props");
+  invariant(value instanceof AbstractObjectValue);
+  return value;
 }
 
-export function getInitialContext(
-  realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue
-): ObjectValue | AbstractObjectValue {
+export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunctionValue): AbstractObjectValue {
   let contextName = null;
-  let contextTypes = null;
   if (valueIsClassComponent(realm, componentType)) {
     // it's a class component, so we need to check the type on for context of the component prototype
     let superTypeParameters = componentType.$SuperTypeParameters;
@@ -89,15 +64,10 @@ export function getInitialContext(
       if (t.isIdentifier(secondParam)) {
         contextName = ((secondParam: any): BabelNodeIdentifier).name;
       }
-      let contextTypeAnnotation = secondParam.typeAnnotation !== undefined && secondParam.typeAnnotation;
-      // we expect that if there's a context param, it should always have Flow annotations
-      if (!contextTypeAnnotation) {
-        throw new ExpectedBailOut(`root component missing Flow type annotations for the "context" paramater`);
-      }
-      contextTypes = flowAnnotationToObjectTypeTemplate(contextTypeAnnotation);
     }
   }
-  return createAbstractObjectFromFlowTypes(realm, contextName, contextTypes);
+  let value = AbstractValue.createAbstractObject(realm, contextName || "context");
+  return value;
 }
 
 export function createSimpleClassInstance(
@@ -156,9 +126,9 @@ export function createClassInstance(
     }
   }
   // assign state
-  Properties.Set(realm, instance, "state", createAbstractObject(realm, "this.state", null), true);
+  Properties.Set(realm, instance, "state", AbstractValue.createAbstractObject(realm, "this.state"), true);
   // assign refs
-  Properties.Set(realm, instance, "refs", createAbstractObject(realm, "this.refs", null), true);
+  Properties.Set(realm, instance, "refs", AbstractValue.createAbstractObject(realm, "this.refs"), true);
   // assign props
   Properties.Set(realm, instance, "props", props, true);
   // assign context
@@ -166,5 +136,7 @@ export function createClassInstance(
   // enable serialization to support simple instance variables properties
   instance.refuseSerialization = false;
   // return the instance in an abstract object
-  return createAbstractObject(realm, "this", null, instance);
+  let value = AbstractValue.createAbstractObject(realm, "this", instance);
+  invariant(value instanceof AbstractObjectValue);
+  return value;
 }
