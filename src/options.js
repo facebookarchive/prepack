@@ -20,7 +20,7 @@ export const CompatibilityValues = [
   "node-cli",
   "react-mocks",
 ];
-export type ReactOutputTypes = "create-element" | "jsx";
+export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 
 export type RealmOptions = {
   check?: boolean,

@@ -74,7 +74,7 @@ import {
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
-import { ResidualReactElements } from "./ResidualReactElements.js";
+import { ResidualReactElementSerializer } from "./ResidualReactElementSerializer.js";
 import type { Binding } from "../environment.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 
@@ -129,7 +129,7 @@ export class ResidualHeapSerializer {
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
     this.additionalFunctionValueNestedFunctions = new Set();
-    this.residualReactElements = new ResidualReactElements(this.realm, this);
+    this.residualReactElementSerializer = new ResidualReactElementSerializer(this.realm, this);
     this.residualFunctions = new ResidualFunctions(
       this.realm,
       this.statistics,
@@ -212,7 +212,7 @@ export class ResidualHeapSerializer {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
   react: ReactSerializerState;
-  residualReactElements: ResidualReactElements;
+  residualReactElementSerializer: ResidualReactElementSerializer;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
@@ -1397,7 +1397,7 @@ export class ResidualHeapSerializer {
       case "ArrayBuffer":
         return this._serializeValueArrayBuffer(val);
       case "ReactElement":
-        this.residualReactElements.serializeReactElement(val);
+        this.residualReactElementSerializer.serializeReactElement(val);
         return;
       case "Map":
       case "WeakMap":
@@ -1694,7 +1694,7 @@ export class ResidualHeapSerializer {
             }
             if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
 
-            const lazyHoistedReactNodes = this.residualReactElements.serializeLazyHoistedNodes();
+            const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
             Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
           };
           this.currentAdditionalFunction = additionalFunctionValue;

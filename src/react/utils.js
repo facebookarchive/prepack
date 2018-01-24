@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
+import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeBlockStatement } from "babel-types";
 import {
   Value,
   NumberValue,
@@ -18,7 +18,6 @@ import {
   SymbolValue,
   FunctionValue,
   StringValue,
-  ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import type { Descriptor } from "../types";
@@ -172,8 +171,8 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
   return key;
 }
 
-// a helper function to map over ArrayValues
-export function mapOverArrayValue(realm: Realm, array: ArrayValue, mapFunc: Function): void {
+// a helper function to loop over ArrayValues
+export function forEachArrayValue(realm: Realm, array: ObjectValue, mapFunc: Function): void {
   let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
   let length = lengthValue.value;
@@ -263,4 +262,36 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
       return t.identifier("context");
     }
   });
+}
+
+export function getThisAssignments(functionBody: BabelNodeBlockStatement): Set<string> {
+  let assignments = new Set();
+  traverse(
+    t.file(t.program([t.functionDeclaration(t.identifier("dummy"), [], functionBody)])),
+    {
+      "ThisExpression|Identifier": function(path) {
+        if (t.isThisExpression(path.node) || path.node.name === "this") {
+          let parentPath = path.parentPath;
+          let parentNode = parentPath.node;
+
+          if (parentPath && t.isMemberExpression(parentNode) && parentPath.parentPath) {
+            let topNode = parentPath.parentPath.node;
+            if (t.isAssignmentExpression(topNode) && topNode.operator === "=") {
+              let thisObjectProperty = parentNode.property;
+
+              while (t.isMemberExpression(thisObjectProperty)) {
+                thisObjectProperty = thisObjectProperty.object;
+              }
+              invariant(t.isIdentifier(thisObjectProperty));
+              assignments.add(thisObjectProperty.name);
+            }
+          }
+        }
+      },
+    },
+    undefined,
+    (undefined: any),
+    undefined
+  );
+  return assignments;
 }

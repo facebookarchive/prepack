@@ -47,6 +47,10 @@ export function getInitialProps(realm: Realm, componentType: ECMAScriptSourceFun
   return value;
 }
 
+export type ClassComponentMetadata = {
+  thisAssignments: Set<string>,
+};
+
 export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunctionValue): AbstractObjectValue {
   let contextName = null;
   if (valueIsClassComponent(realm, componentType)) {
@@ -114,14 +118,18 @@ export function createClassInstance(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue,
   props: ObjectValue | AbstractValue,
-  context: ObjectValue | AbstractValue
+  context: ObjectValue | AbstractValue,
+  classMetadata: ClassComponentMetadata
 ): AbstractObjectValue {
   let componentPrototype = Get(realm, componentType, "prototype");
   invariant(componentPrototype instanceof ObjectValue);
+  let thisAssignments = classMetadata.thisAssignments;
+
   // create an instance object and disable serialization as we don't want to output the internals we set below
   let instance = new ObjectValue(realm, componentPrototype, "this", true);
   for (let [name] of componentPrototype.properties) {
-    if (name !== "constructor") {
+    // ensure we don't set constructor or prototype methods that get set in the constructor
+    if (name !== "constructor" && !thisAssignments.has(name)) {
       Properties.Set(realm, instance, name, Get(realm, componentPrototype, name), true);
     }
   }
