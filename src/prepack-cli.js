@@ -13,6 +13,7 @@
 
 import { CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "./errors.js";
 import { type Compatibility, CompatibilityValues } from "./options.js";
+import { type SerializedResult } from "./serializer/types.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import fs from "fs";
@@ -229,13 +230,14 @@ function run(
     return "Recover";
   }
 
-  function printDiagnostics() {
+  function printDiagnostics(): boolean {
     let foundFatal = false;
     if (errors.size > 0) {
       console.error("Errors found while prepacking");
       for (let [loc, error] of errors) {
         let sourceMessage = "";
         switch (loc.source) {
+          case null:
           case "":
             sourceMessage = "In an unknown source file";
             break;
@@ -243,8 +245,8 @@ function run(
             sourceMessage = "In stdin";
             break;
           default:
-            // flow made me do this || ""
-            sourceMessage = `In input file ${loc.source || ""}`;
+            invariant(loc.source !== null);
+            sourceMessage = `In input file ${loc.source}`;
             break;
         }
 
@@ -254,9 +256,7 @@ function run(
             1}) ${error.severity} ${error.errorCode}: ${error.message}` +
             ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
         );
-        if (foundFatal) {
-          console.error(error.callStack || "");
-        }
+        console.error(error.callStack || "");
       }
     }
     return foundFatal;
@@ -264,69 +264,52 @@ function run(
 
   try {
     if (inputFilenames.length === 0) {
-      prepackStdin(resolvedOptions, processSerializedCode);
+      prepackStdin(resolvedOptions, processSerializedCode, printDiagnostics);
       return;
     }
     let serialized = prepackFileSync(inputFilenames, resolvedOptions);
-    processSerializedCode(null, serialized);
+    printDiagnostics();
+    if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
   } catch (err) {
+    printDiagnostics();
     //FatalErrors must have generated at least one CompilerDiagnostic.
     if (err instanceof FatalError) {
       invariant(errors.size > 0, "FatalError must generate at least one CompilerDiagnostic");
     } else {
-      // if it is not a FatalError, it means prepack failed, and we should display the CompilerDiagnostics and stack trace.
-      printDiagnostics();
+      // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
       console.error(err.stack);
       process.exit(1);
     }
-  } finally {
-    const foundFatal = printDiagnostics();
-    if (foundFatal) process.exit(1);
   }
 
-  function processSerializedCode(err, serialized) {
-    //FatalErrors must have generated at least one CompilerDiagnostic.
-    if (err && err instanceof FatalError) {
-      invariant(errors.size > 0, "FatalError must generate at least one CompilerDiagnostic");
+  function processSerializedCode(serialized: SerializedResult) {
+    if (serialized.code === "") {
+      console.error("Prepack returned empty code.");
+      return;
     }
-    if (err && !(err instanceof FatalError)) {
-      // if it is not a FatalError, it means prepack failed, and we should display the CompilerDiagnostics and stack trace.
-      printDiagnostics();
-      console.error(err);
-      process.exit(1);
+    if (outputFilename) {
+      console.log(`Prepacked source code written to ${outputFilename}.`);
+      fs.writeFileSync(outputFilename, serialized.code);
+    } else {
+      console.log(serialized.code);
     }
-    // we print the non-fatal diagnostics. We test again if there is any FatalError-level CompilerDiagnostics that wouldn't have thrown a FatalError.
-    const foundFatal = printDiagnostics();
-    if (foundFatal) process.exit(1);
-    if (serialized) {
-      if (serialized.code === "") {
-        console.error("Prepack returned empty code.");
+    if (statsFileName) {
+      if (serialized.statistics === undefined || serialized.timingStats === undefined) {
         return;
       }
-      if (outputFilename) {
-        console.log(`Prepacked source code written to ${outputFilename}.`);
-        fs.writeFileSync(outputFilename, serialized.code);
-      } else {
-        console.log(serialized.code);
-      }
-      if (statsFileName) {
-        if (serialized.statistics === undefined || serialized.timingStats === undefined) {
-          return;
-        }
-        let stats = {
-          SerializerStatistics: serialized.statistics,
-          TimingStatistics: serialized.timingStats,
-          MemoryStatistics: v8.getHeapStatistics(),
-        };
-        fs.writeFileSync(statsFileName, JSON.stringify(stats));
-      }
-      if (outputSourceMap) {
-        fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
-      }
-      if (heapGraphFilePath) {
-        invariant(serialized.heapGraph);
-        fs.writeFileSync(heapGraphFilePath, serialized.heapGraph);
-      }
+      let stats = {
+        SerializerStatistics: serialized.statistics,
+        TimingStatistics: serialized.timingStats,
+        MemoryStatistics: v8.getHeapStatistics(),
+      };
+      fs.writeFileSync(statsFileName, JSON.stringify(stats));
+    }
+    if (outputSourceMap) {
+      fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
+    }
+    if (heapGraphFilePath) {
+      invariant(serialized.heapGraph);
+      fs.writeFileSync(heapGraphFilePath, serialized.heapGraph);
     }
   }
 
