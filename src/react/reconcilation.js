@@ -33,6 +33,8 @@ import { BranchState, type BranchStatusEnum } from "./branching.js";
 import { getInitialProps, getInitialContext, createClassInstance, createSimpleClassInstance } from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 
+type RenderStrategy = "NORMAL" | "RELAY_QUERY_RENDERER";
+
 export class Reconciler {
   constructor(
     realm: Realm,
@@ -149,13 +151,26 @@ export class Reconciler {
     return componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
   }
 
+  _renderRelayQueryRendererComponent(
+    reactElement: ObjectValue,
+    props: ObjectValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue
+  ) {
+    // TODO: for now we do nothing, in the future we want to evaluate the render prop of this component
+    return {
+      result: reactElement,
+      childContext: context,
+    };
+  }
+
   _renderComponent(
-    componentType: ECMAScriptSourceFunctionValue,
+    componentType: Value,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
+    invariant(componentType instanceof ECMAScriptSourceFunctionValue);
     let value;
     let childContext = context;
 
@@ -205,6 +220,17 @@ export class Reconciler {
       result: this._resolveDeeply(value, context, branchStatus === "ROOT" ? "NO_BRANCH" : branchStatus, branchState),
       childContext,
     };
+  }
+
+  _getRenderStrategy(func: Value): RenderStrategy {
+    // check if it's a ReactRelay.QueryRenderer
+    if (this.realm.fbLibraries.reactRelay !== undefined) {
+      let QueryRenderer = Get(this.realm, this.realm.fbLibraries.reactRelay, "QueryRenderer");
+      if (func === QueryRenderer) {
+        return "RELAY_QUERY_RENDERER";
+      }
+    }
+    return "NORMAL";
   }
 
   _resolveDeeply(
@@ -275,7 +301,9 @@ export class Reconciler {
         );
         return reactElement;
       }
-      if (!(typeValue instanceof ECMAScriptSourceFunctionValue)) {
+      let renderStrategy = this._getRenderStrategy(typeValue);
+
+      if (renderStrategy === "NORMAL" && !(typeValue instanceof ECMAScriptSourceFunctionValue)) {
         this._assignBailOutMessage(
           reactElement,
           `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`
@@ -283,13 +311,28 @@ export class Reconciler {
         return reactElement;
       }
       try {
-        let { result } = this._renderComponent(
-          typeValue,
-          propsValue,
-          context,
-          branchStatus === "NEW_BRANCH" ? "BRANCH" : branchStatus,
-          null
-        );
+        let result;
+        switch (renderStrategy) {
+          case "NORMAL": {
+            let render = this._renderComponent(
+              typeValue,
+              propsValue,
+              context,
+              branchStatus === "NEW_BRANCH" ? "BRANCH" : branchStatus,
+              null
+            );
+            result = render.result;
+            break;
+          }
+          case "RELAY_QUERY_RENDERER": {
+            let render = this._renderRelayQueryRendererComponent(reactElement, propsValue, context);
+            result = render.result;
+            break;
+          }
+          default:
+            invariant(false, "unsupported render strategy");
+        }
+
         if (result instanceof UndefinedValue) {
           this._assignBailOutMessage(reactElement, `Bail-out: undefined was returned from render`);
           if (branchStatus === "NEW_BRANCH" && branchState) {

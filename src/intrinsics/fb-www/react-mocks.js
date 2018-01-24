@@ -251,7 +251,7 @@ let reactCode = `
 `;
 let reactAst = parseExpression(reactCode, { plugins: ["flow"] });
 
-export function createMockReact(realm: Realm): ObjectValue {
+export function createMockReact(realm: Realm, reactRequireName: string): ObjectValue {
   let reactFactory = Environment.GetValue(realm, realm.$GlobalEnv.evaluate(reactAst, false));
   invariant(reactFactory instanceof ECMAScriptSourceFunctionValue);
 
@@ -268,35 +268,35 @@ export function createMockReact(realm: Realm): ObjectValue {
     getReactSymbol("react.symbol", realm),
     currentOwner,
   ]);
-  reactValue.intrinsicName = `require("react")`;
+  reactValue.intrinsicName = `require("${reactRequireName}")`;
   invariant(reactValue instanceof ObjectValue);
 
   let reactComponentValue = Get(realm, reactValue, "Component");
-  reactComponentValue.intrinsicName = `require("react").Component`;
+  reactComponentValue.intrinsicName = `require("${reactRequireName}").Component`;
   invariant(reactComponentValue instanceof ECMAScriptFunctionValue);
   let reactPureComponentValue = Get(realm, reactValue, "PureComponent");
-  reactPureComponentValue.intrinsicName = `require("react").PureComponent`;
+  reactPureComponentValue.intrinsicName = `require("${reactRequireName}").PureComponent`;
   invariant(reactPureComponentValue instanceof ECMAScriptFunctionValue);
   reactComponentValue.$FunctionKind = "normal";
   invariant(reactComponentValue instanceof ObjectValue);
 
   let reactComponentPrototypeValue = Get(realm, reactComponentValue, "prototype");
-  reactComponentPrototypeValue.intrinsicName = `require("react").Component.prototype`;
+  reactComponentPrototypeValue.intrinsicName = `require("${reactRequireName}").Component.prototype`;
 
   let reactPureComponentPrototypeValue = Get(realm, reactPureComponentValue, "prototype");
-  reactPureComponentPrototypeValue.intrinsicName = `require("react").PureComponent.prototype`;
+  reactPureComponentPrototypeValue.intrinsicName = `require("${reactRequireName}").PureComponent.prototype`;
 
   let reactCloneElementValue = Get(realm, reactValue, "cloneElement");
-  reactCloneElementValue.intrinsicName = `require("react").cloneElement`;
+  reactCloneElementValue.intrinsicName = `require("${reactRequireName}").cloneElement`;
 
   let reactCreateElementValue = Get(realm, reactValue, "createElement");
-  reactCreateElementValue.intrinsicName = `require("react").createElement`;
+  reactCreateElementValue.intrinsicName = `require("${reactRequireName}").createElement`;
 
   let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
-  reactIsValidElementValue.intrinsicName = `require("react").isValidElement`;
+  reactIsValidElementValue.intrinsicName = `require("${reactRequireName}").isValidElement`;
 
   let reactChildrenValue = Get(realm, reactValue, "Children");
-  reactChildrenValue.intrinsicName = `require("react").Children`;
+  reactChildrenValue.intrinsicName = `require("${reactRequireName}").Children`;
 
   return reactValue;
 }
