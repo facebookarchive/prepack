@@ -22,7 +22,7 @@ let { expect, describe, it } = global;
 function runTestSuite(outputJsx) {
   let reactTestRoot = path.join(__dirname, "../test/react/");
   let prepackOptions = {
-    compatibility: "react-mocks",
+    compatibility: "fb-www",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
@@ -57,8 +57,20 @@ function runTestSuite(outputJsx) {
     let moduleShim = { exports: null };
     let requireShim = name => {
       switch (name) {
+        case "React":
         case "react":
           return React;
+        case "RelayModern":
+          return {
+            QueryRenderer(props) {
+              return props.render({ props: {}, error: null });
+            },
+            graphql() {
+              return null;
+            },
+          };
+        case "FBEnvironment":
+          return {};
         default:
           throw new Error(`Unrecognized import: "${name}".`);
       }
@@ -228,6 +240,14 @@ function runTestSuite(outputJsx) {
 
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
+      });
+    });
+
+    describe("fb-www mocks", () => {
+      let directory = "mocks";
+
+      it("fb-www", async () => {
+        await runTest(directory, "fb1.js");
       });
     });
   });
