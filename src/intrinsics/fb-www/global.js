@@ -12,7 +12,8 @@
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NativeFunctionValue, Value, StringValue } from "../../values/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
-import { createMockReact } from "./mocks.js";
+import { createMockReact } from "./react-mocks.js";
+import { createMockReactRelay } from "./relay-mocks.js";
 import invariant from "../../invariant";
 
 export default function(realm: Realm): void {
@@ -31,13 +32,22 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("require", {
     value: new NativeFunctionValue(realm, "global.require", "require", 0, (context, [requireNameVal]) => {
       invariant(requireNameVal instanceof StringValue);
-      if (requireNameVal.value === "react" || requireNameVal.value === "React") {
-        if (realm.react.reactLibraryObject === undefined) {
-          let reactLibraryObject = createMockReact(realm);
-          realm.react.reactLibraryObject = reactLibraryObject;
-          return reactLibraryObject;
+      let requireNameValValue = requireNameVal.value;
+
+      if (requireNameValValue === "react" || requireNameValValue === "React") {
+        if (realm.fbLibraries.react === undefined) {
+          let react = createMockReact(realm, requireNameValValue);
+          realm.fbLibraries.react = react;
+          return react;
         }
-        return realm.react.reactLibraryObject;
+        return realm.fbLibraries.react;
+      } else if (requireNameValValue === "react-relay" || requireNameValValue === "RelayModern") {
+        if (realm.fbLibraries.reactRelay === undefined) {
+          let reactRelay = createMockReactRelay(realm, requireNameValValue);
+          realm.fbLibraries.reactRelay = reactRelay;
+          return reactRelay;
+        }
+        return realm.fbLibraries.reactRelay;
       }
       let requireName = `require("${requireNameVal.value}")`;
       let type = Value.getTypeFromName("function");

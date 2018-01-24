@@ -96,7 +96,7 @@ export function valueIsClassComponent(realm: Realm, value: Value): boolean {
 
 // logger isn't typed otherwise it will increase flow cycle length :()
 export function valueIsReactLibraryObject(realm: Realm, value: ObjectValue, logger: any): boolean {
-  if (realm.react.reactLibraryObject === value) {
+  if (realm.fbLibraries.react === value) {
     return true;
   }
   // we check that the object is the React or React-like library by checking for

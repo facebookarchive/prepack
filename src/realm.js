@@ -178,9 +178,16 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       symbols: new Map(),
       currentOwner: undefined,
-      reactLibraryObject: undefined,
       hoistableReactElements: new WeakMap(),
       hoistableFunctions: new WeakMap(),
+    };
+
+    this.fbLibraries = {
+      react: undefined,
+      reactRelay: undefined,
+      cx: undefined,
+      fbt: undefined,
+      jsResource: undefined,
     };
 
     this.errorHandler = opts.errorHandler;
@@ -233,6 +240,14 @@ export class Realm {
     output?: ReactOutputTypes,
     reactLibraryObject?: ObjectValue,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
+  };
+
+  fbLibraries: {
+    react: void | ObjectValue,
+    reactRelay: void | ObjectValue,
+    cx: void | ObjectValue,
+    fbt: void | ObjectValue,
+    jsResource: void | ObjectValue,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;

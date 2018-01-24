@@ -112,7 +112,7 @@ export function prepackString(
 }
 
 /* deprecated: please use prepackSources instead. */
-export function prepack(code: string, options: PrepackOptions = defaultOptions) {
+export function prepack(code: string, options: PrepackOptions = defaultOptions): SerializedResult {
   let filename = options.filename || "unknown";
   let sources = [{ filePath: filename, fileContents: code }];
 
@@ -134,7 +134,7 @@ export function prepackFromAst(
   ast: BabelNodeFile | BabelNodeProgram,
   code: string,
   options: PrepackOptions = defaultOptions
-) {
+): SerializedResult {
   if (ast && ast.type === "Program") {
     ast = t.file(ast, [], []);
   }

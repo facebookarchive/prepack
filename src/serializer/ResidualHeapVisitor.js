@@ -606,7 +606,7 @@ export class ResidualHeapVisitor {
           this.logger.logError(val, `Arguments object is not supported in residual heap.`);
         }
         if (this.realm.react.enabled && valueIsReactLibraryObject(this.realm, val, this.logger)) {
-          this.realm.react.reactLibraryObject = val;
+          this.realm.fbLibraries.react = val;
         }
         return;
     }
@@ -920,7 +920,7 @@ export class ResidualHeapVisitor {
 
   _visitReactLibrary() {
     // find and visit the React library
-    let reactLibraryObject = this.realm.react.reactLibraryObject;
+    let reactLibraryObject = this.realm.fbLibraries.react;
     if (this.realm.react.output === "jsx") {
       // React might not be defined in scope, i.e. another library is using JSX
       // we don't throw an error as we should support JSX stand-alone

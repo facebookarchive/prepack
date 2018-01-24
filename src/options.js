@@ -11,15 +11,8 @@
 
 import type { ErrorHandler } from "./errors.js";
 
-export type Compatibility = "browser" | "jsc-600-1-4-17" | "mobile" | "node-source-maps" | "node-cli" | "react-mocks";
-export const CompatibilityValues = [
-  "browser",
-  "jsc-600-1-4-17",
-  "mobile",
-  "node-source-maps",
-  "node-cli",
-  "react-mocks",
-];
+export type Compatibility = "browser" | "jsc-600-1-4-17" | "mobile" | "node-source-maps" | "node-cli" | "fb-www";
+export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "mobile", "node-source-maps", "node-cli", "fb-www"];
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 
 export type RealmOptions = {

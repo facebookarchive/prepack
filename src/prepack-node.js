@@ -13,6 +13,7 @@
 
 /* @flow */
 import { defaultOptions } from "./options";
+import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
 import { getDebuggerOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
@@ -27,7 +28,11 @@ import fs from "fs";
 export * from "./prepack-node-environment";
 export * from "./prepack-standalone";
 
-export function prepackStdin(options: PrepackOptions = defaultOptions, callback: (any, ?SerializedResult) => void) {
+export function prepackStdin(
+  options: PrepackOptions = defaultOptions,
+  processSerializedCode: SerializedResult => void,
+  printDiagnostics: () => boolean
+) {
   let sourceMapFilename = options.inputSourceMapFilename || "";
   process.stdin.setEncoding("utf8");
   process.stdin.resume();
@@ -45,11 +50,16 @@ export function prepackStdin(options: PrepackOptions = defaultOptions, callback:
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options
         );
+        processSerializedCode(serialized);
+        if (printDiagnostics()) process.exit(1);
       } catch (err) {
-        callback(err, null);
-        return;
+        printDiagnostics();
+        if (!(err instanceof FatalError)) {
+          // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
+          console.error(err.stack);
+        }
+        process.exit(1);
       }
-      callback(null, serialized);
     });
   });
 }
