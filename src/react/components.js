@@ -18,6 +18,7 @@ import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
+import type { ClassComponentMetadata } from "../types.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -51,10 +52,6 @@ export function getInitialProps(
   invariant(value instanceof AbstractObjectValue);
   return value;
 }
-
-export type ClassComponentMetadata = {
-  thisAssignments: Set<string>,
-};
 
 export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunctionValue): AbstractObjectValue {
   let contextName = null;

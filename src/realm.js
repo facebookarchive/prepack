@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType } from "./types.js";
+import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType, ClassComponentMetadata } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -38,7 +38,6 @@ import { emptyExpression, voidExpression } from "./utils/internalizer.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
-import type { ClassComponentMetadata } from "./react/components.js";
 import * as t from "babel-types";
 
 export type BindingEntry = { hasLeaked: boolean, value: void | Value };

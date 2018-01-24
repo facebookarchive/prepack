@@ -36,14 +36,9 @@ import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
-import {
-  getInitialProps,
-  getInitialContext,
-  createClassInstance,
-  createSimpleClassInstance,
-  type ClassComponentMetadata,
-} from "./components.js";
+import { getInitialProps, getInitialContext, createClassInstance, createSimpleClassInstance } from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
+import type { ClassComponentMetadata } from "../types.js";
 
 type RenderStrategy = "NORMAL" | "RELAY_QUERY_RENDERER";
 

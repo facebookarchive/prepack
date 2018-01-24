@@ -319,6 +319,10 @@ export type ObjectKind =
   | "ReactElement";
 // TODO #26 #712: Promises. All kinds of iterators. Generators.
 
+export type ClassComponentMetadata = {
+  thisAssignments: Set<string>,
+};
+
 export type DebugServerType = {
   checkForActions: BabelNode => void,
   shutdown: () => void,
