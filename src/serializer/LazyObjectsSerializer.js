@@ -24,10 +24,10 @@ import type {
   FunctionInfo,
   FunctionInstance,
   AdditionalFunctionInfo,
-  ReactSerializerState,
   ClassMethodInstance,
   AdditionalFunctionEffects,
   ResidualFunctionBinding,
+  ReactBytecodeTree,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
@@ -69,8 +69,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
-    statistics: SerializerStatistics,
-    react: ReactSerializerState
+    reactBytecodeTrees: Map<ObjectValue, ReactBytecodeTree>,
+    statistics: SerializerStatistics
   ) {
     super(
       realm,
@@ -87,8 +87,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       additionalFunctionValuesAndEffects,
       additionalFunctionValueInfos,
       declarativeEnvironmentRecordsBindings,
-      statistics,
-      react
+      reactBytecodeTrees,
+      statistics
     );
     this._lazyObjectIdSeed = 1;
     this._valueLazyIds = new Map();
@@ -113,7 +113,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     return getOrDefault(this._valueLazyIds, obj, () => this._lazyObjectIdSeed++);
   }
 
-  // TODO: change to use _getTarget() to get the lazy objects initializer body.
+  // TODO: change to use getTarget() to get the lazy objects initializer body.
   _serializeLazyObjectInitializer(obj: ObjectValue): SerializedBody {
     const initializerBody = { type: LAZY_OBJECTS_SERIALIZER_BODY_TYPE, parentBody: undefined, entries: [] };
     let oldBody = this.emitter.beginEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, initializerBody);

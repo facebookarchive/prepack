@@ -27,6 +27,7 @@ import {
   ObjectValue,
   NativeFunctionValue,
   UndefinedValue,
+  ReactOpcodeValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type {
@@ -48,10 +49,10 @@ import type {
   FunctionInfo,
   FunctionInstance,
   AdditionalFunctionInfo,
-  ReactSerializerState,
   SerializedBody,
   ClassMethodInstance,
   AdditionalFunctionEffects,
+  ReactBytecodeTree,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics, BodyReference } from "./types.js";
@@ -74,7 +75,8 @@ import {
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
-import { ResidualReactElements } from "./ResidualReactElements.js";
+import { ResidualReactElementSerializer } from "./ResidualReactElementSerializer.js";
+import { ResidualReactBytecodeSerializer } from "./ResidualReactBytecodeSerializer.js";
 import type { Binding } from "../environment.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 
@@ -100,15 +102,14 @@ export class ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
-    statistics: SerializerStatistics,
-    react: ReactSerializerState
+    reactBytecodeTrees: Map<ObjectValue, ReactBytecodeTree>,
+    statistics: SerializerStatistics
   ) {
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
     this.residualHeapValueIdentifiers = residualHeapValueIdentifiers;
     this.statistics = statistics;
-    this.react = react;
 
     let realmGenerator = this.realm.generator;
     invariant(realmGenerator);
@@ -129,7 +130,8 @@ export class ResidualHeapSerializer {
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
     this.additionalFunctionValueNestedFunctions = new Set();
-    this.residualReactElements = new ResidualReactElements(this.realm, this);
+    this.residualReactElementSerializer = new ResidualReactElementSerializer(this.realm, this);
+    this.residualReactBytecodeSerializer = new ResidualReactBytecodeSerializer(this.realm, this, reactBytecodeTrees);
     this.residualFunctions = new ResidualFunctions(
       this.realm,
       this.statistics,
@@ -211,8 +213,8 @@ export class ResidualHeapSerializer {
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
-  react: ReactSerializerState;
-  residualReactElements: ResidualReactElements;
+  residualReactElementSerializer: ResidualReactElementSerializer;
+  residualReactBytecodeSerializer: ResidualReactBytecodeSerializer;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
@@ -569,7 +571,7 @@ export class ResidualHeapSerializer {
   }
 
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
-  _getTarget(
+  getTarget(
     val: Value
   ): {
     body: SerializedBody,
@@ -734,7 +736,7 @@ export class ResidualHeapSerializer {
     }
     this._serializedValueWithIdentifiers.add(val);
 
-    let target = this._getTarget(val);
+    let target = this.getTarget(val);
     let oldBody = this.emitter.beginEmitting(val, target.body);
     let init = this._serializeValue(val);
 
@@ -1104,7 +1106,7 @@ export class ResidualHeapSerializer {
         invariant(bindingValue !== undefined);
         referencedValues.push(bindingValue);
         if (inAdditionalFunction) {
-          let { usedOnlyByAdditionalFunctions } = this._getTarget(bindingValue);
+          let { usedOnlyByAdditionalFunctions } = this.getTarget(bindingValue);
           if (usedOnlyByAdditionalFunctions)
             residualBinding.referencedOnlyFromAdditionalFunctions = this.currentAdditionalFunction;
         }
@@ -1397,7 +1399,7 @@ export class ResidualHeapSerializer {
       case "ArrayBuffer":
         return this._serializeValueArrayBuffer(val);
       case "ReactElement":
-        this.residualReactElements.serializeReactElement(val);
+        this.residualReactElementSerializer.serializeReactElement(val);
         return;
       case "Map":
       case "WeakMap":
@@ -1518,7 +1520,11 @@ export class ResidualHeapSerializer {
     } else if (val instanceof UndefinedValue) {
       return voidExpression;
     } else if (ResidualHeapInspector.isLeaf(val)) {
-      return t.valueToNode(val.serialize());
+      const node = t.valueToNode(val.serialize());
+      if (val instanceof ReactOpcodeValue) {
+        node.leadingComments = [({ type: "BlockComment", value: val.hint }: any)];
+      }
+      return node;
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
       return this._serializeValueArray(val);
@@ -1530,7 +1536,13 @@ export class ResidualHeapSerializer {
       return this._serializeValueSymbol(val);
     } else {
       invariant(val instanceof ObjectValue);
-      return this.serializeValueObject(val);
+      if (this.residualReactBytecodeSerializer.reactBytecodeTrees.has(val)) {
+        let reactBytecodeTree = this.residualReactBytecodeSerializer.reactBytecodeTrees.get(val);
+        invariant(reactBytecodeTree);
+        return this.residualReactBytecodeSerializer.serializeReactBytecodeTree(reactBytecodeTree);
+      } else {
+        return this.serializeValueObject(val);
+      }
     }
   }
 
@@ -1558,7 +1570,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _withGeneratorScope(generator: Generator, callback: SerializedBody => void): Array<BabelNodeStatement> {
+  withGeneratorScope(generator: Generator, callback: SerializedBody => void): Array<BabelNodeStatement> {
     let newBody = { type: "Generator", parentBody: undefined, entries: [] };
     let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ true);
     this.activeGeneratorBodies.set(generator, newBody);
@@ -1576,7 +1588,7 @@ export class ResidualHeapSerializer {
     return statements;
   }
 
-  _getContext(): SerializationContext {
+  getContext(): SerializationContext {
     // TODO #482: Values serialized by nested generators would currently only get defined
     // along the code of the nested generator; their definitions need to get hoisted
     // or repeated so that they are accessible and defined from all using scopes
@@ -1584,7 +1596,7 @@ export class ResidualHeapSerializer {
       serializeValue: this.serializeValue.bind(this),
       serializeBinding: this.serializeBinding.bind(this),
       serializeGenerator: (generator: Generator): Array<BabelNodeStatement> =>
-        this._withGeneratorScope(generator, () => generator.serialize(context)),
+        this.withGeneratorScope(generator, () => generator.serialize(context)),
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
@@ -1600,8 +1612,8 @@ export class ResidualHeapSerializer {
   }
 
   _serializeAdditionalFunction(generator: Generator, postGeneratorCallback: () => void) {
-    let context = this._getContext();
-    return this._withGeneratorScope(generator, newBody => {
+    let context = this.getContext();
+    return this.withGeneratorScope(generator, newBody => {
       let oldCurBody = this.currentFunctionBody;
       this.currentFunctionBody = newBody;
       generator.serialize(context);
@@ -1694,7 +1706,7 @@ export class ResidualHeapSerializer {
             }
             if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
 
-            const lazyHoistedReactNodes = this.residualReactElements.serializeLazyHoistedNodes();
+            const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
             Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
           };
           this.currentAdditionalFunction = additionalFunctionValue;
@@ -1730,7 +1742,7 @@ export class ResidualHeapSerializer {
   }
 
   serialize(): BabelNodeFile {
-    this.generator.serialize(this._getContext());
+    this.generator.serialize(this.getContext());
     invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     this.postGeneratorSerialization();

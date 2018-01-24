@@ -12,7 +12,7 @@
 import type { Logger } from "../utils/logger.js";
 import type { Modules } from "../utils/modules.js";
 import type { Realm } from "../realm.js";
-import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
+import type { ObjectRefCount, AdditionalFunctionEffects, ReactBytecodeTree } from "./types.js";
 import type { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers";
 
 import invariant from "../invariant.js";
@@ -42,10 +42,11 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     logger: Logger,
     modules: Modules,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+    reactFunctionToBytecodeTrees: Map<FunctionValue, ReactBytecodeTree>,
     valueIdentifiers: ResidualHeapValueIdentifiers,
     valueToEdgeRecord: Map<Value, ObjectRefCount>
   ) {
-    super(realm, logger, modules, additionalFunctionValuesAndEffects);
+    super(realm, logger, modules, additionalFunctionValuesAndEffects, reactFunctionToBytecodeTrees);
     this._valueToEdgeRecord = valueToEdgeRecord;
     this._valueIdentifiers = valueIdentifiers;
     this._visitedValues = new Set();

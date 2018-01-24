@@ -10,7 +10,7 @@
 /* @flow */
 
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
-import { ConcreteValue, Value, ObjectValue } from "../values/index.js";
+import { ConcreteValue, Value, ObjectValue, ArrayValue, SymbolValue } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
@@ -36,6 +36,29 @@ export type SerializedBody = {
 export type AdditionalFunctionEffects = {
   effects: Effects,
   transforms: Array<Function>,
+};
+
+export type ReactBytecodeTree = {
+  rootBytecodeComponent: ReactBytecodeComponent,
+};
+
+export type ReactBytecodeComponent = {
+  children: Array<ReactBytecodeComponent>,
+  effects: Effects,
+  instances: Array<ReactBytecodeComponentInstance>,
+  instructions: ArrayValue,
+  instructionsFunc: ECMAScriptSourceFunctionValue,
+  nodeValue: ObjectValue,
+  slotsFunc: ECMAScriptSourceFunctionValue,
+  values: Array<any>,
+};
+
+export type ReactBytecodeComponentInstance = {
+  additionalProperties: Map<string, Value>,
+  additionalSymbols: Map<SymbolValue, Value>,
+  existingStatements: Array<any>,
+  func: ECMAScriptSourceFunctionValue,
+  prototype: ObjectValue,
 };
 
 export type AdditionalFunctionInfo = {
@@ -75,7 +98,7 @@ export type FunctionInfo = {
 export type LazilyHoistedNodes = {|
   id: BabelNodeIdentifier,
   createElementIdentifier: null | BabelNodeIdentifier,
-  nodes: Array<{ id: BabelNodeIdentifier, astNode: BabelNode }>,
+  nodes: Array<{ id: BabelNodeIdentifier, astNode: any }>,
 |};
 
 export type FactoryFunctionInfo = { factoryId: BabelNodeIdentifier, functionInfo: FunctionInfo };

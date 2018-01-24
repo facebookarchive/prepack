@@ -14,7 +14,7 @@ import { Completion, ThrowCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
-import type { AdditionalFunctionEffects } from "./types.js";
+import type { AdditionalFunctionEffects, ReactBytecodeTree } from "./types.js";
 import type { PropertyBinding } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
@@ -35,6 +35,7 @@ import {
   convertSimpleClassComponentToFunctionalComponent,
   normalizeFunctionalComponentParamaters,
 } from "../react/utils.js";
+import { createReactBytecodeTree } from "../react/bytecode.js";
 import * as t from "babel-types";
 
 export class Functions {
@@ -43,6 +44,7 @@ export class Functions {
     this.functions = functions;
     this.moduleTracer = moduleTracer;
     this.writeEffects = new Map();
+    this.reactBytecodeTrees = new Map();
     this.functionExpressions = new Map();
   }
 
@@ -52,6 +54,7 @@ export class Functions {
   functionExpressions: Map<FunctionValue, string>;
   moduleTracer: ModuleTracer;
   writeEffects: Map<FunctionValue, AdditionalFunctionEffects>;
+  reactBytecodeTrees: Map<FunctionValue, ReactBytecodeTree>;
 
   _generateAdditionalFunctionCallsFromInput(): Array<[FunctionValue, BabelNodeCallExpression]> {
     // lookup functions
@@ -133,24 +136,34 @@ export class Functions {
         componentType instanceof ECMAScriptSourceFunctionValue,
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
+
+      // If we're serializing to JSX or createElement, we want to serialize back to
+      // an additionalFunction. If we're serializaing to bytecode, we want to serialize
+      // out many functions and an array with all the bytecodes/references/strings in
       let effects = reconciler.render(componentType);
-      let additionalFunctionEffects = this._createAdditionalEffects(effects);
-      invariant(effects[0] instanceof Value);
-      if (simpleClassComponents.has(effects[0])) {
-        // if the root component was a class and is now simple, we can convert it from a class
-        // component to a functional component
-        convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
-        normalizeFunctionalComponentParamaters(componentType);
-        this.writeEffects.set(componentType, additionalFunctionEffects);
-      } else if (valueIsClassComponent(this.realm, componentType)) {
-        let prototype = Get(this.realm, componentType, "prototype");
-        invariant(prototype instanceof ObjectValue);
-        let renderMethod = Get(this.realm, prototype, "render");
-        invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-        this.writeEffects.set(renderMethod, additionalFunctionEffects);
+
+      if (this.realm.react.output === "bytecode") {
+        let reactBytecodeTree = createReactBytecodeTree(this.realm, componentType, effects, simpleClassComponents);
+        this.reactBytecodeTrees.set(componentType, ((reactBytecodeTree: any): ReactBytecodeTree));
       } else {
-        normalizeFunctionalComponentParamaters(componentType);
-        this.writeEffects.set(componentType, additionalFunctionEffects);
+        let additionalFunctionEffects = this._createAdditionalEffects(((effects: any): Effects));
+        invariant(effects[0] instanceof Value);
+        if (simpleClassComponents.has(effects[0])) {
+          // if the root component was a class and is now simple, we can convert it from a class
+          // component to a functional component
+          convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
+          normalizeFunctionalComponentParamaters(componentType);
+          this.writeEffects.set(componentType, additionalFunctionEffects);
+        } else if (valueIsClassComponent(this.realm, componentType)) {
+          let prototype = Get(this.realm, componentType, "prototype");
+          invariant(prototype instanceof ObjectValue);
+          let renderMethod = Get(this.realm, prototype, "render");
+          invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
+          this.writeEffects.set(renderMethod, additionalFunctionEffects);
+        } else {
+          normalizeFunctionalComponentParamaters(componentType);
+          this.writeEffects.set(componentType, additionalFunctionEffects);
+        }
       }
     }
   }
@@ -236,6 +249,10 @@ export class Functions {
 
   getAdditionalFunctionValuesToEffects(): Map<FunctionValue, AdditionalFunctionEffects> {
     return this.writeEffects;
+  }
+
+  getReactBytecodeTrees(): Map<FunctionValue, ReactBytecodeTree> {
+    return this.reactBytecodeTrees;
   }
 
   reportWriteConflicts(

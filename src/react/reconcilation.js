@@ -25,7 +25,13 @@ import {
   AbstractObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, valueIsClassComponent, mapOverArrayValue, valueIsLegacyCreateClassComponent } from "./utils";
+import {
+  isReactElement,
+  valueIsClassComponent,
+  forEachArrayValue,
+  valueIsLegacyCreateClassComponent,
+  getThisAssignments,
+} from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -101,6 +107,7 @@ export class Reconciler {
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
+    constructorThisAssignments: Set<string>,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ): Value {
@@ -110,7 +117,7 @@ export class Reconciler {
       );
     }
     // create a new instance of this React class component
-    let instance = createClassInstance(this.realm, componentType, props, context);
+    let instance = createClassInstance(this.realm, componentType, props, context, constructorThisAssignments);
     // get the "render" method off the instance
     let renderMethod = Get(this.realm, instance, "render");
     invariant(
@@ -149,6 +156,25 @@ export class Reconciler {
     return componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
   }
 
+  _scanClassComponent(componentType: ECMAScriptSourceFunctionValue) {
+    if (this.realm.react.classComponentMeta.has(componentType)) {
+      let meta = this.realm.react.classComponentMeta.get(componentType);
+      invariant(meta);
+      return meta;
+    }
+    // get all this assignments in the constructor
+    let componentPrototype = Get(this.realm, componentType, "prototype");
+    invariant(componentPrototype instanceof ObjectValue);
+    let constructorMethod = Get(this.realm, componentPrototype, "constructor");
+    invariant(constructorMethod instanceof ECMAScriptSourceFunctionValue);
+    let thisAssignments = getThisAssignments(constructorMethod.$ECMAScriptCode);
+    let scan = {
+      thisAssignments,
+    };
+    this.realm.react.classComponentMeta.set(componentType, scan);
+    return scan;
+  }
+
   _renderComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue,
@@ -163,39 +189,51 @@ export class Reconciler {
     if (valueIsLegacyCreateClassComponent(this.realm, componentType)) {
       throw new ExpectedBailOut("components created with create-react-class are not supported");
     } else if (valueIsClassComponent(this.realm, componentType)) {
-      // We first need to know what type of class component we're dealing with.
-      // A "simple" class component is defined as:
-      //
-      // - having only a "render" method or many method, i.e. render(), _renderHeader(), _renderFooter()
-      // - having no lifecycle events
-      // - having no state
-      // - having no instance variables
-      //
-      // the only things a class component should be able to access on "this" are:
-      // - this.props
-      // - this.context
-      // - this._someRenderMethodX() etc
-      //
-      // Otherwise, the class component is a "complex" one.
-      // To begin with, we don't know what type of component it is, so we try and render it as if it were
-      // a simple component using the above heuristics. If an error occurs during this process, we assume
-      // that the class wasn't simple, then try again with the "complex" heuristics.
-      try {
-        value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
-        this.simpleClassComponents.add(value);
-      } catch (error) {
-        // if we get back a SimpleClassBailOut error, we know that this class component
-        // wasn't a simple one and is likely to be a complex class component instead
-        if (error instanceof SimpleClassBailOut) {
-          // the component was not simple, so we continue with complex case
-        } else {
-          // else we rethrow the error
-          throw error;
+      let meta = this._scanClassComponent(componentType);
+
+      // if there were no assignments we can try and render it as a simple class component
+      if (meta.thisAssignments.size === 0) {
+        // We first need to know what type of class component we're dealing with.
+        // A "simple" class component is defined as:
+        //
+        // - having only a "render" method or many method, i.e. render(), _renderHeader(), _renderFooter()
+        // - having no lifecycle events
+        // - having no state
+        // - having no instance variables
+        //
+        // the only things a class component should be able to access on "this" are:
+        // - this.props
+        // - this.context
+        // - this._someRenderMethodX() etc
+        //
+        // Otherwise, the class component is a "complex" one.
+        // To begin with, we don't know what type of component it is, so we try and render it as if it were
+        // a simple component using the above heuristics. If an error occurs during this process, we assume
+        // that the class wasn't simple, then try again with the "complex" heuristics.
+        try {
+          value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
+          this.simpleClassComponents.add(value);
+        } catch (error) {
+          // if we get back a SimpleClassBailOut error, we know that this class component
+          // wasn't a simple one and is likely to be a complex class component instead
+          if (error instanceof SimpleClassBailOut) {
+            // the component was not simple, so we continue with complex case
+          } else {
+            // else we rethrow the error
+            throw error;
+          }
         }
       }
       // handle the complex class component if there is not value
       if (value === undefined) {
-        value = this._renderComplexClassComponent(componentType, props, context, branchStatus, branchState);
+        value = this._renderComplexClassComponent(
+          componentType,
+          props,
+          context,
+          meta.thisAssignments,
+          branchStatus,
+          branchState
+        );
       }
     } else {
       value = this._renderFunctionalComponent(componentType, props, context);
@@ -339,7 +377,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
-    mapOverArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
+    forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
       elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, branchStatus, branchState);
     });
   }

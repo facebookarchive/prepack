@@ -122,13 +122,15 @@ export class Serializer {
     }
 
     let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
+    let reactFunctionToBytecodeTres = this.functions.getReactBytecodeTrees();
     //Deep traversal of the heap to identify the necessary scope of residual functions
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
     let residualHeapVisitor = new ResidualHeapVisitor(
       this.realm,
       this.logger,
       this.modules,
-      additionalFunctionValuesAndEffects
+      additionalFunctionValuesAndEffects,
+      reactFunctionToBytecodeTres
     );
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
@@ -147,7 +149,8 @@ export class Serializer {
         this.realm,
         this.logger,
         this.modules,
-        additionalFunctionValuesAndEffects
+        additionalFunctionValuesAndEffects,
+        reactFunctionToBytecodeTres
       );
       heapRefCounter.visitRoots();
 
@@ -156,6 +159,7 @@ export class Serializer {
         this.logger,
         this.modules,
         additionalFunctionValuesAndEffects,
+        reactFunctionToBytecodeTres,
         residualHeapValueIdentifiers,
         heapRefCounter.getResult()
       );
@@ -185,8 +189,8 @@ export class Serializer {
         additionalFunctionValuesAndEffects,
         residualHeapVisitor.additionalFunctionValueInfos,
         residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-        this.statistics,
-        this.react
+        residualHeapVisitor.reactBytecodeTrees,
+        this.statistics
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -211,8 +215,8 @@ export class Serializer {
       additionalFunctionValuesAndEffects,
       residualHeapVisitor.additionalFunctionValueInfos,
       residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-      this.statistics,
-      this.react
+      residualHeapVisitor.reactBytecodeTrees,
+      this.statistics
     );
 
     let ast = residualHeapSerializer.serialize();

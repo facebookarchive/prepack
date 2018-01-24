@@ -179,6 +179,7 @@ export class Realm {
       reactLibraryObject: undefined,
       hoistableReactElements: new WeakMap(),
       hoistableFunctions: new WeakMap(),
+      classComponentMeta: new Map(),
     };
 
     this.errorHandler = opts.errorHandler;
@@ -230,6 +231,7 @@ export class Realm {
     reactLibraryObject?: ObjectValue,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
+    classComponentMeta: Map<ECMAScriptSourceFunctionValue, { thisAssignments: Set<string> }>,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
