@@ -29,16 +29,21 @@ const lifecycleMethods = new Set([
   "componentWillReceiveProps",
 ]);
 
-export function getInitialProps(realm: Realm, componentType: ECMAScriptSourceFunctionValue): AbstractObjectValue {
+export function getInitialProps(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue | null
+): AbstractObjectValue {
   let propsName = null;
-  if (valueIsClassComponent(realm, componentType)) {
-    propsName = "this.props";
-  } else {
-    // otherwise it's a functional component, where the first paramater of the function is "props" (if it exists)
-    if (componentType.$FormalParameters.length > 0) {
-      let firstParam = componentType.$FormalParameters[0];
-      if (t.isIdentifier(firstParam)) {
-        propsName = ((firstParam: any): BabelNodeIdentifier).name;
+  if (componentType !== null) {
+    if (valueIsClassComponent(realm, componentType)) {
+      propsName = "this.props";
+    } else {
+      // otherwise it's a functional component, where the first paramater of the function is "props" (if it exists)
+      if (componentType.$FormalParameters.length > 0) {
+        let firstParam = componentType.$FormalParameters[0];
+        if (t.isIdentifier(firstParam)) {
+          propsName = ((firstParam: any): BabelNodeIdentifier).name;
+        }
       }
     }
   }
