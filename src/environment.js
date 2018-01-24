@@ -1093,7 +1093,10 @@ export class LexicalEnvironment {
     }
   }
 
-  concatenateAndParse(sources: Array<SourceFile>, sourceType: SourceType = "script"): [BabelNodeFile, any] {
+  concatenateAndParse(
+    sources: Array<SourceFile>,
+    sourceType: SourceType = "script"
+  ): [BabelNodeFile, { [string]: string }] {
     let asts = [];
     let code = {};
     let directives = [];
@@ -1132,7 +1135,7 @@ export class LexicalEnvironment {
     sources: Array<SourceFile>,
     sourceType: SourceType = "script",
     onParse: void | (BabelNodeFile => void) = undefined
-  ): [AbruptCompletion | Value, any] {
+  ): [AbruptCompletion | Value, { [string]: string }] {
     let context = new ExecutionContext();
     context.lexicalEnvironment = this;
     context.variableEnvironment = this;
@@ -1181,6 +1184,7 @@ export class LexicalEnvironment {
     let fileAst = ((partialAST: any): BabelNodeFile);
     let prog = t.program(fileAst.program.body, ast.program.directives);
     this.fixup_filenames(prog);
+    // The type signature for generate is not complete, hence the any
     return generate(prog, { sourceMaps: options.sourceMaps }, (code: any));
   }
 

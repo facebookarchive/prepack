@@ -30,7 +30,11 @@ import { ModuleTracer } from "../utils/modules.js";
 import buildTemplate from "babel-template";
 import { ReactStatistics, type ReactSerializerState } from "./types";
 import { Reconciler } from "../react/reconcilation.js";
-import { valueIsClassComponent, convertSimpleClassComponentToFunctionalComponent } from "../react/utils.js";
+import {
+  valueIsClassComponent,
+  convertSimpleClassComponentToFunctionalComponent,
+  normalizeFunctionalComponentParamaters,
+} from "../react/utils.js";
 import { createReactBytecodeTree } from "../react/bytecode.js";
 import * as t from "babel-types";
 
@@ -148,6 +152,7 @@ export class Functions {
           // if the root component was a class and is now simple, we can convert it from a class
           // component to a functional component
           convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
+          normalizeFunctionalComponentParamaters(componentType);
           this.writeEffects.set(componentType, additionalFunctionEffects);
         } else if (valueIsClassComponent(this.realm, componentType)) {
           let prototype = Get(this.realm, componentType, "prototype");
@@ -156,6 +161,7 @@ export class Functions {
           invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
           this.writeEffects.set(renderMethod, additionalFunctionEffects);
         } else {
+          normalizeFunctionalComponentParamaters(componentType);
           this.writeEffects.set(componentType, additionalFunctionEffects);
         }
       }

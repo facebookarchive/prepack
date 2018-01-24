@@ -24,7 +24,7 @@ export default function(realm: Realm): Realm {
     initializeDOMGlobals(realm);
     initializeReactMocks(realm);
   }
-  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) || realm.isCompatibleWith("mobile")) {
     initializeReactNativeGlobals(realm);
   }
   return realm;

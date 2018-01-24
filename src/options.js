@@ -11,11 +11,19 @@
 
 import type { ErrorHandler } from "./errors.js";
 
-export type Compatibility = "browser" | "jsc-600-1-4-17" | "node-source-maps" | "node-cli" | "react-mocks";
-export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli", "react-mocks"];
+export type Compatibility = "browser" | "jsc-600-1-4-17" | "mobile" | "node-source-maps" | "node-cli" | "react-mocks";
+export const CompatibilityValues = [
+  "browser",
+  "jsc-600-1-4-17",
+  "mobile",
+  "node-source-maps",
+  "node-cli",
+  "react-mocks",
+];
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 
 export type RealmOptions = {
+  check?: boolean,
   compatibility?: Compatibility,
   debugNames?: boolean,
   errorHandler?: ErrorHandler,

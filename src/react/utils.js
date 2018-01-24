@@ -323,3 +323,13 @@ export function getThisAssignments(functionBody: BabelNodeBlockStatement): Set<s
   );
   return assignments;
 }
+
+export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFunctionValue): void {
+  func.$FormalParameters = func.$FormalParameters.map((param, i) => {
+    if (i === 0) {
+      return t.identifier("props");
+    } else {
+      return t.identifier("context");
+    }
+  });
+}

@@ -132,7 +132,7 @@ export function construct_empty_effects(realm: Realm): Effects {
 export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
-    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual;
+    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
     this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
@@ -174,7 +174,6 @@ export class Realm {
     this.react = {
       enabled: opts.reactEnabled || false,
       output: opts.reactOutput || "create-element",
-      flowRequired: true,
       symbols: new Map(),
       currentOwner: undefined,
       reactLibraryObject: undefined,
@@ -227,7 +226,6 @@ export class Realm {
   react: {
     enabled: boolean,
     output?: ReactOutputTypes,
-    flowRequired: boolean,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     currentOwner?: ObjectValue,
     reactLibraryObject?: ObjectValue,

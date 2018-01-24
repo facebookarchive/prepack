@@ -6,7 +6,7 @@ function Foo() {
   return <div>123</div>
 }
 
-function App(props: {yar: boolean}) {
+function App(props) {
 	return <div>{props.yar ? <Foo arg={1} /> : <Foo arg={2} />}</div>;
 }
 

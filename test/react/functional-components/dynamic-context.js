@@ -6,7 +6,7 @@ function SubChild(props, context) {
   return <span>The context title is: {context.title}</span>;
 }
 
-function Child(props: any, context: {title: string}) {
+function Child(props, context) {
   return <span><SubChild /></span>;
 }
 

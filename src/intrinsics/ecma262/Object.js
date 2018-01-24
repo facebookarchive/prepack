@@ -302,7 +302,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 9.1.2.16
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     func.defineNativeMethod("values", 1, (context, [O]) => {
       // 1. Let obj be ? ToObject(O).
       let obj = To.ToObject(realm, O.throwIfNotConcrete());
@@ -363,7 +363,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.20
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     func.defineNativeMethod("setPrototypeOf", 2, (context, [O, proto]) => {
       // 1. Let O be ? RequireObjectCoercible(O).
       O = RequireObjectCoercible(realm, O);
