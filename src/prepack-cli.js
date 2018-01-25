@@ -12,7 +12,7 @@
 /* eslint-disable no-shadow */
 
 import { CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "./errors.js";
-import { type Compatibility, CompatibilityValues } from "./options.js";
+import { type Compatibility, CompatibilityValues, type ReactOutputTypes, ReactOutputValues } from "./options.js";
 import { type SerializedResult } from "./serializer/types.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
 import type { BabelNodeSourceLocation } from "babel-types";
@@ -83,7 +83,7 @@ function run(
   let heapGraphFilePath: string;
   let debugInFilePath: string;
   let debugOutFilePath: string;
-  let reactOutput: string = "create-element";
+  let reactOutput: ReactOutputTypes = "create-element";
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -170,7 +170,12 @@ function run(
           heapGraphFilePath = args.shift();
           break;
         case "reactOutput":
-          reactOutput = args.shift();
+          arg = args.shift();
+          if (!ReactOutputValues.includes(arg)) {
+            console.error(`Unsupported reactOutput: ${arg}`);
+            process.exit(1);
+          }
+          reactOutput = (arg: any);
           break;
         case "help":
           console.log(
