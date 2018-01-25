@@ -83,6 +83,7 @@ function run(
   let heapGraphFilePath: string;
   let debugInFilePath: string;
   let debugOutFilePath: string;
+  let reactOutput: string = "create-element";
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -103,7 +104,6 @@ function run(
     check: false,
     profile: false,
     reactEnabled: false,
-    reactOutput: "create-element",
   };
 
   while (args.length) {
@@ -169,6 +169,9 @@ function run(
         case "heapGraphFilePath":
           heapGraphFilePath = args.shift();
           break;
+        case "reactOutput":
+          reactOutput = args.shift();
+          break;
         case "help":
           console.log(
             "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ] [ --lazyObjectsRuntime lazyObjectsRuntimeName] [ --heapGraphFilePath heapGraphFilePath]" +
@@ -211,6 +214,7 @@ function run(
       heapGraphFormat: "DotLanguage",
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
+      reactOutput: reactOutput,
     },
     flags
   );
