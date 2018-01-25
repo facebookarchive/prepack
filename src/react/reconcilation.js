@@ -25,18 +25,18 @@ import {
   AbstractObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import {
-  isReactElement,
-  valueIsClassComponent,
-  forEachArrayValue,
-  valueIsLegacyCreateClassComponent,
-  getThisAssignments,
-} from "./utils";
+import { isReactElement, valueIsClassComponent, forEachArrayValue, valueIsLegacyCreateClassComponent } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
-import { getInitialProps, getInitialContext, createClassInstance, createSimpleClassInstance } from "./components.js";
+import {
+  getInitialProps,
+  getInitialContext,
+  createClassInstance,
+  createSimpleClassInstance,
+  evaluateClassConstructor,
+} from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import type { ClassComponentMetadata } from "../types.js";
 
@@ -159,21 +159,18 @@ export class Reconciler {
     return componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
   }
 
-  _getClassComponentMetadata(componentType: ECMAScriptSourceFunctionValue): ClassComponentMetadata {
+  _getClassComponentMetadata(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue
+  ): ClassComponentMetadata {
     if (this.realm.react.classComponentMetadata.has(componentType)) {
       let classMetadata = this.realm.react.classComponentMetadata.get(componentType);
       invariant(classMetadata);
       return classMetadata;
     }
     // get all this assignments in the constructor
-    let componentPrototype = Get(this.realm, componentType, "prototype");
-    invariant(componentPrototype instanceof ObjectValue);
-    let constructorMethod = Get(this.realm, componentPrototype, "constructor");
-    invariant(constructorMethod instanceof ECMAScriptSourceFunctionValue);
-    let thisAssignments = getThisAssignments(constructorMethod.$ECMAScriptCode);
-    let classMetadata = {
-      thisAssignments,
-    };
+    let classMetadata = evaluateClassConstructor(this.realm, componentType, props, context);
     this.realm.react.classComponentMetadata.set(componentType, classMetadata);
     return classMetadata;
   }
@@ -205,15 +202,15 @@ export class Reconciler {
     if (valueIsLegacyCreateClassComponent(this.realm, componentType)) {
       throw new ExpectedBailOut("components created with create-react-class are not supported");
     } else if (valueIsClassComponent(this.realm, componentType)) {
-      let classMetadata = this._getClassComponentMetadata(componentType);
-      let thisAssignments = classMetadata.thisAssignments;
+      let classMetadata = this._getClassComponentMetadata(componentType, props, context);
+      let { instanceProperties, instanceSymbols } = classMetadata;
 
       // if there were no this assignments we can try and render it as a simple class component
-      if (thisAssignments.size === 0) {
+      if (instanceProperties.size === 0 && instanceSymbols.size === 0) {
         // We first need to know what type of class component we're dealing with.
         // A "simple" class component is defined as:
         //
-        // - having only a "render" method or many method, i.e. render(), _renderHeader(), _renderFooter()
+        // - having only a "render" method
         // - having no lifecycle events
         // - having no state
         // - having no instance variables

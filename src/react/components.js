@@ -10,12 +10,18 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { ECMAScriptSourceFunctionValue, AbstractValue, ObjectValue, AbstractObjectValue } from "../values/index.js";
+import {
+  ECMAScriptSourceFunctionValue,
+  AbstractValue,
+  ObjectValue,
+  AbstractObjectValue,
+  SymbolValue,
+} from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { valueIsClassComponent } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
-import { Get } from "../methods/index.js";
+import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { ClassComponentMetadata } from "../types.js";
@@ -125,18 +131,22 @@ export function createClassInstance(
 ): AbstractObjectValue {
   let componentPrototype = Get(realm, componentType, "prototype");
   invariant(componentPrototype instanceof ObjectValue);
-  let thisAssignments = classMetadata.thisAssignments;
+  let { instanceProperties, instanceSymbols } = classMetadata;
 
   // create an instance object and disable serialization as we don't want to output the internals we set below
   let instance = new ObjectValue(realm, componentPrototype, "this", true);
   for (let [name] of componentPrototype.properties) {
-    // ensure we don't set constructor or prototype methods that get set in the constructor
-    if (name !== "constructor" && !thisAssignments.has(name)) {
+    // ensure we don't set properties that were defined on the instance
+    if (name !== "constructor" && !instanceProperties.has(name)) {
       Properties.Set(realm, instance, name, Get(realm, componentPrototype, name), true);
     }
   }
-  // assign state
-  Properties.Set(realm, instance, "state", AbstractValue.createAbstractObject(realm, "this.state"), true);
+  for (let [symbol] of componentPrototype.symbols) {
+    // ensure we don't set symbols that were defined on the instance
+    if (!instanceSymbols.has(symbol)) {
+      Properties.Set(realm, instance, symbol, Get(realm, componentPrototype, symbol), true);
+    }
+  }
   // assign refs
   Properties.Set(realm, instance, "refs", AbstractValue.createAbstractObject(realm, "this.refs"), true);
   // assign props
@@ -149,4 +159,37 @@ export function createClassInstance(
   let value = AbstractValue.createAbstractObject(realm, "this", instance);
   invariant(value instanceof AbstractObjectValue);
   return value;
+}
+
+export function evaluateClassConstructor(
+  realm: Realm,
+  constructorFunc: ECMAScriptSourceFunctionValue,
+  props: ObjectValue | AbstractObjectValue,
+  context: ObjectValue | AbstractObjectValue
+): { instanceProperties: Set<string>, instanceSymbols: Set<SymbolValue> } {
+  let instanceProperties = new Set();
+  let instanceSymbols = new Set();
+
+  realm.evaluatePure(() =>
+    realm.evaluateForEffects(
+      () => {
+        let instanceObject = Construct(realm, constructorFunc, [props, context]);
+        invariant(instanceObject instanceof ObjectValue);
+        for (let [propertyName] of instanceObject.properties) {
+          instanceProperties.add(propertyName);
+        }
+        for (let [symbol] of instanceObject.symbols) {
+          instanceSymbols.add(symbol);
+        }
+        return instanceObject;
+      },
+      /*state*/ null,
+      `react component constructor: ${constructorFunc.getName()}`
+    )
+  );
+
+  return {
+    instanceProperties,
+    instanceSymbols,
+  };
 }

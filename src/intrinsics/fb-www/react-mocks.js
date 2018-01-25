@@ -54,8 +54,9 @@ let reactCode = `
 
     class Component {
       constructor(props, context) {
-        // stub, this constructor is never evaluated
-        throw new Error("React.Component constructor should never evaluate");
+        this.props = props;
+        this.context = context;
+        this.refs = {};
       }
       getChildContext() {}
     }
@@ -64,8 +65,9 @@ let reactCode = `
 
     class PureComponent {
       constructor(props, context) {
-        // stub, this constructor is never evaluated
-        throw new Error("React.PureComponent constructor should never evaluate");
+        this.props = props;
+        this.context = context;
+        this.refs = {};
       }
     }
 

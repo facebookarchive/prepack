@@ -320,7 +320,8 @@ export type ObjectKind =
 // TODO #26 #712: Promises. All kinds of iterators. Generators.
 
 export type ClassComponentMetadata = {
-  thisAssignments: Set<string>,
+  instanceProperties: Set<string>,
+  instanceSymbols: Set<SymbolValue>,
 };
 
 export type DebugServerType = {
