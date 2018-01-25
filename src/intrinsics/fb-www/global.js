@@ -9,12 +9,45 @@
 
 /* @flow */
 
+import { parseExpression } from "babylon";
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, Value, StringValue } from "../../values/index.js";
+import { AbstractValue, NativeFunctionValue, Value, ObjectValue, StringValue } from "../../values/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
+import { Environment } from "../../singletons.js";
 import invariant from "../../invariant";
+
+// Based on www babelHelpers fork.
+const babelHelpersCode = `
+{
+  inherits(subClass, superClass) {
+    Object.assign(subClass, superClass);
+    subClass.prototype = Object.create(superClass && superClass.prototype);
+    subClass.prototype.constructor = subClass;
+    subClass.__superConstructor__ = superClass;
+    return superClass;
+  },
+  _extends: Object.assign,
+  extends: Object.assign,
+  objectWithoutProperties(obj, keys) {
+    var target = {};
+    for (var i in obj) {
+      if (!hasOwn.call(obj, i) || keys.indexOf(i) >= 0) {
+        continue;
+      }
+      target[i] = obj[i];
+    }
+    return target;
+  },
+  taggedTemplateLiteralLoose(strings, raw) {
+    strings.raw = raw;
+    return strings;
+  },
+  bind: Function.prototype.bind,
+}
+`;
+let babelHelpersAST = parseExpression(babelHelpersCode);
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
@@ -25,6 +58,15 @@ export default function(realm: Realm): void {
     value: moduleValue,
     writable: true,
     enumerable: false,
+    configurable: true,
+  });
+
+  const babelHelpersValue = realm.$GlobalEnv.evaluate(babelHelpersAST, false);
+  invariant(babelHelpersValue instanceof ObjectValue);
+  global.$DefineOwnProperty("babelHelpers", {
+    value: babelHelpersValue,
+    writable: true,
+    enumerable: true,
     configurable: true,
   });
 
