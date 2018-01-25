@@ -93,12 +93,14 @@ export class ResidualHeapVisitor {
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
     this.shouldVisitReactLibrary = false;
+    this.alreadyVisitedAdditionalFunctions = new Set();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
     this.inAdditionalFunction = false;
     this.additionalRoots = new Set();
+    this.inClass = false;
   }
 
   realm: Realm;
@@ -124,6 +126,7 @@ export class ResidualHeapVisitor {
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   shouldVisitReactLibrary: boolean;
   reactElementEquivalenceSet: ReactElementSet;
+  alreadyVisitedAdditionalFunctions: Set<FunctionValue>;
 
   // We only want to add to additionalRoots when we're in an additional function
   inAdditionalFunction: boolean;
@@ -132,6 +135,7 @@ export class ResidualHeapVisitor {
   // declared outside the additional function need to be serialized in the additional function's parent scope for
   // identity to work).
   additionalRoots: Set<ObjectValue>;
+  inClass: boolean;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -327,8 +331,23 @@ export class ResidualHeapVisitor {
   }
 
   visitValueFunction(val: FunctionValue, parentScope: Scope): void {
-    if (this.inAdditionalFunction) this.additionalRoots.add(val);
+    let isClass = false;
+
+    if (this.inAdditionalFunction && !this.inClass) {
+      this.additionalRoots.add(val);
+    }
+    if (val.$FunctionKind === "classConstructor") {
+      invariant(val instanceof ECMAScriptSourceFunctionValue);
+      let homeObject = val.$HomeObject;
+      if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
+        isClass = true;
+        this.inClass = true;
+      }
+    }
     this.visitObjectProperties(val);
+    if (isClass && this.inClass) {
+      this.inClass = false;
+    }
 
     if (val instanceof BoundFunctionValue) {
       this.visitValue(val.$BoundTargetFunction);
@@ -404,11 +423,8 @@ export class ResidualHeapVisitor {
         }
       });
     }
-    if (val.$FunctionKind === "classConstructor") {
-      let homeObject = val.$HomeObject;
-      if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
-        this._visitClass(val, homeObject);
-      }
+    if (isClass && val.$HomeObject instanceof ObjectValue) {
+      this._visitClass(val, val.$HomeObject);
     }
     this.functionInstances.set(val, {
       residualFunctionBindings,
@@ -548,7 +564,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    if (this.inAdditionalFunction) this.additionalRoots.add(val);
+    if (this.inAdditionalFunction && !this.inClass) this.additionalRoots.add(val);
     let kind = val.getKind();
     this.visitObjectProperties(val, kind);
 
@@ -739,6 +755,11 @@ export class ResidualHeapVisitor {
     additionalEffects: AdditionalFunctionEffects,
     parentScope: Scope
   ) {
+    // we don't want to visit the same additionalFunction multiple times
+    if (this.alreadyVisitedAdditionalFunctions.has(functionValue)) {
+      return;
+    }
+    this.alreadyVisitedAdditionalFunctions.add(functionValue);
     // Get Instance + Info
     invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
     let code = functionValue.$ECMAScriptCode;
