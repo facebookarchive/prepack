@@ -1041,6 +1041,11 @@ export class Realm {
 
   rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
     if (!(propertyValue instanceof AbstractValue)) return;
+    if (propertyValue.kind === "abstractConcreteUnion") {
+      let absVal = propertyValue.args.find(e => e instanceof AbstractValue);
+      invariant(absVal instanceof AbstractValue);
+      propertyValue = absVal;
+    }
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
