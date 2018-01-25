@@ -133,7 +133,7 @@ export class Functions {
         componentType instanceof ECMAScriptSourceFunctionValue,
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
-      let effects = reconciler.render(componentType);
+      let effects = reconciler.render(componentType, this.moduleTracer.modules.logger);
       let additionalFunctionEffects = this._createAdditionalEffects(effects);
       invariant(effects[0] instanceof Value);
       if (simpleClassComponents.has(effects[0])) {

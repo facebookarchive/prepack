@@ -32,6 +32,8 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import { getInitialProps, getInitialContext, createClassInstance, createSimpleClassInstance } from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
+import { Completion } from "../completions.js";
+import { Logger } from "../utils/logger.js";
 
 type RenderStrategy = "NORMAL" | "RELAY_QUERY_RENDERER";
 
@@ -56,7 +58,7 @@ export class Reconciler {
   reactSerializerState: ReactSerializerState;
   simpleClassComponents: Set<Value>;
 
-  render(componentType: ECMAScriptSourceFunctionValue): Effects {
+  render(componentType: ECMAScriptSourceFunctionValue, logger: Logger): Effects {
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
         // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
@@ -79,7 +81,10 @@ export class Reconciler {
             } catch (error) {
               // if there was a bail-out on the root component in this reconcilation process, then this
               // should be an invariant as the user has explicitly asked for this component to get folded
-              if (error instanceof ExpectedBailOut) {
+              if (error instanceof Completion) {
+                logger.logCompletion(error);
+                throw error;
+              } else if (error instanceof ExpectedBailOut) {
                 let diagnostic = new CompilerDiagnostic(
                   `__registerReactComponentRoot() failed due to - ${error.message}`,
                   this.realm.currentLocation,
