@@ -12,7 +12,15 @@ type JSONValue = Array<JSONValue> | string | number | JSON;
 type JSON = { [key: string]: JSONValue };
 
 // this will mutate the original JSON object
-export function mergeAdacentJSONTextNodes(node: JSON) {
+export function mergeAdacentJSONTextNodes(node: JSON, visitedNodes?: Set<JSON>) {
+  if (visitedNodes === undefined) {
+    visitedNodes = new Set();
+  }
+  if (visitedNodes.has(node)) {
+    return "[Circular]";
+  }
+  visitedNodes.add(node);
+
   // we merge adjacent text nodes
   if (Array.isArray(node)) {
     // we create a new array rather than mutating the original
@@ -33,7 +41,7 @@ export function mergeAdacentJSONTextNodes(node: JSON) {
           arr.push(concatString);
           concatString = null;
         }
-        arr.push(mergeAdacentJSONTextNodes(child));
+        arr.push(mergeAdacentJSONTextNodes(child, visitedNodes));
       }
     }
     if (concatString !== null) {
@@ -44,7 +52,7 @@ export function mergeAdacentJSONTextNodes(node: JSON) {
     for (let key in node) {
       let value = node[key];
       if (typeof value === "object" && value !== null) {
-        node[key] = mergeAdacentJSONTextNodes(((value: any): JSON));
+        node[key] = mergeAdacentJSONTextNodes(((value: any): JSON), visitedNodes);
       }
     }
   }

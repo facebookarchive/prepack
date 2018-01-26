@@ -1083,7 +1083,7 @@ export class ResidualHeapSerializer {
       if (--delayed === 0) {
         invariant(instance);
         // hoist if we are in an additionalFunction
-        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val)) {
+        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val, undefined, new Set())) {
           instance.insertionPoint = new BodyReference(this.mainBody, this.mainBody.entries.length);
           instance.containingAdditionalFunction = undefined;
         } else {
@@ -1603,10 +1603,13 @@ export class ResidualHeapSerializer {
     let context = this._getContext();
     return this._withGeneratorScope(generator, newBody => {
       let oldCurBody = this.currentFunctionBody;
+      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this.currentFunctionBody = newBody;
+      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       generator.serialize(context);
       if (postGeneratorCallback) postGeneratorCallback();
       this.currentFunctionBody = oldCurBody;
+      this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
     });
   }
 
