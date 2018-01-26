@@ -15,7 +15,6 @@ import { AbstractValue, NativeFunctionValue, Value, ObjectValue, StringValue } f
 import buildExpressionTemplate from "../../utils/builder.js";
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
-import { Environment } from "../../singletons.js";
 import invariant from "../../invariant";
 
 // Based on www babelHelpers fork.
