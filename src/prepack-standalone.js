@@ -87,14 +87,21 @@ export function prepackSources(
       {
         filePath: options.outputFilename || "unknown",
         fileContents: serialized.code,
-        sourceMapContents: JSON.stringify(serialized.map),
+        sourceMapContents: serialized.map && JSON.stringify(serialized.map),
       },
     ];
+    realm = construct_realm(realmOptions, debugChannel);
+    initializeGlobals(realm);
+    if (typeof options.additionalGlobals === "function") {
+      options.additionalGlobals(realm);
+    }
+    realm.generator = new Generator(realm, "main");
     let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
     if (result instanceof AbruptCompletion) throw result;
     return { ...result };
   } else {
     invariant(options.residual);
+    realm.generator = new Generator(realm, "main");
     let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
     if (result instanceof AbruptCompletion) throw result;
     return { ...result };

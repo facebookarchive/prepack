@@ -380,7 +380,9 @@ function runTest(name, code, options: PrepackOptions, args) {
     if (code.includes(injectAtRuntime)) {
       let i = code.indexOf(injectAtRuntime);
       addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
+      options.residual = false;
     }
+    if (delayUnsupportedRequires) options.residual = false;
     if (args.es5) {
       code = transformWithBabel(code, [], [["env", { forceAllTransforms: true, modules: false }]]);
     }
@@ -581,7 +583,13 @@ function run(args) {
         continue;
       }
       total++;
-      let options = { delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures };
+      let options = {
+        delayInitializations,
+        inlineExpressions,
+        lazyObjectsRuntime,
+        simpleClosures,
+        residual: args.residual,
+      };
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
     }
@@ -601,6 +609,7 @@ class ProgramArgs {
   lazyObjectsRuntime: string;
   noLazySupport: boolean;
   fast: boolean;
+  residual: boolean;
   constructor(
     debugNames: boolean,
     verbose: boolean,
@@ -609,7 +618,8 @@ class ProgramArgs {
     es5: boolean,
     lazyObjectsRuntime: string,
     noLazySupport: boolean,
-    fast: boolean
+    fast: boolean,
+    residual: boolean
   ) {
     this.debugNames = debugNames;
     this.verbose = verbose;
@@ -619,6 +629,7 @@ class ProgramArgs {
     this.lazyObjectsRuntime = lazyObjectsRuntime;
     this.noLazySupport = noLazySupport;
     this.fast = fast;
+    this.residual = residual;
   }
 }
 
@@ -675,6 +686,7 @@ function argsParse(): ProgramArgs {
       lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME,
       noLazySupport: false,
       fast: false,
+      residual: false,
     },
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
@@ -703,6 +715,9 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.noLazySupport !== "boolean") {
     throw new ArgsParseError("noLazySupport must be a boolean (either --noLazySupport or not)");
   }
+  if (typeof parsedArgs.residual !== "boolean") {
+    throw new ArgsParseError("residual must be a boolean (either --residual or not)");
+  }
   let programArgs = new ProgramArgs(
     parsedArgs.debugNames,
     parsedArgs.verbose,
@@ -711,7 +726,8 @@ function argsParse(): ProgramArgs {
     parsedArgs.es5,
     parsedArgs.lazyObjectsRuntime,
     parsedArgs.noLazySupport,
-    parsedArgs.fast
+    parsedArgs.fast,
+    parsedArgs.residual
   );
   return programArgs;
 }

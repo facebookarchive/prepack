@@ -1171,9 +1171,7 @@ export class LexicalEnvironment {
     this.realm.pushContext(context);
     let partialAST;
     try {
-      let res;
-      [res, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
-      if (res instanceof AbruptCompletion) return res;
+      [, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
     } finally {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
