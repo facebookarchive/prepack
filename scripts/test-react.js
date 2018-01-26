@@ -253,6 +253,10 @@ function runTestSuite(outputJsx) {
       it("fb-www", async () => {
         await runTest(directory, "fb1.js");
       });
+
+      it("fb-www 2", async () => {
+        await runTest(directory, "fb2.js");
+      });
     });
   });
 }
