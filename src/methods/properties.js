@@ -1162,11 +1162,25 @@ export class PropertiesImplementation {
     if (IsDataDescriptor(realm, X)) {
       let value = X.value;
       if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
+        let savedUnion;
+        let savedIndex;
+        if (value.kind === "abstractConcreteUnion") {
+          savedUnion = value;
+          savedIndex = savedUnion.args.findIndex(e => e instanceof AbstractValue);
+          invariant(savedIndex >= 0);
+          value = savedUnion.args[savedIndex];
+          invariant(value instanceof AbstractValue);
+        }
         let realmGenerator = realm.generator;
         invariant(realmGenerator);
         value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
           kind: "resolved",
         });
+        if (savedUnion !== undefined) {
+          invariant(savedIndex !== undefined);
+          savedUnion.args[savedIndex] = value;
+          value = savedUnion;
+        }
         InternalSetProperty(realm, O, P, {
           value: value,
           writable: "writable" in X ? X.writable : false,

@@ -229,6 +229,10 @@ export default class AbstractValue extends Value {
     if (valueType === NullValue) return true;
     if (valueType === SymbolValue) return false;
     if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return false;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightBeFalse()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.mightBeFalse();
   }
@@ -239,6 +243,10 @@ export default class AbstractValue extends Value {
     if (valueType === NullValue) return false;
     if (valueType === SymbolValue) return true;
     if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return true;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightNotBeFalse()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.mightNotBeFalse();
   }
@@ -247,6 +255,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (valueType === NullValue) return true;
     if (valueType !== PrimitiveValue && valueType !== Value) return false;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightBeNull()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(NullValue);
   }
@@ -255,6 +267,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (valueType === NullValue) return false;
     if (valueType !== PrimitiveValue && valueType !== Value) return true;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightNotBeNull()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(NullValue);
   }
@@ -263,6 +279,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (Value.isTypeCompatibleWith(valueType, NumberValue)) return true;
     if (valueType !== PrimitiveValue && valueType !== Value) return false;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightBeNumber()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(NumberValue);
   }
@@ -271,6 +291,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (Value.isTypeCompatibleWith(valueType, NumberValue)) return false;
     if (valueType !== PrimitiveValue && valueType !== Value) return true;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightNotBeNumber()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(NumberValue);
   }
@@ -279,6 +303,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (Value.isTypeCompatibleWith(valueType, PrimitiveValue)) return true;
     if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return false;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightNotBeObject()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(ObjectValue);
   }
@@ -287,6 +315,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (Value.isTypeCompatibleWith(valueType, PrimitiveValue)) return false;
     if (Value.isTypeCompatibleWith(valueType, ObjectValue)) return true;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightBeObject()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(ObjectValue);
   }
@@ -295,6 +327,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (valueType === StringValue) return true;
     if (valueType !== PrimitiveValue && valueType !== Value) return false;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightBeString()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(StringValue);
   }
@@ -303,6 +339,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (valueType === StringValue) return false;
     if (valueType !== PrimitiveValue && valueType !== Value) return true;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightNotBeString()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(StringValue);
   }
@@ -311,6 +351,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return true;
     if (valueType !== PrimitiveValue && valueType !== Value) return false;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightBeUndefined()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueOfType(UndefinedValue);
   }
@@ -319,6 +363,10 @@ export default class AbstractValue extends Value {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return false;
     if (valueType !== PrimitiveValue && valueType !== Value) return true;
+    if (this.kind === "abstractConcreteUnion") {
+      for (let arg of this.args) if (arg.mightNotBeUndefined()) return true;
+      return false;
+    }
     if (this.values.isTop()) return true;
     return this.values.includesValueNotOfType(UndefinedValue);
   }
