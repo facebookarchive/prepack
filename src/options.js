@@ -13,8 +13,9 @@ import type { ErrorHandler } from "./errors.js";
 
 export type Compatibility = "browser" | "jsc-600-1-4-17" | "mobile" | "node-source-maps" | "node-cli" | "fb-www";
 export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "mobile", "node-source-maps", "node-cli", "fb-www"];
-export type ReactOutputTypes = "create-element" | "jsx";
-export const ReactOutputValues = ["create-element", "jsx"];
+
+export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
+export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
 
 export type RealmOptions = {
   check?: boolean,

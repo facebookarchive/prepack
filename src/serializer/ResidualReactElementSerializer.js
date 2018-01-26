@@ -23,7 +23,7 @@ import { FatalError } from "../errors";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
 
-export class ResidualReactElements {
+export class ResidualReactElementSerializer {
   constructor(realm: Realm, residualHeapSerializer: ResidualHeapSerializer) {
     this.realm = realm;
     this.residualHeapSerializer = residualHeapSerializer;
