@@ -18,7 +18,6 @@ import {
   SymbolValue,
   FunctionValue,
   StringValue,
-  ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import type { Descriptor } from "../types";
@@ -172,8 +171,8 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
   return key;
 }
 
-// a helper function to map over ArrayValues
-export function mapOverArrayValue(realm: Realm, array: ArrayValue, mapFunc: Function): void {
+// a helper function to loop over ArrayValues
+export function forEachArrayValue(realm: Realm, array: ObjectValue, mapFunc: Function): void {
   let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
   let length = lengthValue.value;
