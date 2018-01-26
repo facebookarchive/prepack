@@ -182,11 +182,12 @@ export class Realm {
     };
 
     this.fbLibraries = {
-      react: undefined,
-      reactRelay: undefined,
       cx: undefined,
       fbt: undefined,
-      jsResource: undefined,
+      idx: undefined,
+      ix: undefined,
+      react: undefined,
+      reactRelay: undefined,
     };
 
     this.errorHandler = opts.errorHandler;
@@ -242,11 +243,12 @@ export class Realm {
   };
 
   fbLibraries: {
-    react: void | ObjectValue,
-    reactRelay: void | ObjectValue,
     cx: void | ObjectValue,
     fbt: void | ObjectValue,
-    jsResource: void | ObjectValue,
+    idx: void | ObjectValue,
+    ix: void | ObjectValue,
+    react: void | ObjectValue,
+    reactRelay: void | ObjectValue,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
