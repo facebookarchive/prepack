@@ -30,6 +30,7 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { FatalError } from "../errors.js";
+import { To } from "../singletons.js";
 
 export type ReactSymbolTypes = "react.element" | "react.symbol" | "react.portal" | "react.return" | "react.call";
 
@@ -85,11 +86,10 @@ export function valueIsClassComponent(realm: Realm, value: Value): boolean {
   if (!(value instanceof FunctionValue)) {
     return false;
   }
-  if (value.$Prototype instanceof ObjectValue) {
-    let prototype = Get(realm, value.$Prototype, "prototype");
-    if (prototype instanceof ObjectValue) {
-      return prototype.properties.has("isReactComponent");
-    }
+  let prototype = Get(realm, value, "prototype");
+
+  if (prototype instanceof ObjectValue) {
+    return To.ToBooleanPartial(realm, Get(realm, prototype, "isReactComponent"));
   }
   return false;
 }
