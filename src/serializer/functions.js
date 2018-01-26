@@ -133,7 +133,7 @@ export class Functions {
         componentType instanceof ECMAScriptSourceFunctionValue,
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
-      let effects = reconciler.render(componentType);
+      let effects = reconciler.render(componentType, this.moduleTracer.modules.logger);
 
       if (this.realm.react.output === "bytecode") {
         throw new FatalError("TODO: implement React bytecode output format");
