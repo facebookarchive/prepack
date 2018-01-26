@@ -80,7 +80,7 @@ function run(
   let timeout: number;
   let additionalFunctions: Array<string>;
   let lazyObjectsRuntime: string;
-  let heapGraphFilePath: string;
+  let heapGraphFilePath: void | string;
   let debugInFilePath: string;
   let debugOutFilePath: string;
   let reactOutput: ReactOutputTypes = "create-element";
@@ -216,13 +216,13 @@ function run(
       timeout: timeout,
       additionalFunctions: additionalFunctions,
       lazyObjectsRuntime: lazyObjectsRuntime,
-      heapGraphFormat: "DotLanguage",
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
       reactOutput: reactOutput,
     },
     flags
   );
+  if (heapGraphFilePath) resolvedOptions.heapGraphFormat = "DotLanguage";
   if (
     lazyObjectsRuntime &&
     (resolvedOptions.additionalFunctions || resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)
