@@ -391,8 +391,6 @@ export class Reconciler {
         // assign a bail out message
         if (error instanceof ExpectedBailOut) {
           this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
-        } else if (error instanceof FatalError) {
-          this._assignBailOutMessage(reactElement, "Evaluation bail-out");
         } else {
           throw error;
         }
