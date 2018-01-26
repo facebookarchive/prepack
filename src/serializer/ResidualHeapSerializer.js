@@ -1083,7 +1083,7 @@ export class ResidualHeapSerializer {
       if (--delayed === 0) {
         invariant(instance);
         // hoist if we are in an additionalFunction
-        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val)) {
+        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val, undefined, new Set())) {
           instance.insertionPoint = new BodyReference(this.mainBody, this.mainBody.entries.length);
           instance.containingAdditionalFunction = undefined;
         } else {
