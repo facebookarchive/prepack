@@ -3,17 +3,26 @@ var React = require('React');
 this['React'] = React;
 
 function App() {
-  // Simple circular reference
+  // A circular reference
   let selfRef = {};
   selfRef.selfRef = selfRef;
 
-  // A cycle
+  // A cycle between two references
   let mutualRefA = {};
   let mutualRefB = {};
   mutualRefA.indirect = {b: mutualRefB};
   mutualRefB.indirect = {a: mutualRefA};
 
-  return <div data-x={selfRef} data-y={mutualRefA} data-y={mutualRefB} />;
+  return (
+    <div
+      data-x={selfRef}
+      data-y={mutualRefA}
+      data-z={mutualRefB}
+      data-a={mutualRefA === mutualRefA.indirect.b.indirect.a}
+      data-b={mutualRefB === mutualRefB.indirect.a.indirect.b}
+      data-c={selfRef === selfRef.selfRef}
+    />
+  );
 }
 
 App.getTrials = function(renderer, Root) {
