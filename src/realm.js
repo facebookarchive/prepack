@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType } from "./types.js";
+import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType, ClassComponentMetadata } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -172,6 +172,7 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.react = {
+      classComponentMetadata: new Map(),
       enabled: opts.reactEnabled || false,
       output: opts.reactOutput || "create-element",
       symbols: new Map(),
@@ -230,12 +231,14 @@ export class Realm {
   intrinsics: Intrinsics;
 
   react: {
-    enabled: boolean,
-    output?: ReactOutputTypes,
-    symbols: Map<ReactSymbolTypes, SymbolValue>,
+    classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
-    hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
+    hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    output?: ReactOutputTypes,
+    reactLibraryObject?: ObjectValue,
+    symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
 
   fbLibraries: {

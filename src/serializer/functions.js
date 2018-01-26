@@ -134,23 +134,28 @@ export class Functions {
         "only ECMAScriptSourceFunctionValue function values are supported as React root components"
       );
       let effects = reconciler.render(componentType, this.moduleTracer.modules.logger);
-      let additionalFunctionEffects = this._createAdditionalEffects(effects);
-      invariant(effects[0] instanceof Value);
-      if (simpleClassComponents.has(effects[0])) {
-        // if the root component was a class and is now simple, we can convert it from a class
-        // component to a functional component
-        convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
-        normalizeFunctionalComponentParamaters(componentType);
-        this.writeEffects.set(componentType, additionalFunctionEffects);
-      } else if (valueIsClassComponent(this.realm, componentType)) {
-        let prototype = Get(this.realm, componentType, "prototype");
-        invariant(prototype instanceof ObjectValue);
-        let renderMethod = Get(this.realm, prototype, "render");
-        invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-        this.writeEffects.set(renderMethod, additionalFunctionEffects);
+
+      if (this.realm.react.output === "bytecode") {
+        throw new FatalError("TODO: implement React bytecode output format");
       } else {
-        normalizeFunctionalComponentParamaters(componentType);
-        this.writeEffects.set(componentType, additionalFunctionEffects);
+        let additionalFunctionEffects = this._createAdditionalEffects(effects);
+        invariant(effects[0] instanceof Value);
+        if (simpleClassComponents.has(effects[0])) {
+          // if the root component was a class and is now simple, we can convert it from a class
+          // component to a functional component
+          convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
+          normalizeFunctionalComponentParamaters(componentType);
+          this.writeEffects.set(componentType, additionalFunctionEffects);
+        } else if (valueIsClassComponent(this.realm, componentType)) {
+          let prototype = Get(this.realm, componentType, "prototype");
+          invariant(prototype instanceof ObjectValue);
+          let renderMethod = Get(this.realm, prototype, "render");
+          invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
+          this.writeEffects.set(renderMethod, additionalFunctionEffects);
+        } else {
+          normalizeFunctionalComponentParamaters(componentType);
+          this.writeEffects.set(componentType, additionalFunctionEffects);
+        }
       }
     }
   }
