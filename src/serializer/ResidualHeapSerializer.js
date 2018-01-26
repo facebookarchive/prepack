@@ -1603,10 +1603,13 @@ export class ResidualHeapSerializer {
     let context = this._getContext();
     return this._withGeneratorScope(generator, newBody => {
       let oldCurBody = this.currentFunctionBody;
+      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this.currentFunctionBody = newBody;
+      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       generator.serialize(context);
       if (postGeneratorCallback) postGeneratorCallback();
       this.currentFunctionBody = oldCurBody;
+      this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
     });
   }
 
