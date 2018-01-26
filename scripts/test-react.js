@@ -150,6 +150,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-refs.js");
       });
 
+      it("Circular reference", async () => {
+        await runTest(directory, "circular-reference.js");
+      });
+
       it("Conditional", async () => {
         await runTest(directory, "conditional.js");
       });
