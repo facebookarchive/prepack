@@ -32,19 +32,13 @@ export default class ProxyValue extends ObjectValue {
   $ProxyTarget: NullValue | ObjectValue;
   $ProxyHandler: NullValue | ObjectValue;
 
-  realm: Realm;
-
   constructor(realm: Realm) {
     super(realm);
-
-    // $FlowFixMe TODO #1022: exotics should not have $Realm
-    this.$Realm = undefined;
-    this.realm = realm;
   }
 
   static trackedPropertyNames = ObjectValue.trackedPropertyNames.concat(["$ProxyTarget", "$ProxyHandler"]);
 
-  getTrackedBindings(): Array<string> {
+  getTrackedPropertyNames(): Array<string> {
     return ProxyValue.trackedPropertyNames;
   }
 
@@ -54,7 +48,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.1
   $GetPrototypeOf(): NullValue | ObjectValue {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
     let handler = this.$ProxyHandler;
@@ -108,7 +102,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.2
   $SetPrototypeOf(V: ObjectValue | NullValue): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: Either Type(V) is Object or Type(V) is Null.
     invariant(V instanceof ObjectValue || V instanceof NullValue, "expected object or null");
@@ -163,7 +157,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.3
   $IsExtensible(): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
     let handler = this.$ProxyHandler;
@@ -207,7 +201,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.4
   $PreventExtensions(): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
     let handler = this.$ProxyHandler;
@@ -254,7 +248,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.5
   $GetOwnProperty(P: PropertyKeyValue): Descriptor | void {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -352,7 +346,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.6
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -441,7 +435,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.7
   $HasProperty(P: PropertyKeyValue): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -506,7 +500,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -578,7 +572,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.9
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -649,7 +643,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.10
   $Delete(P: PropertyKeyValue): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -706,7 +700,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.11
   $OwnPropertyKeys(): Array<PropertyKeyValue> {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
     let handler = this.$ProxyHandler;
