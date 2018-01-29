@@ -124,6 +124,11 @@ export class Logger {
   }
 
   logError(value: Value, message: string) {
+    this.logWarning(value, message);
+    this._hasErrors = true;
+  }
+
+  logWarning(value: Value, message: string) {
     let loc = value.expressionLocation;
     if (loc) {
       let locString = `${loc.start.line}:${loc.start.column + 1}`;
@@ -134,7 +139,6 @@ export class Logger {
     }
 
     console.error(message);
-    this._hasErrors = true;
   }
 
   hasErrors() {

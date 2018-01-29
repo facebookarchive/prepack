@@ -103,9 +103,11 @@ export class Reconciler {
               return result;
             } catch (error) {
               // if we get an error and we're not dealing with the root
-              // rather than throw a FatalError, we log the error and continue
+              // rather than throw a FatalError, we log the error as a warning
+              // and continue with the other tree roots
+              // TODO: maybe control what levels gets treated as warning/error?
               if (!isRoot) {
-                this.logger.logError(
+                this.logger.logWarning(
                   componentType,
                   `__registerReactComponentRoot() React component tree (branch) failed due to - ${error.message}`
                 );
