@@ -134,7 +134,7 @@ function generateRuntimeCall(
   });
 }
 
-function evalautePureCall(
+function evaluatePureCall(
   ref: Value | Reference,
   func: Value,
   ast: BabelNodeCallExpression,
@@ -264,7 +264,7 @@ function EvaluateCall(
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
   if (realm.isInPureScope()) {
-    return evalautePureCall(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
+    return evaluatePureCall(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
   } else {
     return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);
   }
