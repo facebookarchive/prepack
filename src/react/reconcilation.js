@@ -90,10 +90,9 @@ export class Reconciler {
               // should be an invariant as the user has explicitly asked for this component to get folded
               if (error instanceof Completion) {
                 logger.logCompletion(error);
-                throw error;
               } else if (error instanceof ExpectedBailOut) {
                 let diagnostic = new CompilerDiagnostic(
-                  `__registerReactComponentRoot() failed due to - ${error.message}`,
+                  `__registerReactComponentRoot() failed due to bail-out - ${error.message}`,
                   this.realm.currentLocation,
                   "PP0020",
                   "FatalError"
@@ -101,7 +100,14 @@ export class Reconciler {
                 this.realm.handleError(diagnostic);
                 throw new FatalError();
               }
-              throw error;
+              let diagnostic = new CompilerDiagnostic(
+                "failed to reconcile a React component tree due to a Prepack evaluation error",
+                this.realm.currentLocation,
+                "PP0023",
+                "RecoverableError"
+              );
+              if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
+              throw diagnostic;
             }
           },
           /*state*/ null,
@@ -391,8 +397,6 @@ export class Reconciler {
         // assign a bail out message
         if (error instanceof ExpectedBailOut) {
           this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
-        } else if (error instanceof FatalError) {
-          this._assignBailOutMessage(reactElement, "Evaluation bail-out");
         } else {
           throw error;
         }
