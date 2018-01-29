@@ -138,12 +138,12 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-4.js");
       });
 
-      it("Simple 6", async () => {
-        await runTest(directory, "simple-6.js");
-      });
-
       it("Simple 5", async () => {
         await runTest(directory, "simple-5.js");
+      });
+
+      it("Simple 6", async () => {
+        await runTest(directory, "simple-6.js");
       });
 
       it("Simple children", async () => {

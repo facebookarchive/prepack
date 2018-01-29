@@ -98,6 +98,77 @@ function callBothFunctionsAndJoinTheirEffects(
   return completion;
 }
 
+function generateRuntimeCall(
+  ref: Value | Reference,
+  func: Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+) {
+  let args = [func];
+  let [thisArg, propName] = ref instanceof Reference ? [ref.base, ref.referencedName] : [];
+  if (thisArg instanceof Value) args = [thisArg];
+  if (propName !== undefined && typeof propName !== "string") args.push(propName);
+  args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
+  for (let arg of args) {
+    if (arg !== func) {
+      Leak.leakValue(realm, arg, ast.loc);
+    }
+  }
+  return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {
+    let callFunc;
+    let argStart = 1;
+    if (thisArg instanceof Value) {
+      if (typeof propName === "string") {
+        callFunc = t.memberExpression(nodes[0], t.identifier(propName), !t.isValidIdentifier(propName));
+      } else {
+        callFunc = t.memberExpression(nodes[0], nodes[1], true);
+        argStart = 2;
+      }
+    } else {
+      callFunc = nodes[0];
+    }
+    let fun_args = ((nodes.slice(argStart): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+    return t.callExpression(callFunc, fun_args);
+  });
+}
+
+function evalautePureCall(
+  ref: Value | Reference,
+  func: Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  thisValue: Value,
+  tailCall: boolean
+): Value {
+  let effects;
+  try {
+    effects = realm.evaluateForEffects(() =>
+      EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall)
+    );
+  } catch (error) {
+    if (error instanceof FatalError) {
+      return realm.evaluateWithPossibleThrowCompletion(
+        () => generateRuntimeCall(ref, func, ast, strictCode, env, realm),
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
+    } else {
+      throw error;
+    }
+  }
+  // the returned effects is undefined, it means there was a FatalError
+  realm.applyEffects(effects);
+  let completion = effects[0];
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof Value);
+  return completion;
+}
+
 function EvaluateCall(
   ref: Value | Reference,
   func: Value,
@@ -106,35 +177,6 @@ function EvaluateCall(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  function generateRuntimeCall() {
-    let args = [func];
-    let [thisArg, propName] = ref instanceof Reference ? [ref.base, ref.referencedName] : [];
-    if (thisArg instanceof Value) args = [thisArg];
-    if (propName !== undefined && typeof propName !== "string") args.push(propName);
-    args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
-    for (let arg of args) {
-      if (arg !== func) {
-        Leak.leakValue(realm, arg, ast.loc);
-      }
-    }
-    return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {
-      let callFunc;
-      let argStart = 1;
-      if (thisArg instanceof Value) {
-        if (typeof propName === "string") {
-          callFunc = t.memberExpression(nodes[0], t.identifier(propName), !t.isValidIdentifier(propName));
-        } else {
-          callFunc = t.memberExpression(nodes[0], nodes[1], true);
-          argStart = 2;
-        }
-      } else {
-        callFunc = nodes[0];
-      }
-      let fun_args = ((nodes.slice(argStart): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-      return t.callExpression(callFunc, fun_args);
-    });
-  }
-
   if (func instanceof AbstractValue) {
     let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
     if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
@@ -151,9 +193,13 @@ function EvaluateCall(
     }
     if (realm.isInPureScope()) {
       // In pure functions we allow abstract functions to throw, which this might.
-      return realm.evaluateWithPossibleThrowCompletion(generateRuntimeCall, TypesDomain.topVal, ValuesDomain.topVal);
+      return realm.evaluateWithPossibleThrowCompletion(
+        () => generateRuntimeCall(ref, func, ast, strictCode, env, realm),
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
     }
-    return generateRuntimeCall();
+    return generateRuntimeCall(ref, func, ast, strictCode, env, realm);
   }
   invariant(func instanceof ConcreteValue);
 
@@ -181,7 +227,7 @@ function EvaluateCall(
         let error = new CompilerDiagnostic("eval argument must be a known value", loc, "PP0006", "RecoverableError");
         if (realm.handleError(error) === "Fail") throw new FatalError();
         // Assume that it is a safe eval with no visible heap changes or abrupt control flow.
-        return generateRuntimeCall();
+        return generateRuntimeCall(ref, func, ast, strictCode, env, realm);
       }
       return Functions.PerformEval(realm, evalText, evalRealm, strictCaller, true);
     }
@@ -217,5 +263,9 @@ function EvaluateCall(
   let tailCall = IsInTailPosition(realm, thisCall);
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
-  return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);
+  if (realm.isInPureScope()) {
+    return evalautePureCall(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
+  } else {
+    return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);
+  }
 }
