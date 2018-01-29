@@ -100,6 +100,7 @@ export class ModuleTracer extends Tracer {
     ) {
       let moduleId = argumentsList[0];
       let moduleIdValue;
+      // Do some sanity checks and request require(...) calls with bad arguments
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
         moduleIdValue = moduleId.value;
         if (!this.modules.moduleIds.has(moduleIdValue) && this.modules.delayUnsupportedRequires) {
@@ -112,6 +113,8 @@ export class ModuleTracer extends Tracer {
         return undefined;
       }
 
+      // If we don't delay unsupported requires, we simply want to record here
+      // when a module gets initialized, and then we return.
       if (!this.modules.delayUnsupportedRequires) {
         if (
           (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) &&
@@ -120,7 +123,6 @@ export class ModuleTracer extends Tracer {
           this.requireStack.push(moduleIdValue);
           try {
             let value = performCall();
-            this.modules.recordModuleInitialized(moduleIdValue, value);
             // Make this into a join point by suppressing the conditional exception.
             // TODO: delete this code and let the caller deal with the conditional exception.
             let completion = Functions.incorporateSavedCompletion(realm, value);
@@ -133,6 +135,8 @@ export class ModuleTracer extends Tracer {
                 "Warning"
               );
               realm.handleError(warning);
+            } else {
+              this.modules.recordModuleInitialized(moduleIdValue, value);
             }
             return value;
           } finally {
@@ -143,6 +147,7 @@ export class ModuleTracer extends Tracer {
       }
 
       // If a require fails, recover from it and delay the factory call until runtime
+      // Also, only in this mode, consider "accelerating" require calls, see below.
       this.log(`>require(${moduleIdValue})`);
       let isTopLevelRequire = this.requireStack.length === 0;
       if (this.evaluateForEffectsNesting > 0) {
@@ -156,7 +161,13 @@ export class ModuleTracer extends Tracer {
           realm.handleError(diagnostic);
           throw new FatalError();
         } else if (!this.modules.isModuleInitialized(moduleIdValue))
+          // Nested require call: We record that this happened. Just so that
+          // if we discover later this this require call needs to get delayed,
+          // then we still know (some of) which modules it in turn required,
+          // and then we'll later "accelerate" requiring them to preserve the
+          // require ordering. See below for more details on acceleration.
           this.uninitializedModuleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
+
         return undefined;
       } else {
         return downgradeErrorsToWarnings(realm, () => {
@@ -184,6 +195,15 @@ export class ModuleTracer extends Tracer {
                 // general prepack-limitations around joined abstract values involving
                 // conditionals. Long term, Prepack needs to implement a notion of refinement
                 // of conditional abstract values under the known path condition.
+                // Example:
+                //   if (*) require(1); else require(2);
+                //   let x = require(1).X;
+                // =>
+                //   require(1);
+                //   require(2);
+                //   if (*) require(1); else require(2);
+                //   let x = require(1).X;
+
                 for (let nestedModuleId of this.uninitializedModuleIdsRequiredInEvaluateForEffects) {
                   let nestedEffects = this.modules.tryInitializeModule(
                     nestedModuleId,
@@ -255,7 +275,6 @@ export class ModuleTracer extends Tracer {
                 realm.handleError(warning);
                 result = result.value;
                 realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
-                this.modules.recordModuleInitialized(moduleIdValue, result);
               } else {
                 invariant(false);
               }
