@@ -29,5 +29,20 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
     `require("${relayRequireName}").createFragmentContainer`
   );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createFragmentContainer", createFragmentContainer);
+
+  let createPaginationContainer = createAbstract(
+    realm,
+    "function",
+    `require("${relayRequireName}").createPaginationContainer`
+  );
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "createPaginationContainer", createPaginationContainer);
+
+  let createRefetchContainer = createAbstract(
+    realm,
+    "function",
+    `require("${relayRequireName}").createRefetchContainer`
+  );
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "createRefetchContainer", createRefetchContainer);
+
   return reactRelay;
 }
