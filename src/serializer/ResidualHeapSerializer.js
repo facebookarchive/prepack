@@ -1737,7 +1737,6 @@ export class ResidualHeapSerializer {
     invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     this.postGeneratorSerialization();
-    Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
     // TODO #20: add timers
 
@@ -1748,6 +1747,8 @@ export class ResidualHeapSerializer {
 
     // Make sure additional functions get serialized.
     let rewrittenAdditionalFunctions = this.processAdditionalFunctionValues();
+
+    Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
     this.modules.resolveInitializedModules();
 
