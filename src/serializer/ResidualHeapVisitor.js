@@ -880,7 +880,6 @@ export class ResidualHeapVisitor {
         for (let innerName of functionInfo.unbound) {
           let residualBinding = this.visitBinding(functionValue, innerName, false);
           if (residualBinding) {
-            residualBinding.modified = true;
             funcInstance.residualFunctionBindings.set(innerName, residualBinding);
           }
         }
