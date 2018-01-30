@@ -51,6 +51,14 @@ let babelHelpersAST = parseExpression(babelHelpersCode);
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
+  global.$DefineOwnProperty("__DEV__", {
+    // TODO: we'll likely want to make this configurable from the outside.
+    value: realm.intrinsics.false,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // module.exports support
   let moduleValue = AbstractValue.createAbstractObject(realm, "module");
   global.$DefineOwnProperty("module", {
