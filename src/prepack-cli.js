@@ -178,12 +178,23 @@ function run(
           reactOutput = (arg: any);
           break;
         case "help":
-          console.log(
-            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ] [ --lazyObjectsRuntime lazyObjectsRuntimeName] [ --heapGraphFilePath heapGraphFilePath]" +
-              Object.keys(flags).map(s => "[ --" + s + "]").join(" ") +
-              "\n" +
-              HELP_STR
-          );
+          const options = [
+            "-- | input.js",
+            "--out output.js",
+            "--compatibility jsc",
+            "--mathRandomSeed seedvalue",
+            "--srcmapIn inputMap",
+            "--srcmapOut outputMap",
+            "--maxStackDepth depthValue",
+            "--timeout seconds",
+            "--additionalFunctions fnc1,fnc2,...",
+            "--lazyObjectsRuntime lazyObjectsRuntimeName",
+            "--heapGraphFilePath heapGraphFilePath",
+            "--reactOutput " + ReactOutputValues.join(" | "),
+          ];
+          for (let flag of Object.keys(flags)) options.push(`--${flag}`);
+
+          console.log("Usage: prepack.js " + options.map(option => `[ ${option} ]`).join(" ") + "\n" + HELP_STR);
           return;
         case "version":
           console.log(version);
