@@ -312,7 +312,6 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
-    let isComputed = (typeof P === "string" && !isNaN(P)) || P instanceof AbstractValue;
 
     if (this.values.isTop()) {
       let generateAbstractGet = () => {
@@ -325,7 +324,7 @@ export default class AbstractObjectValue extends AbstractValue {
           [object],
           ([o]) => {
             invariant(typeof P === "string");
-            return t.memberExpression(o, t.identifier(P), isComputed);
+            return t.memberExpression(o, t.identifier(P), !t.isValidIdentifier(P));
           },
           {
             skipInvariant: true,
