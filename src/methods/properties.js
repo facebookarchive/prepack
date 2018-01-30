@@ -209,7 +209,7 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
 export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
-    if (O.isLeakedObject()) {
+    if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       Leak.leakValue(realm, V);
       if (realm.generator) {
         realm.generator.emitPropertyAssignment(O, StringKey(P), V);
@@ -480,7 +480,7 @@ export class PropertiesImplementation {
 
     // 3. If desc is undefined, return true.
     if (!desc) {
-      if (O.isLeakedObject()) {
+      if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
         if (realm.generator) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
@@ -607,7 +607,7 @@ export class PropertiesImplementation {
       // b. Assert: extensible is true.
       invariant(extensible === true, "expected extensible to be true");
 
-      if (O !== undefined && O.isLeakedObject() && P !== undefined) {
+      if (O !== undefined && !realm.ignoreLeakLogic && O.isLeakedObject() && P !== undefined) {
         leakDescriptor(realm, Desc);
         if (realm.generator) {
           realm.generator.emitDefineProperty(O, StringKey(P), Desc);
@@ -692,7 +692,7 @@ export class PropertiesImplementation {
       }
     }
 
-    if (O !== undefined && O.isLeakedObject() && P !== undefined) {
+    if (O !== undefined && !realm.ignoreLeakLogic && O.isLeakedObject() && P !== undefined) {
       leakDescriptor(realm, Desc);
       if (realm.generator) {
         realm.generator.emitDefineProperty(O, StringKey(P), Desc);
@@ -1103,7 +1103,7 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.5.1
   OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void {
-    if (O.isLeakedObject()) {
+    if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       invariant(realm.generator);
       let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
       let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
@@ -1217,7 +1217,7 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.2.1
   OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectValue | NullValue): boolean {
-    if (O.isLeakedObject()) {
+    if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       throw new FatalError();
     }
 

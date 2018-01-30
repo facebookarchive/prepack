@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { ObjectValue, SymbolValue } from "../values/index.js";
+import { ObjectValue, SymbolValue } from "../values/index.js";
 import type { Realm } from "../realm.js";
 
 import type { Descriptor } from "../types.js";
