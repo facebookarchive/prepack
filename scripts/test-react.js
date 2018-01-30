@@ -30,7 +30,6 @@ function runTestSuite(outputJsx) {
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     inlineExpressions: true,
-    simpleClosures: true,
     omitInvariants: true,
     abstractEffectsInAdditionalFunctions: true,
   };
@@ -240,6 +239,10 @@ function runTestSuite(outputJsx) {
 
       it("Class component as root with instance variables #2", async () => {
         await runTest(directory, "class-root-with-instance-vars-2.js");
+      });
+
+      it("Additional functions closure scope capturing", async () => {
+        await runTest(directory, "additional-function-regression.js");
       });
     });
 
