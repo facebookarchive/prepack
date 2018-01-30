@@ -105,10 +105,12 @@ class ObjectValueLeakingVisitor {
   objectsTrackedForLeaks: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
+  realm: Realm;
 
-  constructor(objectsTrackedForLeaks: Set<ObjectValue>) {
+  constructor(realm: Realm, objectsTrackedForLeaks: Set<ObjectValue>) {
     this.objectsTrackedForLeaks = objectsTrackedForLeaks;
     this.visitedValues = new Set();
+    this.realm = realm;
   }
 
   mustVisit(val: Value): boolean {
@@ -363,7 +365,10 @@ class ObjectValueLeakingVisitor {
         this.visitValueSet(val);
         return;
       default:
-        invariant(kind === "Object", `Object of kind ${kind} is not supported in calls to abstract functions.`);
+        invariant(
+          kind === "Object" || kind === "Array",
+          `Object of kind ${kind} is not supported in calls to abstract functions.`
+        );
         invariant(
           this.$ParameterMap === undefined,
           `Arguments object is not supported in calls to abstract functions.`
@@ -440,7 +445,7 @@ export class LeakImplementation {
       // object can safely be assumed to be deeply immutable as far as this
       // pure function is concerned. However, any mutable object needs to
       // be tainted as possibly having changed to anything.
-      let visitor = new ObjectValueLeakingVisitor(objectsTrackedForLeaks);
+      let visitor = new ObjectValueLeakingVisitor(realm, objectsTrackedForLeaks);
       visitor.visitValue(value);
     }
   }

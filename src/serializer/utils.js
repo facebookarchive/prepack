@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { ObjectValue, SymbolValue } from "../values/index.js";
+import { ObjectValue, SymbolValue, Value } from "../values/index.js";
 import type { Realm } from "../realm.js";
 
 import type { Descriptor } from "../types.js";
@@ -81,6 +81,28 @@ export function getOrDefault<K, V>(map: Map<K, V>, key: K, defaultFn: () => V): 
   let value = map.get(key);
   if (value === undefined) map.set(key, (value = defaultFn()));
   invariant(value !== undefined);
+  return value;
+}
+
+export function getObjectPropertyInternalValue(val: ObjectValue, propName: string | SymbolValue): Value | void {
+  let binding;
+  if (typeof propName === "string") {
+    binding = val.properties.get(propName);
+  } else if (propName instanceof SymbolValue) {
+    binding = val.symbols.get(propName);
+  }
+  invariant(binding);
+  let descriptor = binding.descriptor;
+  if (descriptor === undefined) {
+    return;
+  }
+  let value;
+  if (descriptor.value !== undefined) {
+    value = descriptor.value;
+  } else if (descriptor.get !== undefined) {
+    value = descriptor.get;
+  }
+  invariant(value instanceof Value);
   return value;
 }
 
