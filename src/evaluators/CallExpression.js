@@ -134,7 +134,7 @@ function generateRuntimeCall(
   });
 }
 
-function evaluatePureCall(
+function tryToEvaluateCallOrLeaveAsAbstract(
   ref: Value | Reference,
   func: Value,
   ast: BabelNodeCallExpression,
@@ -160,7 +160,6 @@ function evaluatePureCall(
       throw error;
     }
   }
-  // the returned effects is undefined, it means there was a FatalError
   realm.applyEffects(effects);
   let completion = effects[0];
   // return or throw completion
@@ -264,7 +263,7 @@ function EvaluateCall(
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
   if (realm.isInPureScope()) {
-    return evaluatePureCall(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
+    return tryToEvaluateCallOrLeaveAsAbstract(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
   } else {
     return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);
   }
