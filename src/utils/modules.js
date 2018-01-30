@@ -16,9 +16,26 @@ import type { Effects } from "../realm.js";
 import { Get } from "../methods/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { Environment, Functions } from "../singletons.js";
-import { AbstractValue, Value, FunctionValue, ObjectValue, NumberValue, StringValue } from "../values/index.js";
+import {
+  AbstractValue,
+  Value,
+  FunctionValue,
+  ObjectValue,
+  NumberValue,
+  StringValue,
+  ArrayValue,
+  UndefinedValue,
+  NullValue,
+} from "../values/index.js";
 import * as t from "babel-types";
-import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeCallExpression } from "babel-types";
+import type {
+  BabelNodeIdentifier,
+  BabelNodeLVal,
+  BabelNodeCallExpression,
+  BabelNodeNumericLiteral,
+  BabelNodeStringLiteral,
+  BabelNodeMemberExpression,
+} from "babel-types";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/types.js";
@@ -275,6 +292,27 @@ export class ModuleTracer extends Tracer {
     }
   }
 
+  _tryExtractDependencies(value: void | Value): void | Array<Value> {
+    if (value === undefined || value instanceof NullValue || value instanceof UndefinedValue) return [];
+    if (value instanceof ArrayValue) {
+      const realm = this.modules.realm;
+      const lengthValue = Get(realm, value, "length");
+      if (lengthValue instanceof NumberValue) {
+        const dependencies = [];
+        const logger = this.modules.logger;
+        for (let i = 0; i < lengthValue.value; i++) {
+          const elementValue = logger.tryQuery(
+            () => Get(realm, ((value: any): ArrayValue), "" + i),
+            realm.intrinsics.undefined,
+            false
+          );
+          dependencies.push(elementValue);
+        }
+        return dependencies;
+      }
+    }
+  }
+
   detourCall(
     F: FunctionValue,
     thisArgument: void | Value,
@@ -287,6 +325,9 @@ export class ModuleTracer extends Tracer {
       !this.modules.disallowDelayingRequiresOverride &&
       argumentsList.length === 1
     ) {
+      // Here, we handle calls of the form
+      //   require(42)
+
       let moduleId = argumentsList[0];
       let moduleIdValue;
       // Do some sanity checks and request require(...) calls with bad arguments
@@ -305,11 +346,22 @@ export class ModuleTracer extends Tracer {
       if (this.modules.delayUnsupportedRequires) return this._callRequireAndDelayIfNeeded(moduleIdValue, performCall);
       else return this._callRequireAndRecord(moduleIdValue, performCall);
     } else if (F === this.modules.getDefine()) {
+      // Here, we handle calls of the form
+      //   __d(factoryFunction, moduleId, dependencyArray)
+
       if (this.evaluateForEffectsNesting !== 0)
         this.modules.logger.logError(F, "Defining a module in nested partial evaluation is not supported.");
       let factoryFunction = argumentsList[0];
-      if (factoryFunction instanceof FunctionValue) this.modules.factoryFunctions.add(factoryFunction);
-      else this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
+      if (factoryFunction instanceof FunctionValue) {
+        let dependencies = this._tryExtractDependencies(argumentsList[2]);
+        if (dependencies !== undefined) this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
+        else
+          this.modules.logger.logError(
+            argumentsList[2],
+            "Third argument to define function is present but not a concrete array."
+          );
+      } else
+        this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
       let moduleId = argumentsList[1];
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue)
         this.modules.moduleIds.add(moduleId.value);
@@ -333,7 +385,7 @@ export class Modules {
     this.logger = logger;
     this._require = realm.intrinsics.undefined;
     this._define = realm.intrinsics.undefined;
-    this.factoryFunctions = new Set();
+    this.factoryFunctionDependencies = new Map();
     this.moduleIds = new Set();
     this.initializedModules = new Map();
     realm.tracers.push((this.moduleTracer = new ModuleTracer(this, statistics, logModules)));
@@ -346,7 +398,7 @@ export class Modules {
   logger: Logger;
   _require: Value;
   _define: Value;
-  factoryFunctions: Set<FunctionValue>;
+  factoryFunctionDependencies: Map<FunctionValue, Array<Value>>;
   moduleIds: Set<number | string>;
   initializedModules: Map<number | string, Value>;
   active: boolean;
@@ -388,31 +440,97 @@ export class Modules {
     return this._define;
   }
 
-  getIsRequire(
+  // Returns a function that checks if a call node represents a call to a
+  // known require function, and if so, what module id that call indicates.
+  // A known require function call is either of the form
+  //   ... require(42) ...
+  // where require resolves to the global require function, or
+  //   factoryFunction(, require, , , dependencies) {
+  //     ...
+  //       ... require(dependencies[3]) ...
+  // where factoryFunction and dependencies were announced as part of the
+  // global code execution via a global module declaration call such as
+  //   global.__d(factoryFunction, , [0,2,4,6,8])
+  getGetModuleIdIfNodeIsRequireFunction(
     formalParameters: Array<BabelNodeLVal>,
     functions: Array<FunctionValue>
-  ): (scope: any, node: BabelNodeCallExpression) => boolean {
+  ): (scope: any, node: BabelNodeCallExpression) => void | number | string {
     let realm = this.realm;
     let logger = this.logger;
     let modules = this;
-    return function(scope: any, node: BabelNodeCallExpression) {
-      if (!t.isIdentifier(node.callee) || node.arguments.length !== 1 || !node.arguments[0]) return false;
+    return (scope: any, node: BabelNodeCallExpression) => {
+      // Are we calling a function that has a single name and a single argument?
+      if (!t.isIdentifier(node.callee) || node.arguments.length !== 1) return undefined;
       let argument = node.arguments[0];
-      if (!t.isNumericLiteral(argument) && !t.isStringLiteral(argument)) return false;
+      if (!argument) return undefined;
+
+      if (!t.isNumericLiteral(argument) && !t.isStringLiteral(argument) && !t.isMemberExpression(argument))
+        return undefined;
 
       invariant(node.callee);
       let innerName = ((node.callee: any): BabelNodeIdentifier).name;
 
+      let moduleId;
+
+      // Helper function used to give up if we ever come up with different module ids for different functions
+      let updateModuleId = newModuleId => {
+        if (moduleId !== undefined && moduleId !== newModuleId) return false;
+        moduleId = newModuleId;
+        return true;
+      };
+
+      // Helper function that retrieves module id from call argument, possibly chasing dependency array indirection
+      const getModuleId = (dependencies?: Array<Value>): void | number | string => {
+        if (t.isMemberExpression(argument)) {
+          if (dependencies !== undefined) {
+            let memberExpression = ((argument: any): BabelNodeMemberExpression);
+            if (t.isIdentifier(memberExpression.object)) {
+              let scopedBinding = scope.getBinding(((memberExpression.object: any): BabelNodeIdentifier).name);
+              if (scopedBinding && formalParameters[4] === scopedBinding.path.node) {
+                if (t.isNumericLiteral(memberExpression.property)) {
+                  let dependencyIndex = memberExpression.property.value;
+                  if (
+                    Number.isInteger(dependencyIndex) &&
+                    dependencyIndex >= 0 &&
+                    dependencyIndex < dependencies.length
+                  ) {
+                    let dependency = dependencies[dependencyIndex];
+                    if (dependency instanceof NumberValue || dependency instanceof StringValue) return dependency.value;
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          return ((argument: any): BabelNodeNumericLiteral | BabelNodeStringLiteral).value;
+        }
+      };
+
+      // Let's consider each of the function instances (closures for the same code)
       for (let f of functions) {
+        // 1. Let's check if we have a match for a factory function like
+        //      factoryFunction(, require, , , [dependencies])
+        //    which is used with the Metro bundler
         let scopedBinding = scope.getBinding(innerName);
         if (scopedBinding) {
-          if (modules.factoryFunctions.has(f) && formalParameters[1] === scopedBinding.path.node) {
+          let dependencies = modules.factoryFunctionDependencies.get(f);
+          if (dependencies !== undefined && formalParameters[1] === scopedBinding.path.node) {
             invariant(scopedBinding.kind === "param");
+            let newModuleId = getModuleId(dependencies);
+            if (newModuleId !== undefined && !updateModuleId(newModuleId)) return undefined;
             continue;
           }
+
           // The name binds to some local entity, but nothing we'd know what exactly it is
-          return false;
+          return undefined;
         }
+
+        // 2. Let's check if we can resolve the called function just by looking at the
+        //    function instance environment.
+        //    TODO: We should not do this if the current node is in a nested function!
+
+        // We won't have a dependency map here, so this only works for literal arguments.
+        if (!t.isNumericLiteral(argument) && !t.isStringLiteral(argument)) return undefined;
 
         let doesNotMatter = true;
         let reference = logger.tryQuery(
@@ -422,25 +540,28 @@ export class Modules {
         );
         if (reference === undefined) {
           // We couldn't resolve as we came across some behavior that we cannot deal with abstractly
-          return false;
+          return undefined;
         }
-        if (Environment.IsUnresolvableReference(realm, reference)) return false;
+        if (Environment.IsUnresolvableReference(realm, reference)) return undefined;
         let referencedBase = reference.base;
         let referencedName: string = (reference.referencedName: any);
-        if (typeof referencedName !== "string") return false;
+        if (typeof referencedName !== "string") return undefined;
         let value;
         if (reference.base instanceof GlobalEnvironmentRecord) {
           value = logger.tryQuery(() => Get(realm, realm.$GlobalObject, innerName), realm.intrinsics.undefined, false);
         } else {
           invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
           let binding = referencedBase.bindings[referencedName];
-          if (!binding.initialized) return false;
+          if (!binding.initialized) return undefined;
           value = binding.value;
         }
-        if (value !== modules.getRequire()) return false;
+        if (value !== modules.getRequire()) return undefined;
+        const newModuleId = getModuleId();
+        invariant(newModuleId !== undefined);
+        if (!updateModuleId(newModuleId)) return undefined;
       }
 
-      return true;
+      return moduleId;
     };
   }
 
