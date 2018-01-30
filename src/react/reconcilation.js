@@ -37,12 +37,18 @@ import {
   createSimpleClassInstance,
   evaluateClassConstructor,
 } from "./components.js";
-import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
+import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
 import { Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata } from "../types.js";
 
 type RenderStrategy = "NORMAL" | "RELAY_QUERY_RENDERER";
+
+export type BranchReactComponentTree = {
+  componentType: ECMAScriptSourceFunctionValue,
+  props: ObjectValue | AbstractObjectValue,
+  context: ObjectValue | AbstractObjectValue,
+};
 
 export class Reconciler {
   constructor(
@@ -50,13 +56,16 @@ export class Reconciler {
     moduleTracer: ModuleTracer,
     statistics: ReactStatistics,
     reactSerializerState: ReactSerializerState,
-    simpleClassComponents: Set<Value>
+    simpleClassComponents: Set<Value>,
+    branchReactComponentTrees: Array<BranchReactComponentTree>
   ) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
     this.statistics = statistics;
     this.reactSerializerState = reactSerializerState;
     this.simpleClassComponents = simpleClassComponents;
+    this.logger = moduleTracer.modules.logger;
+    this.branchReactComponentTrees = branchReactComponentTrees;
   }
 
   realm: Realm;
@@ -64,8 +73,15 @@ export class Reconciler {
   statistics: ReactStatistics;
   reactSerializerState: ReactSerializerState;
   simpleClassComponents: Set<Value>;
+  logger: Logger;
+  branchReactComponentTrees: Array<BranchReactComponentTree>;
 
-  render(componentType: ECMAScriptSourceFunctionValue, logger: Logger): Effects {
+  render(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractObjectValue | null,
+    context: ObjectValue | AbstractObjectValue | null,
+    isRoot: boolean
+  ): Effects {
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
         // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
@@ -80,26 +96,37 @@ export class Reconciler {
             // FatalError, unless it's a functional component that has no paramater
             // i.e let MyComponent = () => <div>Hello world</div>
             try {
-              let initialProps = getInitialProps(this.realm, componentType);
-              let initialContext = getInitialContext(this.realm, componentType);
+              let initialProps = props || getInitialProps(this.realm, componentType);
+              let initialContext = context || getInitialContext(this.realm, componentType);
               let { result } = this._renderComponent(componentType, initialProps, initialContext, "ROOT", null);
               this.statistics.optimizedTrees++;
               return result;
             } catch (error) {
+              // if we get an error and we're not dealing with the root
+              // rather than throw a FatalError, we log the error as a warning
+              // and continue with the other tree roots
+              // TODO: maybe control what levels gets treated as warning/error?
+              if (!isRoot) {
+                this.logger.logWarning(
+                  componentType,
+                  `__registerReactComponentRoot() React component tree (branch) failed due to - ${error.message}`
+                );
+                return this.realm.intrinsics.undefined;
+              }
               // if there was a bail-out on the root component in this reconcilation process, then this
               // should be an invariant as the user has explicitly asked for this component to get folded
               if (error instanceof Completion) {
-                logger.logCompletion(error);
+                this.logger.logCompletion(error);
                 throw error;
               } else if (error instanceof ExpectedBailOut) {
                 let diagnostic = new CompilerDiagnostic(
-                  `__registerReactComponentRoot() failed due to - ${error.message}`,
+                  `__registerReactComponentRoot() React component tree (root) failed due to - ${error.message}`,
                   this.realm.currentLocation,
                   "PP0020",
                   "FatalError"
                 );
                 this.realm.handleError(diagnostic);
-                throw new FatalError();
+                if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
               }
               throw error;
             }
@@ -120,9 +147,12 @@ export class Reconciler {
     branchState: BranchState | null
   ): Value {
     if (branchStatus !== "ROOT") {
-      throw new ExpectedBailOut(
-        "only complex class components at the root of __registerReactComponentRoot() are supported"
-      );
+      this.branchReactComponentTrees.push({
+        componentType,
+        props,
+        context,
+      });
+      throw new NewComponentTreeBranch();
     }
     // create a new instance of this React class component
     let instance = createClassInstance(this.realm, componentType, props, context, classMetadata);
@@ -389,7 +419,9 @@ export class Reconciler {
         return result;
       } catch (error) {
         // assign a bail out message
-        if (error instanceof ExpectedBailOut) {
+        if (error instanceof NewComponentTreeBranch) {
+          // NO-OP
+        } else if (error instanceof ExpectedBailOut) {
           this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
         } else if (error instanceof FatalError) {
           this._assignBailOutMessage(reactElement, "Evaluation bail-out");

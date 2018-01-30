@@ -1135,6 +1135,15 @@ export class ResidualHeapSerializer {
     let hasSerializedClassProtoId = false;
     let propertiesToSerialize = new Map();
 
+    // handle class inheritance
+    if (!(classFunc.$Prototype instanceof NativeFunctionValue)) {
+      let proto = classFunc.$Prototype;
+      classMethodInstance.classSuperNode = this.serializeValue(classFunc.$Prototype);
+      if (proto.$HomeObject instanceof ObjectValue) {
+        this.serializedValues.add(proto.$HomeObject);
+      }
+    }
+
     let serializeClassPrototypeId = () => {
       if (!hasSerializedClassProtoId) {
         let classId = this.getSerializeObjectIdentifier(classFunc);
@@ -1214,15 +1223,6 @@ export class ResidualHeapSerializer {
     }
     // assign the AST method key node for the "constructor"
     classMethodInstance.classMethodKeyNode = t.identifier("constructor");
-
-    // handle class inheritance
-    if (!(classFunc.$Prototype instanceof NativeFunctionValue)) {
-      let proto = classFunc.$Prototype;
-      classMethodInstance.classSuperNode = this.serializeValue(classFunc.$Prototype);
-      if (proto.$HomeObject instanceof ObjectValue) {
-        this.serializedValues.add(proto.$HomeObject);
-      }
-    }
   }
 
   _serializeClassMethod(key: string | SymbolValue, methodFunc: ECMAScriptSourceFunctionValue): void {
