@@ -515,14 +515,18 @@ export class NameGenerator {
   forbiddenNames: Set<string>;
   uniqueSuffix: string;
   generate(debugSuffix: ?string): string {
-    let id;
+    let id = "";
+    let usePrefix = !this.debugNames;
     do {
-      id = this.prefix + base62.encode(this.uidCounter++);
-      if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
+      if (usePrefix) {
+        id = this.prefix + base62.encode(this.uidCounter++) + "_";
+        if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
+      }
       if (this.debugNames) {
-        if (debugSuffix) id += "_" + replaceInvalidCharactersWithUnderscore(debugSuffix);
+        if (debugSuffix) id += replaceInvalidCharactersWithUnderscore(debugSuffix);
         else id += "_";
       }
+      usePrefix = true;
     } while (this.forbiddenNames.has(id));
     return id;
   }
@@ -580,6 +584,7 @@ export class PreludeGenerator {
     if (ref) return ref;
 
     let init;
+    let requireString;
     if (key.includes("(") || key.includes("[")) {
       // Horrible but effective hack:
       // Some internal object have intrinsic names such as
@@ -590,6 +595,12 @@ export class PreludeGenerator {
       // TODO: We should properly parse such a string, and memoize all references in it separately.
       // Instead, we just turn it into a funky identifier, which Babel seems to accept.
       init = t.identifier(key);
+      if (key.includes("require(")) {
+        let requireNameMatches = key.match(/require\(["']([\w|-]+)["']\)/);
+        invariant(requireNameMatches);
+        requireString = requireNameMatches[1];
+        invariant(typeof requireString === "string");
+      }
     } else if (key === "global") {
       this.usesThis = true;
       init = t.thisExpression();
@@ -601,7 +612,7 @@ export class PreludeGenerator {
         init = t.memberExpression(this.memoizeReference(key.substr(0, i)), t.identifier(key.substr(i + 1)));
       }
     }
-    ref = t.identifier(this.nameGenerator.generate(key));
+    ref = t.identifier(this.nameGenerator.generate(requireString || key));
     this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(ref, init)]));
     this.memoizedRefs.set(key, ref);
     return ref;
