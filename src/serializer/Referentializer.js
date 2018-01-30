@@ -84,7 +84,7 @@ export class Referentializer {
   // TODO: skip generating this function if the captured scope is not shared by multiple residual functions.
   createCaptureScopeAccessFunction(referentializationScope: ReferentializationScope): BabelNodeStatement {
     const body = [];
-    const selectorParam = t.identifier("selector");
+    const selectorParam = t.identifier("__selector");
     const captured = t.identifier("__captured");
     const capturedScopesArray = this._getReferentializationState(referentializationScope).capturedScopesArray;
     const selectorExpression = t.memberExpression(capturedScopesArray, selectorParam, /*Indexer syntax*/ true);
@@ -96,7 +96,7 @@ export class Referentializer {
       const scopeObjectExpression = t.arrayExpression((scopeBinding.initializationValues: any));
       cases.push(
         t.switchCase(t.numericLiteral(scopeBinding.id), [
-          t.expressionStatement(t.assignmentExpression("=", selectorExpression, scopeObjectExpression)),
+          t.expressionStatement(t.assignmentExpression("=", captured, scopeObjectExpression)),
           t.breakStatement(),
         ])
       );
@@ -108,16 +108,9 @@ export class Referentializer {
       ])
     );
 
-    body.push(t.variableDeclaration("var", [t.variableDeclarator(captured, selectorExpression)]));
-    body.push(
-      t.ifStatement(
-        t.unaryExpression("!", captured),
-        t.blockStatement([
-          t.switchStatement(selectorParam, cases),
-          t.expressionStatement(t.assignmentExpression("=", captured, selectorExpression)),
-        ])
-      )
-    );
+    body.push(t.variableDeclaration("var", [t.variableDeclarator(captured)]));
+    body.push(t.switchStatement(selectorParam, cases));
+    body.push(t.expressionStatement(t.assignmentExpression("=", selectorExpression, captured)));
     body.push(t.returnStatement(captured));
     const factoryFunction = t.functionExpression(null, [selectorParam], t.blockStatement(body));
     const accessFunctionId = this._getReferentializationState(referentializationScope).capturedScopeAccessFunctionId;
@@ -148,15 +141,20 @@ export class Referentializer {
   }
 
   getReferentializedScopeInitialization(scope: ScopeBinding) {
-    let capturedScope = scope.capturedScope;
+    const capturedScope = scope.capturedScope;
     invariant(capturedScope);
-    const funcName = this._getReferentializationState(scope.containingAdditionalFunction || "GLOBAL")
-      .capturedScopeAccessFunctionId;
-    return [
-      t.variableDeclaration("var", [
-        t.variableDeclarator(t.identifier(capturedScope), t.callExpression(funcName, [t.identifier(scope.name)])),
-      ]),
-    ];
+    const state = this._getReferentializationState(scope.containingAdditionalFunction || "GLOBAL");
+    const funcName = state.capturedScopeAccessFunctionId;
+    const scopeArray = state.capturedScopesArray;
+    const scopeName = t.identifier(scope.name);
+    // First get scope array entry and check if it's already initialized.
+    // Only if not yet, then call the initialization function.
+    const init = t.logicalExpression(
+      "||",
+      t.memberExpression(scopeArray, scopeName, true),
+      t.callExpression(funcName, [scopeName])
+    );
+    return [t.variableDeclaration("var", [t.variableDeclarator(t.identifier(capturedScope), init)])];
   }
 
   referentializeBinding(residualBinding: ResidualFunctionBinding, name: string, instance: FunctionInstance): void {
