@@ -59,8 +59,13 @@ import { Environment, To } from "../singletons.js";
 import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import ReactElementSet from "../react/ReactElementSet.js";
+import type { ReferentializationScope } from "./Referentializer.js";
 
 export type Scope = FunctionValue | Generator;
+type BindingState = {|
+  capturedBindings: Set<ResidualFunctionBinding>,
+  capturingFunctionsToCommonScope: Map<FunctionValue, Scope>,
+|};
 
 /* This class visits all values that are reachable in the residual heap.
    In particular, this "filters out" values that are:
@@ -97,9 +102,10 @@ export class ResidualHeapVisitor {
     this.equivalenceSet = new HashSet();
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
-    this.inAdditionalFunction = false;
+    this.inAdditionalFunction = null;
     this.additionalRoots = new Set();
     this.inClass = false;
+    this.functionToBindingState = new Map();
   }
 
   realm: Realm;
@@ -110,6 +116,7 @@ export class ResidualHeapVisitor {
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
   globalBindings: Map<string, ResidualFunctionBinding>;
 
+  functionToBindingState: Map<ReferentializationScope, Map<DeclarativeEnvironmentRecord, BindingState>>;
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   scope: Scope;
   // Either the realm's generator or the FunctionValue of an additional function to serialize
@@ -127,7 +134,7 @@ export class ResidualHeapVisitor {
   reactElementEquivalenceSet: ReactElementSet;
 
   // We only want to add to additionalRoots when we're in an additional function
-  inAdditionalFunction: boolean;
+  inAdditionalFunction: null | FunctionValue;
   // Tracks objects + functions that were visited from inside additional functions that need to be serialized in a
   // parent scope of the additional function (e.g. functions/objects only used from additional functions that were
   // declared outside the additional function need to be serialized in the additional function's parent scope for
@@ -432,6 +439,47 @@ export class ResidualHeapVisitor {
     });
   }
 
+  // Addresses the case:
+  // let x = [];
+  // let y = [];
+  // function a() { x.push("hi"); }
+  // function b() { y.push("bye"); }
+  // function c() { return x.length + y.length; }
+  // Here we need to make sure that a, b both initialize x and y because x and y will be in the same
+  // captured scope because c captures both x and y.
+  _recordBindingVisitedAndRevisit(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding) {
+    let refScope = this.inAdditionalFunction ? this.inAdditionalFunction : "GLOBAL";
+    let funcToBindingState = getOrDefault(this.functionToBindingState, refScope, () => new Map());
+    let envRec = residualFunctionBinding.declarativeEnvironmentRecord;
+    invariant(envRec !== null);
+    let bindingState = getOrDefault(funcToBindingState, envRec, () => ({
+      capturedBindings: new Set(),
+      capturingFunctionsToCommonScope: new Map(),
+    }));
+    // If the binding is new for this bindingState, have all functions capturing bindings from that scope visit it
+    if (!bindingState.capturedBindings.has(residualFunctionBinding)) {
+      if (residualFunctionBinding.value) {
+        invariant(this);
+        for (let [functionValue, functionCommonScope] of bindingState.capturingFunctionsToCommonScope) {
+          invariant(this);
+          let prevCommonScope = this.commonScope;
+          this.commonScope = functionCommonScope;
+          let value = residualFunctionBinding.value;
+          this._withScope(functionValue, () => this.visitValue(value));
+          this.commonScope = prevCommonScope;
+        }
+      }
+      bindingState.capturedBindings.add(residualFunctionBinding);
+    }
+    // If the function is new for this bindingState, visit all existent bindings in this scope
+    if (!bindingState.capturingFunctionsToCommonScope.has(val)) {
+      for (let residualBinding of bindingState.capturedBindings) {
+        if (residualBinding.value) this.visitValue(residualBinding.value);
+      }
+      bindingState.capturingFunctionsToCommonScope.set(val, this.commonScope);
+    }
+  }
+
   // Visits a binding, if createBinding is true, will always return a ResidualFunctionBinding
   // otherwise visits + returns the binding only if one already exists.
   visitBinding(val: FunctionValue, name: string, createBinding: boolean = true): ResidualFunctionBinding | void {
@@ -483,6 +531,7 @@ export class ResidualHeapVisitor {
           declarativeEnvironmentRecord: referencedBase,
         };
       });
+      if (residualFunctionBinding) this._recordBindingVisitedAndRevisit(val, residualFunctionBinding);
     }
     if (residualFunctionBinding && residualFunctionBinding.value) {
       residualFunctionBinding.value = this.visitEquivalentValue(residualFunctionBinding.value);
@@ -769,7 +818,7 @@ export class ResidualHeapVisitor {
     let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
     this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
     let oldInAdditionalFunction = this.inAdditionalFunction;
-    this.inAdditionalFunction = true;
+    this.inAdditionalFunction = functionValue;
     let prevReVisit = this.additionalRoots;
     this.additionalRoots = new Set();
 
