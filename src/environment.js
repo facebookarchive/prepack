@@ -58,7 +58,7 @@ import PrimitiveValue from "./values/PrimitiveValue";
 const sourceMap = require("source-map");
 
 function deriveGetBinding(realm: Realm, binding: Binding) {
-  let types = TypesDomain.topVal;
+  let types = new TypesDomain(binding.value.getType());
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
   return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
