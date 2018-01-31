@@ -134,6 +134,7 @@ export class Realm {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
     this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
+    this.ignoreLeakLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
@@ -210,6 +211,7 @@ export class Realm {
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
   omitInvariants: boolean;
+  ignoreLeakLogic: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
@@ -443,6 +445,16 @@ export class Realm {
 
   isInPureScope() {
     return !!this.createdObjectsTrackedForLeaks;
+  }
+
+  evaluateWithoutLeakLogic(f: () => Value): Value {
+    invariant(!this.ignoreLeakLogic, "Nesting evaluateWithoutLeakLogic() calls is not supported.");
+    this.ignoreLeakLogic = true;
+    try {
+      return f();
+    } finally {
+      this.ignoreLeakLogic = false;
+    }
   }
 
   // Evaluate some code that might generate temporal values knowing that it might end in an abrupt
