@@ -448,6 +448,7 @@ export class Realm {
   }
 
   evaluateWithoutLeakLogic(f: () => Value): Value {
+    invariant(!this.ignoreLeakLogic, "Nesting evaluateWithoutLeakLogic() calls is not supported.");
     this.ignoreLeakLogic = true;
     try {
       return f();
