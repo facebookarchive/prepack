@@ -14,7 +14,7 @@ import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import { convertExpressionToJSXIdentifier } from "../react/jsx";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeFunctionExpression } from "babel-types";
-import type { BabelTraversePath } from "babel-traverse";
+import type { BabelTraversePath, BabelTraverseScope } from "babel-traverse";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { TryQuery, FunctionInfo, FactoryFunctionInfo, ResidualFunctionBinding } from "./types.js";
 import { nullExpression } from "../utils/internalizer.js";
@@ -31,7 +31,9 @@ export type ClosureRefReplacerState = {
   modified: Set<string>,
   requireReturns: Map<number | string, BabelNodeExpression>,
   requireStatistics: { replaced: 0, count: 0 },
-  getModuleIdIfNodeIsRequireFunction: void | ((scope: any, node: BabelNodeCallExpression) => void | number | string),
+  getModuleIdIfNodeIsRequireFunction:
+    | void
+    | ((scope: BabelTraverseScope, node: BabelNodeCallExpression) => void | number | string),
   factoryFunctionInfos: Map<number, FactoryFunctionInfo>,
 };
 

@@ -311,6 +311,7 @@ export class ModuleTracer extends Tracer {
         return dependencies;
       }
     }
+    return undefined;
   }
 
   detourCall(
