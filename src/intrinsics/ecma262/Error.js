@@ -37,7 +37,6 @@ export function describeLocation(
 
     let name = callerFn.$Get("name", callerFn);
     if (!name.mightBeUndefined()) displayName = To.ToStringPartial(realm, name);
-    else name.throwIfNotConcrete();
 
     if (env && env.$NewTarget) displayName = `new ${displayName}`;
   }
