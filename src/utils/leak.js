@@ -332,6 +332,7 @@ class ObjectValueLeakingVisitor {
       case "Boolean":
       case "ReactElement":
       case "ArrayBuffer":
+      case "Array":
         return;
       case "Date":
         let dateValue = val.$DateValue;
