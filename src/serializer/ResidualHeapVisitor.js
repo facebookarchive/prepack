@@ -276,12 +276,7 @@ export class ResidualHeapVisitor {
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
     const realm = this.realm;
-    let lenProperty;
-    if (val.isLeakedObject()) {
-      lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
-    } else {
-      lenProperty = Get(realm, val, "length");
-    }
+    const lenProperty = Get(realm, val, "length");
     if (
       lenProperty instanceof AbstractValue ||
       To.ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)

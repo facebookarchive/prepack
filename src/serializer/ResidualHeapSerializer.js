@@ -886,12 +886,8 @@ export class ResidualHeapSerializer {
     remainingProperties: Map<string, PropertyBinding>
   ): void {
     const realm = this.realm;
-    let lenProperty;
-    if (val.isLeakedObject()) {
-      lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
-    } else {
-      lenProperty = Get(realm, val, "length");
-    }
+    const lenProperty = Get(realm, val, "length");
+
     // Need to serialize length property if:
     // 1. array length is abstract.
     // 2. array length is concrete, but different from number of index properties
