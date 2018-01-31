@@ -416,6 +416,7 @@ export class Generator {
           if (node.type === "BlockStatement") {
             let block: BabelNodeBlockStatement = (node: any);
             let statements = block.body;
+            if (statements.length === 0) continue;
             if (statements.length === 1) {
               node = statements[0];
             }
