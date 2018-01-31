@@ -102,7 +102,8 @@ export let ClosureRefReplacer = {
     let residualFunctionBindings = state.residualFunctionBindings;
     let name = path.node.name;
     let residualFunctionBinding = residualFunctionBindings.get(name);
-    if (residualFunctionBinding) replaceName(path, residualFunctionBinding, name, residualFunctionBindings);
+    if (residualFunctionBinding && residualFunctionBinding.declarativeEnvironmentRecord !== null)
+      replaceName(path, residualFunctionBinding, name, residualFunctionBindings);
   },
 
   CallExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
@@ -127,7 +128,7 @@ export let ClosureRefReplacer = {
     let ids = path.getBindingIdentifierPaths();
     for (let name in ids) {
       let residualFunctionBinding = residualFunctionBindings.get(name);
-      if (residualFunctionBinding) {
+      if (residualFunctionBinding && residualFunctionBinding.declarativeEnvironmentRecord !== null) {
         let nestedPath = ids[name];
         replaceName(nestedPath, residualFunctionBinding, name, residualFunctionBindings);
       }
