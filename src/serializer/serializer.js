@@ -13,9 +13,9 @@ import { Realm, ExecutionContext } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { SourceFile } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
-import { Generator } from "../utils/generator.js";
+import { Generator, PreludeGenerator } from "../utils/generator.js";
 import generate from "babel-generator";
-import traverseFast from "../utils/traverse-fast.js";
+import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
 import { TimingStatistics, SerializerStatistics, ReactStatistics } from "./types.js";
@@ -28,9 +28,9 @@ import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
-import * as t from "babel-types";
 import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
+import type { BabelNode } from "babel-types";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -66,18 +66,32 @@ export class Serializer {
   statistics: SerializerStatistics;
   react: ReactSerializerState;
 
+  _populateForbiddenNames(ast: BabelNode, realmPreludeGenerator: PreludeGenerator): void {
+    let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
+
+    // by finding if an identifier is pure, we know if it's leaked to the global or not
+    // if it leaks, we make it fobidden to use
+    traverse(
+      ast,
+      {
+        Identifier(path) {
+          if (!path.isPure()) {
+            forbiddenNames.add(path.node.name);
+          }
+        },
+      },
+      undefined,
+      (undefined: any),
+      undefined
+    );
+  }
+
   _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false): { [string]: string } {
     let realm = this.realm;
     let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
       invariant(realmPreludeGenerator);
-      let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
-      traverseFast(ast, node => {
-        if (!t.isIdentifier(node)) return false;
-
-        forbiddenNames.add(((node: any): BabelNodeIdentifier).name);
-        return true;
-      });
+      this._populateForbiddenNames(ast, realmPreludeGenerator);
     });
 
     if (res instanceof AbruptCompletion) {
