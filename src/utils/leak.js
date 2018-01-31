@@ -297,13 +297,11 @@ class ObjectValueLeakingVisitor {
         this.visitValue(record.object);
         continue;
       }
+      if (record instanceof GlobalEnvironmentRecord) {
+        break;
+      }
 
-      invariant(
-        !(record instanceof GlobalEnvironmentRecord),
-        "we should never reach the global scope because it is never newly created in a pure function."
-      );
       invariant(record instanceof DeclarativeEnvironmentRecord);
-
       this.visitDeclarativeEnvironmentRecordBinding(record, remainingLeakedBindings);
 
       if (record instanceof FunctionEnvironmentRecord) {

@@ -64,6 +64,9 @@ function runTestSuite(outputJsx) {
             QueryRenderer(props) {
               return props.render({ props: {}, error: null });
             },
+            createFragmentContainer() {
+              return null;
+            },
             graphql() {
               return null;
             },
@@ -89,23 +92,25 @@ function runTestSuite(outputJsx) {
     let { compiledSource } = compileSourceWithPrepack(source);
 
     let A = runSource(source);
-    expect(typeof A).toBe("function");
     let B = runSource(compiledSource);
-    expect(typeof B).toBe("function");
+    expect(typeof A).toBe(typeof B);
+    if (typeof A !== "function") {
+      // Test without exports just verifies that the file compiles.
+      return;
+    }
 
     let rendererA = ReactTestRenderer.create(null);
     let rendererB = ReactTestRenderer.create(null);
-
     if (A == null || B == null) {
       throw new Error("React test runner issue");
     }
-    // // Use the original version of the test in case transforming messes it up.
+    // Use the original version of the test in case transforming messes it up.
     let { getTrials } = A;
-    // // Run tests that assert the rendered output matches.
+    // Run tests that assert the rendered output matches.
     let resultA = getTrials(rendererA, A);
     let resultB = getTrials(rendererB, B);
 
-    // // the test has returned many values for us to check
+    // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
@@ -275,6 +280,10 @@ function runTestSuite(outputJsx) {
 
       it("fb-www 2", async () => {
         await runTest(directory, "fb2.js");
+      });
+
+      it("fb-www 3", async () => {
+        await runTest(directory, "fb3.js");
       });
 
       it("fb-www 4", async () => {
