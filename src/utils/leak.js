@@ -362,10 +362,7 @@ class ObjectValueLeakingVisitor {
         this.visitValueSet(val);
         return;
       default:
-        invariant(
-          kind === "Object" || kind === "Array",
-          `Object of kind ${kind} is not supported in calls to abstract functions.`
-        );
+        invariant(kind === "Object", `Object of kind ${kind} is not supported in calls to abstract functions.`);
         invariant(
           this.$ParameterMap === undefined,
           `Arguments object is not supported in calls to abstract functions.`
