@@ -52,9 +52,16 @@ function shouldVisit(node, data) {
 //       If necessary we could implement this by following node.parentPath and checking
 //       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
 function replaceName(path, residualFunctionBinding, name, data) {
+  // Let's skip names that are bound
   if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
 
-  if (residualFunctionBinding && shouldVisit(path.node, data)) {
+  // Let's skip bindings that are referring to
+  // 1) something global (without an environment record), and
+  // 2) have not been assigned a value (which would mean that they have a var/let binding and Prepack will take the liberty to rename them).
+  if (residualFunctionBinding.declarativeEnvironmentRecord === null && residualFunctionBinding.value === undefined)
+    return;
+
+  if (shouldVisit(path.node, data)) {
     markVisited(residualFunctionBinding.serializedValue, data);
     let serializedValue = residualFunctionBinding.serializedValue;
 
@@ -102,8 +109,7 @@ export let ClosureRefReplacer = {
     let residualFunctionBindings = state.residualFunctionBindings;
     let name = path.node.name;
     let residualFunctionBinding = residualFunctionBindings.get(name);
-    if (residualFunctionBinding && residualFunctionBinding.declarativeEnvironmentRecord !== null)
-      replaceName(path, residualFunctionBinding, name, residualFunctionBindings);
+    if (residualFunctionBinding) replaceName(path, residualFunctionBinding, name, residualFunctionBindings);
   },
 
   CallExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
@@ -128,7 +134,7 @@ export let ClosureRefReplacer = {
     let ids = path.getBindingIdentifierPaths();
     for (let name in ids) {
       let residualFunctionBinding = residualFunctionBindings.get(name);
-      if (residualFunctionBinding && residualFunctionBinding.declarativeEnvironmentRecord !== null) {
+      if (residualFunctionBinding) {
         let nestedPath = ids[name];
         replaceName(nestedPath, residualFunctionBinding, name, residualFunctionBindings);
       }
