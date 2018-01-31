@@ -24,6 +24,7 @@ import {
 } from "../../methods/index.js";
 import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
+import { CompilerDiagnostic } from "../../errors.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 23.2.1.1
@@ -43,7 +44,15 @@ export default function(realm: Realm): NativeFunctionValue {
 
     // 4. If iterable is not present, let iterable be undefined.
     if (iterable && realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "the set constructor doesn't take arguments");
+      let loc = realm.currentLocation;
+      let error = new CompilerDiagnostic(
+        "This version of JSC ignores the argument to Set, require the polyfill before doing this",
+        loc,
+        "PP0001",
+        "RecoverableError"
+      );
+      realm.handleError(error);
+      iterable = undefined;
     }
     if (!iterable) iterable = realm.intrinsics.undefined;
 

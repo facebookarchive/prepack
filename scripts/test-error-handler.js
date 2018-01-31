@@ -57,6 +57,7 @@ function runTest(name: string, code: string): boolean {
   let additionalFunctions = code.includes("// additional functions");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let abstractEffects = code.includes("// abstract effects");
+  let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
 
   let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
   invariant(expectedErrors);
@@ -75,6 +76,7 @@ function runTest(name: string, code: string): boolean {
       serialize: true,
       initializeMoreModules: false,
       abstractEffectsInAdditionalFunctions: abstractEffects,
+      compatibility,
     };
     if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
     prepackFileSync([name], options);
