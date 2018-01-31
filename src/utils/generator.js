@@ -596,7 +596,12 @@ export class PreludeGenerator {
     } else {
       let i = key.lastIndexOf(".");
       if (i === -1) {
-        init = t.memberExpression(this.memoizeReference("global"), t.identifier(key));
+        if (key.startsWith("::")) {
+          // Special convention to avoid rooting certain names at the global object.
+          init = t.identifier(key.substring(2));
+        } else {
+          init = t.memberExpression(this.memoizeReference("global"), t.identifier(key));
+        }
       } else {
         init = t.memberExpression(this.memoizeReference(key.substr(0, i)), t.identifier(key.substr(i + 1)));
       }
