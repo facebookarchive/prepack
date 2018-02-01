@@ -18,7 +18,7 @@ export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
 
 export type RealmOptions = {
-  check?: boolean,
+  check?: Array<number>,
   compatibility?: Compatibility,
   debugNames?: boolean,
   errorHandler?: ErrorHandler,
