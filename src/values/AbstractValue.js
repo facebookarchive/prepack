@@ -52,7 +52,7 @@ export default class AbstractValue extends Value {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, intrinsicName?: string |}
+    optionalArgs?: {| kind?: string, intrinsicName?: string, isPure?: boolean |}
   ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
@@ -66,10 +66,12 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
+    this.isPure = optionalArgs ? optionalArgs.isPure : false;
   }
 
   hashValue: number;
   kind: ?string;
+  isPure: boolean;
   types: TypesDomain;
   values: ValuesDomain;
   mightBeEmpty: boolean;

@@ -349,6 +349,7 @@ export class Generator {
     this.preludeGenerator.derivedIds.set(id.name, args);
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
+    if (optionalArgs && optionalArgs.isPure) options.isPure = optionalArgs.isPure;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let res = new Constructor(this.realm, types, values, 0, [], id, options);
     this._addEntry({
