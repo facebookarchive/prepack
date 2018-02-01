@@ -128,7 +128,7 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("cx", {
     value: new NativeFunctionValue(realm, "cx", "cx", 0, (context, [cxString]) => {
       invariant(cxString instanceof StringValue);
-      let cxValue = `Bootloader("${cxString.value}")`;
+      let cxValue = `cx("${cxString.value}")`;
       let cx;
 
       if (realm.fbLibraries.other.has(cxValue)) {
@@ -145,21 +145,11 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  global.$DefineOwnProperty("Bootloader", {
-    value: new NativeFunctionValue(realm, "Bootloader", "Bootloader", 0, (context, [bootloaderString]) => {
-      invariant(bootloaderString instanceof StringValue);
-      let bootloaderValue = `Bootloader("${bootloaderString.value}")`;
-      let bootloader;
+  let bootloader = AbstractValue.createAbstractObject(realm, "Bootloader");
+  bootloader.kind = "resolved";
 
-      if (realm.fbLibraries.other.has(bootloaderValue)) {
-        bootloader = realm.fbLibraries.other.get(bootloaderValue);
-      } else {
-        bootloader = createAbstract(realm, "function", bootloaderValue);
-        realm.fbLibraries.other.set(bootloaderValue, bootloader);
-      }
-      invariant(bootloader instanceof AbstractValue);
-      return bootloader;
-    }),
+  global.$DefineOwnProperty("Bootloader", {
+    value: bootloader,
     writable: true,
     enumerable: false,
     configurable: true,
