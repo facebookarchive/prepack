@@ -425,7 +425,7 @@ export class Modules {
     this.active = true;
     try {
       let realm = this.realm;
-      return this.logger.tryQuery(() => Get(realm, realm.$GlobalObject, name), realm.intrinsics.undefined, false);
+      return this.logger.tryQuery(() => Get(realm, realm.$GlobalObject, name), realm.intrinsics.undefined);
     } finally {
       this.active = false;
     }
@@ -536,8 +536,7 @@ export class Modules {
         let doesNotMatter = true;
         let reference = logger.tryQuery(
           () => Environment.ResolveBinding(realm, innerName, doesNotMatter, f.$Environment),
-          undefined,
-          false
+          undefined
         );
         if (reference === undefined) {
           // We couldn't resolve as we came across some behavior that we cannot deal with abstractly
@@ -549,7 +548,7 @@ export class Modules {
         if (typeof referencedName !== "string") return undefined;
         let value;
         if (reference.base instanceof GlobalEnvironmentRecord) {
-          value = logger.tryQuery(() => Get(realm, realm.$GlobalObject, innerName), realm.intrinsics.undefined, false);
+          value = logger.tryQuery(() => Get(realm, realm.$GlobalObject, innerName), realm.intrinsics.undefined);
         } else {
           invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
           let binding = referencedBase.bindings[referencedName];
