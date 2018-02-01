@@ -39,7 +39,7 @@ export type PrepackOptions = {|
   reactOutput?: ReactOutputTypes,
   residual?: boolean,
   serialize?: boolean,
-  check?: boolean,
+  check?: Array<number>,
   inlineExpressions?: boolean,
   simpleClosures?: boolean,
   sourceMaps?: boolean,
