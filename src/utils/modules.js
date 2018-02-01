@@ -303,8 +303,7 @@ export class ModuleTracer extends Tracer {
         for (let i = 0; i < lengthValue.value; i++) {
           const elementValue = logger.tryQuery(
             () => Get(realm, ((value: any): ArrayValue), "" + i),
-            realm.intrinsics.undefined,
-            false
+            realm.intrinsics.undefined
           );
           dependencies.push(elementValue);
         }
