@@ -1,3 +1,11 @@
+if (!this.Bootloader) {
+  this.Bootloader = {loadAllModules() {}};
+}
+
+if (!this.cx) {
+  this.cx = () => {};
+}
+
 function getValue() {
   return cx("yar/Jar");
 }
