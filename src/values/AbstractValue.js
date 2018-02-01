@@ -35,6 +35,7 @@ import {
   SymbolValue,
   UndefinedValue,
   Value,
+  FunctionValue,
 } from "./index.js";
 import { hashBinary, hashCall, hashString, hashTernary, hashUnary } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -66,6 +67,7 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
+    this.safeFromLeaks = false;
   }
 
   hashValue: number;
@@ -74,6 +76,7 @@ export default class AbstractValue extends Value {
   values: ValuesDomain;
   mightBeEmpty: boolean;
   args: Array<Value>;
+  safeFromLeaks: boolean;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {
@@ -220,6 +223,14 @@ export default class AbstractValue extends Value {
       }
     }
     return false;
+  }
+
+  makeSafeFromLeaks() {
+    invariant(
+      this.getType() === FunctionValue,
+      "makeSafeFromLeaks() can only be applied to abstract values with a function type"
+    );
+    this.safeFromLeaks = true;
   }
 
   // todo: abstract values should never be of type UndefinedValue or NullValue, assert this

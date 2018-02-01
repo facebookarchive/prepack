@@ -18,9 +18,11 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
   let reactRelay = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `require("${relayRequireName}")`);
   // for QueryRenderer, we want to leave the component alone but process it's "render" prop
   let queryRendererComponent = createAbstract(realm, "function", `require("${relayRequireName}").QueryRenderer`);
+  queryRendererComponent.makeSafeFromLeaks();
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "QueryRenderer", queryRendererComponent);
 
   let graphql = createAbstract(realm, "function", `require("${relayRequireName}").graphql`);
+  graphql.makeSafeFromLeaks();
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "graphql", graphql);
 
   let createFragmentContainer = createAbstract(
@@ -28,6 +30,7 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
     "function",
     `require("${relayRequireName}").createFragmentContainer`
   );
+  createFragmentContainer.makeSafeFromLeaks();
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createFragmentContainer", createFragmentContainer);
 
   let createPaginationContainer = createAbstract(
@@ -35,6 +38,7 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
     "function",
     `require("${relayRequireName}").createPaginationContainer`
   );
+  createPaginationContainer.makeSafeFromLeaks();
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createPaginationContainer", createPaginationContainer);
 
   let createRefetchContainer = createAbstract(
@@ -42,6 +46,7 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
     "function",
     `require("${relayRequireName}").createRefetchContainer`
   );
+  createRefetchContainer.makeSafeFromLeaks();
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createRefetchContainer", createRefetchContainer);
 
   return reactRelay;
