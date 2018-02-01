@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm, ExecutionContext } from "../realm.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError, type Severity } from "../errors.js";
 import { Get, InstanceofOperator } from "../methods/index.js";
 import { Completion, ThrowCompletion } from "../completions.js";
 import { ObjectValue, StringValue, Value } from "../values/index.js";
@@ -29,7 +29,7 @@ export class Logger {
   internalDebug: boolean;
 
   // Wraps a query that might potentially execute user code.
-  tryQuery<T>(f: () => T, defaultValue: T, logFailures: boolean): T {
+  tryQuery<T>(f: () => T, defaultValue: T): T {
     let realm = this.realm;
     let context = new ExecutionContext();
     context.isStrict = realm.isStrict;
@@ -40,14 +40,8 @@ export class Logger {
     realm.pushContext(context);
     // We use partial evaluation so that we can throw away any state mutations
     let oldErrorHandler = realm.errorHandler;
-    let newErrorHandler;
-    realm.errorHandler = newErrorHandler = d => {
+    realm.errorHandler = d => {
       if (d.severity === "Information" || d.severity === "Warning") return "Recover";
-      if (logFailures) {
-        realm.errorHandler = oldErrorHandler;
-        realm.handleError(d);
-        realm.errorHandler = newErrorHandler;
-      }
       return "Fail";
     };
     try {
@@ -57,7 +51,6 @@ export class Logger {
           result = f();
         } catch (e) {
           if (e instanceof Completion) {
-            if (logFailures) this.logCompletion(e);
             result = defaultValue;
           } else if (e instanceof FatalError) {
             result = defaultValue;
@@ -82,20 +75,15 @@ export class Logger {
     if (
       this.tryQuery(
         () => value instanceof ObjectValue && InstanceofOperator(realm, value, realm.intrinsics.Error),
-        false,
         false
       )
     ) {
       let object = ((value: any): ObjectValue);
       try {
         let err = new FatalError(
-          this.tryQuery(() => To.ToStringPartial(realm, Get(realm, object, "message")), "(unknown message)", false)
+          this.tryQuery(() => To.ToStringPartial(realm, Get(realm, object, "message")), "(unknown message)")
         );
-        err.stack = this.tryQuery(
-          () => To.ToStringPartial(realm, Get(realm, object, "stack")),
-          "(unknown stack)",
-          false
-        );
+        err.stack = this.tryQuery(() => To.ToStringPartial(realm, Get(realm, object, "stack")), "(unknown stack)");
         console.error(err.message);
         console.error(err.stack);
         if (this.internalDebug && res instanceof ThrowCompletion) console.error(res.nativeStack);
@@ -124,21 +112,21 @@ export class Logger {
   }
 
   logError(value: Value, message: string) {
-    this.logWarning(value, message);
+    this._log(value, message, "Warning");
     this._hasErrors = true;
   }
 
   logWarning(value: Value, message: string) {
+    this._log(value, message, "RecoverableError");
+  }
+
+  _log(value: Value, message: string, severity: Severity) {
     let loc = value.expressionLocation;
-    if (loc) {
-      let locString = `${loc.start.line}:${loc.start.column + 1}`;
-      if (loc.source) locString = `${loc.source}:${locString}`;
-      message = `${message}\nat: ${locString}`;
-    } else if (value.intrinsicName) {
+    if (value.intrinsicName) {
       message = `${message}\nintrinsic name: ${value.intrinsicName}`;
     }
-
-    console.error(message);
+    let diagnostic = new CompilerDiagnostic(message, loc, "PP9000", severity);
+    if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
   }
 
   hasErrors() {

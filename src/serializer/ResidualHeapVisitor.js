@@ -92,7 +92,7 @@ export class ResidualHeapVisitor {
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
-    this.shouldVisitReactLibrary = false;
+    this.someReactElement = undefined;
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
@@ -123,7 +123,7 @@ export class ResidualHeapVisitor {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
-  shouldVisitReactLibrary: boolean;
+  someReactElement: void | ObjectValue;
   reactElementEquivalenceSet: ReactElementSet;
 
   // We only want to add to additionalRoots when we're in an additional function
@@ -444,8 +444,7 @@ export class ResidualHeapVisitor {
     let doesNotMatter = true;
     let reference = this.logger.tryQuery(
       () => Environment.ResolveBinding(this.realm, name, doesNotMatter, val.$Environment),
-      undefined,
-      false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the common scope. */
+      undefined
     );
     let getFromMap = createBinding ? getOrDefault : (map, key, defaultFn) => map.get(key);
     if (
@@ -588,7 +587,7 @@ export class ResidualHeapVisitor {
       case "ArrayBuffer":
         return;
       case "ReactElement":
-        this.shouldVisitReactLibrary = true;
+        this.someReactElement = val;
         // check we can hoist a React Element
         canHoistReactElement(this.realm, val, this);
         return;
@@ -899,8 +898,8 @@ export class ResidualHeapVisitor {
     invariant(generator);
     this.visitGenerator(generator);
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
-    if (this.realm.react.enabled && this.shouldVisitReactLibrary) {
-      this._visitReactLibrary();
+    if (this.realm.react.enabled && this.someReactElement !== undefined) {
+      this._visitReactLibrary(this.someReactElement);
     }
 
     // Do a fixpoint over all pure generator entries to make sure that we visit
@@ -934,7 +933,7 @@ export class ResidualHeapVisitor {
     }
   }
 
-  _visitReactLibrary() {
+  _visitReactLibrary(someReactElement: ObjectValue) {
     // find and visit the React library
     let reactLibraryObject = this.realm.fbLibraries.react;
     if (this.realm.react.output === "jsx") {
@@ -944,20 +943,25 @@ export class ResidualHeapVisitor {
         this.visitValue(reactLibraryObject);
       }
     } else if (this.realm.react.output === "create-element") {
-      function throwError() {
-        throw new FatalError("unable to visit createElement due to React not being referenced in scope");
-      }
+      let logError = () => {
+        this.logger.logError(
+          someReactElement,
+          "unable to visit createElement due to React not being referenced in scope"
+        );
+      };
       // createElement output needs React in scope
       if (reactLibraryObject === undefined) {
-        throwError();
+        logError();
+      } else {
+        invariant(reactLibraryObject instanceof ObjectValue);
+        let createElement = reactLibraryObject.properties.get("createElement");
+        if (createElement === undefined || createElement.descriptor === undefined) {
+          logError();
+        } else {
+          let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
+          this.visitValue(reactCreateElement);
+        }
       }
-      invariant(reactLibraryObject instanceof ObjectValue);
-      let createElement = reactLibraryObject.properties.get("createElement");
-      if (createElement === undefined || createElement.descriptor === undefined) {
-        throwError();
-      }
-      let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
-      this.visitValue(reactCreateElement);
     }
   }
 }

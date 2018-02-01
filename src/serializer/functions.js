@@ -89,8 +89,7 @@ export class Functions {
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
       () => Get(realm, realm.$GlobalObject, globalKey),
-      realm.intrinsics.undefined,
-      false
+      realm.intrinsics.undefined
     );
     invariant(globalRecordedAdditionalFunctionsMap instanceof ObjectValue);
     for (let funcId of globalRecordedAdditionalFunctionsMap.getOwnPropertyKeysArray()) {

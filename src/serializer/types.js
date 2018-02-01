@@ -17,7 +17,7 @@ import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 
-export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
+export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
 // TODO: add type for additional functions.
 export type SerializedBodyType =

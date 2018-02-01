@@ -101,27 +101,27 @@ export function valueIsReactLibraryObject(realm: Realm, value: ObjectValue, logg
   }
   // we check that the object is the React or React-like library by checking for
   // core properties that should exist on it
-  let reactVersion = logger.tryQuery(() => Get(realm, value, "version"), undefined, false);
+  let reactVersion = logger.tryQuery(() => Get(realm, value, "version"), undefined);
   if (!(reactVersion instanceof StringValue)) {
     return false;
   }
-  let reactCreateElement = logger.tryQuery(() => Get(realm, value, "createElement"), undefined, false);
+  let reactCreateElement = logger.tryQuery(() => Get(realm, value, "createElement"), undefined);
   if (!(reactCreateElement instanceof FunctionValue)) {
     return false;
   }
-  let reactCloneElement = logger.tryQuery(() => Get(realm, value, "cloneElement"), undefined, false);
+  let reactCloneElement = logger.tryQuery(() => Get(realm, value, "cloneElement"), undefined);
   if (!(reactCloneElement instanceof FunctionValue)) {
     return false;
   }
-  let reactIsValidElement = logger.tryQuery(() => Get(realm, value, "isValidElement"), undefined, false);
+  let reactIsValidElement = logger.tryQuery(() => Get(realm, value, "isValidElement"), undefined);
   if (!(reactIsValidElement instanceof FunctionValue)) {
     return false;
   }
-  let reactComponent = logger.tryQuery(() => Get(realm, value, "Component"), undefined, false);
+  let reactComponent = logger.tryQuery(() => Get(realm, value, "Component"), undefined);
   if (!(reactComponent instanceof FunctionValue)) {
     return false;
   }
-  let reactChildren = logger.tryQuery(() => Get(realm, value, "Children"), undefined, false);
+  let reactChildren = logger.tryQuery(() => Get(realm, value, "Children"), undefined);
   if (!(reactChildren instanceof ObjectValue)) {
     return false;
   }
