@@ -11,7 +11,7 @@
 
 import { parseExpression } from "babylon";
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, Value, ObjectValue, StringValue } from "../../values/index.js";
+import { AbstractValue, NativeFunctionValue, FunctionValue, ObjectValue, StringValue } from "../../values/index.js";
 import buildExpressionTemplate from "../../utils/builder.js";
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
@@ -99,13 +99,12 @@ export default function(realm: Realm): void {
         return realm.fbLibraries.reactRelay;
       }
       let requireName = `require("${requireNameVal.value}")`;
-      let type = Value.getTypeFromName("function");
-      let requireValue = AbstractValue.createFromTemplate(
+      let requireValue = AbstractValue.createTemporalFromTemplate(
         realm,
         buildExpressionTemplate(requireName),
-        ((type: any): typeof Value),
+        FunctionValue,
         [],
-        requireName
+        { isPure: true, skipInvariant: true }
       );
       requireValue.intrinsicName = requireName;
       return requireValue;

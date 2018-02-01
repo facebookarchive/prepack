@@ -14,6 +14,7 @@ export default function invariant(condition: any, format: string): void {
   const message = `${format}
 This is likely a bug in Prepack, not your code. Feel free to open an issue on GitHub.`;
 
+  debugger;
   let error = new Error(message);
   error.name = "Invariant Violation";
   throw error;

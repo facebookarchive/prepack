@@ -10,37 +10,55 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue } from "../../values/index.js";
+import { ObjectValue, AbstractValue, FunctionValue } from "../../values/index.js";
 import { Create } from "../../singletons.js";
-import { createAbstract } from "../prepack/utils.js";
+import buildExpressionTemplate from "../../utils/builder.js";
 
 export function createMockReactRelay(realm: Realm, relayRequireName: string): ObjectValue {
   let reactRelay = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `require("${relayRequireName}")`);
   // for QueryRenderer, we want to leave the component alone but process it's "render" prop
-  let queryRendererComponent = createAbstract(realm, "function", `require("${relayRequireName}").QueryRenderer`);
+  let queryRendererComponent = AbstractValue.createTemporalFromTemplate(
+    realm,
+    buildExpressionTemplate(`require("${relayRequireName}").QueryRenderer`),
+    FunctionValue,
+    [],
+    { isPure: true, skipInvariant: true }
+  );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "QueryRenderer", queryRendererComponent);
 
-  let graphql = createAbstract(realm, "function", `require("${relayRequireName}").graphql`);
+  let graphql = AbstractValue.createTemporalFromTemplate(
+    realm,
+    buildExpressionTemplate(`require("${relayRequireName}").graphql`),
+    FunctionValue,
+    [],
+    { isPure: true, skipInvariant: true }
+  );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "graphql", graphql);
 
-  let createFragmentContainer = createAbstract(
+  let createFragmentContainer = AbstractValue.createTemporalFromTemplate(
     realm,
-    "function",
-    `require("${relayRequireName}").createFragmentContainer`
+    buildExpressionTemplate(`require("${relayRequireName}").createFragmentContainer`),
+    FunctionValue,
+    [],
+    { isPure: true, skipInvariant: true }
   );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createFragmentContainer", createFragmentContainer);
 
-  let createPaginationContainer = createAbstract(
+  let createPaginationContainer = AbstractValue.createTemporalFromTemplate(
     realm,
-    "function",
-    `require("${relayRequireName}").createPaginationContainer`
+    buildExpressionTemplate(`require("${relayRequireName}").createPaginationContainer`),
+    FunctionValue,
+    [],
+    { isPure: true, skipInvariant: true }
   );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createPaginationContainer", createPaginationContainer);
 
-  let createRefetchContainer = createAbstract(
+  let createRefetchContainer = AbstractValue.createTemporalFromTemplate(
     realm,
-    "function",
-    `require("${relayRequireName}").createRefetchContainer`
+    buildExpressionTemplate(`require("${relayRequireName}").createRefetchContainer`),
+    FunctionValue,
+    [],
+    { isPure: true, skipInvariant: true }
   );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createRefetchContainer", createRefetchContainer);
 
