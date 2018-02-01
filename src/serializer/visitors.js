@@ -14,7 +14,7 @@ import { FunctionValue } from "../values/index.js";
 import * as t from "babel-types";
 import { convertExpressionToJSXIdentifier } from "../react/jsx";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeFunctionExpression } from "babel-types";
-import type { BabelTraversePath } from "babel-traverse";
+import type { BabelTraversePath, BabelTraverseScope } from "babel-traverse";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { TryQuery, FunctionInfo, FactoryFunctionInfo, ResidualFunctionBinding } from "./types.js";
 import { nullExpression } from "../utils/internalizer.js";
@@ -31,7 +31,9 @@ export type ClosureRefReplacerState = {
   modified: Set<string>,
   requireReturns: Map<number | string, BabelNodeExpression>,
   requireStatistics: { replaced: 0, count: 0 },
-  isRequire: void | ((scope: any, node: BabelNodeCallExpression) => boolean),
+  getModuleIdIfNodeIsRequireFunction:
+    | void
+    | ((scope: BabelTraverseScope, node: BabelNodeCallExpression) => void | number | string),
   factoryFunctionInfos: Map<number, FactoryFunctionInfo>,
 };
 
@@ -116,12 +118,14 @@ export let ClosureRefReplacer = {
     // Here we apply the require optimization by replacing require calls with their
     // corresponding initialized modules.
     let requireReturns = state.requireReturns;
-    if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
+    if (state.getModuleIdIfNodeIsRequireFunction === undefined) return;
+    let moduleId = state.getModuleIdIfNodeIsRequireFunction(path.scope, path.node);
+    if (moduleId === undefined) return;
+
     state.requireStatistics.count++;
     if (state.modified.has(path.node.callee.name)) return;
 
-    let moduleId = "" + path.node.arguments[0].value;
-    let new_node = requireReturns.get(moduleId);
+    let new_node = requireReturns.get("" + moduleId);
     if (new_node !== undefined) {
       markVisited(new_node, state.residualFunctionBindings);
       path.replaceWith(new_node);
