@@ -112,12 +112,12 @@ export class Logger {
   }
 
   logError(value: Value, message: string) {
-    this._log(value, message, "Warning");
+    this._log(value, message, "RecoverableError");
     this._hasErrors = true;
   }
 
   logWarning(value: Value, message: string) {
-    this._log(value, message, "RecoverableError");
+    this._log(value, message, "Warning");
   }
 
   _log(value: Value, message: string, severity: Severity) {
