@@ -315,7 +315,7 @@ export class Reconciler {
         // TODO: use this._renderFactoryClassComponent to handle the render method (like a render prop)
         // for now we just return the object
         if (branchStatus !== "ROOT") {
-          throw new ExpectedBailOut("non-root factory class components are not suppoted ");
+          throw new ExpectedBailOut("non-root factory class components are not suppoted");
         } else {
           return {
             result: value,
