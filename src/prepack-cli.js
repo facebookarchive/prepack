@@ -266,9 +266,12 @@ function run(
     process.exit(1);
   }
 
-  let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+  let errors: Map<null | BabelNodeSourceLocation, Array<CompilerDiagnostic>> = new Map();
   function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
-    if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
+    let key = diagnostic.location || null;
+    let list = errors.get(key);
+    if (list === undefined) errors.set(key, (list = []));
+    list.push(diagnostic);
     return "Recover";
   }
 
@@ -276,34 +279,35 @@ function run(
     let foundFatal = false;
     if (errors.size > 0) {
       console.error("Errors found while prepacking");
-      for (let [loc, error] of errors) {
-        let sourceMessage = "";
-        switch (loc.source) {
-          case null:
-          case "":
-            sourceMessage = "In an unknown source file";
-            break;
-          case "no-filename-specified":
-            sourceMessage = "In stdin";
-            break;
-          default:
-            invariant(loc.source !== null);
-            sourceMessage = `In input file ${loc.source}`;
-            break;
-        }
+      for (let [loc, list] of errors)
+        for (let error of list) {
+          let sourceMessage = "";
+          switch (loc === null ? null : loc.source) {
+            case null:
+            case "":
+              sourceMessage = "In an unknown source file";
+              break;
+            case "no-filename-specified":
+              sourceMessage = "In stdin";
+              break;
+            default:
+              invariant(loc !== null && loc.source !== null);
+              sourceMessage = `In input file ${loc.source}`;
+              break;
+          }
 
-        foundFatal = foundFatal || error.severity === "FatalError";
-        console.error(
-          `${sourceMessage}(${loc.start.line}:${loc.start.column +
-            1}) ${error.severity} ${error.errorCode}: ${error.message}` +
-            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
-        );
-        let callStack = error.callStack;
-        if (callStack !== undefined) {
-          let eolPos = callStack.indexOf("\n");
-          if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
+          foundFatal = foundFatal || error.severity === "FatalError";
+          let locString = loc === null ? "" : `(${loc.start.line}:${loc.start.column + 1})`;
+          console.error(
+            `${sourceMessage}${locString} ${error.severity} ${error.errorCode}: ${error.message}` +
+              ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
+          );
+          let callStack = error.callStack;
+          if (callStack !== undefined) {
+            let eolPos = callStack.indexOf("\n");
+            if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
+          }
         }
-      }
     }
     return foundFatal;
   }
