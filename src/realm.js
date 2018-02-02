@@ -40,7 +40,7 @@ import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
-export type BindingEntry = { hasLeaked: boolean, value: void | Value };
+export type BindingEntry = { hasEscaped: boolean, value: void | Value };
 export type Bindings = Map<Binding, BindingEntry>;
 export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
@@ -133,8 +133,8 @@ export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
-    this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
-    this.ignoreLeakLogic = false;
+    this.trackEscapes = !!opts.abstractEffectsInAdditionalFunctions;
+    this.ignoreEscapeLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
@@ -203,7 +203,7 @@ export class Realm {
   isReadOnly: boolean;
   isStrict: boolean;
   useAbstractInterpretation: boolean;
-  trackLeaks: boolean;
+  trackEscapes: boolean;
   debugNames: void | boolean;
   isInPureTryStatement: boolean; // TODO(1264): Remove this once we implement proper exception handling in abstract calls.
   timeout: void | number;
@@ -211,12 +211,12 @@ export class Realm {
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
   omitInvariants: boolean;
-  ignoreLeakLogic: boolean;
+  ignoreEscapeLogic: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
-  createdObjectsTrackedForLeaks: void | CreatedObjects;
+  createdObjectsTrackedForEscapes: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
@@ -427,33 +427,33 @@ export class Realm {
   // also won't have effects on any objects or bindings that weren't created in this
   // call.
   evaluatePure<T>(f: () => T) {
-    if (!this.trackLeaks) {
+    if (!this.trackEscapes) {
       return f();
     }
-    let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+    let saved_createdObjectsTrackedForEscapes = this.createdObjectsTrackedForEscapes;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
-    // as leaked if they're passed to abstract functions.
-    this.createdObjectsTrackedForLeaks = new Set();
+    // as escaped if they're passed to abstract functions.
+    this.createdObjectsTrackedForEscapes = new Set();
     try {
       return f();
     } finally {
-      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      this.createdObjectsTrackedForEscapes = saved_createdObjectsTrackedForEscapes;
     }
   }
 
   isInPureScope() {
-    return !!this.createdObjectsTrackedForLeaks;
+    return !!this.createdObjectsTrackedForEscapes;
   }
 
-  evaluateWithoutLeakLogic(f: () => Value): Value {
-    invariant(!this.ignoreLeakLogic, "Nesting evaluateWithoutLeakLogic() calls is not supported.");
-    this.ignoreLeakLogic = true;
+  evaluateWithoutEscapeLogic(f: () => Value): Value {
+    invariant(!this.ignoreEscapeLogic, "Nesting evaluateWithoutEscapeLogic() calls is not supported.");
+    this.ignoreEscapeLogic = true;
     try {
       return f();
     } finally {
-      this.ignoreLeakLogic = false;
+      this.ignoreEscapeLogic = false;
     }
   }
 
@@ -965,7 +965,7 @@ export class Realm {
     }
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
       this.modifiedBindings.set(binding, {
-        hasLeaked: binding.hasLeaked,
+        hasEscaped: binding.hasEscaped,
         value: binding.value,
       });
     return binding;
@@ -1006,8 +1006,8 @@ export class Realm {
     if (this.createdObjects !== undefined) {
       this.createdObjects.add(object);
     }
-    if (this.createdObjectsTrackedForLeaks !== undefined) {
-      this.createdObjectsTrackedForLeaks.add(object);
+    if (this.createdObjectsTrackedForEscapes !== undefined) {
+      this.createdObjectsTrackedForEscapes.add(object);
     }
   }
 
@@ -1025,13 +1025,13 @@ export class Realm {
   // the value the Binding had just before the call to this method.
   restoreBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
-      let l = binding.hasLeaked;
+    modifiedBindings.forEach(({ hasEscaped, value }, binding, m) => {
+      let l = binding.hasEscaped;
       let v = binding.value;
-      binding.hasLeaked = hasLeaked;
+      binding.hasEscaped = hasEscaped;
       binding.value = value;
       m.set(binding, {
-        hasLeaked: l,
+        hasEscaped: l,
         value: v,
       });
     });

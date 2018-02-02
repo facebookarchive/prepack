@@ -750,14 +750,14 @@ export class JoinImplementation {
       return this.joinValuesAsConditional(realm, joinCondition, v1, v2);
     };
     let join = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
-      let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
-      let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
+      let l1 = b1 === undefined ? b.hasEscaped : b1.hasEscaped;
+      let l2 = b2 === undefined ? b.hasEscaped : b2.hasEscaped;
       let v1 = b1 === undefined ? b.value : b1.value;
       let v2 = b2 === undefined ? b.value : b2.value;
-      let hasLeaked = l1 || l2; // If either has leaked, then this binding has leaked.
+      let hasEscaped = l1 || l2; // If either has escaped, then this binding has escaped.
       let value = this.joinValues(realm, v1, v2, getAbstractValue);
       invariant(value instanceof Value);
-      return { hasLeaked, value };
+      return { hasEscaped, value };
     };
     return this.joinMaps(m1, m2, join);
   }

@@ -680,7 +680,10 @@ export class ResidualHeapSerializer {
 
     if (!residualBinding.referentialized) {
       let additionalFunction = residualBinding.referencedOnlyFromAdditionalFunctions;
-      invariant(additionalFunction, "residual bindings like this are only caused by leaked bindings in pure functions");
+      invariant(
+        additionalFunction,
+        "residual bindings like this are only caused by escaped bindings in pure functions"
+      );
       let instance = this.residualFunctionInstances.get(additionalFunction);
       invariant(instance, "any serialized function must exist in the scope");
       this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding.name, instance);
@@ -887,8 +890,8 @@ export class ResidualHeapSerializer {
   ): void {
     const realm = this.realm;
     let lenProperty;
-    if (val.isLeakedObject()) {
-      lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
+    if (val.isEscapedObject()) {
+      lenProperty = this.realm.evaluateWithoutEscapeLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");
     }

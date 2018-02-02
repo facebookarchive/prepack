@@ -430,7 +430,7 @@ export class ToImplementation {
       default:
         if (realm.isInPureScope()) {
           // Create a placeholder value to represent the ObjectValue that we would've
-          // received, but this object should never leak so as an optimization we will
+          // received, but this object should never escape so as an optimization we will
           // let operations on top of this object force the ToObject operations instead.
           obj = AbstractValue.createFromType(realm, ObjectValue, "sentinel ToObject");
           invariant(obj instanceof AbstractObjectValue);

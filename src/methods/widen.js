@@ -128,9 +128,9 @@ export class WidenImplementation {
 
   widenBindings(realm: Realm, m1: Bindings, m2: Bindings): Bindings {
     let widen = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
-      let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
-      let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
-      let hasLeaked = l1 || l2; // If either has leaked, then this binding has leaked.
+      let l1 = b1 === undefined ? b.hasEscaped : b1.hasEscaped;
+      let l2 = b2 === undefined ? b.hasEscaped : b2.hasEscaped;
+      let hasEscaped = l1 || l2; // If either has escaped, then this binding has escaped.
       let v1 = b1 === undefined || b1.value === undefined ? b.value : b1.value;
       invariant(b2 !== undefined); // Local variables are not going to get deleted as a result of widening
       let v2 = b2.value;
@@ -154,7 +154,7 @@ export class WidenImplementation {
         result._buildNode = args => t.identifier(phiName);
       }
       invariant(result instanceof Value);
-      return { hasLeaked, value: result };
+      return { hasEscaped, value: result };
     };
     return this.widenMaps(m1, m2, widen);
   }
@@ -340,7 +340,7 @@ export class WidenImplementation {
         b1.value === undefined ||
         b2.value === undefined ||
         !this._containsValues(b1.value, b2.value) ||
-        b1.hasLeaked !== b2.hasLeaked
+        b1.hasEscaped !== b2.hasEscaped
       ) {
         return false;
       }

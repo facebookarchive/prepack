@@ -13,7 +13,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import {
-  leakBinding,
+  escapeBinding,
   DeclarativeEnvironmentRecord,
   FunctionEnvironmentRecord,
   ObjectEnvironmentRecord,
@@ -38,7 +38,7 @@ import type { BabelTraversePath } from "babel-traverse";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
-type LeakedFunctionInfo = {
+type EscapedFunctionInfo = {
   unboundReads: Set<string>,
   unboundWrites: Set<string>,
 };
@@ -57,8 +57,8 @@ function ignorePath(path: BabelTraversePath) {
   return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
 }
 
-let LeakedClosureRefVisitor = {
-  ReferencedIdentifier(path: BabelTraversePath, state: LeakedFunctionInfo) {
+let EscapedClosureRefVisitor = {
+  ReferencedIdentifier(path: BabelTraversePath, state: EscapedFunctionInfo) {
     if (ignorePath(path)) return;
 
     let innerName = path.node.name;
@@ -68,7 +68,7 @@ let LeakedClosureRefVisitor = {
     visitName(path, state, innerName, true, false);
   },
 
-  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: LeakedFunctionInfo) {
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: EscapedFunctionInfo) {
     let doesRead = path.node.operator !== "=";
     for (let name in path.getBindingIdentifiers()) {
       visitName(path, state, name, doesRead, true);
@@ -76,7 +76,7 @@ let LeakedClosureRefVisitor = {
   },
 };
 
-function getLeakedFunctionInfo(value: FunctionValue) {
+function getEscapedFunctionInfo(value: FunctionValue) {
   // TODO: This should really be cached on a per AST basis in case we have
   // many uses of the same closure. It should ideally share this cache
   // and data with ResidualHeapVisitor.
@@ -93,21 +93,21 @@ function getLeakedFunctionInfo(value: FunctionValue) {
 
   traverse(
     t.file(t.program([t.expressionStatement(t.functionExpression(null, formalParameters, code))])),
-    LeakedClosureRefVisitor,
+    EscapedClosureRefVisitor,
     null,
     functionInfo
   );
   return functionInfo;
 }
 
-class ObjectValueLeakingVisitor {
+class ObjectValueEscapingVisitor {
   // ObjectValues to visit if they're reachable.
-  objectsTrackedForLeaks: Set<ObjectValue>;
+  objectsTrackedForEscapes: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
 
-  constructor(objectsTrackedForLeaks: Set<ObjectValue>) {
-    this.objectsTrackedForLeaks = objectsTrackedForLeaks;
+  constructor(objectsTrackedForEscapes: Set<ObjectValue>) {
+    this.objectsTrackedForEscapes = objectsTrackedForEscapes;
     this.visitedValues = new Set();
   }
 
@@ -116,7 +116,7 @@ class ObjectValueLeakingVisitor {
       // For Objects we only need to visit it if it is tracked
       // as a newly created object that might still be mutated.
       // Abstract values gets their arguments visited.
-      if (!this.objectsTrackedForLeaks.has(val)) return false;
+      if (!this.objectsTrackedForEscapes.has(val)) return false;
     }
     if (this.visitedValues.has(val)) return false;
     this.visitedValues.add(val);
@@ -155,10 +155,10 @@ class ObjectValueLeakingVisitor {
     // prototype
     this.visitObjectPrototype(obj);
 
-    // if this object wasn't already leaked, we need mark it as leaked
+    // if this object wasn't already escaped, we need mark it as escaped
     // so that any mutation and property access get tracked after this.
-    if (!obj.isLeakedObject()) {
-      obj.leak();
+    if (!obj.isEscapedObject()) {
+      obj.escape();
     }
   }
 
@@ -200,16 +200,16 @@ class ObjectValueLeakingVisitor {
 
   visitDeclarativeEnvironmentRecordBinding(
     record: DeclarativeEnvironmentRecord,
-    remainingLeakedBindings: LeakedFunctionInfo
+    remainingEscapedBindings: EscapedFunctionInfo
   ) {
     let bindings = record.bindings;
     for (let bindingName of Object.keys(bindings)) {
       let binding = bindings[bindingName];
       // Check if this binding is referenced, and if so delete it from the set.
-      let isRead = remainingLeakedBindings.unboundReads.delete(bindingName);
-      let isWritten = remainingLeakedBindings.unboundWrites.delete(bindingName);
+      let isRead = remainingEscapedBindings.unboundReads.delete(bindingName);
+      let isWritten = remainingEscapedBindings.unboundWrites.delete(bindingName);
       if (isRead) {
-        // If this binding can be read from the closure, its value has now leaked.
+        // If this binding can be read from the closure, its value has now escaped.
         let value = binding.value;
         if (value) {
           this.visitValue(value);
@@ -217,12 +217,12 @@ class ObjectValueLeakingVisitor {
       }
       if (isWritten || isRead) {
         // If this binding could have been mutated from the closure, then the
-        // binding itself has now leaked, but not necessarily the value in it.
-        // TODO: We could tag a leaked binding as read and/or write. That way
-        // we don't have to leak values written to this binding if only writes
-        // have leaked. We also don't have to leak reads from this binding
+        // binding itself has now escaped, but not necessarily the value in it.
+        // TODO: We could tag a escaped binding as read and/or write. That way
+        // we don't have to escape values written to this binding if only writes
+        // have escaped. We also don't have to escape reads from this binding
         // if it is only read from.
-        leakBinding(binding);
+        escapeBinding(binding);
       }
     }
   }
@@ -271,7 +271,7 @@ class ObjectValueLeakingVisitor {
   }
 
   visitValueFunction(val: FunctionValue): void {
-    if (val.isLeakedObject()) {
+    if (val.isEscapedObject()) {
       return;
     }
     this.visitObjectProperties(val);
@@ -288,7 +288,7 @@ class ObjectValueLeakingVisitor {
       "all native function values should have already been created outside this pure function"
     );
 
-    let remainingLeakedBindings = getLeakedFunctionInfo(val);
+    let remainingEscapedBindings = getEscapedFunctionInfo(val);
 
     let environment = val.$Environment.parent;
     while (environment) {
@@ -302,14 +302,14 @@ class ObjectValueLeakingVisitor {
       }
 
       invariant(record instanceof DeclarativeEnvironmentRecord);
-      this.visitDeclarativeEnvironmentRecordBinding(record, remainingLeakedBindings);
+      this.visitDeclarativeEnvironmentRecordBinding(record, remainingEscapedBindings);
 
       if (record instanceof FunctionEnvironmentRecord) {
-        // If this is a function environment, which is not tracked for leaks,
+        // If this is a function environment, which is not tracked for escapes,
         // we can bail out because its bindings should not be mutated in a
         // pure function.
         let fn = record.$FunctionObject;
-        if (!this.objectsTrackedForLeaks.has(fn)) {
+        if (!this.objectsTrackedForEscapes.has(fn)) {
           break;
         }
       }
@@ -318,7 +318,7 @@ class ObjectValueLeakingVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    if (val.isLeakedObject()) {
+    if (val.isEscapedObject()) {
       return;
     }
 
@@ -414,7 +414,7 @@ function ensureFrozenValue(realm, value, loc) {
   // TODO: This should really check if it is recursively immutability.
   if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen")) {
     let diag = new CompilerDiagnostic(
-      "Unfrozen object leaked before end of global code",
+      "Unfrozen object escaped before end of global code",
       loc || realm.currentLocation,
       "PP0017",
       "RecoverableError"
@@ -425,12 +425,12 @@ function ensureFrozenValue(realm, value, loc) {
 
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
-export class LeakImplementation {
-  leakValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
-    let objectsTrackedForLeaks = realm.createdObjectsTrackedForLeaks;
-    if (objectsTrackedForLeaks === undefined) {
+export class EscapeImplementation {
+  escapeValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
+    let objectsTrackedForEscapes = realm.createdObjectsTrackedForEscapes;
+    if (objectsTrackedForEscapes === undefined) {
       // We're not tracking a pure function. That means that we would track
-      // everything as leaked. We'll assume that any object argument
+      // everything as escaped. We'll assume that any object argument
       // is invalid unless it's frozen.
       ensureFrozenValue(realm, value, loc);
     } else {
@@ -439,7 +439,7 @@ export class LeakImplementation {
       // object can safely be assumed to be deeply immutable as far as this
       // pure function is concerned. However, any mutable object needs to
       // be tainted as possibly having changed to anything.
-      let visitor = new ObjectValueLeakingVisitor(objectsTrackedForLeaks);
+      let visitor = new ObjectValueEscapingVisitor(objectsTrackedForEscapes);
       visitor.visitValue(value);
     }
   }

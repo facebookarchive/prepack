@@ -18,7 +18,7 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value } from "../values/index.js";
 import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { Environment, Functions, Join, Leak } from "../singletons.js";
+import { Environment, Functions, Join, Escape } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -113,7 +113,7 @@ function generateRuntimeCall(
   args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
   for (let arg of args) {
     if (arg !== func) {
-      Leak.leakValue(realm, arg, ast.loc);
+      Escape.escapeValue(realm, arg, ast.loc);
     }
   }
   return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {
