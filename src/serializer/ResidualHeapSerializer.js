@@ -1842,7 +1842,7 @@ export class ResidualHeapSerializer {
           : t.callExpression(functionExpression, []);
         ast_body.push(t.expressionStatement(callExpression));
       } else {
-        ast_body = body;
+        Array.prototype.push.apply(ast_body, body);
       }
     }
 
