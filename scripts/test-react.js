@@ -277,6 +277,10 @@ function runTestSuite(outputJsx) {
       it("Simple factory classes", async () => {
         await runTest(directory, "simple.js");
       });
+
+      it("Simple factory classes 2", async () => {
+        await runTest(directory, "simple2.js");
+      });
     });
 
     describe("fb-www mocks", () => {

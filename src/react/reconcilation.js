@@ -313,11 +313,15 @@ export class Reconciler {
       if (valueIsFactoryClassComponent(this.realm, value)) {
         invariant(value instanceof ObjectValue);
         // TODO: use this._renderFactoryClassComponent to handle the render method (like a render prop)
-        // for now we just return the object;
-        return {
-          result: value,
-          childContext,
-        };
+        // for now we just return the object
+        if (branchStatus !== "ROOT") {
+          throw new ExpectedBailOut("non-root factory class components are not suppoted ");
+        } else {
+          return {
+            result: value,
+            childContext,
+          };
+        }
       }
     }
     invariant(value !== undefined);
