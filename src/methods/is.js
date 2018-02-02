@@ -105,6 +105,7 @@ export function IsCallable(realm: Realm, func: Value): boolean {
   // 1. If Type(argument) is not Object, return false.
   if (!func.mightBeObject()) return false;
   if (HasCompatibleType(func, FunctionValue)) return true;
+  if (func.isSimpleObject()) return false;
 
   // 2. If argument has a [[Call]] internal method, return true.
   func = func.throwIfNotConcreteObject();
@@ -185,7 +186,7 @@ export function IsArray(realm: Realm, argument: Value): boolean {
   }
 
   // 4. Return false.
-  argument.throwIfNotConcrete();
+  if (!argument.isSimpleObject()) argument.throwIfNotConcrete();
   return false;
 }
 
