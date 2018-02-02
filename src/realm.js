@@ -183,10 +183,6 @@ export class Realm {
     };
 
     this.fbLibraries = {
-      cx: undefined,
-      fbt: undefined,
-      idx: undefined,
-      ix: undefined,
       other: new Map(),
       react: undefined,
       reactRelay: undefined,
@@ -246,10 +242,6 @@ export class Realm {
   };
 
   fbLibraries: {
-    cx: void | ObjectValue,
-    fbt: void | ObjectValue,
-    idx: void | ObjectValue,
-    ix: void | ObjectValue,
     other: Map<string, AbstractValue>,
     react: void | ObjectValue,
     reactRelay: void | ObjectValue,
