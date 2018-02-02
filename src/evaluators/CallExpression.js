@@ -112,7 +112,7 @@ function generateRuntimeCall(
   if (propName !== undefined && typeof propName !== "string") args.push(propName);
   args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
   for (let arg of args) {
-    if (arg !== func) {
+    if (arg !== func && !func.safeFromLeaks) {
       Leak.leakValue(realm, arg, ast.loc);
     }
   }
