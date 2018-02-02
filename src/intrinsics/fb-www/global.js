@@ -9,55 +9,16 @@
 
 /* @flow */
 
-import { parseExpression } from "babylon";
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
+import { AbstractValue, NativeFunctionValue, StringValue } from "../../values/index.js";
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
 import { createAbstract } from "../prepack/utils.js";
+import { createFbMocks } from "./fb-mocks.js";
 import invariant from "../../invariant";
-
-// Based on www babelHelpers fork.
-const babelHelpersCode = `
-{
-  inherits(subClass, superClass) {
-    Object.assign(subClass, superClass);
-    subClass.prototype = Object.create(superClass && superClass.prototype);
-    subClass.prototype.constructor = subClass;
-    subClass.__superConstructor__ = superClass;
-    return superClass;
-  },
-  _extends: Object.assign,
-  extends: Object.assign,
-  objectWithoutProperties(obj, keys) {
-    var target = {};
-    for (var i in obj) {
-      if (!hasOwn.call(obj, i) || keys.indexOf(i) >= 0) {
-        continue;
-      }
-      target[i] = obj[i];
-    }
-    return target;
-  },
-  taggedTemplateLiteralLoose(strings, raw) {
-    strings.raw = raw;
-    return strings;
-  },
-  bind: Function.prototype.bind,
-}
-`;
-let babelHelpersAST = parseExpression(babelHelpersCode);
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
-
-  global.$DefineOwnProperty("__DEV__", {
-    // TODO: we'll likely want to make this configurable from the outside.
-    value: realm.intrinsics.false,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
 
   // module.exports support
   let moduleValue = AbstractValue.createAbstractObject(realm, "module");
@@ -75,15 +36,6 @@ export default function(realm: Realm): void {
     value: moduleValue,
     writable: true,
     enumerable: false,
-    configurable: true,
-  });
-
-  const babelHelpersValue = realm.$GlobalEnv.evaluate(babelHelpersAST, false);
-  invariant(babelHelpersValue instanceof ObjectValue);
-  global.$DefineOwnProperty("babelHelpers", {
-    value: babelHelpersValue,
-    writable: true,
-    enumerable: true,
     configurable: true,
   });
 
@@ -125,33 +77,5 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  global.$DefineOwnProperty("cx", {
-    value: new NativeFunctionValue(realm, "cx", "cx", 0, (context, [cxString]) => {
-      invariant(cxString instanceof StringValue);
-      let cxValue = `cx("${cxString.value}")`;
-      let cx;
-
-      if (realm.fbLibraries.other.has(cxValue)) {
-        cx = realm.fbLibraries.other.get(cxValue);
-      } else {
-        cx = createAbstract(realm, "function", cxValue);
-        realm.fbLibraries.other.set(cxValue, cx);
-      }
-      invariant(cx instanceof AbstractValue);
-      return cx;
-    }),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
-
-  let bootloader = AbstractValue.createAbstractObject(realm, "Bootloader");
-  bootloader.kind = "resolved";
-
-  global.$DefineOwnProperty("Bootloader", {
-    value: bootloader,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+  createFbMocks(realm, global);
 }
