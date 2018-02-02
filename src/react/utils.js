@@ -140,7 +140,7 @@ export function valueIsLegacyCreateClassComponent(realm: Realm, value: Value): b
   return false;
 }
 
-export function valueIsFactroyClassComponent(realm: Realm, value: Value): boolean {
+export function valueIsFactoryClassComponent(realm: Realm, value: Value): boolean {
   if (value instanceof ObjectValue) {
     return To.ToBooleanPartial(realm, Get(realm, value, "render"));
   }

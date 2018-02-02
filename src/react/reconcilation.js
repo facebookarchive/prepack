@@ -30,7 +30,7 @@ import {
   valueIsClassComponent,
   forEachArrayValue,
   valueIsLegacyCreateClassComponent,
-  valueIsFactroyClassComponent,
+  valueIsFactoryClassComponent,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -310,7 +310,7 @@ export class Reconciler {
       }
     } else {
       value = this._renderFunctionalComponent(componentType, props, context);
-      if (valueIsFactroyClassComponent(this.realm, value)) {
+      if (valueIsFactoryClassComponent(this.realm, value)) {
         invariant(value instanceof ObjectValue);
         // TODO: use this._renderFactoryClassComponent to handle the render method (like a render prop)
         // for now we just return the object;
