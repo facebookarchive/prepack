@@ -271,6 +271,18 @@ function runTestSuite(outputJsx) {
       });
     });
 
+    describe("Factory class component folding", () => {
+      let directory = "factory-components";
+
+      it("Simple factory classes", async () => {
+        await runTest(directory, "simple.js");
+      });
+
+      it("Simple factory classes 2", async () => {
+        await runTest(directory, "simple2.js");
+      });
+    });
+
     describe("fb-www mocks", () => {
       let directory = "mocks";
 

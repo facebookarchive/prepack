@@ -25,7 +25,13 @@ import {
   AbstractObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, valueIsClassComponent, forEachArrayValue, valueIsLegacyCreateClassComponent } from "./utils";
+import {
+  isReactElement,
+  valueIsClassComponent,
+  forEachArrayValue,
+  valueIsLegacyCreateClassComponent,
+  valueIsFactoryClassComponent,
+} from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -166,6 +172,24 @@ export class Reconciler {
     return renderMethod.$Call(instance, []);
   }
 
+  _renderFactoryClassComponent(
+    instance: ObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
+  ): Value {
+    if (branchStatus !== "ROOT") {
+      throw new NewComponentTreeBranch();
+    }
+    // get the "render" method off the instance
+    let renderMethod = Get(this.realm, instance, "render");
+    invariant(
+      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
+      "Expected render method to be a FunctionValue with $Call method"
+    );
+    // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
+    return renderMethod.$Call(instance, []);
+  }
+
   _renderSimpleClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue,
@@ -286,6 +310,19 @@ export class Reconciler {
       }
     } else {
       value = this._renderFunctionalComponent(componentType, props, context);
+      if (valueIsFactoryClassComponent(this.realm, value)) {
+        invariant(value instanceof ObjectValue);
+        // TODO: use this._renderFactoryClassComponent to handle the render method (like a render prop)
+        // for now we just return the object
+        if (branchStatus !== "ROOT") {
+          throw new ExpectedBailOut("non-root factory class components are not suppoted");
+        } else {
+          return {
+            result: value,
+            childContext,
+          };
+        }
+      }
     }
     invariant(value !== undefined);
     return {

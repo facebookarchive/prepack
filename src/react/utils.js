@@ -140,6 +140,13 @@ export function valueIsLegacyCreateClassComponent(realm: Realm, value: Value): b
   return false;
 }
 
+export function valueIsFactoryClassComponent(realm: Realm, value: Value): boolean {
+  if (value instanceof ObjectValue) {
+    return To.ToBooleanPartial(realm, Get(realm, value, "render"));
+  }
+  return false;
+}
+
 export function addKeyToReactElement(
   realm: Realm,
   reactSerializerState: ReactSerializerState,
