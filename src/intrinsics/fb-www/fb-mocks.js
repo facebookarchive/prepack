@@ -11,13 +11,8 @@
 
 import { parseExpression } from "babylon";
 import type { Realm } from "../../realm.js";
-import {
-  AbstractValue,
-  AbstractObjectValue,
-  NativeFunctionValue,
-  ObjectValue,
-  StringValue,
-} from "../../values/index.js";
+import { AbstractValue, AbstractObjectValue, NativeFunctionValue, ObjectValue } from "../../values/index.js";
+import * as t from "babel-types";
 import { createAbstract } from "../prepack/utils.js";
 import invariant from "../../invariant";
 
@@ -73,18 +68,12 @@ const fbMagicGlobalObjects = ["JSResource", "Bootloader"];
 
 function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractObjectValue, functionName: string) {
   global.$DefineOwnProperty(functionName, {
-    value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, [string]) => {
-      invariant(string instanceof StringValue);
-      let value = `${functionName}("${string.value}")`;
-      let functionValue;
-
-      if (realm.fbLibraries.other.has(value)) {
-        functionValue = realm.fbLibraries.other.get(value);
-      } else {
-        functionValue = createAbstract(realm, "function", value);
-        realm.fbLibraries.other.set(value, functionValue);
-      }
-      invariant(functionValue instanceof AbstractValue);
+    value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, args) => {
+      let functionValue = createAbstract(realm, "function");
+      functionValue.args = args;
+      // build the magic global function up manually from the arguments we pass it
+      // i.e. cx(...arg)
+      functionValue._buildNode = _args => t.callExpression(t.identifier(functionName), ((_args: any): Array<any>));
       return functionValue;
     }),
     writable: true,
