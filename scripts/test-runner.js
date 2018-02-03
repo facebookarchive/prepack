@@ -359,7 +359,7 @@ function runTest(name, code, options: PrepackOptions, args) {
       if (code.includes(marker)) {
         let i = code.indexOf(marker);
         let value = code.substring(i + marker.length, code.indexOf("\n", i));
-        markersToFind.push({ positive, value, start: i + marker.length });
+        markersToFind.push({ positive, value });
       }
     }
     let copiesToFind = new Map();
@@ -380,7 +380,9 @@ function runTest(name, code, options: PrepackOptions, args) {
     if (code.includes(injectAtRuntime)) {
       let i = code.indexOf(injectAtRuntime);
       addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
+      options.residual = false;
     }
+    if (delayUnsupportedRequires) options.residual = false;
     if (args.es5) {
       code = transformWithBabel(code, [], [["env", { forceAllTransforms: true, modules: false }]]);
     }
@@ -418,10 +420,12 @@ function runTest(name, code, options: PrepackOptions, args) {
           newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
         }
         let markersIssue = false;
-        for (let { positive, value, start } of markersToFind) {
-          let found = newCode.indexOf(value, start) !== -1;
+        for (let { positive, value } of markersToFind) {
+          let found = newCode.includes(value);
           if (found !== positive) {
-            console.error(chalk.red(`Output ${positive ? "does not contain" : "contains"} forbidden string: ${value}`));
+            console.error(
+              chalk.red(`Output ${positive ? "does not contain required" : "contains forbidden"} string: ${value}`)
+            );
             markersIssue = true;
             console.error(newCode);
           }
@@ -581,7 +585,13 @@ function run(args) {
         continue;
       }
       total++;
-      let options = { delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures };
+      let options = {
+        delayInitializations,
+        inlineExpressions,
+        lazyObjectsRuntime,
+        simpleClosures,
+        residual: args.residual,
+      };
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
     }
@@ -601,6 +611,7 @@ class ProgramArgs {
   lazyObjectsRuntime: string;
   noLazySupport: boolean;
   fast: boolean;
+  residual: boolean;
   constructor(
     debugNames: boolean,
     verbose: boolean,
@@ -609,7 +620,8 @@ class ProgramArgs {
     es5: boolean,
     lazyObjectsRuntime: string,
     noLazySupport: boolean,
-    fast: boolean
+    fast: boolean,
+    residual: boolean
   ) {
     this.debugNames = debugNames;
     this.verbose = verbose;
@@ -619,6 +631,7 @@ class ProgramArgs {
     this.lazyObjectsRuntime = lazyObjectsRuntime;
     this.noLazySupport = noLazySupport;
     this.fast = fast;
+    this.residual = residual;
   }
 }
 
@@ -675,6 +688,7 @@ function argsParse(): ProgramArgs {
       lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME,
       noLazySupport: false,
       fast: false,
+      residual: false,
     },
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
@@ -703,6 +717,9 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.noLazySupport !== "boolean") {
     throw new ArgsParseError("noLazySupport must be a boolean (either --noLazySupport or not)");
   }
+  if (typeof parsedArgs.residual !== "boolean") {
+    throw new ArgsParseError("residual must be a boolean (either --residual or not)");
+  }
   let programArgs = new ProgramArgs(
     parsedArgs.debugNames,
     parsedArgs.verbose,
@@ -711,7 +728,8 @@ function argsParse(): ProgramArgs {
     parsedArgs.es5,
     parsedArgs.lazyObjectsRuntime,
     parsedArgs.noLazySupport,
-    parsedArgs.fast
+    parsedArgs.fast,
+    parsedArgs.residual
   );
   return programArgs;
 }

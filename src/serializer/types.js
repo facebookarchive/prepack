@@ -17,7 +17,7 @@ import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 
-export type TryQuery<T> = (f: () => T, defaultValue: T, logFailures: boolean) => T;
+export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
 // TODO: add type for additional functions.
 export type SerializedBodyType =
@@ -83,7 +83,7 @@ export type FactoryFunctionInfo = { factoryId: BabelNodeIdentifier, functionInfo
 export type ResidualFunctionBinding = {
   value: void | Value,
   modified: boolean,
-  // void means a global binding
+  // null means a global binding
   declarativeEnvironmentRecord: null | DeclarativeEnvironmentRecord,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
   serializedValue?: void | BabelNodeExpression,

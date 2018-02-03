@@ -30,7 +30,6 @@ function runTestSuite(outputJsx) {
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     inlineExpressions: true,
-    simpleClosures: true,
     omitInvariants: true,
     abstractEffectsInAdditionalFunctions: true,
   };
@@ -65,6 +64,9 @@ function runTestSuite(outputJsx) {
             QueryRenderer(props) {
               return props.render({ props: {}, error: null });
             },
+            createFragmentContainer() {
+              return null;
+            },
             graphql() {
               return null;
             },
@@ -90,23 +92,25 @@ function runTestSuite(outputJsx) {
     let { compiledSource } = compileSourceWithPrepack(source);
 
     let A = runSource(source);
-    expect(typeof A).toBe("function");
     let B = runSource(compiledSource);
-    expect(typeof B).toBe("function");
+    expect(typeof A).toBe(typeof B);
+    if (typeof A !== "function") {
+      // Test without exports just verifies that the file compiles.
+      return;
+    }
 
     let rendererA = ReactTestRenderer.create(null);
     let rendererB = ReactTestRenderer.create(null);
-
     if (A == null || B == null) {
       throw new Error("React test runner issue");
     }
-    // // Use the original version of the test in case transforming messes it up.
+    // Use the original version of the test in case transforming messes it up.
     let { getTrials } = A;
-    // // Run tests that assert the rendered output matches.
+    // Run tests that assert the rendered output matches.
     let resultA = getTrials(rendererA, A);
     let resultB = getTrials(rendererB, B);
 
-    // // the test has returned many values for us to check
+    // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
@@ -134,12 +138,28 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-3.js");
       });
 
+      it("Simple 4", async () => {
+        await runTest(directory, "simple-4.js");
+      });
+
+      it("Simple 5", async () => {
+        await runTest(directory, "simple-5.js");
+      });
+
+      it("Simple 6", async () => {
+        await runTest(directory, "simple-6.js");
+      });
+
       it("Simple children", async () => {
         await runTest(directory, "simple-children.js");
       });
 
       it("Simple refs", async () => {
         await runTest(directory, "simple-refs.js");
+      });
+
+      it("Circular reference", async () => {
+        await runTest(directory, "circular-reference.js");
       });
 
       it("Conditional", async () => {
@@ -225,6 +245,10 @@ function runTestSuite(outputJsx) {
       it("Class component as root with instance variables #2", async () => {
         await runTest(directory, "class-root-with-instance-vars-2.js");
       });
+
+      it("Additional functions closure scope capturing", async () => {
+        await runTest(directory, "additional-function-regression.js");
+      });
     });
 
     describe("Class component folding", () => {
@@ -238,6 +262,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-classes-2.js");
       });
 
+      it("Simple classes #3", async () => {
+        await runTest(directory, "simple-classes-3.js");
+      });
+
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
       });
@@ -248,6 +276,22 @@ function runTestSuite(outputJsx) {
 
       it("fb-www", async () => {
         await runTest(directory, "fb1.js");
+      });
+
+      it("fb-www 2", async () => {
+        await runTest(directory, "fb2.js");
+      });
+
+      it("fb-www 3", async () => {
+        await runTest(directory, "fb3.js");
+      });
+
+      it("fb-www 4", async () => {
+        await runTest(directory, "fb4.js");
+      });
+
+      it("fb-www 5", async () => {
+        await runTest(directory, "fb5.js");
       });
     });
   });

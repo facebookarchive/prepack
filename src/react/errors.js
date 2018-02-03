@@ -39,3 +39,15 @@ export class SimpleClassBailOut {
 }
 Object.setPrototypeOf(SimpleClassBailOut, Error);
 Object.setPrototypeOf(SimpleClassBailOut.prototype, Error.prototype);
+
+// NewComponentTreeBranch only occur when a complex class is found in a
+// component tree and the reconciler can no longer fold the component of that branch
+export class NewComponentTreeBranch {
+  constructor() {
+    let self = new Error();
+    Object.setPrototypeOf(self, NewComponentTreeBranch.prototype);
+    return self;
+  }
+}
+Object.setPrototypeOf(NewComponentTreeBranch, Error);
+Object.setPrototypeOf(NewComponentTreeBranch.prototype, Error.prototype);

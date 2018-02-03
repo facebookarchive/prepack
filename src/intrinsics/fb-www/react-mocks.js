@@ -54,8 +54,9 @@ let reactCode = `
 
     class Component {
       constructor(props, context) {
-        // stub, this constructor is never evaluated
-        throw new Error("React.Component constructor should never evaluate");
+        this.props = props;
+        this.context = context;
+        this.refs = {};
       }
       getChildContext() {}
     }
@@ -64,8 +65,9 @@ let reactCode = `
 
     class PureComponent {
       constructor(props, context) {
-        // stub, this constructor is never evaluated
-        throw new Error("React.PureComponent constructor should never evaluate");
+        this.props = props;
+        this.context = context;
+        this.refs = {};
       }
     }
 
@@ -231,6 +233,39 @@ let reactCode = `
       );
     }
 
+    function shim() {
+
+    }
+    shim.isRequired = shim;
+
+    function getShim() {
+      return shim;
+    };
+
+    var ReactPropTypes = {
+      array: shim,
+      bool: shim,
+      func: shim,
+      number: shim,
+      object: shim,
+      string: shim,
+      symbol: shim,
+  
+      any: shim,
+      arrayOf: getShim,
+      element: shim,
+      instanceOf: getShim,
+      node: shim,
+      objectOf: getShim,
+      oneOf: getShim,
+      oneOfType: getShim,
+      shape: getShim,
+      exact: getShim
+    };
+
+    ReactPropTypes.checkPropTypes = shim;
+    ReactPropTypes.PropTypes = ReactPropTypes;
+
     return {
       Children: {
         forEach: forEachChildren,
@@ -246,6 +281,7 @@ let reactCode = `
       cloneElement,
       isValidElement,
       version: "16.2.0",
+      PropTypes: ReactPropTypes,
     };
   }
 `;

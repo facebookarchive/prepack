@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType } from "./types.js";
+import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType, ClassComponentMetadata } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -134,6 +134,7 @@ export class Realm {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
     this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
+    this.ignoreLeakLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
@@ -172,6 +173,7 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.react = {
+      classComponentMetadata: new Map(),
       enabled: opts.reactEnabled || false,
       output: opts.reactOutput || "create-element",
       symbols: new Map(),
@@ -181,11 +183,9 @@ export class Realm {
     };
 
     this.fbLibraries = {
+      other: new Map(),
       react: undefined,
       reactRelay: undefined,
-      cx: undefined,
-      fbt: undefined,
-      jsResource: undefined,
     };
 
     this.errorHandler = opts.errorHandler;
@@ -208,6 +208,7 @@ export class Realm {
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
   omitInvariants: boolean;
+  ignoreLeakLogic: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
@@ -230,20 +231,20 @@ export class Realm {
   intrinsics: Intrinsics;
 
   react: {
-    enabled: boolean,
-    output?: ReactOutputTypes,
-    symbols: Map<ReactSymbolTypes, SymbolValue>,
+    classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
-    hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
+    hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    output?: ReactOutputTypes,
+    reactLibraryObject?: ObjectValue,
+    symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
 
   fbLibraries: {
+    other: Map<string, AbstractValue>,
     react: void | ObjectValue,
     reactRelay: void | ObjectValue,
-    cx: void | ObjectValue,
-    fbt: void | ObjectValue,
-    jsResource: void | ObjectValue,
   };
 
   $GlobalObject: ObjectValue | AbstractObjectValue;
@@ -438,6 +439,16 @@ export class Realm {
 
   isInPureScope() {
     return !!this.createdObjectsTrackedForLeaks;
+  }
+
+  evaluateWithoutLeakLogic(f: () => Value): Value {
+    invariant(!this.ignoreLeakLogic, "Nesting evaluateWithoutLeakLogic() calls is not supported.");
+    this.ignoreLeakLogic = true;
+    try {
+      return f();
+    } finally {
+      this.ignoreLeakLogic = false;
+    }
   }
 
   // Evaluate some code that might generate temporal values knowing that it might end in an abrupt

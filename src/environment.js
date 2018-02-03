@@ -1146,7 +1146,11 @@ export class LexicalEnvironment {
       let ast;
       [ast, code] = this.concatenateAndParse(sources, sourceType);
       if (onParse) onParse(ast);
-      res = this.evaluateCompletion(ast, false);
+      if (this.realm.isCompatibleWith("fb-www")) {
+        res = this.realm.evaluatePure(() => this.evaluateCompletion(ast, false));
+      } else {
+        res = this.evaluateCompletion(ast, false);
+      }
     } finally {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
@@ -1171,9 +1175,7 @@ export class LexicalEnvironment {
     this.realm.pushContext(context);
     let partialAST;
     try {
-      let res;
-      [res, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
-      if (res instanceof AbruptCompletion) return res;
+      [, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
     } finally {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
@@ -1366,7 +1368,10 @@ export class Reference {
     );
     this.base = base;
     this.referencedName = refName;
-    invariant(!(refName instanceof AbstractValue) || !(refName.mightNotBeString() && refName.mightNotBeNumber()));
+    invariant(
+      !(refName instanceof AbstractValue) ||
+        !(refName.mightNotBeString() && refName.mightNotBeNumber() && !refName.isSimpleObject())
+    );
     this.strict = strict;
     this.thisValue = thisValue;
     invariant(thisValue === undefined || !(base instanceof EnvironmentRecord));

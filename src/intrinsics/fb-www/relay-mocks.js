@@ -15,7 +15,7 @@ import { Create } from "../../singletons.js";
 import { createAbstract } from "../prepack/utils.js";
 
 export function createMockReactRelay(realm: Realm, relayRequireName: string): ObjectValue {
-  let reactRelay = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `require("${relayRequireName}")`, true);
+  let reactRelay = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `require("${relayRequireName}")`);
   // for QueryRenderer, we want to leave the component alone but process it's "render" prop
   let queryRendererComponent = createAbstract(realm, "function", `require("${relayRequireName}").QueryRenderer`);
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "QueryRenderer", queryRendererComponent);
@@ -29,5 +29,20 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
     `require("${relayRequireName}").createFragmentContainer`
   );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createFragmentContainer", createFragmentContainer);
+
+  let createPaginationContainer = createAbstract(
+    realm,
+    "function",
+    `require("${relayRequireName}").createPaginationContainer`
+  );
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "createPaginationContainer", createPaginationContainer);
+
+  let createRefetchContainer = createAbstract(
+    realm,
+    "function",
+    `require("${relayRequireName}").createRefetchContainer`
+  );
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "createRefetchContainer", createRefetchContainer);
+
   return reactRelay;
 }

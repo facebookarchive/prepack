@@ -45,20 +45,8 @@ export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
   // 1. Assert: obj is a callable object.
   invariant(IsCallable(realm, obj), "expected callable object");
 
-  // 2. If obj has a [[Realm]] internal slot, then
-  if (obj.$Realm) {
-    // a. Return obj's [[Realm]] internal slot.
-    return obj.$Realm;
-  }
-
-  // 3. If obj is a Bound Function exotic object, then
-  if (obj instanceof BoundFunctionValue) {
-    // a. Let target be obj's [[BoundTargetFunction]] internal slot.
-    let target = obj.$BoundTargetFunction;
-
-    // b. Return ? GetFunctionRealm(target).
-    return GetFunctionRealm(realm, target);
-  }
+  // ProxyValue moved to realm before
+  // https://github.com/facebook/prepack/pull/1351
 
   // 4. If obj is a Proxy exotic object, then
   if (obj instanceof ProxyValue) {
@@ -73,6 +61,21 @@ export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
 
     // c. Return ? GetFunctionRealm(proxyTarget).
     return GetFunctionRealm(realm, proxyTarget);
+  }
+
+  // 2. If obj has a [[Realm]] internal slot, then
+  if (obj.$Realm) {
+    // a. Return obj's [[Realm]] internal slot.
+    return obj.$Realm;
+  }
+
+  // 3. If obj is a Bound Function exotic object, then
+  if (obj instanceof BoundFunctionValue) {
+    // a. Let target be obj's [[BoundTargetFunction]] internal slot.
+    let target = obj.$BoundTargetFunction;
+
+    // b. Return ? GetFunctionRealm(target).
+    return GetFunctionRealm(realm, target);
   }
 
   // 5. Return the current Realm Record.

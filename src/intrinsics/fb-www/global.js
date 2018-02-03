@@ -10,10 +10,11 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, Value, StringValue } from "../../values/index.js";
-import buildExpressionTemplate from "../../utils/builder.js";
+import { AbstractValue, NativeFunctionValue, StringValue } from "../../values/index.js";
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
+import { createAbstract } from "../prepack/utils.js";
+import { createFbMocks } from "./fb-mocks.js";
 import invariant from "../../invariant";
 
 export default function(realm: Realm): void {
@@ -21,6 +22,16 @@ export default function(realm: Realm): void {
 
   // module.exports support
   let moduleValue = AbstractValue.createAbstractObject(realm, "module");
+  moduleValue.kind = "resolved";
+  let moduleExportsValue = AbstractValue.createAbstractObject(realm, "module.exports");
+  moduleExportsValue.kind = "resolved";
+
+  moduleValue.$DefineOwnProperty("exports", {
+    value: moduleExportsValue,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
   global.$DefineOwnProperty("module", {
     value: moduleValue,
     writable: true,
@@ -28,9 +39,9 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  // apply React mock (for now just React.Component)
+  // apply require() mock
   global.$DefineOwnProperty("require", {
-    value: new NativeFunctionValue(realm, "global.require", "require", 0, (context, [requireNameVal]) => {
+    value: new NativeFunctionValue(realm, "require", "require", 0, (context, [requireNameVal]) => {
       invariant(requireNameVal instanceof StringValue);
       let requireNameValValue = requireNameVal.value;
 
@@ -48,21 +59,23 @@ export default function(realm: Realm): void {
           return reactRelay;
         }
         return realm.fbLibraries.reactRelay;
+      } else {
+        let requireVal;
+
+        if (realm.fbLibraries.other.has(requireNameValValue)) {
+          requireVal = realm.fbLibraries.other.get(requireNameValValue);
+        } else {
+          requireVal = createAbstract(realm, "function", `require("${requireNameValValue}")`);
+          realm.fbLibraries.other.set(requireNameValValue, requireVal);
+        }
+        invariant(requireVal instanceof AbstractValue);
+        return requireVal;
       }
-      let requireName = `require("${requireNameVal.value}")`;
-      let type = Value.getTypeFromName("function");
-      let requireValue = AbstractValue.createFromTemplate(
-        realm,
-        buildExpressionTemplate(requireName),
-        ((type: any): typeof Value),
-        [],
-        requireName
-      );
-      requireValue.intrinsicName = requireName;
-      return requireValue;
     }),
     writable: true,
     enumerable: false,
     configurable: true,
   });
+
+  createFbMocks(realm, global);
 }

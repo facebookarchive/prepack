@@ -444,7 +444,9 @@ export class ResidualFunctions {
                   modified,
                   requireReturns: this.requireReturns,
                   requireStatistics,
-                  isRequire: this.modules.getIsRequire(methodParams, [functionValue]),
+                  getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(methodParams, [
+                    functionValue,
+                  ]),
                   factoryFunctionInfos,
                 }
               );
@@ -488,7 +490,9 @@ export class ResidualFunctions {
               modified,
               requireReturns: this.requireReturns,
               requireStatistics,
-              isRequire: this.modules.getIsRequire(funcParams, [functionValue]),
+              getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(funcParams, [
+                functionValue,
+              ]),
               factoryFunctionInfos,
             });
           }
@@ -592,7 +596,10 @@ export class ResidualFunctions {
           modified,
           requireReturns: this.requireReturns,
           requireStatistics,
-          isRequire: this.modules.getIsRequire(factoryParams, normalInstances.map(instance => instance.functionValue)),
+          getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(
+            factoryParams,
+            normalInstances.map(instance => instance.functionValue)
+          ),
           factoryFunctionInfos,
         });
 

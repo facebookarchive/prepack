@@ -110,7 +110,7 @@ export class Serializer {
     let reactStatistics = null;
     if (this.realm.react.enabled) {
       reactStatistics = new ReactStatistics();
-      this.functions.checkReactRootComponents(reactStatistics, this.react);
+      this.functions.checkRootReactComponentTrees(reactStatistics, this.react);
     }
 
     if (this.options.initializeMoreModules) {
@@ -122,7 +122,15 @@ export class Serializer {
     }
 
     let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
-    //Deep traversal of the heap to identify the necessary scope of residual functions
+    for (let [functionValue, effectsAndTransforms] of additionalFunctionValuesAndEffects) {
+      // Need to do this fixup because otherwise we will skip over this function's
+      // generator in the _getTarget scope lookup
+      let generator = effectsAndTransforms.effects[1];
+      generator.parent = functionValue.parent;
+      functionValue.parent = generator;
+    }
+
+    // Deep traversal of the heap to identify the necessary scope of residual functions
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
     let residualHeapVisitor = new ResidualHeapVisitor(
       this.realm,
@@ -130,7 +138,7 @@ export class Serializer {
       this.modules,
       additionalFunctionValuesAndEffects
     );
-    residualHeapVisitor.visitRoots();
+    residualHeapVisitor.visitRoots(true);
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 

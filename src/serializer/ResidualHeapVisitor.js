@@ -92,13 +92,14 @@ export class ResidualHeapVisitor {
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Set();
     this.delayedVisitGeneratorEntries = [];
-    this.shouldVisitReactLibrary = false;
+    this.someReactElement = undefined;
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
     this.inAdditionalFunction = false;
     this.additionalRoots = new Set();
+    this.inClass = false;
   }
 
   realm: Realm;
@@ -122,7 +123,7 @@ export class ResidualHeapVisitor {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
-  shouldVisitReactLibrary: boolean;
+  someReactElement: void | ObjectValue;
   reactElementEquivalenceSet: ReactElementSet;
 
   // We only want to add to additionalRoots when we're in an additional function
@@ -132,6 +133,7 @@ export class ResidualHeapVisitor {
   // declared outside the additional function need to be serialized in the additional function's parent scope for
   // identity to work).
   additionalRoots: Set<ObjectValue>;
+  inClass: boolean;
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -274,7 +276,12 @@ export class ResidualHeapVisitor {
   visitValueArray(val: ObjectValue): void {
     this.visitObjectProperties(val);
     const realm = this.realm;
-    let lenProperty = Get(realm, val, "length");
+    let lenProperty;
+    if (val.isLeakedObject()) {
+      lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
+    } else {
+      lenProperty = Get(realm, val, "length");
+    }
     if (
       lenProperty instanceof AbstractValue ||
       To.ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
@@ -327,8 +334,23 @@ export class ResidualHeapVisitor {
   }
 
   visitValueFunction(val: FunctionValue, parentScope: Scope): void {
-    if (this.inAdditionalFunction) this.additionalRoots.add(val);
+    let isClass = false;
+
+    if (this.inAdditionalFunction && !this.inClass) {
+      this.additionalRoots.add(val);
+    }
+    if (val.$FunctionKind === "classConstructor") {
+      invariant(val instanceof ECMAScriptSourceFunctionValue);
+      let homeObject = val.$HomeObject;
+      if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
+        isClass = true;
+        this.inClass = true;
+      }
+    }
     this.visitObjectProperties(val);
+    if (isClass && this.inClass) {
+      this.inClass = false;
+    }
 
     if (val instanceof BoundFunctionValue) {
       this.visitValue(val.$BoundTargetFunction);
@@ -404,11 +426,8 @@ export class ResidualHeapVisitor {
         }
       });
     }
-    if (val.$FunctionKind === "classConstructor") {
-      let homeObject = val.$HomeObject;
-      if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
-        this._visitClass(val, homeObject);
-      }
+    if (isClass && val.$HomeObject instanceof ObjectValue) {
+      this._visitClass(val, val.$HomeObject);
     }
     this.functionInstances.set(val, {
       residualFunctionBindings,
@@ -425,8 +444,7 @@ export class ResidualHeapVisitor {
     let doesNotMatter = true;
     let reference = this.logger.tryQuery(
       () => Environment.ResolveBinding(this.realm, name, doesNotMatter, val.$Environment),
-      undefined,
-      false /* The only reason `ResolveBinding` might fail is because the global object is partial. But in that case, we know that we are dealing with the common scope. */
+      undefined
     );
     let getFromMap = createBinding ? getOrDefault : (map, key, defaultFn) => map.get(key);
     if (
@@ -548,7 +566,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    if (this.inAdditionalFunction) this.additionalRoots.add(val);
+    if (this.inAdditionalFunction && !this.inClass) this.additionalRoots.add(val);
     let kind = val.getKind();
     this.visitObjectProperties(val, kind);
 
@@ -569,7 +587,7 @@ export class ResidualHeapVisitor {
       case "ArrayBuffer":
         return;
       case "ReactElement":
-        this.shouldVisitReactLibrary = true;
+        this.someReactElement = val;
         // check we can hoist a React Element
         canHoistReactElement(this.realm, val, this);
         return;
@@ -768,10 +786,6 @@ export class ResidualHeapVisitor {
         modifiedProperties: Map<PropertyBinding, void | Descriptor>,
         createdObjects,
       ] = effects;
-      // Need to do this fixup because otherwise we will skip over this function's
-      // generator in the _getTarget scope lookup
-      generator.parent = functionValue.parent;
-      functionValue.parent = generator;
       // result -- ignore TODO: return the result from the function somehow
       // Generator -- visit all entries
       // Bindings -- (modifications to named variables) only need to serialize bindings if they're
@@ -870,7 +884,6 @@ export class ResidualHeapVisitor {
         for (let innerName of functionInfo.unbound) {
           let residualBinding = this.visitBinding(functionValue, innerName, false);
           if (residualBinding) {
-            residualBinding.modified = true;
             funcInstance.residualFunctionBindings.set(innerName, residualBinding);
           }
         }
@@ -880,13 +893,13 @@ export class ResidualHeapVisitor {
     this.inAdditionalFunction = oldInAdditionalFunction;
   }
 
-  visitRoots(): void {
+  visitRoots(adjustRoots?: boolean): void {
     let generator = this.realm.generator;
     invariant(generator);
     this.visitGenerator(generator);
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
-    if (this.realm.react.enabled && this.shouldVisitReactLibrary) {
-      this._visitReactLibrary();
+    if (this.realm.react.enabled && this.someReactElement !== undefined) {
+      this._visitReactLibrary(this.someReactElement);
     }
 
     // Do a fixpoint over all pure generator entries to make sure that we visit
@@ -905,20 +918,22 @@ export class ResidualHeapVisitor {
 
     // Artificially add additionalRoots to generators so that they can get serialized in parent scopes of additionalFunctions
     // if necessary.
-    for (let value of this.additionalRoots) {
-      let scopes = this.values.get(value);
-      invariant(scopes);
-      scopes = [...scopes];
-      invariant(scopes.length > 0);
-      invariant(scopes[0]);
-      const firstGenerator = scopes[0] instanceof Generator ? scopes[0] : scopes[0].getParent();
-      let commonAncestor = scopes.reduce((x, y) => commonAncestorOf(x, y), firstGenerator);
-      invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
-      commonAncestor.appendRoots([value]);
+    if (adjustRoots) {
+      for (let value of this.additionalRoots) {
+        let scopes = this.values.get(value);
+        invariant(scopes);
+        scopes = [...scopes];
+        invariant(scopes.length > 0);
+        invariant(scopes[0]);
+        const firstGenerator = scopes[0] instanceof Generator ? scopes[0] : scopes[0].getParent();
+        let commonAncestor = scopes.reduce((x, y) => commonAncestorOf(x, y), firstGenerator);
+        invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
+        commonAncestor.appendRoots([value]);
+      }
     }
   }
 
-  _visitReactLibrary() {
+  _visitReactLibrary(someReactElement: ObjectValue) {
     // find and visit the React library
     let reactLibraryObject = this.realm.fbLibraries.react;
     if (this.realm.react.output === "jsx") {
@@ -928,20 +943,25 @@ export class ResidualHeapVisitor {
         this.visitValue(reactLibraryObject);
       }
     } else if (this.realm.react.output === "create-element") {
-      function throwError() {
-        throw new FatalError("unable to visit createElement due to React not being referenced in scope");
-      }
+      let logError = () => {
+        this.logger.logError(
+          someReactElement,
+          "unable to visit createElement due to React not being referenced in scope"
+        );
+      };
       // createElement output needs React in scope
       if (reactLibraryObject === undefined) {
-        throwError();
+        logError();
+      } else {
+        invariant(reactLibraryObject instanceof ObjectValue);
+        let createElement = reactLibraryObject.properties.get("createElement");
+        if (createElement === undefined || createElement.descriptor === undefined) {
+          logError();
+        } else {
+          let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
+          this.visitValue(reactCreateElement);
+        }
       }
-      invariant(reactLibraryObject instanceof ObjectValue);
-      let createElement = reactLibraryObject.properties.get("createElement");
-      if (createElement === undefined || createElement.descriptor === undefined) {
-        throwError();
-      }
-      let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
-      this.visitValue(reactCreateElement);
     }
   }
 }

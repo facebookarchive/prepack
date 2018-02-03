@@ -74,7 +74,7 @@ import {
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
-import { ResidualReactElements } from "./ResidualReactElements.js";
+import { ResidualReactElementSerializer } from "./ResidualReactElementSerializer.js";
 import type { Binding } from "../environment.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 
@@ -129,7 +129,7 @@ export class ResidualHeapSerializer {
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
     this.additionalFunctionValueNestedFunctions = new Set();
-    this.residualReactElements = new ResidualReactElements(this.realm, this);
+    this.residualReactElementSerializer = new ResidualReactElementSerializer(this.realm, this);
     this.residualFunctions = new ResidualFunctions(
       this.realm,
       this.statistics,
@@ -212,7 +212,7 @@ export class ResidualHeapSerializer {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
   react: ReactSerializerState;
-  residualReactElements: ResidualReactElements;
+  residualReactElementSerializer: ResidualReactElementSerializer;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
@@ -886,7 +886,12 @@ export class ResidualHeapSerializer {
     remainingProperties: Map<string, PropertyBinding>
   ): void {
     const realm = this.realm;
-    let lenProperty = Get(realm, val, "length");
+    let lenProperty;
+    if (val.isLeakedObject()) {
+      lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
+    } else {
+      lenProperty = Get(realm, val, "length");
+    }
     // Need to serialize length property if:
     // 1. array length is abstract.
     // 2. array length is concrete, but different from number of index properties
@@ -1083,7 +1088,7 @@ export class ResidualHeapSerializer {
       if (--delayed === 0) {
         invariant(instance);
         // hoist if we are in an additionalFunction
-        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val)) {
+        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val, undefined, new Set())) {
           instance.insertionPoint = new BodyReference(this.mainBody, this.mainBody.entries.length);
           instance.containingAdditionalFunction = undefined;
         } else {
@@ -1134,6 +1139,15 @@ export class ResidualHeapSerializer {
     let classProtoId;
     let hasSerializedClassProtoId = false;
     let propertiesToSerialize = new Map();
+
+    // handle class inheritance
+    if (!(classFunc.$Prototype instanceof NativeFunctionValue)) {
+      let proto = classFunc.$Prototype;
+      classMethodInstance.classSuperNode = this.serializeValue(classFunc.$Prototype);
+      if (proto.$HomeObject instanceof ObjectValue) {
+        this.serializedValues.add(proto.$HomeObject);
+      }
+    }
 
     let serializeClassPrototypeId = () => {
       if (!hasSerializedClassProtoId) {
@@ -1214,15 +1228,6 @@ export class ResidualHeapSerializer {
     }
     // assign the AST method key node for the "constructor"
     classMethodInstance.classMethodKeyNode = t.identifier("constructor");
-
-    // handle class inheritance
-    if (!(classFunc.$Prototype instanceof NativeFunctionValue)) {
-      let proto = classFunc.$Prototype;
-      classMethodInstance.classSuperNode = this.serializeValue(classFunc.$Prototype);
-      if (proto.$HomeObject instanceof ObjectValue) {
-        this.serializedValues.add(proto.$HomeObject);
-      }
-    }
   }
 
   _serializeClassMethod(key: string | SymbolValue, methodFunc: ECMAScriptSourceFunctionValue): void {
@@ -1397,7 +1402,7 @@ export class ResidualHeapSerializer {
       case "ArrayBuffer":
         return this._serializeValueArrayBuffer(val);
       case "ReactElement":
-        this.residualReactElements.serializeReactElement(val);
+        this.residualReactElementSerializer.serializeReactElement(val);
         return;
       case "Map":
       case "WeakMap":
@@ -1603,10 +1608,13 @@ export class ResidualHeapSerializer {
     let context = this._getContext();
     return this._withGeneratorScope(generator, newBody => {
       let oldCurBody = this.currentFunctionBody;
+      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this.currentFunctionBody = newBody;
+      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       generator.serialize(context);
       if (postGeneratorCallback) postGeneratorCallback();
       this.currentFunctionBody = oldCurBody;
+      this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
     });
   }
 
@@ -1694,7 +1702,7 @@ export class ResidualHeapSerializer {
             }
             if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
 
-            const lazyHoistedReactNodes = this.residualReactElements.serializeLazyHoistedNodes();
+            const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
             Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
           };
           this.currentAdditionalFunction = additionalFunctionValue;
@@ -1734,7 +1742,6 @@ export class ResidualHeapSerializer {
     invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     this.postGeneratorSerialization();
-    Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
     // TODO #20: add timers
 
@@ -1745,6 +1752,8 @@ export class ResidualHeapSerializer {
 
     // Make sure additional functions get serialized.
     let rewrittenAdditionalFunctions = this.processAdditionalFunctionValues();
+
+    Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
     this.modules.resolveInitializedModules();
 
@@ -1833,7 +1842,7 @@ export class ResidualHeapSerializer {
           : t.callExpression(functionExpression, []);
         ast_body.push(t.expressionStatement(callExpression));
       } else {
-        ast_body = body;
+        Array.prototype.push.apply(ast_body, body);
       }
     }
 

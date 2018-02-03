@@ -25,15 +25,30 @@ import {
   AbstractObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, valueIsClassComponent, mapOverArrayValue, valueIsLegacyCreateClassComponent } from "./utils";
+import { isReactElement, valueIsClassComponent, forEachArrayValue, valueIsLegacyCreateClassComponent } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
-import { getInitialProps, getInitialContext, createClassInstance, createSimpleClassInstance } from "./components.js";
-import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
+import {
+  getInitialProps,
+  getInitialContext,
+  createClassInstance,
+  createSimpleClassInstance,
+  evaluateClassConstructor,
+} from "./components.js";
+import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
+import { Completion } from "../completions.js";
+import { Logger } from "../utils/logger.js";
+import type { ClassComponentMetadata } from "../types.js";
 
 type RenderStrategy = "NORMAL" | "RELAY_QUERY_RENDERER";
+
+export type BranchReactComponentTree = {
+  componentType: ECMAScriptSourceFunctionValue,
+  props: ObjectValue | AbstractObjectValue,
+  context: ObjectValue | AbstractObjectValue,
+};
 
 export class Reconciler {
   constructor(
@@ -41,13 +56,16 @@ export class Reconciler {
     moduleTracer: ModuleTracer,
     statistics: ReactStatistics,
     reactSerializerState: ReactSerializerState,
-    simpleClassComponents: Set<Value>
+    simpleClassComponents: Set<Value>,
+    branchReactComponentTrees: Array<BranchReactComponentTree>
   ) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
     this.statistics = statistics;
     this.reactSerializerState = reactSerializerState;
     this.simpleClassComponents = simpleClassComponents;
+    this.logger = moduleTracer.modules.logger;
+    this.branchReactComponentTrees = branchReactComponentTrees;
   }
 
   realm: Realm;
@@ -55,8 +73,15 @@ export class Reconciler {
   statistics: ReactStatistics;
   reactSerializerState: ReactSerializerState;
   simpleClassComponents: Set<Value>;
+  logger: Logger;
+  branchReactComponentTrees: Array<BranchReactComponentTree>;
 
-  render(componentType: ECMAScriptSourceFunctionValue): Effects {
+  render(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractObjectValue | null,
+    context: ObjectValue | AbstractObjectValue | null,
+    isRoot: boolean
+  ): Effects {
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
         // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
@@ -71,23 +96,37 @@ export class Reconciler {
             // FatalError, unless it's a functional component that has no paramater
             // i.e let MyComponent = () => <div>Hello world</div>
             try {
-              let initialProps = getInitialProps(this.realm, componentType);
-              let initialContext = getInitialContext(this.realm, componentType);
+              let initialProps = props || getInitialProps(this.realm, componentType);
+              let initialContext = context || getInitialContext(this.realm, componentType);
               let { result } = this._renderComponent(componentType, initialProps, initialContext, "ROOT", null);
               this.statistics.optimizedTrees++;
               return result;
             } catch (error) {
+              // if we get an error and we're not dealing with the root
+              // rather than throw a FatalError, we log the error as a warning
+              // and continue with the other tree roots
+              // TODO: maybe control what levels gets treated as warning/error?
+              if (!isRoot) {
+                this.logger.logWarning(
+                  componentType,
+                  `__registerReactComponentRoot() React component tree (branch) failed due to - ${error.message}`
+                );
+                return this.realm.intrinsics.undefined;
+              }
               // if there was a bail-out on the root component in this reconcilation process, then this
               // should be an invariant as the user has explicitly asked for this component to get folded
-              if (error instanceof ExpectedBailOut) {
+              if (error instanceof Completion) {
+                this.logger.logCompletion(error);
+                throw error;
+              } else if (error instanceof ExpectedBailOut) {
                 let diagnostic = new CompilerDiagnostic(
-                  `__registerReactComponentRoot() failed due to - ${error.message}`,
+                  `__registerReactComponentRoot() React component tree (root) failed due to - ${error.message}`,
                   this.realm.currentLocation,
                   "PP0020",
                   "FatalError"
                 );
                 this.realm.handleError(diagnostic);
-                throw new FatalError();
+                if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
               }
               throw error;
             }
@@ -103,16 +142,20 @@ export class Reconciler {
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
+    classMetadata: ClassComponentMetadata,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ): Value {
     if (branchStatus !== "ROOT") {
-      throw new ExpectedBailOut(
-        "only complex class components at the root of __registerReactComponentRoot() are supported"
-      );
+      this.branchReactComponentTrees.push({
+        componentType,
+        props,
+        context,
+      });
+      throw new NewComponentTreeBranch();
     }
     // create a new instance of this React class component
-    let instance = createClassInstance(this.realm, componentType, props, context);
+    let instance = createClassInstance(this.realm, componentType, props, context, classMetadata);
     // get the "render" method off the instance
     let renderMethod = Get(this.realm, instance, "render");
     invariant(
@@ -151,6 +194,22 @@ export class Reconciler {
     return componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
   }
 
+  _getClassComponentMetadata(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue
+  ): ClassComponentMetadata {
+    if (this.realm.react.classComponentMetadata.has(componentType)) {
+      let classMetadata = this.realm.react.classComponentMetadata.get(componentType);
+      invariant(classMetadata);
+      return classMetadata;
+    }
+    // get all this assignments in the constructor
+    let classMetadata = evaluateClassConstructor(this.realm, componentType, props, context);
+    this.realm.react.classComponentMetadata.set(componentType, classMetadata);
+    return classMetadata;
+  }
+
   _renderRelayQueryRendererComponent(
     reactElement: ObjectValue,
     props: ObjectValue | AbstractObjectValue,
@@ -178,39 +237,52 @@ export class Reconciler {
     if (valueIsLegacyCreateClassComponent(this.realm, componentType)) {
       throw new ExpectedBailOut("components created with create-react-class are not supported");
     } else if (valueIsClassComponent(this.realm, componentType)) {
-      // We first need to know what type of class component we're dealing with.
-      // A "simple" class component is defined as:
-      //
-      // - having only a "render" method or many method, i.e. render(), _renderHeader(), _renderFooter()
-      // - having no lifecycle events
-      // - having no state
-      // - having no instance variables
-      //
-      // the only things a class component should be able to access on "this" are:
-      // - this.props
-      // - this.context
-      // - this._someRenderMethodX() etc
-      //
-      // Otherwise, the class component is a "complex" one.
-      // To begin with, we don't know what type of component it is, so we try and render it as if it were
-      // a simple component using the above heuristics. If an error occurs during this process, we assume
-      // that the class wasn't simple, then try again with the "complex" heuristics.
-      try {
-        value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
-        this.simpleClassComponents.add(value);
-      } catch (error) {
-        // if we get back a SimpleClassBailOut error, we know that this class component
-        // wasn't a simple one and is likely to be a complex class component instead
-        if (error instanceof SimpleClassBailOut) {
-          // the component was not simple, so we continue with complex case
-        } else {
-          // else we rethrow the error
-          throw error;
+      let classMetadata = this._getClassComponentMetadata(componentType, props, context);
+      let { instanceProperties, instanceSymbols } = classMetadata;
+
+      // if there were no this assignments we can try and render it as a simple class component
+      if (instanceProperties.size === 0 && instanceSymbols.size === 0) {
+        // We first need to know what type of class component we're dealing with.
+        // A "simple" class component is defined as:
+        //
+        // - having only a "render" method
+        // - having no lifecycle events
+        // - having no state
+        // - having no instance variables
+        //
+        // the only things a class component should be able to access on "this" are:
+        // - this.props
+        // - this.context
+        // - this._someRenderMethodX() etc
+        //
+        // Otherwise, the class component is a "complex" one.
+        // To begin with, we don't know what type of component it is, so we try and render it as if it were
+        // a simple component using the above heuristics. If an error occurs during this process, we assume
+        // that the class wasn't simple, then try again with the "complex" heuristics.
+        try {
+          value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
+          this.simpleClassComponents.add(value);
+        } catch (error) {
+          // if we get back a SimpleClassBailOut error, we know that this class component
+          // wasn't a simple one and is likely to be a complex class component instead
+          if (error instanceof SimpleClassBailOut) {
+            // the component was not simple, so we continue with complex case
+          } else {
+            // else we rethrow the error
+            throw error;
+          }
         }
       }
       // handle the complex class component if there is not value
       if (value === undefined) {
-        value = this._renderComplexClassComponent(componentType, props, context, branchStatus, branchState);
+        value = this._renderComplexClassComponent(
+          componentType,
+          props,
+          context,
+          classMetadata,
+          branchStatus,
+          branchState
+        );
       }
     } else {
       value = this._renderFunctionalComponent(componentType, props, context);
@@ -347,7 +419,9 @@ export class Reconciler {
         return result;
       } catch (error) {
         // assign a bail out message
-        if (error instanceof ExpectedBailOut) {
+        if (error instanceof NewComponentTreeBranch) {
+          // NO-OP
+        } else if (error instanceof ExpectedBailOut) {
           this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
         } else if (error instanceof FatalError) {
           this._assignBailOutMessage(reactElement, "Evaluation bail-out");
@@ -382,7 +456,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
-    mapOverArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
+    forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
       elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, branchStatus, branchState);
     });
   }

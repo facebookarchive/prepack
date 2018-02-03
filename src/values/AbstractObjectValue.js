@@ -113,6 +113,13 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeSimple(): void {
+    if (this.values.isTop() && this.getType() === ObjectValue) {
+      let obj = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
+      obj.intrinsicName = this.intrinsicName;
+      obj.intrinsicNameGenerated = true;
+      obj.makePartial();
+      this.values = new ValuesDomain(obj);
+    }
     if (!this.values.isTop()) {
       for (let element of this.values.getElements()) {
         invariant(element instanceof ObjectValue);
@@ -312,6 +319,7 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
     if (P instanceof StringValue) P = P.value;
+
     if (this.values.isTop()) {
       let generateAbstractGet = () => {
         let type = Value;
@@ -323,7 +331,7 @@ export default class AbstractObjectValue extends AbstractValue {
           [object],
           ([o]) => {
             invariant(typeof P === "string");
-            return t.memberExpression(o, t.identifier(P));
+            return t.memberExpression(o, t.identifier(P), !t.isValidIdentifier(P));
           },
           {
             skipInvariant: true,

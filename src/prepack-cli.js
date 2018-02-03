@@ -56,7 +56,7 @@ function run(
     --trace                  Traces the order of module initialization.
     --serialize              Serializes the partially evaluated global environment as a program that recreates it.
                              (default = true)
-    --check                  Check whole program for diagnostic messages. Do not serialize or produce residual code.
+    --check [start[, count]] Check residual functions for diagnostic messages. Do not serialize or produce residual code.
     --residual               Produces the residual program that results after constant folding.
     --profile                Enables console logging of profile information of different phases of prepack.
     --statsFile              The name of the output file where statistics will be written to.
@@ -71,6 +71,7 @@ function run(
   args.splice(0, 2);
   let inputFilenames = [];
   let outputFilename;
+  let check: void | Array<number>;
   let compatibility: Compatibility;
   let mathRandomSeed;
   let inputSourceMap;
@@ -78,7 +79,7 @@ function run(
   let statsFileName;
   let maxStackDepth: number;
   let timeout: number;
-  let additionalFunctions: Array<string>;
+  let additionalFunctions: void | Array<string>;
   let lazyObjectsRuntime: string;
   let heapGraphFilePath: void | string;
   let debugInFilePath: string;
@@ -101,7 +102,6 @@ function run(
     debugScopes: false,
     serialize: false,
     residual: false,
-    check: false,
     profile: false,
     reactEnabled: false,
   };
@@ -157,6 +157,26 @@ function run(
           let line = args.shift();
           additionalFunctions = line.split(",");
           break;
+        case "check":
+          let range = args.shift();
+          if (range.startsWith("--")) {
+            args.unshift(range);
+            range = "0";
+          }
+          let pair: Array<any> = range.split(",");
+          if (pair.length === 1) pair.push(Number.MAX_SAFE_INTEGER);
+          let start = +pair[0];
+          if (start < 0 || !Number.isInteger(start)) {
+            console.error("check start offset must be a number");
+            process.exit(1);
+          }
+          let count = +pair[1];
+          if (count < 0 || !Number.isInteger(count)) {
+            console.error("check count must be a number");
+            process.exit(1);
+          }
+          check = [start, count];
+          break;
         case "debugInFilePath":
           debugInFilePath = args.shift();
           break;
@@ -178,12 +198,24 @@ function run(
           reactOutput = (arg: any);
           break;
         case "help":
-          console.log(
-            "Usage: prepack.js [ -- | input.js ] [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --maxStackDepth depthValue ] [ --timeout seconds ] [ --additionalFunctions fnc1,fnc2,... ] [ --lazyObjectsRuntime lazyObjectsRuntimeName] [ --heapGraphFilePath heapGraphFilePath]" +
-              Object.keys(flags).map(s => "[ --" + s + "]").join(" ") +
-              "\n" +
-              HELP_STR
-          );
+          const options = [
+            "-- | input.js",
+            "--out output.js",
+            "--compatibility jsc",
+            "--mathRandomSeed seedvalue",
+            "--srcmapIn inputMap",
+            "--srcmapOut outputMap",
+            "--maxStackDepth depthValue",
+            "--timeout seconds",
+            "--additionalFunctions fnc1,fnc2,...",
+            "--check [start[, number]]",
+            "--lazyObjectsRuntime lazyObjectsRuntimeName",
+            "--heapGraphFilePath heapGraphFilePath",
+            "--reactOutput " + ReactOutputValues.join(" | "),
+          ];
+          for (let flag of Object.keys(flags)) options.push(`--${flag}`);
+
+          console.log("Usage: prepack.js " + options.map(option => `[ ${option} ]`).join(" ") + "\n" + HELP_STR);
           return;
         case "version":
           console.log(version);
@@ -199,7 +231,7 @@ function run(
     }
   }
   if (!flags.serialize && !flags.residual) flags.serialize = true;
-  if (flags.check) {
+  if (check) {
     flags.serialize = false;
     flags.residual = false;
   }
@@ -215,6 +247,7 @@ function run(
       maxStackDepth: maxStackDepth,
       timeout: timeout,
       additionalFunctions: additionalFunctions,
+      check: check,
       lazyObjectsRuntime: lazyObjectsRuntime,
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
@@ -265,7 +298,11 @@ function run(
             1}) ${error.severity} ${error.errorCode}: ${error.message}` +
             ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
         );
-        console.error(error.callStack || "");
+        let callStack = error.callStack;
+        if (callStack !== undefined) {
+          let eolPos = callStack.indexOf("\n");
+          if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
+        }
       }
     }
     return foundFatal;
