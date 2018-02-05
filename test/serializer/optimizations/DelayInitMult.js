@@ -31,7 +31,7 @@ var b = res[1];
 var c = res[2];
 
 inspect = function() {
-  b();
-  a();
-  return c();
+  let toPrint = b() + " ";
+  toPrint += a();
+  return toPrint + " " + c();
 }

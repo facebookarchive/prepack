@@ -448,7 +448,7 @@ export class ResidualHeapVisitor {
   // function a() { x.push("hi"); }
   // function b() { y.push("bye"); }
   // function c() { return x.length + y.length; }
-  // Here we need to make sure that a, b both initialize x and y because x and y will be in the same
+  // Here we need to make sure that a and b both initialize x and y because x and y will be in the same
   // captured scope because c captures both x and y.
   _recordBindingVisitedAndRevisit(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding) {
     let refScope = this.containingAdditionalFunction ? this.containingAdditionalFunction : "GLOBAL";
