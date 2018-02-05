@@ -36,6 +36,10 @@ export default class TypesDomain {
 
   _type: void | typeof Value;
 
+  isTop(): boolean {
+    return this._type === undefined;
+  }
+
   getType(): typeof Value {
     return this._type || Value;
   }

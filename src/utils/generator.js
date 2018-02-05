@@ -41,6 +41,7 @@ import type {
   BabelNodeBlockStatement,
 } from "babel-types";
 import { nullExpression } from "./internalizer.js";
+import { concretize } from "./ConcreteModelConverter.js";
 
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
@@ -148,6 +149,16 @@ export class Generator {
       buildNode: ([valueNode]) =>
         t.expressionStatement(
           t.assignmentExpression("=", this.preludeGenerator.globalReference(key, !strictMode), valueNode)
+        ),
+    });
+  }
+
+  emitConcreteModel(key: string, value: Value) {
+    this._addEntry({
+      args: [concretize(this.realm, value)],
+      buildNode: ([valueNode]) =>
+        t.expressionStatement(
+          t.assignmentExpression("=", this.preludeGenerator.globalReference(key, false), valueNode)
         ),
     });
   }
