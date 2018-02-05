@@ -6,10 +6,6 @@ if (!this.JSResource) {
   this.JSResource = {loadAll() {}};
 }
 
-if (!this.cx) {
-  this.cx = () => {};
-}
-
 if (!this.ix) {
   this.ix = () => {};
 }
