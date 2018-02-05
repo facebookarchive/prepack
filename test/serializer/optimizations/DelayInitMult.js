@@ -3,6 +3,7 @@ function f () {
   var valueB = {};
 
   function fun1() { // no inline =============================================
+    // reference valueA then modify it
     let len = valueA.length;
     valueA = [];
     valueA.push("hello");
@@ -10,14 +11,14 @@ function f () {
   }
 
   function fun2() { // no inline =============================================
+    // modify valueB then reference it
     valueB = {};
     valueB.x = "hello";
     return valueB.length;
   }
 
   function print() { // no inline =============================================
-    valueA;
-    valueB;
+    // Reference both valueA and valueB
     return valueA.toString() + valueB.toString();
   }
 

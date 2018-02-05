@@ -102,7 +102,7 @@ export class ResidualHeapVisitor {
     this.equivalenceSet = new HashSet();
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
-    this.inAdditionalFunction = null;
+    this.containingAdditionalFunction = undefined;
     this.additionalRoots = new Set();
     this.inClass = false;
     this.functionToBindingState = new Map();
@@ -134,7 +134,7 @@ export class ResidualHeapVisitor {
   reactElementEquivalenceSet: ReactElementSet;
 
   // We only want to add to additionalRoots when we're in an additional function
-  inAdditionalFunction: null | FunctionValue;
+  containingAdditionalFunction: void | FunctionValue;
   // Tracks objects + functions that were visited from inside additional functions that need to be serialized in a
   // parent scope of the additional function (e.g. functions/objects only used from additional functions that were
   // declared outside the additional function need to be serialized in the additional function's parent scope for
@@ -145,8 +145,11 @@ export class ResidualHeapVisitor {
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
     this.scope = scope;
-    f();
-    this.scope = oldScope;
+    try {
+      f();
+    } finally {
+      this.scope = oldScope;
+    }
   }
 
   visitObjectProperty(binding: PropertyBinding) {
@@ -338,7 +341,7 @@ export class ResidualHeapVisitor {
   visitValueFunction(val: FunctionValue, parentScope: Scope): void {
     let isClass = false;
 
-    if (this.inAdditionalFunction && !this.inClass) {
+    if (this.containingAdditionalFunction && !this.inClass) {
       this.additionalRoots.add(val);
     }
     if (val.$FunctionKind === "classConstructor") {
@@ -448,7 +451,7 @@ export class ResidualHeapVisitor {
   // Here we need to make sure that a, b both initialize x and y because x and y will be in the same
   // captured scope because c captures both x and y.
   _recordBindingVisitedAndRevisit(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding) {
-    let refScope = this.inAdditionalFunction ? this.inAdditionalFunction : "GLOBAL";
+    let refScope = this.containingAdditionalFunction ? this.containingAdditionalFunction : "GLOBAL";
     let funcToBindingState = getOrDefault(this.functionToBindingState, refScope, () => new Map());
     let envRec = residualFunctionBinding.declarativeEnvironmentRecord;
     invariant(envRec !== null);
@@ -463,10 +466,13 @@ export class ResidualHeapVisitor {
         for (let [functionValue, functionCommonScope] of bindingState.capturingFunctionsToCommonScope) {
           invariant(this);
           let prevCommonScope = this.commonScope;
-          this.commonScope = functionCommonScope;
-          let value = residualFunctionBinding.value;
-          this._withScope(functionValue, () => this.visitValue(value));
-          this.commonScope = prevCommonScope;
+          try {
+            this.commonScope = functionCommonScope;
+            let value = residualFunctionBinding.value;
+            this._withScope(functionValue, () => this.visitValue(value));
+          } finally {
+            this.commonScope = prevCommonScope;
+          }
         }
       }
       bindingState.capturedBindings.add(residualFunctionBinding);
@@ -611,7 +617,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    if (this.inAdditionalFunction && !this.inClass) this.additionalRoots.add(val);
+    if (this.containingAdditionalFunction && !this.inClass) this.additionalRoots.add(val);
     let kind = val.getKind();
     this.visitObjectProperties(val, kind);
 
@@ -817,8 +823,8 @@ export class ResidualHeapVisitor {
     this.commonScope = functionValue;
     let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
     this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
-    let oldInAdditionalFunction = this.inAdditionalFunction;
-    this.inAdditionalFunction = functionValue;
+    let oldcontainingAdditionalFunction = this.containingAdditionalFunction;
+    this.containingAdditionalFunction = functionValue;
     let prevReVisit = this.additionalRoots;
     this.additionalRoots = new Set();
 
@@ -898,15 +904,18 @@ export class ResidualHeapVisitor {
         modifiedBindings: modifiedBindingInfo,
         instance: funcInstance,
       });
-      this.visitGenerator(generator);
-      // All modified properties and bindings should be accessible
-      // from its containing additional function scope.
-      this._withScope(functionValue, visitPropertiesAndBindings);
 
-      // Remove any modifications to CreatedObjects -- these are fine being serialized inside the additional function
-      this.additionalRoots = new Set([...this.additionalRoots].filter(x => !createdObjects.has(x)));
-      this.realm.restoreBindings(modifiedBindings);
-      this.realm.restoreProperties(modifiedProperties);
+      try {
+        this.visitGenerator(generator);
+        // All modified properties and bindings should be accessible
+        // from its containing additional function scope.
+        this._withScope(functionValue, visitPropertiesAndBindings);
+      } finally {
+        // Remove any modifications to CreatedObjects -- these are fine being serialized inside the additional function
+        this.additionalRoots = new Set([...this.additionalRoots].filter(x => !createdObjects.has(x)));
+        this.realm.restoreBindings(modifiedBindings);
+        this.realm.restoreProperties(modifiedProperties);
+      }
       return this.realm.intrinsics.undefined;
     };
     this.realm.evaluateAndRevertInGlobalEnv(_visitAdditionalFunctionEffects);
@@ -935,7 +944,7 @@ export class ResidualHeapVisitor {
         this.additionalRoots = prevReVisit;
       }
     );
-    this.inAdditionalFunction = oldInAdditionalFunction;
+    this.containingAdditionalFunction = oldcontainingAdditionalFunction;
   }
 
   visitRoots(adjustRoots?: boolean): void {
