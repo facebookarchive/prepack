@@ -249,13 +249,13 @@ function run(
       additionalFunctions: additionalFunctions,
       check: check,
       lazyObjectsRuntime: lazyObjectsRuntime,
-      heapGraphFormat: heapGraphFilePath ? "DotLanguage" : undefined,
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
       reactOutput: reactOutput,
     },
     flags
   );
+  if (heapGraphFilePath) resolvedOptions.heapGraphFormat = "DotLanguage";
   if (
     lazyObjectsRuntime &&
     (resolvedOptions.additionalFunctions || resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)
