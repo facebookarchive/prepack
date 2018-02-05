@@ -19,6 +19,26 @@ let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
+function cxShim(...args) {
+  let classNames = [];
+  for (let arg of args) {
+    if (typeof arg === "string") {
+      classNames.push(arg);
+    } else if (typeof arg === "object" && arg !== null) {
+      let keys = Object.keys(arg);
+      for (let key of keys) {
+        if (arg[key]) {
+          classNames.push(key);
+        }
+      }
+    }
+  }
+  return classNames.join(" ");
+}
+
+// assign for tests that use the cx() global
+global.cx = cxShim;
+
 function runTestSuite(outputJsx) {
   let reactTestRoot = path.join(__dirname, "../test/react/");
   let prepackOptions = {
@@ -71,6 +91,8 @@ function runTestSuite(outputJsx) {
               return null;
             },
           };
+        case "cx":
+          return cxShim;
         case "FBEnvironment":
           return {};
         default:
@@ -93,6 +115,7 @@ function runTestSuite(outputJsx) {
 
     let A = runSource(source);
     let B = runSource(compiledSource);
+
     expect(typeof A).toBe(typeof B);
     if (typeof A !== "function") {
       // Test without exports just verifies that the file compiles.
@@ -304,6 +327,10 @@ function runTestSuite(outputJsx) {
 
       it("fb-www 5", async () => {
         await runTest(directory, "fb5.js");
+      });
+
+      it("fb-www 6", async () => {
+        await runTest(directory, "fb6.js");
       });
     });
   });

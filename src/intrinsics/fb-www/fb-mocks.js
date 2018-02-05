@@ -11,14 +11,15 @@
 
 import { parseExpression } from "babylon";
 import type { Realm } from "../../realm.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import {
   AbstractValue,
+  FunctionValue,
   AbstractObjectValue,
   NativeFunctionValue,
   ObjectValue,
-  StringValue,
 } from "../../values/index.js";
-import { createAbstract } from "../prepack/utils.js";
+import * as t from "babel-types";
 import invariant from "../../invariant";
 
 // Based on www babelHelpers fork.
@@ -73,19 +74,13 @@ const fbMagicGlobalObjects = ["JSResource", "Bootloader"];
 
 function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractObjectValue, functionName: string) {
   global.$DefineOwnProperty(functionName, {
-    value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, [string]) => {
-      invariant(string instanceof StringValue);
-      let value = `${functionName}("${string.value}")`;
-      let functionValue;
-
-      if (realm.fbLibraries.other.has(value)) {
-        functionValue = realm.fbLibraries.other.get(value);
-      } else {
-        functionValue = createAbstract(realm, "function", value);
-        realm.fbLibraries.other.set(value, functionValue);
-      }
-      invariant(functionValue instanceof AbstractValue);
-      return functionValue;
+    value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, args) => {
+      let types = new TypesDomain(FunctionValue);
+      let values = new ValuesDomain();
+      invariant(context.$Realm.generator);
+      return context.$Realm.generator.derive(types, values, args, _args =>
+        t.callExpression(t.identifier(functionName), ((_args: any): Array<any>))
+      );
     }),
     writable: true,
     enumerable: false,
