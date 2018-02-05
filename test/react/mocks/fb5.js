@@ -1,5 +1,9 @@
+var React = require('React');
+// the JSX transform converts to React, so we need to add it back in
+this['React'] = React;
+
 if (!this.Bootloader) {
-  this.Bootloader = {loadAllModules() {}};
+  this.Bootloader = {loadModules() {}};
 }
 
 if (!this.JSResource) {
@@ -10,20 +14,46 @@ if (!this.ix) {
   this.ix = () => {};
 }
 
-this.abstractValue = this.__abstract ? __abstract("boolean", "this.abstractValue") : true;
+// Verify that the generated code can still reference abstract values correctly.
+this.abstractTrue = this.__abstract ? __abstract("boolean", "true") : true;
+this.abstractFalse = this.__abstract ? __abstract("boolean", "false") : false;
 
-function getValue() {
-  return [cx("yar/Jar"), ix("yar/Jar"), cx("foo/bar", "foo/bar"), cx({
-    "foo/bar1": true,
-    "foo/bar2": false,
-    "foo/bar3": abstractValue,
+function getClassNames() {
+  return [cx("cx-one"), cx("cx-multi-1", "cx-multi-2"), cx({
+    "cx-obj-1": true,
+    "cx-obj-2": false,
+    "cx-obj-3-true": abstractTrue,
+    "cx-obj-4-false": abstractFalse,
   })];
 }
 
-var a = [Bootloader.loadAllModules("somethingYes"), getValue(), JSResource.loadAll];
+JSResource.loadAll('hi')
+Bootloader.loadModules("somethingYes", function() {});
 
+// Hoist to force the init time calculation
+var classNames = getClassNames();
 function App() {
-  return [cx("foo/Bar"), a];
+  return <div className={classNames} />;
+}
+App.getClassNames = getClassNames;
+
+function assertMatchesInSource(fn, regex, expectedCount) {
+  const matches = fn.toString().match(regex);
+  const count = matches ? matches.length : 0;
+  if (count !== expectedCount) {
+    throw new Error(
+      `Expected ${expectedCount} matches of ${regex} in the function ` +
+      `source but found ${count}:\n\n${fn.toString()}`
+    );
+  }
 }
 
-this.WrappedApp = App;
+App.getTrials = function(renderer, Root) {
+  // Check that matches didn't get renamed
+  assertMatchesInSource(Root.getClassNames, /[^\w]cx\(/g, 3);
+
+  renderer.update(<Root />);
+  return [['fb5 mocks', renderer.toJSON()]];
+};
+
+module.exports = App;

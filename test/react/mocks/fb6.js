@@ -2,16 +2,6 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
-if (!this.Bootloader) {
-  this.Bootloader = {loadAllModules() {}};
-}
-
-if (!this.JSResource) {
-  this.JSResource = {loadAll() {}};
-}
-
-var cx = this.cx;
-
 function App(props) {
   return (
     <div className={cx("yar/Jar")}>
@@ -22,6 +12,7 @@ function App(props) {
             "foo/bar1": true,
             "foo/bar2": false,
             "foo/bar3": props.val,
+            "foo/bar4": props.val + props.val,
           })}
         >
           I am a link
@@ -31,8 +22,22 @@ function App(props) {
   );
 }
 
+function assertMatchesInSource(fn, regex, expectedCount) {
+  const matches = fn.toString().match(regex);
+  const count = matches ? matches.length : 0;
+  if (count !== expectedCount) {
+    throw new Error(
+      `Expected ${expectedCount} matches of ${regex} in the function ` +
+      `source but found ${count}:\n\n${fn.toString()}`
+    );
+  }
+}
+
 App.getTrials = function(renderer, Root) {
-  renderer.update(<Root />);
+  // Check that matches didn't get renamed
+  assertMatchesInSource(Root, /[^\w]cx\(/g, 3);
+
+  renderer.update(<Root val={10} />);
   return [['fb6 mocks', renderer.toJSON()]];
 };
 

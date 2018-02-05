@@ -20,22 +20,20 @@ let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
 let { expect, describe, it } = global;
 
 function cxShim(...args) {
-  let className = "";
-
+  let classNames = [];
   for (let arg of args) {
     if (typeof arg === "string") {
-      className += (className ? "" : " ") + arg;
+      classNames.push(arg);
     } else if (typeof arg === "object" && arg !== null) {
       let keys = Object.keys(arg);
-
       for (let key of keys) {
-        if (keys[key]) {
-          className += (className ? "" : " ") + key;
+        if (arg[key]) {
+          classNames.push(key);
         }
       }
     }
   }
-  return className;
+  return classNames.join(" ");
 }
 
 // assign for tests that use the cx() global
@@ -117,6 +115,7 @@ function runTestSuite(outputJsx) {
 
     let A = runSource(source);
     let B = runSource(compiledSource);
+
     expect(typeof A).toBe(typeof B);
     if (typeof A !== "function") {
       // Test without exports just verifies that the file compiles.
