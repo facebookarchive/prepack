@@ -78,12 +78,8 @@ function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractO
       let types = new TypesDomain(FunctionValue);
       let values = new ValuesDomain();
       invariant(context.$Realm.generator);
-      return context.$Realm.generator.derive(
-        types,
-        values,
-        args,
-        _args => t.callExpression(t.identifier(functionName), ((_args: any): Array<any>)),
-        { skipInvariant: true }
+      return context.$Realm.generator.derive(types, values, args, _args =>
+        t.callExpression(t.identifier(functionName), ((_args: any): Array<any>))
       );
     }),
     writable: true,
