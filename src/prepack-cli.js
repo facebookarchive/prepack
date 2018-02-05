@@ -266,48 +266,50 @@ function run(
     process.exit(1);
   }
 
-  let errors: Map<null | BabelNodeSourceLocation, Array<CompilerDiagnostic>> = new Map();
+  let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+  let errorList: Array<CompilerDiagnostic> = [];
   function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
-    let key = diagnostic.location || null;
-    let list = errors.get(key);
-    if (list === undefined) errors.set(key, (list = []));
-    list.push(diagnostic);
+    if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
+    else errorList.push(diagnostic);
     return "Recover";
   }
 
   function printDiagnostics(): boolean {
     let foundFatal = false;
-    if (errors.size > 0) {
+    if (errors.size > 0 || errorList.length > 0) {
       console.error("Errors found while prepacking");
-      for (let [loc, list] of errors)
-        for (let error of list) {
-          let sourceMessage = "";
-          switch (loc === null ? null : loc.source) {
-            case null:
-            case "":
-              sourceMessage = "In an unknown source file";
-              break;
-            case "no-filename-specified":
-              sourceMessage = "In stdin";
-              break;
-            default:
-              invariant(loc !== null && loc.source !== null);
-              sourceMessage = `In input file ${loc.source}`;
-              break;
-          }
-
-          foundFatal = foundFatal || error.severity === "FatalError";
-          let locString = loc === null ? "" : `(${loc.start.line}:${loc.start.column + 1})`;
-          console.error(
-            `${sourceMessage}${locString} ${error.severity} ${error.errorCode}: ${error.message}` +
-              ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
-          );
-          let callStack = error.callStack;
-          if (callStack !== undefined) {
-            let eolPos = callStack.indexOf("\n");
-            if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
-          }
+      let printError = (error: CompilerDiagnostic, locString?: string = "At an unknown location") => {
+        foundFatal = foundFatal || error.severity === "FatalError";
+        console.error(
+          `${locString} ${error.severity} ${error.errorCode}: ${error.message}` +
+            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
+        );
+        let callStack = error.callStack;
+        if (callStack !== undefined) {
+          let eolPos = callStack.indexOf("\n");
+          if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
         }
+      };
+      for (let [loc, error] of errors) {
+        let sourceMessage = "";
+        switch (loc.source) {
+          case null:
+          case "":
+            sourceMessage = "In an unknown source file";
+            break;
+          case "no-filename-specified":
+            sourceMessage = "In stdin";
+            break;
+          default:
+            invariant(loc !== null && loc.source !== null);
+            sourceMessage = `In input file ${loc.source}`;
+            break;
+        }
+
+        let locString = `${sourceMessage}(${loc.start.line}:${loc.start.column + 1})`;
+        printError(error, locString);
+      }
+      for (let error of errorList) printError(error);
     }
     return foundFatal;
   }
