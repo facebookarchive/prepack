@@ -266,6 +266,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-classes-3.js");
       });
 
+      it("Multiple inheritance", async () => {
+        await runTest(directory, "multiple-inheritance.js");
+      });
+
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
       });
