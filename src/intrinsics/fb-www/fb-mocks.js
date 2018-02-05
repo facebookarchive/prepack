@@ -11,9 +11,15 @@
 
 import { parseExpression } from "babylon";
 import type { Realm } from "../../realm.js";
-import { AbstractValue, AbstractObjectValue, NativeFunctionValue, ObjectValue } from "../../values/index.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import {
+  AbstractValue,
+  FunctionValue,
+  AbstractObjectValue,
+  NativeFunctionValue,
+  ObjectValue,
+} from "../../values/index.js";
 import * as t from "babel-types";
-import { createAbstract } from "../prepack/utils.js";
 import invariant from "../../invariant";
 
 // Based on www babelHelpers fork.
@@ -69,12 +75,16 @@ const fbMagicGlobalObjects = ["JSResource", "Bootloader"];
 function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractObjectValue, functionName: string) {
   global.$DefineOwnProperty(functionName, {
     value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, args) => {
-      let functionValue = createAbstract(realm, "function");
-      functionValue.args = args;
-      // build the magic global function up manually from the arguments we pass it
-      // i.e. cx(...arg)
-      functionValue._buildNode = _args => t.callExpression(t.identifier(functionName), ((_args: any): Array<any>));
-      return functionValue;
+      let types = new TypesDomain(FunctionValue);
+      let values = new ValuesDomain();
+      invariant(context.$Realm.generator);
+      return context.$Realm.generator.derive(
+        types,
+        values,
+        args,
+        _args => t.callExpression(t.identifier(functionName), ((_args: any): Array<any>)),
+        { skipInvariant: true }
+      );
     }),
     writable: true,
     enumerable: false,
