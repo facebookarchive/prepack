@@ -437,6 +437,20 @@ export class Realm {
     }
   }
 
+  // the inverse of evaluatePure
+  evaluateImpure<T>(f: () => T) {
+    if (!this.trackLeaks) {
+      return f();
+    }
+    let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+    this.createdObjectsTrackedForLeaks = undefined;
+    try {
+      return f();
+    } finally {
+      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+    }
+  }
+
   isInPureScope() {
     return !!this.createdObjectsTrackedForLeaks;
   }

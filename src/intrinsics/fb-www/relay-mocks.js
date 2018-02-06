@@ -43,6 +43,5 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
     `require("${relayRequireName}").createRefetchContainer`
   );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createRefetchContainer", createRefetchContainer);
-
   return reactRelay;
 }
