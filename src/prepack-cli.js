@@ -326,7 +326,7 @@ function run(
     printDiagnostics();
     //FatalErrors must have generated at least one CompilerDiagnostic.
     if (err instanceof FatalError) {
-      invariant(errors.size > 0, "FatalError must generate at least one CompilerDiagnostic");
+      invariant(errors.size > 0 || errorList.length > 0, "FatalError must generate at least one CompilerDiagnostic");
     } else {
       // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
       console.error(err.stack);
