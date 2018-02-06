@@ -152,6 +152,7 @@ export class Realm {
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.omitInvariants = !!opts.omitInvariants;
+    this.emitConcreteModel = !!opts.emitConcreteModel;
 
     this.$TemplateMap = [];
 
@@ -209,6 +210,7 @@ export class Realm {
   maxStackDepth: number;
   omitInvariants: boolean;
   ignoreLeakLogic: boolean;
+  emitConcreteModel: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
