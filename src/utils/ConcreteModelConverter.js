@@ -95,7 +95,7 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
   } else if (type === ArrayValue) {
     reportCompileError(
       realm,
-      "Emitting concrete model for abstract array value is not supported yet.",
+      "Emitting a concrete model for abstract array value is not supported yet.",
       val.expressionLocation
     );
   } else if (val instanceof AbstractObjectValue) {
@@ -109,21 +109,24 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
         val.makeNotPartial();
       }
       let concreteObj = Create.ObjectCreate(realm, template.$GetPrototypeOf());
-      let keys = EnumerableOwnProperties(realm, template, "key");
-      for (let P of keys) {
-        invariant(P instanceof StringValue);
-        let newElement = Get(realm, template, P);
-        Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
-      }
-      if (valIsPartial) {
-        val.makePartial();
+      try {
+        let keys = EnumerableOwnProperties(realm, template, "key");
+        for (let P of keys) {
+          invariant(P instanceof StringValue);
+          let newElement = Get(realm, template, P);
+          Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
+        }
+      } finally {
+        if (valIsPartial) {
+          val.makePartial();
+        }
       }
       return concreteObj;
     }
   }
   reportCompileError(
     realm,
-    "Emitting concrete model for this abstract value is not supported yet.",
+    "Emitting a concrete model for this abstract value is not supported yet.",
     val.expressionLocation
   );
   // Return undefined to make flow happy.
