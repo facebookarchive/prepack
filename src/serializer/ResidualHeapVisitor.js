@@ -209,7 +209,11 @@ export class ResidualHeapVisitor {
       // they we be need to be emitted during serialization
       this.visitObjectPrototype(obj);
     }
-    if (obj instanceof FunctionValue) this.visitConstructorPrototype(constructor ? constructor : obj);
+    if (obj instanceof FunctionValue) {
+      this.visitConstructorPrototype(constructor ? constructor : obj);
+    } else if (obj instanceof ObjectValue && skipPrototype && constructor) {
+      this.visitValue(constructor);
+    }
   }
 
   visitObjectPrototype(obj: ObjectValue) {
@@ -514,6 +518,12 @@ export class ResidualHeapVisitor {
     for (let [symbol, method] of classPrototype.symbols) {
       withDescriptorValue(symbol, method.descriptor, visitClassMethod);
     }
+
+    // handle class inheritance
+    if (!(classFunc.$Prototype instanceof NativeFunctionValue)) {
+      this.visitValue(classFunc.$Prototype);
+    }
+
     if (classPrototype.properties.has("constructor")) {
       let constructor = classPrototype.properties.get("constructor");
 

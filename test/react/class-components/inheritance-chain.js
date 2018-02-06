@@ -33,7 +33,7 @@ class App extends React.Component {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['multiple inheritance', renderer.toJSON()]];
+  return [['inheritance chain', renderer.toJSON()]];
 };
 
 if (this.__registerReactComponentRoot) {

@@ -1315,9 +1315,15 @@ export class ResidualHeapSerializer {
     return t.objectExpression(props);
   }
 
-  _serializeValueObjectViaConstructor(val: ObjectValue, isClass: boolean, classConstructor?: Value) {
+  _serializeValueObjectViaConstructor(val: ObjectValue, skipPrototype: boolean, classConstructor?: Value) {
     let proto = val.$Prototype;
-    this._emitObjectProperties(val, val.properties, /*objectPrototypeAlreadyEstablished*/ true, undefined, isClass);
+    this._emitObjectProperties(
+      val,
+      val.properties,
+      /*objectPrototypeAlreadyEstablished*/ true,
+      undefined,
+      skipPrototype
+    );
     this.needsAuxiliaryConstructor = true;
     let serializedProto = this.serializeValue(classConstructor ? classConstructor : proto);
     return t.sequenceExpression([
