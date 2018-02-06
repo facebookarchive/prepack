@@ -9,6 +9,10 @@
 
 /* @flow */
 
+/**
+ * This file contains code that converts abstract models into concrete values.
+ */
+
 import type { Realm } from "../realm.js";
 import type { BabelNodeSourceLocation } from "babel-types";
 import {
@@ -56,23 +60,30 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
     return val;
   }
   invariant(val instanceof AbstractValue);
+  if (val.kind === "abstractConcreteUnion") {
+    invariant(val.args.length > 0);
+    return concretize(realm, val.args[0]);
+  }
   const type = val.types.getType();
   if (val.types.isTop()) {
     return new UndefinedValue(realm);
   } else if (type.prototype instanceof PrimitiveValue) {
     if (val.values.isTop()) {
-      if (type === StringValue) {
-        return new StringValue(realm, "__concreteModel");
-      } else if (type === NumberValue) {
-        return new NumberValue(realm, 42);
-      } else if (type === SymbolValue) {
-        return new SymbolValue(realm, new StringValue(realm, "__concreteModel"));
-      } else if (type === BooleanValue) {
-        return new BooleanValue(realm, true);
-      } else if (type === NullValue) {
-        return new NullValue(realm);
-      } else if (type === UndefinedValue) {
-        return new UndefinedValue(realm);
+      switch (type) {
+        case StringValue:
+          return new StringValue(realm, "__concreteModel");
+        case NumberValue:
+          return new NumberValue(realm, 42);
+        case SymbolValue:
+          return new SymbolValue(realm, new StringValue(realm, "__concreteModel"));
+        case BooleanValue:
+          return new BooleanValue(realm, true);
+        case NullValue:
+          return new NullValue(realm);
+        case UndefinedValue:
+          return new UndefinedValue(realm);
+        default:
+          invariant(false, "Not yet implemented");
       }
     } else {
       const values = val.values.getElements();
@@ -84,7 +95,7 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
   } else if (type === ArrayValue) {
     reportCompileError(
       realm,
-      "Emit concrete model for abstract array value is not supported yet.",
+      "Emitting concrete model for abstract array value is not supported yet.",
       val.expressionLocation
     );
   } else if (val instanceof AbstractObjectValue) {
@@ -92,22 +103,27 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
       return new ObjectValue(realm);
     } else {
       let template = val.getTemplate();
+      let valIsPartial = false;
       if (val.isPartialObject()) {
+        valIsPartial = true;
         val.makeNotPartial();
       }
-      let concreteObj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      let concreteObj = Create.ObjectCreate(realm, template.$GetPrototypeOf());
       let keys = EnumerableOwnProperties(realm, template, "key");
       for (let P of keys) {
         invariant(P instanceof StringValue);
         let newElement = Get(realm, template, P);
         Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
       }
+      if (valIsPartial) {
+        val.makePartial();
+      }
       return concreteObj;
     }
   }
   reportCompileError(
     realm,
-    "Emit concrete model for this abstract value is not supported yet.",
+    "Emitting concrete model for this abstract value is not supported yet.",
     val.expressionLocation
   );
   // Return undefined to make flow happy.

@@ -41,7 +41,7 @@ import type {
   BabelNodeBlockStatement,
 } from "babel-types";
 import { nullExpression } from "./internalizer.js";
-import { concretize } from "./ConcreteModelConverter.js";
+import { concretize } from "../singletons.js";
 
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,

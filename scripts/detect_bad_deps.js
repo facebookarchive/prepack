@@ -41,7 +41,7 @@ exec("flow check --profile", function(error, stdout, stderr) {
     process.exit(1);
   }
   console.log("Biggest cycle: " + cycle_len);
-  let MAX_CYCLE_LEN = 58; // NEVER EVER increase this value
+  let MAX_CYCLE_LEN = 57; // NEVER EVER increase this value
   if (cycle_len > MAX_CYCLE_LEN) {
     console.error("Error: You increased cycle length from the previous high of " + MAX_CYCLE_LEN);
     console.error("This is never OK.");
