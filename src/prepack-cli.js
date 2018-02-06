@@ -267,15 +267,29 @@ function run(
   }
 
   let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+  let errorList: Array<CompilerDiagnostic> = [];
   function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
+    else errorList.push(diagnostic);
     return "Recover";
   }
 
   function printDiagnostics(): boolean {
     let foundFatal = false;
-    if (errors.size > 0) {
+    if (errors.size > 0 || errorList.length > 0) {
       console.error("Errors found while prepacking");
+      let printError = (error: CompilerDiagnostic, locString?: string = "At an unknown location") => {
+        foundFatal = foundFatal || error.severity === "FatalError";
+        console.error(
+          `${locString} ${error.severity} ${error.errorCode}: ${error.message}` +
+            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
+        );
+        let callStack = error.callStack;
+        if (callStack !== undefined) {
+          let eolPos = callStack.indexOf("\n");
+          if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
+        }
+      };
       for (let [loc, error] of errors) {
         let sourceMessage = "";
         switch (loc.source) {
@@ -287,23 +301,15 @@ function run(
             sourceMessage = "In stdin";
             break;
           default:
-            invariant(loc.source !== null);
+            invariant(loc !== null && loc.source !== null);
             sourceMessage = `In input file ${loc.source}`;
             break;
         }
 
-        foundFatal = foundFatal || error.severity === "FatalError";
-        console.error(
-          `${sourceMessage}(${loc.start.line}:${loc.start.column +
-            1}) ${error.severity} ${error.errorCode}: ${error.message}` +
-            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
-        );
-        let callStack = error.callStack;
-        if (callStack !== undefined) {
-          let eolPos = callStack.indexOf("\n");
-          if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
-        }
+        let locString = `${sourceMessage}(${loc.start.line}:${loc.start.column + 1})`;
+        printError(error, locString);
       }
+      for (let error of errorList) printError(error);
     }
     return foundFatal;
   }
