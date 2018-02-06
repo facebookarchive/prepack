@@ -47,14 +47,14 @@ export default function(realm: Realm): void {
 
       if (requireNameValValue === "react" || requireNameValValue === "React") {
         if (realm.fbLibraries.react === undefined) {
-          let react = createMockReact(realm, requireNameValValue);
+          let react = realm.evaluateImpure(() => createMockReact(realm, requireNameValValue));
           realm.fbLibraries.react = react;
           return react;
         }
         return realm.fbLibraries.react;
       } else if (requireNameValValue === "react-relay" || requireNameValValue === "RelayModern") {
         if (realm.fbLibraries.reactRelay === undefined) {
-          let reactRelay = createMockReactRelay(realm, requireNameValValue);
+          let reactRelay = realm.evaluateImpure(() => createMockReactRelay(realm, requireNameValValue));
           realm.fbLibraries.reactRelay = reactRelay;
           return reactRelay;
         }
