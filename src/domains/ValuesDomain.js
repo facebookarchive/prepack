@@ -19,7 +19,6 @@ import {
   Add,
   HasProperty,
   InstanceofOperator,
-  IsCallable,
   StrictEqualityComparison,
 } from "../methods/index.js";
 import type { Realm } from "../realm.js";
@@ -29,14 +28,13 @@ import {
   BooleanValue,
   ConcreteValue,
   EmptyValue,
-  NullValue,
   NumberValue,
   ObjectValue,
   StringValue,
-  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
+import * as TypesDomain from "./TypesDomain.js";
 
 /* An abstract domain that collects together a set of concrete values
    that might be the value of a variable at runtime.
@@ -377,36 +375,13 @@ export default class ValuesDomain {
       // 3. Return undefined.
       return realm.intrinsics.undefined;
     } else if (op === "typeof") {
-      function isInstance(proto, Constructor): boolean {
-        return proto instanceof Constructor || proto === Constructor.prototype;
-      }
       // ECMA262 12.6.5
       // 1. Let val be the result of evaluating UnaryExpression.
       // 2. If Type(val) is Reference, then
       // 3. Let val be ? GetValue(val).
       let val = value;
       // 4. Return a String according to Table 35.
-      let proto = val.getType().prototype;
-      if (isInstance(proto, UndefinedValue)) {
-        return new StringValue(realm, "undefined");
-      } else if (isInstance(proto, NullValue)) {
-        return new StringValue(realm, "object");
-      } else if (isInstance(proto, StringValue)) {
-        return new StringValue(realm, "string");
-      } else if (isInstance(proto, BooleanValue)) {
-        return new StringValue(realm, "boolean");
-      } else if (isInstance(proto, NumberValue)) {
-        return new StringValue(realm, "number");
-      } else if (isInstance(proto, SymbolValue)) {
-        return new StringValue(realm, "symbol");
-      } else if (isInstance(proto, ObjectValue)) {
-        if (IsCallable(realm, val)) {
-          return new StringValue(realm, "function");
-        }
-        return new StringValue(realm, "object");
-      } else {
-        invariant(false);
-      }
+      return new StringValue(realm, TypesDomain.typeToString(val.getType()));
     } else {
       invariant(op === "delete");
       // ECMA262 12.5.3.2

@@ -28,6 +28,7 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
+import { TypesDomain } from "../../domains/index.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
@@ -293,32 +294,83 @@ export default function(realm: Realm): void {
           let key = To.ToStringPartial(realm, propertyName);
           let propertyIdentifier = generator.getAsPropertyNameExpression(key);
           let computed = !t.isIdentifier(propertyIdentifier);
-          let condition = ([objectNode, valueNode]) =>
-            t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
-          if (invariantOptions) {
-            let invariantOptionString = To.ToStringPartial(realm, invariantOptions);
-            switch (invariantOptionString) {
-              case "VALUE_DEFINED_INVARIANT":
+          let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
+          let inExpressionOf = objectNode =>
+            t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
+          let condition = null;
+          let invariantOptionString = invariantOptions ? To.ToStringPartial(realm, invariantOptions) : "FULL_INVARIANT";
+          switch (invariantOptionString) {
+            // checks (!property in object || object.property !== undefined)
+            case "VALUE_DEFINED_INVARIANT":
+              condition = ([objectNode, valueNode]) =>
+                t.logicalExpression(
+                  "||",
+                  inExpressionOf(objectNode),
+                  t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
+                );
+              break;
+            case "SKIP_INVARIANT":
+              condition = null;
+              break;
+            case "FULL_INVARIANT":
+              if (value instanceof AbstractValue) {
+                let isTop = false;
+                let concreteComparisons = new Set();
+                let typeComparisons = new Set();
+                // Populates the sets with the values we want to compare to
+                // go over args
+                function conditionOfAbstractValue(absValue: AbstractValue) {
+                  if (absValue.kind === "abstractConcreteUnion") { // recurse
+                    for (let nestedValue of absValue.args)
+                      if (nestedValue instanceof ConcreteValue) {
+                        concreteComparisons.add(nestedValue);
+                      } else {
+                        invariant(nestedValue instanceof AbstractValue);
+                        conditionOfAbstractValue(nestedValue);
+                      }
+                  } else if (absValue.getType().isTop) {
+                    isTop = true;
+                    return;
+                  } else {
+                    typeComparisons.add(absValue.getType());
+                  }
+                }
+                conditionOfAbstractValue(value);
+
+                if (isTop) {
+                  // No point in doing the invariant if we don't know the type
+                  // of one of the nested abstract values
+                  condition = null;
+                } else {
+                  condition = ([objectNode, valueNode]) => {
+                    // Create `object.property !== concreteValue`
+                    let checks = [...concreteComparisons].map(
+                      concreteValue =>
+                      t.binaryExpression("!==", accessedPropertyOf(objectNode), t.valueToNode(concreteValue.serialize()))
+                    );
+                    // Create `typeof object.property !== typeValue`
+                    checks = checks.concat(
+                      [...typeComparisons].map(typeValue =>
+                        t.binaryExpression(
+                          "!==",
+                          t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
+                          t.stringLiteral(TypesDomain.typeToString(typeValue))
+                        )
+                      )
+                    );
+                    return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
+                  };
+                }
+              } else {
                 condition = ([objectNode, valueNode]) =>
-                  t.binaryExpression(
-                    "===",
-                    t.memberExpression(objectNode, propertyIdentifier, computed),
-                    t.valueToNode(undefined)
-                  );
-                break;
-              case "SKIP_INVARIANT":
-                condition = null;
-                break;
-              case "FULL_INVARIANT":
-                break;
-              default:
-                invariant(false, "Invalid invariantOption " + invariantOptionString);
-            }
+                  t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
+              }
+              break;
+            default:
+              invariant(false, "Invalid invariantOption " + invariantOptionString);
           }
           if (condition)
-            generator.emitInvariant([object, value, object], condition, objnode =>
-              t.memberExpression(objnode, propertyIdentifier, computed)
-            );
+            generator.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
           (object: any).$Set(key, value, object);
