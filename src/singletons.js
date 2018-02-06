@@ -14,7 +14,7 @@ import type {
   EnvironmentType,
   FunctionType,
   JoinType,
-  LeakType,
+  EscapeType,
   PathType,
   PropertiesType,
   ToType,
@@ -25,7 +25,7 @@ export let Create: CreateType = (null: any);
 export let Environment: EnvironmentType = (null: any);
 export let Functions: FunctionType = (null: any);
 export let Join: JoinType = (null: any);
-export let Leak: LeakType = (null: any);
+export let Escape: EscapeType = (null: any);
 export let Path: PathType = (null: any);
 export let Properties: PropertiesType = (null: any);
 export let To: ToType = (null: any);
@@ -47,8 +47,8 @@ export function setJoin(singleton: JoinType) {
   Join = singleton;
 }
 
-export function setLeak(singleton: LeakType) {
-  Leak = singleton;
+export function setEscape(singleton: EscapeType) {
+  Escape = singleton;
 }
 
 export function setPath(singleton: PathType) {

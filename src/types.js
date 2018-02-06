@@ -338,8 +338,8 @@ export type PathType = {
   pushInverseAndRefine(condition: AbstractValue): void,
 };
 
-export type LeakType = {
-  leakValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
+export type EscapeType = {
+  escapeValue(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
 };
 
 export type PropertiesType = {
