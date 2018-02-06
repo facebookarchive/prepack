@@ -20,6 +20,7 @@ import {
   FunctionValue,
   NullValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   PrimitiveValue,
   StringValue,
@@ -73,6 +74,8 @@ export default class Value {
         return ArrayValue;
       case "function":
         return FunctionValue;
+      case "integral":
+        return IntegralValue;
       default:
         return undefined;
     }

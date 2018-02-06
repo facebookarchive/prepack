@@ -18,6 +18,7 @@ import {
   UndefinedValue,
   NullValue,
   NumberValue,
+  IntegralValue,
   BooleanValue,
   SymbolValue,
   ECMAScriptFunctionValue,
@@ -77,7 +78,13 @@ export class EnvironmentImplementation {
     // void | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue | EnvironmentRecord | AbstractValue;
     if (!base || base instanceof EnvironmentRecord) return false;
     let type = base.getType();
-    return type === BooleanValue || type === StringValue || type === SymbolValue || type === NumberValue;
+    return (
+      type === BooleanValue ||
+      type === StringValue ||
+      type === SymbolValue ||
+      type === NumberValue ||
+      type === IntegralValue
+    );
   }
 
   // ECMA262 6.2.3

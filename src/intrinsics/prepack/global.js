@@ -17,6 +17,7 @@ import {
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
+  IntegralValue,
   NativeFunctionValue,
   ObjectValue,
   StringValue,
@@ -337,6 +338,15 @@ export default function(realm: Realm): void {
 
   global.$DefineOwnProperty("__IntrospectionError", {
     value: realm.intrinsics.__IntrospectionError,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__isIntegral", {
+    value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
+      return new BooleanValue(realm, value instanceof IntegralValue);
+    }),
     writable: true,
     enumerable: false,
     configurable: true,

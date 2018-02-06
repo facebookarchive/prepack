@@ -17,6 +17,7 @@ import {
   ConcreteValue,
   FunctionValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   PrimitiveValue,
   StringValue,
@@ -48,8 +49,14 @@ export default class TypesDomain {
     switch (op) {
       case "+":
         if (lType === undefined || rType === undefined) return TypesDomain.topVal;
-        if (Value.isTypeCompatibleWith(lType, StringValue) || Value.isTypeCompatibleWith(rType, StringValue))
+        if (Value.isTypeCompatibleWith(lType, StringValue) || Value.isTypeCompatibleWith(rType, StringValue)) {
           resultType = StringValue;
+          break;
+        }
+      // eslint-disable-line no-fallthrough
+      case "-":
+        if (lType === undefined || rType === undefined) return TypesDomain.topVal;
+        if (lType === IntegralValue && rType === IntegralValue) resultType = IntegralValue;
         else if (Value.isTypeCompatibleWith(lType, NumberValue) && Value.isTypeCompatibleWith(rType, NumberValue))
           resultType = NumberValue;
         break;
@@ -71,11 +78,12 @@ export default class TypesDomain {
       case "&":
       case "|":
       case "^":
+        resultType = IntegralValue;
+        break;
       case "**":
       case "%":
       case "/":
       case "*":
-      case "-":
         resultType = NumberValue;
         break;
       default:
@@ -95,6 +103,9 @@ export default class TypesDomain {
   joinWith(t: typeof Value): TypesDomain {
     let type = this.getType();
     if (type === t) return this;
+    if (Value.isTypeCompatibleWith(type, NumberValue) && Value.isTypeCompatibleWith(t, NumberValue)) {
+      return new TypesDomain(NumberValue);
+    }
     if (Value.isTypeCompatibleWith(type, FunctionValue) && Value.isTypeCompatibleWith(t, FunctionValue)) {
       return new TypesDomain(FunctionValue);
     }
@@ -113,13 +124,16 @@ export default class TypesDomain {
 
   // return the type of the result in the case where there is no exception
   // note that the type of the operand has no influence on the type of the non exceptional result
-  static unaryOp(op: BabelUnaryOperator): TypesDomain {
+  static unaryOp(op: BabelUnaryOperator, operand: TypesDomain): TypesDomain {
+    const type = operand._type;
     let resultType = Value;
     switch (op) {
       case "-":
       case "+":
+        resultType = type === IntegralValue ? IntegralValue : NumberValue;
+        break;
       case "~":
-        resultType = NumberValue;
+        resultType = IntegralValue;
         break;
       case "!":
       case "delete":
