@@ -379,7 +379,8 @@ export default class ObjectValue extends ConcreteValue {
   ) {
     let intrinsicName;
     if (typeof name === "string") {
-      if (this.intrinsicName) intrinsicName = `${this.intrinsicName}.${name}`;
+      if (name.startsWith("::")) intrinsicName = name;
+      else if (this.intrinsicName) intrinsicName = `${this.intrinsicName}.${name}`;
     } else if (name instanceof SymbolValue) {
       if (this.intrinsicName && name.intrinsicName) intrinsicName = `${this.intrinsicName}[${name.intrinsicName}]`;
     } else {
