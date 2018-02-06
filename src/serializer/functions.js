@@ -245,8 +245,8 @@ export class Functions {
       if (funcLength && funcLength > 0) {
         // TODO #987: Make Additional Functions work with arguments
         let error = new CompilerDiagnostic(
-          `Additional function ${fun1Name} has parameters which is not yet supported`,
-          undefined, // TODO: a location would be really useful here
+          `Additional function ${fun1Name} has parameters, which is not yet supported`,
+          fun1.expressionLocation,
           "PP1005",
           "FatalError"
         );
