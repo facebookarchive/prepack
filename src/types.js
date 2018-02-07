@@ -999,3 +999,5 @@ export type ToType = {
   // ECMA262 7.1.16
   CanonicalNumericIndexString(realm: Realm, argument: StringValue): number | void,
 };
+
+export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;

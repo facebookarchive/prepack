@@ -26,7 +26,7 @@ export { default as UndefinedValue } from "./UndefinedValue.js";
 export { default as EmptyValue } from "./EmptyValue.js";
 export { default as NullValue } from "./NullValue.js";
 
-export { default as NumberValue } from "./NumberValue.js";
+export { NumberValue, IntegralValue } from "./NumberValue.js";
 
 export { default as ProxyValue } from "./ProxyValue.js";
 export { default as StringExotic } from "./StringExotic.js";
