@@ -122,19 +122,19 @@ export function createSimpleClassInstance(
   return instance;
 }
 
-export function createClassInstance(
+function deeplyApplyInstancePrototypeProperties(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue,
-  props: ObjectValue | AbstractValue,
-  context: ObjectValue | AbstractValue,
+  instance: ObjectValue,
+  componentPrototype: ObjectValue,
   classMetadata: ClassComponentMetadata
-): AbstractObjectValue {
-  let componentPrototype = Get(realm, componentType, "prototype");
-  invariant(componentPrototype instanceof ObjectValue);
+) {
   let { instanceProperties, instanceSymbols } = classMetadata;
+  let proto = componentPrototype.$Prototype;
 
-  // create an instance object and disable serialization as we don't want to output the internals we set below
-  let instance = new ObjectValue(realm, componentPrototype, "this", true);
+  if (proto instanceof ObjectValue && proto !== realm.intrinsics.ObjectPrototype) {
+    deeplyApplyInstancePrototypeProperties(realm, instance, proto, classMetadata);
+  }
+
   for (let [name] of componentPrototype.properties) {
     // ensure we don't set properties that were defined on the instance
     if (name !== "constructor" && !instanceProperties.has(name)) {
@@ -147,6 +147,21 @@ export function createClassInstance(
       Properties.Set(realm, instance, symbol, Get(realm, componentPrototype, symbol), true);
     }
   }
+}
+
+export function createClassInstance(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue,
+  props: ObjectValue | AbstractValue,
+  context: ObjectValue | AbstractValue,
+  classMetadata: ClassComponentMetadata
+): AbstractObjectValue {
+  let componentPrototype = Get(realm, componentType, "prototype");
+  invariant(componentPrototype instanceof ObjectValue);
+  // create an instance object and disable serialization as we don't want to output the internals we set below
+  let instance = new ObjectValue(realm, componentPrototype, "this", true);
+  deeplyApplyInstancePrototypeProperties(realm, instance, componentPrototype, classMetadata);
+
   // assign refs
   Properties.Set(realm, instance, "refs", AbstractValue.createAbstractObject(realm, "this.refs"), true);
   // assign props
