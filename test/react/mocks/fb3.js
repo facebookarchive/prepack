@@ -1,7 +1,16 @@
+if (!this.__evaluatePureFunction) {
+  this.__evaluatePureFunction = function(f) {
+    return f();
+  };
+}
+
 (function() {
   function App() {}
   var ReactRelay = require('RelayModern');
-  ReactRelay.createFragmentContainer(App);
+
+  this.__evaluatePureFunction(() => {
+    ReactRelay.createFragmentContainer(App);
+  });
 })();
 
 // This test just verifies that the file compiles.

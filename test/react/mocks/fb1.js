@@ -3,30 +3,38 @@ var React = require('React');
 this['React'] = React;
 var {QueryRenderer, graphql} = require('RelayModern');
 
-var FBEnvironment = require('FBEnvironment');
-
-function App({ initialNumComments, someVariables, query, pageSize, onCommit }) {
-  return (
-    <QueryRenderer
-      environment={FBEnvironment}
-      query={graphql`
-        ${query}
-      `}
-      variables={someVariables}
-      render={({error, props}) => {
-        return <span>Hello world</span>
-      }}
-    />
-  );
+if (!this.__evaluatePureFunction) {
+  this.__evaluatePureFunction = function(f) {
+    return f();
+  };
 }
 
-App.getTrials = function(renderer, Root) {
-  renderer.update(<Root />);
-  return [['fb1 mocks', renderer.toJSON()]];
-};
+module.exports = this.__evaluatePureFunction(() => {
+  var FBEnvironment = require('FBEnvironment');
 
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(App);
-}
+  function App({ initialNumComments, someVariables, query, pageSize, onCommit }) {
+    return (
+      <QueryRenderer
+        environment={FBEnvironment}
+        query={graphql`
+          ${query}
+        `}
+        variables={someVariables}
+        render={({error, props}) => {
+          return <span>Hello world</span>
+        }}
+      />
+    );
+  }
 
-module.exports = App;
+  App.getTrials = function(renderer, Root) {
+    renderer.update(<Root />);
+    return [['fb1 mocks', renderer.toJSON()]];
+  };
+
+  if (this.__registerReactComponentRoot) {
+    __registerReactComponentRoot(App);
+  }
+
+  return App;
+});
