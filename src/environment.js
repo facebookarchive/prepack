@@ -1146,11 +1146,7 @@ export class LexicalEnvironment {
       let ast;
       [ast, code] = this.concatenateAndParse(sources, sourceType);
       if (onParse) onParse(ast);
-      if (this.realm.isCompatibleWith("fb-www")) {
-        res = this.realm.evaluatePure(() => this.evaluateCompletion(ast, false));
-      } else {
-        res = this.evaluateCompletion(ast, false);
-      }
+      res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
