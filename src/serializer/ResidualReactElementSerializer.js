@@ -15,7 +15,7 @@ import { canHoistReactElement } from "../react/hoisting.js";
 import { Get, IsAccessorDescriptor } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { ArrayValue, NumberValue, Value, ObjectValue } from "../values/index.js";
+import { ArrayValue, NumberValue, Value, ObjectValue, SymbolValue, StringValue } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -252,7 +252,24 @@ export class ResidualReactElementSerializer {
     if (reactLibraryObject !== undefined) {
       this.residualHeapSerializer.serializeValue(reactLibraryObject);
     }
-    let identifier = convertExpressionToJSXIdentifier(this.residualHeapSerializer.serializeValue(typeValue), true);
+    let identifier;
+    if (typeValue instanceof SymbolValue) {
+      // if there is no React library, then we should throw and error, as it is needed for React.Fragment output
+      if (reactLibraryObject === undefined) {
+        throw new FatalError("unable to serialize JSX fragment due to React not being referenced in scope");
+      }
+      // we want to vist the Symbol type, but we don't want to serialize it
+      // as this is a React internal
+      this.residualHeapSerializer.serializedValues.add(typeValue);
+      invariant(typeValue.$Description instanceof StringValue);
+      this.residualHeapSerializer.serializedValues.add(typeValue.$Description);
+      identifier = convertExpressionToJSXIdentifier(
+        t.memberExpression(this.residualHeapSerializer.serializeValue(reactLibraryObject), t.identifier("Fragment")),
+        true
+      );
+    } else {
+      identifier = convertExpressionToJSXIdentifier(this.residualHeapSerializer.serializeValue(typeValue), true);
+    }
     let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
     let closingElement = t.jSXClosingElement(identifier);
 

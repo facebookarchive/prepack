@@ -173,6 +173,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-6.js");
       });
 
+      it("Simple fragments", async () => {
+        await runTest(directory, "simple-fragments.js");
+      });
+
       it("Simple children", async () => {
         await runTest(directory, "simple-children.js");
       });
