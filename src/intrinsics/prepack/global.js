@@ -156,6 +156,24 @@ export default function(realm: Realm): void {
     });
   }
 
+  global.$DefineOwnProperty("__evaluatePureFunction", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__evaluatePureFunction",
+      "__evaluatePureFunction",
+      0,
+      (context, [functionValue]) => {
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        invariant(typeof functionValue.$Call === "function");
+        let functionCall: Function = functionValue.$Call;
+        return realm.evaluatePure(() => functionCall(realm.intrinsics.undefined, []));
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized
   global.$DefineOwnProperty("__initializedModules", {
