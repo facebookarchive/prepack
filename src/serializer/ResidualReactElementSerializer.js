@@ -15,11 +15,12 @@ import { canHoistReactElement } from "../react/hoisting.js";
 import { Get, IsAccessorDescriptor } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { ArrayValue, NumberValue, Value, ObjectValue, SymbolValue, StringValue } from "../values/index.js";
+import { ArrayValue, NumberValue, Value, ObjectValue, StringValue, SymbolValue } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors";
+import { getReactSymbol } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
 
@@ -253,7 +254,7 @@ export class ResidualReactElementSerializer {
       this.residualHeapSerializer.serializeValue(reactLibraryObject);
     }
     let identifier;
-    if (typeValue instanceof SymbolValue) {
+    if (typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm)) {
       // if there is no React library, then we should throw and error, as it is needed for React.Fragment output
       if (reactLibraryObject === undefined) {
         throw new FatalError("unable to serialize JSX fragment due to React not being referenced in scope");
