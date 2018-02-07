@@ -239,17 +239,24 @@ export class Functions {
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
     for (let [fun1, call1] of calls) {
+      let fun1Name = this.functionExpressions.get(fun1) || fun1.intrinsicName || "(unknown function)";
       // Also do argument validation here
       let funcLength = fun1.getLength();
       if (funcLength && funcLength > 0) {
         // TODO #987: Make Additional Functions work with arguments
-        throw new FatalError("TODO: implement arguments to additional functions");
+        let error = new CompilerDiagnostic(
+          `Additional function ${fun1Name} has parameters, which is not yet supported`,
+          fun1.expressionLocation,
+          "PP1005",
+          "FatalError"
+        );
+        this.realm.handleError(error);
+        throw new FatalError();
       }
       let additionalFunctionEffects = this.writeEffects.get(fun1);
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
-      let fun1Name = this.functionExpressions.get(fun1) || fun1.intrinsicName || "unknown";
       if (e1[0] instanceof Completion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fun1Name} may terminate abruptly`,
