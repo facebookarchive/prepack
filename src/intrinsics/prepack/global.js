@@ -294,13 +294,15 @@ export default function(realm: Realm): void {
           let key = To.ToStringPartial(realm, propertyName);
           let propertyIdentifier = generator.getAsPropertyNameExpression(key);
           let computed = !t.isIdentifier(propertyIdentifier);
+
           let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
           let inExpressionOf = objectNode =>
             t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
+
           let condition = null;
           let invariantOptionString = invariantOptions ? To.ToStringPartial(realm, invariantOptions) : "FULL_INVARIANT";
           switch (invariantOptionString) {
-            // checks (!property in object || object.property !== undefined)
+            // checks (!property in object || object.property === undefined)
             case "VALUE_DEFINED_INVARIANT":
               condition = ([objectNode, valueNode]) =>
                 t.logicalExpression(
@@ -312,30 +314,33 @@ export default function(realm: Realm): void {
             case "SKIP_INVARIANT":
               condition = null;
               break;
+            // Checks the full set of possible concrete values as well as typeof
+            // for any AbstractValues
+            // e.g: (obj.property !== undefined && typeof obj.property !== "object")
+            // NB: if the type of the AbstractValue is top, skips the invariant
             case "FULL_INVARIANT":
               if (value instanceof AbstractValue) {
                 let isTop = false;
                 let concreteComparisons = new Set();
                 let typeComparisons = new Set();
-                // Populates the sets with the values we want to compare to
-                // go over args
-                function conditionOfAbstractValue(absValue: AbstractValue) {
-                  if (absValue.kind === "abstractConcreteUnion") { // recurse
+
+                function populateComparisonsLists(absValue: AbstractValue) {
+                  if (absValue.kind === "abstractConcreteUnion") {
+                    // recurse
                     for (let nestedValue of absValue.args)
                       if (nestedValue instanceof ConcreteValue) {
                         concreteComparisons.add(nestedValue);
                       } else {
                         invariant(nestedValue instanceof AbstractValue);
-                        conditionOfAbstractValue(nestedValue);
+                        populateComparisonsLists(nestedValue);
                       }
                   } else if (absValue.getType().isTop) {
                     isTop = true;
-                    return;
                   } else {
                     typeComparisons.add(absValue.getType());
                   }
                 }
-                conditionOfAbstractValue(value);
+                populateComparisonsLists(value);
 
                 if (isTop) {
                   // No point in doing the invariant if we don't know the type
@@ -344,9 +349,12 @@ export default function(realm: Realm): void {
                 } else {
                   condition = ([objectNode, valueNode]) => {
                     // Create `object.property !== concreteValue`
-                    let checks = [...concreteComparisons].map(
-                      concreteValue =>
-                      t.binaryExpression("!==", accessedPropertyOf(objectNode), t.valueToNode(concreteValue.serialize()))
+                    let checks = [...concreteComparisons].map(concreteValue =>
+                      t.binaryExpression(
+                        "!==",
+                        accessedPropertyOf(objectNode),
+                        t.valueToNode(concreteValue.serialize())
+                      )
                     );
                     // Create `typeof object.property !== typeValue`
                     checks = checks.concat(

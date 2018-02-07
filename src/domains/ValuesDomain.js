@@ -34,7 +34,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import * as TypesDomain from "./TypesDomain.js";
+import { TypesDomain } from "./index.js";
 
 /* An abstract domain that collects together a set of concrete values
    that might be the value of a variable at runtime.
