@@ -213,6 +213,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "key-change-fragments.js");
       });
 
+      it("Key not changing with fragments", async () => {
+        await runTest(directory, "key-not-change-fragments.js");
+      });
+
       it("Component type change", async () => {
         await runTest(directory, "type-change.js");
       });
