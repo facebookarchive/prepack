@@ -301,6 +301,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-classes-3.js");
       });
 
+      it("Inheritance chaining", async () => {
+        await runTest(directory, "inheritance-chain.js");
+      });
+
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
       });

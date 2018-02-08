@@ -54,6 +54,7 @@ import {
   ClassPropertiesToIgnore,
   withDescriptorValue,
   canIgnoreClassLengthProperty,
+  getObjectPrototypeMetadata,
 } from "./utils.js";
 import { Environment, To } from "../singletons.js";
 import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
@@ -162,6 +163,8 @@ export class ResidualHeapVisitor {
   }
 
   visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
+    let { skipPrototype, constructor } = getObjectPrototypeMetadata(this.realm, obj);
+
     // visit properties
     if (kind !== "ReactElement") {
       for (let [symbol, propertyBinding] of obj.symbols) {
@@ -186,12 +189,11 @@ export class ResidualHeapVisitor {
       }
       // we don't want to visit these as we handle the serialization ourselves
       // via a different logic route for classes
+      let descriptor = propertyBindingValue.descriptor;
       if (
         obj.$FunctionKind === "classConstructor" &&
-        (propertyBindingKey === "arguments" ||
-          propertyBindingKey === "length" ||
-          propertyBindingKey === "name" ||
-          propertyBindingKey === "caller")
+        (ClassPropertiesToIgnore.has(propertyBindingKey) ||
+          (propertyBindingKey === "length" && canIgnoreClassLengthProperty(obj, descriptor, this.logger)))
       ) {
         continue;
       }
@@ -211,13 +213,17 @@ export class ResidualHeapVisitor {
     }
 
     // prototype
-    if (kind !== "ReactElement") {
+    if (kind !== "ReactElement" && !skipPrototype) {
       // we don't want to the ReactElement prototype visited
       // as this is contained within the JSXElement, otherwise
       // they we be need to be emitted during serialization
       this.visitObjectPrototype(obj);
     }
-    if (obj instanceof FunctionValue) this.visitConstructorPrototype(obj);
+    if (obj instanceof FunctionValue) {
+      this.visitConstructorPrototype(constructor ? constructor : obj);
+    } else if (obj instanceof ObjectValue && skipPrototype && constructor) {
+      this.visitValue(constructor);
+    }
   }
 
   visitObjectPrototype(obj: ObjectValue) {
@@ -231,10 +237,11 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitConstructorPrototype(func: FunctionValue) {
+  visitConstructorPrototype(func: Value) {
     // If the original prototype object was mutated,
     // request its serialization here as this might be observable by
     // residual code.
+    invariant(func instanceof FunctionValue);
     let prototype = ResidualHeapInspector.getPropertyValue(func, "prototype");
     if (
       prototype instanceof ObjectValue &&
@@ -566,6 +573,12 @@ export class ResidualHeapVisitor {
     for (let [symbol, method] of classPrototype.symbols) {
       withDescriptorValue(symbol, method.descriptor, visitClassMethod);
     }
+
+    // handle class inheritance
+    if (!(classFunc.$Prototype instanceof NativeFunctionValue)) {
+      this.visitValue(classFunc.$Prototype);
+    }
+
     if (classPrototype.properties.has("constructor")) {
       let constructor = classPrototype.properties.get("constructor");
 
