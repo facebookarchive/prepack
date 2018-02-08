@@ -19,7 +19,7 @@ import {
 } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbstractValue, Value, EmptyValue } from "../values/index.js";
+import { AbstractValue, ObjectValue, StringValue, Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { Environment, Functions, Join } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
@@ -27,6 +27,7 @@ import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeProgram } from "babel-types";
 import * as t from "babel-types";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(
@@ -246,6 +247,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
           emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
           res = res.value;
         } else if (res instanceof ThrowCompletion) {
+          issueThrowCompilerDiagnostic(res.value);
           emitThrow(res.value);
           res = realm.intrinsics.undefined;
         } else {
@@ -281,6 +283,48 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   invariant(val === undefined || val instanceof Value);
   return val || realm.intrinsics.empty;
+
+  function safeEval(f: () => Value): Value {
+    // We use partial evaluation so that we can throw away any state mutations
+    let oldErrorHandler = realm.errorHandler;
+    realm.errorHandler = d => {
+      if (d.severity === "Information" || d.severity === "Warning") return "Recover";
+      return "Fail";
+    };
+    try {
+      let effects = realm.evaluateForEffects(() => {
+        try {
+          return f();
+        } catch (e) {
+          if (e instanceof Completion) {
+            return realm.intrinsics.undefined;
+          } else if (e instanceof FatalError) {
+            return realm.intrinsics.undefined;
+          } else {
+            throw e;
+          }
+        }
+      });
+      return effects[0] instanceof Value ? effects[0] : realm.intrinsics.undefined;
+    } finally {
+      realm.errorHandler = oldErrorHandler;
+    }
+  }
+
+  function issueThrowCompilerDiagnostic(value: Value) {
+    let message = "Program may terminate with exception";
+    if (value instanceof ObjectValue) {
+      let object = ((value: any): ObjectValue);
+      let objectMessage = safeEval(() => object.$Get("message", value));
+      if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
+      const objectStack = safeEval(() => object.$Get("stack", value));
+      if (objectStack instanceof StringValue)
+        message += `
+  ${objectStack.value}`;
+    }
+    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
+    realm.handleError(diagnostic);
+  }
 
   function emitThrow(value: Value) {
     let generator = realm.generator;
