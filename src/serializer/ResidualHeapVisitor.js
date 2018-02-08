@@ -755,8 +755,8 @@ export class ResidualHeapVisitor {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
-      // ...except for a few that come into existence as templates for abstract objects (TODO #882).
-      if (val.isTemplate) this.preProcessValue(val);
+      // ...except for a few that come into existence as templates for abstract objects via executable code.
+      if (val._isScopedTemplate) this.preProcessValue(val);
       else
         this._withScope(this.commonScope, () => {
           this.preProcessValue(val);
