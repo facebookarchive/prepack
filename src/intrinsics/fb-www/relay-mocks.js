@@ -44,5 +44,17 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
   );
   Create.CreateDataPropertyOrThrow(realm, reactRelay, "createRefetchContainer", createRefetchContainer);
 
+  let commitLocalUpdate = createAbstract(realm, "function", `require("${relayRequireName}").commitLocalUpdate`);
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "commitLocalUpdate", commitLocalUpdate);
+
+  let commitMutation = createAbstract(realm, "function", `require("${relayRequireName}").commitMutation`);
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "commitMutation", commitMutation);
+
+  let fetchQuery = createAbstract(realm, "function", `require("${relayRequireName}").fetchQuery`);
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "fetchQuery", fetchQuery);
+
+  let requestSubscription = createAbstract(realm, "function", `require("${relayRequireName}").requestSubscription`);
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "requestSubscription", requestSubscription);
+
   return reactRelay;
 }
