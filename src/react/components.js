@@ -36,6 +36,8 @@ const lifecycleMethods = new Set([
   "componentWillReceiveProps",
 ]);
 
+const whitelistedProperties = new Set(["props", "context", "refs"]);
+
 export function getInitialProps(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue | null
@@ -176,7 +178,9 @@ export function evaluateClassConstructor(
         let instanceObject = Construct(realm, constructorFunc, [props, context]);
         invariant(instanceObject instanceof ObjectValue);
         for (let [propertyName] of instanceObject.properties) {
-          instanceProperties.add(propertyName);
+          if (!whitelistedProperties.has(propertyName)) {
+            instanceProperties.add(propertyName);
+          }
         }
         for (let [symbol] of instanceObject.symbols) {
           instanceSymbols.add(symbol);
