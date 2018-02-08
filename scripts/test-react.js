@@ -102,8 +102,9 @@ function runTestSuite(outputJsx) {
 
   async function runTest(directory, name) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
-    let { compiledSource } = compileSourceWithPrepack(source);
+    let { compiledSource, statistics } = compileSourceWithPrepack(source);
 
+    expect(statistics).toMatchSnapshot();
     let A = runSource(source);
     let B = runSource(compiledSource);
 
