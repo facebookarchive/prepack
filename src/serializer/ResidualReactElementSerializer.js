@@ -163,7 +163,8 @@ export class ResidualReactElementSerializer {
         typeValue,
         attributes,
         children,
-        shouldHoist ? hoistedCreateElementIdentifier : originalCreateElementIdentifier
+        shouldHoist ? hoistedCreateElementIdentifier : originalCreateElementIdentifier,
+        reactLibraryObject
       );
     } else {
       invariant(false, "Unknown reactOutput specified");
@@ -217,14 +218,33 @@ export class ResidualReactElementSerializer {
     attributes.push(t.objectProperty(key, expr));
   }
 
+  _serializeReactFragmentType(typeValue: Value, reactLibraryObject: void | ObjectValue): BabelNodeExpression {
+    // if there is no React library, then we should throw and error, as it is needed for React.Fragment output
+    if (reactLibraryObject === undefined) {
+      throw new FatalError("unable to serialize JSX fragment due to React not being referenced in scope");
+    }
+    // we want to vist the Symbol type, but we don't want to serialize it
+    // as this is a React internal
+    this.residualHeapSerializer.serializedValues.add(typeValue);
+    invariant(typeValue.$Description instanceof StringValue);
+    this.residualHeapSerializer.serializedValues.add(typeValue.$Description);
+    return t.memberExpression(this.residualHeapSerializer.serializeValue(reactLibraryObject), t.identifier("Fragment"));
+  }
+
   _serializeReactElementToCreateElement(
     val: ObjectValue,
     typeValue: Value,
     attributes: Array<BabelNode>,
     children: Array<BabelNode>,
-    createElementIdentifier: BabelNodeIdentifier
+    createElementIdentifier: BabelNodeIdentifier,
+    reactLibraryObject: void | ObjectValue
   ): BabelNodeExpression {
-    let typeIdentifier = this.residualHeapSerializer.serializeValue(typeValue);
+    let typeIdentifier;
+    if (typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm)) {
+      typeIdentifier = this._serializeReactFragmentType(typeValue, reactLibraryObject);
+    } else {
+      typeIdentifier = this.residualHeapSerializer.serializeValue(typeValue);
+    }
     let createElementArguments = [typeIdentifier];
     // check if we need to add attributes
     if (attributes.length !== 0) {
@@ -255,17 +275,8 @@ export class ResidualReactElementSerializer {
     }
     let identifier;
     if (typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm)) {
-      // if there is no React library, then we should throw and error, as it is needed for React.Fragment output
-      if (reactLibraryObject === undefined) {
-        throw new FatalError("unable to serialize JSX fragment due to React not being referenced in scope");
-      }
-      // we want to vist the Symbol type, but we don't want to serialize it
-      // as this is a React internal
-      this.residualHeapSerializer.serializedValues.add(typeValue);
-      invariant(typeValue.$Description instanceof StringValue);
-      this.residualHeapSerializer.serializedValues.add(typeValue.$Description);
       identifier = convertExpressionToJSXIdentifier(
-        t.memberExpression(this.residualHeapSerializer.serializeValue(reactLibraryObject), t.identifier("Fragment")),
+        this._serializeReactFragmentType(typeValue, reactLibraryObject),
         true
       );
     } else {
