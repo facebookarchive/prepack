@@ -273,17 +273,15 @@ export class ResidualReactElementSerializer {
     if (reactLibraryObject !== undefined) {
       this.residualHeapSerializer.serializeValue(reactLibraryObject);
     }
-    let identifier;
+    let typeIdentifier;
     if (typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm)) {
-      identifier = convertExpressionToJSXIdentifier(
-        this._serializeReactFragmentType(typeValue, reactLibraryObject),
-        true
-      );
+      typeIdentifier = this._serializeReactFragmentType(typeValue, reactLibraryObject);
     } else {
-      identifier = convertExpressionToJSXIdentifier(this.residualHeapSerializer.serializeValue(typeValue), true);
+      typeIdentifier = this.residualHeapSerializer.serializeValue(typeValue);
     }
-    let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
-    let closingElement = t.jSXClosingElement(identifier);
+    let jsxTypeIdentifer = convertExpressionToJSXIdentifier(typeIdentifier, true);
+    let openingElement = t.jSXOpeningElement(jsxTypeIdentifer, (attributes: any), children.length === 0);
+    let closingElement = t.jSXClosingElement(jsxTypeIdentifer);
 
     let jsxElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
     this._addBailOutMessageToBabelNode(val, jsxElement);

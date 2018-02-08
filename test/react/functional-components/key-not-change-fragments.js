@@ -49,16 +49,16 @@ App.getTrials = function(renderer, Root) {
   results.push(['mount', renderer.toJSON()]);
 
   renderer.update(<Root switch={false} />);
-  results.push(['update with same key', renderer.toJSON()]);
+  results.push(['update with same array', renderer.toJSON()]);
 
   renderer.update(<Root switch={true} />);
-  results.push(['update with different key', renderer.toJSON()]);
+  results.push(['update with different fragment', renderer.toJSON()]);
 
   renderer.update(<Root switch={true} />);
-  results.push(['update with same key (again)', renderer.toJSON()]);
+  results.push(['update with same fragment (again)', renderer.toJSON()]);
 
   renderer.update(<Root switch={false} />);
-  results.push(['update with different key (again)', renderer.toJSON()]);
+  results.push(['update with different array (again)', renderer.toJSON()]);
   return results;
 };
 
