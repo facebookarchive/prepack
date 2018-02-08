@@ -19,7 +19,7 @@ import invariant from "../../invariant";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
 let reactCode = `
-  function createReact(REACT_ELEMENT_TYPE, REACT_SYMBOL_TYPE, ReactCurrentOwner) {
+  function createReact(REACT_ELEMENT_TYPE, REACT_FRAGMENT_TYPE, ReactCurrentOwner) {
     var hasOwnProperty = Object.prototype.hasOwnProperty;
     var RESERVED_PROPS = {
       key: true,
@@ -276,7 +276,7 @@ let reactCode = `
       },
       Component,
       PureComponent,
-      Fragment: REACT_SYMBOL_TYPE,
+      Fragment: REACT_FRAGMENT_TYPE,
       createElement,
       cloneElement,
       isValidElement,
@@ -301,7 +301,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   invariant(factory !== undefined);
   let reactValue = factory(realm.intrinsics.undefined, [
     getReactSymbol("react.element", realm),
-    getReactSymbol("react.symbol", realm),
+    getReactSymbol("react.fragment", realm),
     currentOwner,
   ]);
   reactValue.intrinsicName = `require("${reactRequireName}")`;

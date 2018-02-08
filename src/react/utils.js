@@ -32,7 +32,7 @@ import type { BabelNodeStatement } from "babel-types";
 import { FatalError } from "../errors.js";
 import { To } from "../singletons.js";
 
-export type ReactSymbolTypes = "react.element" | "react.symbol" | "react.portal" | "react.return" | "react.call";
+export type ReactSymbolTypes = "react.element" | "react.fragment" | "react.portal" | "react.return" | "react.call";
 
 export function isReactElement(val: Value): boolean {
   if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
