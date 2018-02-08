@@ -19,7 +19,7 @@ import {
 } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbstractValue, Value, EmptyValue } from "../values/index.js";
+import { AbstractValue, ObjectValue, StringValue, Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { Environment, Functions, Join } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
@@ -27,6 +27,7 @@ import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeProgram } from "babel-types";
 import * as t from "babel-types";
+import { CompilerDiagnostic } from "../errors.js";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(
@@ -282,7 +283,23 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
   invariant(val === undefined || val instanceof Value);
   return val || realm.intrinsics.empty;
 
+  function issueThrowCompilerDiagnostic(value: Value) {
+    let message = "Program may terminate with exception";
+    if (value instanceof ObjectValue) {
+      let object = ((value: any): ObjectValue);
+      let objectMessage = realm.evaluateWithUndo(() => object.$Get("message", value));
+      if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
+      const objectStack = realm.evaluateWithUndo(() => object.$Get("stack", value));
+      if (objectStack instanceof StringValue)
+        message += `
+  ${objectStack.value}`;
+    }
+    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
+    realm.handleError(diagnostic);
+  }
+
   function emitThrow(value: Value) {
+    issueThrowCompilerDiagnostic(value);
     let generator = realm.generator;
     invariant(generator !== undefined);
     generator.emitStatement([value], ([argument]) => t.throwStatement(argument));
@@ -308,6 +325,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       [targs, tfunc] = deconstruct(trueBranch.joinCondition, trueBranch.consequent, trueBranch.alternate);
     } else if (trueBranch instanceof ThrowCompletion) {
       targs = [trueBranch.value];
+      issueThrowCompilerDiagnostic(trueBranch.value);
       tfunc = ([argument]) => t.throwStatement(argument);
     } else {
       targs = [];
@@ -317,6 +335,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       [fargs, ffunc] = deconstruct(falseBranch.joinCondition, falseBranch.consequent, falseBranch.alternate);
     } else if (falseBranch instanceof ThrowCompletion) {
       fargs = [falseBranch.value];
+      issueThrowCompilerDiagnostic(falseBranch.value);
       ffunc = ([argument]) => t.throwStatement(argument);
     } else {
       fargs = [];
