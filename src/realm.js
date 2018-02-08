@@ -584,6 +584,33 @@ export class Realm {
     }
   }
 
+  evaluateWithUndo(f: () => Value, defaultValue: Value = this.intrinsics.undefined): Value {
+    if (!this.useAbstractInterpretation) return f();
+    let oldErrorHandler = this.errorHandler;
+    this.errorHandler = d => {
+      if (d.severity === "Information" || d.severity === "Warning") return "Recover";
+      return "Fail";
+    };
+    try {
+      let effects = this.evaluateForEffects(() => {
+        try {
+          return f();
+        } catch (e) {
+          if (e instanceof Completion) {
+            return defaultValue;
+          } else if (e instanceof FatalError) {
+            return defaultValue;
+          } else {
+            throw e;
+          }
+        }
+      });
+      return effects[0] instanceof Value ? effects[0] : defaultValue;
+    } finally {
+      this.errorHandler = oldErrorHandler;
+    }
+  }
+
   evaluateWithUndoForDiagnostic(f: () => Value): CompilerDiagnostic | Value {
     if (!this.useAbstractInterpretation) return f();
     let savedHandler = this.errorHandler;
