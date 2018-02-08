@@ -58,6 +58,19 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
   for (let reactRelayContainer of reactRelayContainers) {
     createReactRelayContainer(realm, reactRelay, reactRelayContainer);
   }
+
+  let commitLocalUpdate = createAbstract(realm, "function", `require("${relayRequireName}").commitLocalUpdate`);
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "commitLocalUpdate", commitLocalUpdate);
+
+  let commitMutation = createAbstract(realm, "function", `require("${relayRequireName}").commitMutation`);
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "commitMutation", commitMutation);
+
+  let fetchQuery = createAbstract(realm, "function", `require("${relayRequireName}").fetchQuery`);
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "fetchQuery", fetchQuery);
+
+  let requestSubscription = createAbstract(realm, "function", `require("${relayRequireName}").requestSubscription`);
+  Create.CreateDataPropertyOrThrow(realm, reactRelay, "requestSubscription", requestSubscription);
+
   // we set refuseSerialization back to false
   reactRelay.refuseSerialization = false;
   return reactRelay;
