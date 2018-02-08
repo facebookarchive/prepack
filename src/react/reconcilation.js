@@ -374,7 +374,7 @@ export class Reconciler {
     }
     // TODO investigate what about other iterables type objects
     if (value instanceof ArrayValue) {
-      this._resolveFragment(value, context, branchStatus, branchState);
+      this._resolveArray(value, context, branchStatus, branchState);
       return value;
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
@@ -497,7 +497,7 @@ export class Reconciler {
     }
   }
 
-  _resolveFragment(
+  _resolveArray(
     arrayValue: ArrayValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
