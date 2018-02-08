@@ -502,10 +502,6 @@ export class JoinImplementation {
 
   unbundleReturnCompletion(realm: Realm, c: JoinedAbruptCompletions): [Effects, PossiblyNormalCompletion] {
     let empty_effects = construct_empty_effects(realm);
-    // The nested generators are already reachable from the current generator
-    // so there is no need to keep tracking them separately and doing so would cause them to be serialized twice.
-    c.alternateEffects[1] = new Generator(realm);
-    c.consequentEffects[1] = new Generator(realm);
     let v = realm.intrinsics.empty;
     if (c.consequent instanceof ReturnCompletion) {
       let negation = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
