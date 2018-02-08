@@ -52,7 +52,6 @@ export default function(realm: Realm): NativeFunctionValue {
         "RecoverableError"
       );
       realm.handleError(error);
-      iterable = undefined;
     }
     if (!iterable) iterable = realm.intrinsics.undefined;
 

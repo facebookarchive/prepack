@@ -17,6 +17,7 @@ import {
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
+  IntegralValue,
   NativeFunctionValue,
   ObjectValue,
   StringValue,
@@ -154,6 +155,24 @@ export default function(realm: Realm): void {
       configurable: true,
     });
   }
+
+  global.$DefineOwnProperty("__evaluatePureFunction", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__evaluatePureFunction",
+      "__evaluatePureFunction",
+      0,
+      (context, [functionValue]) => {
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        invariant(typeof functionValue.$Call === "function");
+        let functionCall: Function = functionValue.$Call;
+        return realm.evaluatePure(() => functionCall(realm.intrinsics.undefined, []));
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized
@@ -293,32 +312,37 @@ export default function(realm: Realm): void {
           let key = To.ToStringPartial(realm, propertyName);
           let propertyIdentifier = generator.getAsPropertyNameExpression(key);
           let computed = !t.isIdentifier(propertyIdentifier);
-          let condition = ([objectNode, valueNode]) =>
-            t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
-          if (invariantOptions) {
-            let invariantOptionString = To.ToStringPartial(realm, invariantOptions);
-            switch (invariantOptionString) {
-              case "VALUE_DEFINED_INVARIANT":
-                condition = ([objectNode, valueNode]) =>
-                  t.binaryExpression(
-                    "===",
-                    t.memberExpression(objectNode, propertyIdentifier, computed),
-                    t.valueToNode(undefined)
-                  );
-                break;
-              case "SKIP_INVARIANT":
-                condition = null;
-                break;
-              case "FULL_INVARIANT":
-                break;
-              default:
-                invariant(false, "Invalid invariantOption " + invariantOptionString);
+
+          if (realm.emitConcreteModel) {
+            generator.emitConcreteModel(key, value);
+          } else {
+            let condition = ([objectNode, valueNode]) =>
+              t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
+            if (invariantOptions) {
+              let invariantOptionString = To.ToStringPartial(realm, invariantOptions);
+              switch (invariantOptionString) {
+                case "VALUE_DEFINED_INVARIANT":
+                  condition = ([objectNode, valueNode]) =>
+                    t.binaryExpression(
+                      "===",
+                      t.memberExpression(objectNode, propertyIdentifier, computed),
+                      t.valueToNode(undefined)
+                    );
+                  break;
+                case "SKIP_INVARIANT":
+                  condition = null;
+                  break;
+                case "FULL_INVARIANT":
+                  break;
+                default:
+                  invariant(false, "Invalid invariantOption " + invariantOptionString);
+              }
             }
+            if (condition)
+              generator.emitInvariant([object, value, object], condition, objnode =>
+                t.memberExpression(objnode, propertyIdentifier, computed)
+              );
           }
-          if (condition)
-            generator.emitInvariant([object, value, object], condition, objnode =>
-              t.memberExpression(objnode, propertyIdentifier, computed)
-            );
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
           (object: any).$Set(key, value, object);
@@ -337,6 +361,15 @@ export default function(realm: Realm): void {
 
   global.$DefineOwnProperty("__IntrospectionError", {
     value: realm.intrinsics.__IntrospectionError,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__isIntegral", {
+    value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
+      return new BooleanValue(realm, value instanceof IntegralValue);
+    }),
     writable: true,
     enumerable: false,
     configurable: true,

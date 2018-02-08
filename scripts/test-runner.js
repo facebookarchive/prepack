@@ -267,6 +267,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   if (code.includes("// omit invariants")) options.omitInvariants = true;
+  if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// abstract effects")) options.abstractEffectsInAdditionalFunctions = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;

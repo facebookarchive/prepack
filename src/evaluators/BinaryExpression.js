@@ -19,6 +19,7 @@ import {
   ConcreteValue,
   NullValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   StringValue,
   UndefinedValue,
@@ -79,7 +80,10 @@ export function getPureBinaryOperationResultType(
         ltype = lval.getType();
         rtype = rval.getType();
         if (ltype === StringValue || rtype === StringValue) return StringValue;
-        if (ltype === NumberValue && rtype === NumberValue) return NumberValue;
+        if (ltype === IntegralValue && rtype === IntegralValue) return IntegralValue;
+        if ((ltype === NumberValue || ltype === IntegralValue) && (rtype === NumberValue || rtype === IntegralValue))
+          return NumberValue;
+
         return Value;
       }
       throw new FatalError();

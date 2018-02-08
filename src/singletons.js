@@ -19,6 +19,7 @@ import type {
   PropertiesType,
   ToType,
   WidenType,
+  ConcretizeType,
 } from "./types.js";
 
 export let Create: CreateType = (null: any);
@@ -30,6 +31,7 @@ export let Path: PathType = (null: any);
 export let Properties: PropertiesType = (null: any);
 export let To: ToType = (null: any);
 export let Widen: WidenType = (null: any);
+export let concretize: ConcretizeType = (null: any);
 
 export function setCreate(singleton: CreateType) {
   Create = singleton;
@@ -65,4 +67,8 @@ export function setTo(singleton: ToType) {
 
 export function setWiden(singleton: WidenType) {
   Widen = singleton;
+}
+
+export function setConcretize(singleton: ConcretizeType) {
+  concretize = singleton;
 }
