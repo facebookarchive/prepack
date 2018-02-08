@@ -14,6 +14,7 @@ let path = require("path");
 let { prepackSources } = require("../lib/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
+let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
 let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
@@ -80,17 +81,7 @@ function runTestSuite(outputJsx) {
         case "react":
           return React;
         case "RelayModern":
-          return {
-            QueryRenderer(props) {
-              return props.render({ props: {}, error: null });
-            },
-            createFragmentContainer() {
-              return null;
-            },
-            graphql() {
-              return null;
-            },
-          };
+          return ReactRelay;
         case "cx":
           return cxShim;
         case "FBEnvironment":
@@ -139,6 +130,26 @@ function runTestSuite(outputJsx) {
       let [nameB, valueB] = resultB[i];
       expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
       expect(nameB).toEqual(nameA);
+    }
+  }
+
+  async function stubReactRelay(f) {
+    let oldReactRelay = ReactRelay;
+    ReactRelay = {
+      QueryRenderer(props) {
+        return props.render({ props: {}, error: null });
+      },
+      createFragmentContainer() {
+        return null;
+      },
+      graphql() {
+        return null;
+      },
+    };
+    try {
+      await f();
+    } finally {
+      ReactRelay = oldReactRelay;
     }
   }
 
@@ -314,7 +325,9 @@ function runTestSuite(outputJsx) {
       let directory = "mocks";
 
       it("fb-www", async () => {
-        await runTest(directory, "fb1.js");
+        await stubReactRelay(async () => {
+          await runTest(directory, "fb1.js");
+        });
       });
 
       it("fb-www 2", async () => {
@@ -322,11 +335,15 @@ function runTestSuite(outputJsx) {
       });
 
       it("fb-www 3", async () => {
-        await runTest(directory, "fb3.js");
+        await stubReactRelay(async () => {
+          await runTest(directory, "fb3.js");
+        });
       });
 
       it("fb-www 4", async () => {
-        await runTest(directory, "fb4.js");
+        await stubReactRelay(async () => {
+          await runTest(directory, "fb4.js");
+        });
       });
 
       it("fb-www 5", async () => {
@@ -335,6 +352,14 @@ function runTestSuite(outputJsx) {
 
       it("fb-www 6", async () => {
         await runTest(directory, "fb6.js");
+      });
+
+      it("fb-www 7", async () => {
+        await runTest(directory, "fb7.js");
+      });
+
+      it("fb-www 8", async () => {
+        await runTest(directory, "fb8.js");
       });
     });
   });

@@ -19,7 +19,7 @@ import type {
 } from "babel-types";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import type { PropertyKeyValue } from "../types.js";
+import type { PropertyKeyValue, ReactHint } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
@@ -66,6 +66,7 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
+    this.reactHint = undefined;
   }
 
   hashValue: number;
@@ -74,6 +75,7 @@ export default class AbstractValue extends Value {
   values: ValuesDomain;
   mightBeEmpty: boolean;
   args: Array<Value>;
+  reactHint: void | ReactHint;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {
