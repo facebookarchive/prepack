@@ -289,7 +289,7 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
   let _valueIsKnownReactAbstraction = valueIsKnownReactAbstraction(value);
   invariant(
     value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction,
-    "only ECMAScriptSourceFunctionValue function values or React known abstract values are supported as React root components"
+    "only ECMAScriptSourceFunctionValue function values or known React abstract values are supported as React root components"
   );
   if (_valueIsKnownReactAbstraction) {
     invariant(value instanceof AbstractValue);

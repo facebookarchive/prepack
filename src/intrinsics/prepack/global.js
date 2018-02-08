@@ -142,7 +142,7 @@ export default function(realm: Realm): void {
         (context, [value]) => {
           invariant(
             value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(value),
-            "a value has been passed to __registerReactComponentRoot() that is not a function value or React known abstract value"
+            "a value has been passed to __registerReactComponentRoot() that is not a function value or a known React abstract value"
           );
           realm.assignToGlobal(
             t.memberExpression(
