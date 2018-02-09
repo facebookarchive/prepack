@@ -13,18 +13,18 @@ import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { construct_empty_effects, type Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
+  AbstractObjectValue,
+  AbstractValue,
   ArrayValue,
-  UndefinedValue,
-  NumberValue,
-  SymbolValue,
-  NullValue,
   BooleanValue,
+  ConcreteValue,
+  NullValue,
+  NumberValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
+  UndefinedValue,
   Value,
-  ConcreteValue,
-  AbstractValue,
-  AbstractObjectValue,
 } from "../values/index.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
@@ -1178,8 +1178,9 @@ export class PropertiesImplementation {
         });
         if (savedUnion !== undefined) {
           invariant(savedIndex !== undefined);
-          savedUnion.args[savedIndex] = value;
-          value = savedUnion;
+          let args = savedUnion.args.slice(0);
+          args[savedIndex] = value;
+          value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
         }
         InternalSetProperty(realm, O, P, {
           value: value,
