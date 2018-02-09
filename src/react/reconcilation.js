@@ -32,6 +32,7 @@ import {
   valueIsLegacyCreateClassComponent,
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
+  getReactSymbol,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -49,7 +50,7 @@ import { Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata } from "../types.js";
 
-type RenderStrategy = "NORMAL" | "RELAY_QUERY_RENDERER";
+type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
 export type BranchReactComponentTree = {
   props: ObjectValue | AbstractObjectValue,
@@ -341,13 +342,15 @@ export class Reconciler {
     };
   }
 
-  _getRenderStrategy(func: Value): RenderStrategy {
+  _getRenderStrategy(value: Value): RenderStrategy {
     // check if it's a ReactRelay.QueryRenderer
     if (this.realm.fbLibraries.reactRelay !== undefined) {
       let QueryRenderer = Get(this.realm, this.realm.fbLibraries.reactRelay, "QueryRenderer");
-      if (func === QueryRenderer) {
+      if (value === QueryRenderer) {
         return "RELAY_QUERY_RENDERER";
       }
+    } else if (value === getReactSymbol("react.fragment", this.realm)) {
+      return "FRAGMENT";
     }
     return "NORMAL";
   }
@@ -381,7 +384,7 @@ export class Reconciler {
     }
     // TODO investigate what about other iterables type objects
     if (value instanceof ArrayValue) {
-      this._resolveFragment(value, context, branchStatus, branchState);
+      this._resolveArray(value, context, branchStatus, branchState);
       return value;
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
@@ -390,7 +393,8 @@ export class Reconciler {
       let typeValue = Get(this.realm, reactElement, "type");
       let propsValue = Get(this.realm, reactElement, "props");
       let refValue = Get(this.realm, reactElement, "ref");
-      if (typeValue instanceof StringValue) {
+
+      const resolveChildren = () => {
         // terminal host component. Start evaluating its children.
         if (propsValue instanceof ObjectValue) {
           let childrenProperty = propsValue.properties.get("children");
@@ -407,6 +411,10 @@ export class Reconciler {
           }
         }
         return reactElement;
+      };
+
+      if (typeValue instanceof StringValue) {
+        return resolveChildren();
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
@@ -431,6 +439,8 @@ export class Reconciler {
           `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`
         );
         return reactElement;
+      } else if (renderStrategy === "FRAGMENT") {
+        return resolveChildren();
       }
       try {
         let result;
@@ -500,7 +510,7 @@ export class Reconciler {
     }
   }
 
-  _resolveFragment(
+  _resolveArray(
     arrayValue: ArrayValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,

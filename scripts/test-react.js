@@ -185,6 +185,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-6.js");
       });
 
+      it("Simple fragments", async () => {
+        await runTest(directory, "simple-fragments.js");
+      });
+
       it("Simple children", async () => {
         await runTest(directory, "simple-children.js");
       });
@@ -215,6 +219,14 @@ function runTestSuite(outputJsx) {
 
       it("Key change", async () => {
         await runTest(directory, "key-change.js");
+      });
+
+      it("Key change with fragments", async () => {
+        await runTest(directory, "key-change-fragments.js");
+      });
+
+      it("Key not changing with fragments", async () => {
+        await runTest(directory, "key-not-change-fragments.js");
       });
 
       it("Component type change", async () => {
