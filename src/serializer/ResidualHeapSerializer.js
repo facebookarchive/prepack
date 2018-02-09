@@ -1246,9 +1246,20 @@ export class ResidualHeapSerializer {
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
   _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue, prop: Descriptor): boolean {
     if (prop.joinCondition !== undefined) return false;
+
+    let targetDescriptor = this.residualHeapInspector.getTargetIntegrityDescriptor(obj);
+
     if ((obj instanceof FunctionValue && key === "prototype") || (obj.getKind() === "RegExp" && key === "lastIndex"))
-      return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
-    else if (!!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get) {
+      return (
+        prop.writable === targetDescriptor.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get
+      );
+    else if (
+      prop.writable === targetDescriptor.writable &&
+      prop.configurable === targetDescriptor.configurable &&
+      !!prop.enumerable &&
+      !prop.set &&
+      !prop.get
+    ) {
       return !(prop.value instanceof AbstractValue && prop.value.kind === "widened property");
     } else {
       return false;
@@ -1496,18 +1507,32 @@ export class ResidualHeapSerializer {
       return voidExpression;
     } else if (ResidualHeapInspector.isLeaf(val)) {
       return t.valueToNode(val.serialize());
-    } else if (IsArray(this.realm, val)) {
-      invariant(val instanceof ObjectValue);
-      return this._serializeValueArray(val);
-    } else if (val instanceof ProxyValue) {
-      return this._serializeValueProxy(val);
-    } else if (val instanceof FunctionValue) {
-      return this._serializeValueFunction(val);
-    } else if (val instanceof SymbolValue) {
-      return this._serializeValueSymbol(val);
+    } else if (val instanceof ObjectValue) {
+      let res;
+      if (val instanceof ProxyValue) {
+        return this._serializeValueProxy(val);
+      } else if (IsArray(this.realm, val)) {
+        res = this._serializeValueArray(val);
+      } else if (val instanceof FunctionValue) {
+        res = this._serializeValueFunction(val);
+      } else {
+        res = this.serializeValueObject(val);
+      }
+      let targetCommand = this.residualHeapInspector.getTargetIntegrityCommand(val);
+      if (targetCommand) {
+        this.emitter.emitNowOrAfterWaitingForDependencies([val], () => {
+          let uid = this.getSerializeObjectIdentifier(val);
+          this.emitter.emit(
+            t.expressionStatement(
+              t.callExpression(this.preludeGenerator.memoizeReference("Object." + targetCommand), [uid])
+            )
+          );
+        });
+      }
+      return res;
     } else {
-      invariant(val instanceof ObjectValue);
-      return this.serializeValueObject(val);
+      invariant(val instanceof SymbolValue);
+      return this._serializeValueSymbol(val);
     }
   }
 
