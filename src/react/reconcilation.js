@@ -12,6 +12,7 @@
 import { Realm, type Effects } from "../realm.js";
 import { ModuleTracer } from "../utils/modules.js";
 import {
+  AbstractValue,
   ECMAScriptSourceFunctionValue,
   Value,
   UndefinedValue,
@@ -19,7 +20,6 @@ import {
   NumberValue,
   BooleanValue,
   NullValue,
-  AbstractValue,
   ArrayValue,
   ObjectValue,
   AbstractObjectValue,
@@ -31,6 +31,7 @@ import {
   forEachArrayValue,
   valueIsLegacyCreateClassComponent,
   valueIsFactoryClassComponent,
+  valueIsKnownReactAbstraction,
   getReactSymbol,
 } from "./utils";
 import { Get } from "../methods/index.js";
@@ -52,8 +53,8 @@ import type { ClassComponentMetadata } from "../types.js";
 type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
 export type BranchReactComponentTree = {
-  componentType: ECMAScriptSourceFunctionValue,
   props: ObjectValue | AbstractObjectValue,
+  rootValue: ECMAScriptSourceFunctionValue | AbstractValue,
   context: ObjectValue | AbstractObjectValue,
 };
 
@@ -69,7 +70,7 @@ export class Reconciler {
     moduleTracer: ModuleTracer,
     statistics: ReactStatistics,
     reactSerializerState: ReactSerializerState,
-    reactRootComponents: Set<ECMAScriptSourceFunctionValue>
+    reactRootValues: Set<ECMAScriptSourceFunctionValue | AbstractValue>
   ) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
@@ -77,7 +78,7 @@ export class Reconciler {
     this.reactSerializerState = reactSerializerState;
     this.logger = moduleTracer.modules.logger;
     this.componentTreeState = this._createComponentTreeState();
-    this.reactRootComponents = reactRootComponents;
+    this.reactRootValues = reactRootValues;
   }
 
   realm: Realm;
@@ -86,7 +87,7 @@ export class Reconciler {
   reactSerializerState: ReactSerializerState;
   logger: Logger;
   componentTreeState: ComponentTreeState;
-  reactRootComponents: Set<ECMAScriptSourceFunctionValue>;
+  reactRootValues: Set<ECMAScriptSourceFunctionValue | AbstractValue>;
 
   render(
     componentType: ECMAScriptSourceFunctionValue,
@@ -171,9 +172,9 @@ export class Reconciler {
         this.componentTreeState.componentType = componentType;
       } else {
         this.componentTreeState.branchedComponentTrees.push({
-          componentType,
-          props,
-          context,
+          context: null,
+          props: null,
+          rootValue: componentType,
         });
         throw new NewComponentTreeBranch();
       }
@@ -272,11 +273,20 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
+    if (valueIsKnownReactAbstraction(this.realm, componentType)) {
+      invariant(componentType instanceof AbstractValue);
+      this.branchReactComponentTrees.push({
+        props,
+        rootValue: componentType,
+        context,
+      });
+      throw new NewComponentTreeBranch();
+    }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
-    // if this component we are trying to render is in the reactRootComponents, we remove it
+    // if this component we are trying to render is in the reactRootValues, we remove it
     // to avoid future conflicts trying to re-render the same root twice
-    if (this.reactRootComponents.has(componentType)) {
-      this.reactRootComponents.delete(componentType);
+    if (this.reactRootValues.has(componentType)) {
+      this.reactRootValues.delete(componentType);
     }
     let value;
     let childContext = context;
@@ -450,7 +460,10 @@ export class Reconciler {
       }
       let renderStrategy = this._getRenderStrategy(typeValue);
 
-      if (renderStrategy === "NORMAL" && !(typeValue instanceof ECMAScriptSourceFunctionValue)) {
+      if (
+        renderStrategy === "NORMAL" &&
+        !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
+      ) {
         this._assignBailOutMessage(
           reactElement,
           `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`

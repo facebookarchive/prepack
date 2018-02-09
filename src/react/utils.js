@@ -12,6 +12,7 @@
 import { Realm } from "../realm.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
+  AbstractObjectValue,
   Value,
   NumberValue,
   ObjectValue,
@@ -20,7 +21,7 @@ import {
   StringValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
-import type { Descriptor } from "../types";
+import type { Descriptor, ReactHint } from "../types";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
@@ -31,6 +32,7 @@ import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { FatalError } from "../errors.js";
 import { To } from "../singletons.js";
+import AbstractValue from "../values/AbstractValue";
 
 export type ReactSymbolTypes = "react.element" | "react.fragment" | "react.portal" | "react.return" | "react.call";
 
@@ -92,6 +94,10 @@ export function valueIsClassComponent(realm: Realm, value: Value): boolean {
     return To.ToBooleanPartial(realm, Get(realm, prototype, "isReactComponent"));
   }
   return false;
+}
+
+export function valueIsKnownReactAbstraction(realm: Realm, value: Value): boolean {
+  return value instanceof AbstractObjectValue && realm.react.abstractHints.has(value);
 }
 
 // logger isn't typed otherwise it will increase flow cycle length :()
@@ -361,4 +367,47 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
       return t.identifier("context");
     }
   });
+}
+
+export function createReactHint(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
+  return {
+    object,
+    propertyName,
+    args,
+  };
+}
+
+export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAScriptSourceFunctionValue {
+  let _valueIsKnownReactAbstraction = valueIsKnownReactAbstraction(realm, value);
+  invariant(
+    value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction,
+    "only ECMAScriptSourceFunctionValue function values or known React abstract values are supported as React root components"
+  );
+  if (_valueIsKnownReactAbstraction) {
+    invariant(value instanceof AbstractValue);
+    let reactHint = realm.react.abstractHints.get(value);
+
+    invariant(reactHint);
+    if (reactHint.object === realm.fbLibraries.reactRelay) {
+      switch (reactHint.propertyName) {
+        case "createFragmentContainer":
+        case "createPaginationContainer":
+        case "createRefetchContainer":
+          invariant(Array.isArray(reactHint.args));
+          // componentType is the 1st argument of a ReactRelay container
+          let componentType = reactHint.args[0];
+          invariant(componentType instanceof ECMAScriptSourceFunctionValue);
+          return componentType;
+        default:
+          invariant(
+            false,
+            `unsupported known React abstraction - ReactRelay property "${reactHint.propertyName}" not supported`
+          );
+      }
+    }
+    invariant(false, "unsupported known React abstraction");
+  } else {
+    invariant(value instanceof ECMAScriptSourceFunctionValue);
+    return value;
+  }
 }
