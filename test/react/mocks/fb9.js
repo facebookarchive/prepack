@@ -58,9 +58,23 @@ module.exports = this.__evaluatePureFunction(() => {
   }
 
   function App(props) {
-    return React.createElement(
-      A,
-      babelHelpers.objectWithoutProperties(props, ['x'])
+    const propsCopyWithDeletedProp = babelHelpers.extends({}, props);
+    delete propsCopyWithDeletedProp.y;
+    return React.createElement('div', null,
+      // Feel free to comment out either of these children
+      // individually when debugging specific cases.
+      React.createElement(
+        A,
+        babelHelpers.objectWithoutProperties(props, ['x'])
+      ),
+      React.createElement(
+        A,
+        babelHelpers.extends({}, props, {x: 30})
+      ),
+      React.createElement(
+        A,
+        propsCopyWithDeletedProp
+      ),
     );
   }
 
