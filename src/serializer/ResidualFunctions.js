@@ -55,13 +55,12 @@ export class ResidualFunctions {
     prelude: Array<BabelNodeStatement>,
     initializerNameGenerator: NameGenerator,
     factoryNameGenerator: NameGenerator,
-    scopeNameGenerator: NameGenerator,
-    referentializedNameGenerator: NameGenerator,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
-    additionalFunctionValueNestedFunctions: Set<FunctionValue>
+    additionalFunctionValueNestedFunctions: Set<FunctionValue>,
+    referentializer: Referentializer
   ) {
     this.realm = realm;
     this.statistics = statistics;
@@ -84,7 +83,7 @@ export class ResidualFunctions {
     this.residualFunctionInstances = residualFunctionInstances;
     this.residualClassMethodInstances = residualClassMethodInstances;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
-    this.referentializer = new Referentializer(options, scopeNameGenerator, referentializedNameGenerator, statistics);
+    this.referentializer = referentializer;
     for (let instance of residualFunctionInstances.values()) {
       invariant(instance !== undefined);
       if (!additionalFunctionValueInfos.has(instance.functionValue)) this.addFunctionInstance(instance);
@@ -229,7 +228,7 @@ export class ResidualFunctions {
     let strictFunctionBodies = [];
     let funcNodes: Map<FunctionValue, BabelNodeFunctionExpression> = new Map();
 
-    for (let [funcBody, instances] of functionEntries) {
+    /*for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
       this.referentializer.referentialize(
@@ -237,7 +236,7 @@ export class ResidualFunctions {
         instances,
         instance => !rewrittenAdditionalFunctions.has(instance.functionValue)
       );
-    }
+    }*/
 
     let defineFunction = (instance, funcId, funcOrClassNode) => {
       let { functionValue } = instance;

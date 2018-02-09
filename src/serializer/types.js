@@ -103,6 +103,7 @@ export type ResidualFunctionBinding = {
 export type ScopeBinding = {
   name: string,
   id: number,
+  containedBindings: Array<ResidualFunctionBinding>,
   initializationValues: Array<BabelNodeExpression>,
   capturedScope?: string,
   containingAdditionalFunction: void | FunctionValue,

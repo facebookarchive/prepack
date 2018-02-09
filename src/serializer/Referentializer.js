@@ -130,12 +130,14 @@ export class Referentializer {
       scope = {
         name: this.scopeNameGenerator.generate(),
         id: refState.capturedScopeInstanceIdx++,
+        containedBindings: [],
         initializationValues: [],
         containingAdditionalFunction: residualBinding.referencedOnlyFromAdditionalFunctions,
       };
       serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
 
+    invariant(!residualBinding.scope || residualBinding.scope === scope)
     residualBinding.scope = scope;
     return scope;
   }
@@ -178,6 +180,7 @@ export class Referentializer {
       // an improvement to split these variables into multiple
       // scopes.
       const variableIndexInScope = scope.initializationValues.length;
+      scope.containedBindings.push(residualBinding);
       invariant(residualBinding.serializedValue);
       scope.initializationValues.push(residualBinding.serializedValue);
       scope.capturedScope = capturedScope;
@@ -190,7 +193,6 @@ export class Referentializer {
       );
     }
 
-    residualBinding.referentialized = true;
     this.statistics.referentialized++;
   }
 
@@ -207,12 +209,16 @@ export class Referentializer {
         invariant(residualBinding !== undefined);
         if (residualBinding.modified) {
           // Initialize captured scope at function call instead of globally
+          if (!residualBinding.declarativeEnvironmentRecord) residualBinding.referentialized = true;
           if (!residualBinding.referentialized) {
             if (!shouldReferentializeInstanceFn(instance)) {
               // TODO #989: Fix additional functions and referentialization
               throw new FatalError("TODO: implement referentialization for prepacked functions");
             }
-            this.referentializeBinding(residualBinding, name, instance);
+            if (!this._options.simpleClosures)
+              this._getSerializedBindingScopeInstance(residualBinding);
+            //this.referentializeBinding(residualBinding, name, instance);
+            residualBinding.referentialized = true;
           }
 
           invariant(residualBinding.referentialized);
