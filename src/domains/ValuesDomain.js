@@ -145,28 +145,28 @@ export default class ValuesDomain {
     } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
       // ECMA262 12.10.3
       if (op === "<") {
-        let r = AbstractRelationalComparison(realm, lval, rval, true);
+        let r = AbstractRelationalComparison(realm, lval, rval, true, op);
         if (r instanceof UndefinedValue) {
           return realm.intrinsics.false;
         } else {
           return r;
         }
       } else if (op === "<=") {
-        let r = AbstractRelationalComparison(realm, rval, lval, false);
+        let r = AbstractRelationalComparison(realm, rval, lval, false, op);
         if (r instanceof UndefinedValue || (r instanceof BooleanValue && r.value)) {
           return realm.intrinsics.false;
         } else {
           return realm.intrinsics.true;
         }
       } else if (op === ">") {
-        let r = AbstractRelationalComparison(realm, rval, lval, false);
+        let r = AbstractRelationalComparison(realm, rval, lval, false, op);
         if (r instanceof UndefinedValue) {
           return realm.intrinsics.false;
         } else {
           return r;
         }
       } else if (op === ">=") {
-        let r = AbstractRelationalComparison(realm, lval, rval, true);
+        let r = AbstractRelationalComparison(realm, lval, rval, true, op);
         if (r instanceof UndefinedValue || (r instanceof BooleanValue && r.value)) {
           return realm.intrinsics.false;
         } else {
@@ -194,10 +194,16 @@ export default class ValuesDomain {
       // ECMA262 12.6.3
 
       // 5. Let base be ? ToNumber(leftValue).
-      let base = To.ToNumber(realm, lval);
+      let base = To.ToNumberOrAbstract(realm, lval);
 
       // 6. Let exponent be ? ToNumber(rightValue).
-      let exponent = To.ToNumber(realm, rval);
+      let exponent = To.ToNumberOrAbstract(realm, rval);
+
+      if (base instanceof AbstractValue || exponent instanceof AbstractValue) {
+        const baseVal = base instanceof AbstractValue ? base : new NumberValue(realm, base);
+        const exponentVal = exponent instanceof AbstractValue ? exponent : new NumberValue(realm, exponent);
+        return AbstractValue.createFromBinaryOp(realm, op, baseVal, exponentVal);
+      }
 
       // 7. Return the result of Applying the ** operator with base and exponent as specified in 12.7.3.4.
       return new NumberValue(realm, Math.pow(base, exponent));
@@ -242,10 +248,8 @@ export default class ValuesDomain {
       return new BooleanValue(realm, !StrictEqualityComparison(realm, lval, rval));
     } else if (op === "===") {
       return new BooleanValue(realm, StrictEqualityComparison(realm, lval, rval));
-    } else if (op === "!=") {
-      return new BooleanValue(realm, !AbstractEqualityComparison(realm, lval, rval));
-    } else if (op === "==") {
-      return new BooleanValue(realm, AbstractEqualityComparison(realm, lval, rval));
+    } else if (op === "!=" || op === "==") {
+      return AbstractEqualityComparison(realm, lval, rval, op);
     } else if (op === "&" || op === "|" || op === "^") {
       // ECMA262 12.12.3
 
