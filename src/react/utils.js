@@ -21,7 +21,7 @@ import {
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import type { Descriptor } from "../types";
-import { Get } from "../methods/index.js";
+import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
 import invariant from "../invariant.js";
@@ -202,32 +202,32 @@ function GetDescriptorForProperty(value: ObjectValue, propertyName: string): ?De
 
 export function convertSimpleClassComponentToFunctionalComponent(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue,
+  complexComponentType: ECMAScriptSourceFunctionValue,
   additionalFunctionEffects: AdditionalFunctionEffects
 ): void {
-  let prototype = componentType.properties.get("prototype");
+  let prototype = complexComponentType.properties.get("prototype");
   invariant(prototype);
   invariant(prototype.descriptor);
   prototype.descriptor.configurable = true;
-  Properties.DeletePropertyOrThrow(realm, componentType, "prototype");
+  Properties.DeletePropertyOrThrow(realm, complexComponentType, "prototype");
 
   // fix the length as we've changed the arguments
-  let lengthProperty = GetDescriptorForProperty(componentType, "length");
+  let lengthProperty = GetDescriptorForProperty(complexComponentType, "length");
   invariant(lengthProperty);
   lengthProperty.writable = false;
   lengthProperty.enumerable = false;
   lengthProperty.configurable = true;
   // ensure the length value is set to the new value
-  let lengthValue = Get(realm, componentType, "length");
+  let lengthValue = Get(realm, complexComponentType, "length");
   invariant(lengthValue instanceof NumberValue);
   lengthValue.value = 2;
 
   // change the function kind
-  componentType.$FunctionKind = "normal";
+  complexComponentType.$FunctionKind = "normal";
   // set the prototype back to an object
-  componentType.$Prototype = realm.intrinsics.FunctionPrototype;
+  complexComponentType.$Prototype = realm.intrinsics.FunctionPrototype;
   // give the function the functional components params
-  componentType.$FormalParameters = [t.identifier("props"), t.identifier("context")];
+  complexComponentType.$FormalParameters = [t.identifier("props"), t.identifier("context")];
   // add a transform to occur after the additional function has serialized the body of the class
   additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
     // as this was a class before and is now a functional component, we need to replace
@@ -257,6 +257,98 @@ export function convertSimpleClassComponentToFunctionalComponent(
       undefined,
       (undefined: any),
       undefined
+    );
+  });
+}
+
+function cloneProperties(realm: Realm, properties: Map<string, any>, object: ObjectValue): Map<string, any> {
+  let newProperties = new Map();
+  for (let [propertyName, { descriptor }] of properties) {
+    newProperties.set(propertyName, {
+      descriptor: cloneDescriptor(descriptor),
+      key: propertyName,
+      object,
+    });
+  }
+  return newProperties;
+}
+
+function cloneValue(
+  realm: Realm,
+  originalValue: Value,
+  _prototype: null | ObjectValue,
+  copyToObject?: ObjectValue
+): Value {
+  if (originalValue instanceof FunctionValue) {
+    return cloneFunction(realm, originalValue, _prototype, copyToObject);
+  }
+  invariant(false, "TODO: add support to cloneValue() for more value types");
+}
+
+function cloneFunction(
+  realm: Realm,
+  originalValue: Value,
+  _prototype: null | ObjectValue,
+  copyToObject?: ObjectValue
+): FunctionValue {
+  let newValue;
+  if (originalValue instanceof ECMAScriptSourceFunctionValue) {
+    newValue = copyToObject || new ECMAScriptSourceFunctionValue(realm, originalValue.intrinsicName);
+    invariant(newValue instanceof ECMAScriptSourceFunctionValue);
+    Object.assign(newValue, originalValue);
+    let properties = cloneProperties(realm, originalValue.properties, newValue);
+    newValue.properties = properties;
+
+    // handle home object + prototype
+    let originalPrototype = originalValue.$HomeObject;
+    invariant(originalPrototype instanceof ObjectValue);
+    let prototype = _prototype || clonePrototype(realm, originalPrototype);
+    newValue.$HomeObject = prototype;
+    if (originalPrototype.properties.has("constructor")) {
+      Properties.Set(realm, prototype, "constructor", newValue, false);
+    }
+    if (originalValue.properties.has("prototype")) {
+      Properties.Set(realm, newValue, "prototype", prototype, false);
+    }
+  }
+  invariant(newValue instanceof FunctionValue, "TODO: add support to cloneValue() for more function types");
+  return newValue;
+}
+
+function clonePrototype(realm: Realm, prototype: Value): ObjectValue {
+  invariant(prototype instanceof ObjectValue);
+  let newPrototype = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, prototype.intrinsicName);
+
+  Object.assign(newPrototype, prototype);
+  for (let [propertyName] of prototype.properties) {
+    if (propertyName !== "constructor") {
+      let originalValue = Get(realm, prototype, propertyName);
+      let newValue = cloneValue(realm, originalValue, prototype);
+      Properties.Set(realm, newPrototype, propertyName, newValue, false);
+    }
+  }
+  return newPrototype;
+}
+
+export function convertFunctionalComponentToComplexClassComponent(
+  realm: Realm,
+  functionalComponentType: ECMAScriptSourceFunctionValue,
+  complexComponentType: void | ECMAScriptSourceFunctionValue,
+  additionalFunctionEffects: AdditionalFunctionEffects
+): void {
+  invariant(complexComponentType instanceof ECMAScriptSourceFunctionValue);
+  cloneValue(realm, complexComponentType, null, functionalComponentType);
+  // add a transform to occur after the additional function has serialized the body of the class
+  additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
+    // as we've converted a functional component to a complex one, we are going to have issues with
+    // "props" and "context" references, as they're now going to be "this.props" and "this.context".
+    // we simply need a to add to vars to beginning of the body to get around this
+    // if they're not used, any DCE tool post-Prepack (GCC or Uglify) will remove them
+    body.unshift(
+      t.variableDeclaration("var", [
+        t.variableDeclarator(t.identifier("props"), t.memberExpression(t.thisExpression(), t.identifier("props"))),
+        t.variableDeclarator(t.identifier("context"), t.memberExpression(t.thisExpression(), t.identifier("context"))),
+      ])
     );
   });
 }

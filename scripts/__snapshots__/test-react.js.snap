@@ -7,10 +7,17 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React (JSX) Class component folding Inheritance chaining 1`] = `
+exports[`Test React (JSX) Class component folding Complex class components folding into functional root component 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (JSX) Class component folding Inheritance chaining 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -23,8 +30,8 @@ ReactStatistics {
 
 exports[`Test React (JSX) Class component folding Simple classes #3 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -233,15 +240,15 @@ ReactStatistics {
 
 exports[`Test React (JSX) Functional component folding Simple 4 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React (JSX) Functional component folding Simple 5 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 3,
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -322,10 +329,17 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React (create-element) Class component folding Inheritance chaining 1`] = `
+exports[`Test React (create-element) Class component folding Complex class components folding into functional root component 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (create-element) Class component folding Inheritance chaining 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -338,8 +352,8 @@ ReactStatistics {
 
 exports[`Test React (create-element) Class component folding Simple classes #3 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -548,15 +562,15 @@ ReactStatistics {
 
 exports[`Test React (create-element) Functional component folding Simple 4 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React (create-element) Functional component folding Simple 5 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 3,
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 

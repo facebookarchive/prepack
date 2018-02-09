@@ -309,6 +309,10 @@ function runTestSuite(outputJsx) {
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
       });
+
+      it("Complex class components folding into functional root component", async () => {
+        await runTest(directory, "complex-class-into-functional-root.js");
+      });
     });
 
     describe("Factory class component folding", () => {

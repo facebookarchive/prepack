@@ -57,31 +57,36 @@ export type BranchReactComponentTree = {
   context: ObjectValue | AbstractObjectValue,
 };
 
+export type ComponentTreeState = {
+  branchedComponentTrees: Array<BranchReactComponentTree>,
+  componentType: void | ECMAScriptSourceFunctionValue,
+  status: "SIMPLE" | "COMPLEX",
+};
+
 export class Reconciler {
   constructor(
     realm: Realm,
     moduleTracer: ModuleTracer,
     statistics: ReactStatistics,
     reactSerializerState: ReactSerializerState,
-    simpleClassComponents: Set<Value>,
-    branchReactComponentTrees: Array<BranchReactComponentTree>
+    reactRootComponents: Set<ECMAScriptSourceFunctionValue>
   ) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
     this.statistics = statistics;
     this.reactSerializerState = reactSerializerState;
-    this.simpleClassComponents = simpleClassComponents;
     this.logger = moduleTracer.modules.logger;
-    this.branchReactComponentTrees = branchReactComponentTrees;
+    this.componentTreeState = this._createComponentTreeState();
+    this.reactRootComponents = reactRootComponents;
   }
 
   realm: Realm;
   moduleTracer: ModuleTracer;
   statistics: ReactStatistics;
   reactSerializerState: ReactSerializerState;
-  simpleClassComponents: Set<Value>;
   logger: Logger;
-  branchReactComponentTrees: Array<BranchReactComponentTree>;
+  componentTreeState: ComponentTreeState;
+  reactRootComponents: Set<ECMAScriptSourceFunctionValue>;
 
   render(
     componentType: ECMAScriptSourceFunctionValue,
@@ -89,60 +94,66 @@ export class Reconciler {
     context: ObjectValue | AbstractObjectValue | null,
     isRoot: boolean
   ): Effects {
+    const renderComponentTree = () => {
+      // initialProps and initialContext are created from Flow types from:
+      // - if a functional component, the 1st and 2nd paramater of function
+      // - if a class component, use this.props and this.context
+      // if there are no Flow types for props or context, we will throw a
+      // FatalError, unless it's a functional component that has no paramater
+      // i.e let MyComponent = () => <div>Hello world</div>
+      try {
+        let initialProps = props || getInitialProps(this.realm, componentType);
+        let initialContext = context || getInitialContext(this.realm, componentType);
+        let { result } = this._renderComponent(componentType, initialProps, initialContext, "ROOT", null);
+        this.statistics.optimizedTrees++;
+        return result;
+      } catch (error) {
+        // if we get an error and we're not dealing with the root
+        // rather than throw a FatalError, we log the error as a warning
+        // and continue with the other tree roots
+        // TODO: maybe control what levels gets treated as warning/error?
+        if (!isRoot) {
+          this.logger.logWarning(
+            componentType,
+            `__registerReactComponentRoot() React component tree (branch) failed due to - ${error.message}`
+          );
+          return this.realm.intrinsics.undefined;
+        }
+        // if there was a bail-out on the root component in this reconcilation process, then this
+        // should be an invariant as the user has explicitly asked for this component to get folded
+        if (error instanceof Completion) {
+          this.logger.logCompletion(error);
+          throw error;
+        } else if (error instanceof ExpectedBailOut) {
+          let diagnostic = new CompilerDiagnostic(
+            `__registerReactComponentRoot() React component tree (root) failed due to - ${error.message}`,
+            this.realm.currentLocation,
+            "PP0020",
+            "FatalError"
+          );
+          this.realm.handleError(diagnostic);
+          if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
+        }
+        throw error;
+      }
+    };
+
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
         // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
         // than newly created ones. Then log those to the error logger. That'll help us track violations in
         // components. :)
         this.realm.evaluateForEffects(
-          () => {
-            // initialProps and initialContext are created from Flow types from:
-            // - if a functional component, the 1st and 2nd paramater of function
-            // - if a class component, use this.props and this.context
-            // if there are no Flow types for props or context, we will throw a
-            // FatalError, unless it's a functional component that has no paramater
-            // i.e let MyComponent = () => <div>Hello world</div>
-            try {
-              let initialProps = props || getInitialProps(this.realm, componentType);
-              let initialContext = context || getInitialContext(this.realm, componentType);
-              let { result } = this._renderComponent(componentType, initialProps, initialContext, "ROOT", null);
-              this.statistics.optimizedTrees++;
-              return result;
-            } catch (error) {
-              // if we get an error and we're not dealing with the root
-              // rather than throw a FatalError, we log the error as a warning
-              // and continue with the other tree roots
-              // TODO: maybe control what levels gets treated as warning/error?
-              if (!isRoot) {
-                this.logger.logWarning(
-                  componentType,
-                  `__registerReactComponentRoot() React component tree (branch) failed due to - ${error.message}`
-                );
-                return this.realm.intrinsics.undefined;
-              }
-              // if there was a bail-out on the root component in this reconcilation process, then this
-              // should be an invariant as the user has explicitly asked for this component to get folded
-              if (error instanceof Completion) {
-                this.logger.logCompletion(error);
-                throw error;
-              } else if (error instanceof ExpectedBailOut) {
-                let diagnostic = new CompilerDiagnostic(
-                  `__registerReactComponentRoot() React component tree (root) failed due to - ${error.message}`,
-                  this.realm.currentLocation,
-                  "PP0020",
-                  "FatalError"
-                );
-                this.realm.handleError(diagnostic);
-                if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
-              }
-              throw error;
-            }
-          },
+          renderComponentTree,
           /*state*/ null,
           `react component: ${componentType.getName()}`
         )
       )
     );
+  }
+
+  clearComponentTreeState() {
+    this.componentTreeState = this._createComponentTreeState();
   }
 
   _renderComplexClassComponent(
@@ -154,13 +165,20 @@ export class Reconciler {
     branchState: BranchState | null
   ): Value {
     if (branchStatus !== "ROOT") {
-      this.branchReactComponentTrees.push({
-        componentType,
-        props,
-        context,
-      });
-      throw new NewComponentTreeBranch();
+      // if the tree is simple and we're not in a branch, we can make this tree complex
+      // and make this complex component the root
+      if (branchStatus === "NO_BRANCH" && this.componentTreeState.status === "SIMPLE") {
+        this.componentTreeState.componentType = componentType;
+      } else {
+        this.componentTreeState.branchedComponentTrees.push({
+          componentType,
+          props,
+          context,
+        });
+        throw new NewComponentTreeBranch();
+      }
     }
+    this.componentTreeState.status = "COMPLEX";
     // create a new instance of this React class component
     let instance = createClassInstance(this.realm, componentType, props, context, classMetadata);
     // get the "render" method off the instance
@@ -255,6 +273,11 @@ export class Reconciler {
     branchState: BranchState | null
   ) {
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
+    // if this component we are trying to render is in the reactRootComponents, we remove it
+    // to avoid future conflicts trying to re-render the same root twice
+    if (this.reactRootComponents.has(componentType)) {
+      this.reactRootComponents.delete(componentType);
+    }
     let value;
     let childContext = context;
 
@@ -286,7 +309,6 @@ export class Reconciler {
         // that the class wasn't simple, then try again with the "complex" heuristics.
         try {
           value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
-          this.simpleClassComponents.add(value);
         } catch (error) {
           // if we get back a SimpleClassBailOut error, we know that this class component
           // wasn't a simple one and is likely to be a complex class component instead
@@ -329,6 +351,14 @@ export class Reconciler {
     return {
       result: this._resolveDeeply(value, context, branchStatus === "ROOT" ? "NO_BRANCH" : branchStatus, branchState),
       childContext,
+    };
+  }
+
+  _createComponentTreeState(): ComponentTreeState {
+    return {
+      branchedComponentTrees: [],
+      componentType: undefined,
+      status: "SIMPLE",
     };
   }
 
