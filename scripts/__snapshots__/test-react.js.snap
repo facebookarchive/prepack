@@ -9,8 +9,8 @@ ReactStatistics {
 
 exports[`Test React (JSX) Class component folding Complex class components folding into functional root component 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 0,
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -345,8 +345,8 @@ ReactStatistics {
 
 exports[`Test React (create-element) Class component folding Complex class components folding into functional root component 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 0,
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 

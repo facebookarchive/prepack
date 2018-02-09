@@ -273,12 +273,6 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
-    invariant(componentType instanceof ECMAScriptSourceFunctionValue);
-    // if this component we are trying to render is in the reactRootValues, we remove it
-    // to avoid future conflicts trying to re-render the same root twice
-    if (this.reactRootValues.has(componentType)) {
-      this.reactRootValues.delete(componentType);
-    }
     if (valueIsKnownReactAbstraction(this.realm, componentType)) {
       invariant(componentType instanceof AbstractValue);
       this.componentTreeState.branchedComponentTrees.push({
@@ -287,6 +281,12 @@ export class Reconciler {
         rootValue: componentType,
       });
       throw new NewComponentTreeBranch();
+    }
+    invariant(componentType instanceof ECMAScriptSourceFunctionValue);
+    // if this component we are trying to render is in the reactRootValues, we remove it
+    // to avoid future conflicts trying to re-render the same root twice
+    if (this.reactRootValues.has(componentType)) {
+      this.reactRootValues.delete(componentType);
     }
     let value;
     let childContext = context;
