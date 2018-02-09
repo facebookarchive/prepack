@@ -261,7 +261,7 @@ ReactStatistics {
 
 exports[`Test React (JSX) Functional component folding Simple fragments 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
+  "inlinedComponents": 3,
   "optimizedTrees": 1,
 }
 `;
@@ -590,7 +590,7 @@ ReactStatistics {
 
 exports[`Test React (create-element) Functional component folding Simple fragments 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
+  "inlinedComponents": 3,
   "optimizedTrees": 1,
 }
 `;
