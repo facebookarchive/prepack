@@ -80,7 +80,12 @@ export function RequireObjectCoercible(
       return arg;
     }
     if (argLoc) {
-      let error = new CompilerDiagnostic("member expression object is unknown", argLoc, "PP0012", "FatalError");
+      let error = new CompilerDiagnostic(
+        `member expression object ${AbstractValue.describe(arg)} is unknown`,
+        argLoc,
+        "PP0012",
+        "FatalError"
+      );
       realm.handleError(error);
       throw new FatalError();
     }

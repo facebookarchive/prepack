@@ -693,7 +693,7 @@ export default class AbstractValue extends Value {
     return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
   }
 
-  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
+  static describe(val: Value, propertyName: void | PropertyKeyValue): string {
     let realm = val.$Realm;
 
     let identity;
@@ -717,8 +717,13 @@ export default class AbstractValue extends Value {
     else if (typeof propertyName === "string") location = `at ${propertyName}`;
     else location = source_locations.length === 0 ? "" : `at ${source_locations.join("\n")}`;
 
-    let message = `This operation is not yet supported on ${identity} ${location}`;
+    return `${identity} ${location}`;
+  }
 
+  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
+    let message = `This operation is not yet supported on ${AbstractValue.describe(val, propertyName)}`;
+
+    let realm = val.$Realm;
     return realm.reportIntrospectionError(message);
   }
 
