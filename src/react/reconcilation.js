@@ -53,9 +53,9 @@ import type { ClassComponentMetadata } from "../types.js";
 type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
 export type BranchReactComponentTree = {
-  props: ObjectValue | AbstractObjectValue,
+  context: null | ObjectValue | AbstractObjectValue,
+  props: null | ObjectValue | AbstractObjectValue,
   rootValue: ECMAScriptSourceFunctionValue | AbstractValue,
-  context: ObjectValue | AbstractObjectValue,
 };
 
 export type ComponentTreeState = {
@@ -273,20 +273,20 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
-    if (valueIsKnownReactAbstraction(this.realm, componentType)) {
-      invariant(componentType instanceof AbstractValue);
-      this.branchReactComponentTrees.push({
-        props,
-        rootValue: componentType,
-        context,
-      });
-      throw new NewComponentTreeBranch();
-    }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
     // if this component we are trying to render is in the reactRootValues, we remove it
     // to avoid future conflicts trying to re-render the same root twice
     if (this.reactRootValues.has(componentType)) {
       this.reactRootValues.delete(componentType);
+    }
+    if (valueIsKnownReactAbstraction(this.realm, componentType)) {
+      invariant(componentType instanceof AbstractValue);
+      this.componentTreeState.branchedComponentTrees.push({
+        context,
+        props,
+        rootValue: componentType,
+      });
+      throw new NewComponentTreeBranch();
     }
     let value;
     let childContext = context;

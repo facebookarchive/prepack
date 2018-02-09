@@ -301,6 +301,7 @@ function cloneFunction(
   if (originalValue instanceof ECMAScriptSourceFunctionValue) {
     newValue = copyToObject || new ECMAScriptSourceFunctionValue(realm, originalValue.intrinsicName);
     invariant(newValue instanceof ECMAScriptSourceFunctionValue);
+    // $FlowFixMe: complains about Object.assign
     Object.assign(newValue, originalValue);
     let properties = cloneProperties(realm, originalValue.properties, newValue);
     newValue.properties = properties;

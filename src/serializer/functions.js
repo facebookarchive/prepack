@@ -88,7 +88,7 @@ export class Functions {
   }
 
   __generateAdditionalFunctions(globalKey: string) {
-    let recordedAdditionalFunctions: Map<FunctionValue | AbstractValue, string> = new Map();
+    let recordedAdditionalFunctions: Map<ECMAScriptSourceFunctionValue | AbstractValue, string> = new Map();
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
       () => Get(realm, realm.$GlobalObject, globalKey),
@@ -117,7 +117,7 @@ export class Functions {
           );
           throw new FatalError("Additional Function values cannot be AbstractValues");
         }
-        invariant(value instanceof AbstractValue || value instanceof FunctionValue);
+        invariant(value instanceof AbstractValue || value instanceof ECMAScriptSourceFunctionValue);
         recordedAdditionalFunctions.set(value, funcId);
       }
     }
