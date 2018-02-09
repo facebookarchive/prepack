@@ -15,6 +15,7 @@ if (!this.babelHelpers) {
     _extends: Object.assign,
     extends: Object.assign,
     objectWithoutProperties(obj, keys) {
+      var hasOwn = Object.prototype.hasOwnProperty;
       var target = {};
       for (var i in obj) {
         if (!hasOwn.call(obj, i) || keys.indexOf(i) >= 0) {
@@ -32,6 +33,8 @@ if (!this.babelHelpers) {
   };
 }
 
+var obj = {a: 1, b: 2, c: 3};
+
 // FB www class transform output
 const _React$Component = babelHelpers.inherits(Hello, React.Component);
 Hello.prototype.componentDidMount = function() {
@@ -42,6 +45,7 @@ Hello.prototype.render = function() {
     "h1",
     null,
     "Hello world",
+    Object.keys(babelHelpers.objectWithoutProperties(obj, ["a", "c"]))
   );
 };
 function Hello() {
