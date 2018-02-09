@@ -34,6 +34,8 @@ import {
   valueIsClassComponent,
   convertSimpleClassComponentToFunctionalComponent,
   normalizeFunctionalComponentParamaters,
+  getComponentTypeFromRootValue,
+  valueIsKnownReactAbstraction,
 } from "../react/utils.js";
 import * as t from "babel-types";
 
@@ -85,7 +87,7 @@ export class Functions {
   }
 
   __generateAdditionalFunctions(globalKey: string) {
-    let recordedAdditionalFunctions: Map<FunctionValue, string> = new Map();
+    let recordedAdditionalFunctions: Map<FunctionValue | AbstractValue, string> = new Map();
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
       () => Get(realm, realm.$GlobalObject, globalKey),
@@ -95,12 +97,18 @@ export class Functions {
     for (let funcId of globalRecordedAdditionalFunctionsMap.getOwnPropertyKeysArray()) {
       let property = globalRecordedAdditionalFunctionsMap.properties.get(funcId);
       if (property) {
-        let funcValue = property.descriptor && property.descriptor.value;
-        if (!(funcValue instanceof FunctionValue)) {
-          invariant(funcValue instanceof AbstractValue);
+        let value = property.descriptor && property.descriptor.value;
+
+        if (
+          !(
+            value instanceof FunctionValue ||
+            (value instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, value))
+          )
+        ) {
+          invariant(value instanceof AbstractValue);
           realm.handleError(
             new CompilerDiagnostic(
-              `Additional Function Value ${funcId} is an AbstractValue which is not allowed`,
+              `Additional Function Value ${funcId} is an AbstractValue which is not allowed (unless a React known abstract)`,
               undefined,
               "PP0001",
               "FatalError"
@@ -108,7 +116,8 @@ export class Functions {
           );
           throw new FatalError("Additional Function values cannot be AbstractValues");
         }
-        recordedAdditionalFunctions.set(funcValue, funcId);
+        invariant(value instanceof AbstractValue || value instanceof FunctionValue);
+        recordedAdditionalFunctions.set(value, funcId);
       }
     }
     return recordedAdditionalFunctions;
@@ -157,7 +166,7 @@ export class Functions {
     let recordedReactRootComponents = this.__generateAdditionalFunctions("__reactComponentRoots");
 
     // Get write effects of the components
-    for (let [componentType] of recordedReactRootComponents) {
+    for (let [rootValue] of recordedReactRootComponents) {
       let simpleClassComponents = new Set();
       let branchReactComponentTrees = [];
       let reconciler = new Reconciler(
@@ -168,17 +177,15 @@ export class Functions {
         simpleClassComponents,
         branchReactComponentTrees
       );
-      invariant(
-        componentType instanceof ECMAScriptSourceFunctionValue,
-        "only ECMAScriptSourceFunctionValue function values are supported as React root components"
-      );
+      let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
       let effects = reconciler.render(componentType, null, null, true);
       this._generateWriteEffectsForReactComponentTree(componentType, effects, simpleClassComponents);
 
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
       let alreadyGeneratedEffects = new Set();
-      for (let { componentType: branchComponentType } of branchReactComponentTrees) {
+      for (let { rootValue: branchRootValue } of branchReactComponentTrees) {
+        let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
         // so we don't process the same component multiple times (we might change this logic later)
         if (!alreadyGeneratedEffects.has(branchComponentType)) {
           alreadyGeneratedEffects.add(branchComponentType);
@@ -200,6 +207,7 @@ export class Functions {
     let calls = [];
     for (let [funcValue, funcId] of recordedAdditionalFunctions) {
       // TODO #987: Make Additional Functions work with arguments
+      invariant(funcValue instanceof FunctionValue);
       calls.push([
         funcValue,
         t.callExpression(

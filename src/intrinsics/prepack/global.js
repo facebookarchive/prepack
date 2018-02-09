@@ -29,6 +29,8 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
+import { valueIsKnownReactAbstraction } from "../../react/utils.js";
+import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
@@ -138,14 +140,23 @@ export default function(realm: Realm): void {
         "global.__registerReactComponentRoot",
         "__registerReactComponentRoot",
         0,
-        (context, [functionValue]) => {
-          invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        (context, [value]) => {
+          if (!(value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(realm, value))) {
+            let diagnostic = new CompilerDiagnostic(
+              "a value has been passed to __registerReactComponentRoot() that is not a function value or a known React abstract value",
+              realm.currentLocation,
+              "PP0024",
+              "FatalError"
+            );
+            realm.handleError(diagnostic);
+            if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+          }
           realm.assignToGlobal(
             t.memberExpression(
               t.memberExpression(t.identifier("global"), t.identifier("__reactComponentRoots")),
               t.identifier("" + reactComponentRootUid++)
             ),
-            functionValue
+            value
           );
           return realm.intrinsics.undefined;
         }
