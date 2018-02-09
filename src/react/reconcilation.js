@@ -255,7 +255,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
-    if (valueIsKnownReactAbstraction(componentType)) {
+    if (valueIsKnownReactAbstraction(this.realm, componentType)) {
       invariant(componentType instanceof AbstractValue);
       this.branchReactComponentTrees.push({
         props,
@@ -432,7 +432,7 @@ export class Reconciler {
 
       if (
         renderStrategy === "NORMAL" &&
-        !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(typeValue))
+        !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
       ) {
         this._assignBailOutMessage(
           reactElement,

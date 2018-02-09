@@ -35,7 +35,7 @@ function createReactRelayContainer(realm: Realm, reactRelay: ObjectValue, contai
           ((otherArgs: any): Array<any>)
         );
       });
-      value.reactHint = createReactHint(reactRelay, containerName, args);
+      realm.react.abstractHints.set(value, createReactHint(reactRelay, containerName, args));
       return value;
     }),
     writable: false,

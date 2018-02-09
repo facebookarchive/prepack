@@ -19,7 +19,7 @@ import type {
 } from "babel-types";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import type { PropertyKeyValue, ReactHint } from "../types.js";
+import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
@@ -74,12 +74,6 @@ export default class AbstractValue extends Value {
   values: ValuesDomain;
   mightBeEmpty: boolean;
   args: Array<Value>;
-  // reactHints are generated to help improve the effeciency of the React reconciler when
-  // operating on a tree of React components. We can use reactHint to mark AbstractValues
-  // with extra data that helps us traverse through the tree that would otherwise not be possible
-  // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
-  // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
-  reactHint: void | ReactHint;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {

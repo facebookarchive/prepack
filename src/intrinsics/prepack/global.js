@@ -141,7 +141,7 @@ export default function(realm: Realm): void {
         "__registerReactComponentRoot",
         0,
         (context, [value]) => {
-          if (!(value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(value))) {
+          if (!(value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(realm, value))) {
             let diagnostic = new CompilerDiagnostic(
               "a value has been passed to __registerReactComponentRoot() that is not a function value or a known React abstract value",
               realm.currentLocation,

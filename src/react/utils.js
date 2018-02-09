@@ -96,8 +96,8 @@ export function valueIsClassComponent(realm: Realm, value: Value): boolean {
   return false;
 }
 
-export function valueIsKnownReactAbstraction(value: Value): boolean {
-  return value instanceof AbstractObjectValue && value.reactHint !== undefined;
+export function valueIsKnownReactAbstraction(realm: Realm, value: Value): boolean {
+  return value instanceof AbstractObjectValue && realm.react.abstractHints.has(value);
 }
 
 // logger isn't typed otherwise it will increase flow cycle length :()
@@ -286,14 +286,14 @@ export function createReactHint(object: ObjectValue, propertyName: string, args:
 }
 
 export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAScriptSourceFunctionValue {
-  let _valueIsKnownReactAbstraction = valueIsKnownReactAbstraction(value);
+  let _valueIsKnownReactAbstraction = valueIsKnownReactAbstraction(realm, value);
   invariant(
     value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction,
     "only ECMAScriptSourceFunctionValue function values or known React abstract values are supported as React root components"
   );
   if (_valueIsKnownReactAbstraction) {
     invariant(value instanceof AbstractValue);
-    let { reactHint } = value;
+    let reactHint = realm.react.abstractHints.get(value);
 
     invariant(reactHint);
     if (reactHint.object === realm.fbLibraries.reactRelay) {

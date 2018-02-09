@@ -100,7 +100,10 @@ export class Functions {
         let value = property.descriptor && property.descriptor.value;
 
         if (
-          !(value instanceof FunctionValue || (value instanceof AbstractValue && valueIsKnownReactAbstraction(value)))
+          !(
+            value instanceof FunctionValue ||
+            (value instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, value))
+          )
         ) {
           invariant(value instanceof AbstractValue);
           realm.handleError(
