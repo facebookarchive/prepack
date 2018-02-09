@@ -12,6 +12,7 @@
 import { Realm, type Effects } from "../realm.js";
 import { ModuleTracer } from "../utils/modules.js";
 import {
+  AbstractValue,
   ECMAScriptSourceFunctionValue,
   Value,
   UndefinedValue,
@@ -19,7 +20,6 @@ import {
   NumberValue,
   BooleanValue,
   NullValue,
-  AbstractValue,
   ArrayValue,
   ObjectValue,
   AbstractObjectValue,
@@ -31,6 +31,7 @@ import {
   forEachArrayValue,
   valueIsLegacyCreateClassComponent,
   valueIsFactoryClassComponent,
+  valueIsKnownReactAbstraction,
   getReactSymbol,
 } from "./utils";
 import { Get } from "../methods/index.js";
@@ -52,8 +53,8 @@ import type { ClassComponentMetadata } from "../types.js";
 type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
 export type BranchReactComponentTree = {
-  componentType: ECMAScriptSourceFunctionValue,
   props: ObjectValue | AbstractObjectValue,
+  rootValue: ECMAScriptSourceFunctionValue | AbstractValue,
   context: ObjectValue | AbstractObjectValue,
 };
 
@@ -155,8 +156,8 @@ export class Reconciler {
   ): Value {
     if (branchStatus !== "ROOT") {
       this.branchReactComponentTrees.push({
-        componentType,
         props,
+        rootValue: componentType,
         context,
       });
       throw new NewComponentTreeBranch();
@@ -254,6 +255,15 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
+    if (valueIsKnownReactAbstraction(this.realm, componentType)) {
+      invariant(componentType instanceof AbstractValue);
+      this.branchReactComponentTrees.push({
+        props,
+        rootValue: componentType,
+        context,
+      });
+      throw new NewComponentTreeBranch();
+    }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
     let value;
     let childContext = context;
@@ -420,7 +430,10 @@ export class Reconciler {
       }
       let renderStrategy = this._getRenderStrategy(typeValue);
 
-      if (renderStrategy === "NORMAL" && !(typeValue instanceof ECMAScriptSourceFunctionValue)) {
+      if (
+        renderStrategy === "NORMAL" &&
+        !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
+      ) {
         this._assignBailOutMessage(
           reactElement,
           `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`

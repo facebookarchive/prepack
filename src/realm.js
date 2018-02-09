@@ -9,7 +9,14 @@
 
 /* @flow */
 
-import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType, ClassComponentMetadata } from "./types.js";
+import type {
+  Intrinsics,
+  PropertyBinding,
+  Descriptor,
+  DebugServerType,
+  ClassComponentMetadata,
+  ReactHint,
+} from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -179,6 +186,7 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       symbols: new Map(),
       currentOwner: undefined,
+      abstractHints: new WeakMap(),
       hoistableReactElements: new WeakMap(),
       hoistableFunctions: new WeakMap(),
     };
@@ -238,8 +246,13 @@ export class Realm {
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    // reactHints are generated to help improve the effeciency of the React reconciler when
+    // operating on a tree of React components. We can use reactHint to mark AbstractValues
+    // with extra data that helps us traverse through the tree that would otherwise not be possible
+    // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
+    // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
+    abstractHints: WeakMap<AbstractValue, ReactHint>,
     output?: ReactOutputTypes,
-    reactLibraryObject?: ObjectValue,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
 
