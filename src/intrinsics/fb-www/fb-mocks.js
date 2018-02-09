@@ -35,6 +35,7 @@ const babelHelpersCode = `
   _extends: Object.assign,
   extends: Object.assign,
   objectWithoutProperties(obj, keys) {
+    var hasOwn = Object.prototype.hasOwnProperty;
     var target = {};
     for (var i in obj) {
       if (!hasOwn.call(obj, i) || keys.indexOf(i) >= 0) {
