@@ -139,7 +139,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   $Prototype: ObjectValue | NullValue;
-  $Extensible: BooleanValue;
+  $Extensible: BooleanValue | AbstractValue;
 
   $ParameterMap: void | ObjectValue; // undefined when the property is "missing"
   $SymbolData: void | SymbolValue | AbstractValue;
@@ -344,7 +344,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   getExtensible(): boolean {
-    return this.$Extensible.value;
+    return this.$Extensible.throwIfNotConcreteBoolean().value;
   }
 
   setExtensible(v: boolean) {
