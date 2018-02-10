@@ -61,7 +61,6 @@ export class ResidualHeapInspector {
           let anyWritable = false,
             anyConfigurable = false;
           for (let propertyBinding of val.properties.values()) {
-            invariant(propertyBinding);
             let desc = propertyBinding.descriptor;
             if (desc === undefined) continue; //deleted
             if (desc.configurable) anyConfigurable = true;
