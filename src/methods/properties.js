@@ -1184,6 +1184,7 @@ export class PropertiesImplementation {
           args[savedIndex] = value;
           value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
         }
+        if (typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
         InternalSetProperty(realm, O, P, {
           value: value,
           writable: "writable" in X ? X.writable : false,
