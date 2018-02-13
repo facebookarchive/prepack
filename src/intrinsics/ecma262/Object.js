@@ -12,6 +12,7 @@
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import {
   AbstractValue,
   ObjectValue,
@@ -20,6 +21,8 @@ import {
   StringValue,
   BooleanValue,
   SymbolValue,
+  FunctionValue,
+  AbstractObjectValue,
 } from "../../values/index.js";
 import {
   IsExtensible,
@@ -33,6 +36,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties as Props, To } from "../../singletons.js";
+import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -58,6 +62,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
+    let to_must_be_abstract = false;
 
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
@@ -73,6 +78,13 @@ export default function(realm: Realm): NativeFunctionValue {
       if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) {
         continue;
       } else {
+        // If the source is abstract that is partial, we don't know what
+        // properties it has, we need to serialize back an abstract value
+        if (nextSource instanceof AbstractValue && nextSource.isPartialObject()) {
+          to_must_be_abstract = true;
+          break;
+        }
+
         // b. Else,
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
@@ -118,8 +130,26 @@ export default function(realm: Realm): NativeFunctionValue {
       }
     }
 
+    if (to_must_be_abstract) {
+      let types = new TypesDomain(FunctionValue);
+      let values = new ValuesDomain();
+      invariant(realm.generator);
+      to = realm.generator.derive(types, values, [target, ...sources], _args => {
+        return t.callExpression(
+          t.memberExpression(t.identifier("Object"), t.identifier("assign")),
+          ((_args: any): Array<any>)
+        );
+      });
+      target.makePartial();
+      target.makeSimple();
+      // Make AbstractObjectValue as Object.assign doesn't copy getters/setter
+      invariant(to instanceof AbstractObjectValue);
+      to.makeSimple();
+      return to;
+    }
     // 5. Return to.
     if (to_must_be_partial) to.makePartial();
+
     return to;
   });
 
