@@ -185,6 +185,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-6.js");
       });
 
+      it("Simple with Object.assign", async () => {
+        await runTest(directory, "simple-with-object-assign.js");
+      });
+
       it("Simple fragments", async () => {
         await runTest(directory, "simple-fragments.js");
       });
