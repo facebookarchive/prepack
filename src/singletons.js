@@ -76,5 +76,5 @@ export function setConcretize(singleton: ConcretizeType) {
 }
 
 export function setUtils(singleton: UtilsType) {
-  utils = singleton;
+  Utils = singleton;
 }

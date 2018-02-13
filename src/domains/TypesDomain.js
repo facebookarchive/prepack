@@ -21,9 +21,7 @@ import {
   ObjectValue,
   PrimitiveValue,
   StringValue,
-  SymbolValue,
   UndefinedValue,
-  NullValue,
   Value,
 } from "../values/index.js";
 

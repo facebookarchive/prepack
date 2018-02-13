@@ -13,19 +13,13 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import type { Realm } from "../realm.js";
 import {
   AbstractObjectValue,
-  ArrayValue,
   BooleanValue,
   ConcreteValue,
-  EmptyValue,
-  FunctionValue,
-  NullValue,
   NumberValue,
-  IntegralValue,
   ObjectValue,
   PrimitiveValue,
   StringValue,
   SymbolValue,
-  UndefinedValue,
 } from "./index.js";
 import invariant from "../invariant.js";
 

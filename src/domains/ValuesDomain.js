@@ -382,7 +382,9 @@ export default class ValuesDomain {
       // 3. Let val be ? GetValue(val).
       let val = value;
       // 4. Return a String according to Table 35.
-      return new StringValue(realm, Utils.typeToString(val.getType()));
+      let typeString = Utils.typeToString(val.getType());
+      invariant(typeString !== undefined);
+      return new StringValue(realm, typeString);
     } else {
       invariant(op === "delete");
       // ECMA262 12.5.3.2

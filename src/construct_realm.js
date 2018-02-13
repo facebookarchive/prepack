@@ -21,7 +21,6 @@ import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/server/Debugger.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
-import * as utils from "./utils.js";
 
 export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {
   initializeSingletons();

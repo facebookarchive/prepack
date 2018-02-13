@@ -10,23 +10,19 @@
 /* @flow */
 
 import {
-  AbstractObjectValue,
   ArrayValue,
   BooleanValue,
-  ConcreteValue,
   EmptyValue,
   FunctionValue,
   NullValue,
   NumberValue,
   IntegralValue,
   ObjectValue,
-  PrimitiveValue,
   StringValue,
   SymbolValue,
   UndefinedValue,
-  Value
+  Value,
 } from "./values/index.js";
-import invariant from './invariant';
 
 export function typeToString(type: typeof Value): void | string {
   function isInstance(proto, Constructor): boolean {
