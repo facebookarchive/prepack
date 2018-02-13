@@ -155,6 +155,8 @@ export default class ValuesDomain {
         let r = AbstractRelationalComparison(realm, rval, lval, false, op);
         if (r instanceof UndefinedValue || (r instanceof BooleanValue && r.value)) {
           return realm.intrinsics.false;
+        } else if (r instanceof AbstractValue) {
+          return r;
         } else {
           return realm.intrinsics.true;
         }
@@ -169,6 +171,8 @@ export default class ValuesDomain {
         let r = AbstractRelationalComparison(realm, lval, rval, true, op);
         if (r instanceof UndefinedValue || (r instanceof BooleanValue && r.value)) {
           return realm.intrinsics.false;
+        } else if (r instanceof AbstractValue) {
+          return r;
         } else {
           return realm.intrinsics.true;
         }
