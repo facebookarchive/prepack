@@ -367,7 +367,8 @@ export default class ObjectValue extends ConcreteValue {
     if (this.$WeakSetData !== undefined) return "WeakSet";
     if (isReactElement(this) && this.$Realm.react.enabled) return "ReactElement";
     if (this.$TypedArrayName !== undefined) return this.$TypedArrayName;
-    // TODO #26 #712: Promises. All kinds of iterators. Generators.
+    if (this.$Promise !== undefined) return "Promise";
+    // TODO #26 #712: All kinds of iterators. Generators.
     return "Object";
   }
 

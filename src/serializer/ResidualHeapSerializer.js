@@ -1420,6 +1420,12 @@ export class ResidualHeapSerializer {
       case "Set":
       case "WeakSet":
         return this._serializeValueSet(val);
+      case "Promise":
+        let promiseValue = val.$PromiseValue;
+        invariant(promiseValue !== undefined);
+        let serializedPromiseValue = this.serializeValue(promiseValue);
+        this._emitObjectProperties(val);
+        return t.newExpression(this.preludeGenerator.memoizeReference("Promise"), [serializedPromiseValue]);
       default:
         invariant(kind === "Object", "invariant established by visitor");
         invariant(this.$ParameterMap === undefined, "invariant established by visitor");

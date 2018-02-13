@@ -316,8 +316,9 @@ export type ObjectKind =
   | "WeakMap"
   | "WeakSet"
   | TypedArrayKind
-  | "ReactElement";
-// TODO #26 #712: Promises. All kinds of iterators. Generators.
+  | "ReactElement"
+  | "Promise";
+// TODO #26 #712: All kinds of iterators. Generators.
 
 export type ClassComponentMetadata = {
   instanceProperties: Set<string>,
