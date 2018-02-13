@@ -53,6 +53,7 @@ export class Referentializer {
 
     this.referentializationState = new Map();
     this._referentializedNameGenerator = referentializedNameGenerator;
+    this._referentializedBindings = new Set();
   }
 
   _options: SerializerOptions;
@@ -62,6 +63,7 @@ export class Referentializer {
   _newCapturedScopeInstanceIdx: number;
   referentializationState: Map<ReferentializationScope, ReferentializationState>;
   _referentializedNameGenerator: NameGenerator;
+  _referentializedBindings: Set<ResidualFunctionBinding>;
 
   _createReferentializationState(): ReferentializationState {
     return {
@@ -137,7 +139,7 @@ export class Referentializer {
       serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
 
-    invariant(!residualBinding.scope || residualBinding.scope === scope)
+    invariant(!residualBinding.scope || residualBinding.scope === scope);
     residualBinding.scope = scope;
     return scope;
   }
@@ -196,6 +198,29 @@ export class Referentializer {
     this.statistics.referentialized++;
   }
 
+  // Cleans all scopes between passes of the serializer
+  cleanInstance(instance: FunctionInstance) {
+    instance.initializationStatements = [];
+    for (let b of ((instance: any): FunctionInstance).residualFunctionBindings.values()) {
+      let binding = ((b: any): ResidualFunctionBinding);
+      if (binding.referentialized && binding.declarativeEnvironmentRecord) {
+        let declarativeEnvironmentRecord = binding.declarativeEnvironmentRecord;
+        let referentializationScope = binding.referencedOnlyFromAdditionalFunctions || "GLOBAL";
+
+        let refState = this.referentializationState.get(referentializationScope);
+        if (refState) {
+          let scope = refState.serializedScopes.get(declarativeEnvironmentRecord);
+          if (scope) {
+            scope.containedBindings = [];
+            scope.initializationValues = [];
+          }
+        }
+      }
+      delete binding.serializedValue;
+      delete binding.referentialized;
+    }
+  }
+
   referentialize(
     unbound: Set<string>,
     instances: Array<FunctionInstance>,
@@ -215,8 +240,7 @@ export class Referentializer {
               // TODO #989: Fix additional functions and referentialization
               throw new FatalError("TODO: implement referentialization for prepacked functions");
             }
-            if (!this._options.simpleClosures)
-              this._getSerializedBindingScopeInstance(residualBinding);
+            if (!this._options.simpleClosures) this._getSerializedBindingScopeInstance(residualBinding);
             //this.referentializeBinding(residualBinding, name, instance);
             residualBinding.referentialized = true;
           }

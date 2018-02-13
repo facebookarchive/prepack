@@ -60,10 +60,11 @@ export function prepackSources(
   if (options.check) {
     realm.generator = new Generator(realm, "main");
     let logger = new Logger(realm, !!options.internalDebug);
+    let serializerStats = new SerializerStatistics();
     let modules = new Modules(
       realm,
       logger,
-      new SerializerStatistics(),
+      serializerStats,
       !!options.logModules,
       !!options.delayUnsupportedRequires,
       !!options.accelerateUnsupportedRequires
@@ -175,7 +176,7 @@ function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnal
     else return "Recover";
   };
   modules.resolveInitializedModules();
-  let residualHeapVisitor = new ResidualHeapVisitor(realm, modules.logger, modules, new Map());
+  let residualHeapVisitor = new ResidualHeapVisitor(realm, modules.logger, modules, new Map(), "NO_REFERENTIALIZE");
   residualHeapVisitor.visitRoots();
   if (modules.logger.hasErrors()) return;
   let totalFunctions = 0;

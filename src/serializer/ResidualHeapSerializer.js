@@ -555,7 +555,11 @@ export class ResidualHeapSerializer {
     return t.expressionStatement(t.sequenceExpression(body));
   }
 
-  _serializeDeclarativeEnvironmentRecordBinding(residualFunctionBinding: ResidualFunctionBinding, name: string, instance: FunctionInstance) {
+  _serializeDeclarativeEnvironmentRecordBinding(
+    residualFunctionBinding: ResidualFunctionBinding,
+    name: string,
+    instance: FunctionInstance
+  ) {
     if (!residualFunctionBinding.serializedValue) {
       let value = residualFunctionBinding.value;
       invariant(value);
@@ -1833,11 +1837,7 @@ export class ResidualHeapSerializer {
     // TODO: find better way to do this?
     // revert changes to functionInstances in case we do multiple serialization passes
     for (let instance of this.residualFunctionInstances.values()) {
-      for (let binding of ((instance: any): FunctionInstance).residualFunctionBindings.values()) {
-        let b = ((binding: any): ResidualFunctionBinding);
-        delete b.serializedValue;
-        delete b.referentialized;
-      }
+      this.referentializer.cleanInstance(instance);
     }
 
     let program_directives = [];

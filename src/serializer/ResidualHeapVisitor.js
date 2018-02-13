@@ -81,13 +81,14 @@ export class ResidualHeapVisitor {
     logger: Logger,
     modules: Modules,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
-    referentializer: Referentializer
+    // Referentializer is null if we're just checking what values exist
+    referentializer: Referentializer | "NO_REFERENTIALIZE"
   ) {
     invariant(realm.useAbstractInterpretation);
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
-    this.referentializer = referentializer;
+    this.referentializer = referentializer === "NO_REFERENTIALIZE" ? undefined : referentializer;
 
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.globalBindings = new Map();
@@ -116,7 +117,7 @@ export class ResidualHeapVisitor {
   realm: Realm;
   logger: Logger;
   modules: Modules;
-  referentializer: Referentializer;
+  referentializer: Referentializer | void;
 
   // Caches that ensure one ResidualFunctionBinding exists per (record, name) pair
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
@@ -474,11 +475,10 @@ export class ResidualHeapVisitor {
     let funcToScopes = getOrDefault(this.functionToCapturedScopes, refScope, () => new Map());
     let envRec = residualFunctionBinding.declarativeEnvironmentRecord;
     invariant(envRec !== null);
-    let bindingState = getOrDefault(funcToScopes, envRec,
-      () => ({
-        capturedBindings: new Set(),
-        capturingFunctionsToCommonScope: new Map(),
-      }));
+    let bindingState = getOrDefault(funcToScopes, envRec, () => ({
+      capturedBindings: new Set(),
+      capturingFunctionsToCommonScope: new Map(),
+    }));
     // If the binding is new for this bindingState, have all functions capturing bindings from that scope visit it
     if (!bindingState.capturedBindings.has(residualFunctionBinding)) {
       if (residualFunctionBinding.value) {
@@ -870,7 +870,7 @@ export class ResidualHeapVisitor {
         createdObjects,
       ] = effects;
       let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
-      this.additionalFunctionToNestedFunctions.set(functionValue, nestedFunctions);
+      this.additionalFunctionToNestedFunctions.set(functionValue, ((nestedFunctions: any): Set<FunctionValue>));
       // result -- ignore TODO: return the result from the function somehow
       // Generator -- visit all entries
       // Bindings -- (modifications to named variables) only need to serialize bindings if they're
@@ -1005,26 +1005,34 @@ export class ResidualHeapVisitor {
       }
     }
 
-    let bodyToInstances = new Map();
-    for (let instance of this.functionInstances.values()) {
-      if (this.additionalFunctionValuesAndEffects.has(instance.functionValue)) {
-        /*let nestedFunctions = this.additionalFunctionToNestedFunctions.get(instance.functionValue);
-        for (let residualBinding of instance.residualFunctionBindings.values()) {
-          let foundNonAdditionalFunctionReferent = false;
-          let scopes = this.values.get(residualBinding.value) // but need value at time of effects applied
-          // copy over logic from processAdditionalFunctionValues in RHS, fill in .referencedOnlyFromAdditionalFunctions eagerly
-        }*/
-      } else { // TODO: why this else?
-        let code = instance.functionValue.$ECMAScriptCode;
-        invariant(code !== undefined);
-        getOrDefault(bodyToInstances, code, () => []).push(instance);
+    let referentializer = this.referentializer;
+    if (referentializer !== undefined) {
+      let bodyToInstances = new Map();
+      for (let instance of this.functionInstances.values()) {
+        if (this.additionalFunctionValuesAndEffects.has(instance.functionValue)) {
+          /*let nestedFunctions = this.additionalFunctionToNestedFunctions.get(instance.functionValue);
+          for (let residualBinding of instance.residualFunctionBindings.values()) {
+            let foundNonAdditionalFunctionReferent = false;
+            let scopes = this.values.get(residualBinding.value) // but need value at time of effects applied
+            // copy over logic from processAdditionalFunctionValues in RHS, fill in .referencedOnlyFromAdditionalFunctions eagerly
+          }*/
+        } else {
+          // TODO: why this else?
+          let code = instance.functionValue.$ECMAScriptCode;
+          invariant(code !== undefined);
+          getOrDefault(bodyToInstances, code, () => []).push(instance);
+        }
       }
-    }
 
-    for (let [funcBody, instances] of bodyToInstances) {
-      let functionInfo = this.functionInfos.get(funcBody);
-      invariant(functionInfo !== undefined);
-      this.referentializer.referentialize(functionInfo.unbound, instances, instance => !this.additionalFunctionValuesAndEffects.has(instance.functionValue));
+      for (let [funcBody, instances] of bodyToInstances) {
+        let functionInfo = this.functionInfos.get(funcBody);
+        invariant(functionInfo !== undefined);
+        referentializer.referentialize(
+          functionInfo.unbound,
+          instances,
+          instance => !this.additionalFunctionValuesAndEffects.has(instance.functionValue)
+        );
+      }
     }
 
     // Additional functions ?
