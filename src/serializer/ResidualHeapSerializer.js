@@ -390,11 +390,12 @@ export class ResidualHeapSerializer {
           type: "ConditionalAssignmentBranch",
           parentBody: undefined,
           entries: [],
+          done: false,
         },
         /*isChild*/ true
       );
       this._emitPropertiesWithComputedNames(obj, consequent);
-      let consequentBody = this.emitter.endEmitting("consequent", oldBody);
+      let consequentBody = this.emitter.endEmitting("consequent", oldBody, /* done */ true);
       let consequentStatement = t.blockStatement(consequentBody.entries);
       oldBody = this.emitter.beginEmitting(
         "alternate",
@@ -402,11 +403,12 @@ export class ResidualHeapSerializer {
           type: "ConditionalAssignmentBranch",
           parentBody: undefined,
           entries: [],
+          done: false,
         },
         /*isChild*/ true
       );
       this._emitPropertiesWithComputedNames(obj, alternate);
-      let alternateBody = this.emitter.endEmitting("alternate", oldBody);
+      let alternateBody = this.emitter.endEmitting("alternate", oldBody, /* done */ true);
       let alternateStatement = t.blockStatement(alternateBody.entries);
       this.emitter.emit(t.ifStatement(serializedCond, consequentStatement, alternateStatement));
     }
@@ -592,18 +594,11 @@ export class ResidualHeapSerializer {
       if (scope instanceof FunctionValue) functionValues.push(scope);
       else {
         invariant(scope instanceof Generator);
-        if (scope === this.realm.generator) {
-          // This value is used from the main generator scope. This means that we need to emit the value and its
-          // initialization code into the main body, and cannot delay initialization.
-          return {
-            body: this.currentFunctionBody,
-            description: "this.realm.generator",
-          };
-        }
         generators.push(scope);
       }
     }
 
+    let usedOnlyByAdditionalFunctions = false;
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       invariant(functionValues.length > 0);
@@ -619,14 +614,11 @@ export class ResidualHeapSerializer {
         ).length;
       }
 
-      if (numAdditionalFunctionReferences > 0 || !this._options.delayInitializations || this._options.simpleClosures) {
-        // We can just emit it into the current function body.
-        return {
-          body: this.currentFunctionBody,
-          usedOnlyByAdditionalFunctions: numAdditionalFunctionReferences === functionValues.length,
-          description: "this.currentFunctionBody",
-        };
-      } else {
+      if (
+        numAdditionalFunctionReferences === 0 &&
+        this._options.delayInitializations &&
+        !this._options.simpleClosures
+      ) {
         // We can delay the initialization, and move it into a conditional code block in the residual functions!
         let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
           functionValues,
@@ -634,25 +626,65 @@ export class ResidualHeapSerializer {
         );
         return { body, usedOnlyByResidualFunctions: true, description: "delay_initializer" };
       }
+
+      usedOnlyByAdditionalFunctions = numAdditionalFunctionReferences === functionValues.length;
     }
 
+    let getBody = s => {
+      if (s === this.generator || s instanceof FunctionValue) {
+        return this.currentFunctionBody;
+      } else {
+        return this.activeGeneratorBodies.get(s);
+      }
+    };
+
     // This value is referenced from more than one generator or function.
-    // We can emit the initialization of this value into the body associated with their common ancestor.
-    let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), generators[0]);
-    invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
+    // Let's find the body associated with their common ancestor.
+    let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), scopes.values().next().value);
+    invariant(commonAncestor);
     let body;
     while (true) {
-      if (commonAncestor === this.generator) {
-        body = this.currentFunctionBody;
-      } else {
-        body = this.activeGeneratorBodies.get(commonAncestor);
-      }
+      body = getBody(commonAncestor);
       if (body !== undefined) break;
       commonAncestor = commonAncestor.parent;
       invariant(commonAncestor !== undefined);
     }
+
+    // So we have a (common ancestor) body now.
     invariant(body !== undefined);
-    return { body, commonAncestor };
+
+    // However, there's a potential problem: That body might belong to a generator
+    // which has nested generators that are currently being processed (they are not "done" yet).
+    // This becomes a problem when the value for which we are trying to determine the target body
+    // depends on other values which are only declared in such not-yet-done nested generator!
+    // So we find all such not-yet-done bodies here, and pick a most nested one
+    // which is related to one of the scopes this value is used by.
+    let notYetDoneBodies = new Set();
+    this.emitter.dependenciesVisitor(val, {
+      onAbstractValueWithIdentifier: dependency => {
+        let declarationBody = this.emitter.getDeclarationBody(dependency);
+        if (declarationBody !== undefined)
+          for (let b = declarationBody; b !== undefined; b = b.parentBody) {
+            if (notYetDoneBodies.has(b)) break;
+            notYetDoneBodies.add(b);
+          }
+      },
+    });
+    for (let s of scopes)
+      for (let g = s; g !== undefined; g = g.parent) {
+        let scopeBody = getBody(g);
+        if (
+          scopeBody !== undefined &&
+          (scopeBody.nestingLevel || 0) > (body.nestingLevel || 0) &&
+          notYetDoneBodies.has(scopeBody)
+        ) {
+          // TODO: If there are multiple such scopeBody's, why is it okay to pick a random one?
+          body = scopeBody;
+          break;
+        }
+      }
+
+    return { body, usedOnlyByAdditionalFunctions, commonAncestor };
   }
 
   _getValueDebugName(val: Value) {
@@ -1471,7 +1503,11 @@ export class ResidualHeapSerializer {
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
-      invariant(!this.preludeGenerator.derivedIds.has(id.name) || this.emitter.hasBeenDeclared(val));
+      invariant(
+        !this.preludeGenerator.derivedIds.has(id.name) ||
+          this.emitter.ignoreDeclarations() ||
+          this.emitter.hasBeenDeclared(val)
+      );
     }
     return serializedValue;
   }
@@ -1561,12 +1597,12 @@ export class ResidualHeapSerializer {
   }
 
   _withGeneratorScope(generator: Generator, callback: SerializedBody => void): Array<BabelNodeStatement> {
-    let newBody = { type: "Generator", parentBody: undefined, entries: [] };
+    let newBody = { type: "Generator", parentBody: undefined, entries: [], done: false };
     let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ true);
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
-    const statements = this.emitter.endEmitting(generator, oldBody).entries;
+    const statements = this.emitter.endEmitting(generator, oldBody, /* done */ true).entries;
     if (this._options.debugScopes) {
       let comment = `generator "${generator.getName()}"`;
       if (generator.parent !== undefined) {
@@ -1736,7 +1772,7 @@ export class ResidualHeapSerializer {
 
   serialize(): BabelNodeFile {
     this.generator.serialize(this._getContext());
-    invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
+    //invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
 
     this.postGeneratorSerialization();
 

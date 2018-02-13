@@ -115,10 +115,15 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
 
   // TODO: change to use _getTarget() to get the lazy objects initializer body.
   _serializeLazyObjectInitializer(obj: ObjectValue): SerializedBody {
-    const initializerBody = { type: LAZY_OBJECTS_SERIALIZER_BODY_TYPE, parentBody: undefined, entries: [] };
+    const initializerBody = {
+      type: LAZY_OBJECTS_SERIALIZER_BODY_TYPE,
+      parentBody: undefined,
+      entries: [],
+      done: false,
+    };
     let oldBody = this.emitter.beginEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, initializerBody);
     this._emitObjectProperties(obj);
-    this.emitter.endEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, oldBody);
+    this.emitter.endEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, oldBody, /* done */ true);
     return initializerBody;
   }
 

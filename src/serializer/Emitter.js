@@ -25,6 +25,12 @@ import invariant from "../invariant.js";
 import { BodyReference } from "./types.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
 
+type EmitterDependenciesVisitorOptions<T> = {
+  onActive?: Value => void | T,
+  onFunction?: FunctionValue => void | T,
+  onAbstractValueWithIdentifier?: AbstractValue => void | T,
+};
+
 // The emitter keeps track of a stack of what's currently being emitted.
 // There are two kinds of interesting dependencies the emitter is dealing with:
 // 1. Value dependencies:
@@ -46,16 +52,28 @@ import { ResidualFunctions } from "./ResidualFunctions.js";
 //    To this end, the emitter maintains the `_activeGeneratorStack` and `_waitingForBodies` datastructures.
 export class Emitter {
   constructor(residualFunctions: ResidualFunctions) {
-    let mainBody = { type: "MainGenerator", parentBody: undefined, entries: [] };
+    this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
     this._waitingForBodies = new Map();
-    this._body = mainBody;
-    this._declaredAbstractValues = new Map();
+    this._body = this._mainBody;
     this._residualFunctions = residualFunctions;
     this._activeStack = [];
     this._activeValues = new Set();
-    this._activeGeneratorStack = [mainBody];
+    this._activeGeneratorStack = [this._mainBody];
     this._finalized = false;
+    this._getReasonToWaitForDependenciesOptions = {
+      onActive: val => val, // cyclic dependency; we need to wait until this value has finished emitting
+      onFunction: val => {
+        // Functions are currently handled in a special way --- they are all defined ahead of time. Thus, we never have to wait for functions.
+        this._residualFunctions.addFunctionUsage(val, this.getBodyReference());
+        return undefined;
+      },
+      onAbstractValueWithIdentifier: val => {
+        // If the value hasn't been declared yet, then we should wait for it.
+        if (!this.ignoreDeclarations() && !this.hasBeenDeclared(val)) return val;
+        else return undefined;
+      },
+    };
   }
 
   _finalized: boolean;
@@ -65,8 +83,9 @@ export class Emitter {
   _residualFunctions: ResidualFunctions;
   _waitingForValues: Map<Value, Array<{ body: SerializedBody, dependencies: Array<Value>, func: () => void }>>;
   _waitingForBodies: Map<SerializedBody, Array<{ dependencies: Array<Value>, func: () => void }>>;
-  _declaredAbstractValues: Map<AbstractValue, Array<SerializedBody>>;
   _body: SerializedBody;
+  _mainBody: SerializedBody;
+  _getReasonToWaitForDependenciesOptions: EmitterDependenciesVisitorOptions<Value>;
 
   beginEmitting(dependency: string | Generator | Value, targetBody: SerializedBody, isChild: boolean = false) {
     invariant(!this._finalized);
@@ -79,7 +98,9 @@ export class Emitter {
       this._activeGeneratorStack.push(targetBody);
     }
     if (isChild) {
+      invariant(targetBody.type === "Generator" || targetBody.type === "ConditionalAssignmentBranch");
       targetBody.parentBody = this._body;
+      targetBody.nestingLevel = (this._body.nestingLevel || 0) + 1;
     }
     let oldBody = this._body;
     this._body = targetBody;
@@ -90,7 +111,7 @@ export class Emitter {
     this._body.entries.push(statement);
     this._processCurrentBody();
   }
-  endEmitting(dependency: string | Generator | Value, oldBody: SerializedBody) {
+  endEmitting(dependency: string | Generator | Value, oldBody: SerializedBody, done: boolean = false) {
     invariant(!this._finalized);
     let lastDependency = this._activeStack.pop();
     invariant(dependency === lastDependency);
@@ -104,12 +125,37 @@ export class Emitter {
     }
     let lastBody = this._body;
     this._body = oldBody;
+    if (done) {
+      invariant(!lastBody.done);
+      lastBody.done = true;
+      // When we are done processing a body, we can propogate all declared abstract values
+      // to its parent, possibly unlocking further processing...
+      if (lastBody.declaredAbstractValues) {
+        let anyPropagated = true;
+        for (let b = lastBody; b.done && b.parentBody !== undefined && anyPropagated; b = b.parentBody) {
+          anyPropagated = false;
+          let parentDeclaredAbstractValues = b.parentBody.declaredAbstractValues;
+          if (parentDeclaredAbstractValues === undefined)
+            b.parentBody.declaredAbstractValues = parentDeclaredAbstractValues = new Map();
+          invariant(b.declaredAbstractValues);
+          for (let [key, value] of b.declaredAbstractValues) {
+            if (!parentDeclaredAbstractValues.has(key)) {
+              parentDeclaredAbstractValues.set(key, value);
+              this._processValue(key);
+              anyPropagated = true;
+            }
+          }
+        }
+      }
+    }
+
     return lastBody;
   }
   finalize() {
     invariant(!this._finalized);
     invariant(this._activeGeneratorStack.length === 1);
     invariant(this._activeGeneratorStack[0] === this._body);
+    invariant(this._body === this._mainBody);
     this._processCurrentBody();
     this._activeGeneratorStack.pop();
     this._finalized = true;
@@ -170,79 +216,66 @@ export class Emitter {
 
   // Serialization of a statement related to a value MUST be delayed if
   // the creation of the value's identity requires the availability of either:
-  // 1. a time-dependent value that is declared by some generator entry
-  //    that has not yet been processed
-  //    (tracked by `_declaredAbstractValues`), or
-  // 2. a value that is also currently being serialized
+  // 1. a value that is also currently being serialized
   //    (tracked by `_activeValues`).
-  // 3. a generator body that is higher(near top) in generator body stack.
-  //    (tracked by `_activeGeneratorStack`)
-  getReasonToWaitForDependencies(dependencies: Value | Array<Value>): void | Value | SerializedBody {
+  // 2. a time-dependent value that is declared by some generator entry
+  //    that has not yet been processed
+  //    (tracked by `declaredAbstractValues` in bodies)
+  getReasonToWaitForDependencies(dependencies: Value | Array<Value>): void | Value {
+    return this.dependenciesVisitor(dependencies, this._getReasonToWaitForDependenciesOptions);
+  }
+
+  // Visitor of dependencies that require delaying serialization
+  dependenciesVisitor<T>(dependencies: Value | Array<Value>, options: EmitterDependenciesVisitorOptions<T>): void | T {
     invariant(!this._finalized);
+
+    let result;
+    let recurse = value => this.dependenciesVisitor(value, options);
+
     if (Array.isArray(dependencies)) {
       let values = ((dependencies: any): Array<Value>);
       for (let value of values) {
-        let delayReason = this.getReasonToWaitForDependencies(value);
-        if (delayReason) return delayReason;
+        result = recurse(value);
+        if (result !== undefined) return result;
       }
       return undefined;
     }
 
     let val = ((dependencies: any): Value);
-    if (this._activeValues.has(val)) return val;
+    if (this._activeValues.has(val)) {
+      // We ran into a cyclic dependency, where the value we are dependending on is still in the process of being emitted.
+      result = options.onActive ? options.onActive(val) : undefined;
+      if (result !== undefined) return result;
+    }
 
-    let delayReason;
     if (val instanceof BoundFunctionValue) {
-      delayReason = this.getReasonToWaitForDependencies(val.$BoundTargetFunction);
-      if (delayReason) return delayReason;
-      delayReason = this.getReasonToWaitForDependencies(val.$BoundThis);
-      if (delayReason) return delayReason;
-      for (let arg of val.$BoundArguments) {
-        delayReason = this.getReasonToWaitForDependencies(arg);
-        if (delayReason) return delayReason;
-      }
+      result = recurse(val.$BoundTargetFunction);
+      if (result !== undefined) return result;
+      result = recurse(val.$BoundThis);
+      if (result !== undefined) return result;
+      result = recurse(val.$BoundArguments);
+      if (result !== undefined) return result;
     } else if (val instanceof FunctionValue) {
-      this._residualFunctions.addFunctionUsage(val, this.getBodyReference());
-      return undefined;
+      // We ran into a function value.
+      result = options.onFunction ? options.onFunction(val) : undefined;
+      if (result !== undefined) return result;
     } else if (val instanceof AbstractValue) {
       if (val.hasIdentifier()) {
-        const valSerializeBodyStack = this._declaredAbstractValues.get(val);
-        if (!valSerializeBodyStack) {
-          // Hasn't been serialized yet.
-          return val;
-        } else {
-          // The dependency has already been serialized(declared). But we may still have to wait for
-          // current generator body to be available, under following conditions:
-          // 1. Currently emitting in generator body. -- and
-          // 2. Not emitting in current active generator.(otherwise no need to wait) -- and
-          // 3. Dependency's active ancestor generator body is higher(near top) in generator stack than current body.
-          const valActiveAncestorBody = this._getFirstAncestorGeneratorWithActiveBody(valSerializeBodyStack);
-          invariant(this._activeGeneratorStack.includes(valActiveAncestorBody));
-
-          if (this._isGeneratorBody(this._body)) {
-            invariant(this._activeGeneratorStack.includes(this._body));
-            if (
-              !this._isEmittingActiveGenerator() &&
-              this._activeGeneratorStack.indexOf(valActiveAncestorBody) > this._activeGeneratorStack.indexOf(this._body)
-            ) {
-              return this._body;
-            }
-          }
-        }
+        // We ran into an abstract value that might have to be declared.
+        result = options.onAbstractValueWithIdentifier ? options.onAbstractValueWithIdentifier(val) : undefined;
+        if (result !== undefined) return result;
       }
-      for (let arg of val.args) {
-        delayReason = this.getReasonToWaitForDependencies(arg);
-        if (delayReason) return delayReason;
-      }
+      result = recurse(val.args);
+      if (result !== undefined) return result;
     } else if (val instanceof ProxyValue) {
-      delayReason = this.getReasonToWaitForDependencies(val.$ProxyTarget);
-      if (delayReason) return delayReason;
-      delayReason = this.getReasonToWaitForDependencies(val.$ProxyHandler);
-      if (delayReason) return delayReason;
+      result = recurse(val.$ProxyTarget);
+      if (result !== undefined) return result;
+      result = recurse(val.$ProxyHandler);
+      if (result !== undefined) return result;
     } else if (val instanceof SymbolValue) {
       if (val.$Description instanceof Value) {
-        delayReason = this.getReasonToWaitForDependencies(val.$Description);
-        if (delayReason) return delayReason;
+        result = recurse(val.$Description);
+        if (result !== undefined) return result;
       }
     } else if (val instanceof ObjectValue) {
       let kind = val.getKind();
@@ -250,14 +283,14 @@ export class Emitter {
         case "Object":
           let proto = val.$Prototype;
           if (proto instanceof ObjectValue) {
-            delayReason = this.getReasonToWaitForDependencies(val.$Prototype);
-            if (delayReason) return delayReason;
+            result = recurse(val.$Prototype);
+            if (result !== undefined) return result;
           }
           break;
         case "Date":
           invariant(val.$DateValue !== undefined);
-          delayReason = this.getReasonToWaitForDependencies(val.$DateValue);
-          if (delayReason) return delayReason;
+          result = recurse(val.$DateValue);
+          if (result !== undefined) return result;
           break;
         default:
           break;
@@ -266,6 +299,7 @@ export class Emitter {
 
     return undefined;
   }
+
   // Wait for a known-to-be active value if a condition is met.
   getReasonToWaitForActiveValue(value: Value, condition: boolean): void | Value {
     invariant(!this._finalized);
@@ -322,9 +356,7 @@ export class Emitter {
   }
   _emitAfterWaitingForValue(reason: Value, dependencies: Array<Value>, targetBody: SerializedBody, func: () => void) {
     invariant(!this._finalized);
-    invariant(
-      !(reason instanceof AbstractValue && this._declaredAbstractValues.has(reason)) || this._activeValues.has(reason)
-    );
+    invariant(!(reason instanceof AbstractValue && this.hasBeenDeclared(reason)) || this._activeValues.has(reason));
     let a = this._waitingForValues.get(reason);
     if (a === undefined) this._waitingForValues.set(reason, (a = []));
     a.push({ body: targetBody, dependencies, func });
@@ -341,20 +373,34 @@ export class Emitter {
     invariant(!this._finalized);
     this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func, targetBody);
   }
-  _cloneGeneratorStack() {
-    return this._activeGeneratorStack.slice();
-  }
   declare(value: AbstractValue) {
     invariant(!this._finalized);
     invariant(!this._activeValues.has(value));
     invariant(value.hasIdentifier());
     invariant(this._isEmittingActiveGenerator());
-    this._declaredAbstractValues.set(value, this._cloneGeneratorStack());
+    invariant(!this.ignoreDeclarations());
+    invariant(!this._body.done);
+    if (this._body.declaredAbstractValues === undefined) this._body.declaredAbstractValues = new Map();
+    this._body.declaredAbstractValues.set(value, this._body);
     this._processValue(value);
   }
-  hasBeenDeclared(value: AbstractValue) {
-    invariant(!this._finalized);
-    return this._declaredAbstractValues.has(value);
+  ignoreDeclarations(): boolean {
+    // Bodies of the following types will never contain any (temporal) abstract value declarations.
+    return this._body.type === "DelayInitializations" || this._body.type === "LazyObjectInitializer";
+  }
+  hasBeenDeclared(value: AbstractValue): boolean {
+    return this.getDeclarationBody(value) !== undefined;
+  }
+  getDeclarationBody(value: AbstractValue): void | SerializedBody {
+    for (let b = this._body; b !== undefined; b = b.parentBody)
+      if (b.declaredAbstractValues !== undefined && b.declaredAbstractValues.has(value)) {
+        return b;
+      }
+    return undefined;
+  }
+  declaredCount() {
+    let declaredAbstractValues = this._body.declaredAbstractValues;
+    return declaredAbstractValues === undefined ? 0 : declaredAbstractValues.size;
   }
   getBody(): SerializedBody {
     return this._body;
