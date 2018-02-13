@@ -33,6 +33,7 @@ export type RealmOptions = {
   maxStackDepth?: number,
   reactEnabled?: boolean,
   reactOutput?: ReactOutputTypes,
+  stripFlow?: boolean,
   abstractEffectsInAdditionalFunctions?: boolean,
 };
 

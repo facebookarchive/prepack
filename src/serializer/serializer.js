@@ -23,6 +23,7 @@ import type { ReactSerializerState, SerializedResult } from "./types.js";
 import { Functions } from "./functions.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
+import { stripFlowTypeAnnotations } from "../utils/flow.js";
 import { LoggingTracer } from "./LoggingTracer.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
@@ -224,6 +225,9 @@ export class Serializer {
     );
 
     let ast = residualHeapSerializer.serialize();
+    if (this.realm.stripFlow) {
+      stripFlowTypeAnnotations(ast);
+    }
 
     // the signature for generate is not complete, hence the any
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
