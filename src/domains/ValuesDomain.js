@@ -35,7 +35,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { TypesDomain } from "./index.js";
+import { Utils } from "../singletons.js";
 
 /* An abstract domain that collects together a set of concrete values
    that might be the value of a variable at runtime.
@@ -382,7 +382,7 @@ export default class ValuesDomain {
       // 3. Let val be ? GetValue(val).
       let val = value;
       // 4. Return a String according to Table 35.
-      return new StringValue(realm, TypesDomain.typeToString(val.getType()));
+      return new StringValue(realm, Utils.typeToString(val.getType()));
     } else {
       invariant(op === "delete");
       // ECMA262 12.5.3.2

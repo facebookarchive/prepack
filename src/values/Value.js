@@ -52,35 +52,6 @@ export default class Value {
     return this.constructor;
   }
 
-  static getTypeFromName(typeName: string): void | typeof Value {
-    switch (typeName) {
-      case "empty":
-        return EmptyValue;
-      case "void":
-        return UndefinedValue;
-      case "null":
-        return NullValue;
-      case "boolean":
-        return BooleanValue;
-      case "string":
-        return StringValue;
-      case "symbol":
-        return SymbolValue;
-      case "number":
-        return NumberValue;
-      case "object":
-        return ObjectValue;
-      case "array":
-        return ArrayValue;
-      case "function":
-        return FunctionValue;
-      case "integral":
-        return IntegralValue;
-      default:
-        return undefined;
-    }
-  }
-
   static isTypeCompatibleWith(type: typeof Value, Constructor: typeof Value): boolean {
     return type.prototype instanceof Constructor || type.prototype === Constructor.prototype;
   }

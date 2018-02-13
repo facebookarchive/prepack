@@ -29,9 +29,9 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
-import { TypesDomain } from "../../domains/index.js";
 import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
+import { Utils } from "../../singletons";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
@@ -333,7 +333,9 @@ export default function(realm: Realm): void {
               t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
 
             let condition = null;
-            let invariantOptionString = invariantOptions ? To.ToStringPartial(realm, invariantOptions) : "FULL_INVARIANT";
+            let invariantOptionString = invariantOptions
+              ? To.ToStringPartial(realm, invariantOptions)
+              : "FULL_INVARIANT";
             switch (invariantOptionString) {
               // checks (!property in object || object.property === undefined)
               case "VALUE_DEFINED_INVARIANT":
@@ -395,7 +397,7 @@ export default function(realm: Realm): void {
                           t.binaryExpression(
                             "!==",
                             t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
-                            t.stringLiteral(TypesDomain.typeToString(typeValue))
+                            t.stringLiteral(Utils.typeToString(typeValue))
                           )
                         )
                       );

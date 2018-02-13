@@ -47,34 +47,6 @@ export default class TypesDomain {
     return this._type || Value;
   }
 
-  // Returns void if type is top
-  static typeToString(type: typeof Value): string {
-    function isInstance(proto, Constructor): boolean {
-      return proto instanceof Constructor || proto === Constructor.prototype;
-    }
-    let proto = type.prototype;
-    if (isInstance(proto, UndefinedValue)) {
-      return "undefined";
-    } else if (isInstance(proto, NullValue)) {
-      return "object";
-    } else if (isInstance(proto, StringValue)) {
-      return "string";
-    } else if (isInstance(proto, BooleanValue)) {
-      return "boolean";
-    } else if (isInstance(proto, NumberValue)) {
-      return "number";
-    } else if (isInstance(proto, SymbolValue)) {
-      return "symbol";
-    } else if (isInstance(proto, ObjectValue)) {
-      if (Value.isTypeCompatibleWith(type, FunctionValue)) {
-        return "function";
-      }
-      return "object";
-    } else {
-      invariant(false);
-    }
-  }
-
   // return the type of the result in the case where there is no exception
   static binaryOp(op: BabelBinaryOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
     let lType = left._type;
