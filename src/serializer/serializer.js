@@ -225,7 +225,7 @@ export class Serializer {
     );
 
     let ast = residualHeapSerializer.serialize();
-    if (this.options.stripFlow) {
+    if (this.realm.stripFlow) {
       stripFlowTypeAnnotations(ast);
     }
 
