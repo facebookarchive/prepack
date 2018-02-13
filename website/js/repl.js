@@ -63,6 +63,12 @@ var optionsConfig = [
     defaultVal: "jsx",
     description: "Specifies the serialization output of JSX nodes when React mode is enabled."
   },
+  {
+    type: "boolean",
+    name: "stripFlow",
+    defaultVal: true,
+    description: "Removes Flow type annotations from the output."
+  },
 ];
 
 var demos = [];

@@ -47,6 +47,7 @@ export type PrepackOptions = {|
   initializeMoreModules?: boolean,
   statsFile?: string,
   strictlyMonotonicDateNow?: boolean,
+  stripFlow?: boolean,
   timeout?: number,
   trace?: boolean,
   uniqueSuffix?: string,
@@ -70,6 +71,7 @@ export function getRealmOptions({
   serialize = !residual,
   check,
   strictlyMonotonicDateNow,
+  stripFlow,
   timeout,
   maxStackDepth,
 }: PrepackOptions): RealmOptions {
@@ -88,6 +90,7 @@ export function getRealmOptions({
     serialize,
     check,
     strictlyMonotonicDateNow,
+    stripFlow,
     timeout,
     maxStackDepth,
   };

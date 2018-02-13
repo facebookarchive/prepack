@@ -31,6 +31,9 @@ export default function(
     if (realm.react.enabled) {
       plugins.push("jsx");
     }
+    if (realm.stripFlow) {
+      plugins.push("flow");
+    }
     let ast = parse(code, { filename, sourceType, startLine, plugins });
     traverseFast(ast, node => {
       invariant(node.loc);

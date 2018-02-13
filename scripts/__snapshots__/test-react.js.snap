@@ -329,6 +329,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (JSX) fb-www mocks repl example 1`] = `
+ReactStatistics {
+  "inlinedComponents": 6,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React (create-element) Class component folding Classes with state 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
@@ -655,5 +662,12 @@ exports[`Test React (create-element) fb-www mocks fb-www 8 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks repl example 1`] = `
+ReactStatistics {
+  "inlinedComponents": 6,
+  "optimizedTrees": 1,
 }
 `;
