@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Add } from "../methods/index.js";
-import { AbstractValue, NumberValue } from "../values/index.js";
+import { AbstractValue, NumberValue, IntegralValue } from "../values/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
 import { Environment, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
@@ -90,7 +90,7 @@ export default function(
       Properties.PutValue(realm, expr, newValue);
 
       // 5. Return oldValue.
-      return new NumberValue(realm, oldValue);
+      return IntegralValue.createFromNumberValue(realm, oldValue);
     } else if (ast.operator === "--") {
       // ECMA262 12.4.5.1
 
@@ -101,7 +101,7 @@ export default function(
       Properties.PutValue(realm, expr, newValue);
 
       // 5. Return oldValue.
-      return new NumberValue(realm, oldValue);
+      return IntegralValue.createFromNumberValue(realm, oldValue);
     }
     invariant(false);
   }

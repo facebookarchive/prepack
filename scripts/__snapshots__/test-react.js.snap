@@ -1,0 +1,659 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Test React (JSX) Class component folding Classes with state 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Class component folding Inheritance chaining 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (JSX) Class component folding Simple classes #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Class component folding Simple classes #3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (JSX) Class component folding Simple classes 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Factory class component folding Simple factory classes 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Factory class component folding Simple factory classes 2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Additional functions closure scope capturing 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Circular reference 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Class component as root 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Class component as root with instance variables #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Class component as root with instance variables 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Class component as root with multiple render methods 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Class component as root with props 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Class component as root with refs 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Class component as root with state 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Component type change 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Component type same 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Conditional 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Dynamic context 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Dynamic props 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Key change 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Key change with fragments 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Key nesting 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Key nesting 2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Key nesting 3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Key not changing with fragments 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding React.cloneElement 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Return text 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Return undefined 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple 1`] = `
+ReactStatistics {
+  "inlinedComponents": 3,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple 2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple 3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple 4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple 5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 3,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple 6 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple children 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple fragments 1`] = `
+ReactStatistics {
+  "inlinedComponents": 3,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple refs 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks fb-www 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks fb-www 2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks fb-www 3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks fb-www 4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks fb-www 5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks fb-www 6 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks fb-www 7 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks fb-www 8 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Class component folding Classes with state 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Class component folding Inheritance chaining 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Class component folding Simple classes #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Class component folding Simple classes #3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Class component folding Simple classes 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Factory class component folding Simple factory classes 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Factory class component folding Simple factory classes 2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Additional functions closure scope capturing 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Circular reference 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Class component as root 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Class component as root with instance variables #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Class component as root with instance variables 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Class component as root with multiple render methods 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Class component as root with props 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Class component as root with refs 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Class component as root with state 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Component type change 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Component type same 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Conditional 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Dynamic context 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Dynamic props 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Key change 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Key change with fragments 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Key nesting 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Key nesting 2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Key nesting 3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Key not changing with fragments 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding React.cloneElement 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Return text 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Return undefined 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple 1`] = `
+ReactStatistics {
+  "inlinedComponents": 3,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple 2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple 3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple 4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple 5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 3,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple 6 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple children 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple fragments 1`] = `
+ReactStatistics {
+  "inlinedComponents": 3,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple refs 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks fb-www 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks fb-www 2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks fb-www 3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks fb-www 4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks fb-www 5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks fb-www 6 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks fb-www 7 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks fb-www 8 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;

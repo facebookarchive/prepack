@@ -172,6 +172,7 @@ export function ClassDefinitionEvaluation(
 
     // 10. If constructor is empty, then,
     if (constructor instanceof EmptyValue) {
+      emptyConstructor = true;
       let constructorFile;
       // a. If ClassHeritage opt is present, then
       if (ast.superClass) {

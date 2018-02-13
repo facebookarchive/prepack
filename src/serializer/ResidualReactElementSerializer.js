@@ -15,11 +15,12 @@ import { canHoistReactElement } from "../react/hoisting.js";
 import { Get, IsAccessorDescriptor } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { ArrayValue, NumberValue, Value, ObjectValue } from "../values/index.js";
+import { ArrayValue, NumberValue, Value, ObjectValue, StringValue, SymbolValue } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors";
+import { getReactSymbol } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
 
@@ -162,7 +163,8 @@ export class ResidualReactElementSerializer {
         typeValue,
         attributes,
         children,
-        shouldHoist ? hoistedCreateElementIdentifier : originalCreateElementIdentifier
+        shouldHoist ? hoistedCreateElementIdentifier : originalCreateElementIdentifier,
+        reactLibraryObject
       );
     } else {
       invariant(false, "Unknown reactOutput specified");
@@ -216,14 +218,33 @@ export class ResidualReactElementSerializer {
     attributes.push(t.objectProperty(key, expr));
   }
 
+  _serializeReactFragmentType(typeValue: Value, reactLibraryObject: void | ObjectValue): BabelNodeExpression {
+    // if there is no React library, then we should throw and error, as it is needed for React.Fragment output
+    if (reactLibraryObject === undefined) {
+      throw new FatalError("unable to serialize JSX fragment due to React not being referenced in scope");
+    }
+    // we want to vist the Symbol type, but we don't want to serialize it
+    // as this is a React internal
+    this.residualHeapSerializer.serializedValues.add(typeValue);
+    invariant(typeValue.$Description instanceof StringValue);
+    this.residualHeapSerializer.serializedValues.add(typeValue.$Description);
+    return t.memberExpression(this.residualHeapSerializer.serializeValue(reactLibraryObject), t.identifier("Fragment"));
+  }
+
   _serializeReactElementToCreateElement(
     val: ObjectValue,
     typeValue: Value,
     attributes: Array<BabelNode>,
     children: Array<BabelNode>,
-    createElementIdentifier: BabelNodeIdentifier
+    createElementIdentifier: BabelNodeIdentifier,
+    reactLibraryObject: void | ObjectValue
   ): BabelNodeExpression {
-    let typeIdentifier = this.residualHeapSerializer.serializeValue(typeValue);
+    let typeIdentifier;
+    if (typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm)) {
+      typeIdentifier = this._serializeReactFragmentType(typeValue, reactLibraryObject);
+    } else {
+      typeIdentifier = this.residualHeapSerializer.serializeValue(typeValue);
+    }
     let createElementArguments = [typeIdentifier];
     // check if we need to add attributes
     if (attributes.length !== 0) {
@@ -252,9 +273,15 @@ export class ResidualReactElementSerializer {
     if (reactLibraryObject !== undefined) {
       this.residualHeapSerializer.serializeValue(reactLibraryObject);
     }
-    let identifier = convertExpressionToJSXIdentifier(this.residualHeapSerializer.serializeValue(typeValue), true);
-    let openingElement = t.jSXOpeningElement(identifier, (attributes: any), children.length === 0);
-    let closingElement = t.jSXClosingElement(identifier);
+    let typeIdentifier;
+    if (typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm)) {
+      typeIdentifier = this._serializeReactFragmentType(typeValue, reactLibraryObject);
+    } else {
+      typeIdentifier = this.residualHeapSerializer.serializeValue(typeValue);
+    }
+    let jsxTypeIdentifer = convertExpressionToJSXIdentifier(typeIdentifier, true);
+    let openingElement = t.jSXOpeningElement(jsxTypeIdentifer, (attributes: any), children.length === 0);
+    let closingElement = t.jSXClosingElement(jsxTypeIdentifer);
 
     let jsxElement = t.jSXElement(openingElement, closingElement, children, children.length === 0);
     this._addBailOutMessageToBabelNode(val, jsxElement);

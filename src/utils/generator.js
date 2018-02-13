@@ -19,6 +19,7 @@ import {
   FunctionValue,
   NullValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   StringValue,
   SymbolValue,
@@ -41,6 +42,7 @@ import type {
   BabelNodeBlockStatement,
 } from "babel-types";
 import { nullExpression } from "./internalizer.js";
+import { concretize } from "../singletons.js";
 
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
@@ -148,6 +150,16 @@ export class Generator {
       buildNode: ([valueNode]) =>
         t.expressionStatement(
           t.assignmentExpression("=", this.preludeGenerator.globalReference(key, !strictMode), valueNode)
+        ),
+    });
+  }
+
+  emitConcreteModel(key: string, value: Value) {
+    this._addEntry({
+      args: [concretize(this.realm, value)],
+      buildNode: ([valueNode]) =>
+        t.expressionStatement(
+          t.assignmentExpression("=", this.preludeGenerator.globalReference(key, false), valueNode)
         ),
     });
   }
@@ -376,6 +388,7 @@ export class Generator {
     else if (type === StringValue) typeofString = "string";
     else if (type === BooleanValue) typeofString = "boolean";
     else if (type === NumberValue) typeofString = "number";
+    else if (type === IntegralValue) typeofString = "number";
     else if (type === SymbolValue) typeofString = "symbol";
     else if (type === ObjectValue) typeofString = "object";
     if (typeofString !== undefined) {

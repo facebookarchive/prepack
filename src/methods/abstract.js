@@ -16,6 +16,7 @@ import {
   BoundFunctionValue,
   EmptyValue,
   NumberValue,
+  IntegralValue,
   SymbolValue,
   StringValue,
   NullValue,
@@ -79,7 +80,12 @@ export function RequireObjectCoercible(
       return arg;
     }
     if (argLoc) {
-      let error = new CompilerDiagnostic("member expression object is unknown", argLoc, "PP0012", "FatalError");
+      let error = new CompilerDiagnostic(
+        `member expression object ${AbstractValue.describe(arg)} is unknown`,
+        argLoc,
+        "PP0012",
+        "FatalError"
+      );
       realm.handleError(error);
       throw new FatalError();
     }
@@ -90,6 +96,15 @@ export function RequireObjectCoercible(
   } else {
     return (arg: any);
   }
+}
+
+export function HasSameType(x: ConcreteValue, y: ConcreteValue): boolean {
+  const xType = x.getType();
+  const yType = y.getType();
+  return (
+    xType === yType ||
+    ((xType === IntegralValue || xType === NumberValue) && (yType === IntegralValue || yType === NumberValue))
+  );
 }
 
 // ECMA262 7.2.12 Abstract Relational Comparison
@@ -186,7 +201,7 @@ export function AbstractRelationalComparison(
 // ECMA262 7.2.13
 export function AbstractEqualityComparison(realm: Realm, x: ConcreteValue, y: ConcreteValue): boolean {
   // 1. If Type(x) is the same as Type(y), then
-  if (x.getType() === y.getType()) {
+  if (HasSameType(x, y)) {
     // a. Return the result of performing Strict Equality Comparison x === y.
     return StrictEqualityComparison(realm, x, y);
   }
@@ -238,7 +253,7 @@ export function AbstractEqualityComparison(realm: Realm, x: ConcreteValue, y: Co
 // ECMA262 7.2.14 Strict Equality Comparison
 export function StrictEqualityComparison(realm: Realm, x: ConcreteValue, y: ConcreteValue): boolean {
   // 1. If Type(x) is different from Type(y), return false.
-  if (x.getType() !== y.getType()) {
+  if (!HasSameType(x, y)) {
     return false;
   }
 
@@ -270,7 +285,7 @@ export function StrictEqualityComparisonPartial(realm: Realm, x: Value, y: Value
 // ECMA262 7.2.10
 export function SameValueZero(realm: Realm, x: ConcreteValue, y: ConcreteValue): boolean {
   // 1. If Type(x) is different from Type(y), return false.
-  if (x.getType() !== y.getType()) {
+  if (!HasSameType(x, y)) {
     return false;
   }
 
@@ -305,7 +320,9 @@ export function SameValueZeroPartial(realm: Realm, x: Value, y: Value): boolean 
 // ECMA262 7.2.9
 export function SameValue(realm: Realm, x: ConcreteValue, y: ConcreteValue): boolean {
   // 1. If Type(x) is different from Type(y), return false.
-  if (x.getType() !== y.getType()) return false;
+  if (!HasSameType(x, y)) {
+    return false;
+  }
 
   // 2. If Type(x) is Number, then
   if (x instanceof NumberValue && y instanceof NumberValue) {
@@ -408,7 +425,7 @@ export function Add(realm: Realm, a: number, b: number, subtract?: boolean = fal
     bnum = -bnum;
   }
 
-  return new NumberValue(realm, anum + bnum);
+  return IntegralValue.createFromNumberValue(realm, anum + bnum);
 }
 
 // ECMA262 12.10.4
@@ -490,6 +507,8 @@ export function Type(realm: Realm, val: Value): string {
     return "String";
   } else if (HasCompatibleType(val, SymbolValue)) {
     return "Symbol";
+  } else if (HasCompatibleType(val, IntegralValue)) {
+    return "Number";
   } else if (HasCompatibleType(val, NumberValue)) {
     return "Number";
   } else if (!val.mightNotBeObject()) {

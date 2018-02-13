@@ -24,6 +24,7 @@ export type RealmOptions = {
   errorHandler?: ErrorHandler,
   mathRandomSeed?: string,
   omitInvariants?: boolean,
+  emitConcreteModel?: boolean,
   uniqueSuffix?: string,
   residual?: boolean,
   serialize?: boolean,

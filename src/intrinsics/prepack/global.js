@@ -17,6 +17,7 @@ import {
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
+  IntegralValue,
   NativeFunctionValue,
   ObjectValue,
   StringValue,
@@ -29,6 +30,8 @@ import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
 import { TypesDomain } from "../../domains/index.js";
+import { valueIsKnownReactAbstraction } from "../../react/utils.js";
+import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
@@ -138,14 +141,23 @@ export default function(realm: Realm): void {
         "global.__registerReactComponentRoot",
         "__registerReactComponentRoot",
         0,
-        (context, [functionValue]) => {
-          invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        (context, [value]) => {
+          if (!(value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(realm, value))) {
+            let diagnostic = new CompilerDiagnostic(
+              "a value has been passed to __registerReactComponentRoot() that is not a function value or a known React abstract value",
+              realm.currentLocation,
+              "PP0024",
+              "FatalError"
+            );
+            realm.handleError(diagnostic);
+            if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+          }
           realm.assignToGlobal(
             t.memberExpression(
               t.memberExpression(t.identifier("global"), t.identifier("__reactComponentRoots")),
               t.identifier("" + reactComponentRootUid++)
             ),
-            functionValue
+            value
           );
           return realm.intrinsics.undefined;
         }
@@ -155,6 +167,24 @@ export default function(realm: Realm): void {
       configurable: true,
     });
   }
+
+  global.$DefineOwnProperty("__evaluatePureFunction", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__evaluatePureFunction",
+      "__evaluatePureFunction",
+      0,
+      (context, [functionValue]) => {
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        invariant(typeof functionValue.$Call === "function");
+        let functionCall: Function = functionValue.$Call;
+        return realm.evaluatePure(() => functionCall(realm.intrinsics.undefined, []));
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized
@@ -295,90 +325,94 @@ export default function(realm: Realm): void {
           let propertyIdentifier = generator.getAsPropertyNameExpression(key);
           let computed = !t.isIdentifier(propertyIdentifier);
 
-          let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
-          let inExpressionOf = objectNode =>
-            t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
+          if (realm.emitConcreteModel) {
+            generator.emitConcreteModel(key, value);
+          } else {
+            let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
+            let inExpressionOf = objectNode =>
+              t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
 
-          let condition = null;
-          let invariantOptionString = invariantOptions ? To.ToStringPartial(realm, invariantOptions) : "FULL_INVARIANT";
-          switch (invariantOptionString) {
-            // checks (!property in object || object.property === undefined)
-            case "VALUE_DEFINED_INVARIANT":
-              condition = ([objectNode, valueNode]) =>
-                t.logicalExpression(
-                  "||",
-                  inExpressionOf(objectNode),
-                  t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
-                );
-              break;
-            case "SKIP_INVARIANT":
-              condition = null;
-              break;
-            // Checks the full set of possible concrete values as well as typeof
-            // for any AbstractValues
-            // e.g: (obj.property !== undefined && typeof obj.property !== "object")
-            // NB: if the type of the AbstractValue is top, skips the invariant
-            case "FULL_INVARIANT":
-              if (value instanceof AbstractValue) {
-                let isTop = false;
-                let concreteComparisons = new Set();
-                let typeComparisons = new Set();
+            let condition = null;
+            let invariantOptionString = invariantOptions ? To.ToStringPartial(realm, invariantOptions) : "FULL_INVARIANT";
+            switch (invariantOptionString) {
+              // checks (!property in object || object.property === undefined)
+              case "VALUE_DEFINED_INVARIANT":
+                condition = ([objectNode, valueNode]) =>
+                  t.logicalExpression(
+                    "||",
+                    inExpressionOf(objectNode),
+                    t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
+                  );
+                break;
+              case "SKIP_INVARIANT":
+                condition = null;
+                break;
+              // Checks the full set of possible concrete values as well as typeof
+              // for any AbstractValues
+              // e.g: (obj.property !== undefined && typeof obj.property !== "object")
+              // NB: if the type of the AbstractValue is top, skips the invariant
+              case "FULL_INVARIANT":
+                if (value instanceof AbstractValue) {
+                  let isTop = false;
+                  let concreteComparisons = new Set();
+                  let typeComparisons = new Set();
 
-                function populateComparisonsLists(absValue: AbstractValue) {
-                  if (absValue.kind === "abstractConcreteUnion") {
-                    // recurse
-                    for (let nestedValue of absValue.args)
-                      if (nestedValue instanceof ConcreteValue) {
-                        concreteComparisons.add(nestedValue);
-                      } else {
-                        invariant(nestedValue instanceof AbstractValue);
-                        populateComparisonsLists(nestedValue);
-                      }
-                  } else if (absValue.getType().isTop) {
-                    isTop = true;
-                  } else {
-                    typeComparisons.add(absValue.getType());
+                  function populateComparisonsLists(absValue: AbstractValue) {
+                    if (absValue.kind === "abstractConcreteUnion") {
+                      // recurse
+                      for (let nestedValue of absValue.args)
+                        if (nestedValue instanceof ConcreteValue) {
+                          concreteComparisons.add(nestedValue);
+                        } else {
+                          invariant(nestedValue instanceof AbstractValue);
+                          populateComparisonsLists(nestedValue);
+                        }
+                    } else if (absValue.getType().isTop) {
+                      isTop = true;
+                    } else {
+                      typeComparisons.add(absValue.getType());
+                    }
                   }
-                }
-                populateComparisonsLists(value);
+                  populateComparisonsLists(value);
 
-                if (isTop) {
-                  // No point in doing the invariant if we don't know the type
-                  // of one of the nested abstract values
-                  condition = null;
-                } else {
-                  condition = ([objectNode, valueNode]) => {
-                    // Create `object.property !== concreteValue`
-                    let checks = [...concreteComparisons].map(concreteValue =>
-                      t.binaryExpression(
-                        "!==",
-                        accessedPropertyOf(objectNode),
-                        t.valueToNode(concreteValue.serialize())
-                      )
-                    );
-                    // Create `typeof object.property !== typeValue`
-                    checks = checks.concat(
-                      [...typeComparisons].map(typeValue =>
+                  if (isTop) {
+                    // No point in doing the invariant if we don't know the type
+                    // of one of the nested abstract values
+                    condition = null;
+                  } else {
+                    condition = ([objectNode, valueNode]) => {
+                      // Create `object.property !== concreteValue`
+                      let checks = [...concreteComparisons].map(concreteValue =>
                         t.binaryExpression(
                           "!==",
-                          t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
-                          t.stringLiteral(TypesDomain.typeToString(typeValue))
+                          accessedPropertyOf(objectNode),
+                          t.valueToNode(concreteValue.serialize())
                         )
-                      )
-                    );
-                    return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
-                  };
+                      );
+                      // Create `typeof object.property !== typeValue`
+                      checks = checks.concat(
+                        [...typeComparisons].map(typeValue =>
+                          t.binaryExpression(
+                            "!==",
+                            t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
+                            t.stringLiteral(TypesDomain.typeToString(typeValue))
+                          )
+                        )
+                      );
+                      return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
+                    };
+                  }
+                } else {
+                  condition = ([objectNode, valueNode]) =>
+                    t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
                 }
-              } else {
-                condition = ([objectNode, valueNode]) =>
-                  t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
-              }
-              break;
-            default:
-              invariant(false, "Invalid invariantOption " + invariantOptionString);
+                break;
+              default:
+                invariant(false, "Invalid invariantOption " + invariantOptionString);
+            }
+            if (condition)
+              generator.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
           }
-          if (condition)
-            generator.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
           (object: any).$Set(key, value, object);
@@ -397,6 +431,15 @@ export default function(realm: Realm): void {
 
   global.$DefineOwnProperty("__IntrospectionError", {
     value: realm.intrinsics.__IntrospectionError,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__isIntegral", {
+    value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
+      return new BooleanValue(realm, value instanceof IntegralValue);
+    }),
     writable: true,
     enumerable: false,
     configurable: true,

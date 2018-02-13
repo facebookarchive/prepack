@@ -324,6 +324,12 @@ export type ClassComponentMetadata = {
   instanceSymbols: Set<SymbolValue>,
 };
 
+export type ReactHint = {|
+  object: ObjectValue,
+  propertyName: string,
+  args: Array<Value>,
+|};
+
 export type DebugServerType = {
   checkForActions: BabelNode => void,
   shutdown: () => void,
@@ -999,3 +1005,5 @@ export type ToType = {
   // ECMA262 7.1.16
   CanonicalNumericIndexString(realm: Realm, argument: StringValue): number | void,
 };
+
+export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
