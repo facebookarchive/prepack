@@ -165,7 +165,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
   // Jest tests
   let originalConsoleError = console.error;
 
-  describe(`Test ${shouldTranspileSource ? "transpiled" : ""} React (${outputJsx ? "JSX" : "create-element"})`, () => {
+  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${outputJsx
+    ? "JSX output"
+    : "create-element output"}`, () => {
     describe("Functional component folding", () => {
       let directory = "functional-components";
 
@@ -207,6 +209,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple with abstract props", async () => {
         await runTest(directory, "simple-with-abstract-props.js");
+      });
+
+      it("Simple with multiple JSX spreads", async () => {
+        await runTest(directory, "simple-with-jsx-spread.js");
       });
 
       it("Circular reference", async () => {

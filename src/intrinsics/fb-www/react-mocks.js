@@ -16,11 +16,10 @@ import {
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
   NativeFunctionValue,
-  StringValue,
   Value,
   AbstractObjectValue,
+  AbstractValue,
   NullValue,
-  SymbolValue,
 } from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import { Environment } from "../../singletons.js";
@@ -279,13 +278,13 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     `createElement`,
     0,
     (context, [type, config, ...children]) => {
+      invariant(type instanceof Value);
       invariant(
-        type instanceof ObjectValue ||
-          type instanceof AbstractObjectValue ||
-          type instanceof StringValue ||
-          type instanceof SymbolValue
+        config instanceof ObjectValue ||
+          config instanceof AbstractObjectValue ||
+          config instanceof AbstractValue ||
+          config instanceof NullValue
       );
-      invariant(config instanceof NullValue || config instanceof ObjectValue || config instanceof AbstractObjectValue);
 
       if (Array.isArray(children)) {
         if (children.length === 0) {

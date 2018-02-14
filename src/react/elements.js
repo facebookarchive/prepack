@@ -10,15 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import {
-  AbstractObjectValue,
-  StringValue,
-  Value,
-  ObjectValue,
-  FunctionValue,
-  NullValue,
-  SymbolValue,
-} from "../values/index.js";
+import { AbstractValue, AbstractObjectValue, Value, ObjectValue, FunctionValue, NullValue } from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -30,8 +22,8 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 function createPropsObject(
   realm: Realm,
-  type: ObjectValue | AbstractObjectValue | StringValue | SymbolValue,
-  config: ObjectValue | AbstractObjectValue | NullValue,
+  type: Value,
+  config: ObjectValue | AbstractValue | AbstractObjectValue | NullValue,
   children: Value
 ) {
   let defaultProps = type instanceof ObjectValue ? Get(realm, type, "defaultProps") : null;
@@ -53,45 +45,45 @@ function createPropsObject(
     }
   };
 
-  if (config instanceof AbstractObjectValue && config.isPartialObject()) {
-    // if we have defaultProps or children, we need to create a new merge of the objects
-    // along with our config
+  if ((config instanceof AbstractObjectValue && config.isPartialObject()) || config instanceof AbstractValue) {
+    let reactHint = realm.react.abstractHints.get(config);
+    // if we have defaultProps, partial props or children, we need to create
+    // a new merge of the objects along with our config
     if (defaultProps !== realm.intrinsics.undefined || children !== realm.intrinsics.undefined) {
-      let args = [];
-      if (defaultProps !== realm.intrinsics.undefined) {
-        args.push(defaultProps);
-      }
-      args.push(config);
-      if (children !== realm.intrinsics.undefined) {
-        args.push(children);
-      }
-      let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      let types = new TypesDomain(FunctionValue);
-      let values = new ValuesDomain();
-      invariant(realm.generator);
-      props = realm.generator.derive(types, values, [emptyObject, ...args], _args => {
-        return t.callExpression(
-          t.memberExpression(t.identifier("Object"), t.identifier("assign")),
-          ((_args: any): Array<any>)
+      if (reactHint === "HAS_NO_KEY_OR_REF") {
+        let args = [];
+        if (defaultProps !== realm.intrinsics.undefined) {
+          args.push(defaultProps);
+        }
+        args.push(config);
+        if (children !== realm.intrinsics.undefined) {
+          args.push(children);
+        }
+        let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+        let types = new TypesDomain(FunctionValue);
+        let values = new ValuesDomain();
+        invariant(realm.generator);
+        props = realm.generator.derive(types, values, [emptyObject, ...args], _args => {
+          return t.callExpression(
+            t.memberExpression(t.identifier("Object"), t.identifier("assign")),
+            ((_args: any): Array<any>)
+          );
+        });
+        realm.react.abstractHints.set(props, "HAS_NO_KEY_OR_REF");
+      } else {
+        // if either are abstract, this will impact the reconcilation process
+        // and ultimately prevent us from folding ReactElements properly
+        let diagnostic = new CompilerDiagnostic(
+          `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`,
+          realm.currentLocation,
+          "PP0025",
+          "FatalError"
         );
-      });
-      invariant(config instanceof AbstractObjectValue);
+        realm.handleError(diagnostic);
+        if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+      }
     } else {
       props = config;
-    }
-    let reactHint = realm.react.abstractHints.get(config);
-
-    if (reactHint !== "HAS_NO_KEY_OR_REF") {
-      // if either are abstract, this will impact the reconcilation process
-      // and ultimately prevent us from folding ReactElements properly
-      let diagnostic = new CompilerDiagnostic(
-        `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`,
-        realm.currentLocation,
-        "PP0025",
-        "FatalError"
-      );
-      realm.handleError(diagnostic);
-      if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
     }
   } else {
     if (config instanceof ObjectValue) {
@@ -118,8 +110,8 @@ function createPropsObject(
 
 export function createReactElement(
   realm: Realm,
-  type: ObjectValue | AbstractObjectValue | StringValue | SymbolValue,
-  config: ObjectValue | AbstractObjectValue | NullValue,
+  type: Value,
+  config: ObjectValue | AbstractValue | AbstractObjectValue | NullValue,
   children: Value
 ) {
   let { key, props, ref } = createPropsObject(realm, type, config, children);

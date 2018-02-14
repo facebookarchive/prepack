@@ -32,7 +32,6 @@ import {
   ObjectValue,
   FunctionValue,
   AbstractValue,
-  SymbolValue,
 } from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../react/jsx.js";
 import * as t from "babel-types";
@@ -205,6 +204,7 @@ function evaluateJSXAttributes(
   let spreadAttributesCount = 0;
   let spreadAttributesWithInitialPropsHintCount = 0;
   let attributesAssigned = 0;
+  let spreadValue;
 
   const setConfigProperty = (name: string, value: Value): void => {
     invariant(config instanceof ObjectValue);
@@ -221,7 +221,7 @@ function evaluateJSXAttributes(
         setConfigProperty(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm));
         break;
       case "JSXSpreadAttribute":
-        let spreadValue = Environment.GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
+        spreadValue = Environment.GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
 
         if (spreadValue instanceof ObjectValue) {
           for (let [spreadPropKey] of spreadValue.properties) {
@@ -239,7 +239,10 @@ function evaluateJSXAttributes(
           }
           // we push the props up to this point into the abstract props args. we also
           // push the abstract spread object and then we create a fresh props object
-          abstractPropsArgs.push(config, spreadValue);
+          if (config.properties.size > 0) {
+            abstractPropsArgs.push(config);
+          }
+          abstractPropsArgs.push(spreadValue);
           config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
         }
         break;
@@ -252,14 +255,18 @@ function evaluateJSXAttributes(
     // if we haven't assigned any attributes and we are dealing with a single
     // spread attribute, we can just make the spread object the props
     if (attributesAssigned === 0) {
-      config = abstractPropsArgs[1];
-    } else {
+      config = spreadValue;
+    } else if (attributesAssigned !== 0) {
       // we create an abstract Object.assign() to deal with the fact that we don't what
       // the props are because they contain abstract spread attributes that we can't
       // evaluate ahead of time
       let types = new TypesDomain(FunctionValue);
       let values = new ValuesDomain();
       let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      // push the current config
+      if (config.properties.size > 0) {
+        abstractPropsArgs.push(config);
+      }
       invariant(realm.generator);
       config = realm.generator.derive(types, values, [emptyObject, ...abstractPropsArgs], _args => {
         return t.callExpression(
@@ -290,11 +297,6 @@ export default function(
   let type = evaluateJSXIdentifier(openingElement.name, strictCode, env, realm);
   let children = evaluateJSXChildren(ast.children, strictCode, env, realm);
   let config = evaluateJSXAttributes(openingElement.attributes, strictCode, env, realm);
-  invariant(
-    type instanceof ObjectValue ||
-      type instanceof AbstractObjectValue ||
-      type instanceof StringValue ||
-      type instanceof SymbolValue
-  );
+  invariant(type instanceof Value);
   return createReactElement(realm, type, config, children);
 }

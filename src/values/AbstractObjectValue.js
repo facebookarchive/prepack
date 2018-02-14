@@ -330,7 +330,8 @@ export default class AbstractObjectValue extends AbstractValue {
           [object],
           ([o]) => {
             invariant(typeof P === "string");
-            return t.memberExpression(o, t.identifier(P), !t.isValidIdentifier(P));
+            let isValidIdentifier = t.isValidIdentifier(P);
+            return t.memberExpression(o, isValidIdentifier ? t.identifier(P) : t.stringLiteral(P), !isValidIdentifier);
           },
           {
             skipInvariant: true,
