@@ -85,7 +85,7 @@ function createPropsObject(
       // if either are abstract, this will impact the reconcilation process
       // and ultimately prevent us from folding ReactElements properly
       let diagnostic = new CompilerDiagnostic(
-        `unable to evaluate "key" and "ref" on a ReactElement due to a JSXSpreadAttribute`,
+        `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`,
         realm.currentLocation,
         "PP0025",
         "FatalError"
