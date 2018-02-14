@@ -327,32 +327,32 @@ export default function(realm: Realm): void {
           if (realm.emitConcreteModel) {
             generator.emitConcreteModel(key, value);
           } else {
-            let condition = ([objectNode, valueNode]) =>
-              t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
-            if (invariantOptions) {
-              let invariantOptionString = To.ToStringPartial(realm, invariantOptions);
-              switch (invariantOptionString) {
-                case "VALUE_DEFINED_INVARIANT":
-                  condition = ([objectNode, valueNode]) =>
-                    t.binaryExpression(
-                      "===",
-                      t.memberExpression(objectNode, propertyIdentifier, computed),
-                      t.valueToNode(undefined)
-                    );
-                  break;
-                case "SKIP_INVARIANT":
-                  condition = null;
-                  break;
-                case "FULL_INVARIANT":
-                  break;
-                default:
-                  invariant(false, "Invalid invariantOption " + invariantOptionString);
-              }
+            let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
+            let inExpressionOf = objectNode =>
+              t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
+
+            let invariantOptionString = invariantOptions
+              ? To.ToStringPartial(realm, invariantOptions)
+              : "FULL_INVARIANT";
+            switch (invariantOptionString) {
+              // checks (!property in object || object.property === undefined)
+              case "VALUE_DEFINED_INVARIANT":
+                let condition = ([objectNode, valueNode]) =>
+                  t.logicalExpression(
+                    "||",
+                    inExpressionOf(objectNode),
+                    t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
+                  );
+                generator.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
+                break;
+              case "SKIP_INVARIANT":
+                break;
+              case "FULL_INVARIANT":
+                generator.emitFullInvariant((object: any), key, value);
+                break;
+              default:
+                invariant(false, "Invalid invariantOption " + invariantOptionString);
             }
-            if (condition)
-              generator.emitInvariant([object, value, object], condition, objnode =>
-                t.memberExpression(objnode, propertyIdentifier, computed)
-              );
           }
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above

@@ -42,7 +42,7 @@ import type {
   BabelNodeBlockStatement,
 } from "babel-types";
 import { nullExpression } from "./internalizer.js";
-import { concretize } from "../singletons.js";
+import { Utils, concretize } from "../singletons.js";
 
 export type SerializationContext = {
   serializeValue: Value => BabelNodeExpression,
@@ -259,6 +259,69 @@ export class Generator {
       },
       dependencies: [body],
     });
+  }
+
+  // Checks the full set of possible concrete values as well as typeof
+  // for any AbstractValues
+  // e.g: (obj.property !== undefined && typeof obj.property !== "object")
+  // NB: if the type of the AbstractValue is top, skips the invariant
+  emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value) {
+    let propertyIdentifier = this.getAsPropertyNameExpression(key);
+    let computed = !t.isIdentifier(propertyIdentifier);
+    let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
+    let condition;
+    if (value instanceof AbstractValue) {
+      let isTop = false;
+      let concreteComparisons = [];
+      let typeComparisons = new Set();
+
+      function populateComparisonsLists(absValue: AbstractValue) {
+        if (absValue.kind === "abstractConcreteUnion") {
+          // recurse
+          for (let nestedValue of absValue.args)
+            if (nestedValue instanceof ConcreteValue) {
+              concreteComparisons.push(nestedValue);
+            } else {
+              invariant(nestedValue instanceof AbstractValue);
+              populateComparisonsLists(nestedValue);
+            }
+        } else if (absValue.getType().isTop || absValue.getType() === Value) {
+          isTop = true;
+        } else {
+          typeComparisons.add(absValue.getType());
+        }
+      }
+      populateComparisonsLists(value);
+
+      // No point in doing the invariant if we don't know the type
+      // of one of the nested abstract values
+      if (isTop) {
+        return;
+      } else {
+        condition = ([objectNode, valueNode]) => {
+          // Create `object.property !== concreteValue`
+          let checks = concreteComparisons.map(concreteValue =>
+            t.binaryExpression("!==", accessedPropertyOf(objectNode), t.valueToNode(concreteValue.serialize()))
+          );
+          // Create `typeof object.property !== typeValue`
+          checks = checks.concat(
+            [...typeComparisons].map(typeValue => {
+              let typeString = Utils.typeToString(typeValue);
+              invariant(typeString !== undefined, typeValue);
+              return t.binaryExpression(
+                "!==",
+                t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
+                t.stringLiteral(typeString)
+              );
+            })
+          );
+          return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
+        };
+      }
+    } else {
+      condition = ([objectNode, valueNode]) => t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
+    }
+    this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
   }
 
   emitInvariant(

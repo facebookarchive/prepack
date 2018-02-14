@@ -13,19 +13,13 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import type { Realm } from "../realm.js";
 import {
   AbstractObjectValue,
-  ArrayValue,
   BooleanValue,
   ConcreteValue,
-  EmptyValue,
-  FunctionValue,
-  NullValue,
   NumberValue,
-  IntegralValue,
   ObjectValue,
   PrimitiveValue,
   StringValue,
   SymbolValue,
-  UndefinedValue,
 } from "./index.js";
 import invariant from "../invariant.js";
 
@@ -50,35 +44,6 @@ export default class Value {
 
   getType(): typeof Value {
     return this.constructor;
-  }
-
-  static getTypeFromName(typeName: string): void | typeof Value {
-    switch (typeName) {
-      case "empty":
-        return EmptyValue;
-      case "void":
-        return UndefinedValue;
-      case "null":
-        return NullValue;
-      case "boolean":
-        return BooleanValue;
-      case "string":
-        return StringValue;
-      case "symbol":
-        return SymbolValue;
-      case "number":
-        return NumberValue;
-      case "object":
-        return ObjectValue;
-      case "array":
-        return ArrayValue;
-      case "function":
-        return FunctionValue;
-      case "integral":
-        return IntegralValue;
-      default:
-        return undefined;
-    }
   }
 
   static isTypeCompatibleWith(type: typeof Value, Constructor: typeof Value): boolean {
