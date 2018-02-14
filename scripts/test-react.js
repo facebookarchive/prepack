@@ -40,7 +40,7 @@ function cxShim(...args) {
 // assign for tests that use the cx() global
 global.cx = cxShim;
 
-function runTestSuite(outputJsx) {
+function runTestSuite(outputJsx, shouldTranspileSource) {
   let reactTestRoot = path.join(__dirname, "../test/react/");
   let prepackOptions = {
     compatibility: "fb-www",
@@ -67,11 +67,15 @@ function runTestSuite(outputJsx) {
     };
   }
 
-  function runSource(source) {
-    let transformedSource = babel.transform(source, {
+  function transpileSource(source) {
+    return babel.transform(source, {
       presets: ["babel-preset-react"],
       plugins: ["transform-object-rest-spread"],
     }).code;
+  }
+
+  function runSource(source) {
+    let transformedSource = transpileSource(source);
     /* eslint-disable no-new-func */
     let fn = new Function("require", "module", transformedSource);
     let moduleShim = { exports: null };
@@ -102,6 +106,9 @@ function runTestSuite(outputJsx) {
 
   async function runTest(directory, name) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
+    if (shouldTranspileSource) {
+      source = transpileSource(source);
+    }
     let { compiledSource, statistics } = compileSourceWithPrepack(source);
 
     expect(statistics).toMatchSnapshot();
@@ -157,7 +164,7 @@ function runTestSuite(outputJsx) {
   // Jest tests
   let originalConsoleError = console.error;
 
-  describe(`Test React (${outputJsx ? "JSX" : "create-element"})`, () => {
+  describe(`Test ${shouldTranspileSource ? "transpiled" : ""} React (${outputJsx ? "JSX" : "create-element"})`, () => {
     describe("Functional component folding", () => {
       let directory = "functional-components";
 
@@ -382,5 +389,9 @@ function runTestSuite(outputJsx) {
   });
 }
 
-runTestSuite(true);
-runTestSuite(false);
+// pre non-transpiled
+runTestSuite(true, false);
+runTestSuite(false, false);
+// pre transpiled
+runTestSuite(true, true);
+runTestSuite(false, true);
