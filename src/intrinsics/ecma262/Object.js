@@ -80,7 +80,7 @@ export default function(realm: Realm): NativeFunctionValue {
       } else {
         // If the source is abstract that is partial, we don't know what
         // properties it has, we need to serialize back an abstract value
-        if (nextSource instanceof AbstractValue && nextSource.isPartialObject()) {
+        if (nextSource instanceof AbstractValue && nextSource.isPartialObject() && realm.isInPureScope()) {
           to_must_be_abstract = true;
           break;
         }
@@ -147,6 +147,7 @@ export default function(realm: Realm): NativeFunctionValue {
         target.makeSimple();
         // the abstract value will also need to be simple as the target object was an
         // object
+        invariant(to instanceof AbstractObjectValue);
         to.makeSimple();
       }
       return to;
