@@ -33,6 +33,8 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties as Props, To } from "../../singletons.js";
+import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
+import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -54,7 +56,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
+  let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
@@ -76,6 +78,14 @@ export default function(realm: Realm): NativeFunctionValue {
         // b. Else,
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
+
+        if (!frm.isSimpleObject()) {
+          // If this is not a simple object, it may have getters on it that can
+          // mutate any state as a result. We don't yet support this.
+          AbstractValue.reportIntrospectionError(nextSource);
+          throw new FatalError();
+        }
+
         let frm_was_partial = frm.isPartialObject();
         if (frm_was_partial) {
           to_must_be_partial = true;
@@ -95,6 +105,16 @@ export default function(realm: Realm): NativeFunctionValue {
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
+
+        AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ObjectValue,
+          [ObjectAssign, target, nextSource],
+          (nodes: Array<BabelNodeExpression>) => {
+            let fun_args = nodes.slice(1);
+            return t.callExpression(nodes[0], ((fun_args: any): Array<BabelNodeExpression | BabelNodeSpreadElement>));
+          }
+        );
       }
 
       invariant(frm, "from required");
