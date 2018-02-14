@@ -44,7 +44,6 @@ import { Generator, PreludeGenerator } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/internalizer.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
-import type { Logger } from "./utils/logger.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -185,7 +184,6 @@ export class Realm {
       classComponentMetadata: new Map(),
       enabled: opts.reactEnabled || false,
       output: opts.reactOutput || "create-element",
-      logger: undefined,
       symbols: new Map(),
       currentOwner: undefined,
       abstractHints: new WeakMap(),
@@ -256,7 +254,6 @@ export class Realm {
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue, ReactHint>,
-    logger?: Logger,
     output?: ReactOutputTypes,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
