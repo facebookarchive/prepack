@@ -140,11 +140,15 @@ export default function(realm: Realm): NativeFunctionValue {
           ((_args: any): Array<any>)
         );
       });
-      target.makePartial();
-      target.makeSimple();
-      // Make AbstractObjectValue as Object.assign doesn't copy getters/setter
-      invariant(to instanceof AbstractObjectValue);
-      to.makeSimple();
+      if (target instanceof ObjectValue) {
+        // we have to make the target partial and simple, because it was
+        // an object before and needs to be treated the same to prevent failures
+        target.makePartial();
+        target.makeSimple();
+        // the abstract value will also need to be simple as the target object was an
+        // object
+        to.makeSimple();
+      }
       return to;
     }
     // 5. Return to.
