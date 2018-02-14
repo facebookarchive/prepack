@@ -1175,6 +1175,8 @@ export class PropertiesImplementation {
         invariant(realmGenerator);
         value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
           kind: "resolved",
+          // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
+          skipInvariant: true,
         });
         if (savedUnion !== undefined) {
           invariant(savedIndex !== undefined);
@@ -1182,6 +1184,7 @@ export class PropertiesImplementation {
           args[savedIndex] = value;
           value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
         }
+        if (typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
         InternalSetProperty(realm, O, P, {
           value: value,
           writable: "writable" in X ? X.writable : false,
