@@ -197,6 +197,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-refs.js");
       });
 
+      it("Simple with abstract props", async () => {
+        await runTest(directory, "simple-with-abstract-props.js");
+      });
+
       it("Circular reference", async () => {
         await runTest(directory, "circular-reference.js");
       });
