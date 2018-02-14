@@ -277,7 +277,7 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   });
 }
 
-export function createReactHint(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
+export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
   return {
     object,
     propertyName,
@@ -296,7 +296,7 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
     let reactHint = realm.react.abstractHints.get(value);
 
     invariant(reactHint);
-    if (reactHint.object === realm.fbLibraries.reactRelay) {
+    if (typeof reactHint !== "string" && reactHint.object === realm.fbLibraries.reactRelay) {
       switch (reactHint.propertyName) {
         case "createFragmentContainer":
         case "createPaginationContainer":

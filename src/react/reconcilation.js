@@ -74,6 +74,7 @@ export class Reconciler {
     this.simpleClassComponents = simpleClassComponents;
     this.logger = moduleTracer.modules.logger;
     this.branchReactComponentTrees = branchReactComponentTrees;
+    this.realm.react.logger = this.logger;
   }
 
   realm: Realm;

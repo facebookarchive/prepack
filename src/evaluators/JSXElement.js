@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { FatalError } from "../errors.js";
 import type {
   BabelNode,
   BabelNodeStringLiteral,
@@ -23,7 +22,17 @@ import type {
   BabelNodeJSXSpreadAttribute,
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
-import { ArrayValue, StringValue, Value, NumberValue, ObjectValue } from "../values/index.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import {
+  AbstractObjectValue,
+  ArrayValue,
+  StringValue,
+  Value,
+  NumberValue,
+  ObjectValue,
+  FunctionValue,
+  AbstractValue,
+} from "../values/index.js";
 import { getReactSymbol } from "../react/utils.js";
 import { convertJSXExpressionToIdentifier } from "../react/jsx.js";
 import * as t from "babel-types";
@@ -31,13 +40,6 @@ import { Get } from "../methods/index.js";
 import { Create, Environment, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { computeBinary } from "./BinaryExpression.js";
-
-let RESERVED_PROPS = {
-  key: true,
-  ref: true,
-  __self: true,
-  __source: true,
-};
 
 // taken from Babel
 function cleanJSXElementLiteralChild(child: string): null | string {
@@ -221,90 +223,153 @@ function evaluateJSXAttributes(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): { attributes: Map<string, Value>, children: ArrayValue | Value | null } {
-  let attributes = new Map();
+): { key: Value, props: ObjectValue | AbstractObjectValue, ref: Value } {
+  let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   let children = evaluateJSXChildren(astChildren, strictCode, env, realm);
+  let key = realm.intrinsics.null;
+  let ref = realm.intrinsics.null;
   let defaultProps = getDefaultProps(elementType, env, realm);
+  // to be used if we need to create an abstract props
+  let abstractPropsArgs = [];
+
+  let containsAbstractSpreadAttribute = false;
+  let containsAbstractKey = false;
+  let containsAbstractRef = false;
+  let spreadAttributesCount = 0;
+  let spreadAttributesWithInitialPropsHintCount = 0;
+  let attributesAssigned = 0;
+
+  const setProp = (name: string, value: Value, isDefaultProps: boolean): void => {
+    if (name === "children") {
+      if (isDefaultProps && children !== null) {
+        return;
+      }
+      invariant(props instanceof ObjectValue);
+      Properties.Set(realm, props, "children", value, true);
+    } else if (name === "key" && value !== realm.intrinsics.null) {
+      if (value instanceof AbstractValue) {
+        containsAbstractKey = true;
+      } else if (containsAbstractKey) {
+        containsAbstractKey = false;
+      }
+      key = computeBinary(realm, "+", realm.intrinsics.emptyString, value);
+    } else if (name === "ref") {
+      if (value instanceof AbstractValue) {
+        containsAbstractRef = true;
+      } else if (containsAbstractRef) {
+        containsAbstractRef = false;
+      }
+      ref = value;
+    } else if (name !== "__self" && name !== "__source") {
+      invariant(props instanceof ObjectValue);
+      Properties.Set(realm, props, name, value, true);
+    }
+    attributesAssigned++;
+  };
+
+  // handle children
+  if (children !== null) {
+    setProp("children", children, false);
+  }
 
   // defaultProps are a bit like default function arguments
   // if an actual value exists, it should overwrite the default value
   if (defaultProps !== null) {
-    for (let [key] of defaultProps.properties) {
-      let defaultPropValue = Get(realm, defaultProps, key);
-
-      if (defaultPropValue instanceof Value) {
-        if (key === "children") {
-          if (children === null) {
-            children = defaultPropValue;
-          }
-        } else {
-          attributes.set(key, defaultPropValue);
-        }
-      }
+    for (let [defaultPropKey] of defaultProps.properties) {
+      setProp(defaultPropKey, Get(realm, defaultProps, defaultPropKey), true);
     }
   }
+
   for (let astAttribute of astAttributes) {
     switch (astAttribute.type) {
       case "JSXAttribute":
         let { name, value } = astAttribute;
 
         invariant(name.type === "JSXIdentifier", `JSX attribute name type not supported: ${astAttribute.type}`);
-        attributes.set(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm));
+        setProp(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm), false);
         break;
       case "JSXSpreadAttribute":
         let spreadValue = Environment.GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
 
         if (spreadValue instanceof ObjectValue) {
-          for (let [key, spreadProp] of spreadValue.properties) {
-            if (spreadProp !== undefined && spreadProp.descriptor !== undefined) {
-              let spreadPropValue = spreadProp.descriptor.value;
-
-              if (spreadPropValue instanceof Value) {
-                if (key === "children") {
-                  children = spreadPropValue;
-                } else {
-                  attributes.set(key, spreadPropValue);
-                }
-              }
-            }
+          for (let [spreadPropKey] of spreadValue.properties) {
+            setProp(spreadPropKey, Get(realm, spreadValue, spreadPropKey), false);
           }
         } else {
-          throw new FatalError("ObjectValues are the only supported value for JSX Spread Attributes");
+          spreadAttributesCount++;
+          containsAbstractSpreadAttribute = true;
+          // check to see if this object has an abstractHint
+          invariant(spreadValue instanceof AbstractValue);
+          let reactHint = realm.react.abstractHints.get(spreadValue);
+
+          if (reactHint === "HAS_NO_KEY_OR_REF") {
+            spreadAttributesWithInitialPropsHintCount++;
+            // as we know initial props can't have a "props" or "key", we don't have
+            // to mark them as abstract
+          } else {
+            // as the spread might contain "key" and "ref" we have to mark both
+            // as being abstract too, as we don't know if they exist
+            containsAbstractKey = true;
+            containsAbstractRef = true;
+          }
+          // we push the props up to this point into the abstract props args. we also
+          // push the abstract spread object and then we create a fresh props object
+          abstractPropsArgs.push(props, spreadValue);
+          props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
         }
         break;
       default:
-        invariant(false, `Unknown JSX attribute type:: ${astAttribute.type}`);
+        invariant(false, `Unknown JSX attribute type: ${astAttribute.type}`);
     }
   }
-  return {
-    attributes,
-    children,
-  };
+  if (containsAbstractSpreadAttribute) {
+    // if we haven't assigned any attributes and we are dealing with a single
+    // spread attribute, we can just make the spread object the props
+    if (attributesAssigned === 0) {
+      props = abstractPropsArgs[1];
+    } else {
+      // we create an abstract Object.assign() to deal with the fact that we don't what
+      // the props are because they contain abstract spread attributes that we can't
+      // evaluate ahead of time
+      let types = new TypesDomain(FunctionValue);
+      let values = new ValuesDomain();
+      let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      invariant(realm.generator);
+      props = realm.generator.derive(types, values, [emptyObject, ...abstractPropsArgs], _args => {
+        return t.callExpression(
+          t.memberExpression(t.identifier("Object"), t.identifier("assign")),
+          ((_args: any): Array<any>)
+        );
+      });
+      if (
+        spreadAttributesCount === spreadAttributesWithInitialPropsHintCount &&
+        spreadAttributesWithInitialPropsHintCount > 0
+      ) {
+        realm.react.abstractHints.set(props, "HAS_NO_KEY_OR_REF");
+      }
+      if (containsAbstractKey || containsAbstractRef) {
+        // if either are abstract, this will impact the reconcilation process
+        // and ultimately prevent us from folding ReactElements properly
+        // so we unsafely allow this for now, but show a warning
+        invariant(realm.react.logger);
+        realm.react.logger.logWarning(
+          props,
+          `unable to evaluate "key" and "ref" on a ReactElement due to a JSXSpreadAttribute`
+        );
+      }
+    }
+  }
+  invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
+  return { key, props, ref };
 }
 
-function createReactProps(
+function createReactElement(
   realm: Realm,
   type: Value,
-  attributes: Map<string, Value>,
-  children,
-  env: LexicalEnvironment
+  key: Value,
+  ref: Value,
+  props: ObjectValue | AbstractObjectValue
 ): ObjectValue {
-  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  for (let [key, value] of attributes) {
-    if (typeof key === "string") {
-      if (RESERVED_PROPS.hasOwnProperty(key)) {
-        continue;
-      }
-      Create.CreateDataPropertyOrThrow(realm, obj, key, value);
-    }
-  }
-  if (children !== null) {
-    Create.CreateDataPropertyOrThrow(realm, obj, "children", children);
-  }
-  return obj;
-}
-
-function createReactElement(realm: Realm, type: Value, key: Value, ref: Value, props: ObjectValue): ObjectValue {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
@@ -324,7 +389,7 @@ export default function(
   invariant(realm.react.enabled, "JSXElements can only be evaluated with the reactEnabled option");
   let openingElement = ast.openingElement;
   let type = evaluateJSXIdentifier(openingElement.name, strictCode, env, realm);
-  let { attributes, children } = evaluateJSXAttributes(
+  let { key, props, ref } = evaluateJSXAttributes(
     openingElement.name,
     openingElement.attributes,
     ast.children,
@@ -332,22 +397,6 @@ export default function(
     env,
     realm
   );
-  let key = attributes.get("key") || realm.intrinsics.null;
-  let ref = attributes.get("ref") || realm.intrinsics.null;
-
-  if (key === realm.intrinsics.undefined) {
-    key = realm.intrinsics.null;
-  }
-  if (ref === realm.intrinsics.undefined) {
-    ref = realm.intrinsics.null;
-  }
-
-  // React uses keys to identify nodes as they get updated through the reconcilation
-  // phase. Keys are used in a map and thus need to be converted to strings
-  if (key !== realm.intrinsics.null) {
-    key = computeBinary(realm, "+", realm.intrinsics.emptyString, key);
-  }
-  let props = createReactProps(realm, type, attributes, children, env);
 
   return createReactElement(realm, type, key, ref, props);
 }

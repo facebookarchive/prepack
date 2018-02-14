@@ -57,6 +57,7 @@ export function getInitialProps(
     }
   }
   let value = AbstractValue.createAbstractObject(realm, propsName || "props");
+  realm.react.abstractHints.set(value, "HAS_NO_KEY_OR_REF");
   invariant(value instanceof AbstractObjectValue);
   return value;
 }
