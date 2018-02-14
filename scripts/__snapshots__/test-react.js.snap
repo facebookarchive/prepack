@@ -273,6 +273,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (JSX) Functional component folding Simple with Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React (JSX) fb-www mocks fb-www 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
@@ -603,6 +610,13 @@ ReactStatistics {
 `;
 
 exports[`Test React (create-element) Functional component folding Simple refs 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple with Object.assign 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
   "optimizedTrees": 1,

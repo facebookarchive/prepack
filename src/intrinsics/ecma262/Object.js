@@ -12,6 +12,7 @@
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import {
   AbstractValue,
   ObjectValue,
@@ -20,6 +21,8 @@ import {
   StringValue,
   BooleanValue,
   SymbolValue,
+  FunctionValue,
+  AbstractObjectValue,
 } from "../../values/index.js";
 import {
   IsExtensible,
@@ -32,7 +35,8 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties as Props, To } from "../../singletons.js";
+import { Create, Properties as Props, To, Leak } from "../../singletons.js";
+import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -58,6 +62,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
+    let to_must_be_abstract = false;
 
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
@@ -95,6 +100,13 @@ export default function(realm: Realm): NativeFunctionValue {
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
+        // If we are in a pure scope and the value is abstract and partial
+        // we can create a new abstract from that object as we shouldn't be
+        // doing things that cause mutations to things we didn't create
+        if (nextSource instanceof AbstractValue && realm.isInPureScope()) {
+          to_must_be_abstract = true;
+          break;
+        }
       }
 
       invariant(frm, "from required");
@@ -118,8 +130,24 @@ export default function(realm: Realm): NativeFunctionValue {
       }
     }
 
+    if (to_must_be_abstract) {
+      let types = new TypesDomain(FunctionValue);
+      let values = new ValuesDomain();
+      invariant(realm.generator);
+      to = realm.generator.derive(types, values, [target, ...sources], _args => {
+        return t.callExpression(
+          t.memberExpression(t.identifier("Object"), t.identifier("assign")),
+          ((_args: any): Array<any>)
+        );
+      });
+      // leak the target
+      Leak.leakValue(realm, target, realm.currentLocation);
+      invariant(to instanceof AbstractObjectValue);
+      return to;
+    }
     // 5. Return to.
     if (to_must_be_partial) to.makePartial();
+
     return to;
   });
 
