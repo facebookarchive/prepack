@@ -26,6 +26,7 @@ import { Get } from "../methods/index.js";
 import { getReactSymbol } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 function createPropsObject(
   realm: Realm,
@@ -83,12 +84,14 @@ function createPropsObject(
     if (reactHint !== "HAS_NO_KEY_OR_REF") {
       // if either are abstract, this will impact the reconcilation process
       // and ultimately prevent us from folding ReactElements properly
-      // so we unsafely allow this for now, but show a warning
-      invariant(realm.react.logger);
-      realm.react.logger.logWarning(
-        config,
-        `unable to evaluate "key" and "ref" on a ReactElement due to a JSXSpreadAttribute`
+      let diagnostic = new CompilerDiagnostic(
+        `unable to evaluate "key" and "ref" on a ReactElement due to a JSXSpreadAttribute`,
+        realm.currentLocation,
+        "PP0025",
+        "FatalError"
       );
+      realm.handleError(diagnostic);
+      if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
     }
   } else {
     if (config instanceof ObjectValue) {
