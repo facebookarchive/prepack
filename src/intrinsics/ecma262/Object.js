@@ -35,7 +35,7 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties as Props, To } from "../../singletons.js";
+import { Create, Properties as Props, To, Leak } from "../../singletons.js";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
@@ -78,13 +78,6 @@ export default function(realm: Realm): NativeFunctionValue {
       if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) {
         continue;
       } else {
-        // If the source is abstract that is partial, we don't know what
-        // properties it has, we need to serialize back an abstract value
-        if (nextSource instanceof AbstractValue && nextSource.isPartialObject() && realm.isInPureScope()) {
-          to_must_be_abstract = true;
-          break;
-        }
-
         // b. Else,
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
@@ -106,6 +99,13 @@ export default function(realm: Realm): NativeFunctionValue {
         if (to_keys.length !== 0) {
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
+        }
+        // If we are in a pure scope and the value is abstract and partial
+        // we can create a new abstract from that object as we shouldn't be
+        // doing things that cause mutations to things we didn't create
+        if (nextSource instanceof AbstractValue && realm.isInPureScope()) {
+          to_must_be_abstract = true;
+          break;
         }
       }
 
@@ -140,16 +140,9 @@ export default function(realm: Realm): NativeFunctionValue {
           ((_args: any): Array<any>)
         );
       });
-      if (target instanceof ObjectValue) {
-        // we have to make the target partial and simple, because it was
-        // an object before and needs to be treated the same to prevent failures
-        target.makePartial();
-        target.makeSimple();
-        // the abstract value will also need to be simple as the target object was an
-        // object
-        invariant(to instanceof AbstractObjectValue);
-        to.makeSimple();
-      }
+      // leak the target
+      Leak.leakValue(realm, target, realm.currentLocation);
+      invariant(to instanceof AbstractObjectValue);
       return to;
     }
     // 5. Return to.
