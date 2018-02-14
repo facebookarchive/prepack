@@ -228,16 +228,6 @@ export class ResidualFunctions {
     let strictFunctionBodies = [];
     let funcNodes: Map<FunctionValue, BabelNodeFunctionExpression> = new Map();
 
-    /*for (let [funcBody, instances] of functionEntries) {
-      let functionInfo = this.residualFunctionInfos.get(funcBody);
-      invariant(functionInfo);
-      this.referentializer.referentialize(
-        functionInfo.unbound,
-        instances,
-        instance => !rewrittenAdditionalFunctions.has(instance.functionValue)
-      );
-    }*/
-
     let defineFunction = (instance, funcId, funcOrClassNode) => {
       let { functionValue } = instance;
 

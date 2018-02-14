@@ -53,7 +53,6 @@ export class Referentializer {
 
     this.referentializationState = new Map();
     this._referentializedNameGenerator = referentializedNameGenerator;
-    this._referentializedBindings = new Set();
   }
 
   _options: SerializerOptions;
@@ -63,7 +62,6 @@ export class Referentializer {
   _newCapturedScopeInstanceIdx: number;
   referentializationState: Map<ReferentializationScope, ReferentializationState>;
   _referentializedNameGenerator: NameGenerator;
-  _referentializedBindings: Set<ResidualFunctionBinding>;
 
   _createReferentializationState(): ReferentializationState {
     return {
@@ -132,7 +130,6 @@ export class Referentializer {
       scope = {
         name: this.scopeNameGenerator.generate(),
         id: refState.capturedScopeInstanceIdx++,
-        containedBindings: [],
         initializationValues: [],
         containingAdditionalFunction: residualBinding.referencedOnlyFromAdditionalFunctions,
       };
@@ -182,7 +179,6 @@ export class Referentializer {
       // an improvement to split these variables into multiple
       // scopes.
       const variableIndexInScope = scope.initializationValues.length;
-      scope.containedBindings.push(residualBinding);
       invariant(residualBinding.serializedValue);
       scope.initializationValues.push(residualBinding.serializedValue);
       scope.capturedScope = capturedScope;
@@ -211,7 +207,6 @@ export class Referentializer {
         if (refState) {
           let scope = refState.serializedScopes.get(declarativeEnvironmentRecord);
           if (scope) {
-            scope.containedBindings = [];
             scope.initializationValues = [];
           }
         }
@@ -241,7 +236,6 @@ export class Referentializer {
               throw new FatalError("TODO: implement referentialization for prepacked functions");
             }
             if (!this._options.simpleClosures) this._getSerializedBindingScopeInstance(residualBinding);
-            //this.referentializeBinding(residualBinding, name, instance);
             residualBinding.referentialized = true;
           }
 

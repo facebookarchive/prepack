@@ -1087,7 +1087,7 @@ export class ResidualHeapSerializer {
     invariant(val instanceof ECMAScriptSourceFunctionValue);
 
     let instance = this.residualFunctionInstances.get(val);
-    invariant(instance);
+    invariant(instance !== undefined);
     let residualBindings = instance.residualFunctionBindings;
 
     let inAdditionalFunction = this.currentFunctionBody !== this.mainBody;
@@ -1112,7 +1112,7 @@ export class ResidualHeapSerializer {
         serializeBindingFunc = () => this._serializeGlobalBinding(boundName, residualBinding);
       } else {
         serializeBindingFunc = () => {
-          invariant(instance);
+          invariant(instance !== undefined);
           return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding, boundName, instance);
         };
         let bindingValue = residualBinding.value;
@@ -1659,7 +1659,6 @@ export class ResidualHeapSerializer {
           // Allows us to emit function declarations etc. inside of this additional
           // function instead of adding them at global scope
           // TODO: make sure this generator isn't getting mutated oddly
-          //this.additionalFunctionValueNestedFunctions.clear();
           ((nestedFunctions: any): Set<FunctionValue>).forEach(val =>
             this.additionalFunctionValueNestedFunctions.add(val)
           );

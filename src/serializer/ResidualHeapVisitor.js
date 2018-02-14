@@ -1009,15 +1009,8 @@ export class ResidualHeapVisitor {
     if (referentializer !== undefined) {
       let bodyToInstances = new Map();
       for (let instance of this.functionInstances.values()) {
-        if (this.additionalFunctionValuesAndEffects.has(instance.functionValue)) {
-          /*let nestedFunctions = this.additionalFunctionToNestedFunctions.get(instance.functionValue);
-          for (let residualBinding of instance.residualFunctionBindings.values()) {
-            let foundNonAdditionalFunctionReferent = false;
-            let scopes = this.values.get(residualBinding.value) // but need value at time of effects applied
-            // copy over logic from processAdditionalFunctionValues in RHS, fill in .referencedOnlyFromAdditionalFunctions eagerly
-          }*/
-        } else {
-          // TODO: why this else?
+        // TODO: do something for additional functions
+        if (!this.additionalFunctionValuesAndEffects.has(instance.functionValue)) {
           let code = instance.functionValue.$ECMAScriptCode;
           invariant(code !== undefined);
           getOrDefault(bodyToInstances, code, () => []).push(instance);
@@ -1034,21 +1027,6 @@ export class ResidualHeapVisitor {
         );
       }
     }
-
-    // Additional functions ?
-    /*for (let [refScope, refState] of this.referentializer.referentializationState) {
-      let prevScope = this.commonScope;
-      if (refScope !== "GLOBAL") this.commonScope =  refScope
-      for (let { containedBindings } of refState.serializedScopes.values())
-        //console.log(containedBindings);
-        //containedBindings.forEach(residualBinding => this.visitBinding(residualBinding.value, residualBinding.name, false));
-      this.commonScope = prevScope;
-    }
-    for (let [refScope, capturedScopes] of this.functionToCapturedScopes) {
-      for (let [declRec, functionValues] of capturedScopes)
-        //console.log(capturedScopes);
-      //this.referentializer.referentializationState.get()
-    }*/
 
     // Artificially add additionalRoots to generators so that they can get serialized in parent scopes of additionalFunctions
     // if necessary.

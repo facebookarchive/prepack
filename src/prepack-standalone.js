@@ -60,11 +60,10 @@ export function prepackSources(
   if (options.check) {
     realm.generator = new Generator(realm, "main");
     let logger = new Logger(realm, !!options.internalDebug);
-    let serializerStats = new SerializerStatistics();
     let modules = new Modules(
       realm,
       logger,
-      serializerStats,
+      new SerializerStatistics(),
       !!options.logModules,
       !!options.delayUnsupportedRequires,
       !!options.accelerateUnsupportedRequires
