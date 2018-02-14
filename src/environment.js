@@ -39,6 +39,7 @@ import {
   BooleanValue,
   FunctionValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   AbstractObjectValue,
   StringValue,
@@ -1146,11 +1147,7 @@ export class LexicalEnvironment {
       let ast;
       [ast, code] = this.concatenateAndParse(sources, sourceType);
       if (onParse) onParse(ast);
-      if (this.realm.isCompatibleWith("fb-www")) {
-        res = this.realm.evaluatePure(() => this.evaluateCompletion(ast, false));
-      } else {
-        res = this.evaluateCompletion(ast, false);
-      }
+      res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
@@ -1330,7 +1327,15 @@ export class LexicalEnvironment {
 // the referenced name and the Boolean valued strict reference flag. The base value is either undefined, an Object,
 // a Boolean, a String, a Symbol, a Number, or an Environment Record. A base value of undefined indicates that the
 // Reference could not be resolved to a binding. The referenced name is a String or Symbol value.
-export type BaseValue = void | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue | EnvironmentRecord;
+export type BaseValue =
+  | void
+  | ObjectValue
+  | BooleanValue
+  | StringValue
+  | SymbolValue
+  | NumberValue
+  | IntegralValue
+  | EnvironmentRecord;
 export type ReferenceName = string | SymbolValue;
 
 export function mightBecomeAnObject(base: Value): boolean {
@@ -1343,7 +1348,8 @@ export function mightBecomeAnObject(base: Value): boolean {
     type === BooleanValue ||
     type === StringValue ||
     type === SymbolValue ||
-    type === NumberValue
+    type === NumberValue ||
+    type === IntegralValue
   );
 }
 
@@ -1368,7 +1374,10 @@ export class Reference {
     );
     this.base = base;
     this.referencedName = refName;
-    invariant(!(refName instanceof AbstractValue) || !(refName.mightNotBeString() && refName.mightNotBeNumber()));
+    invariant(
+      !(refName instanceof AbstractValue) ||
+        !(refName.mightNotBeString() && refName.mightNotBeNumber() && !refName.isSimpleObject())
+    );
     this.strict = strict;
     this.thisValue = thisValue;
     invariant(thisValue === undefined || !(base instanceof EnvironmentRecord));

@@ -12,6 +12,7 @@
 import { Realm, type Effects } from "../realm.js";
 import { ModuleTracer } from "../utils/modules.js";
 import {
+  AbstractValue,
   ECMAScriptSourceFunctionValue,
   Value,
   UndefinedValue,
@@ -19,13 +20,20 @@ import {
   NumberValue,
   BooleanValue,
   NullValue,
-  AbstractValue,
   ArrayValue,
   ObjectValue,
   AbstractObjectValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
-import { isReactElement, valueIsClassComponent, forEachArrayValue, valueIsLegacyCreateClassComponent } from "./utils";
+import {
+  isReactElement,
+  valueIsClassComponent,
+  forEachArrayValue,
+  valueIsLegacyCreateClassComponent,
+  valueIsFactoryClassComponent,
+  valueIsKnownReactAbstraction,
+  getReactSymbol,
+} from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -42,11 +50,11 @@ import { Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata } from "../types.js";
 
-type RenderStrategy = "NORMAL" | "RELAY_QUERY_RENDERER";
+type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
 export type BranchReactComponentTree = {
-  componentType: ECMAScriptSourceFunctionValue,
   props: ObjectValue | AbstractObjectValue,
+  rootValue: ECMAScriptSourceFunctionValue | AbstractValue,
   context: ObjectValue | AbstractObjectValue,
 };
 
@@ -148,14 +156,32 @@ export class Reconciler {
   ): Value {
     if (branchStatus !== "ROOT") {
       this.branchReactComponentTrees.push({
-        componentType,
         props,
+        rootValue: componentType,
         context,
       });
       throw new NewComponentTreeBranch();
     }
     // create a new instance of this React class component
     let instance = createClassInstance(this.realm, componentType, props, context, classMetadata);
+    // get the "render" method off the instance
+    let renderMethod = Get(this.realm, instance, "render");
+    invariant(
+      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
+      "Expected render method to be a FunctionValue with $Call method"
+    );
+    // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
+    return renderMethod.$Call(instance, []);
+  }
+
+  _renderFactoryClassComponent(
+    instance: ObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
+  ): Value {
+    if (branchStatus !== "ROOT") {
+      throw new NewComponentTreeBranch();
+    }
     // get the "render" method off the instance
     let renderMethod = Get(this.realm, instance, "render");
     invariant(
@@ -229,6 +255,15 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
+    if (valueIsKnownReactAbstraction(this.realm, componentType)) {
+      invariant(componentType instanceof AbstractValue);
+      this.branchReactComponentTrees.push({
+        props,
+        rootValue: componentType,
+        context,
+      });
+      throw new NewComponentTreeBranch();
+    }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
     let value;
     let childContext = context;
@@ -286,6 +321,19 @@ export class Reconciler {
       }
     } else {
       value = this._renderFunctionalComponent(componentType, props, context);
+      if (valueIsFactoryClassComponent(this.realm, value)) {
+        invariant(value instanceof ObjectValue);
+        // TODO: use this._renderFactoryClassComponent to handle the render method (like a render prop)
+        // for now we just return the object
+        if (branchStatus !== "ROOT") {
+          throw new ExpectedBailOut("non-root factory class components are not suppoted");
+        } else {
+          return {
+            result: value,
+            childContext,
+          };
+        }
+      }
     }
     invariant(value !== undefined);
     return {
@@ -294,13 +342,15 @@ export class Reconciler {
     };
   }
 
-  _getRenderStrategy(func: Value): RenderStrategy {
+  _getRenderStrategy(value: Value): RenderStrategy {
     // check if it's a ReactRelay.QueryRenderer
     if (this.realm.fbLibraries.reactRelay !== undefined) {
       let QueryRenderer = Get(this.realm, this.realm.fbLibraries.reactRelay, "QueryRenderer");
-      if (func === QueryRenderer) {
+      if (value === QueryRenderer) {
         return "RELAY_QUERY_RENDERER";
       }
+    } else if (value === getReactSymbol("react.fragment", this.realm)) {
+      return "FRAGMENT";
     }
     return "NORMAL";
   }
@@ -334,7 +384,7 @@ export class Reconciler {
     }
     // TODO investigate what about other iterables type objects
     if (value instanceof ArrayValue) {
-      this._resolveFragment(value, context, branchStatus, branchState);
+      this._resolveArray(value, context, branchStatus, branchState);
       return value;
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
@@ -343,7 +393,8 @@ export class Reconciler {
       let typeValue = Get(this.realm, reactElement, "type");
       let propsValue = Get(this.realm, reactElement, "props");
       let refValue = Get(this.realm, reactElement, "ref");
-      if (typeValue instanceof StringValue) {
+
+      const resolveChildren = () => {
         // terminal host component. Start evaluating its children.
         if (propsValue instanceof ObjectValue) {
           let childrenProperty = propsValue.properties.get("children");
@@ -360,6 +411,10 @@ export class Reconciler {
           }
         }
         return reactElement;
+      };
+
+      if (typeValue instanceof StringValue) {
+        return resolveChildren();
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
@@ -375,12 +430,17 @@ export class Reconciler {
       }
       let renderStrategy = this._getRenderStrategy(typeValue);
 
-      if (renderStrategy === "NORMAL" && !(typeValue instanceof ECMAScriptSourceFunctionValue)) {
+      if (
+        renderStrategy === "NORMAL" &&
+        !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
+      ) {
         this._assignBailOutMessage(
           reactElement,
           `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`
         );
         return reactElement;
+      } else if (renderStrategy === "FRAGMENT") {
+        return resolveChildren();
       }
       try {
         let result;
@@ -450,7 +510,7 @@ export class Reconciler {
     }
   }
 
-  _resolveFragment(
+  _resolveArray(
     arrayValue: ArrayValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,

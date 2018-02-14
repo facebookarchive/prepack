@@ -14,10 +14,31 @@ let path = require("path");
 let { prepackSources } = require("../lib/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
+let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
 let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
+
+function cxShim(...args) {
+  let classNames = [];
+  for (let arg of args) {
+    if (typeof arg === "string") {
+      classNames.push(arg);
+    } else if (typeof arg === "object" && arg !== null) {
+      let keys = Object.keys(arg);
+      for (let key of keys) {
+        if (arg[key]) {
+          classNames.push(key);
+        }
+      }
+    }
+  }
+  return classNames.join(" ");
+}
+
+// assign for tests that use the cx() global
+global.cx = cxShim;
 
 function runTestSuite(outputJsx) {
   let reactTestRoot = path.join(__dirname, "../test/react/");
@@ -32,6 +53,7 @@ function runTestSuite(outputJsx) {
     inlineExpressions: true,
     omitInvariants: true,
     abstractEffectsInAdditionalFunctions: true,
+    stripFlow: true,
   };
 
   function compileSourceWithPrepack(source) {
@@ -60,17 +82,9 @@ function runTestSuite(outputJsx) {
         case "react":
           return React;
         case "RelayModern":
-          return {
-            QueryRenderer(props) {
-              return props.render({ props: {}, error: null });
-            },
-            createFragmentContainer() {
-              return null;
-            },
-            graphql() {
-              return null;
-            },
-          };
+          return ReactRelay;
+        case "cx":
+          return cxShim;
         case "FBEnvironment":
           return {};
         default:
@@ -89,10 +103,12 @@ function runTestSuite(outputJsx) {
 
   async function runTest(directory, name) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
-    let { compiledSource } = compileSourceWithPrepack(source);
+    let { compiledSource, statistics } = compileSourceWithPrepack(source);
 
+    expect(statistics).toMatchSnapshot();
     let A = runSource(source);
     let B = runSource(compiledSource);
+
     expect(typeof A).toBe(typeof B);
     if (typeof A !== "function") {
       // Test without exports just verifies that the file compiles.
@@ -116,6 +132,26 @@ function runTestSuite(outputJsx) {
       let [nameB, valueB] = resultB[i];
       expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
       expect(nameB).toEqual(nameA);
+    }
+  }
+
+  async function stubReactRelay(f) {
+    let oldReactRelay = ReactRelay;
+    ReactRelay = {
+      QueryRenderer(props) {
+        return props.render({ props: {}, error: null });
+      },
+      createFragmentContainer() {
+        return null;
+      },
+      graphql() {
+        return null;
+      },
+    };
+    try {
+      await f();
+    } finally {
+      ReactRelay = oldReactRelay;
     }
   }
 
@@ -150,6 +186,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-6.js");
       });
 
+      it("Simple fragments", async () => {
+        await runTest(directory, "simple-fragments.js");
+      });
+
       it("Simple children", async () => {
         await runTest(directory, "simple-children.js");
       });
@@ -180,6 +220,14 @@ function runTestSuite(outputJsx) {
 
       it("Key change", async () => {
         await runTest(directory, "key-change.js");
+      });
+
+      it("Key change with fragments", async () => {
+        await runTest(directory, "key-change-fragments.js");
+      });
+
+      it("Key not changing with fragments", async () => {
+        await runTest(directory, "key-not-change-fragments.js");
       });
 
       it("Component type change", async () => {
@@ -266,8 +314,24 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-classes-3.js");
       });
 
+      it("Inheritance chaining", async () => {
+        await runTest(directory, "inheritance-chain.js");
+      });
+
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
+      });
+    });
+
+    describe("Factory class component folding", () => {
+      let directory = "factory-components";
+
+      it("Simple factory classes", async () => {
+        await runTest(directory, "simple.js");
+      });
+
+      it("Simple factory classes 2", async () => {
+        await runTest(directory, "simple2.js");
       });
     });
 
@@ -275,7 +339,9 @@ function runTestSuite(outputJsx) {
       let directory = "mocks";
 
       it("fb-www", async () => {
-        await runTest(directory, "fb1.js");
+        await stubReactRelay(async () => {
+          await runTest(directory, "fb1.js");
+        });
       });
 
       it("fb-www 2", async () => {
@@ -283,11 +349,35 @@ function runTestSuite(outputJsx) {
       });
 
       it("fb-www 3", async () => {
-        await runTest(directory, "fb3.js");
+        await stubReactRelay(async () => {
+          await runTest(directory, "fb3.js");
+        });
       });
 
       it("fb-www 4", async () => {
-        await runTest(directory, "fb4.js");
+        await stubReactRelay(async () => {
+          await runTest(directory, "fb4.js");
+        });
+      });
+
+      it("fb-www 5", async () => {
+        await runTest(directory, "fb5.js");
+      });
+
+      it("fb-www 6", async () => {
+        await runTest(directory, "fb6.js");
+      });
+
+      it("fb-www 7", async () => {
+        await runTest(directory, "fb7.js");
+      });
+
+      it("fb-www 8", async () => {
+        await runTest(directory, "fb8.js");
+      });
+
+      it("repl example", async () => {
+        await runTest(directory, "repl-example.js");
       });
     });
   });

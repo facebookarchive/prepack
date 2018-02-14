@@ -12,7 +12,7 @@
 import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
 
-export default class NumberValue extends PrimitiveValue {
+export class NumberValue extends PrimitiveValue {
   constructor(realm: Realm, value: number, intrinsicName?: string) {
     super(realm, intrinsicName);
 
@@ -45,5 +45,17 @@ export default class NumberValue extends PrimitiveValue {
 
   toDisplayString(): string {
     return this.value.toString();
+  }
+}
+
+export class IntegralValue extends NumberValue {
+  constructor(realm: Realm, value: number, intrinsicName?: string) {
+    super(realm, value, intrinsicName);
+  }
+
+  static createFromNumberValue(realm: Realm, value: number, intrinsicName?: string) {
+    return Number.isInteger(value)
+      ? new IntegralValue(realm, value, intrinsicName)
+      : new NumberValue(realm, value, intrinsicName);
   }
 }

@@ -19,6 +19,8 @@ import { PathImplementation } from "./utils/paths.js";
 import { PropertiesImplementation } from "./methods/properties.js";
 import { ToImplementation } from "./methods/to.js";
 import { WidenImplementation } from "./methods/widen.js";
+import { concretize } from "./utils/ConcreteModelConverter.js";
+import * as utils from "./utils.js";
 
 export default function() {
   Singletons.setCreate(new CreateImplementation());
@@ -30,4 +32,6 @@ export default function() {
   Singletons.setProperties((new PropertiesImplementation(): any));
   Singletons.setTo((new ToImplementation(): any));
   Singletons.setWiden((new WidenImplementation(): any));
+  Singletons.setConcretize(concretize);
+  Singletons.setUtils(utils);
 }

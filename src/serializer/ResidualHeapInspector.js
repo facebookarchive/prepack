@@ -14,6 +14,7 @@ import type { Descriptor } from "../types.js";
 import { IsArray } from "../methods/index.js";
 import {
   SymbolValue,
+  BooleanValue,
   AbstractValue,
   FunctionValue,
   ECMAScriptSourceFunctionValue,
@@ -22,20 +23,67 @@ import {
   ObjectValue,
   PrimitiveValue,
   UndefinedValue,
+  ProxyValue,
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { Logger } from "../utils/logger.js";
+
+type TargetIntegrityCommand = "freeze" | "seal" | "preventExtensions" | "";
 
 export class ResidualHeapInspector {
   constructor(realm: Realm, logger: Logger) {
     this.realm = realm;
     this.logger = logger;
     this.ignoredProperties = new Map();
+    this._targetIntegrityCommands = new Map();
   }
 
   realm: Realm;
   logger: Logger;
   ignoredProperties: Map<ObjectValue, Set<string>>;
+  _targetIntegrityCommands: Map<ObjectValue, TargetIntegrityCommand>;
+
+  getTargetIntegrityCommand(val: ObjectValue): TargetIntegrityCommand {
+    let command = this._targetIntegrityCommands.get(val);
+    if (command === undefined) {
+      command = "";
+      if (val instanceof ProxyValue) {
+        // proxies don't participate in regular object freezing/sealing,
+        // only their underlying proxied objects do
+      } else {
+        let extensible = val.$Extensible;
+        if (!(extensible instanceof BooleanValue)) {
+          this.logger.logError(
+            val,
+            "Object that might or might not be sealed or frozen are not supported in residual heap."
+          );
+        } else if (!extensible.value) {
+          let anyWritable = false,
+            anyConfigurable = false;
+          for (let propertyBinding of val.properties.values()) {
+            let desc = propertyBinding.descriptor;
+            if (desc === undefined) continue; //deleted
+            if (desc.configurable) anyConfigurable = true;
+            else if (desc.value !== undefined && desc.writable) anyWritable = true;
+          }
+          command = anyConfigurable ? "preventExtensions" : anyWritable ? "seal" : "freeze";
+        }
+      }
+      this._targetIntegrityCommands.set(val, command);
+    }
+    return command;
+  }
+
+  static _integrityDescriptors = {
+    "": { writable: true, configurable: true },
+    preventExtensions: { writable: true, configurable: true },
+    seal: { writable: true, configurable: false },
+    freeze: { writable: false, configurable: false },
+  };
+
+  getTargetIntegrityDescriptor(val: ObjectValue) {
+    return ResidualHeapInspector._integrityDescriptors[this.getTargetIntegrityCommand(val)];
+  }
 
   static isLeaf(val: Value): boolean {
     if (val instanceof SymbolValue) {
@@ -74,8 +122,10 @@ export class ResidualHeapInspector {
   }
 
   _canIgnoreProperty(val: ObjectValue, key: string, desc: Descriptor) {
+    let targetDescriptor = this.getTargetIntegrityDescriptor(val);
+
     if (IsArray(this.realm, val)) {
-      if (key === "length" && desc.writable && !desc.enumerable && !desc.configurable) {
+      if (key === "length" && desc.writable === targetDescriptor.writable && !desc.enumerable && !desc.configurable) {
         // length property has the correct descriptor values
         return true;
       }
@@ -86,7 +136,12 @@ export class ResidualHeapInspector {
           // Rationale: .bind() would call the accessor, which might throw, mutate state, or do whatever...
         }
         // length property will be inferred already by the amount of parameters
-        return !desc.writable && !desc.enumerable && desc.configurable && val.hasDefaultLength();
+        return (
+          !desc.writable &&
+          !desc.enumerable &&
+          desc.configurable === targetDescriptor.configurable &&
+          val.hasDefaultLength()
+        );
       }
 
       if (key === "name") {
@@ -112,9 +167,9 @@ export class ResidualHeapInspector {
         invariant(val instanceof ECMAScriptSourceFunctionValue);
         if (
           !val.$Strict &&
-          desc.writable &&
+          desc.writable === (!val.$Strict && targetDescriptor.writable) &&
           !desc.enumerable &&
-          desc.configurable &&
+          desc.configurable === targetDescriptor.configurable &&
           desc.value instanceof UndefinedValue &&
           val.$FunctionKind === "normal"
         )
@@ -126,7 +181,7 @@ export class ResidualHeapInspector {
         if (
           !desc.configurable &&
           !desc.enumerable &&
-          desc.writable &&
+          desc.writable === targetDescriptor.writable &&
           desc.value instanceof ObjectValue &&
           desc.value.originalConstructor === val
         ) {
@@ -137,7 +192,12 @@ export class ResidualHeapInspector {
       let kind = val.getKind();
       switch (kind) {
         case "RegExp":
-          if (key === "lastIndex" && desc.writable && !desc.enumerable && !desc.configurable) {
+          if (
+            key === "lastIndex" &&
+            desc.writable === targetDescriptor.writable &&
+            !desc.enumerable &&
+            !desc.configurable
+          ) {
             // length property has the correct descriptor values
             let v = desc.value;
             return v instanceof NumberValue && v.value === 0;
@@ -149,7 +209,13 @@ export class ResidualHeapInspector {
     }
 
     if (key === "constructor") {
-      if (desc.configurable && !desc.enumerable && desc.writable && desc.value === val.originalConstructor) return true;
+      if (
+        desc.configurable === targetDescriptor.configurable &&
+        !desc.enumerable &&
+        desc.writable === targetDescriptor.writable &&
+        desc.value === val.originalConstructor
+      )
+        return true;
     }
 
     return false;
@@ -168,9 +234,10 @@ export class ResidualHeapInspector {
     if (
       prototype.symbols.size !== 0 ||
       prototype.$Prototype !== this.realm.intrinsics.ObjectPrototype ||
-      !prototype.getExtensible()
-    )
+      prototype.$Extensible.mightNotBeTrue()
+    ) {
       return false;
+    }
     let foundConstructor = false;
     for (let name of prototype.properties.keys())
       if (

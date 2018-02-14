@@ -9,7 +9,14 @@
 
 /* @flow */
 
-import type { Intrinsics, PropertyBinding, Descriptor, DebugServerType, ClassComponentMetadata } from "./types.js";
+import type {
+  Intrinsics,
+  PropertyBinding,
+  Descriptor,
+  DebugServerType,
+  ClassComponentMetadata,
+  ReactHint,
+} from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -152,6 +159,7 @@ export class Realm {
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.omitInvariants = !!opts.omitInvariants;
+    this.emitConcreteModel = !!opts.emitConcreteModel;
 
     this.$TemplateMap = [];
 
@@ -178,15 +186,15 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       symbols: new Map(),
       currentOwner: undefined,
+      abstractHints: new WeakMap(),
       hoistableReactElements: new WeakMap(),
       hoistableFunctions: new WeakMap(),
     };
 
+    this.stripFlow = opts.stripFlow || false;
+
     this.fbLibraries = {
-      cx: undefined,
-      fbt: undefined,
-      idx: undefined,
-      ix: undefined,
+      other: new Map(),
       react: undefined,
       reactRelay: undefined,
     };
@@ -212,6 +220,7 @@ export class Realm {
   maxStackDepth: number;
   omitInvariants: boolean;
   ignoreLeakLogic: boolean;
+  emitConcreteModel: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
@@ -239,16 +248,19 @@ export class Realm {
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    // reactHints are generated to help improve the effeciency of the React reconciler when
+    // operating on a tree of React components. We can use reactHint to mark AbstractValues
+    // with extra data that helps us traverse through the tree that would otherwise not be possible
+    // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
+    // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
+    abstractHints: WeakMap<AbstractValue, ReactHint>,
     output?: ReactOutputTypes,
-    reactLibraryObject?: ObjectValue,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
+  stripFlow: boolean;
 
   fbLibraries: {
-    cx: void | ObjectValue,
-    fbt: void | ObjectValue,
-    idx: void | ObjectValue,
-    ix: void | ObjectValue,
+    other: Map<string, AbstractValue>,
     react: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
@@ -587,6 +599,33 @@ export class Realm {
       }
     } finally {
       for (let t2 of this.tracers) t2.endEvaluateForEffects(state, result);
+    }
+  }
+
+  evaluateWithUndo(f: () => Value, defaultValue: Value = this.intrinsics.undefined): Value {
+    if (!this.useAbstractInterpretation) return f();
+    let oldErrorHandler = this.errorHandler;
+    this.errorHandler = d => {
+      if (d.severity === "Information" || d.severity === "Warning") return "Recover";
+      return "Fail";
+    };
+    try {
+      let effects = this.evaluateForEffects(() => {
+        try {
+          return f();
+        } catch (e) {
+          if (e instanceof Completion) {
+            return defaultValue;
+          } else if (e instanceof FatalError) {
+            return defaultValue;
+          } else {
+            throw e;
+          }
+        }
+      });
+      return effects[0] instanceof Value ? effects[0] : defaultValue;
+    } finally {
+      this.errorHandler = oldErrorHandler;
     }
   }
 

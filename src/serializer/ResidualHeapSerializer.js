@@ -70,6 +70,7 @@ import {
   withDescriptorValue,
   ClassPropertiesToIgnore,
   canIgnoreClassLengthProperty,
+  getObjectPrototypeMetadata,
 } from "./utils.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { canHoistFunction } from "../react/hoisting.js";
@@ -1142,11 +1143,7 @@ export class ResidualHeapSerializer {
 
     // handle class inheritance
     if (!(classFunc.$Prototype instanceof NativeFunctionValue)) {
-      let proto = classFunc.$Prototype;
       classMethodInstance.classSuperNode = this.serializeValue(classFunc.$Prototype);
-      if (proto.$HomeObject instanceof ObjectValue) {
-        this.serializedValues.add(proto.$HomeObject);
-      }
     }
 
     let serializeClassPrototypeId = () => {
@@ -1249,9 +1246,20 @@ export class ResidualHeapSerializer {
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
   _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue, prop: Descriptor): boolean {
     if (prop.joinCondition !== undefined) return false;
+
+    let targetDescriptor = this.residualHeapInspector.getTargetIntegrityDescriptor(obj);
+
     if ((obj instanceof FunctionValue && key === "prototype") || (obj.getKind() === "RegExp" && key === "lastIndex"))
-      return !!prop.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get;
-    else if (!!prop.writable && !!prop.configurable && !!prop.enumerable && !prop.set && !prop.get) {
+      return (
+        prop.writable === targetDescriptor.writable && !prop.configurable && !prop.enumerable && !prop.set && !prop.get
+      );
+    else if (
+      prop.writable === targetDescriptor.writable &&
+      prop.configurable === targetDescriptor.configurable &&
+      !!prop.enumerable &&
+      !prop.set &&
+      !prop.get
+    ) {
       return !(prop.value instanceof AbstractValue && prop.value.kind === "widened property");
     } else {
       return false;
@@ -1274,7 +1282,7 @@ export class ResidualHeapSerializer {
   }
 
   // Overridable.
-  serializeValueRawObject(val: ObjectValue, isClass: boolean): BabelNodeExpression {
+  serializeValueRawObject(val: ObjectValue, skipPrototype: boolean): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
@@ -1313,25 +1321,27 @@ export class ResidualHeapSerializer {
       remainingProperties,
       /*objectPrototypeAlreadyEstablished*/ false,
       dummyProperties,
-      isClass
+      skipPrototype
     );
     return t.objectExpression(props);
   }
 
-  _serializeValueObjectViaConstructor(
-    val: ObjectValue,
-    isClass: boolean,
-    classConstructor?: ECMAScriptSourceFunctionValue
-  ) {
+  _serializeValueObjectViaConstructor(val: ObjectValue, skipPrototype: boolean, classConstructor?: Value) {
     let proto = val.$Prototype;
-    this._emitObjectProperties(val, val.properties, /*objectPrototypeAlreadyEstablished*/ true, undefined, isClass);
+    this._emitObjectProperties(
+      val,
+      val.properties,
+      /*objectPrototypeAlreadyEstablished*/ true,
+      undefined,
+      skipPrototype
+    );
     this.needsAuxiliaryConstructor = true;
     let serializedProto = this.serializeValue(classConstructor ? classConstructor : proto);
     return t.sequenceExpression([
       t.assignmentExpression(
         "=",
         t.memberExpression(constructorExpression, t.identifier("prototype")),
-        serializedProto
+        classConstructor ? t.memberExpression(serializedProto, t.identifier("prototype")) : serializedProto
       ),
       t.newExpression(constructorExpression, []),
     ]);
@@ -1419,38 +1429,11 @@ export class ResidualHeapSerializer {
           proto !== this.realm.intrinsics.ObjectPrototype &&
           this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
           proto instanceof ObjectValue;
-        let isClass = false;
-        let classConstructor;
-
-        if (val.$IsClassPrototype) {
-          isClass = true;
-        }
-        if (proto.$IsClassPrototype) {
-          invariant(proto instanceof ObjectValue);
-          // we now need to check if the prototpe has a constructor
-          // if it does, we can serialize back the original class syntax
-          // by using the original class function
-          if (proto.properties.has("constructor")) {
-            let _classConstructor = proto.properties.get("constructor");
-            invariant(_classConstructor !== undefined);
-            // if the contructor has been deleted then we have no way
-            // to serialize the original class AST as it won't have been
-            // evluated and thus visited
-            if (_classConstructor.descriptor === undefined) {
-              throw new FatalError(
-                "TODO #1024: implement object prototype serialization with deleted class constructor"
-              );
-            }
-            let classFunc = Get(this.realm, proto, "constructor");
-            _classConstructor = classFunc;
-            invariant(_classConstructor instanceof ECMAScriptSourceFunctionValue);
-            isClass = true;
-          }
-        }
+        let { skipPrototype, constructor: _constructor } = getObjectPrototypeMetadata(this.realm, val);
 
         return createViaAuxiliaryConstructor
-          ? this._serializeValueObjectViaConstructor(val, isClass, classConstructor)
-          : this.serializeValueRawObject(val, isClass);
+          ? this._serializeValueObjectViaConstructor(val, skipPrototype, _constructor)
+          : this.serializeValueRawObject(val, skipPrototype);
     }
   }
 
@@ -1524,18 +1507,32 @@ export class ResidualHeapSerializer {
       return voidExpression;
     } else if (ResidualHeapInspector.isLeaf(val)) {
       return t.valueToNode(val.serialize());
-    } else if (IsArray(this.realm, val)) {
-      invariant(val instanceof ObjectValue);
-      return this._serializeValueArray(val);
-    } else if (val instanceof ProxyValue) {
-      return this._serializeValueProxy(val);
-    } else if (val instanceof FunctionValue) {
-      return this._serializeValueFunction(val);
-    } else if (val instanceof SymbolValue) {
-      return this._serializeValueSymbol(val);
+    } else if (val instanceof ObjectValue) {
+      let res;
+      if (val instanceof ProxyValue) {
+        return this._serializeValueProxy(val);
+      } else if (IsArray(this.realm, val)) {
+        res = this._serializeValueArray(val);
+      } else if (val instanceof FunctionValue) {
+        res = this._serializeValueFunction(val);
+      } else {
+        res = this.serializeValueObject(val);
+      }
+      let targetCommand = this.residualHeapInspector.getTargetIntegrityCommand(val);
+      if (targetCommand) {
+        this.emitter.emitNowOrAfterWaitingForDependencies([val], () => {
+          let uid = this.getSerializeObjectIdentifier(val);
+          this.emitter.emit(
+            t.expressionStatement(
+              t.callExpression(this.preludeGenerator.memoizeReference("Object." + targetCommand), [uid])
+            )
+          );
+        });
+      }
+      return res;
     } else {
-      invariant(val instanceof ObjectValue);
-      return this.serializeValueObject(val);
+      invariant(val instanceof SymbolValue);
+      return this._serializeValueSymbol(val);
     }
   }
 
@@ -1842,7 +1839,7 @@ export class ResidualHeapSerializer {
           : t.callExpression(functionExpression, []);
         ast_body.push(t.expressionStatement(callExpression));
       } else {
-        ast_body = body;
+        Array.prototype.push.apply(ast_body, body);
       }
     }
 

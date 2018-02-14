@@ -17,6 +17,7 @@ import {
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
+  IntegralValue,
   NativeFunctionValue,
   ObjectValue,
   StringValue,
@@ -28,6 +29,8 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
+import { valueIsKnownReactAbstraction } from "../../react/utils.js";
+import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
@@ -137,14 +140,23 @@ export default function(realm: Realm): void {
         "global.__registerReactComponentRoot",
         "__registerReactComponentRoot",
         0,
-        (context, [functionValue]) => {
-          invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        (context, [value]) => {
+          if (!(value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(realm, value))) {
+            let diagnostic = new CompilerDiagnostic(
+              "a value has been passed to __registerReactComponentRoot() that is not a function value or a known React abstract value",
+              realm.currentLocation,
+              "PP0024",
+              "FatalError"
+            );
+            realm.handleError(diagnostic);
+            if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+          }
           realm.assignToGlobal(
             t.memberExpression(
               t.memberExpression(t.identifier("global"), t.identifier("__reactComponentRoots")),
               t.identifier("" + reactComponentRootUid++)
             ),
-            functionValue
+            value
           );
           return realm.intrinsics.undefined;
         }
@@ -154,6 +166,24 @@ export default function(realm: Realm): void {
       configurable: true,
     });
   }
+
+  global.$DefineOwnProperty("__evaluatePureFunction", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__evaluatePureFunction",
+      "__evaluatePureFunction",
+      0,
+      (context, [functionValue]) => {
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        invariant(typeof functionValue.$Call === "function");
+        let functionCall: Function = functionValue.$Call;
+        return realm.evaluatePure(() => functionCall(realm.intrinsics.undefined, []));
+      }
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized
@@ -293,32 +323,37 @@ export default function(realm: Realm): void {
           let key = To.ToStringPartial(realm, propertyName);
           let propertyIdentifier = generator.getAsPropertyNameExpression(key);
           let computed = !t.isIdentifier(propertyIdentifier);
-          let condition = ([objectNode, valueNode]) =>
-            t.binaryExpression("!==", t.memberExpression(objectNode, propertyIdentifier, computed), valueNode);
-          if (invariantOptions) {
-            let invariantOptionString = To.ToStringPartial(realm, invariantOptions);
+
+          if (realm.emitConcreteModel) {
+            generator.emitConcreteModel(key, value);
+          } else {
+            let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
+            let inExpressionOf = objectNode =>
+              t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
+
+            let invariantOptionString = invariantOptions
+              ? To.ToStringPartial(realm, invariantOptions)
+              : "FULL_INVARIANT";
             switch (invariantOptionString) {
+              // checks (!property in object || object.property === undefined)
               case "VALUE_DEFINED_INVARIANT":
-                condition = ([objectNode, valueNode]) =>
-                  t.binaryExpression(
-                    "===",
-                    t.memberExpression(objectNode, propertyIdentifier, computed),
-                    t.valueToNode(undefined)
+                let condition = ([objectNode, valueNode]) =>
+                  t.logicalExpression(
+                    "||",
+                    inExpressionOf(objectNode),
+                    t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
                   );
+                generator.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
                 break;
               case "SKIP_INVARIANT":
-                condition = null;
                 break;
               case "FULL_INVARIANT":
+                generator.emitFullInvariant((object: any), key, value);
                 break;
               default:
                 invariant(false, "Invalid invariantOption " + invariantOptionString);
             }
           }
-          if (condition)
-            generator.emitInvariant([object, value, object], condition, objnode =>
-              t.memberExpression(objnode, propertyIdentifier, computed)
-            );
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
           (object: any).$Set(key, value, object);
@@ -337,6 +372,15 @@ export default function(realm: Realm): void {
 
   global.$DefineOwnProperty("__IntrospectionError", {
     value: realm.intrinsics.__IntrospectionError,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__isIntegral", {
+    value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
+      return new BooleanValue(realm, value instanceof IntegralValue);
+    }),
     writable: true,
     enumerable: false,
     configurable: true,

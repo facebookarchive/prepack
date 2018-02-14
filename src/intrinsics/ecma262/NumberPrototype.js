@@ -10,7 +10,14 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, StringValue, UndefinedValue, AbstractValue, NumberValue } from "../../values/index.js";
+import {
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
+  AbstractValue,
+  NumberValue,
+  IntegralValue,
+} from "../../values/index.js";
 import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
@@ -143,7 +150,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("toString", 1, (context, [radix]) => {
     if (radix instanceof UndefinedValue) {
       const target = context instanceof ObjectValue ? context.$NumberData : context;
-      if (target instanceof AbstractValue && target.getType() === NumberValue) {
+      if (target instanceof AbstractValue && (target.getType() === NumberValue || target.getType() === IntegralValue)) {
         return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
       }
     }

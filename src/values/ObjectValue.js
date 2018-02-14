@@ -139,7 +139,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   $Prototype: ObjectValue | NullValue;
-  $Extensible: BooleanValue;
+  $Extensible: BooleanValue | AbstractValue;
 
   $ParameterMap: void | ObjectValue; // undefined when the property is "missing"
   $SymbolData: void | SymbolValue | AbstractValue;
@@ -344,7 +344,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   getExtensible(): boolean {
-    return this.$Extensible.value;
+    return this.$Extensible.throwIfNotConcreteBoolean().value;
   }
 
   setExtensible(v: boolean) {
@@ -563,7 +563,11 @@ export default class ObjectValue extends ConcreteValue {
 
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     // We assume that simple objects have no getter/setter properties.
-    if (this !== Receiver || !this.isSimpleObject() || (P.mightNotBeString() && P.mightNotBeNumber())) {
+    if (
+      this !== Receiver ||
+      !this.isSimpleObject() ||
+      (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject())
+    ) {
       AbstractValue.reportIntrospectionError(P, "TODO: #1021");
       throw new FatalError();
     }
@@ -665,7 +669,11 @@ export default class ObjectValue extends ConcreteValue {
 
     // We assume that simple objects have no getter/setter properties and
     // that all properties are writable.
-    if (this !== Receiver || !this.isSimpleObject() || (P.mightNotBeString() && P.mightNotBeNumber())) {
+    if (
+      this !== Receiver ||
+      !this.isSimpleObject() ||
+      (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject())
+    ) {
       AbstractValue.reportIntrospectionError(P, "TODO #1021");
       throw new FatalError();
     }

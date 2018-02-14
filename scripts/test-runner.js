@@ -267,6 +267,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   if (code.includes("// omit invariants")) options.omitInvariants = true;
+  if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// abstract effects")) options.abstractEffectsInAdditionalFunctions = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
@@ -359,7 +360,7 @@ function runTest(name, code, options: PrepackOptions, args) {
       if (code.includes(marker)) {
         let i = code.indexOf(marker);
         let value = code.substring(i + marker.length, code.indexOf("\n", i));
-        markersToFind.push({ positive, value, start: i + marker.length });
+        markersToFind.push({ positive, value });
       }
     }
     let copiesToFind = new Map();
@@ -420,10 +421,12 @@ function runTest(name, code, options: PrepackOptions, args) {
           newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
         }
         let markersIssue = false;
-        for (let { positive, value, start } of markersToFind) {
-          let found = newCode.indexOf(value, start) !== -1;
+        for (let { positive, value } of markersToFind) {
+          let found = newCode.includes(value);
           if (found !== positive) {
-            console.error(chalk.red(`Output ${positive ? "does not contain" : "contains"} forbidden string: ${value}`));
+            console.error(
+              chalk.red(`Output ${positive ? "does not contain required" : "contains forbidden"} string: ${value}`)
+            );
             markersIssue = true;
             console.error(newCode);
           }

@@ -19,7 +19,6 @@ import {
   Add,
   HasProperty,
   InstanceofOperator,
-  IsCallable,
   StrictEqualityComparison,
 } from "../methods/index.js";
 import type { Realm } from "../realm.js";
@@ -29,14 +28,14 @@ import {
   BooleanValue,
   ConcreteValue,
   EmptyValue,
-  NullValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   StringValue,
-  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
+import { Utils } from "../singletons.js";
 
 /* An abstract domain that collects together a set of concrete values
    that might be the value of a variable at runtime.
@@ -179,17 +178,17 @@ export default class ValuesDomain {
       let lnum = To.ToUint32(realm, lval);
       let rnum = To.ToUint32(realm, rval);
 
-      return new NumberValue(realm, lnum >>> rnum);
+      return IntegralValue.createFromNumberValue(realm, lnum >>> rnum);
     } else if (op === "<<" || op === ">>") {
       let lnum = To.ToInt32(realm, lval);
       let rnum = To.ToUint32(realm, rval);
 
       if (op === "<<") {
         // ECMA262 12.9.3.1
-        return new NumberValue(realm, lnum << rnum);
+        return IntegralValue.createFromNumberValue(realm, lnum << rnum);
       } else if (op === ">>") {
         // ECMA262 12.9.4.1
-        return new NumberValue(realm, lnum >> rnum);
+        return IntegralValue.createFromNumberValue(realm, lnum >> rnum);
       }
     } else if (op === "**") {
       // ECMA262 12.6.3
@@ -258,11 +257,11 @@ export default class ValuesDomain {
 
       // 7. Return the result of applying the bitwise operator @ to lnum and rnum. The result is a signed 32 bit integer.
       if (op === "&") {
-        return new NumberValue(realm, lnum & rnum);
+        return IntegralValue.createFromNumberValue(realm, lnum & rnum);
       } else if (op === "|") {
-        return new NumberValue(realm, lnum | rnum);
+        return IntegralValue.createFromNumberValue(realm, lnum | rnum);
       } else if (op === "^") {
-        return new NumberValue(realm, lnum ^ rnum);
+        return IntegralValue.createFromNumberValue(realm, lnum ^ rnum);
       }
     } else if (op === "in") {
       // ECMA262 12.10.3
@@ -338,7 +337,7 @@ export default class ValuesDomain {
       // ECMA262 12.5.6.1
       // 1. Let expr be the result of evaluating UnaryExpression.
       // 2. Return ? ToNumber(? GetValue(expr)).
-      return new NumberValue(realm, To.ToNumber(realm, value));
+      return IntegralValue.createFromNumberValue(realm, To.ToNumber(realm, value));
     } else if (op === "-") {
       // ECMA262 12.5.7.1
       // 1. Let expr be the result of evaluating UnaryExpression.
@@ -351,7 +350,7 @@ export default class ValuesDomain {
       }
 
       // 4. Return the result of negating oldValue; that is, compute a Number with the same magnitude but opposite sign.
-      return new NumberValue(realm, -oldValue);
+      return IntegralValue.createFromNumberValue(realm, -oldValue);
     } else if (op === "~") {
       // ECMA262 12.5.8
       // 1. Let expr be the result of evaluating UnaryExpression.
@@ -359,7 +358,7 @@ export default class ValuesDomain {
       let oldValue = To.ToInt32(realm, value);
 
       // 3. Return the result of applying bitwise complement to oldValue. The result is a signed 32-bit integer.
-      return new NumberValue(realm, ~oldValue);
+      return IntegralValue.createFromNumberValue(realm, ~oldValue);
     } else if (op === "!") {
       // ECMA262 12.6.9
       // 1. Let expr be the result of evaluating UnaryExpression.
@@ -377,36 +376,15 @@ export default class ValuesDomain {
       // 3. Return undefined.
       return realm.intrinsics.undefined;
     } else if (op === "typeof") {
-      function isInstance(proto, Constructor): boolean {
-        return proto instanceof Constructor || proto === Constructor.prototype;
-      }
       // ECMA262 12.6.5
       // 1. Let val be the result of evaluating UnaryExpression.
       // 2. If Type(val) is Reference, then
       // 3. Let val be ? GetValue(val).
       let val = value;
       // 4. Return a String according to Table 35.
-      let proto = val.getType().prototype;
-      if (isInstance(proto, UndefinedValue)) {
-        return new StringValue(realm, "undefined");
-      } else if (isInstance(proto, NullValue)) {
-        return new StringValue(realm, "object");
-      } else if (isInstance(proto, StringValue)) {
-        return new StringValue(realm, "string");
-      } else if (isInstance(proto, BooleanValue)) {
-        return new StringValue(realm, "boolean");
-      } else if (isInstance(proto, NumberValue)) {
-        return new StringValue(realm, "number");
-      } else if (isInstance(proto, SymbolValue)) {
-        return new StringValue(realm, "symbol");
-      } else if (isInstance(proto, ObjectValue)) {
-        if (IsCallable(realm, val)) {
-          return new StringValue(realm, "function");
-        }
-        return new StringValue(realm, "object");
-      } else {
-        invariant(false);
-      }
+      let typeString = Utils.typeToString(val.getType());
+      invariant(typeString !== undefined);
+      return new StringValue(realm, typeString);
     } else {
       invariant(op === "delete");
       // ECMA262 12.5.3.2

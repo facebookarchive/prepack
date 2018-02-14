@@ -18,12 +18,13 @@ export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
 
 export type RealmOptions = {
-  check?: boolean,
+  check?: Array<number>,
   compatibility?: Compatibility,
   debugNames?: boolean,
   errorHandler?: ErrorHandler,
   mathRandomSeed?: string,
   omitInvariants?: boolean,
+  emitConcreteModel?: boolean,
   uniqueSuffix?: string,
   residual?: boolean,
   serialize?: boolean,
@@ -32,6 +33,7 @@ export type RealmOptions = {
   maxStackDepth?: number,
   reactEnabled?: boolean,
   reactOutput?: ReactOutputTypes,
+  stripFlow?: boolean,
   abstractEffectsInAdditionalFunctions?: boolean,
 };
 

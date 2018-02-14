@@ -18,6 +18,7 @@ import {
   BooleanValue,
   ConcreteValue,
   NumberValue,
+  IntegralValue,
   StringValue,
   UndefinedValue,
   NullValue,
@@ -67,7 +68,7 @@ export default function(
     }
     invariant(value instanceof ConcreteValue);
 
-    return new NumberValue(realm, To.ToNumber(realm, value));
+    return IntegralValue.createFromNumberValue(realm, To.ToNumber(realm, value));
   } else if (ast.operator === "-") {
     // ECMA262 12.5.7.1
 
@@ -89,7 +90,7 @@ export default function(
     }
 
     // 4. Return the result of negating oldValue; that is, compute a Number with the same magnitude but opposite sign.
-    return new NumberValue(realm, -oldValue);
+    return IntegralValue.createFromNumberValue(realm, -oldValue);
   } else if (ast.operator === "~") {
     // ECMA262 12.5.8
 
@@ -106,7 +107,7 @@ export default function(
     let oldValue = To.ToInt32(realm, value);
 
     // 3. Return the result of applying bitwise complement to oldValue. The result is a signed 32-bit integer.
-    return new NumberValue(realm, ~oldValue);
+    return IntegralValue.createFromNumberValue(realm, ~oldValue);
   } else if (ast.operator === "!") {
     // ECMA262 12.6.9
 

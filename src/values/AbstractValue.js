@@ -538,7 +538,7 @@ export default class AbstractValue extends Value {
     prefix?: boolean,
     loc?: ?BabelNodeSourceLocation
   ): Value {
-    let resultTypes = TypesDomain.unaryOp(op);
+    let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
     let result = new AbstractValue(realm, resultTypes, resultValues, hashUnary(op, operand), [operand], ([x]) =>
       t.unaryExpression(op, x, prefix)
@@ -646,8 +646,8 @@ export default class AbstractValue extends Value {
       values = ValuesDomain.topVal;
     }
     let types = TypesDomain.topVal;
-    let [hash, operands] = hashCall("abstractConcreteUnion", ...elements);
-    let result = new AbstractValue(realm, types, values, hash, operands, abstractValue._buildNode, {
+    let [hash, operands] = hashCall("abstractConcreteUnion", abstractValue, ...concreteValues);
+    let result = new AbstractValue(realm, types, values, hash, operands, nodes => nodes[0], {
       kind: "abstractConcreteUnion",
     });
     result.expressionLocation = realm.currentLocation;
@@ -693,7 +693,7 @@ export default class AbstractValue extends Value {
     return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
   }
 
-  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
+  static describe(val: Value, propertyName: void | PropertyKeyValue): string {
     let realm = val.$Realm;
 
     let identity;
@@ -717,8 +717,13 @@ export default class AbstractValue extends Value {
     else if (typeof propertyName === "string") location = `at ${propertyName}`;
     else location = source_locations.length === 0 ? "" : `at ${source_locations.join("\n")}`;
 
-    let message = `This operation is not yet supported on ${identity} ${location}`;
+    return `${identity} ${location}`;
+  }
 
+  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
+    let message = `This operation is not yet supported on ${AbstractValue.describe(val, propertyName)}`;
+
+    let realm = val.$Realm;
     return realm.reportIntrospectionError(message);
   }
 
