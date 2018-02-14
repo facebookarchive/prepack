@@ -193,6 +193,8 @@ export class Realm {
       hoistableFunctions: new WeakMap(),
     };
 
+    this.stripFlow = opts.stripFlow || false;
+
     this.fbLibraries = {
       other: new Map(),
       react: undefined,
@@ -258,6 +260,7 @@ export class Realm {
     output?: ReactOutputTypes,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
+  stripFlow: boolean;
 
   fbLibraries: {
     other: Map<string, AbstractValue>,

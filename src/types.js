@@ -1003,3 +1003,8 @@ export type ToType = {
 };
 
 export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
+
+export type UtilsType = {|
+  typeToString: (typeof Value) => void | string,
+  getTypeFromName: string => void | typeof Value,
+|};

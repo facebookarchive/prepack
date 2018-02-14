@@ -53,6 +53,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     inlineExpressions: true,
     omitInvariants: true,
     abstractEffectsInAdditionalFunctions: true,
+    stripFlow: true,
   };
 
   function compileSourceWithPrepack(source) {
@@ -384,6 +385,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 8", async () => {
         await runTest(directory, "fb8.js");
+      });
+
+      it("repl example", async () => {
+        await runTest(directory, "repl-example.js");
       });
     });
   });
