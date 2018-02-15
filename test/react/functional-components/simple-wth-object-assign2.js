@@ -4,7 +4,7 @@ this['React'] = React;
 
 function A(props) {
   var copyOfProps = Object.assign({}, props.bag);
-  Object.assign(copyOfProps, "y", {
+  Object.defineProperty(copyOfProps, "y", {
     get() {
       return 30;
     },

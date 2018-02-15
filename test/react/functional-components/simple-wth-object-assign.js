@@ -7,7 +7,7 @@ function A(props) {
 }
 
 function App(props) {
-	var copyOfProps = Object.assign({}, props);
+  var copyOfProps = Object.assign({}, props);
   return (
     <div>
       <A x={copyOfProps.x} />
