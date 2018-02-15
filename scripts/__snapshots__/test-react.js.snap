@@ -189,6 +189,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (JSX) Functional component folding Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React (JSX) Functional component folding React.cloneElement 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -522,6 +529,13 @@ exports[`Test React (create-element) Functional component folding Key not changi
 ReactStatistics {
   "inlinedComponents": 0,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
 }
 `;
 
