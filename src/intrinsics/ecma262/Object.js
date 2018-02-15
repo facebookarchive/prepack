@@ -33,7 +33,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties as Props, To } from "../../singletons.js";
-import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
+import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
@@ -88,6 +88,17 @@ export default function(realm: Realm): NativeFunctionValue {
             throw new FatalError();
           }
 
+          // Generate a residual Object.assign call that copies the
+          // partial properties that we don't know about.
+          AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            ObjectValue,
+            [ObjectAssign, target, nextSource],
+            ([methodNode, targetNode, sourceNode]: Array<BabelNodeExpression>) => {
+              return t.callExpression(methodNode, [targetNode, sourceNode]);
+            }
+          );
+
           to_must_be_partial = true;
           frm.makeNotPartial();
         }
@@ -105,16 +116,6 @@ export default function(realm: Realm): NativeFunctionValue {
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
-
-        AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          ObjectValue,
-          [ObjectAssign, target, nextSource],
-          (nodes: Array<BabelNodeExpression>) => {
-            let fun_args = nodes.slice(1);
-            return t.callExpression(nodes[0], ((fun_args: any): Array<BabelNodeExpression | BabelNodeSpreadElement>));
-          }
-        );
       }
 
       invariant(frm, "from required");
