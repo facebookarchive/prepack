@@ -145,8 +145,10 @@ export default function(realm: Realm): NativeFunctionValue {
     // 5. Return to.
     if (to_must_be_partial) {
       to.makePartial();
-      // if all sources are simple, then the target object must be too
-      if (simple_sources_count === sources.length) {
+      let to_keys = to.$OwnPropertyKeys();
+      // if all sources are simple and the target has no keys
+      // then we can safely mark the target as a simple object
+      if (simple_sources_count === sources.length && to_keys.length === 0) {
         to.makeSimple();
       }
     }
