@@ -60,6 +60,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
+    let simple_sources_count = 0;
 
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
@@ -87,6 +88,8 @@ export default function(realm: Realm): NativeFunctionValue {
             AbstractValue.reportIntrospectionError(nextSource);
             throw new FatalError();
           }
+          // increment simple sources counter
+          simple_sources_count++;
 
           // Generate a residual Object.assign call that copies the
           // partial properties that we don't know about.
@@ -140,7 +143,13 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 5. Return to.
-    if (to_must_be_partial) to.makePartial();
+    if (to_must_be_partial) {
+      to.makePartial();
+      // if all sources are simple, then the target object must be too
+      if (simple_sources_count === sources.length) {
+        to.makeSimple();
+      }
+    }
     return to;
   });
 
