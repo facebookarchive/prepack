@@ -43,7 +43,8 @@ Hello.prototype.componentDidMount = function() {
 Hello.prototype.render = function() {
   return React.createElement(
     "h1",
-    null,
+    // Regression test for bad serialization of computed properties
+     babelHelpers['extends']({}, this.__unknownAbstract),
     "Hello world",
     Object.keys(babelHelpers.objectWithoutProperties(obj, ["a", "c"]))
   );
