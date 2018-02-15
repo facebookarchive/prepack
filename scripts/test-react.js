@@ -266,6 +266,10 @@ function runTestSuite(outputJsx) {
         }
       });
 
+      it("Assign", async () => {
+        await runTest(directory, "assign.js");
+      });
+
       it("Class component as root", async () => {
         await runTest(directory, "class-root.js");
       });

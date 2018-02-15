@@ -56,6 +56,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (JSX) Functional component folding Assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React (JSX) Functional component folding Circular reference 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
@@ -386,6 +393,13 @@ ReactStatistics {
 `;
 
 exports[`Test React (create-element) Functional component folding Additional functions closure scope capturing 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Assign 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
   "optimizedTrees": 1,
