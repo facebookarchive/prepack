@@ -60,6 +60,8 @@ export default function(realm: Realm): NativeFunctionValue {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
+    let to_must_be_simple = false;
+    let unsafe_to_be_simple = false;
 
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
@@ -113,8 +115,12 @@ export default function(realm: Realm): NativeFunctionValue {
         // For now, just throw if this happens.
         let to_keys = to.$OwnPropertyKeys();
         if (to_keys.length !== 0) {
+          unsafe_to_be_simple = true;
+          to_must_be_simple = false;
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
+        } else if (!unsafe_to_be_simple) {
+          to_must_be_simple = true;
         }
       }
 
@@ -140,7 +146,12 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 5. Return to.
-    if (to_must_be_partial) to.makePartial();
+    if (to_must_be_partial) {
+      to.makePartial();
+    }
+    if (realm.isInPureScope() && to_must_be_simple) {
+      to.makeSimple();
+    }
     return to;
   });
 
