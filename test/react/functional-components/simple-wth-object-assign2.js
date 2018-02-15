@@ -4,11 +4,19 @@ this['React'] = React;
 
 function A(props) {
   var copyOfProps = Object.assign({}, props.bag);
-  return <div>Hello {copyOfProps.x}</div>;
+  Object.assign(copyOfProps, "y", {
+    get() {
+      return 30;
+    },
+    set(x) {
+      return x;
+    },
+  })
+  return <div>Hello {copyOfProps.x} {copyOfProps.y}</div>;
 }
 
 function App(props) {
-	var copyOfProps = Object.assign({}, props);
+	var copyOfProps = Object.assign({}, props, {x: 20});
   return (
     <A bag={copyOfProps} />
   );
