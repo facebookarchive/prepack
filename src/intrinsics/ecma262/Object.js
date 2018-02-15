@@ -60,6 +60,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
+    let to_can_be_simple = true;
 
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
@@ -113,6 +114,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // For now, just throw if this happens.
         let to_keys = to.$OwnPropertyKeys();
         if (to_keys.length !== 0) {
+          to_can_be_simple = false;
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
@@ -142,10 +144,12 @@ export default function(realm: Realm): NativeFunctionValue {
     // 5. Return to.
     if (to_must_be_partial) {
       to.makePartial();
-      // at this point, we know the target is partial and started with
-      // no keys, otherwise the above FatalError() would have been thrown
-      // so we can safely make it simple
-      to.makeSimple();
+      if (to_can_be_simple) {
+        // at this point, we know the target is partial and started with
+        // no keys, otherwise the above FatalError() would have been thrown
+        // so we can safely make it simple
+        to.makeSimple();
+      }
     }
     return to;
   });
