@@ -88,6 +88,11 @@ export default function(realm: Realm): NativeFunctionValue {
             throw new FatalError();
           }
 
+          to_must_be_partial = true;
+          frm.makeNotPartial();
+        }
+
+        if (to_must_be_partial) {
           // Generate a residual Object.assign call that copies the
           // partial properties that we don't know about.
           AbstractValue.createTemporalFromBuildFunction(
@@ -98,9 +103,6 @@ export default function(realm: Realm): NativeFunctionValue {
               return t.callExpression(methodNode, [targetNode, sourceNode]);
             }
           );
-
-          to_must_be_partial = true;
-          frm.makeNotPartial();
         }
 
         // ii. Let keys be ? from.[[OwnPropertyKeys]]().
