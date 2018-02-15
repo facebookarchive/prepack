@@ -15,6 +15,7 @@ let dims = {
   }
 };
 
+if (global.__makeSimple) __makeSimple(dims);
 if (global.__makePartial) __makePartial(dims);
 
 let windowPhysicalPixels = dims.windowPhysicalPixels;
