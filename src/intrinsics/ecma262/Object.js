@@ -149,7 +149,7 @@ export default function(realm: Realm): NativeFunctionValue {
     if (to_must_be_partial) {
       to.makePartial();
     }
-    if (to_must_be_simple) {
+    if (realm.isInPureScope() && to_must_be_simple) {
       to.makeSimple();
     }
     return to;
