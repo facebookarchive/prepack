@@ -376,7 +376,7 @@ export default class ObjectValue extends ConcreteValue {
     length: number,
     callback: NativeFunctionCallback,
     desc?: Descriptor = {}
-  ) {
+  ): Value {
     let intrinsicName;
     if (typeof name === "string") {
       if (this.intrinsicName) intrinsicName = `${this.intrinsicName}.${name}`;
@@ -385,11 +385,9 @@ export default class ObjectValue extends ConcreteValue {
     } else {
       invariant(false);
     }
-    this.defineNativeProperty(
-      name,
-      new NativeFunctionValue(this.$Realm, intrinsicName, name, length, callback, false),
-      desc
-    );
+    let fnValue = new NativeFunctionValue(this.$Realm, intrinsicName, name, length, callback, false);
+    this.defineNativeProperty(name, fnValue, desc);
+    return fnValue;
   }
 
   defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}) {
