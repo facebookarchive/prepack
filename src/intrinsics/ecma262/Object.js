@@ -78,7 +78,6 @@ export default function(realm: Realm): NativeFunctionValue {
         // b. Else,
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
-        Leak.leakValue(realm, nextSource);
 
         let frm_was_partial = frm.isPartialObject();
         if (frm_was_partial) {
@@ -109,6 +108,8 @@ export default function(realm: Realm): NativeFunctionValue {
         // ii. Let keys be ? from.[[OwnPropertyKeys]]().
         keys = frm.$OwnPropertyKeys();
         if (frm_was_partial) frm.makePartial();
+
+        Leak.leakValue(realm, nextSource);
       }
       if (to_must_be_partial) {
         // Only OK if to is an empty object because nextSource might have
@@ -143,8 +144,9 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 5. Return to.
-    Leak.leakValue(realm, to);
     if (to_must_be_partial) to.makePartial();
+
+    Leak.leakValue(realm, to);
     return to;
   });
 
