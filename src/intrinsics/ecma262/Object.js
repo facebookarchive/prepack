@@ -79,15 +79,15 @@ export default function(realm: Realm): NativeFunctionValue {
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
 
-        if (!frm.isSimpleObject()) {
-          // If this is not a simple object, it may have getters on it that can
-          // mutate any state as a result. We don't yet support this.
-          AbstractValue.reportIntrospectionError(nextSource);
-          throw new FatalError();
-        }
-
         let frm_was_partial = frm.isPartialObject();
         if (frm_was_partial) {
+          if (!frm.isSimpleObject()) {
+            // If this is not a simple object, it may have getters on it that can
+            // mutate any state as a result. We don't yet support this.
+            AbstractValue.reportIntrospectionError(nextSource);
+            throw new FatalError();
+          }
+
           to_must_be_partial = true;
           frm.makeNotPartial();
         }
