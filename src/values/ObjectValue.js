@@ -16,7 +16,6 @@ import type {
   Descriptor,
   IterationKind,
   ObjectKind,
-  PromiseCapability,
   PromiseReaction,
   PropertyBinding,
   PropertyKeyValue,
@@ -164,19 +163,11 @@ export default class ObjectValue extends ConcreteValue {
   $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue);
 
   // promise
-  $Promise: ?ObjectValue;
-  $AlreadyResolved: void | { value: boolean };
   $PromiseState: void | "pending" | "fulfilled" | "rejected";
   $PromiseResult: void | Value;
   $PromiseFulfillReactions: void | Array<PromiseReaction>;
   $PromiseRejectReactions: void | Array<PromiseReaction>;
   $PromiseIsHandled: void | boolean;
-  $Capability: void | PromiseCapability;
-  $AlreadyCalled: void | { value: boolean };
-  $Index: void | number;
-  $Values: void | Array<Value>;
-  $Capabilities: void | PromiseCapability;
-  $RemainingElements: void | { value: number };
 
   // iterator
   $IteratedList: void | Array<Value>;
