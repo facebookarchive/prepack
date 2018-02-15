@@ -395,7 +395,7 @@ export class ResidualHeapSerializer {
         /*isChild*/ true
       );
       this._emitPropertiesWithComputedNames(obj, consequent);
-      let consequentBody = this.emitter.endEmitting("consequent", oldBody, /* done */ true);
+      let consequentBody = this.emitter.endEmitting("consequent", oldBody, /*isChild*/ true);
       let consequentStatement = t.blockStatement(consequentBody.entries);
       oldBody = this.emitter.beginEmitting(
         "alternate",
@@ -408,7 +408,7 @@ export class ResidualHeapSerializer {
         /*isChild*/ true
       );
       this._emitPropertiesWithComputedNames(obj, alternate);
-      let alternateBody = this.emitter.endEmitting("alternate", oldBody, /* done */ true);
+      let alternateBody = this.emitter.endEmitting("alternate", oldBody, /*isChild*/ true);
       let alternateStatement = t.blockStatement(alternateBody.entries);
       this.emitter.emit(t.ifStatement(serializedCond, consequentStatement, alternateStatement));
     }
@@ -1602,7 +1602,7 @@ export class ResidualHeapSerializer {
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
-    const statements = this.emitter.endEmitting(generator, oldBody, /* done */ true).entries;
+    const statements = this.emitter.endEmitting(generator, oldBody, /*isChild*/ true).entries;
     if (this._options.debugScopes) {
       let comment = `generator "${generator.getName()}"`;
       if (generator.parent !== undefined) {
@@ -1772,7 +1772,7 @@ export class ResidualHeapSerializer {
 
   serialize(): BabelNodeFile {
     this.generator.serialize(this._getContext());
-    //invariant(this.emitter._declaredAbstractValues.size <= this.preludeGenerator.derivedIds.size);
+    invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
 
     this.postGeneratorSerialization();
 

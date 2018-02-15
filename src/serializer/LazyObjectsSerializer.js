@@ -123,7 +123,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     };
     let oldBody = this.emitter.beginEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, initializerBody);
     this._emitObjectProperties(obj);
-    this.emitter.endEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, oldBody, /* done */ true);
+    this.emitter.endEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, oldBody);
     return initializerBody;
   }
 

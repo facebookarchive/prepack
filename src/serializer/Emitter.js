@@ -25,9 +25,16 @@ import invariant from "../invariant.js";
 import { BodyReference } from "./types.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
 
-type EmitterDependenciesVisitorOptions<T> = {
+// Type used to configure callbacks from the dependenciesVisitor of the Emitter.
+type EmitterDependenciesVisitorCallbacks<T> = {
+  // Callback invoked whenever an "active" dependency is visited, i.e. a dependency which is in the process of being emitted.
+  // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onActive?: Value => void | T,
+  // Callback invoked whenever a dependency is visited that is a FunctionValue.
+  // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onFunction?: FunctionValue => void | T,
+  // Callback invoked whenever a dependency is visited that is an abstract value with an identifier.
+  // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onAbstractValueWithIdentifier?: AbstractValue => void | T,
 };
 
@@ -61,7 +68,7 @@ export class Emitter {
     this._activeValues = new Set();
     this._activeGeneratorStack = [this._mainBody];
     this._finalized = false;
-    this._getReasonToWaitForDependenciesOptions = {
+    this._getReasonToWaitForDependenciesCallbacks = {
       onActive: val => val, // cyclic dependency; we need to wait until this value has finished emitting
       onFunction: val => {
         // Functions are currently handled in a special way --- they are all defined ahead of time. Thus, we never have to wait for functions.
@@ -85,8 +92,12 @@ export class Emitter {
   _waitingForBodies: Map<SerializedBody, Array<{ dependencies: Array<Value>, func: () => void }>>;
   _body: SerializedBody;
   _mainBody: SerializedBody;
-  _getReasonToWaitForDependenciesOptions: EmitterDependenciesVisitorOptions<Value>;
+  _getReasonToWaitForDependenciesCallbacks: EmitterDependenciesVisitorCallbacks<Value>;
 
+  // Begin to emit something. Such sessions can be nested.
+  // The dependency indicates what is being emitted; until this emission ends, other parties might have to wait for the dependency.
+  // The targetBody is a wrapper that holds the sequence of statements that are going to be emitted.
+  // If isChild, then we are starting a new emitting session as a branch off the previously active emitting session.
   beginEmitting(dependency: string | Generator | Value, targetBody: SerializedBody, isChild: boolean = false) {
     invariant(!this._finalized);
     this._activeStack.push(dependency);
@@ -111,7 +122,9 @@ export class Emitter {
     this._body.entries.push(statement);
     this._processCurrentBody();
   }
-  endEmitting(dependency: string | Generator | Value, oldBody: SerializedBody, done: boolean = false) {
+  // End to emit something. The parameters dependency and isChild must match a previous call to beginEmitting.
+  // oldBody should be the value returned by the previous matching beginEmitting call.
+  endEmitting(dependency: string | Generator | Value, oldBody: SerializedBody, isChild: boolean = false) {
     invariant(!this._finalized);
     let lastDependency = this._activeStack.pop();
     invariant(dependency === lastDependency);
@@ -125,7 +138,9 @@ export class Emitter {
     }
     let lastBody = this._body;
     this._body = oldBody;
-    if (done) {
+    if (isChild) {
+      invariant(lastBody.parentBody === oldBody);
+      invariant(lastBody.nestingLevel > 0);
       invariant(!lastBody.done);
       lastBody.done = true;
       // When we are done processing a body, we can propogate all declared abstract values
@@ -222,15 +237,18 @@ export class Emitter {
   //    that has not yet been processed
   //    (tracked by `declaredAbstractValues` in bodies)
   getReasonToWaitForDependencies(dependencies: Value | Array<Value>): void | Value {
-    return this.dependenciesVisitor(dependencies, this._getReasonToWaitForDependenciesOptions);
+    return this.dependenciesVisitor(dependencies, this._getReasonToWaitForDependenciesCallbacks);
   }
 
   // Visitor of dependencies that require delaying serialization
-  dependenciesVisitor<T>(dependencies: Value | Array<Value>, options: EmitterDependenciesVisitorOptions<T>): void | T {
+  dependenciesVisitor<T>(
+    dependencies: Value | Array<Value>,
+    callbacks: EmitterDependenciesVisitorCallbacks<T>
+  ): void | T {
     invariant(!this._finalized);
 
     let result;
-    let recurse = value => this.dependenciesVisitor(value, options);
+    let recurse = value => this.dependenciesVisitor(value, callbacks);
 
     if (Array.isArray(dependencies)) {
       let values = ((dependencies: any): Array<Value>);
@@ -244,7 +262,7 @@ export class Emitter {
     let val = ((dependencies: any): Value);
     if (this._activeValues.has(val)) {
       // We ran into a cyclic dependency, where the value we are dependending on is still in the process of being emitted.
-      result = options.onActive ? options.onActive(val) : undefined;
+      result = callbacks.onActive ? callbacks.onActive(val) : undefined;
       if (result !== undefined) return result;
     }
 
@@ -257,12 +275,12 @@ export class Emitter {
       if (result !== undefined) return result;
     } else if (val instanceof FunctionValue) {
       // We ran into a function value.
-      result = options.onFunction ? options.onFunction(val) : undefined;
+      result = callbacks.onFunction ? callbacks.onFunction(val) : undefined;
       if (result !== undefined) return result;
     } else if (val instanceof AbstractValue) {
       if (val.hasIdentifier()) {
         // We ran into an abstract value that might have to be declared.
-        result = options.onAbstractValueWithIdentifier ? options.onAbstractValueWithIdentifier(val) : undefined;
+        result = callbacks.onAbstractValueWithIdentifier ? callbacks.onAbstractValueWithIdentifier(val) : undefined;
         if (result !== undefined) return result;
       }
       result = recurse(val.args);
