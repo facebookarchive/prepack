@@ -32,7 +32,7 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties as Props, To } from "../../singletons.js";
+import { Create, Leak, Properties as Props, To } from "../../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
@@ -78,6 +78,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // b. Else,
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
+        Leak.leakValue(realm, nextSource);
 
         let frm_was_partial = frm.isPartialObject();
         if (frm_was_partial) {
