@@ -197,7 +197,7 @@ function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnal
     }
     // todo: eventually join these effects, apply them to the global state and iterate to a fixed point
     try {
-      realm.evaluateAndRevertInGlobalEnv(() =>
+      realm.evaluateForEffectsInGlobalEnv(() =>
         EvaluateDirectCallWithArgList(modules.realm, true, env, fv, fv, thisValue, args)
       );
       nonFatalFunctions++;
