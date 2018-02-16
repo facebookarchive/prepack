@@ -108,8 +108,6 @@ export default function(realm: Realm): NativeFunctionValue {
         // ii. Let keys be ? from.[[OwnPropertyKeys]]().
         keys = frm.$OwnPropertyKeys();
         if (frm_was_partial) frm.makePartial();
-
-        Leak.leakValue(realm, nextSource);
       }
       if (to_must_be_partial) {
         // Only OK if to is an empty object because nextSource might have
@@ -156,6 +154,13 @@ export default function(realm: Realm): NativeFunctionValue {
       // We already established above that `to` is simple,
       // so set the `_isSimple` flag.
       to.makeSimple();
+
+      // If we generated an Object.assign() to deal with partials, by this
+      // point it is not safe to interact with those objects in Prepack land.
+      Leak.leakValue(realm, to);
+      for (let nextSource of sources) {
+        Leak.leakValue(realm, nextSource);
+      }
     }
     return to;
   });
