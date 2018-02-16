@@ -45,7 +45,7 @@ ReactStatistics {
 exports[`Test React with JSX input, JSX output Factory class component folding Simple factory classes 2 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
@@ -1095,7 +1095,7 @@ ReactStatistics {
 exports[`Test React with create-element input, create-element output Factory class component folding Simple factory classes 2 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
