@@ -121,7 +121,9 @@ function generateRuntimeCall(
     let argStart = 1;
     if (thisArg instanceof Value) {
       if (typeof propName === "string") {
-        callFunc = t.memberExpression(nodes[0], t.identifier(propName), !t.isValidIdentifier(propName));
+        callFunc = t.isValidIdentifier(propName)
+          ? t.memberExpression(nodes[0], t.identifier(propName), false)
+          : t.memberExpression(nodes[0], t.stringLiteral(propName), true);
       } else {
         callFunc = t.memberExpression(nodes[0], nodes[1], true);
         argStart = 2;

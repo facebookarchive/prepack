@@ -53,9 +53,9 @@ import type { ClassComponentMetadata } from "../types.js";
 type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
 export type BranchReactComponentTree = {
-  props: ObjectValue | AbstractObjectValue,
+  props: ObjectValue | AbstractObjectValue | null,
   rootValue: ECMAScriptSourceFunctionValue | AbstractValue,
-  context: ObjectValue | AbstractObjectValue,
+  context: ObjectValue | AbstractObjectValue | null,
 };
 
 export class Reconciler {
@@ -146,6 +146,19 @@ export class Reconciler {
     );
   }
 
+  _queueNewComponentTree(
+    rootValue: Value,
+    props?: ObjectValue | AbstractObjectValue | null = null,
+    context?: ObjectValue | AbstractObjectValue | null = null
+  ) {
+    invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
+    this.branchReactComponentTrees.push({
+      props,
+      rootValue,
+      context,
+    });
+  }
+
   _renderComplexClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue,
@@ -155,11 +168,7 @@ export class Reconciler {
     branchState: BranchState | null
   ): Value {
     if (branchStatus !== "ROOT") {
-      this.branchReactComponentTrees.push({
-        props,
-        rootValue: componentType,
-        context,
-      });
+      this._queueNewComponentTree(componentType);
       throw new NewComponentTreeBranch();
     }
     // create a new instance of this React class component
@@ -257,11 +266,7 @@ export class Reconciler {
   ) {
     if (valueIsKnownReactAbstraction(this.realm, componentType)) {
       invariant(componentType instanceof AbstractValue);
-      this.branchReactComponentTrees.push({
-        props,
-        rootValue: componentType,
-        context,
-      });
+      this._queueNewComponentTree(componentType);
       throw new NewComponentTreeBranch();
     }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
@@ -418,6 +423,7 @@ export class Reconciler {
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
+        this._queueNewComponentTree(typeValue);
         this._assignBailOutMessage(reactElement, `Bail-out: refs are not supported on <Components />`);
         return reactElement;
       }
@@ -480,13 +486,16 @@ export class Reconciler {
       } catch (error) {
         // assign a bail out message
         if (error instanceof NewComponentTreeBranch) {
-          // NO-OP
-        } else if (error instanceof ExpectedBailOut) {
-          this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
-        } else if (error instanceof FatalError) {
-          this._assignBailOutMessage(reactElement, "Evaluation bail-out");
+          // NO-OP (we don't queue a newComponentTree as this was already done)
         } else {
-          throw error;
+          this._queueNewComponentTree(typeValue);
+          if (error instanceof ExpectedBailOut) {
+            this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
+          } else if (error instanceof FatalError) {
+            this._assignBailOutMessage(reactElement, "Evaluation bail-out");
+          } else {
+            throw error;
+          }
         }
         // a child component bailed out during component folding, so return the function value and continue
         if (branchStatus === "NEW_BRANCH" && branchState) {
