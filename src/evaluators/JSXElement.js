@@ -267,13 +267,21 @@ function evaluateJSXAttributes(
       if (config.properties.size > 0) {
         abstractPropsArgs.push(config);
       }
+      // get the global Object.assign
+      let globalObj = Get(realm, realm.$GlobalObject, "Object");
+      invariant(globalObj instanceof ObjectValue);
+      let objAssign = Get(realm, globalObj, "assign");
       invariant(realm.generator);
-      config = realm.generator.derive(types, values, [emptyObject, ...abstractPropsArgs], _args => {
-        return t.callExpression(
-          t.memberExpression(t.identifier("Object"), t.identifier("assign")),
-          ((_args: any): Array<any>)
-        );
-      });
+
+      invariant(realm.generator);
+      config = realm.generator.derive(
+        types,
+        values,
+        [objAssign, emptyObject, ...abstractPropsArgs],
+        ([methodNode, ..._args]) => {
+          return t.callExpression(methodNode, ((_args: any): Array<any>));
+        }
+      );
       if (
         spreadAttributesCount === spreadAttributesWithInitialPropsHintCount &&
         spreadAttributesWithInitialPropsHintCount > 0

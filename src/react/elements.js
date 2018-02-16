@@ -62,12 +62,15 @@ function createPropsObject(
         let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
         let types = new TypesDomain(FunctionValue);
         let values = new ValuesDomain();
+
+        // get the global Object.assign
+        let globalObj = Get(realm, realm.$GlobalObject, "Object");
+        invariant(globalObj instanceof ObjectValue);
+        let objAssign = Get(realm, globalObj, "assign");
         invariant(realm.generator);
-        props = realm.generator.derive(types, values, [emptyObject, ...args], _args => {
-          return t.callExpression(
-            t.memberExpression(t.identifier("Object"), t.identifier("assign")),
-            ((_args: any): Array<any>)
-          );
+
+        props = realm.generator.derive(types, values, [objAssign, emptyObject, ...args], ([methodNode, ..._args]) => {
+          return t.callExpression(methodNode, ((_args: any): Array<any>));
         });
         realm.react.abstractHints.set(props, "HAS_NO_KEY_OR_REF");
       } else if (realm.react.mode === "safe") {
