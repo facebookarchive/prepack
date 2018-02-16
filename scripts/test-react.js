@@ -14,6 +14,7 @@ let path = require("path");
 let { prepackSources } = require("../lib/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
+let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
 let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
@@ -39,6 +40,12 @@ function cxShim(...args) {
 
 // assign for tests that use the cx() global
 global.cx = cxShim;
+
+function getDataFile(directory, name) {
+  let reactTestRoot = path.join(__dirname, "../test/react/");
+  let data = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
+  return data;
+}
 
 function runTestSuite(outputJsx) {
   let reactTestRoot = path.join(__dirname, "../test/react/");
@@ -81,6 +88,9 @@ function runTestSuite(outputJsx) {
         case "React":
         case "react":
           return React;
+        case "PropTypes":
+        case "prop-types":
+          return PropTypes;
         case "RelayModern":
           return ReactRelay;
         case "cx":
@@ -101,7 +111,7 @@ function runTestSuite(outputJsx) {
     return moduleShim.exports;
   }
 
-  async function runTest(directory, name) {
+  async function runTest(directory, name, data) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
     let { compiledSource, statistics } = compileSourceWithPrepack(source);
 
@@ -123,8 +133,8 @@ function runTestSuite(outputJsx) {
     // Use the original version of the test in case transforming messes it up.
     let { getTrials } = A;
     // Run tests that assert the rendered output matches.
-    let resultA = getTrials(rendererA, A);
-    let resultB = getTrials(rendererB, B);
+    let resultA = getTrials(rendererA, A, data);
+    let resultB = getTrials(rendererB, B, data);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
@@ -382,6 +392,11 @@ function runTestSuite(outputJsx) {
 
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
+      });
+
+      it("Hacker News app", async () => {
+        let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
+        await runTest(directory, "hacker-news.js", data);
       });
     });
   });
