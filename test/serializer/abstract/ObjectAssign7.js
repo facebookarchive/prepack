@@ -5,7 +5,7 @@ var obj = global.__abstract && global.__makePartial && global.__makeSimple ? __m
 var copyOfObj;
 
 __evaluatePureFunction(() => {
-  copyOfObj = Object.assign({}, obj, {foo: 2});
+  copyOfObj = Object.assign({}, {foo: 2}, obj);
 });
 
 inspect = function() {  
