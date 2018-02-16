@@ -20,59 +20,61 @@ function getHostUrl(url) {
 }
 
 function Story({story, rank}) {
-  return [
-    <tr className="athing">
-      <td
+  return (
+    <React.Fragment>
+      <tr className="athing">
+        <td
+          style={{
+            verticalAlign: 'top',
+            textAlign: 'right',
+          }}
+          className="title">
+          <span className="rank">{rank}.</span>
+        </td>
+        <td
+          className="votelinks"
+          style={{
+            verticalAlign: 'top',
+          }}>
+          <center>
+            <a href="#">
+              <div className="votearrow" titl="upvote" />
+            </a>
+          </center>
+        </td>
+        <td className="title">
+          <a href="#" className="storylink">{story.title}</a>
+          {story.url
+            ? <span className="sitebit comhead">
+                {' ('}<a href="#">{getHostUrl(story.url)}</a>)
+              </span>
+            : null}
+        </td>
+      </tr>
+      <tr>
+        <td colSpan="2" />
+        <td className="subtext">
+          <span className="score">{`${story.score} points`}</span>
+          {' by '}
+          <a href="#" className="hnuser">{story.by}</a>
+          {' '}
+          <span className="age">
+            <a href="#">{timeAge(story.time)}</a>
+          </span>
+          {' | '}
+          <a href="#">hide</a>
+          {' | '}
+          <a href="#">{`${story.descendants || 0} comments`}</a>
+        </td>
+      </tr>
+      <tr
         style={{
-          verticalAlign: 'top',
-          textAlign: 'right',
+          height: 5,
         }}
-        className="title">
-        <span className="rank">{rank}.</span>
-      </td>
-      <td
-        className="votelinks"
-        style={{
-          verticalAlign: 'top',
-        }}>
-        <center>
-          <a href="#">
-            <div className="votearrow" titl="upvote" />
-          </a>
-        </center>
-      </td>
-      <td className="title">
-        <a href="#" className="storylink">{story.title}</a>
-        {story.url
-          ? <span className="sitebit comhead">
-              {' ('}<a href="#">{getHostUrl(story.url)}</a>)
-            </span>
-          : null}
-      </td>
-    </tr>,
-    <tr>
-      <td colSpan="2" />
-      <td className="subtext">
-        <span className="score">{`${story.score} points`}</span>
-        {' by '}
-        <a href="#" className="hnuser">{story.by}</a>
-        {' '}
-        <span className="age">
-          <a href="#">{timeAge(story.time)}</a>
-        </span>
-        {' | '}
-        <a href="#">hide</a>
-        {' | '}
-        <a href="#">{`${story.descendants || 0} comments`}</a>
-      </td>
-    </tr>,
-    <tr
-      style={{
-        height: 5,
-      }}
-      className="spacer"
-    />,
-  ];
+        className="spacer"
+      />
+    </React.Fragment>
+  );
 }
 
 Story.propTypes = {
@@ -156,11 +158,13 @@ HeaderBar.defaultProps = {
 
 class AppBody extends React.Component {
   render() {
-    return [
-      <HeaderBar />,
-      <tr height="10" />,
-      <StoryList stories={this.props.stories} limit={this.props.storyLimit} />,
-    ];
+    return (
+      <React.Fragment>
+        <HeaderBar />
+        <tr height="10" />
+        <StoryList stories={this.props.stories} limit={this.props.storyLimit} />
+      </React.Fragment>
+    );
   }
 }
 
@@ -188,9 +192,9 @@ function App({stories}) {
   );
 }
 
-App.getTrials = function(renderer, Root) {
+App.getTrials = function(renderer, Root, data) {
   let results = [];
-  renderer.update(<Root show={true} />);
+  renderer.update(<Root stories={data} />);
   results.push(['clone element (true)', renderer.toJSON()]);
 
   return results;
