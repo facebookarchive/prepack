@@ -280,6 +280,10 @@ function runTestSuite(outputJsx) {
         }
       });
 
+      it("Render array twice", async () => {
+        await runTest(directory, "array-twice.js");
+      });
+
       it("Class component as root", async () => {
         await runTest(directory, "class-root.js");
       });
