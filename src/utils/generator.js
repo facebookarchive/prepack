@@ -27,6 +27,7 @@ import {
   Value,
 } from "../values/index.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
+import { hashString } from "../methods/index.js";
 import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as base62 from "base62";
@@ -425,7 +426,7 @@ export class Generator {
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let res = new Constructor(this.realm, types, values, 0, [], id, options);
+    let res = new Constructor(this.realm, types, values, hashString(id.name), [], id, options);
     this._addEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,

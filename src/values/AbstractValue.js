@@ -193,14 +193,14 @@ export default class AbstractValue extends Value {
         if (this.implies(x)) return y instanceof NullValue || y instanceof UndefinedValue;
         if (this.implies(y)) return x instanceof NullValue || x instanceof UndefinedValue;
       }
-      // !!x => x
+      // !!x => y if x => y
       if (this.kind === "!") {
         let [nx] = this.args;
         invariant(nx instanceof AbstractValue);
         if (nx.kind === "!") {
           let [x] = nx.args;
           invariant(x instanceof AbstractValue);
-          return x.equals(val);
+          return x.implies(val);
         }
       }
     }
@@ -216,7 +216,21 @@ export default class AbstractValue extends Value {
       // !x => !y if y => x
       if (this.kind === "!") {
         let [x] = this.args;
+        if (x.kind === "!") {
+          // !!x => !y if y => !x
+          invariant(x instanceof AbstractValue);
+          let [xx] = x.args;
+          invariant(xx instanceof AbstractValue);
+          return xx.impliesNot(val);
+        }
         return val.implies(x);
+      }
+      if (this.kind === "conditional") {
+        let [c, x, y] = this.args;
+        // (c ? x : y) => !val if x is false and y is true and c = val
+        if (!x.mightNotBeFalse() && !y.mightNotBeTrue()) {
+          return c.equals(val);
+        }
       }
     }
     return false;
