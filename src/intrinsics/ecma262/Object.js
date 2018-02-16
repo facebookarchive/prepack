@@ -141,16 +141,16 @@ export default function(realm: Realm): NativeFunctionValue {
 
     // 5. Return to.
     if (to_must_be_partial) {
-      // We allow partial sources (and make `to` partial) only if `to` has no keys.
-      // Therefore, it must also be simple. Verify this assumption.
+      // We allow partial simple sources (and make `to` partial)
+      // only if `to` has no keys. Therefore, it must also be simple.
       invariant(to.isSimpleObject());
 
       to.makePartial();
 
-      // Partial objects (and `to` is now partial) aren't considered simple by
-      // default because we can't iterate over their properties.
-      // However we already asserted above that `to` is simple.
-      // Set the flag explicitly so `to` doesn't lose its simple status.
+      // Partial objects (and `to` is now partial) can't be calculated to be
+      // simple because we can't iterate over all of their properties.
+      // We already established above that `to` is simple,
+      // so set the `_isSimple` flag.
       to.makeSimple();
     }
     return to;
