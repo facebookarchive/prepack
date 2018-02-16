@@ -61,15 +61,6 @@ export default function(realm: Realm): NativeFunctionValue {
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
 
-    if (to.isSimpleObject()) {
-      // isSimpleObject() is lazily calculated based on properties for normal objects.
-      // However we might later make it partial in this function. In that case,
-      // the default will be that the object is *not* simple. But we know that
-      // it was simple before, and that Object.assign() can't possibly copy any
-      // getters or setters onto it. Therefore, it is safe to claim it stays simple.
-      to.makeSimple();
-    }
-
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
 
@@ -149,7 +140,16 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 5. Return to.
-    if (to_must_be_partial) to.makePartial();
+    if (to_must_be_partial) {
+      const to_was_simple = to.isSimpleObject();
+      to.makePartial();
+
+      if (to_was_simple) {
+        // Making it partial has switched isSimple from calculated to a flag.
+        // Set that flag explicitly if this was simple before.
+        to.makeSimple();
+      }
+    }
     return to;
   });
 
