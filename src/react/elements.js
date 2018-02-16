@@ -70,7 +70,7 @@ function createPropsObject(
           );
         });
         realm.react.abstractHints.set(props, "HAS_NO_KEY_OR_REF");
-      } else {
+      } else if (realm.react.mode === "safe") {
         // if either are abstract, this will impact the reconcilation process
         // and ultimately prevent us from folding ReactElements properly
         let diagnostic = new CompilerDiagnostic(

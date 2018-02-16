@@ -10,7 +10,14 @@
 /* @flow */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions, ReactOutputTypes } from "./options";
+import type {
+  SerializerOptions,
+  RealmOptions,
+  Compatibility,
+  DebuggerOptions,
+  ReactOutputTypes,
+  ReactModeTypes,
+} from "./options";
 import { Realm } from "./realm.js";
 import invariant from "./invariant.js";
 
@@ -37,6 +44,7 @@ export type PrepackOptions = {|
   outputFilename?: string,
   profile?: boolean,
   reactEnabled?: boolean,
+  reactMode?: ReactModeTypes,
   reactOutput?: ReactOutputTypes,
   residual?: boolean,
   serialize?: boolean,

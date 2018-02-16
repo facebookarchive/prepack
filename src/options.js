@@ -17,6 +17,9 @@ export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "mobile", "node
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
 
+export type ReactModeTypes = "safe" | "unsafe";
+export const ReactModeValues = ["safe", "unsafe"];
+
 export type RealmOptions = {
   check?: Array<number>,
   compatibility?: Compatibility,
@@ -32,6 +35,7 @@ export type RealmOptions = {
   timeout?: number,
   maxStackDepth?: number,
   reactEnabled?: boolean,
+  reactMode?: ReactModeTypes,
   reactOutput?: ReactOutputTypes,
   stripFlow?: boolean,
   abstractEffectsInAdditionalFunctions?: boolean,

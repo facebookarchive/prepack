@@ -12,7 +12,14 @@
 /* eslint-disable no-shadow */
 
 import { CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "./errors.js";
-import { type Compatibility, CompatibilityValues, type ReactOutputTypes, ReactOutputValues } from "./options.js";
+import {
+  type Compatibility,
+  CompatibilityValues,
+  type ReactOutputTypes,
+  ReactOutputValues,
+  type ReactModeTypes,
+  ReactModeValues,
+} from "./options.js";
 import { type SerializedResult } from "./serializer/types.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
 import type { BabelNodeSourceLocation } from "babel-types";
@@ -86,6 +93,7 @@ function run(
   let debugInFilePath: string;
   let debugOutFilePath: string;
   let reactOutput: ReactOutputTypes = "create-element";
+  let reactMode: ReactModeTypes = "safe";
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -199,6 +207,14 @@ function run(
           }
           reactOutput = (arg: any);
           break;
+        case "reactMode":
+          arg = args.shift();
+          if (!ReactModeValues.includes(arg)) {
+            console.error(`Unsupported reactMode: ${arg}`);
+            process.exit(1);
+          }
+          reactMode = (arg: any);
+          break;
         case "help":
           const options = [
             "-- | input.js",
@@ -254,6 +270,7 @@ function run(
       debugInFilePath: debugInFilePath,
       debugOutFilePath: debugOutFilePath,
       reactOutput: reactOutput,
+      reactMode: reactMode,
     },
     flags
   );
