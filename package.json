@@ -98,6 +98,7 @@
     "madge": "^1.6.0",
     "minimist": "^1.2.0",
     "prettier": "1.5.2",
+    "prop-types": "^15.6.0",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react-relay": "^1.4.1",
