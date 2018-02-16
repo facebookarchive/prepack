@@ -282,8 +282,8 @@ ReactStatistics {
 
 exports[`Test React (JSX) fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 0,
+  "inlinedComponents": 3,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -632,8 +632,8 @@ ReactStatistics {
 
 exports[`Test React (create-element) fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 0,
+  "inlinedComponents": 3,
+  "optimizedTrees": 1,
 }
 `;
 

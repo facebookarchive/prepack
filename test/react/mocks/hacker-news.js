@@ -212,10 +212,9 @@ module.exports = this.__evaluatePureFunction(() => {
     stories: PropTypes.array.isRequired,
   };
 
-  // Currently fails
-  // if (this.__registerReactComponentRoot) {
-  // 	__registerReactComponentRoot(App);
-  // }
+  if (this.__registerReactComponentRoot) {
+  	__registerReactComponentRoot(App);
+  }
 
   return App;
 });
