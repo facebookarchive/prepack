@@ -60,7 +60,7 @@ export function getPureBinaryOperationResultType(
   function reportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
     let leftPure = purityTest(realm, lval);
     let rightPure = purityTest(realm, rval);
-    if (leftPure && rightPure) return typeIfPure;
+    if ((leftPure && rightPure) || realm.isInPureScope()) return typeIfPure;
     let loc = !leftPure ? lloc : rloc;
     let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
     if (realm.handleError(error) === "Recover") {
