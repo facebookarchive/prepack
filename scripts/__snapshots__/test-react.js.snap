@@ -287,6 +287,20 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (JSX) Functional component folding Simple with Object.assign #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Simple with Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React (JSX) fb-www mocks fb-www 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
@@ -634,6 +648,20 @@ exports[`Test React (create-element) fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
   "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple with Object.assign #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Simple with Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
