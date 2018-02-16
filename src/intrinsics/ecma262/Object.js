@@ -157,10 +157,12 @@ export default function(realm: Realm): NativeFunctionValue {
 
       // If we generated an Object.assign() to deal with partials, by this
       // point it is not safe to interact with those objects in Prepack land.
-      Leak.leakValue(realm, to);
       for (let nextSource of sources) {
         Leak.leakValue(realm, nextSource);
       }
+      // TODO: I'm not sure if target also needs to leak.
+      // It might be that the restrictions we already have above are sufficient.
+      // https://github.com/facebook/prepack/issues/1462
     }
     return to;
   });
