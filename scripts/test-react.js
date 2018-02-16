@@ -212,6 +212,14 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-refs.js");
       });
 
+      it("Simple with Object.assign", async () => {
+        await runTest(directory, "simple-assign.js");
+      });
+
+      it("Simple with Object.assign #2", async () => {
+        await runTest(directory, "simple-assign2.js");
+      });
+
       it("Circular reference", async () => {
         await runTest(directory, "circular-reference.js");
       });
