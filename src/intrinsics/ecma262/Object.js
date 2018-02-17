@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { FatalError } from "../../errors.js";
+import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import {
@@ -32,9 +32,7 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Leak, Properties as Props, To } from "../../singletons.js";
-import type { BabelNodeExpression } from "babel-types";
-import * as t from "babel-types";
+import { Create, Properties as Props, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -56,10 +54,9 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
+  func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
-    let to_must_be_partial = false;
 
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
@@ -79,54 +76,26 @@ export default function(realm: Realm): NativeFunctionValue {
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
 
-        let frm_was_partial = frm.isPartialObject();
-        if (frm_was_partial) {
+        if (frm.isPartialObject()) {
           if (!frm.isSimpleObject()) {
             // If this is not a simple object, it may have getters on it that can
             // mutate any state as a result. We don't yet support this.
             AbstractValue.reportIntrospectionError(nextSource);
             throw new FatalError();
           }
-
-          to_must_be_partial = true;
-          // Make this temporally not partial
-          // so that we can call frm.$OwnPropertyKeys below.
-          frm.makeNotPartial();
-        }
-
-        if (to_must_be_partial) {
-          // Generate a residual Object.assign call that copies the
-          // partial properties that we don't know about.
-          AbstractValue.createTemporalFromBuildFunction(
-            realm,
-            ObjectValue,
-            [ObjectAssign, target, nextSource],
-            ([methodNode, targetNode, sourceNode]: Array<BabelNodeExpression>) => {
-              return t.callExpression(methodNode, [targetNode, sourceNode]);
-            }
+          // Otherwise, we have to fatal (but pure mode can recover from this).
+          const diag = new CompilerDiagnostic(
+            // TODO: change the message?
+            "Unfrozen object leaked before end of global code",
+            realm.currentLocation,
+            "PP0017",
+            "RecoverableError"
           );
+          if (realm.handleError(diag) !== "Recover") throw new FatalError();
         }
 
         // ii. Let keys be ? from.[[OwnPropertyKeys]]().
         keys = frm.$OwnPropertyKeys();
-        if (frm_was_partial) frm.makePartial();
-      }
-      if (to_must_be_partial) {
-        // Only OK if to is an empty object because nextSource might have
-        // properties at runtime that will overwrite current properties in to.
-        // For now, just throw if this happens.
-        let to_keys = to.$OwnPropertyKeys();
-        if (to_keys.length !== 0) {
-          AbstractValue.reportIntrospectionError(nextSource);
-          throw new FatalError();
-        }
-
-        // If `to` is going to be a partial, we are emitting Object.assign()
-        // calls for each argument. At this point we should not be trying to
-        // assign keys below because that will change the order of the keys on
-        // the resulting object (i.e. the keys assigned later would already be
-        // on the serialized version from the heap).
-        continue;
       }
 
       invariant(frm, "from required");
@@ -151,26 +120,6 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 5. Return to.
-    if (to_must_be_partial) {
-      // We allow partial simple sources (and make `to` partial)
-      // only if `to` has no keys. Therefore, it must also be simple.
-      invariant(to.isSimpleObject());
-
-      to.makePartial();
-
-      // Partial objects (and `to` is now partial) can't be calculated to be
-      // simple because we can't iterate over all of their properties.
-      // We already established above that `to` is simple,
-      // so set the `_isSimple` flag.
-      to.makeSimple();
-
-      // If we generated an Object.assign() to deal with partials, by this
-      // point it is not safe to interact with those objects in Prepack land.
-      for (let nextSource of sources) {
-        Leak.leakValue(realm, nextSource);
-      }
-      // TODO #1462: it is not clear if this fix is sufficient.
-    }
     return to;
   });
 
