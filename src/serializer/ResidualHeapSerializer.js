@@ -1725,7 +1725,7 @@ export class ResidualHeapSerializer {
       }
       return this.realm.intrinsics.undefined;
     };
-    this.realm.evaluateAndRevertInGlobalEnv(processAdditionalFunctionValuesFn);
+    this.realm.evaluateForEffectsInGlobalEnv(processAdditionalFunctionValuesFn);
     return rewrittenAdditionalFunctions;
   }
 
