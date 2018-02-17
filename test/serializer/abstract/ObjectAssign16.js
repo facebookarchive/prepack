@@ -1,18 +1,15 @@
-var obj = global.__abstract && global.__makePartial && global.__makeSimple ? __makeSimple(__makePartial(__abstract({}, "({foo:1})"))) : {foo:1};
+// abstract effects
 
-var copyOfObj = {};
-var y = 0;
-Object.assign(copyOfObj, obj);
+var __evaluatePureFunction = this.__evaluatePureFunction || (f => f());
+var obj = global.__abstract && global.__makePartial && global.__makeSimple ? __makeSimple(__makePartial(__abstract({foo: __abstract('number')}, "({foo:1})"))) : {foo:1};
+var copyOfObj;
 
-var proto = {};
-Object.defineProperty(proto, 'foo', {
-  enumerable: true,
-  set() {
-    y = 42;
-  }
+__evaluatePureFunction(() => {
+  copyOfObj = {};
+  Object.assign(copyOfObj, obj);
+  delete copyOfObj.foo;
 });
-copyOfObj.__proto__ = proto;
 
 inspect = function() {  
-  return JSON.stringify(y);
+  return JSON.stringify(copyOfObj);
 }

@@ -76,6 +76,7 @@ export default class ObjectValue extends ConcreteValue {
     this._isPartial = realm.intrinsics.false;
     this._hasLeaked = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
+    this._isFinal = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
     this.refuseSerialization = refuseSerialization;
@@ -86,6 +87,7 @@ export default class ObjectValue extends ConcreteValue {
     "_isPartial",
     "_hasLeaked",
     "_isSimple",
+    "_isFinal",
     "$ArrayIteratorNextIndex",
     "$DateValue",
     "$Extensible",
@@ -244,6 +246,10 @@ export default class ObjectValue extends ConcreteValue {
   // to return AbstractValue for unknown properties.
   _isSimple: BooleanValue;
 
+  // If true, it is not safe to perform any more mutations that would change
+  // the object's serialized form.
+  _isFinal: BooleanValue;
+
   isTemplate: void | true;
 
   properties: Map<string, PropertyBinding>;
@@ -301,8 +307,16 @@ export default class ObjectValue extends ConcreteValue {
     this._isSimple = this.$Realm.intrinsics.true;
   }
 
+  makeFinal(): void {
+    this._isFinal = this.$Realm.intrinsics.true;
+  }
+
   isPartialObject(): boolean {
     return this._isPartial.value;
+  }
+
+  isFinalObject(): boolean {
+    return this._isFinal.value;
   }
 
   leak(): void {

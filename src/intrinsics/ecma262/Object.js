@@ -158,6 +158,13 @@ export default function(realm: Realm): NativeFunctionValue {
       // We already established above that `to` is simple,
       // so set the `_isSimple` flag.
       to.makeSimple();
+
+      if (to instanceof ObjectValue) {
+        // At this point any further mutations to the target would be unsafe
+        // because the Object.assign() call operates on the snapshot of the
+        // object at this point in time. We can't mutate that snapshot.
+        to.makeFinal();
+      }
     }
     return to;
   });

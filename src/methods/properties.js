@@ -108,6 +108,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
   invariant(!O.isLeakedObject()); // leaked objects are never updated
+  invariant(!O.isFinalObject()); // final objects are never updated
   invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
   invariant(propertyBinding !== undefined); // The callers ensure this
@@ -206,9 +207,34 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   return false;
 }
 
+function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyValue) {
+  if (!O.isFinalObject()) {
+    return;
+  }
+  if (!realm.isInPureScope()) {
+    // We can't continue because this object is already in its final state.
+    AbstractValue.reportIntrospectionError(O, P);
+    throw new FatalError();
+  }
+  // It's not safe to write to this object anymore because it's already
+  // been used in a way that serializes its final state. We can, however,
+  // leak it if we're in pure scope, and continue to emit assignments.
+  if (realm.isInPureScope()) {
+    Leak.leakValue(realm, O);
+  }
+  if (O.isLeakedObject()) {
+    return;
+  }
+  // We're either outside of pure scope or the object was created outside of it.
+  // Give up.
+  AbstractValue.reportIntrospectionError(O, P);
+  throw new FatalError();
+}
+
 export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
+    ensureIsNotFinal(realm, O, P);
     if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       Leak.leakValue(realm, V);
       if (realm.generator) {
@@ -480,6 +506,7 @@ export class PropertiesImplementation {
 
     // 3. If desc is undefined, return true.
     if (!desc) {
+      ensureIsNotFinal(realm, O, P);
       if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
         if (realm.generator) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
@@ -490,6 +517,7 @@ export class PropertiesImplementation {
 
     // 4. If desc.[[Configurable]] is true, then
     if (desc.configurable) {
+      ensureIsNotFinal(realm, O, P);
       if (O.isLeakedObject()) {
         if (realm.generator) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
@@ -607,12 +635,15 @@ export class PropertiesImplementation {
       // b. Assert: extensible is true.
       invariant(extensible === true, "expected extensible to be true");
 
-      if (O !== undefined && !realm.ignoreLeakLogic && O.isLeakedObject() && P !== undefined) {
-        leakDescriptor(realm, Desc);
-        if (realm.generator) {
-          realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+      if (O !== undefined && P !== undefined) {
+        ensureIsNotFinal(realm, O, P);
+        if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
+          leakDescriptor(realm, Desc);
+          if (realm.generator) {
+            realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+          }
+          return true;
         }
-        return true;
       }
 
       // c. If IsGenericDescriptor(Desc) is true or IsDataDescriptor(Desc) is true, then
@@ -692,12 +723,15 @@ export class PropertiesImplementation {
       }
     }
 
-    if (O !== undefined && !realm.ignoreLeakLogic && O.isLeakedObject() && P !== undefined) {
-      leakDescriptor(realm, Desc);
-      if (realm.generator) {
-        realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+    if (O !== undefined && P !== undefined) {
+      ensureIsNotFinal(realm, O, P);
+      if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
+        leakDescriptor(realm, Desc);
+        if (realm.generator) {
+          realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+        }
+        return true;
       }
-      return true;
     }
 
     let oldDesc = current;
@@ -1221,6 +1255,7 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.2.1
   OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectValue | NullValue): boolean {
+    ensureIsNotFinal(realm, O);
     if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       throw new FatalError();
     }
