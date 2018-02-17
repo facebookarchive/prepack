@@ -935,7 +935,7 @@ export class ResidualHeapVisitor {
       }
       return this.realm.intrinsics.undefined;
     };
-    this.realm.evaluateAndRevertInGlobalEnv(_visitAdditionalFunctionEffects);
+    this.realm.evaluateForEffectsInGlobalEnv(_visitAdditionalFunctionEffects);
 
     // Cleanup
     this.commonScope = prevCommonScope;
