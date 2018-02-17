@@ -136,6 +136,7 @@ export class Serializer {
     let preludeGenerator = this.realm.preludeGenerator;
     invariant(preludeGenerator !== undefined);
     let referentializer = new Referentializer(
+      this.realm,
       this.options,
       preludeGenerator.createNameGenerator("__scope_"),
       preludeGenerator.createNameGenerator("$"),
