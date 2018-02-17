@@ -120,6 +120,13 @@ export default function(realm: Realm): NativeFunctionValue {
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
+
+        // If `to` is going to be a partial, we are emitting Object.assign()
+        // calls for each argument. At this point we should not be trying to
+        // assign keys below because that will change the order of the keys on
+        // the resulting object (i.e. the keys assigned later would already be
+        // on the serialized version from the heap).
+        continue;
       }
 
       invariant(frm, "from required");
