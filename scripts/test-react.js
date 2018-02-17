@@ -220,6 +220,18 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-assign2.js");
       });
 
+      it("Simple with Object.assign #3", async () => {
+        await runTest(directory, "simple-assign3.js");
+      });
+
+      it("Simple with Object.assign #4", async () => {
+        await runTest(directory, "simple-assign4.js");
+      });
+
+      it("Simple with Object.assign #5", async () => {
+        await runTest(directory, "simple-assign5.js");
+      });
+
       it("Circular reference", async () => {
         await runTest(directory, "circular-reference.js");
       });
@@ -250,10 +262,6 @@ function runTestSuite(outputJsx) {
 
       it("Key not changing with fragments", async () => {
         await runTest(directory, "key-not-change-fragments.js");
-      });
-
-      it("Object.assign", async () => {
-        await runTest(directory, "object-assign.js");
       });
 
       it("Component type change", async () => {
