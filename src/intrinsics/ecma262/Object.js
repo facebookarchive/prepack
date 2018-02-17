@@ -32,7 +32,7 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties as Props, To } from "../../singletons.js";
+import { Create, Leak, Properties as Props, To } from "../../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
@@ -88,6 +88,13 @@ export default function(realm: Realm): NativeFunctionValue {
             throw new FatalError();
           }
 
+          to_must_be_partial = true;
+          // Make this temporally not partial
+          // so that we can call frm.$OwnPropertyKeys below.
+          frm.makeNotPartial();
+        }
+
+        if (to_must_be_partial) {
           // Generate a residual Object.assign call that copies the
           // partial properties that we don't know about.
           AbstractValue.createTemporalFromBuildFunction(
@@ -98,9 +105,6 @@ export default function(realm: Realm): NativeFunctionValue {
               return t.callExpression(methodNode, [targetNode, sourceNode]);
             }
           );
-
-          to_must_be_partial = true;
-          frm.makeNotPartial();
         }
 
         // ii. Let keys be ? from.[[OwnPropertyKeys]]().
@@ -116,6 +120,13 @@ export default function(realm: Realm): NativeFunctionValue {
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
+
+        // If `to` is going to be a partial, we are emitting Object.assign()
+        // calls for each argument. At this point we should not be trying to
+        // assign keys below because that will change the order of the keys on
+        // the resulting object (i.e. the keys assigned later would already be
+        // on the serialized version from the heap).
+        continue;
       }
 
       invariant(frm, "from required");
@@ -152,6 +163,13 @@ export default function(realm: Realm): NativeFunctionValue {
       // We already established above that `to` is simple,
       // so set the `_isSimple` flag.
       to.makeSimple();
+
+      // If we generated an Object.assign() to deal with partials, by this
+      // point it is not safe to interact with those objects in Prepack land.
+      for (let nextSource of sources) {
+        Leak.leakValue(realm, nextSource);
+      }
+      // TODO #1462: it is not clear if this fix is sufficient.
     }
     return to;
   });
