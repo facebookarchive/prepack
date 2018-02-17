@@ -79,6 +79,12 @@ export default function(realm: Realm): NativeFunctionValue {
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
 
+        if (to_must_be_partial) {
+          // We don't currently support more than one simple partial source.
+          AbstractValue.reportIntrospectionError(nextSource);
+          throw new FatalError();
+        }
+
         let frm_was_partial = frm.isPartialObject();
         if (frm_was_partial) {
           if (!frm.isSimpleObject()) {
