@@ -4,11 +4,22 @@ this['React'] = React;
 // Regression test for
 // https://github.com/facebook/prepack/pull/1458/
 function App(props) {
-  var copyOfProps = {};
-  var copyOfProps2 = {};
-  Object.assign(copyOfProps, props, {x: 20});
-  Object.assign(copyOfProps2, copyOfProps);
-  return copyOfProps2.x;
+  var obj1 = Object.assign({}, props, {x: 20});
+  var obj2 = Object.assign({}, obj1);
+  var obj3 = Object.assign({}, {x: 20}, props);
+  var obj4 = {};
+  var obj5 = {};
+  Object.assign(obj4, props, obj5, {x: 20});
+  obj5.foo = 2;
+  return (
+    <div>
+      {JSON.stringify(obj1)}
+      {JSON.stringify(obj2)}
+      {JSON.stringify(obj3)}
+      {JSON.stringify(obj4)}
+      {JSON.stringify(obj5)}
+    </div>
+  );
 }
 
 App.getTrials = function(renderer, Root) {
