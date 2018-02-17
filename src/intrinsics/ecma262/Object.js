@@ -89,6 +89,8 @@ export default function(realm: Realm): NativeFunctionValue {
           }
 
           to_must_be_partial = true;
+          // Make this temporally not partial
+          // so that we can call frm.$OwnPropertyKeys below.
           frm.makeNotPartial();
         }
 
