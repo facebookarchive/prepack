@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { CompilerDiagnostic, FatalError } from "../../errors.js";
+import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import {
@@ -33,6 +33,8 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties as Props, To } from "../../singletons.js";
+import type { BabelNodeExpression } from "babel-types";
+import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -54,9 +56,10 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
+  let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
+    let to_must_be_partial = false;
 
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
@@ -76,26 +79,49 @@ export default function(realm: Realm): NativeFunctionValue {
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
 
-        if (frm.isPartialObject()) {
+        if (to_must_be_partial) {
+          // We don't currently support more than one simple partial source.
+          AbstractValue.reportIntrospectionError(nextSource);
+          throw new FatalError();
+        }
+
+        let frm_was_partial = frm.isPartialObject();
+        if (frm_was_partial) {
           if (!frm.isSimpleObject()) {
             // If this is not a simple object, it may have getters on it that can
             // mutate any state as a result. We don't yet support this.
             AbstractValue.reportIntrospectionError(nextSource);
             throw new FatalError();
           }
-          // Otherwise, we have to fatal (but pure mode can recover from this).
-          const diag = new CompilerDiagnostic(
-            // TODO: change the message?
-            "Unfrozen object leaked before end of global code",
-            realm.currentLocation,
-            "PP0017",
-            "RecoverableError"
+
+          // Generate a residual Object.assign call that copies the
+          // partial properties that we don't know about.
+          AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            ObjectValue,
+            [ObjectAssign, target, nextSource],
+            ([methodNode, targetNode, sourceNode]: Array<BabelNodeExpression>) => {
+              return t.callExpression(methodNode, [targetNode, sourceNode]);
+            }
           );
-          if (realm.handleError(diag) !== "Recover") throw new FatalError();
+
+          to_must_be_partial = true;
+          frm.makeNotPartial();
         }
 
         // ii. Let keys be ? from.[[OwnPropertyKeys]]().
         keys = frm.$OwnPropertyKeys();
+        if (frm_was_partial) frm.makePartial();
+      }
+      if (to_must_be_partial) {
+        // Only OK if to is an empty object because nextSource might have
+        // properties at runtime that will overwrite current properties in to.
+        // For now, just throw if this happens.
+        let to_keys = to.$OwnPropertyKeys();
+        if (to_keys.length !== 0) {
+          AbstractValue.reportIntrospectionError(nextSource);
+          throw new FatalError();
+        }
       }
 
       invariant(frm, "from required");
@@ -120,6 +146,19 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 5. Return to.
+    if (to_must_be_partial) {
+      // We allow partial simple sources (and make `to` partial)
+      // only if `to` has no keys. Therefore, it must also be simple.
+      invariant(to.isSimpleObject());
+
+      to.makePartial();
+
+      // Partial objects (and `to` is now partial) can't be calculated to be
+      // simple because we can't iterate over all of their properties.
+      // We already established above that `to` is simple,
+      // so set the `_isSimple` flag.
+      to.makeSimple();
+    }
     return to;
   });
 
