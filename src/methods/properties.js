@@ -219,13 +219,11 @@ function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyVal
   // It's not safe to write to this object anymore because it's already
   // been used in a way that serializes its final state. We can, however,
   // leak it if we're in pure scope, and continue to emit assignments.
-  if (realm.isInPureScope()) {
-    Leak.leakValue(realm, O);
-  }
+  Leak.leakValue(realm, O);
   if (O.isLeakedObject()) {
     return;
   }
-  // We're either outside of pure scope or the object was created outside of it.
+  // The object was created outside of pure scope so we couldn't leak.
   // Give up.
   AbstractValue.reportIntrospectionError(O, P);
   throw new FatalError();
