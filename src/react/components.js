@@ -182,7 +182,7 @@ export function createClassInstance(
 export function evaluateClassConstructor(
   realm: Realm,
   constructorFunc: ECMAScriptSourceFunctionValue,
-  props: ObjectValue | AbstractObjectValue,
+  props: ObjectValue | AbstractValue | AbstractObjectValue,
   context: ObjectValue | AbstractObjectValue
 ): { instanceProperties: Set<string>, instanceSymbols: Set<SymbolValue> } {
   let instanceProperties = new Set();

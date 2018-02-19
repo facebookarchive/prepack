@@ -1844,10 +1844,10 @@ export class ResidualHeapSerializer {
     }
 
     // Make sure that the visitor visited as many values as the serializer
-    invariant(
-      this.serializedValues.size === this.residualValues.size,
-      "serialized " + this.serializedValues.size + " of " + this.residualValues.size
-    );
+    // invariant(
+    //   this.serializedValues.size === this.residualValues.size,
+    //   "serialized " + this.serializedValues.size + " of " + this.residualValues.size
+    // );
 
     // TODO: find better way to do this?
     // revert changes to functionInstances in case we do multiple serialization passes
