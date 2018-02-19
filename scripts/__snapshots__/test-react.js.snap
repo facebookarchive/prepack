@@ -196,6 +196,20 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (JSX) Functional component folding Render array twice 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) Functional component folding Render nested array children 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React (JSX) Functional component folding Return text 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -280,13 +294,6 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React (JSX) fb-www mocks Hacker News app 1`] = `
-ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 0,
-}
-`;
-
 exports[`Test React (JSX) Functional component folding Simple with Object.assign #2 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
@@ -298,6 +305,13 @@ exports[`Test React (JSX) Functional component folding Simple with Object.assign
 ReactStatistics {
   "inlinedComponents": 1,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (JSX) fb-www mocks Hacker News app 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
 }
 `;
 
@@ -560,6 +574,20 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (create-element) Functional component folding Render array twice 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Render nested array children 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React (create-element) Functional component folding Return text 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -644,13 +672,6 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React (create-element) fb-www mocks Hacker News app 1`] = `
-ReactStatistics {
-  "inlinedComponents": 0,
-  "optimizedTrees": 0,
-}
-`;
-
 exports[`Test React (create-element) Functional component folding Simple with Object.assign #2 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
@@ -662,6 +683,13 @@ exports[`Test React (create-element) Functional component folding Simple with Ob
 ReactStatistics {
   "inlinedComponents": 1,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) fb-www mocks Hacker News app 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
 }
 `;
 
