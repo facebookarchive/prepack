@@ -14,6 +14,7 @@ let path = require("path");
 let { prepackSources } = require("../lib/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
+let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
 let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
@@ -39,6 +40,12 @@ function cxShim(...args) {
 
 // assign for tests that use the cx() global
 global.cx = cxShim;
+
+function getDataFile(directory, name) {
+  let reactTestRoot = path.join(__dirname, "../test/react/");
+  let data = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
+  return data;
+}
 
 function runTestSuite(outputJsx, shouldTranspileSource) {
   let reactTestRoot = path.join(__dirname, "../test/react/");
@@ -85,6 +92,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         case "React":
         case "react":
           return React;
+        case "PropTypes":
+        case "prop-types":
+          return PropTypes;
         case "RelayModern":
           return ReactRelay;
         case "cx":
@@ -105,7 +115,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     return moduleShim.exports;
   }
 
-  async function runTest(directory, name) {
+  async function runTest(directory, name, data) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
     if (shouldTranspileSource) {
       source = transpileSource(source);
@@ -130,8 +140,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     // Use the original version of the test in case transforming messes it up.
     let { getTrials } = A;
     // Run tests that assert the rendered output matches.
-    let resultA = getTrials(rendererA, A);
-    let resultB = getTrials(rendererB, B);
+    let resultA = getTrials(rendererA, A, data);
+    let resultB = getTrials(rendererB, B, data);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
@@ -195,6 +205,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-6.js");
       });
 
+      it("Simple 7", async () => {
+        await runTest(directory, "simple-7.js");
+      });
+
       it("Simple fragments", async () => {
         await runTest(directory, "simple-fragments.js");
       });
@@ -213,6 +227,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple with multiple JSX spreads", async () => {
         await runTest(directory, "simple-with-jsx-spread.js");
+      });
+
+      it("Simple with multiple JSX spreads #2", async () => {
+        await runTest(directory, "simple-with-jsx-spread2.js");
+      });
+
+      it("Simple with Object.assign", async () => {
+        await runTest(directory, "simple-assign.js");
+      });
+
+      it("Simple with Object.assign #2", async () => {
+        await runTest(directory, "simple-assign2.js");
       });
 
       it("Circular reference", async () => {
@@ -395,6 +421,11 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
+      });
+
+      it("Hacker News app", async () => {
+        let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
+        await runTest(directory, "hacker-news.js", data);
       });
     });
   });

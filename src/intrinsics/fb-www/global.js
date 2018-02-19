@@ -10,11 +10,13 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, StringValue } from "../../values/index.js";
+import { AbstractValue, NativeFunctionValue, StringValue, ObjectValue } from "../../values/index.js";
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
 import { createAbstract } from "../prepack/utils.js";
 import { createFbMocks } from "./fb-mocks.js";
+import { FatalError } from "../../errors";
+import { Get } from "../../methods/index.js";
 import invariant from "../../invariant";
 
 export default function(realm: Realm): void {
@@ -59,6 +61,13 @@ export default function(realm: Realm): void {
           return reactRelay;
         }
         return realm.fbLibraries.reactRelay;
+      } else if (requireNameValValue === "prop-types" || requireNameValValue === "PropTypes") {
+        if (realm.fbLibraries.react === undefined) {
+          throw new FatalError("unable to require PropTypes due to React not being referenced in scope");
+        }
+        let propTypes = Get(realm, realm.fbLibraries.react, "PropTypes");
+        invariant(propTypes instanceof ObjectValue);
+        return propTypes;
       } else {
         let requireVal;
 

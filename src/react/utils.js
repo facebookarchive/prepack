@@ -270,9 +270,9 @@ export function convertSimpleClassComponentToFunctionalComponent(
 export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFunctionValue): void {
   func.$FormalParameters = func.$FormalParameters.map((param, i) => {
     if (i === 0) {
-      return t.identifier("props");
+      return t.isIdentifier(param) ? param : t.identifier("props");
     } else {
-      return t.identifier("context");
+      return t.isIdentifier(param) ? param : t.identifier("context");
     }
   });
 }

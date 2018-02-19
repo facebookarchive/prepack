@@ -249,7 +249,7 @@ export class Realm {
     // with extra data that helps us traverse through the tree that would otherwise not be possible
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
-    abstractHints: WeakMap<AbstractValue, ReactHint>,
+    abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     enabled: boolean,
@@ -511,8 +511,8 @@ export class Realm {
     return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
-  evaluateAndRevertInGlobalEnv(func: () => Value): void {
-    this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
+  evaluateForEffectsInGlobalEnv(func: () => Value): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
   }
 
   evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any, generatorName?: string): Effects {

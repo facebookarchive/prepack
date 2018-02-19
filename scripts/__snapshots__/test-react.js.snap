@@ -252,6 +252,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Simple 7 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Simple children 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -273,7 +280,28 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Simple with Object.assign #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Functional component folding Simple with Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Simple with abstract props 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Functional component folding Simple with multiple JSX spreads #2 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
   "optimizedTrees": 1,
@@ -284,6 +312,13 @@ exports[`Test React with JSX input, JSX output Functional component folding Simp
 ReactStatistics {
   "inlinedComponents": 2,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output fb-www mocks Hacker News app 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
 }
 `;
 
@@ -602,6 +637,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Functional component folding Simple 7 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output Functional component folding Simple children 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -623,7 +665,28 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Functional component folding Simple with Object.assign #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Simple with Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output Functional component folding Simple with abstract props 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Simple with multiple JSX spreads #2 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
   "optimizedTrees": 1,
@@ -634,6 +697,13 @@ exports[`Test React with JSX input, create-element output Functional component f
 ReactStatistics {
   "inlinedComponents": 2,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output fb-www mocks Hacker News app 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
 }
 `;
 
@@ -952,6 +1022,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Simple 7 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Simple children 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -973,9 +1050,30 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Simple with Object.assign #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Functional component folding Simple with Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Simple with abstract props 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Functional component folding Simple with multiple JSX spreads #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -984,6 +1082,13 @@ exports[`Test React with create-element input, JSX output Functional component f
 ReactStatistics {
   "inlinedComponents": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output fb-www mocks Hacker News app 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
 }
 `;
 
@@ -1302,6 +1407,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output Functional component folding Simple 7 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, create-element output Functional component folding Simple children 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -1323,9 +1435,30 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output Functional component folding Simple with Object.assign #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Simple with Object.assign 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, create-element output Functional component folding Simple with abstract props 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Simple with multiple JSX spreads #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1334,6 +1467,13 @@ exports[`Test React with create-element input, create-element output Functional 
 ReactStatistics {
   "inlinedComponents": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output fb-www mocks Hacker News app 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 0,
 }
 `;
 

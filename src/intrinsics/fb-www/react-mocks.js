@@ -320,5 +320,8 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   let reactChildrenValue = Get(realm, reactValue, "Children");
   reactChildrenValue.intrinsicName = `require("${reactRequireName}").Children`;
 
+  let reactPropTypesValue = Get(realm, reactValue, "PropTypes");
+  reactPropTypesValue.intrinsicName = `require("${reactRequireName}").PropTypes`;
+
   return reactValue;
 }

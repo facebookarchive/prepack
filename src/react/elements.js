@@ -45,7 +45,11 @@ function createPropsObject(
     }
   };
 
-  if ((config instanceof AbstractObjectValue && config.isPartialObject()) || config instanceof AbstractValue) {
+  if (
+    (config instanceof AbstractObjectValue && config.isPartialObject()) ||
+    config instanceof AbstractValue ||
+    (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
+  ) {
     let reactHint = realm.react.abstractHints.get(config);
     // if we have defaultProps, partial props or children, we need to create
     // a new merge of the objects along with our config

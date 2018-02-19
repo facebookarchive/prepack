@@ -140,7 +140,19 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 5. Return to.
-    if (to_must_be_partial) to.makePartial();
+    if (to_must_be_partial) {
+      // We allow partial simple sources (and make `to` partial)
+      // only if `to` has no keys. Therefore, it must also be simple.
+      invariant(to.isSimpleObject());
+
+      to.makePartial();
+
+      // Partial objects (and `to` is now partial) can't be calculated to be
+      // simple because we can't iterate over all of their properties.
+      // We already established above that `to` is simple,
+      // so set the `_isSimple` flag.
+      to.makeSimple();
+    }
     return to;
   });
 
