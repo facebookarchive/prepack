@@ -501,6 +501,12 @@ export class PropertiesImplementation {
       let key = InternalGetPropertiesKey(P);
       let map = InternalGetPropertiesMap(O, P);
       let propertyBinding = map.get(key);
+      if (propertyBinding === undefined && O.isPartialObject()) {
+        // if we try and delete a property that we aren't sure exists
+        // throw a FatalError rather than an invariant
+        AbstractValue.reportIntrospectionError(O, P);
+        throw new FatalError();
+      }
       invariant(propertyBinding !== undefined);
       realm.recordModifiedProperty(propertyBinding);
       propertyBinding.descriptor = undefined;
