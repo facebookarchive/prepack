@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { ValuesDomain } from "../domains/index.js";
+import { ValuesDomain, TypesDomain } from "../domains/index.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Environment, To } from "../singletons.js";
+import { Environment, To, Leak } from "../singletons.js";
 import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -60,7 +60,14 @@ export function getPureBinaryOperationResultType(
   function reportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
     let leftPure = purityTest(realm, lval);
     let rightPure = purityTest(realm, rval);
-    if ((leftPure && rightPure) || realm.isInPureScope()) return typeIfPure;
+    if (leftPure && rightPure) return typeIfPure;
+
+    if (realm.isInPureScope()) {
+      if (!leftPure) Leak.leakValue(realm, lval);
+      if (!rightPure) Leak.leakValue(realm, rval);
+      return typeIfPure;
+    }
+
     let loc = !leftPure ? lloc : rloc;
     let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
     if (realm.handleError(error) === "Recover") {
@@ -168,7 +175,18 @@ export function computeBinary(
 
   if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
     // generate error if binary operation might throw or have side effects
-    getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+    if (realm.isInPureScope()) {
+      realm.evaluateWithPossibleThrowCompletion(
+        () => {
+          getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+          return realm.intrinsics.undefined;
+        },
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
+    } else {
+      getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+    }
     return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
   }
 
