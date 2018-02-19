@@ -288,7 +288,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
 
       if (Array.isArray(children)) {
         if (children.length === 0) {
-          children = children = realm.intrinsics.undefined;
+          children = realm.intrinsics.undefined;
         } else if (children.length === 1) {
           children = children[0];
         } else {
