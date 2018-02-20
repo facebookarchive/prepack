@@ -57,7 +57,7 @@ export function getPureBinaryOperationResultType(
   lloc: ?BabelNodeSourceLocation,
   rloc: ?BabelNodeSourceLocation
 ): typeof Value {
-  function reportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
+  function leakOrReportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
     let leftPure = purityTest(realm, lval);
     let rightPure = purityTest(realm, rval);
     if (leftPure && rightPure) return typeIfPure;
@@ -98,13 +98,13 @@ export function getPureBinaryOperationResultType(
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
-    return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
+    return leakOrReportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "!=" || op === "==") {
     let ltype = lval.getType();
     let rtype = rval.getType();
     if (ltype === NullValue || ltype === UndefinedValue || rtype === NullValue || rtype === UndefinedValue)
       return BooleanValue;
-    return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
+    return leakOrReportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "===" || op === "!==") {
     return BooleanValue;
   } else if (
@@ -120,7 +120,7 @@ export function getPureBinaryOperationResultType(
     op === "*" ||
     op === "-"
   ) {
-    return reportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
+    return leakOrReportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
       let error = new CompilerDiagnostic(
