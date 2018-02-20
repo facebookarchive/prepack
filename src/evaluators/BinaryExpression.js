@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { ValuesDomain } from "../domains/index.js";
+import { ValuesDomain, TypesDomain } from "../domains/index.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Environment, To } from "../singletons.js";
+import { Environment, To, Leak } from "../singletons.js";
 import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -57,10 +57,17 @@ export function getPureBinaryOperationResultType(
   lloc: ?BabelNodeSourceLocation,
   rloc: ?BabelNodeSourceLocation
 ): typeof Value {
-  function reportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
+  function leakOrReportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
     let leftPure = purityTest(realm, lval);
     let rightPure = purityTest(realm, rval);
     if (leftPure && rightPure) return typeIfPure;
+
+    if (realm.isInPureScope()) {
+      if (!leftPure) Leak.leakValue(realm, lval);
+      if (!rightPure) Leak.leakValue(realm, rval);
+      return typeIfPure;
+    }
+
     let loc = !leftPure ? lloc : rloc;
     let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
     if (realm.handleError(error) === "Recover") {
@@ -91,13 +98,13 @@ export function getPureBinaryOperationResultType(
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
-    return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
+    return leakOrReportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "!=" || op === "==") {
     let ltype = lval.getType();
     let rtype = rval.getType();
     if (ltype === NullValue || ltype === UndefinedValue || rtype === NullValue || rtype === UndefinedValue)
       return BooleanValue;
-    return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
+    return leakOrReportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "===" || op === "!==") {
     return BooleanValue;
   } else if (
@@ -113,7 +120,7 @@ export function getPureBinaryOperationResultType(
     op === "*" ||
     op === "-"
   ) {
-    return reportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
+    return leakOrReportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
       let error = new CompilerDiagnostic(
@@ -168,7 +175,18 @@ export function computeBinary(
 
   if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
     // generate error if binary operation might throw or have side effects
-    getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+    if (realm.isInPureScope()) {
+      realm.evaluateWithPossibleThrowCompletion(
+        () => {
+          getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+          return realm.intrinsics.undefined;
+        },
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
+    } else {
+      getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+    }
     return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
   }
 
