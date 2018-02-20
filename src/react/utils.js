@@ -319,3 +319,39 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
     return value;
   }
 }
+
+// props should never have "ref" or "key" properties, as they're part of ReactElement
+// object instead. to ensure that we can give this hint, we create them and then
+// delete them, so their descriptor is left undefined. we use this knowledge later
+// to ensure that when dealing with creating ReactElements with partial config,
+// we don't have to bail out becuase "config" may or may not have "key" or/and "ref"
+export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
+  let objectValue;
+  if (props instanceof AbstractObjectValue) {
+    let elements = props.values.getElements();
+    if (elements && elements.size > 0) {
+      objectValue = Array.from(elements)[0];
+    }
+    // we don't want to serialize in the output that we're making these deletes
+    invariant(objectValue instanceof ObjectValue);
+    objectValue.refuseSerialization = true;
+  }
+  Properties.Set(realm, props, "ref", realm.intrinsics.undefined, true);
+  props.$Delete("ref");
+  Properties.Set(realm, props, "key", realm.intrinsics.undefined, true);
+  props.$Delete("key");
+  if (props instanceof AbstractObjectValue) {
+    invariant(objectValue instanceof ObjectValue);
+    objectValue.refuseSerialization = false;
+  }
+}
+
+export function propsHasPartialKeyOrRef(
+  realm: Realm,
+  props: ObjectValue | AbstractValue | AbstractObjectValue
+): boolean {
+  if (props instanceof AbstractValue) {
+    return true;
+  }
+  return !(Get(realm, props, "key") instanceof AbstractValue || Get(realm, props, "ref") instanceof AbstractValue);
+}

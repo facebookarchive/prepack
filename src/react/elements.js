@@ -15,7 +15,7 @@ import { Create, Properties } from "../singletons.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
-import { getReactSymbol } from "./utils.js";
+import { getReactSymbol, propsHasPartialKeyOrRef, deleteRefAndKeyFromProps } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -26,8 +26,10 @@ function createPropsObject(
   config: ObjectValue | AbstractValue | AbstractObjectValue | NullValue,
   children: Value
 ) {
-  let defaultProps = type instanceof ObjectValue ? Get(realm, type, "defaultProps") : null;
+  let defaultProps = type instanceof ObjectValue ? Get(realm, type, "defaultProps") : realm.intrinsics.undefined;
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  // start by having key and ref deleted, if they actually exist, they will be add later
+  deleteRefAndKeyFromProps(realm, props);
   let key = realm.intrinsics.null;
   let ref = realm.intrinsics.null;
 
@@ -50,11 +52,10 @@ function createPropsObject(
     config instanceof AbstractValue ||
     (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
   ) {
-    let reactHint = realm.react.abstractHints.get(config);
     // if we have defaultProps, partial props or children, we need to create
     // a new merge of the objects along with our config
     if (defaultProps !== realm.intrinsics.undefined || children !== realm.intrinsics.undefined) {
-      if (reactHint === "HAS_NO_KEY_OR_REF") {
+      if (propsHasPartialKeyOrRef(realm, config)) {
         let args = [];
         if (defaultProps !== realm.intrinsics.undefined) {
           args.push(defaultProps);
@@ -63,7 +64,13 @@ function createPropsObject(
         if (children !== realm.intrinsics.undefined) {
           args.push(children);
         }
-        let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+        // create a new props object that will be the target of the Object.assign
+        props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+        // as this is "props" that is abstract, we need to make it partial and simple
+        props.makePartial();
+        props.makeSimple();
+        // props objects also don't have a key and ref, so we remove them
+        deleteRefAndKeyFromProps(realm, props);
         let types = new TypesDomain(FunctionValue);
         let values = new ValuesDomain();
 
@@ -73,11 +80,10 @@ function createPropsObject(
         let objAssign = Get(realm, globalObj, "assign");
         invariant(realm.generator);
 
-        props = realm.generator.derive(types, values, [objAssign, emptyObject, ...args], ([methodNode, ..._args]) => {
+        realm.generator.derive(types, values, [objAssign, props, ...args], ([methodNode, ..._args]) => {
           return t.callExpression(methodNode, ((_args: any): Array<any>));
         });
-        realm.react.abstractHints.set(props, "HAS_NO_KEY_OR_REF");
-      } else if (realm.react.mode === "safe") {
+      } else {
         // if either are abstract, this will impact the reconcilation process
         // and ultimately prevent us from folding ReactElements properly
         let diagnostic = new CompilerDiagnostic(
@@ -94,8 +100,10 @@ function createPropsObject(
     }
   } else {
     if (config instanceof ObjectValue) {
-      for (let [propKey] of config.properties) {
-        setProp(propKey, Get(realm, config, propKey));
+      for (let [propKey, binding] of config.properties) {
+        if (binding && binding.descriptor) {
+          setProp(propKey, Get(realm, config, propKey));
+        }
       }
     }
 

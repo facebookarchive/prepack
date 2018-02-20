@@ -19,7 +19,7 @@ import {
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { valueIsClassComponent } from "./utils";
+import { valueIsClassComponent, deleteRefAndKeyFromProps } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
@@ -57,7 +57,8 @@ export function getInitialProps(
     }
   }
   let value = AbstractValue.createAbstractObject(realm, propsName || "props");
-  realm.react.abstractHints.set(value, "HAS_NO_KEY_OR_REF");
+  // props objects don't have a key and ref, so we remove them
+  deleteRefAndKeyFromProps(realm, value);
   invariant(value instanceof AbstractObjectValue);
   return value;
 }

@@ -230,8 +230,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Simple with multiple JSX spreads #2", async () => {
-        // Needs fix on master for Object.assign bug
-        // await runTest(directory, "simple-with-jsx-spread2.js");
+        await runTest(directory, "simple-with-jsx-spread2.js");
       });
 
       it("Simple with Object.assign", async () => {

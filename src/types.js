@@ -324,7 +324,7 @@ export type ClassComponentMetadata = {
   instanceSymbols: Set<SymbolValue>,
 };
 
-export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |} | "HAS_NO_KEY_OR_REF";
+export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |};
 
 export type DebugServerType = {
   checkForActions: BabelNode => void,

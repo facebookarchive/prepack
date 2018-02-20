@@ -39,6 +39,7 @@ import { Get } from "../methods/index.js";
 import { Create, Environment, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createReactElement } from "../react/elements.js";
+import { propsHasPartialKeyOrRef, deleteRefAndKeyFromProps } from "../react/utils.js";
 
 // taken from Babel
 function cleanJSXElementLiteralChild(child: string): null | string {
@@ -199,6 +200,8 @@ function evaluateJSXAttributes(
   realm: Realm
 ): ObjectValue | AbstractObjectValue {
   let config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  // start by having key and ref deleted, if they actually exist, they will be added later
+  deleteRefAndKeyFromProps(realm, config);
   let abstractPropsArgs = [];
   let containsAbstractSpreadAttribute = false;
   let spreadAttributesCount = 0;
@@ -223,27 +226,30 @@ function evaluateJSXAttributes(
       case "JSXSpreadAttribute":
         spreadValue = Environment.GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
 
-        if (spreadValue instanceof ObjectValue) {
-          for (let [spreadPropKey] of spreadValue.properties) {
-            setConfigProperty(spreadPropKey, Get(realm, spreadValue, spreadPropKey));
+        if (spreadValue instanceof ObjectValue && !spreadValue.isPartialObject()) {
+          for (let [spreadPropKey, binding] of spreadValue.properties) {
+            if (binding && binding.descriptor) {
+              setConfigProperty(spreadPropKey, Get(realm, spreadValue, spreadPropKey));
+            }
           }
         } else {
           spreadAttributesCount++;
           containsAbstractSpreadAttribute = true;
-          // check to see if this object has an abstractHint
-          invariant(spreadValue instanceof AbstractValue);
-          let reactHint = realm.react.abstractHints.get(spreadValue);
+          invariant(spreadValue instanceof AbstractValue || spreadValue instanceof ObjectValue);
 
-          if (reactHint === "HAS_NO_KEY_OR_REF") {
-            spreadAttributesWithInitialPropsHintCount++;
-          }
           // we push the props up to this point into the abstract props args. we also
           // push the abstract spread object and then we create a fresh props object
-          if (config.properties.size > 0) {
+          if (propsHasPartialKeyOrRef(realm, spreadValue)) {
+            spreadAttributesWithInitialPropsHintCount++;
+            if (config.properties.size > 2) {
+              abstractPropsArgs.push(config);
+            }
+          } else if (config.properties.size > 0) {
             abstractPropsArgs.push(config);
           }
           abstractPropsArgs.push(spreadValue);
           config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+          deleteRefAndKeyFromProps(realm, config);
         }
         break;
       default:
@@ -255,18 +261,26 @@ function evaluateJSXAttributes(
     // if we haven't assigned any attributes and we are dealing with a single
     // spread attribute, we can just make the spread object the props
     if (attributesAssigned === 0) {
+      invariant(spreadValue instanceof ObjectValue || spreadValue instanceof AbstractObjectValue);
       config = spreadValue;
+      // as we're applying a spread, the config needs to be simple/partial
+      config.makePartial();
+      config.makeSimple();
     } else if (attributesAssigned !== 0) {
       // we create an abstract Object.assign() to deal with the fact that we don't what
       // the props are because they contain abstract spread attributes that we can't
       // evaluate ahead of time
       let types = new TypesDomain(FunctionValue);
       let values = new ValuesDomain();
-      let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
       // push the current config
       if (config.properties.size > 0) {
         abstractPropsArgs.push(config);
       }
+      // create a new config object that will be the target of the Object.assign
+      config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      // as this is "config that is abstract, we need to make it partial and simple
+      config.makePartial();
+      config.makeSimple();
       // get the global Object.assign
       let globalObj = Get(realm, realm.$GlobalObject, "Object");
       invariant(globalObj instanceof ObjectValue);
@@ -274,19 +288,14 @@ function evaluateJSXAttributes(
       invariant(realm.generator);
 
       invariant(realm.generator);
-      config = realm.generator.derive(
-        types,
-        values,
-        [objAssign, emptyObject, ...abstractPropsArgs],
-        ([methodNode, ..._args]) => {
-          return t.callExpression(methodNode, ((_args: any): Array<any>));
-        }
-      );
+      realm.generator.derive(types, values, [objAssign, config, ...abstractPropsArgs], ([methodNode, ..._args]) => {
+        return t.callExpression(methodNode, ((_args: any): Array<any>));
+      });
       if (
         spreadAttributesCount === spreadAttributesWithInitialPropsHintCount &&
         spreadAttributesWithInitialPropsHintCount > 0
       ) {
-        realm.react.abstractHints.set(config, "HAS_NO_KEY_OR_REF");
+        deleteRefAndKeyFromProps(realm, config);
       }
     }
   }

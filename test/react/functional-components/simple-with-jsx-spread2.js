@@ -3,7 +3,6 @@ var React = require('react');
 this['React'] = React;
 
 function IWantThisToBeInlined(props) {
-  console.log(props.text)
   return <div>{props.text} {props.name} {props.id}</div>
 }
 
