@@ -15,15 +15,7 @@ import { canHoistReactElement } from "../react/hoisting.js";
 import { Get } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import {
-  ArrayValue,
-  NumberValue,
-  Value,
-  ObjectValue,
-  StringValue,
-  SymbolValue,
-  AbstractValue,
-} from "../values/index.js";
+import { ArrayValue, NumberValue, Value, ObjectValue, StringValue, SymbolValue } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -120,28 +112,31 @@ export class ResidualReactElementSerializer {
         }
       }
       // handle children
-      let childrenValue = Get(this.realm, propsValue, "children");
-
       if (propsValue.properties.has("children")) {
+        let childrenValue = Get(this.realm, propsValue, "children");
         this.residualHeapSerializer.serializedValues.add(childrenValue);
-      }
-      if (childrenValue !== this.realm.intrinsics.undefined && childrenValue !== this.realm.intrinsics.null) {
-        if (childrenValue instanceof ArrayValue) {
-          let childrenLength = Get(this.realm, childrenValue, "length");
-          let childrenLengthValue = 0;
-          if (childrenLength instanceof NumberValue) {
-            childrenLengthValue = childrenLength.value;
-            for (let i = 0; i < childrenLengthValue; i++) {
-              let child = Get(this.realm, childrenValue, "" + i);
-              if (child instanceof Value) {
-                children.push(this._serializeReactElementChild(child));
-              } else {
-                this.logger.logError(val, `ReactElement "props.children[${i}]" failed to serialize due to a non-value`);
+
+        if (childrenValue !== this.realm.intrinsics.undefined && childrenValue !== this.realm.intrinsics.null) {
+          if (childrenValue instanceof ArrayValue) {
+            let childrenLength = Get(this.realm, childrenValue, "length");
+            let childrenLengthValue = 0;
+            if (childrenLength instanceof NumberValue) {
+              childrenLengthValue = childrenLength.value;
+              for (let i = 0; i < childrenLengthValue; i++) {
+                let child = Get(this.realm, childrenValue, "" + i);
+                if (child instanceof Value) {
+                  children.push(this._serializeReactElementChild(child));
+                } else {
+                  this.logger.logError(
+                    val,
+                    `ReactElement "props.children[${i}]" failed to serialize due to a non-value`
+                  );
+                }
               }
             }
+          } else {
+            children.push(this._serializeReactElementChild(childrenValue));
           }
-        } else {
-          children.push(this._serializeReactElementChild(childrenValue));
         }
       }
     }

@@ -403,7 +403,7 @@ export class Reconciler {
 
       const resolveChildren = () => {
         // terminal host component. Start evaluating its children.
-        if (propsValue instanceof ObjectValue) {
+        if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
           let childrenValue = Get(this.realm, propsValue, "children");
 
           if (childrenValue instanceof Value) {
@@ -412,9 +412,11 @@ export class Reconciler {
             if (resolvedChildren instanceof ArrayValue) {
               resolvedChildren = flattenChildren(this.realm, resolvedChildren);
             }
-            propsValue.refuseSerialization = true;
-            Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
-            propsValue.refuseSerialization = false;
+            if (propsValue.properties.has("children")) {
+              propsValue.refuseSerialization = true;
+              Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
+              propsValue.refuseSerialization = false;
+            }
           }
         }
         return reactElement;
