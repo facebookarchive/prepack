@@ -28,7 +28,7 @@ import {
 } from "../values/index.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
-import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import {
   Call,
@@ -501,16 +501,13 @@ export class PropertiesImplementation {
       let key = InternalGetPropertiesKey(P);
       let map = InternalGetPropertiesMap(O, P);
       let propertyBinding = map.get(key);
-      if (propertyBinding === undefined && O.isPartialObject()) {
-        // if we try and delete a property that we aren't sure exists
-        // throw a FatalError rather than an invariant
-        let error = new CompilerDiagnostic(
-          "attempted to delete a property on an object when the property binding does not exist",
-          realm.currentLocation,
-          "PP0026",
-          "RecoverableError"
-        );
-        if (realm.handleError(error) === "Fail") throw new FatalError();
+      if (propertyBinding === undefined && O.isPartialObject() && O.isSimpleObject()) {
+        let generator = realm.generator;
+        if (generator) {
+          invariant(typeof key === "string" || key instanceof SymbolValue);
+          generator.emitPropertyDelete(O, StringKey(key));
+          return true;
+        }
       }
       invariant(propertyBinding !== undefined);
       realm.recordModifiedProperty(propertyBinding);
