@@ -95,26 +95,24 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
   return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
 }
 
-function generateRuntimeCall(ref: Value | Reference, ast: BabelNodeUnaryExpression, strictCode: boolean, realm: Realm) {
-  let args = [];
-  let [thisArg, propName] = ref instanceof Reference ? [ref.base, ref.referencedName] : [];
-  if (thisArg instanceof Value) args = [thisArg];
-  if (propName !== undefined && typeof propName !== "string") args.push(propName);
-  if (thisArg instanceof Value) {
-    Leak.leakValue(realm, thisArg, ast.loc);
+function generateRuntimeCall(ref: Reference | Value, ast: BabelNodeUnaryExpression, strictCode: boolean, realm: Realm) {
+  invariant(ref instanceof Reference);
+  let baseValue = Environment.GetBase(realm, ref);
+  invariant(baseValue instanceof Value);
+  let propertyName = Environment.GetReferencedName(realm, ref);
+  invariant(typeof propertyName === "string");
+
+  if (!baseValue.isSimpleObject()) {
+    Leak.leakValue(realm, baseValue, ast.loc);
   }
-  return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {
+  return AbstractValue.createTemporalFromBuildFunction(realm, Value, [baseValue], nodes => {
     let arg;
-    if (thisArg instanceof Value) {
-      if (typeof propName === "string") {
-        arg = t.isValidIdentifier(propName)
-          ? t.memberExpression(nodes[0], t.identifier(propName), false)
-          : t.memberExpression(nodes[0], t.stringLiteral(propName), true);
-      } else {
-        arg = t.memberExpression(nodes[0], nodes[1], true);
-      }
+    if (typeof propertyName === "string") {
+      arg = t.isValidIdentifier(propertyName)
+        ? t.memberExpression(nodes[0], t.identifier(propertyName), false)
+        : t.memberExpression(nodes[0], t.stringLiteral(propertyName), true);
     } else {
-      arg = nodes[0];
+      arg = t.memberExpression(nodes[0], nodes[1], true);
     }
     return t.unaryExpression(ast.operator, arg, ast.prefix);
   });
