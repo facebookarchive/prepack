@@ -66,7 +66,7 @@ export class ResidualFunctionInitializers {
           id,
           order: infos.length,
           values: [],
-          body: { type: "DelayInitializations", parentBody: undefined, entries: [] },
+          body: { type: "DelayInitializations", parentBody: undefined, entries: [], done: false },
         })
       );
     initializer.values.push(val);
