@@ -276,6 +276,14 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "return-text.js");
       });
 
+      it("Render array twice", async () => {
+        await runTest(directory, "array-twice.js");
+      });
+
+      it("Render nested array children", async () => {
+        await runTest(directory, "nested-array-children.js");
+      });
+
       it("Return undefined", async () => {
         // this test will cause a React console.error to show
         // we monkey patch it to stop it polluting the test output

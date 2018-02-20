@@ -19,6 +19,7 @@ import {
   SymbolValue,
   FunctionValue,
   StringValue,
+  ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import type { Descriptor, ReactHint } from "../types";
@@ -26,7 +27,7 @@ import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
 import invariant from "../invariant.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
@@ -318,4 +319,22 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
     invariant(value instanceof ECMAScriptSourceFunctionValue);
     return value;
   }
+}
+
+function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
+  forEachArrayValue(realm, array, item => {
+    if (item instanceof ArrayValue) {
+      recursivelyFlattenArray(realm, item, targetArray);
+    } else {
+      let lengthValue = Get(realm, targetArray, "length");
+      invariant(lengthValue instanceof NumberValue);
+      Properties.Set(realm, targetArray, "" + lengthValue.value, item, true);
+    }
+  });
+}
+
+export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
+  let flattenedChildren = Create.ArrayCreate(realm, 0);
+  recursivelyFlattenArray(realm, array, flattenedChildren);
+  return flattenedChildren;
 }
