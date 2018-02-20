@@ -318,11 +318,11 @@ export class Generator {
           );
           return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
         };
-        this.emitInvariant([value, value], condition, valueNode => valueNode);
+        this.emitInvariant([value, value], condition, valueNode => valueNode, true);
       }
     } else {
       condition = ([objectNode, valueNode]) => t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
-      this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
+      this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode), true);
     }
   }
 
