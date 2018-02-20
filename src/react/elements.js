@@ -52,8 +52,7 @@ function createPropsObject(
     config instanceof AbstractValue ||
     (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
   ) {
-    // if we have defaultProps, partial props or children, we need to create
-    // a new merge of the objects along with our config
+    // if we have defaultProps, we need to create a new merge of the objects along with our config
     if (defaultProps !== realm.intrinsics.undefined || children !== realm.intrinsics.undefined) {
       if (propsHasPartialKeyOrRef(realm, config)) {
         let args = [];
@@ -61,9 +60,6 @@ function createPropsObject(
           args.push(defaultProps);
         }
         args.push(config);
-        if (children !== realm.intrinsics.undefined) {
-          args.push(children);
-        }
         // create a new props object that will be the target of the Object.assign
         props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
         // as this is "props" that is abstract, we need to make it partial and simple
@@ -83,6 +79,10 @@ function createPropsObject(
         realm.generator.derive(types, values, [objAssign, props, ...args], ([methodNode, ..._args]) => {
           return t.callExpression(methodNode, ((_args: any): Array<any>));
         });
+
+        if (children !== realm.intrinsics.undefined) {
+          setProp("children", children);
+        }
       } else {
         // if either are abstract, this will impact the reconcilation process
         // and ultimately prevent us from folding ReactElements properly

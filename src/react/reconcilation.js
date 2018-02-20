@@ -33,9 +33,11 @@ import {
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
   getReactSymbol,
+  flattenChildren,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
+import { Properties } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import {
@@ -402,17 +404,17 @@ export class Reconciler {
       const resolveChildren = () => {
         // terminal host component. Start evaluating its children.
         if (propsValue instanceof ObjectValue) {
-          let childrenProperty = propsValue.properties.get("children");
-          if (childrenProperty) {
-            let childrenPropertyDescriptor = childrenProperty.descriptor;
-            // if the descriptor is undefined, the property is likely deleted, if it exists
-            // proceed to resolve the children
-            if (childrenPropertyDescriptor !== undefined) {
-              let childrenPropertyValue = childrenPropertyDescriptor.value;
-              invariant(childrenPropertyValue instanceof Value, `Bad "children" prop passed in JSXElement`);
-              let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus, branchState);
-              childrenPropertyDescriptor.value = resolvedChildren;
+          let childrenValue = Get(this.realm, propsValue, "children");
+
+          if (childrenValue instanceof Value) {
+            let resolvedChildren = this._resolveDeeply(childrenValue, context, branchStatus, branchState);
+            // we can optimize further and flatten arrays on non-composite components
+            if (resolvedChildren instanceof ArrayValue) {
+              resolvedChildren = flattenChildren(this.realm, resolvedChildren);
             }
+            propsValue.refuseSerialization = true;
+            Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
+            propsValue.refuseSerialization = false;
           }
         }
         return reactElement;
