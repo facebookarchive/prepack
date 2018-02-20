@@ -38,7 +38,7 @@ import {
   valueIsKnownReactAbstraction,
 } from "../react/utils.js";
 import * as t from "babel-types";
-import { createAbstract } from "../intrinsics/prepack/utils.js";
+import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
 
 export class Functions {
   constructor(realm: Realm, functions: ?Array<string>, moduleTracer: ModuleTracer) {
@@ -233,8 +233,14 @@ export class Functions {
     if (numArgs && numArgs > 0 && params) {
       for (let parameterId of params) {
         if (t.isIdentifier(parameterId)) {
-          // Create a generic AbstractValue
-          args.push(createAbstract(this.realm, undefined, ((parameterId: any): BabelNodeIdentifier).name));
+          // Create an AbstractValue similar to __abstract being called
+          args.push(
+            createAbstractArgument(
+              this.realm,
+              ((parameterId: any): BabelNodeIdentifier).name,
+              funcValue.expressionLocation
+            )
+          );
         } else {
           this.realm.handleError(
             new CompilerDiagnostic(
