@@ -140,7 +140,7 @@ export class Emitter {
     this._body = oldBody;
     if (isChild) {
       invariant(lastBody.parentBody === oldBody);
-      invariant(lastBody.nestingLevel > 0);
+      invariant((lastBody.nestingLevel || 0) > 0);
       invariant(!lastBody.done);
       lastBody.done = true;
       // When we are done processing a body, we can propogate all declared abstract values

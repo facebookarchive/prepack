@@ -640,7 +640,8 @@ export class ResidualHeapSerializer {
 
     // This value is referenced from more than one generator or function.
     // Let's find the body associated with their common ancestor.
-    let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), scopes.values().next().value);
+    let firstScope = scopes.values().next().value;
+    let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), firstScope);
     invariant(commonAncestor);
     let body;
     while (true) {
@@ -678,7 +679,7 @@ export class ResidualHeapSerializer {
           (scopeBody.nestingLevel || 0) > (body.nestingLevel || 0) &&
           notYetDoneBodies.has(scopeBody)
         ) {
-          // TODO: If there are multiple such scopeBody's, why is it okay to pick a random one?
+          // TODO: If there are multiple such scopeBody's, why is it okay to pick an arbitrary one?
           body = scopeBody;
           break;
         }
