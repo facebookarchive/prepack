@@ -241,7 +241,7 @@ export class Referentializer {
                 new CompilerDiagnostic(
                   "Referentialization for prepacked functions unimplemented",
                   instance.functionValue.loc,
-                  "PP001",
+                  "PP1005",
                   "FatalError"
                 )
               );
