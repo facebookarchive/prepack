@@ -1,15 +1,13 @@
 // additional functions
 // abstract effects
+// add at runtime:global.obj1 = { a: 1 }; global.obj2 = { a: 2 };
 
-global.obj1 = { a: 1 };
-global.obj2 = { a: 2 };
-
-let obj1 = global.__abstract ? __abstract('object', 'obj1') : { a: 1 };
-let obj2 = global.__abstract ? __abstract('object', 'obj2') : { a: 2 };
+let obj1 = global.__abstract ? __abstract({}, 'obj1') : { a: 1 };
+let obj2 = global.__abstract ? __abstract({}, 'obj2') : { a: 2 };
 
 if (global.__makePartial) {
-  __makeSimple(obj1);
-  __makeSimple(obj2);
+  __makePartial(obj1);
+  __makePartial(obj2);
 }
 if (global.__makeSimple) {
   __makeSimple(obj1);

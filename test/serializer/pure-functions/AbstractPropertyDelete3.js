@@ -1,15 +1,13 @@
 // additional functions
 // abstract effects
+// add at runtime:global.obj1 = { "extends": Math.random(), b: 10 }; global.obj2 = { "while": Math.random(), b: 10 };
 
-global.obj1 = { "extends": Math.random(), b: 10 };
-global.obj2 = { "while": Math.random(), b: 10 };
-
-let obj1 = global.__abstract ? __abstract('object', 'obj1') : { "extends": Math.random(), b: 10 };
-let obj2 = global.__abstract ? __abstract('object', 'obj2') : { "while": Math.random(), b: 10 };
+let obj1 = global.__abstract ? __abstract({}, 'obj1') : { "extends": Math.random(), b: 10 };
+let obj2 = global.__abstract ? __abstract({}, 'obj2') : { "while": Math.random(), b: 10 };
 
 if (global.__makePartial) {
-  __makeSimple(obj1);
-  __makeSimple(obj2);
+  __makePartial(obj1);
+  __makePartial(obj2);
 }
 if (global.__makeSimple) {
   __makeSimple(obj1);
