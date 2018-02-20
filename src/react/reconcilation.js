@@ -33,6 +33,7 @@ import {
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
   getReactSymbol,
+  flattenChildren,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -411,6 +412,10 @@ export class Reconciler {
               let childrenPropertyValue = childrenPropertyDescriptor.value;
               invariant(childrenPropertyValue instanceof Value, `Bad "children" prop passed in JSXElement`);
               let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus, branchState);
+              // we can optimize further and flatten arrays on non-composite components
+              if (resolvedChildren instanceof ArrayValue) {
+                resolvedChildren = flattenChildren(this.realm, resolvedChildren);
+              }
               childrenPropertyDescriptor.value = resolvedChildren;
             }
           }
