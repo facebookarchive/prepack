@@ -28,7 +28,7 @@ import {
 } from "../values/index.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import {
   Call,
@@ -211,21 +211,25 @@ function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyVal
   if (!O.isFinalObject()) {
     return;
   }
-  if (!realm.isInPureScope()) {
-    // We can't continue because this object is already in its final state.
-    AbstractValue.reportIntrospectionError(O, P);
-    throw new FatalError();
+  if (realm.isInPureScope()) {
+    // It's not safe to write to this object anymore because it's already
+    // been used in a way that serializes its final state. We can, however,
+    // leak it if we're in pure scope, and continue to emit assignments.
+    Leak.leakValue(realm, O);
+    if (O.isLeakedObject()) {
+      return;
+    }
   }
-  // It's not safe to write to this object anymore because it's already
-  // been used in a way that serializes its final state. We can, however,
-  // leak it if we're in pure scope, and continue to emit assignments.
-  Leak.leakValue(realm, O);
-  if (O.isLeakedObject()) {
-    return;
-  }
-  // The object was created outside of pure scope so we couldn't leak.
-  // Give up.
-  AbstractValue.reportIntrospectionError(O, P);
+  // We can't continue because this object is already in its final state.
+  let error = new CompilerDiagnostic(
+    "Mutating an object that has been marked as final is not yet supported " +
+      " outside of pure scope. This may happen if Object.assign() argument is " +
+      "mutated when some of its arguments are partial.",
+    realm.currentLocation,
+    "PP0023",
+    "FatalError"
+  );
+  realm.handleError(error);
   throw new FatalError();
 }
 
