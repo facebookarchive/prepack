@@ -222,9 +222,8 @@ function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyVal
   }
   // We can't continue because this object is already in its final state.
   let error = new CompilerDiagnostic(
-    "Mutating an object that has been marked as final is not yet supported " +
-      " outside of pure scope. This may happen if Object.assign() argument is " +
-      "mutated when some of its arguments are partial.",
+    "Mutating an object with unknown properties, after some of those " +
+      "properties have already been used, is not yet supported.",
     realm.currentLocation,
     "PP0023",
     "FatalError"
