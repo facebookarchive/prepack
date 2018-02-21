@@ -137,6 +137,12 @@ export class Functions {
     let additionalFunctionEffects = this._createAdditionalEffects(effects);
     let value = effects[0];
 
+    // for the failing test, `value` will be a `PossiblyNormalCompletion`
+    // we want the value from it instead? How do we best do that?
+    // furthermore, when we get that value, it needs to be the value used
+    // for this additionalFunction during visiting/serialization so the test
+    // passes
+
     if (value === this.realm.intrinsics.undefined) {
       // if we get undefined, then this component tree failed and a message was already logged
       // in the reconciler

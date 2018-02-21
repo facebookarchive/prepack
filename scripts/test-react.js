@@ -406,6 +406,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "fb8.js");
       });
 
+      it("fb-www 9", async () => {
+        await runTest(directory, "fb9.js");
+      });
+
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
       });
