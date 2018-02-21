@@ -299,10 +299,10 @@ export class Generator {
       if (isTop) {
         return;
       } else {
-        condition = ([objectNode, valueNode]) => {
+        condition = ([valueNode]) => {
           // Create `object.property !== concreteValue`
           let checks = concreteComparisons.map(concreteValue =>
-            t.binaryExpression("!==", accessedPropertyOf(objectNode), t.valueToNode(concreteValue.serialize()))
+            t.binaryExpression("!==", valueNode, t.valueToNode(concreteValue.serialize()))
           );
           // Create `typeof object.property !== typeValue`
           checks = checks.concat(
@@ -311,18 +311,19 @@ export class Generator {
               invariant(typeString !== undefined, typeValue);
               return t.binaryExpression(
                 "!==",
-                t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
+                t.unaryExpression("typeof", valueNode, true),
                 t.stringLiteral(typeString)
               );
             })
           );
           return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
         };
+        this.emitInvariant([value, value], condition, valueNode => valueNode);
       }
     } else {
       condition = ([objectNode, valueNode]) => t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
+      this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
     }
-    this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
   }
 
   emitInvariant(
