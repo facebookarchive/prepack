@@ -230,8 +230,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Simple with multiple JSX spreads #2", async () => {
-        // Needs fix on master for Object.assign bug
-        // await runTest(directory, "simple-with-jsx-spread2.js");
+        await runTest(directory, "simple-with-jsx-spread2.js");
       });
 
       it("Simple with multiple JSX spreads #3", async () => {
@@ -256,6 +255,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple with Object.assign #2", async () => {
         await runTest(directory, "simple-assign2.js");
+      });
+
+      it("Simple with Object.assign #3", async () => {
+        await runTest(directory, "simple-assign3.js");
+      });
+
+      it("Simple with Object.assign #4", async () => {
+        await runTest(directory, "simple-assign4.js");
+      });
+
+      it("Simple with Object.assign #5", async () => {
+        await runTest(directory, "simple-assign5.js");
       });
 
       it("Circular reference", async () => {
