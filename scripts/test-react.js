@@ -228,6 +228,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "conditional.js");
       });
 
+      it("Event handler", async () => {
+        await runTest(directory, "event-handler.js");
+      });
+
       it("Key nesting", async () => {
         await runTest(directory, "key-nesting.js");
       });

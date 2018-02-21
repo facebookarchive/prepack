@@ -147,6 +147,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (JSX) Functional component folding Event handler bug 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React (JSX) Functional component folding Key change 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
@@ -519,6 +526,13 @@ ReactStatistics {
 `;
 
 exports[`Test React (create-element) Functional component folding Dynamic props 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React (create-element) Functional component folding Event handler bug 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
   "optimizedTrees": 1,
