@@ -208,7 +208,7 @@ function evaluateJSXAttributes(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): ObjectValue | AbstractObjectValue {
+): ObjectValue | AbstractValue {
   let config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   // start by having key and ref deleted, if they actually exist, they will be added later
   deleteRefAndKeyFromProps(realm, config);
@@ -267,16 +267,17 @@ function evaluateJSXAttributes(
   if (containsAbstractSpreadAttribute) {
     // if we haven't assigned any attributes and we are dealing with a single
     // spread attribute, we can just make the spread object the props
-    if (attributesAssigned === 0) {
-      invariant(
-        (spreadValue instanceof ObjectValue && spreadValue.isPartialObject()) ||
-          spreadValue instanceof AbstractObjectValue
-      );
+    if (
+      attributesAssigned === 0 &&
+      ((spreadValue instanceof ObjectValue && spreadValue.isPartialObject()) || spreadValue instanceof AbstractValue)
+    ) {
       // the spread is partial, so we can re-use that value
       config = spreadValue;
-      // as we're applying a spread, the config needs to be simple/partial
-      config.makePartial();
-      config.makeSimple();
+      if (config instanceof ObjectValue || config instanceof AbstractObjectValue) {
+        // as we're applying a spread, the config needs to be simple/partial
+        config.makePartial();
+        config.makeSimple();
+      }
     } else {
       // we create an abstract Object.assign() to deal with the fact that we don't what
       // the props are because they contain abstract spread attributes that we can't
@@ -307,7 +308,7 @@ function evaluateJSXAttributes(
       }
     }
   }
-  invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue);
+  invariant(config instanceof ObjectValue || config instanceof AbstractValue);
   return config;
 }
 
