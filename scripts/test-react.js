@@ -238,6 +238,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-with-jsx-spread3.js");
       });
 
+      it("Simple with multiple JSX spreads #4", async () => {
+        await runTest(directory, "simple-with-jsx-spread4.js");
+      });
+
+      it("Simple with multiple JSX spreads #5", async () => {
+        await runTest(directory, "simple-with-jsx-spread5.js");
+      });
+
       it("Simple with Object.assign", async () => {
         await runTest(directory, "simple-assign.js");
       });

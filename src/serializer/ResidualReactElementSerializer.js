@@ -15,7 +15,15 @@ import { canHoistReactElement } from "../react/hoisting.js";
 import { Get } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { ArrayValue, NumberValue, Value, ObjectValue, StringValue, SymbolValue } from "../values/index.js";
+import {
+  ArrayValue,
+  NumberValue,
+  Value,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  AbstractValue,
+} from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -72,22 +80,28 @@ export class ResidualReactElementSerializer {
       }
     }
 
-    if (propsValue instanceof ObjectValue) {
-      // handle props
+    const assignPropsAsASpreadProp = () => {
+      if (this.reactOutput === "jsx") {
+        this._addSerializedValueToJSXAttriutes(
+          null,
+          this.residualHeapSerializer.serializeValue(propsValue),
+          attributes
+        );
+      } else if (this.reactOutput === "create-element") {
+        this._addSerializedValueToObjectProperty(
+          null,
+          this.residualHeapSerializer.serializeValue(propsValue),
+          attributes
+        );
+      }
+    };
+
+    // handle props
+    if (propsValue instanceof AbstractValue) {
+      assignPropsAsASpreadProp();
+    } else if (propsValue instanceof ObjectValue) {
       if (propsValue.isPartialObject()) {
-        if (this.reactOutput === "jsx") {
-          this._addSerializedValueToJSXAttriutes(
-            null,
-            this.residualHeapSerializer.serializeValue(propsValue),
-            attributes
-          );
-        } else if (this.reactOutput === "create-element") {
-          this._addSerializedValueToObjectProperty(
-            null,
-            this.residualHeapSerializer.serializeValue(propsValue),
-            attributes
-          );
-        }
+        assignPropsAsASpreadProp();
       } else {
         this.residualHeapSerializer.serializedValues.add(propsValue);
         for (let [propName, binding] of propsValue.properties) {

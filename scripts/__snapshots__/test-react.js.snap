@@ -322,6 +322,20 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Simple with multiple JSX spreads #4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Functional component folding Simple with multiple JSX spreads #5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Simple with multiple JSX spreads 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -724,6 +738,20 @@ ReactStatistics {
 exports[`Test React with JSX input, create-element output Functional component folding Simple with multiple JSX spreads #3 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Simple with multiple JSX spreads #4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Simple with multiple JSX spreads #5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1134,6 +1162,20 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Simple with multiple JSX spreads #4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Functional component folding Simple with multiple JSX spreads #5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Simple with multiple JSX spreads 1`] = `
 ReactStatistics {
   "inlinedComponents": 2,
@@ -1534,6 +1576,20 @@ ReactStatistics {
 `;
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple with multiple JSX spreads #3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Simple with multiple JSX spreads #4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Simple with multiple JSX spreads #5 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
   "optimizedTrees": 1,

@@ -96,12 +96,15 @@ function createPropsObject(
         if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
       }
     } else {
+      // as the config is partial and simple, we don't know about its prototype or properties
+      // we don't have to worry about non-enumerable properties as its properties will never
+      // be serialized, rather this object will be serialized as a spread.
       props = config;
     }
   } else {
     if (config instanceof ObjectValue) {
       for (let [propKey, binding] of config.properties) {
-        if (binding && binding.descriptor) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
           setProp(propKey, Get(realm, config, propKey));
         }
       }
@@ -112,9 +115,11 @@ function createPropsObject(
     }
 
     if (defaultProps instanceof ObjectValue) {
-      for (let [propKey] of defaultProps.properties) {
-        if (Get(realm, props, propKey) === realm.intrinsics.undefined) {
-          setProp(propKey, Get(realm, defaultProps, propKey));
+      for (let [propKey, binding] of defaultProps.properties) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
+          if (Get(realm, props, propKey) === realm.intrinsics.undefined) {
+            setProp(propKey, Get(realm, defaultProps, propKey));
+          }
         }
       }
     }

@@ -193,6 +193,16 @@ function evaluateJSXChildren(
   return array;
 }
 
+function isObjectEmpty(object: ObjectValue) {
+  let propertyCount = 0;
+  for (let [, binding] of object.properties) {
+    if (binding && binding.descriptor && binding.descriptor.enumerable) {
+      propertyCount++;
+    }
+  }
+  return propertyCount === 0;
+}
+
 function evaluateJSXAttributes(
   astAttributes: Array<BabelNodeJSXAttribute | BabelNodeJSXSpreadAttribute>,
   strictCode: boolean,
@@ -204,13 +214,15 @@ function evaluateJSXAttributes(
   deleteRefAndKeyFromProps(realm, config);
   let abstractPropsArgs = [];
   let containsAbstractSpreadAttribute = false;
-  let spreadAttributesCount = 0;
-  let spreadAttributesWithInitialPropsHintCount = 0;
+  let mayContainRefOrKey = false;
   let attributesAssigned = 0;
   let spreadValue;
 
   const setConfigProperty = (name: string, value: Value): void => {
     invariant(config instanceof ObjectValue);
+    if (name === "key" || name === "ref") {
+      mayContainRefOrKey = true;
+    }
     Properties.Set(realm, config, name, value, true);
     attributesAssigned++;
   };
@@ -228,23 +240,18 @@ function evaluateJSXAttributes(
 
         if (spreadValue instanceof ObjectValue && !spreadValue.isPartialObject()) {
           for (let [spreadPropKey, binding] of spreadValue.properties) {
-            if (binding && binding.descriptor) {
+            if (binding && binding.descriptor && binding.descriptor.enumerable) {
               setConfigProperty(spreadPropKey, Get(realm, spreadValue, spreadPropKey));
             }
           }
         } else {
-          spreadAttributesCount++;
           containsAbstractSpreadAttribute = true;
           invariant(spreadValue instanceof AbstractValue || spreadValue instanceof ObjectValue);
 
-          // we push the props up to this point into the abstract props args. we also
-          // push the abstract spread object and then we create a fresh props object
-          if (objectHasNoPartialKeyAndRef(realm, spreadValue)) {
-            spreadAttributesWithInitialPropsHintCount++;
-            if (config.properties.size > 2) {
-              abstractPropsArgs.push(config);
-            }
-          } else if (config.properties.size > 0) {
+          if (!objectHasNoPartialKeyAndRef(realm, spreadValue)) {
+            mayContainRefOrKey = true;
+          }
+          if (!isObjectEmpty(config)) {
             abstractPropsArgs.push(config);
           }
           abstractPropsArgs.push(spreadValue);
@@ -261,12 +268,16 @@ function evaluateJSXAttributes(
     // if we haven't assigned any attributes and we are dealing with a single
     // spread attribute, we can just make the spread object the props
     if (attributesAssigned === 0) {
-      invariant(spreadValue instanceof ObjectValue || spreadValue instanceof AbstractObjectValue);
+      invariant(
+        (spreadValue instanceof ObjectValue && spreadValue.isPartialObject()) ||
+          spreadValue instanceof AbstractObjectValue
+      );
+      // the spread is partial, so we can re-use that value
       config = spreadValue;
       // as we're applying a spread, the config needs to be simple/partial
       config.makePartial();
       config.makeSimple();
-    } else if (attributesAssigned !== 0) {
+    } else {
       // we create an abstract Object.assign() to deal with the fact that we don't what
       // the props are because they contain abstract spread attributes that we can't
       // evaluate ahead of time
@@ -291,10 +302,7 @@ function evaluateJSXAttributes(
       realm.generator.derive(types, values, [objAssign, config, ...abstractPropsArgs], ([methodNode, ..._args]) => {
         return t.callExpression(methodNode, ((_args: any): Array<any>));
       });
-      if (
-        spreadAttributesCount === spreadAttributesWithInitialPropsHintCount &&
-        spreadAttributesWithInitialPropsHintCount > 0
-      ) {
+      if (!mayContainRefOrKey) {
         deleteRefAndKeyFromProps(realm, config);
       }
     }
