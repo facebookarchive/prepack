@@ -530,6 +530,14 @@ export class PropertiesImplementation {
       let key = InternalGetPropertiesKey(P);
       let map = InternalGetPropertiesMap(O, P);
       let propertyBinding = map.get(key);
+      if (propertyBinding === undefined && O.isPartialObject() && O.isSimpleObject()) {
+        let generator = realm.generator;
+        if (generator) {
+          invariant(typeof key === "string" || key instanceof SymbolValue);
+          generator.emitPropertyDelete(O, StringKey(key));
+          return true;
+        }
+      }
       invariant(propertyBinding !== undefined);
       realm.recordModifiedProperty(propertyBinding);
       propertyBinding.descriptor = undefined;
