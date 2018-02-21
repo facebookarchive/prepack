@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
-import { Completion, ThrowCompletion } from "../completions.js";
+import { Completion, ThrowCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
@@ -281,7 +281,7 @@ export class Functions {
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
-      if (e1[0] instanceof Completion) {
+      if (e1[0] instanceof Completion && !e1[0] instanceof PossiblyNormalCompletion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fun1Name} may terminate abruptly`,
           e1[0].location,
