@@ -35,7 +35,7 @@ import {
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { construct_empty_effects } from "../realm.js";
-import { Create, Environment, Functions, Join, To, Widen } from "../singletons.js";
+import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
@@ -542,11 +542,23 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
   }
   if (F instanceof AbstractValue && Value.isTypeCompatibleWith(F.getType(), FunctionValue)) {
-    let fullArgs = [F].concat(argsList);
-    return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
-      let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-      return t.callExpression(nodes[0], fun_args);
-    });
+    Havoc.value(realm, V);
+    for (let arg of argsList) {
+      Havoc.value(realm, arg);
+    }
+    if (V === realm.intrinsics.undefined) {
+      let fullArgs = [F].concat(argsList);
+      return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
+        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+        return t.callExpression(nodes[0], fun_args);
+      });
+    } else {
+      let fullArgs = [F, V].concat(argsList);
+      return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
+        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
+        return t.callExpression(t.memberExpression(nodes[0], t.identifier("call")), fun_args);
+      });
+    }
   }
   invariant(F instanceof ObjectValue);
 
