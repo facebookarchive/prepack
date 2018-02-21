@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import { AbstractValue, AbstractObjectValue, Value, ObjectValue, FunctionValue, NullValue } from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import { TypesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import { getReactSymbol, objectHasNoPartialKeyAndRef, deleteRefAndKeyFromProps } from "./utils.js";
@@ -34,10 +34,7 @@ function createPropsObject(
   let ref = realm.intrinsics.null;
 
   const setProp = (name: string, value: Value): void => {
-    if (name === "children") {
-      invariant(props instanceof ObjectValue);
-      Properties.Set(realm, props, "children", value, true);
-    } else if (name === "key" && value !== realm.intrinsics.null) {
+    if (name === "key" && value !== realm.intrinsics.null) {
       key = computeBinary(realm, "+", realm.intrinsics.emptyString, value);
     } else if (name === "ref") {
       ref = value;
@@ -68,7 +65,6 @@ function createPropsObject(
         // props objects also don't have a key and ref, so we remove them
         deleteRefAndKeyFromProps(realm, props);
         let types = new TypesDomain(FunctionValue);
-        let values = new ValuesDomain();
 
         // get the global Object.assign
         let globalObj = Get(realm, realm.$GlobalObject, "Object");
@@ -76,9 +72,14 @@ function createPropsObject(
         let objAssign = Get(realm, globalObj, "assign");
         invariant(realm.generator);
 
-        realm.generator.derive(types, values, [objAssign, props, ...args], ([methodNode, ..._args]) => {
-          return t.callExpression(methodNode, ((_args: any): Array<any>));
-        });
+        AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          types,
+          [objAssign, props, ...args],
+          ([methodNode, ..._args]) => {
+            return t.callExpression(methodNode, ((_args: any): Array<any>));
+          }
+        );
 
         if (children !== realm.intrinsics.undefined) {
           setProp("children", children);

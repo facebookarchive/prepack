@@ -22,7 +22,7 @@ import type {
   BabelNodeJSXSpreadAttribute,
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import { TypesDomain } from "../domains/index.js";
 import {
   AbstractObjectValue,
   ArrayValue,
@@ -283,7 +283,6 @@ function evaluateJSXAttributes(
       // the props are because they contain abstract spread attributes that we can't
       // evaluate ahead of time
       let types = new TypesDomain(FunctionValue);
-      let values = new ValuesDomain();
       // push the current config
       if (config.properties.size > 0) {
         abstractPropsArgs.push(config);
@@ -300,9 +299,14 @@ function evaluateJSXAttributes(
       invariant(realm.generator);
 
       invariant(realm.generator);
-      realm.generator.derive(types, values, [objAssign, config, ...abstractPropsArgs], ([methodNode, ..._args]) => {
-        return t.callExpression(methodNode, ((_args: any): Array<any>));
-      });
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        types,
+        [objAssign, config, ...abstractPropsArgs],
+        ([methodNode, ..._args]) => {
+          return t.callExpression(methodNode, ((_args: any): Array<any>));
+        }
+      );
       if (!mayContainRefOrKey) {
         deleteRefAndKeyFromProps(realm, config);
       }
