@@ -79,19 +79,30 @@ export function getPureBinaryOperationResultType(
   if (op === "+") {
     let ltype = To.GetToPrimitivePureResultType(realm, lval);
     let rtype = To.GetToPrimitivePureResultType(realm, rval);
+
+    function recoverWithValue() {
+      // Assume that the unknown value is actually a primitive or otherwise a well behaved object.
+      ltype = lval.getType();
+      rtype = rval.getType();
+      if (ltype === StringValue || rtype === StringValue) return StringValue;
+      if (ltype === IntegralValue && rtype === IntegralValue) return IntegralValue;
+      if ((ltype === NumberValue || ltype === IntegralValue) && (rtype === NumberValue || rtype === IntegralValue))
+        return NumberValue;
+
+      return Value;
+    }
+
+    if (realm.isInPureScope()) {
+      if (!ltype) Leak.leakValue(realm, lval);
+      if (!rtype) Leak.leakValue(realm, rval);
+      return recoverWithValue();
+    }
+
     if (ltype === undefined || rtype === undefined) {
       let loc = ltype === undefined ? lloc : rloc;
       let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
       if (realm.handleError(error) === "Recover") {
-        // Assume that the unknown value is actually a primitive or otherwise a well behaved object.
-        ltype = lval.getType();
-        rtype = rval.getType();
-        if (ltype === StringValue || rtype === StringValue) return StringValue;
-        if (ltype === IntegralValue && rtype === IntegralValue) return IntegralValue;
-        if ((ltype === NumberValue || ltype === IntegralValue) && (rtype === NumberValue || rtype === IntegralValue))
-          return NumberValue;
-
-        return Value;
+        return recoverWithValue();
       }
       throw new FatalError();
     }
