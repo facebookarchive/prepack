@@ -126,6 +126,7 @@ export class ResidualHeapSerializer {
     this.factoryNameGenerator = this.preludeGenerator.createNameGenerator("$_");
     this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
     this.functionNameGenerator = this.preludeGenerator.createNameGenerator("$f_");
+    this.initializeConditionNameGenerator = this.preludeGenerator.createNameGenerator("_initialized");
     this.requireReturns = new Map();
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
@@ -140,8 +141,7 @@ export class ResidualHeapSerializer {
       {
         getLocation: value => this.getSerializeObjectIdentifier(value),
         createLocation: () => {
-          const initializeConditionNameGenerator = this.preludeGenerator.createNameGenerator("_initialized");
-          let location = t.identifier(initializeConditionNameGenerator.generate());
+          let location = t.identifier(this.initializeConditionNameGenerator.generate());
           this.currentFunctionBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
           return location;
         },
@@ -192,6 +192,7 @@ export class ResidualHeapSerializer {
   factoryNameGenerator: NameGenerator;
   intrinsicNameGenerator: NameGenerator;
   functionNameGenerator: NameGenerator;
+  initializeConditionNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
