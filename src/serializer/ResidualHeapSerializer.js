@@ -171,6 +171,7 @@ export class ResidualHeapSerializer {
     this.activeGeneratorBodies = new Map();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
+    this.rewrittenAdditionalFunctions = new Map();
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
   }
 
@@ -212,6 +213,7 @@ export class ResidualHeapSerializer {
   activeGeneratorBodies: Map<Generator, SerializedBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
+  rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
   react: ReactSerializerState;
   residualReactElementSerializer: ResidualReactElementSerializer;
@@ -1639,20 +1641,6 @@ export class ResidualHeapSerializer {
     return context;
   }
 
-  _serializeAdditionalFunction(generator: Generator, postGeneratorCallback: () => void) {
-    let context = this._getContext();
-    return this._withGeneratorScope(generator, newBody => {
-      let oldCurBody = this.currentFunctionBody;
-      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
-      this.currentFunctionBody = newBody;
-      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
-      generator.serialize(context);
-      if (postGeneratorCallback) postGeneratorCallback();
-      this.currentFunctionBody = oldCurBody;
-      this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
-    });
-  }
-
   _shouldBeWrapped(body: Array<any>) {
     for (let i = 0; i < body.length; i++) {
       let item = body[i];
@@ -1678,6 +1666,20 @@ export class ResidualHeapSerializer {
       }
     }
     return false;
+  }
+
+  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, postGeneratorCallback: () => void) {
+    let context = this._getContext();
+    return this._withGeneratorScope(generator, newBody => {
+      let oldCurBody = this.currentFunctionBody;
+      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
+      this.currentFunctionBody = newBody;
+      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
+      generator.serialize(context);
+      if (postGeneratorCallback) postGeneratorCallback();
+      this.currentFunctionBody = oldCurBody;
+      this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
+    });
   }
 
   // result -- serialize it, a return statement will be generated later
@@ -1713,43 +1715,49 @@ export class ResidualHeapSerializer {
     Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
   }
 
-  processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
-    let rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-    if (!additionalFVEffects) return rewrittenAdditionalFunctions;
+  _serializeAdditionalFunction(
+    additionalFunctionValue: FunctionValue,
+    { effects, transforms }: AdditionalFunctionEffects
+  ) {
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
-    for (let [additionalFunctionValue, { effects, transforms }] of additionalFVEffects.entries()) {
-      let [, generator, , , createdObjects] = effects;
-      this.currentAdditionalFunction = additionalFunctionValue;
-      let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
-      // Allows us to emit function declarations etc. inside of this additional
-      // function instead of adding them at global scope
-      // TODO: make sure this generator isn't getting mutated oddly
-      ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
-      let body = this.realm.withEffectsAppliedInGlobalEnv(
-        this._serializeAdditionalFunction.bind(
-          this,
-          generator,
-          this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
-        ),
-        effects
-      );
-      invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
-      for (let transform of transforms) {
-        transform(body);
-      }
-      rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
-      // re-resolve initialized modules to include things from additional functions
-      this.modules.resolveInitializedModules();
-      if (shouldEmitLog && this.modules.moduleIds.size > 0)
-        console.log(
-          `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
-            .size} modules initialized after additional function ${additionalFunctionValue.intrinsicName
-            ? additionalFunctionValue.intrinsicName
-            : ""}`
-        );
+    let [, generator, , , createdObjects] = effects;
+    this.currentAdditionalFunction = additionalFunctionValue;
+    let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
+    // Allows us to emit function declarations etc. inside of this additional
+    // function instead of adding them at global scope
+    // TODO: make sure this generator isn't getting mutated oddly
+    ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
+    let body = this.realm.withEffectsAppliedInGlobalEnv(
+      this._serializeAdditionalFunctionGeneratorAndEffects.bind(
+        this,
+        generator,
+        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
+      ),
+      effects
+    );
+    invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
+    for (let transform of transforms) {
+      transform(body);
     }
-    return rewrittenAdditionalFunctions;
+    this.rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
+    // re-resolve initialized modules to include things from additional functions
+    this.modules.resolveInitializedModules();
+    if (shouldEmitLog && this.modules.moduleIds.size > 0)
+      console.log(
+        `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
+          .size} modules initialized after additional function ${additionalFunctionValue.intrinsicName
+          ? additionalFunctionValue.intrinsicName
+          : ""}`
+      );
+  }
+
+  processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
+    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    if (!additionalFVEffects) return this.rewrittenAdditionalFunctions;
+    for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
+      this._serializeAdditionalFunction(additionalFunctionValue, effects);
+    }
+    return this.rewrittenAdditionalFunctions;
   }
 
   // Hook point for any serialization needs to be done after generator serialization is complete.
