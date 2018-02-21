@@ -513,6 +513,19 @@ export class Realm {
     return this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
   }
 
+  // NB: does not apply generators because there's no way to cleanly revert that
+  withEffectsAppliedInGlobalEnv(func: Effects => Value, effects: Effects): Effects {
+    return this.evaluateForEffectsInGlobalEnv(() => {
+      try {
+        this.applyEffects(effects);
+        return func(effects);
+      } finally {
+        this.restoreBindings(effects[2]);
+        this.restoreProperties(effects[3]);
+      }
+    });
+  }
+
   evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any, generatorName?: string): Effects {
     return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state, generatorName));
   }
