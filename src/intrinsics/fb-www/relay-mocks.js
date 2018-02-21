@@ -16,7 +16,7 @@ import { createAbstract } from "../prepack/utils.js";
 import * as t from "babel-types";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant";
-import { createReactHint } from "../../react/utils.js";
+import { createReactHintObject } from "../../react/utils.js";
 
 function createReactRelayContainer(realm: Realm, reactRelay: ObjectValue, containerName: string) {
   // we create a ReactRelay container function that returns an abstract object
@@ -35,7 +35,7 @@ function createReactRelayContainer(realm: Realm, reactRelay: ObjectValue, contai
           ((otherArgs: any): Array<any>)
         );
       });
-      realm.react.abstractHints.set(value, createReactHint(reactRelay, containerName, args));
+      realm.react.abstractHints.set(value, createReactHintObject(reactRelay, containerName, args));
       return value;
     }),
     writable: false,

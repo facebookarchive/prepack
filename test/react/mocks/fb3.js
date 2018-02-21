@@ -1,5 +1,5 @@
-if (!this.__evaluatePureFunction) {
-  this.__evaluatePureFunction = function(f) {
+if (!window.__evaluatePureFunction) {
+  window.__evaluatePureFunction = function(f) {
     return f();
   };
 }
@@ -8,10 +8,7 @@ if (!this.__evaluatePureFunction) {
   function App() {}
   var ReactRelay = require('RelayModern');
 
-  this.__evaluatePureFunction(() => {
+  window.__evaluatePureFunction(() => {
     ReactRelay.createFragmentContainer(App);
   });
 })();
-
-// This test just verifies that the file compiles.
-// It is pure and doesn't export anything.
