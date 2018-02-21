@@ -724,6 +724,18 @@ export class ResidualHeapSerializer {
     return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
   }
 
+  _declare(emittingToResidualFunction: boolean, bindingType: string, id: BabelNodeVariable, init: BabelNodeExpression) {
+    if (emittingToResidualFunction) {
+      let declar = t.variableDeclaration(bindingType, [t.variableDeclarator(id)]);
+      this.mainBody.entries.push(declar);
+      let assignment = t.expressionStatement(t.assignmentExpression("=", id, init));
+      this.emitter.emit(assignment);
+    } else {
+      let declar = t.variableDeclaration(bindingType, [t.variableDeclarator(id, init)]);
+      this.emitter.emit(declar);
+    }
+  }
+
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
     invariant(!val.refuseSerialization);
     if (val instanceof AbstractValue) {
@@ -789,15 +801,7 @@ export class ResidualHeapSerializer {
           this.emitter.emit(commentStatement(comment));
         }
         if (init !== id) {
-          if (target.usedOnlyByResidualFunctions) {
-            let declar = t.variableDeclaration(bindingType ? bindingType : "var", [t.variableDeclarator(id)]);
-            this.mainBody.entries.push(declar);
-            let assignment = t.expressionStatement(t.assignmentExpression("=", id, init));
-            this.emitter.emit(assignment);
-          } else {
-            let declar = t.variableDeclaration(bindingType ? bindingType : "var", [t.variableDeclarator(id, init)]);
-            this.emitter.emit(declar);
-          }
+          this._declare(target.usedOnlyByResidualFunctions, bindingType || "var", id, init);
         }
         this.statistics.valueIds++;
         if (target.usedOnlyByResidualFunctions) this.statistics.delayedValues++;
@@ -1506,7 +1510,7 @@ export class ResidualHeapSerializer {
       let id = ((serializedValue: any): BabelNodeIdentifier);
       invariant(
         !this.preludeGenerator.derivedIds.has(id.name) ||
-          this.emitter.ignoreDeclarations() ||
+          this.emitter.cannotDeclare() ||
           this.emitter.hasBeenDeclared(val)
       );
     }
@@ -1526,8 +1530,7 @@ export class ResidualHeapSerializer {
       this.emitter.emitNowOrAfterWaitingForDependencies(val.args, () => {
         const serializedValue = this._serializeAbstractValueHelper(val);
         let uid = this.getSerializeObjectIdentifier(val);
-        let declar = t.variableDeclaration("var", [t.variableDeclarator(uid, serializedValue)]);
-        this.emitter.emit(declar);
+        this._declare(this.emitter.cannotDeclare(), "var", uid, serializedValue);
       });
     }
   }
