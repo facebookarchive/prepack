@@ -22,7 +22,6 @@ import type {
   BabelNodeJSXSpreadAttribute,
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
-import { TypesDomain } from "../domains/index.js";
 import {
   AbstractObjectValue,
   ArrayValue,
@@ -282,7 +281,6 @@ function evaluateJSXAttributes(
       // we create an abstract Object.assign() to deal with the fact that we don't what
       // the props are because they contain abstract spread attributes that we can't
       // evaluate ahead of time
-      let types = new TypesDomain(FunctionValue);
       // push the current config
       if (config.properties.size > 0) {
         abstractPropsArgs.push(config);
@@ -301,7 +299,7 @@ function evaluateJSXAttributes(
       invariant(realm.generator);
       AbstractValue.createTemporalFromBuildFunction(
         realm,
-        types,
+        FunctionValue,
         [objAssign, config, ...abstractPropsArgs],
         ([methodNode, ..._args]) => {
           return t.callExpression(methodNode, ((_args: any): Array<any>));

@@ -12,7 +12,6 @@
 import type { Realm } from "../realm.js";
 import { AbstractValue, AbstractObjectValue, Value, ObjectValue, FunctionValue, NullValue } from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
-import { TypesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import { getReactSymbol, objectHasNoPartialKeyAndRef, deleteRefAndKeyFromProps } from "./utils.js";
@@ -64,7 +63,6 @@ function createPropsObject(
         props.makeSimple();
         // props objects also don't have a key and ref, so we remove them
         deleteRefAndKeyFromProps(realm, props);
-        let types = new TypesDomain(FunctionValue);
 
         // get the global Object.assign
         let globalObj = Get(realm, realm.$GlobalObject, "Object");
@@ -74,7 +72,7 @@ function createPropsObject(
 
         AbstractValue.createTemporalFromBuildFunction(
           realm,
-          types,
+          FunctionValue,
           [objAssign, props, ...args],
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
