@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm } from "../realm.js";
+import { Realm, type Effects } from "../realm.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
@@ -22,6 +22,7 @@ import {
   ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
+import { Generator } from "../utils/generator.js";
 import type { Descriptor, ReactHint } from "../types";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
@@ -337,4 +338,23 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   let flattenedChildren = Create.ArrayCreate(realm, 0);
   recursivelyFlattenArray(realm, array, flattenedChildren);
   return flattenedChildren;
+}
+
+export function evaluateComponentTreeBranch(realm: Realm, effects: Effects, nested: boolean, f: Function) {
+  let [
+    value,
+    generator,
+    modifiedBindings,
+    modifiedProperties: Map<PropertyBinding, void | Descriptor>,
+    createdObjects,
+  ] = effects;
+  if (nested) {
+    realm.applyEffects([value, new Generator(realm), modifiedBindings, modifiedProperties, createdObjects]);
+  }
+  let val = f(generator, value);
+  if (nested) {
+    realm.restoreBindings(modifiedBindings);
+    realm.restoreProperties(modifiedProperties);
+  }
+  return val;
 }

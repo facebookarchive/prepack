@@ -54,9 +54,10 @@ import type { ClassComponentMetadata } from "../types.js";
 type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
 export type BranchReactComponentTree = {
+  context: ObjectValue | AbstractObjectValue | null,
+  nested: boolean,
   props: ObjectValue | AbstractObjectValue | null,
   rootValue: ECMAScriptSourceFunctionValue | AbstractValue,
-  context: ObjectValue | AbstractObjectValue | null,
 };
 
 export class Reconciler {
@@ -149,14 +150,16 @@ export class Reconciler {
 
   _queueNewComponentTree(
     rootValue: Value,
+    nested?: boolean = false,
     props?: ObjectValue | AbstractObjectValue | null = null,
     context?: ObjectValue | AbstractObjectValue | null = null
   ) {
     invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
     this.branchReactComponentTrees.push({
+      context,
+      nested,
       props,
       rootValue,
-      context,
     });
   }
 
@@ -174,24 +177,6 @@ export class Reconciler {
     }
     // create a new instance of this React class component
     let instance = createClassInstance(this.realm, componentType, props, context, classMetadata);
-    // get the "render" method off the instance
-    let renderMethod = Get(this.realm, instance, "render");
-    invariant(
-      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
-      "Expected render method to be a FunctionValue with $Call method"
-    );
-    // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return renderMethod.$Call(instance, []);
-  }
-
-  _renderFactoryClassComponent(
-    instance: ObjectValue,
-    branchStatus: BranchStatusEnum,
-    branchState: BranchState | null
-  ): Value {
-    if (branchStatus !== "ROOT") {
-      throw new NewComponentTreeBranch();
-    }
     // get the "render" method off the instance
     let renderMethod = Get(this.realm, instance, "render");
     invariant(
@@ -251,7 +236,13 @@ export class Reconciler {
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
-    // TODO: for now we do nothing, in the future we want to evaluate the render prop of this component
+    // get the "render" method off the instance
+    let renderProp = Get(this.realm, props, "render");
+    invariant(
+      renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call,
+      "Expected render method to be a FunctionValue with $Call method"
+    );
+    this._queueNewComponentTree(renderProp, true);
     return {
       result: reactElement,
       childContext: context,
@@ -329,11 +320,10 @@ export class Reconciler {
       value = this._renderFunctionalComponent(componentType, props, context);
       if (valueIsFactoryClassComponent(this.realm, value)) {
         invariant(value instanceof ObjectValue);
-        // TODO: use this._renderFactoryClassComponent to handle the render method (like a render prop)
-        // for now we just return the object
         if (branchStatus !== "ROOT") {
           throw new ExpectedBailOut("non-root factory class components are not suppoted");
         } else {
+          // TODO support factory components
           return {
             result: value,
             childContext,

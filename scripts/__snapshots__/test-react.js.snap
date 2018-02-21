@@ -308,6 +308,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (JSX) Render props Relay QueryRenderer 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React (JSX) fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "inlinedComponents": 3,
@@ -318,7 +325,7 @@ ReactStatistics {
 exports[`Test React (JSX) fb-www mocks fb-www 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
@@ -686,6 +693,13 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React (create-element) Render props Relay QueryRenderer 1`] = `
+ReactStatistics {
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React (create-element) fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "inlinedComponents": 3,
@@ -696,7 +710,7 @@ ReactStatistics {
 exports[`Test React (create-element) fb-www mocks fb-www 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 

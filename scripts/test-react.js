@@ -365,6 +365,14 @@ function runTestSuite(outputJsx) {
       });
     });
 
+    describe("Render props", () => {
+      let directory = "render-props";
+
+      it("Relay QueryRenderer", async () => {
+        await runTest(directory, "relay-query-renderer.js");
+      });
+    });
+
     describe("fb-www mocks", () => {
       let directory = "mocks";
 

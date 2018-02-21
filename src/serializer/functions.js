@@ -36,6 +36,7 @@ import {
   normalizeFunctionalComponentParamaters,
   getComponentTypeFromRootValue,
   valueIsKnownReactAbstraction,
+  evaluateComponentTreeBranch,
 } from "../react/utils.js";
 import * as t from "babel-types";
 
@@ -183,14 +184,16 @@ export class Functions {
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
       let alreadyGeneratedEffects = new Set();
-      for (let { rootValue: branchRootValue } of branchReactComponentTrees) {
-        let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
-        // so we don't process the same component multiple times (we might change this logic later)
-        if (!alreadyGeneratedEffects.has(branchComponentType)) {
-          alreadyGeneratedEffects.add(branchComponentType);
-          let branchEffects = reconciler.render(branchComponentType, null, null, false);
-          this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, simpleClassComponents);
-        }
+      for (let { rootValue: branchRootValue, nested } of branchReactComponentTrees) {
+        evaluateComponentTreeBranch(this.realm, effects, nested, () => {
+          let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
+          // so we don't process the same component multiple times (we might change this logic later)
+          if (!alreadyGeneratedEffects.has(branchComponentType)) {
+            alreadyGeneratedEffects.add(branchComponentType);
+            let branchEffects = reconciler.render(branchComponentType, null, null, false);
+            this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, simpleClassComponents);
+          }
+        });
       }
       if (this.realm.react.output === "bytecode") {
         throw new FatalError("TODO: implement React bytecode output format");
