@@ -837,7 +837,7 @@ export class ResidualHeapVisitor {
     invariant(functionInfo !== undefined);
     let [
       result,
-      generator,
+      ,
       modifiedBindings,
       modifiedProperties: Map<PropertyBinding, void | Descriptor>,
       createdObjects,
@@ -883,7 +883,7 @@ export class ResidualHeapVisitor {
     }
     invariant(result instanceof Value);
     if (!(result instanceof UndefinedValue)) this.visitValue(result);
-  };
+  }
 
   _visitAdditionalFunction(
     functionValue: FunctionValue,
@@ -911,13 +911,7 @@ export class ResidualHeapVisitor {
     this.additionalRoots = new Set();
 
     let modifiedBindingInfo = new Map();
-    let [
-      result,
-      generator,
-      modifiedBindings,
-      modifiedProperties: Map<PropertyBinding, void | Descriptor>,
-      createdObjects,
-    ] = additionalEffects.effects;
+    let [, generator, , , createdObjects] = additionalEffects.effects;
 
     invariant(funcInstance !== undefined);
     invariant(functionInfo !== undefined);
