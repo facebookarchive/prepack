@@ -81,6 +81,25 @@ export default class AbstractObjectValue extends AbstractValue {
     return result;
   }
 
+  isFinalObject(): boolean {
+    if (this.values.isTop()) return false;
+    let result;
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      if (result === undefined) {
+        result = element.isFinalObject();
+      } else if (result !== element.isFinalObject()) {
+        AbstractValue.reportIntrospectionError(this);
+        throw new FatalError();
+      }
+    }
+    if (result === undefined) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
+    return result;
+  }
+
   mightBeFalse(): boolean {
     return false;
   }
@@ -126,6 +145,17 @@ export default class AbstractObjectValue extends AbstractValue {
       }
     }
     this.cachedIsSimpleObject = true;
+  }
+
+  makeFinal(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      element.makeFinal();
+    }
   }
 
   throwIfNotObject(): AbstractObjectValue {
