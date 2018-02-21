@@ -15,7 +15,7 @@ import { Create, Properties } from "../singletons.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
-import { getReactSymbol, propsHasPartialKeyOrRef, deleteRefAndKeyFromProps } from "./utils.js";
+import { getReactSymbol, objectHasNoPartialKeyAndRef, deleteRefAndKeyFromProps } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -54,7 +54,7 @@ function createPropsObject(
   ) {
     // if we have defaultProps, we need to create a new merge of the objects along with our config
     if (defaultProps !== realm.intrinsics.undefined || children !== realm.intrinsics.undefined) {
-      if (propsHasPartialKeyOrRef(realm, config)) {
+      if (objectHasNoPartialKeyAndRef(realm, config)) {
         let args = [];
         if (defaultProps !== realm.intrinsics.undefined) {
           args.push(defaultProps);

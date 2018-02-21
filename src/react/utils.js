@@ -347,14 +347,14 @@ export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | Abst
   }
 }
 
-export function propsHasPartialKeyOrRef(
+export function objectHasNoPartialKeyAndRef(
   realm: Realm,
-  props: ObjectValue | AbstractValue | AbstractObjectValue
+  object: ObjectValue | AbstractValue | AbstractObjectValue
 ): boolean {
-  if (props instanceof AbstractValue) {
+  if (object instanceof AbstractValue) {
     return true;
   }
-  return !(Get(realm, props, "key") instanceof AbstractValue || Get(realm, props, "ref") instanceof AbstractValue);
+  return !(Get(realm, object, "key") instanceof AbstractValue || Get(realm, object, "ref") instanceof AbstractValue);
 }
 
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {

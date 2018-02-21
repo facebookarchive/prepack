@@ -39,7 +39,7 @@ import { Get } from "../methods/index.js";
 import { Create, Environment, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createReactElement } from "../react/elements.js";
-import { propsHasPartialKeyOrRef, deleteRefAndKeyFromProps } from "../react/utils.js";
+import { objectHasNoPartialKeyAndRef, deleteRefAndKeyFromProps } from "../react/utils.js";
 
 // taken from Babel
 function cleanJSXElementLiteralChild(child: string): null | string {
@@ -239,7 +239,7 @@ function evaluateJSXAttributes(
 
           // we push the props up to this point into the abstract props args. we also
           // push the abstract spread object and then we create a fresh props object
-          if (propsHasPartialKeyOrRef(realm, spreadValue)) {
+          if (objectHasNoPartialKeyAndRef(realm, spreadValue)) {
             spreadAttributesWithInitialPropsHintCount++;
             if (config.properties.size > 2) {
               abstractPropsArgs.push(config);
