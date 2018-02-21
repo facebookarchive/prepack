@@ -1,5 +1,5 @@
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":9,"column":14},"end":{"line":9,"column":16},"source":"test/error-handler/object-assign5.js"},"severity":"FatalError","errorCode":"PP0023"}]
+// expected errors: [{"location":{"start":{"line":9,"column":14},"end":{"line":9,"column":16},"source":"test/error-handler/object-assign5.js"},"severity":"FatalError","errorCode":"PP0026"}]
 
 var obj = global.__abstract && global.__makePartial && global.__makeSimple ? __makeSimple(__makePartial(__abstract({}, "({foo:1})"))) : {foo:1};
 
