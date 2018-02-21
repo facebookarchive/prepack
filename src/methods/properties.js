@@ -225,7 +225,7 @@ function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyVal
     "Mutating an object with unknown properties, after some of those " +
       "properties have already been used, is not yet supported.",
     realm.currentLocation,
-    "PP0023",
+    "PP0026",
     "FatalError"
   );
   realm.handleError(error);
