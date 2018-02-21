@@ -9,13 +9,15 @@
 
 /* @flow */
 
-import type { Realm } from "../realm.js";
-import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, BreakCompletion } from "../completions.js";
+import type { Realm, Effects } from "../realm.js";
+import { construct_empty_effects } from "../realm.js";
+import { LexicalEnvironment } from "../environment.js";
+import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
-import { EmptyValue, Value } from "../values/index.js";
-import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
-import { Environment } from "../singletons.js";
+import { computeBinary } from "./BinaryExpression";
+import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
+import { UpdateEmpty } from "../methods/index.js";
+import { Environment, Join, Path, To } from "../singletons.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -40,120 +42,135 @@ function CaseBlockEvaluation(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  let EvaluateCase = (c: BabelNodeSwitchCase): Value | AbruptCompletion => {
+  let EvaluateCase = (a: Array<BabelNodeSwitchCase>, idx: number): Value | AbruptCompletion => {
     let r = realm.intrinsics.empty;
-    for (let node of c.consequent) {
-      let res = env.evaluateCompletion(node, strictCode);
-      if (res instanceof AbruptCompletion) return (UpdateEmpty(realm, res, r): any);
-      if (!(res instanceof EmptyValue)) r = res;
+    // we start at the case we've been asked to evaluate, but if there is no break statement,
+    // then we fallthrough and process the next one and so on (they are stored in lexical order)
+    while (idx < a.length && !(r instanceof BreakCompletion)) {
+      let c = a[idx];
+      for (let node of c.consequent) {
+        let res = env.evaluateCompletionDeref(node, strictCode);
+        if (res instanceof AbruptCompletion) return (UpdateEmpty(realm, res, r): any);
+        if (!(res instanceof EmptyValue)) r = res;
+      }
+      idx++;
     }
     return r;
   };
 
-  let EvaluateCaseClauses = (A: Array<BabelNodeSwitchCase>, V: Value): [boolean, Value] => {
-    // 2. Let A be the List of CaseClause items in CaseClauses, in source text order.
-    // A is passed in
-
-    // 3. Let found be false.
-    let found = false;
-
-    // 4. Repeat for each CaseClause C in A,
-    for (let C of A) {
-      // a. If found is false, then
-      if (!found) {
-        // i. Let clauseSelector be the result of CaseSelectorEvaluation of C.
-        let test = C.test;
-        invariant(test);
-        let clauseSelector = CaseSelectorEvaluation(test, strictCode, env, realm);
-
-        // ii. ReturnIfAbrupt(clauseSelector).
-        // above will throw a Completion which will return
-
-        // iii. Let found be the result of performing Strict Equality Comparison input === clauseSelector.[[Value]].
-        found = StrictEqualityComparisonPartial(realm, input, clauseSelector);
-      }
-      if (found) {
-        // b. If found is true, then
-        // i. Let R be the result of evaluating C.
-        let R = EvaluateCase(C);
-
-        // ii. If R.[[Value]] is not empty, let V be R.[[Value]].
-        let val = InternalGetResultValue(realm, R);
-        if (!(val instanceof EmptyValue)) V = val;
-
-        // iii. If R is an abrupt completion, return Completion(UpdateEmpty(R, V)).
-        if (R instanceof AbruptCompletion) {
-          throw UpdateEmpty(realm, R, V);
+  let EvaluateCaseForEffects = (a: Array<BabelNodeSwitchCase>, idx: number): Effects => {
+    return realm.evaluateForEffects(() => {
+      let r = realm.intrinsics.empty;
+      // we start at the case we've been asked to evaluate, but if there is no break statement,
+      // then we fallthrough and process the next one and so on (they are stored in lexical order)
+      while (idx < a.length && !(r instanceof BreakCompletion)) {
+        let c = a[idx];
+        for (let node of c.consequent) {
+          let res = env.evaluateCompletionDeref(node, strictCode);
+          if (res instanceof AbruptCompletion) return (UpdateEmpty(realm, res, r): any);
+          if (!(res instanceof EmptyValue)) r = res;
         }
+        idx++;
+      }
+      return r;
+    });
+  };
+
+  let EvaluateCaseAbstract = (a: Array<BabelNodeSwitchCase>, idx: number, condValue: AbstractValue): Effects => {
+    return Path.withCondition(condValue, () => {
+      return EvaluateCaseForEffects(a, idx);
+    });
+  };
+
+  let EvaluateCaseClauses = (A: Array<BabelNodeSwitchCase>, V: Value): Value => {
+    let defaultIndex = A.findIndex(c => c.test === null);
+
+    let possibleCases: Array<[number, AbstractValue]> = [];
+    for (let i = 0; i < A.length; ++i) {
+      // we only consider the default case once all other cases have been examined
+      if (i === defaultIndex) continue;
+
+      let C = A[i];
+
+      let test = C.test;
+      invariant(test);
+      let clauseSelector = CaseSelectorEvaluation(test, strictCode, env, realm);
+      let selectionResult = computeBinary(realm, "===", input, clauseSelector);
+
+      // if we have a ConcreteValue as the result of the comparison, then we have a winning result for the switch case
+      if (selectionResult instanceof ConcreteValue) {
+        if (To.ToBoolean(realm, selectionResult)) {
+          // Let R be the result of evaluating C.
+          let R = EvaluateCase(A, i);
+
+          // If R.[[Value]] is not empty, let V be R.[[Value]].
+          let val = InternalGetResultValue(realm, R);
+          if (!(val instanceof EmptyValue)) V = val;
+
+          // If R is an abrupt completion, return Completion(UpdateEmpty(R, V)).
+          if (R instanceof AbruptCompletion) {
+            throw UpdateEmpty(realm, R, V);
+          }
+
+          return V;
+        }
+      } else {
+        invariant(selectionResult instanceof AbstractValue);
+
+        // remember a case that resulted in an AbstractValue in case
+        // we can find none that result in a ConcreteValue.
+        // In that event, we will have to work in the abstract.
+        possibleCases.push([i, selectionResult]);
       }
     }
-    return [found, V];
+
+    if (realm.useAbstractInterpretation) {
+      // do abstract interpretation
+      let effects = construct_empty_effects(realm);
+      for (let [idx, selectionResult] of possibleCases) {
+        let caseEffects = EvaluateCaseAbstract(A, idx, selectionResult);
+        effects = Join.joinEffects(realm, selectionResult, effects, caseEffects);
+      }
+
+      let completion = effects[0];
+      if (completion instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        completion = realm.composeWithSavedCompletion(completion);
+      }
+      // Note that the effects of (non joining) abrupt branches are not included
+      // in joinedEffects, but are tracked separately inside completion.
+      realm.applyEffects(effects);
+
+      // return or throw completion
+      if (completion instanceof AbruptCompletion) throw completion;
+      invariant(completion instanceof Value);
+      V = completion;
+    } else {
+      invariant(possibleCases.length === 0);
+      if (defaultIndex !== -1) {
+        let defaultRes = EvaluateCase(A, defaultIndex);
+        let val = InternalGetResultValue(realm, defaultRes);
+        if (!(val instanceof EmptyValue)) V = val;
+
+        // If R is an abrupt completion, return Completion(UpdateEmpty(R, V)).
+        if (defaultRes instanceof AbruptCompletion) {
+          throw UpdateEmpty(realm, defaultRes, V);
+        }
+        return V;
+      }
+    }
+    return V;
   };
 
   // CaseBlock:{}
   // 1. Return NormalCompletion(undefined).
   if (cases.length === 0) return realm.intrinsics.undefined;
 
-  // CaseBlock:{CaseClauses DefaultClause CaseClauses}
-  let default_case_num = cases.findIndex(clause => {
-    return clause.test === null;
-  });
-
-  if (default_case_num !== -1) {
-    // 2. Let A be the List of CaseClause items in the first CaseClauses, in source text order. If the first CaseClauses is not present, A is « ».
-    let A = cases.slice(0, default_case_num);
-
-    let V = realm.intrinsics.undefined;
-
-    // 4. Repeat for each CaseClause C in A
-    [, V] = EvaluateCaseClauses(A, V);
-
-    // 5. Let foundInB be false.
-    let foundInB = false;
-
-    // 6. Let B be the List containing the CaseClause items in the second CaseClauses, in source text order. If the second CaseClauses is not present, B is « ».
-    let B = cases.slice(default_case_num + 1);
-
-    [foundInB, V] = EvaluateCaseClauses(B, V);
-
-    // 8. If foundInB is true, return NormalCompletion(V).
-    if (foundInB) return V;
-
-    // 9. Let R be the result of evaluating DefaultClause.
-    let R = EvaluateCase(cases[default_case_num]);
-
-    // 10. If R.[[Value]] is not empty, let V be R.[[Value]].
-    let val = InternalGetResultValue(realm, R);
-    if (!(val instanceof EmptyValue)) V = val;
-
-    // 11. If R is an abrupt completion, return Completion(UpdateEmpty(R, V)).
-    if (R instanceof AbruptCompletion) {
-      throw UpdateEmpty(realm, R, V);
-    }
-
-    // 12: Repeat for each CaseClause C in B (NOTE this is another complete iteration of the second CaseClauses)
-    for (let C of B) {
-      // a. Let R be the result of evaluating CaseClause C.
-      R = EvaluateCase(C);
-
-      // b. If R.[[Value]] is not empty, let V be R.[[Value]].
-      let value = InternalGetResultValue(realm, R);
-      if (!(value instanceof EmptyValue)) V = value;
-
-      // c. If R is an abrupt completion, return Completion(UpdateEmpty(R, V)).
-      if (R instanceof AbruptCompletion) {
-        throw UpdateEmpty(realm, R, V);
-      }
-    }
-
-    // 13. Return NormalCompletion(V).
-    return V;
-  } else {
-    // CaseBlock:{CaseClauses}
-    let V;
-    [, V] = EvaluateCaseClauses(cases, realm.intrinsics.undefined);
-    return V;
-  }
+  let V = EvaluateCaseClauses(cases, realm.intrinsics.undefined);
+  return V;
 }
 
 // 13.12.11
