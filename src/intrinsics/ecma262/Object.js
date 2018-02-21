@@ -14,6 +14,7 @@ import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import {
   AbstractValue,
+  AbstractObjectValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
@@ -106,7 +107,7 @@ export default function(realm: Realm): NativeFunctionValue {
             }
           );
 
-          if (frm instanceof ObjectValue) {
+          if (frm instanceof ObjectValue || frm instanceof AbstractObjectValue) {
             // At this point any further mutations to the source would be unsafe
             // because the Object.assign() call operates on the snapshot of the
             // object at this point in time. We can't mutate that snapshot.
@@ -171,7 +172,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // so set the `_isSimple` flag.
       to.makeSimple();
 
-      if (to instanceof ObjectValue) {
+      if (to instanceof ObjectValue || to instanceof AbstractObjectValue) {
         // At this point any further mutations to the target would be unsafe
         // because the Object.assign() call operates on the snapshot of the
         // object at this point in time. We can't mutate that snapshot.

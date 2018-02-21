@@ -248,7 +248,7 @@ export default class ObjectValue extends ConcreteValue {
 
   // If true, it is not safe to perform any more mutations that would change
   // the object's serialized form.
-  _isFinal: BooleanValue;
+  _isFinal: AbstractValue | BooleanValue;
 
   isTemplate: void | true;
 
@@ -316,7 +316,13 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isFinalObject(): boolean {
-    return this._isFinal.value;
+    if (this._isFinal instanceof BooleanValue) {
+      return this._isFinal.value;
+    }
+    if (this._isFinal === undefined) {
+      return false;
+    }
+    return true;
   }
 
   leak(): void {
