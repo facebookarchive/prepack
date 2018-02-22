@@ -345,6 +345,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         }
       });
 
+      it("Event handlers", async () => {
+        await runTest(directory, "event-handlers.js");
+      });
+
       it("Class component as root", async () => {
         await runTest(directory, "class-root.js");
       });

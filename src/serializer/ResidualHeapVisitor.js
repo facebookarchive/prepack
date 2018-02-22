@@ -887,6 +887,16 @@ export class ResidualHeapVisitor {
           this._withScope(functionValue, () => {
             // Also visit the original value of the binding
             residualBinding = this.visitBinding(functionValue, modifiedBinding.name);
+            // named functions inside an additional function that have a global binding
+            // can be skipped, as we don't want them to bind to the global
+            if (
+              residualBinding &&
+              residualBinding.declarativeEnvironmentRecord === null &&
+              modifiedBinding.value instanceof ECMAScriptSourceFunctionValue
+            ) {
+              residualBinding = null;
+              return;
+            }
             invariant(residualBinding !== undefined);
             // Fixup the binding to have the correct value
             // No previousValue means this is a binding for a nested function
@@ -895,6 +905,9 @@ export class ResidualHeapVisitor {
             invariant(functionInfo !== undefined);
             if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
           });
+          if (residualBinding === null) {
+            continue;
+          }
           invariant(residualBinding !== undefined);
           invariant(funcInstance !== undefined);
           funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
