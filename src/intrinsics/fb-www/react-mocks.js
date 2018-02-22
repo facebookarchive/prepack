@@ -11,10 +11,21 @@
 
 import type { Realm } from "../../realm.js";
 import { parseExpression } from "babylon";
-import { ObjectValue, ECMAScriptFunctionValue, ECMAScriptSourceFunctionValue } from "../../values/index.js";
+import {
+  ObjectValue,
+  ECMAScriptFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  NativeFunctionValue,
+  Value,
+  AbstractObjectValue,
+  AbstractValue,
+  NullValue,
+} from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import { Environment } from "../../singletons.js";
 import { getReactSymbol } from "../../react/utils.js";
+import { createReactElement } from "../../react/elements.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
@@ -92,72 +103,6 @@ let reactCode = `
 
     function toArray() {
       throw new Error("TODO: React.Children.toArray is not yet supported");
-    }
-
-    function createElement(type, config, children) {
-      var propName;
-
-      // Reserved names are extracted
-      var props = {};
-
-      var key = null;
-      var ref = null;
-      var self = null;
-      var source = null;
-
-      if (config != null) {
-        if (hasValidRef(config)) {
-          ref = config.ref;
-        }
-        if (hasValidKey(config)) {
-          key = '' + config.key;
-        }
-    
-        self = config.__self === undefined ? null : config.__self;
-        source = config.__source === undefined ? null : config.__source;
-        // Remaining properties are added to a new props object
-        for (propName in config) {
-          if (
-            hasOwnProperty.call(config, propName) &&
-            !RESERVED_PROPS.hasOwnProperty(propName)
-          ) {
-            props[propName] = config[propName];
-          }
-        }
-      }
-
-      // Children can be more than one argument, and those are transferred onto
-      // the newly allocated props object.
-      var childrenLength = arguments.length - 2;
-      if (childrenLength === 1) {
-        props.children = children;
-      } else if (childrenLength > 1) {
-        var childArray = Array(childrenLength);
-        for (var i = 0; i < childrenLength; i++) {
-          childArray[i] = arguments[i + 2];
-        }
-        props.children = childArray;
-      }
-    
-      // Resolve default props
-      if (type && type.defaultProps) {
-        var defaultProps = type.defaultProps;
-        for (propName in defaultProps) {
-          if (props[propName] === undefined) {
-            props[propName] = defaultProps[propName];
-          }
-        }
-      }
-    
-      return ReactElement(
-        type,
-        key,
-        ref,
-        self,
-        source,
-        ReactCurrentOwner.current,
-        props,
-      );
     }
 
     function cloneElement(element, config, children) {
@@ -277,7 +222,6 @@ let reactCode = `
       Component,
       PureComponent,
       Fragment: REACT_FRAGMENT_TYPE,
-      createElement,
       cloneElement,
       isValidElement,
       version: "16.2.0",
@@ -299,11 +243,13 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   // this is to get around Flow getting confused
   let factory = reactFactory.$Call;
   invariant(factory !== undefined);
+
   let reactValue = factory(realm.intrinsics.undefined, [
     getReactSymbol("react.element", realm),
     getReactSymbol("react.fragment", realm),
     currentOwner,
   ]);
+  invariant(reactValue instanceof ObjectValue);
   reactValue.intrinsicName = `require("${reactRequireName}")`;
   invariant(reactValue instanceof ObjectValue);
 
@@ -325,8 +271,48 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   let reactCloneElementValue = Get(realm, reactValue, "cloneElement");
   reactCloneElementValue.intrinsicName = `require("${reactRequireName}").cloneElement`;
 
-  let reactCreateElementValue = Get(realm, reactValue, "createElement");
-  reactCreateElementValue.intrinsicName = `require("${reactRequireName}").createElement`;
+  reactValue.refuseSerialization = true;
+  let reactElementValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `createElement`,
+    0,
+    (context, [type, config, ...children]) => {
+      invariant(type instanceof Value);
+      invariant(
+        config instanceof ObjectValue ||
+          config instanceof AbstractObjectValue ||
+          config instanceof AbstractValue ||
+          config instanceof NullValue
+      );
+
+      if (Array.isArray(children)) {
+        if (children.length === 0) {
+          children = realm.intrinsics.undefined;
+        } else if (children.length === 1) {
+          children = children[0];
+        } else {
+          let array = Create.ArrayCreate(realm, 0);
+          let length = children.length;
+
+          for (let i = 0; i < length; i++) {
+            Create.CreateDataPropertyOrThrow(realm, array, "" + i, children[i]);
+          }
+          children = array;
+        }
+      }
+      invariant(children instanceof Value);
+      return createReactElement(realm, type, config, children);
+    }
+  );
+  reactValue.$DefineOwnProperty("createElement", {
+    value: reactElementValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  reactValue.refuseSerialization = false;
+  reactElementValue.intrinsicName = `require("${reactRequireName}").createElement`;
 
   let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
   reactIsValidElementValue.intrinsicName = `require("${reactRequireName}").isValidElement`;

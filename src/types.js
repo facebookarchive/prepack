@@ -324,11 +324,7 @@ export type ClassComponentMetadata = {
   instanceSymbols: Set<SymbolValue>,
 };
 
-export type ReactHint = {|
-  object: ObjectValue,
-  propertyName: string,
-  args: Array<Value>,
-|};
+export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |};
 
 export type DebugServerType = {
   checkForActions: BabelNode => void,
