@@ -724,7 +724,12 @@ export class ResidualHeapSerializer {
     return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
   }
 
-  _declare(emittingToResidualFunction: boolean, bindingType: string, id: BabelNodeVariable, init: BabelNodeExpression) {
+  _declare(
+    emittingToResidualFunction: boolean,
+    bindingType: BabelVariableKind,
+    id: BabelNodeLVal,
+    init: BabelNodeExpression
+  ) {
     if (emittingToResidualFunction) {
       let declar = t.variableDeclaration(bindingType, [t.variableDeclarator(id)]);
       this.mainBody.entries.push(declar);
@@ -801,7 +806,7 @@ export class ResidualHeapSerializer {
           this.emitter.emit(commentStatement(comment));
         }
         if (init !== id) {
-          this._declare(target.usedOnlyByResidualFunctions, bindingType || "var", id, init);
+          this._declare(!!target.usedOnlyByResidualFunctions, bindingType || "var", id, init);
         }
         this.statistics.valueIds++;
         if (target.usedOnlyByResidualFunctions) this.statistics.delayedValues++;
