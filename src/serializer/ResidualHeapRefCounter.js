@@ -11,6 +11,7 @@
 
 import type { Logger } from "../utils/logger.js";
 import type { Modules } from "../utils/modules.js";
+import type { Referentializer } from "./Referentializer.js";
 import type { Realm } from "../realm.js";
 import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
 
@@ -27,9 +28,10 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
     realm: Realm,
     logger: Logger,
     modules: Modules,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+    referentializer: Referentializer
   ) {
-    super(realm, logger, modules, additionalFunctionValuesAndEffects);
+    super(realm, logger, modules, additionalFunctionValuesAndEffects, referentializer);
     this._valueToEdgeRecord = new Map();
     this._path = [];
   }
