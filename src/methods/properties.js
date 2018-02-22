@@ -1171,16 +1171,32 @@ export class PropertiesImplementation {
             invariant(realm.generator);
             let pname = realm.generator.getAsPropertyNameExpression(P);
             let absVal;
+            function createAbstractPropertyValue(type: typeof Value) {
+              if (O.isTransitivelySimple()) {
+                invariant(typeof P === "string");
+                return AbstractValue.createFromBuildFunction(
+                  realm,
+                  type,
+                  [O._templateFor || O],
+                  ([node]) => {
+                    return t.memberExpression(node, pname, !t.isIdentifier(pname));
+                  },
+                  { kind: P }
+                );
+              } else {
+                return AbstractValue.createTemporalFromBuildFunction(
+                  realm,
+                  type,
+                  [O._templateFor || O],
+                  ([node]) => {
+                    return t.memberExpression(node, pname, !t.isIdentifier(pname));
+                  },
+                  { skipInvariant: true }
+                );
+              }
+            }
             if (O.isTransitivelySimple()) {
-              absVal = AbstractValue.createTemporalFromBuildFunction(
-                realm,
-                ObjectValue,
-                [O._templateFor || O],
-                ([node]) => {
-                  return t.memberExpression(node, pname, !t.isIdentifier(pname));
-                },
-                { skipInvariant: true }
-              );
+              absVal = createAbstractPropertyValue(ObjectValue);
               invariant(absVal instanceof AbstractObjectValue);
               absVal.makeSimple("transitive");
               absVal = AbstractValue.createAbstractConcreteUnion(
@@ -1190,13 +1206,7 @@ export class PropertiesImplementation {
                 realm.intrinsics.null
               );
             } else {
-              absVal = AbstractValue.createTemporalFromBuildFunction(
-                realm,
-                Value,
-                [O._templateFor || O],
-                ([node]) => t.memberExpression(node, pname, !t.isIdentifier(pname)),
-                { skipInvariant: true }
-              );
+              absVal = createAbstractPropertyValue(Value);
             }
             return { configurable: true, enumerable: true, value: absVal, writable: true };
           } else {
