@@ -513,7 +513,7 @@ export class Realm {
     return this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
   }
 
-  // NB: does not apply generators because there's no way to cleanly revert that
+  // NB: does not apply generators because there's no way to cleanly revert them.
   // func should not return undefined
   withEffectsAppliedInGlobalEnv<T>(func: Effects => T, effects: Effects): T {
     let result: T;

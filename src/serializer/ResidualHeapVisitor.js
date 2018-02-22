@@ -835,20 +835,13 @@ export class ResidualHeapVisitor {
     let code = functionValue.$ECMAScriptCode;
     let functionInfo = this.functionInfos.get(code);
     invariant(functionInfo !== undefined);
-    let [
-      result,
-      ,
-      modifiedBindings,
-      modifiedProperties: Map<PropertyBinding, void | Descriptor>,
-      createdObjects,
-    ] = effects;
+    let [result, , modifiedBindings, modifiedProperties, createdObjects] = effects;
     for (let propertyBinding of modifiedProperties.keys()) {
-      let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
-      let object = binding.object;
+      let object = propertyBinding.object;
       if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
       if (object.refuseSerialization) continue; // modification to internal state
       if (object.intrinsicName === "global") continue; // Avoid double-counting
-      this.visitObjectProperty(binding);
+      this.visitObjectProperty(propertyBinding);
     }
     // Handing of ModifiedBindings
     for (let [additionalBinding, previousValue] of modifiedBindings) {

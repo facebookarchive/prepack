@@ -1675,14 +1675,17 @@ export class ResidualHeapSerializer {
       let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this.currentFunctionBody = newBody;
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
-      generator.serialize(context);
-      if (postGeneratorCallback) postGeneratorCallback();
-      this.currentFunctionBody = oldCurBody;
-      this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
+      try {
+        generator.serialize(context);
+        if (postGeneratorCallback) postGeneratorCallback();
+      } finally {
+        this.currentFunctionBody = oldCurBody;
+        this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
+      }
     });
   }
 
-  // result -- serialize it, a return statement will be generated later
+  // result -- serialize it, a return statement will be generated later, must be a Value
   // Generator -- visit all entries
   // Bindings -- only need to serialize bindings if they're captured by some nested function?
   //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
@@ -1690,17 +1693,16 @@ export class ResidualHeapSerializer {
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
   _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, effects: Effects) {
-    let [result, , , modifiedProperties: Map<PropertyBinding, void | Descriptor>, createdObjects] = effects;
+    let [result, , , modifiedProperties, createdObjects] = effects;
     for (let propertyBinding of modifiedProperties.keys()) {
-      let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
-      let object = binding.object;
+      let object = propertyBinding.object;
       if (object instanceof ObjectValue && createdObjects.has(object)) continue;
       if (object.refuseSerialization) continue;
       if (object.isIntrinsic()) continue;
       invariant(object instanceof ObjectValue);
-      this._emitProperty(object, binding.key, binding.descriptor, true);
+      this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
     }
-    invariant(result instanceof Value);
+    invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
     // Handle ModifiedBindings
     let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
     invariant(additionalFunctionValueInfo);
