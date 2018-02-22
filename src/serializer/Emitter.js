@@ -77,7 +77,7 @@ export class Emitter {
       },
       onAbstractValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
-        if (!this.ignoreDeclarations() && !this.hasBeenDeclared(val)) return val;
+        if (!this.cannotDeclare() && !this.hasBeenDeclared(val)) return val;
         else return undefined;
       },
     };
@@ -396,13 +396,13 @@ export class Emitter {
     invariant(!this._activeValues.has(value));
     invariant(value.hasIdentifier());
     invariant(this._isEmittingActiveGenerator());
-    invariant(!this.ignoreDeclarations());
+    invariant(!this.cannotDeclare());
     invariant(!this._body.done);
     if (this._body.declaredAbstractValues === undefined) this._body.declaredAbstractValues = new Map();
     this._body.declaredAbstractValues.set(value, this._body);
     this._processValue(value);
   }
-  ignoreDeclarations(): boolean {
+  cannotDeclare(): boolean {
     // Bodies of the following types will never contain any (temporal) abstract value declarations.
     return this._body.type === "DelayInitializations" || this._body.type === "LazyObjectInitializer";
   }
