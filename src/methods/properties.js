@@ -13,22 +13,22 @@ import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { construct_empty_effects, type Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
+  AbstractObjectValue,
+  AbstractValue,
   ArrayValue,
-  UndefinedValue,
-  NumberValue,
-  SymbolValue,
-  NullValue,
   BooleanValue,
+  ConcreteValue,
+  NullValue,
+  NumberValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
+  UndefinedValue,
   Value,
-  ConcreteValue,
-  AbstractValue,
-  AbstractObjectValue,
 } from "../values/index.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression";
 import { EnvironmentRecord, Reference } from "../environment.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import {
   Call,
@@ -108,6 +108,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
   invariant(!O.isLeakedObject()); // leaked objects are never updated
+  invariant(!O.isFinalObject()); // final objects are never updated
   invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
   invariant(propertyBinding !== undefined); // The callers ensure this
@@ -206,9 +207,35 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   return false;
 }
 
+function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyValue) {
+  if (!O.isFinalObject()) {
+    return;
+  }
+  if (realm.isInPureScope()) {
+    // It's not safe to write to this object anymore because it's already
+    // been used in a way that serializes its final state. We can, however,
+    // leak it if we're in pure scope, and continue to emit assignments.
+    Leak.leakValue(realm, O);
+    if (O.isLeakedObject()) {
+      return;
+    }
+  }
+  // We can't continue because this object is already in its final state.
+  let error = new CompilerDiagnostic(
+    "Mutating an object with unknown properties, after some of those " +
+      "properties have already been used, is not yet supported.",
+    realm.currentLocation,
+    "PP0026",
+    "FatalError"
+  );
+  realm.handleError(error);
+  throw new FatalError();
+}
+
 export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
+    ensureIsNotFinal(realm, O, P);
     if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       Leak.leakValue(realm, V);
       if (realm.generator) {
@@ -480,6 +507,7 @@ export class PropertiesImplementation {
 
     // 3. If desc is undefined, return true.
     if (!desc) {
+      ensureIsNotFinal(realm, O, P);
       if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
         if (realm.generator) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
@@ -490,6 +518,7 @@ export class PropertiesImplementation {
 
     // 4. If desc.[[Configurable]] is true, then
     if (desc.configurable) {
+      ensureIsNotFinal(realm, O, P);
       if (O.isLeakedObject()) {
         if (realm.generator) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
@@ -501,6 +530,14 @@ export class PropertiesImplementation {
       let key = InternalGetPropertiesKey(P);
       let map = InternalGetPropertiesMap(O, P);
       let propertyBinding = map.get(key);
+      if (propertyBinding === undefined && O.isPartialObject() && O.isSimpleObject()) {
+        let generator = realm.generator;
+        if (generator) {
+          invariant(typeof key === "string" || key instanceof SymbolValue);
+          generator.emitPropertyDelete(O, StringKey(key));
+          return true;
+        }
+      }
       invariant(propertyBinding !== undefined);
       realm.recordModifiedProperty(propertyBinding);
       propertyBinding.descriptor = undefined;
@@ -607,12 +644,15 @@ export class PropertiesImplementation {
       // b. Assert: extensible is true.
       invariant(extensible === true, "expected extensible to be true");
 
-      if (O !== undefined && !realm.ignoreLeakLogic && O.isLeakedObject() && P !== undefined) {
-        leakDescriptor(realm, Desc);
-        if (realm.generator) {
-          realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+      if (O !== undefined && P !== undefined) {
+        ensureIsNotFinal(realm, O, P);
+        if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
+          leakDescriptor(realm, Desc);
+          if (realm.generator) {
+            realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+          }
+          return true;
         }
-        return true;
       }
 
       // c. If IsGenericDescriptor(Desc) is true or IsDataDescriptor(Desc) is true, then
@@ -692,12 +732,15 @@ export class PropertiesImplementation {
       }
     }
 
-    if (O !== undefined && !realm.ignoreLeakLogic && O.isLeakedObject() && P !== undefined) {
-      leakDescriptor(realm, Desc);
-      if (realm.generator) {
-        realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+    if (O !== undefined && P !== undefined) {
+      ensureIsNotFinal(realm, O, P);
+      if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
+        leakDescriptor(realm, Desc);
+        if (realm.generator) {
+          realm.generator.emitDefineProperty(O, StringKey(P), Desc);
+        }
+        return true;
       }
-      return true;
     }
 
     let oldDesc = current;
@@ -1106,7 +1149,7 @@ export class PropertiesImplementation {
     if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       invariant(realm.generator);
       let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
-      let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
+      let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O._templateFor || O], ([node]) =>
         t.memberExpression(node, pname, !t.isIdentifier(pname))
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
@@ -1127,9 +1170,34 @@ export class PropertiesImplementation {
             // In this case it is safe to defer the property access to runtime (at this point in time)
             invariant(realm.generator);
             let pname = realm.generator.getAsPropertyNameExpression(P);
-            let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
-              t.memberExpression(node, pname, !t.isIdentifier(pname))
-            );
+            let absVal;
+            if (O.isTransitivelySimple()) {
+              absVal = AbstractValue.createTemporalFromBuildFunction(
+                realm,
+                ObjectValue,
+                [O._templateFor || O],
+                ([node]) => {
+                  return t.memberExpression(node, pname, !t.isIdentifier(pname));
+                },
+                { skipInvariant: true }
+              );
+              invariant(absVal instanceof AbstractObjectValue);
+              absVal.makeSimple("transitive");
+              absVal = AbstractValue.createAbstractConcreteUnion(
+                realm,
+                absVal,
+                realm.intrinsics.undefined,
+                realm.intrinsics.null
+              );
+            } else {
+              absVal = AbstractValue.createTemporalFromBuildFunction(
+                realm,
+                Value,
+                [O._templateFor || O],
+                ([node]) => t.memberExpression(node, pname, !t.isIdentifier(pname)),
+                { skipInvariant: true }
+              );
+            }
             return { configurable: true, enumerable: true, value: absVal, writable: true };
           } else {
             invariant(P instanceof SymbolValue);
@@ -1175,12 +1243,16 @@ export class PropertiesImplementation {
         invariant(realmGenerator);
         value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
           kind: "resolved",
+          // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
+          skipInvariant: true,
         });
         if (savedUnion !== undefined) {
           invariant(savedIndex !== undefined);
-          savedUnion.args[savedIndex] = value;
-          value = savedUnion;
+          let args = savedUnion.args.slice(0);
+          args[savedIndex] = value;
+          value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
         }
+        if (typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
         InternalSetProperty(realm, O, P, {
           value: value,
           writable: "writable" in X ? X.writable : false,
@@ -1217,6 +1289,7 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.2.1
   OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectValue | NullValue): boolean {
+    ensureIsNotFinal(realm, O);
     if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       throw new FatalError();
     }

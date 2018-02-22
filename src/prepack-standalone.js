@@ -191,13 +191,13 @@ function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnal
     for (let i = 0; i < n; i++) {
       let name = "dummy parameter";
       let ob: AbstractObjectValue = (AbstractValue.createFromType(realm, ObjectValue, name): any);
-      ob.makeSimple();
+      ob.makeSimple("transitive");
       ob.intrinsicName = name;
       args[i] = ob;
     }
     // todo: eventually join these effects, apply them to the global state and iterate to a fixed point
     try {
-      realm.evaluateAndRevertInGlobalEnv(() =>
+      realm.evaluateForEffectsInGlobalEnv(() =>
         EvaluateDirectCallWithArgList(modules.realm, true, env, fv, fv, thisValue, args)
       );
       nonFatalFunctions++;

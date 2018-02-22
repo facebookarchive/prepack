@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { FatalError } from "../errors.js";
 import type {
   BabelNode,
   BabelNodeStringLiteral,
@@ -23,21 +22,23 @@ import type {
   BabelNodeJSXSpreadAttribute,
   BabelNodeJSXExpressionContainer,
 } from "babel-types";
-import { ArrayValue, StringValue, Value, NumberValue, ObjectValue } from "../values/index.js";
-import { getReactSymbol } from "../react/utils.js";
+import {
+  AbstractObjectValue,
+  ArrayValue,
+  StringValue,
+  Value,
+  NumberValue,
+  ObjectValue,
+  FunctionValue,
+  AbstractValue,
+} from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../react/jsx.js";
 import * as t from "babel-types";
 import { Get } from "../methods/index.js";
 import { Create, Environment, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import { computeBinary } from "./BinaryExpression.js";
-
-let RESERVED_PROPS = {
-  key: true,
-  ref: true,
-  __self: true,
-  __source: true,
-};
+import { createReactElement } from "../react/elements.js";
+import { objectHasNoPartialKeyAndRef, deleteRefAndKeyFromProps } from "../react/utils.js";
 
 // taken from Babel
 function cleanJSXElementLiteralChild(child: string): null | string {
@@ -143,37 +144,14 @@ function isTagName(ast: BabelNode): boolean {
   return ast.type === "JSXIdentifier" && /^[a-z]|\-/.test(((ast: any): BabelNodeJSXIdentifier).name);
 }
 
-function getDefaultProps(
-  elementType: BabelNodeJSXIdentifier | BabelNodeJSXMemberExpression,
-  env,
-  realm: Realm
-): null | ObjectValue {
-  let name;
-  if (elementType.type === "JSXIdentifier") {
-    name = elementType.name;
-  }
-  if (!isTagName(elementType) && typeof name === "string") {
-    // find the value of "ComponentXXX.defaultProps"
-    let defaultProps = Environment.GetValue(
-      realm,
-      env.evaluate(t.memberExpression(t.identifier(name), t.identifier("defaultProps")), false)
-    );
-
-    if (defaultProps instanceof ObjectValue) {
-      return defaultProps;
-    }
-  }
-  return null;
-}
-
 function evaluateJSXChildren(
   children: Array<BabelNode>,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): ArrayValue | Value | null {
+): ArrayValue | Value {
   if (children.length === 0) {
-    return null;
+    return realm.intrinsics.undefined;
   }
   if (children.length === 1) {
     let singleChild = evaluateJSXValue(children[0], strictCode, env, realm);
@@ -189,7 +167,7 @@ function evaluateJSXChildren(
   let array = Create.ArrayCreate(realm, 0);
   let dynamicChildrenLength = children.length;
   let dynamicIterator = 0;
-  let lastChildValue = null;
+  let lastChildValue = realm.intrinsics.undefined;
   for (let i = 0; i < children.length; i++) {
     let value = evaluateJSXValue(children[i], strictCode, env, realm);
     if (value instanceof StringValue) {
@@ -214,105 +192,126 @@ function evaluateJSXChildren(
   return array;
 }
 
+function isObjectEmpty(object: ObjectValue) {
+  let propertyCount = 0;
+  for (let [, binding] of object.properties) {
+    if (binding && binding.descriptor && binding.descriptor.enumerable) {
+      propertyCount++;
+    }
+  }
+  return propertyCount === 0;
+}
+
 function evaluateJSXAttributes(
-  elementType: BabelNodeJSXIdentifier | BabelNodeJSXMemberExpression,
   astAttributes: Array<BabelNodeJSXAttribute | BabelNodeJSXSpreadAttribute>,
-  astChildren: Array<BabelNode>,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): { attributes: Map<string, Value>, children: ArrayValue | Value | null } {
-  let attributes = new Map();
-  let children = evaluateJSXChildren(astChildren, strictCode, env, realm);
-  let defaultProps = getDefaultProps(elementType, env, realm);
+): ObjectValue | AbstractValue {
+  let config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  // start by having key and ref deleted, if they actually exist, they will be added later
+  deleteRefAndKeyFromProps(realm, config);
+  let abstractPropsArgs = [];
+  let containsAbstractSpreadAttribute = false;
+  let mayContainRefOrKey = false;
+  let attributesAssigned = 0;
+  let spreadValue;
 
-  // defaultProps are a bit like default function arguments
-  // if an actual value exists, it should overwrite the default value
-  if (defaultProps !== null) {
-    for (let [key] of defaultProps.properties) {
-      let defaultPropValue = Get(realm, defaultProps, key);
-
-      if (defaultPropValue instanceof Value) {
-        if (key === "children") {
-          if (children === null) {
-            children = defaultPropValue;
-          }
-        } else {
-          attributes.set(key, defaultPropValue);
-        }
-      }
+  const setConfigProperty = (name: string, value: Value): void => {
+    invariant(config instanceof ObjectValue);
+    if (name === "key" || name === "ref") {
+      mayContainRefOrKey = true;
     }
-  }
+    Properties.Set(realm, config, name, value, true);
+    attributesAssigned++;
+  };
+
   for (let astAttribute of astAttributes) {
     switch (astAttribute.type) {
       case "JSXAttribute":
         let { name, value } = astAttribute;
 
         invariant(name.type === "JSXIdentifier", `JSX attribute name type not supported: ${astAttribute.type}`);
-        attributes.set(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm));
+        setConfigProperty(name.name, evaluateJSXValue(((value: any): BabelNodeJSXIdentifier), strictCode, env, realm));
         break;
       case "JSXSpreadAttribute":
-        let spreadValue = Environment.GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
+        spreadValue = Environment.GetValue(realm, env.evaluate(astAttribute.argument, strictCode));
 
-        if (spreadValue instanceof ObjectValue) {
-          for (let [key, spreadProp] of spreadValue.properties) {
-            if (spreadProp !== undefined && spreadProp.descriptor !== undefined) {
-              let spreadPropValue = spreadProp.descriptor.value;
-
-              if (spreadPropValue instanceof Value) {
-                if (key === "children") {
-                  children = spreadPropValue;
-                } else {
-                  attributes.set(key, spreadPropValue);
-                }
-              }
+        if (spreadValue instanceof ObjectValue && !spreadValue.isPartialObject()) {
+          for (let [spreadPropKey, binding] of spreadValue.properties) {
+            if (binding && binding.descriptor && binding.descriptor.enumerable) {
+              setConfigProperty(spreadPropKey, Get(realm, spreadValue, spreadPropKey));
             }
           }
         } else {
-          throw new FatalError("ObjectValues are the only supported value for JSX Spread Attributes");
+          containsAbstractSpreadAttribute = true;
+          invariant(spreadValue instanceof AbstractValue || spreadValue instanceof ObjectValue);
+
+          if (!objectHasNoPartialKeyAndRef(realm, spreadValue)) {
+            mayContainRefOrKey = true;
+          }
+          if (!isObjectEmpty(config)) {
+            abstractPropsArgs.push(config);
+          }
+          abstractPropsArgs.push(spreadValue);
+          config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+          deleteRefAndKeyFromProps(realm, config);
         }
         break;
       default:
-        invariant(false, `Unknown JSX attribute type:: ${astAttribute.type}`);
+        invariant(false, `Unknown JSX attribute type: ${astAttribute.type}`);
     }
   }
-  return {
-    attributes,
-    children,
-  };
-}
 
-function createReactProps(
-  realm: Realm,
-  type: Value,
-  attributes: Map<string, Value>,
-  children,
-  env: LexicalEnvironment
-): ObjectValue {
-  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  for (let [key, value] of attributes) {
-    if (typeof key === "string") {
-      if (RESERVED_PROPS.hasOwnProperty(key)) {
-        continue;
+  if (containsAbstractSpreadAttribute) {
+    // if we haven't assigned any attributes and we are dealing with a single
+    // spread attribute, we can just make the spread object the props
+    if (
+      attributesAssigned === 0 &&
+      ((spreadValue instanceof ObjectValue && spreadValue.isPartialObject()) || spreadValue instanceof AbstractValue)
+    ) {
+      // the spread is partial, so we can re-use that value
+      config = spreadValue;
+      if (config instanceof ObjectValue || config instanceof AbstractObjectValue) {
+        // as we're applying a spread, the config needs to be simple/partial
+        config.makePartial();
+        config.makeSimple();
       }
-      Create.CreateDataPropertyOrThrow(realm, obj, key, value);
+    } else {
+      // we create an abstract Object.assign() to deal with the fact that we don't what
+      // the props are because they contain abstract spread attributes that we can't
+      // evaluate ahead of time
+      // push the current config
+      if (config.properties.size > 0) {
+        abstractPropsArgs.push(config);
+      }
+      // create a new config object that will be the target of the Object.assign
+      config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      // as this is "config that is abstract, we need to make it partial and simple
+      config.makePartial();
+      config.makeSimple();
+      // get the global Object.assign
+      let globalObj = Get(realm, realm.$GlobalObject, "Object");
+      invariant(globalObj instanceof ObjectValue);
+      let objAssign = Get(realm, globalObj, "assign");
+      invariant(realm.generator);
+
+      invariant(realm.generator);
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        FunctionValue,
+        [objAssign, config, ...abstractPropsArgs],
+        ([methodNode, ..._args]) => {
+          return t.callExpression(methodNode, ((_args: any): Array<any>));
+        }
+      );
+      if (!mayContainRefOrKey) {
+        deleteRefAndKeyFromProps(realm, config);
+      }
     }
   }
-  if (children !== null) {
-    Create.CreateDataPropertyOrThrow(realm, obj, "children", children);
-  }
-  return obj;
-}
-
-function createReactElement(realm: Realm, type: Value, key: Value, ref: Value, props: ObjectValue): ObjectValue {
-  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
-  Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
-  Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
-  Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
-  Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
-  Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
-  return obj;
+  invariant(config instanceof ObjectValue || config instanceof AbstractValue);
+  return config;
 }
 
 export default function(
@@ -324,30 +323,8 @@ export default function(
   invariant(realm.react.enabled, "JSXElements can only be evaluated with the reactEnabled option");
   let openingElement = ast.openingElement;
   let type = evaluateJSXIdentifier(openingElement.name, strictCode, env, realm);
-  let { attributes, children } = evaluateJSXAttributes(
-    openingElement.name,
-    openingElement.attributes,
-    ast.children,
-    strictCode,
-    env,
-    realm
-  );
-  let key = attributes.get("key") || realm.intrinsics.null;
-  let ref = attributes.get("ref") || realm.intrinsics.null;
-
-  if (key === realm.intrinsics.undefined) {
-    key = realm.intrinsics.null;
-  }
-  if (ref === realm.intrinsics.undefined) {
-    ref = realm.intrinsics.null;
-  }
-
-  // React uses keys to identify nodes as they get updated through the reconcilation
-  // phase. Keys are used in a map and thus need to be converted to strings
-  if (key !== realm.intrinsics.null) {
-    key = computeBinary(realm, "+", realm.intrinsics.emptyString, key);
-  }
-  let props = createReactProps(realm, type, attributes, children, env);
-
-  return createReactElement(realm, type, key, ref, props);
+  let children = evaluateJSXChildren(ast.children, strictCode, env, realm);
+  let config = evaluateJSXAttributes(openingElement.attributes, strictCode, env, realm);
+  invariant(type instanceof Value);
+  return createReactElement(realm, type, config, children);
 }

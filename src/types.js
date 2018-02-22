@@ -324,11 +324,7 @@ export type ClassComponentMetadata = {
   instanceSymbols: Set<SymbolValue>,
 };
 
-export type ReactHint = {|
-  object: ObjectValue,
-  propertyName: string,
-  args: Array<Value>,
-|};
+export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |};
 
 export type DebugServerType = {
   checkForActions: BabelNode => void,
@@ -1007,3 +1003,8 @@ export type ToType = {
 };
 
 export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
+
+export type UtilsType = {|
+  typeToString: (typeof Value) => void | string,
+  getTypeFromName: string => void | typeof Value,
+|};

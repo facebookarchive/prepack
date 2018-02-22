@@ -193,14 +193,14 @@ export default class AbstractValue extends Value {
         if (this.implies(x)) return y instanceof NullValue || y instanceof UndefinedValue;
         if (this.implies(y)) return x instanceof NullValue || x instanceof UndefinedValue;
       }
-      // !!x => x
+      // !!x => y if x => y
       if (this.kind === "!") {
         let [nx] = this.args;
         invariant(nx instanceof AbstractValue);
         if (nx.kind === "!") {
           let [x] = nx.args;
           invariant(x instanceof AbstractValue);
-          return x.equals(val);
+          return x.implies(val);
         }
       }
     }
@@ -216,7 +216,21 @@ export default class AbstractValue extends Value {
       // !x => !y if y => x
       if (this.kind === "!") {
         let [x] = this.args;
+        if (x.kind === "!") {
+          // !!x => !y if y => !x
+          invariant(x instanceof AbstractValue);
+          let [xx] = x.args;
+          invariant(xx instanceof AbstractValue);
+          return xx.impliesNot(val);
+        }
         return val.implies(x);
+      }
+      if (this.kind === "conditional") {
+        let [c, x, y] = this.args;
+        // (c ? x : y) => !val if x is false and y is true and c = val
+        if (!x.mightNotBeFalse() && !y.mightNotBeTrue()) {
+          return c.equals(val);
+        }
       }
     }
     return false;
@@ -612,6 +626,24 @@ export default class AbstractValue extends Value {
     return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
   }
 
+  static createFromBuildFunction(
+    realm: Realm,
+    resultType: typeof Value,
+    args: Array<Value>,
+    buildFunction: AbstractValueBuildNodeFunction,
+    optionalArgs?: {| kind?: string |}
+  ): AbstractValue | UndefinedValue {
+    let types = new TypesDomain(resultType);
+    let values = ValuesDomain.topVal;
+    let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let kind = (optionalArgs && optionalArgs.kind) || "build function";
+    let hash;
+    [hash, args] = hashCall(kind, ...args);
+    let result = new Constructor(realm, types, values, hash, args, buildFunction);
+    result.kind = kind;
+    return result;
+  }
+
   static createTemporalFromBuildFunction(
     realm: Realm,
     resultType: typeof Value,
@@ -646,8 +678,8 @@ export default class AbstractValue extends Value {
       values = ValuesDomain.topVal;
     }
     let types = TypesDomain.topVal;
-    let [hash, operands] = hashCall("abstractConcreteUnion", ...elements);
-    let result = new AbstractValue(realm, types, values, hash, operands, abstractValue._buildNode, {
+    let [hash, operands] = hashCall("abstractConcreteUnion", abstractValue, ...concreteValues);
+    let result = new AbstractValue(realm, types, values, hash, operands, nodes => nodes[0], {
       kind: "abstractConcreteUnion",
     });
     result.expressionLocation = realm.currentLocation;
@@ -693,7 +725,7 @@ export default class AbstractValue extends Value {
     return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
   }
 
-  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
+  static describe(val: Value, propertyName: void | PropertyKeyValue): string {
     let realm = val.$Realm;
 
     let identity;
@@ -717,8 +749,13 @@ export default class AbstractValue extends Value {
     else if (typeof propertyName === "string") location = `at ${propertyName}`;
     else location = source_locations.length === 0 ? "" : `at ${source_locations.join("\n")}`;
 
-    let message = `This operation is not yet supported on ${identity} ${location}`;
+    return `${identity} ${location}`;
+  }
 
+  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
+    let message = `This operation is not yet supported on ${AbstractValue.describe(val, propertyName)}`;
+
+    let realm = val.$Realm;
     return realm.reportIntrospectionError(message);
   }
 

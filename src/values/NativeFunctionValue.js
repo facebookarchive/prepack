@@ -22,6 +22,7 @@ import {
   UndefinedValue,
   AbstractObjectValue,
 } from "./index.js";
+import type { PromiseCapability } from "../types.js";
 import { ReturnCompletion } from "../completions.js";
 import { Functions } from "../singletons.js";
 export type NativeFunctionCallback = (
@@ -123,4 +124,16 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
 
   // for Proxy
   $RevocableProxy: void | NullValue | ProxyValue;
+
+  // for Promise resolve/reject functions
+  $Promise: ?ObjectValue;
+  $AlreadyResolved: void | { value: boolean };
+
+  // for Promise resolve functions
+  $Capability: void | PromiseCapability;
+  $AlreadyCalled: void | { value: boolean };
+  $Index: void | number;
+  $Values: void | Array<Value>;
+  $Capabilities: void | PromiseCapability;
+  $RemainingElements: void | { value: number };
 }

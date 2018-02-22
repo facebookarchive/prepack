@@ -16,13 +16,13 @@ import type {
   Descriptor,
   IterationKind,
   ObjectKind,
-  PromiseCapability,
   PromiseReaction,
   PropertyBinding,
   PropertyKeyValue,
   TypedArrayKind,
 } from "../types.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
   BooleanValue,
   ConcreteValue,
@@ -77,6 +77,8 @@ export default class ObjectValue extends ConcreteValue {
     this._isPartial = realm.intrinsics.false;
     this._hasLeaked = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
+    this._simplicityIsTransitive = realm.intrinsics.false;
+    this._isFinal = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
     this.refuseSerialization = refuseSerialization;
@@ -87,6 +89,8 @@ export default class ObjectValue extends ConcreteValue {
     "_isPartial",
     "_hasLeaked",
     "_isSimple",
+    "_isFinal",
+    "_simplicityIsTransitive",
     "$ArrayIteratorNextIndex",
     "$DateValue",
     "$Extensible",
@@ -139,7 +143,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   $Prototype: ObjectValue | NullValue;
-  $Extensible: BooleanValue;
+  $Extensible: BooleanValue | AbstractValue;
 
   $ParameterMap: void | ObjectValue; // undefined when the property is "missing"
   $SymbolData: void | SymbolValue | AbstractValue;
@@ -164,19 +168,11 @@ export default class ObjectValue extends ConcreteValue {
   $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue);
 
   // promise
-  $Promise: ?ObjectValue;
-  $AlreadyResolved: void | { value: boolean };
   $PromiseState: void | "pending" | "fulfilled" | "rejected";
   $PromiseResult: void | Value;
   $PromiseFulfillReactions: void | Array<PromiseReaction>;
   $PromiseRejectReactions: void | Array<PromiseReaction>;
   $PromiseIsHandled: void | boolean;
-  $Capability: void | PromiseCapability;
-  $AlreadyCalled: void | { value: boolean };
-  $Index: void | number;
-  $Values: void | Array<Value>;
-  $Capabilities: void | PromiseCapability;
-  $RemainingElements: void | { value: number };
 
   // iterator
   $IteratedList: void | Array<Value>;
@@ -253,7 +249,19 @@ export default class ObjectValue extends ConcreteValue {
   // to return AbstractValue for unknown properties.
   _isSimple: BooleanValue;
 
-  isTemplate: void | true;
+  // If true, it is not safe to perform any more mutations that would change
+  // the object's serialized form.
+  _isFinal: AbstractValue | BooleanValue;
+
+  // Specifies whether the object is a template that needs to be created in a scope
+  _isScopedTemplate: void | true;
+
+  // If true, then unknown properties should return transitively simple abstract object values
+  _simplicityIsTransitive: BooleanValue;
+
+  // The abstract object for which this object is the template.
+  // Use this instead of the object itself when deriving temporal values for object properties.
+  _templateFor: void | AbstractObjectValue;
 
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
@@ -306,12 +314,30 @@ export default class ObjectValue extends ConcreteValue {
     this._isPartial = this.$Realm.intrinsics.true;
   }
 
-  makeSimple(): void {
+  makeSimple(option?: string | Value): void {
     this._isSimple = this.$Realm.intrinsics.true;
+    this._simplicityIsTransitive = new BooleanValue(
+      this.$Realm,
+      option === "transitive" || (option instanceof StringValue && option.value === "transitive")
+    );
+  }
+
+  makeFinal(): void {
+    this._isFinal = this.$Realm.intrinsics.true;
   }
 
   isPartialObject(): boolean {
     return this._isPartial.value;
+  }
+
+  isFinalObject(): boolean {
+    if (this._isFinal instanceof BooleanValue) {
+      return this._isFinal.value;
+    }
+    if (this._isFinal === undefined) {
+      return false;
+    }
+    return true;
   }
 
   leak(): void {
@@ -343,8 +369,12 @@ export default class ObjectValue extends ConcreteValue {
     return this.$Prototype.isSimpleObject();
   }
 
+  isTransitivelySimple(): boolean {
+    return this._simplicityIsTransitive.value;
+  }
+
   getExtensible(): boolean {
-    return this.$Extensible.value;
+    return this.$Extensible.throwIfNotConcreteBoolean().value;
   }
 
   setExtensible(v: boolean) {
@@ -376,7 +406,7 @@ export default class ObjectValue extends ConcreteValue {
     length: number,
     callback: NativeFunctionCallback,
     desc?: Descriptor = {}
-  ) {
+  ): Value {
     let intrinsicName;
     if (typeof name === "string") {
       if (this.intrinsicName) intrinsicName = `${this.intrinsicName}.${name}`;
@@ -385,11 +415,9 @@ export default class ObjectValue extends ConcreteValue {
     } else {
       invariant(false);
     }
-    this.defineNativeProperty(
-      name,
-      new NativeFunctionValue(this.$Realm, intrinsicName, name, length, callback, false),
-      desc
-    );
+    let fnValue = new NativeFunctionValue(this.$Realm, intrinsicName, name, length, callback, false);
+    this.defineNativeProperty(name, fnValue, desc);
+    return fnValue;
   }
 
   defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}) {

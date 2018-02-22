@@ -14,6 +14,7 @@ import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import {
   AbstractValue,
+  AbstractObjectValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
@@ -33,6 +34,8 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties as Props, To } from "../../singletons.js";
+import type { BabelNodeExpression } from "babel-types";
+import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -54,7 +57,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
+  let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
@@ -76,16 +79,47 @@ export default function(realm: Realm): NativeFunctionValue {
         // b. Else,
         // i. Let from be ToObject(nextSource).
         frm = To.ToObjectPartial(realm, nextSource);
+
         let frm_was_partial = frm.isPartialObject();
         if (frm_was_partial) {
+          if (!frm.isSimpleObject()) {
+            // If this is not a simple object, it may have getters on it that can
+            // mutate any state as a result. We don't yet support this.
+            AbstractValue.reportIntrospectionError(nextSource);
+            throw new FatalError();
+          }
+
           to_must_be_partial = true;
+          // Make this temporally not partial
+          // so that we can call frm.$OwnPropertyKeys below.
           frm.makeNotPartial();
+        }
+
+        if (to_must_be_partial) {
+          // Generate a residual Object.assign call that copies the
+          // partial properties that we don't know about.
+          AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            ObjectValue,
+            [ObjectAssign, target, nextSource],
+            ([methodNode, targetNode, sourceNode]: Array<BabelNodeExpression>) => {
+              return t.callExpression(methodNode, [targetNode, sourceNode]);
+            }
+          );
+
+          if (frm instanceof ObjectValue || frm instanceof AbstractObjectValue) {
+            // At this point any further mutations to the source would be unsafe
+            // because the Object.assign() call operates on the snapshot of the
+            // object at this point in time. We can't mutate that snapshot.
+            frm.makeFinal();
+          }
         }
 
         // ii. Let keys be ? from.[[OwnPropertyKeys]]().
         keys = frm.$OwnPropertyKeys();
         if (frm_was_partial) frm.makePartial();
       }
+
       if (to_must_be_partial) {
         // Only OK if to is an empty object because nextSource might have
         // properties at runtime that will overwrite current properties in to.
@@ -95,6 +129,12 @@ export default function(realm: Realm): NativeFunctionValue {
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
+        // If `to` is going to be a partial, we are emitting Object.assign()
+        // calls for each argument. At this point we should not be trying to
+        // assign keys below because that will change the order of the keys on
+        // the resulting object (i.e. the keys assigned later would already be
+        // on the serialized version from the heap).
+        continue;
       }
 
       invariant(frm, "from required");
@@ -119,7 +159,26 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 5. Return to.
-    if (to_must_be_partial) to.makePartial();
+    if (to_must_be_partial) {
+      // We allow partial simple sources (and make `to` partial)
+      // only if `to` has no keys. Therefore, it must also be simple.
+      invariant(to.isSimpleObject());
+
+      to.makePartial();
+
+      // Partial objects (and `to` is now partial) can't be calculated to be
+      // simple because we can't iterate over all of their properties.
+      // We already established above that `to` is simple,
+      // so set the `_isSimple` flag.
+      to.makeSimple();
+
+      if (to instanceof ObjectValue || to instanceof AbstractObjectValue) {
+        // At this point any further mutations to the target would be unsafe
+        // because the Object.assign() call operates on the snapshot of the
+        // object at this point in time. We can't mutate that snapshot.
+        to.makeFinal();
+      }
+    }
     return to;
   });
 
