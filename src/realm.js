@@ -1184,8 +1184,7 @@ export class Realm {
   }
 
   // Pass the error to the realm's error-handler
-  // Return value indicates whether the caller should try to recover from the
-  // error or not ('true' means recover if possible).
+  // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
       let error = Construct(this, this.intrinsics.Error);
