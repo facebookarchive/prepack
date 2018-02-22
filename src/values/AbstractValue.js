@@ -626,6 +626,24 @@ export default class AbstractValue extends Value {
     return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
   }
 
+  static createFromBuildFunction(
+    realm: Realm,
+    resultType: typeof Value,
+    args: Array<Value>,
+    buildFunction: AbstractValueBuildNodeFunction,
+    optionalArgs?: {| kind?: string |}
+  ): AbstractValue | UndefinedValue {
+    let types = new TypesDomain(resultType);
+    let values = ValuesDomain.topVal;
+    let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let kind = (optionalArgs && optionalArgs.kind) || "build function";
+    let hash;
+    [hash, args] = hashCall(kind, ...args);
+    let result = new Constructor(realm, types, values, hash, args, buildFunction);
+    result.kind = kind;
+    return result;
+  }
+
   static createTemporalFromBuildFunction(
     realm: Realm,
     resultType: typeof Value,

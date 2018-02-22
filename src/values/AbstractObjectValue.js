@@ -130,18 +130,19 @@ export default class AbstractObjectValue extends AbstractValue {
     }
   }
 
-  makeSimple(): void {
+  makeSimple(option?: string | Value): void {
     if (this.values.isTop() && this.getType() === ObjectValue) {
       let obj = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
       obj.intrinsicName = this.intrinsicName;
       obj.intrinsicNameGenerated = true;
       obj.makePartial();
+      obj._templateFor = this;
       this.values = new ValuesDomain(obj);
     }
     if (!this.values.isTop()) {
       for (let element of this.values.getElements()) {
         invariant(element instanceof ObjectValue);
-        element.makeSimple();
+        element.makeSimple(option);
       }
     }
     this.cachedIsSimpleObject = true;

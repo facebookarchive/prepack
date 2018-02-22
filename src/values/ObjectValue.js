@@ -22,6 +22,7 @@ import type {
   TypedArrayKind,
 } from "../types.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
   BooleanValue,
   ConcreteValue,
@@ -76,6 +77,7 @@ export default class ObjectValue extends ConcreteValue {
     this._isPartial = realm.intrinsics.false;
     this._hasLeaked = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
+    this._simplicityIsTransitive = realm.intrinsics.false;
     this._isFinal = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
@@ -88,6 +90,7 @@ export default class ObjectValue extends ConcreteValue {
     "_hasLeaked",
     "_isSimple",
     "_isFinal",
+    "_simplicityIsTransitive",
     "$ArrayIteratorNextIndex",
     "$DateValue",
     "$Extensible",
@@ -250,7 +253,15 @@ export default class ObjectValue extends ConcreteValue {
   // the object's serialized form.
   _isFinal: AbstractValue | BooleanValue;
 
-  isTemplate: void | true;
+  // Specifies whether the object is a template that needs to be created in a scope
+  _isScopedTemplate: void | true;
+
+  // If true, then unknown properties should return transitively simple abstract object values
+  _simplicityIsTransitive: BooleanValue;
+
+  // The abstract object for which this object is the template.
+  // Use this instead of the object itself when deriving temporal values for object properties.
+  _templateFor: void | AbstractObjectValue;
 
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
@@ -303,8 +314,12 @@ export default class ObjectValue extends ConcreteValue {
     this._isPartial = this.$Realm.intrinsics.true;
   }
 
-  makeSimple(): void {
+  makeSimple(option?: string | Value): void {
     this._isSimple = this.$Realm.intrinsics.true;
+    this._simplicityIsTransitive = new BooleanValue(
+      this.$Realm,
+      option === "transitive" || (option instanceof StringValue && option.value === "transitive")
+    );
   }
 
   makeFinal(): void {
@@ -352,6 +367,10 @@ export default class ObjectValue extends ConcreteValue {
     if (this.$Prototype instanceof NullValue) return true;
     if (this.$Prototype === this.$Realm.intrinsics.ObjectPrototype) return true;
     return this.$Prototype.isSimpleObject();
+  }
+
+  isTransitivelySimple(): boolean {
+    return this._simplicityIsTransitive.value;
   }
 
   getExtensible(): boolean {
