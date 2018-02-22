@@ -48,7 +48,7 @@ var optionsConfig = [
     type: "string",
     name: "lazyObjectsRuntime",
     defaultVal: "",
-    description: "Enable lazy objects feature and specify the JS runtime that support this feature."
+    description: "Enable lazy objects feature and specify the JS runtime that supports this feature."
   },
   {
     type: "boolean",
