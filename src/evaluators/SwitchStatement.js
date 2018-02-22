@@ -33,6 +33,19 @@ function CaseSelectorEvaluation(
   return Environment.GetValue(realm, exprRef);
 }
 
+function AbstractCaseBlockEvaluation(
+  cases: Array<BabelNodeSwitchCase>,
+  defaultCaseNum: number,
+  input: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  invariant(realm.useAbstractInterpretation);
+
+  invariant(false, "Can't do abstract interpretation of switch blocks yet.");
+}
+
 function CaseBlockEvaluation(
   cases: Array<BabelNodeSwitchCase>,
   input: Value,
@@ -98,6 +111,12 @@ function CaseBlockEvaluation(
   let default_case_num = cases.findIndex(clause => {
     return clause.test === null;
   });
+
+  // Abstract interpretation of case blocks is a significantly different process
+  // from regular interpretation, so we fork off early to keep things tidily separated.
+  if (realm.useAbstractInterpretation) {
+    return AbstractCaseBlockEvaluation(cases, default_case_num, input, strictCode, env, realm);
+  }
 
   if (default_case_num !== -1) {
     // 2. Let A be the List of CaseClause items in the first CaseClauses, in source text order. If the first CaseClauses is not present, A is « ».
