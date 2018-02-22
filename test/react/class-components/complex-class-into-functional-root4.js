@@ -15,7 +15,11 @@ class Child extends React.Component {
 }
 
 function App(props) {
-  return <div><Child x={10} y={props.y} /></div>;
+  let x = [];
+  for (let i = 0; i < 10; i++) {
+    x.push(<Child x={10} y={props.y} />);
+  }
+  return <div>{x}</div>;
 }
 
 App.getTrials = function(renderer, Root) {

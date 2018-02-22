@@ -566,7 +566,7 @@ export class Reconciler {
     branchState: BranchState | null
   ) {
     forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
-      elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, branchStatus, branchState);
+      elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, "NEW_BRANCH", branchState);
     });
   }
 }

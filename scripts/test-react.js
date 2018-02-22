@@ -404,6 +404,22 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Complex class components folding into functional root component", async () => {
         await runTest(directory, "complex-class-into-functional-root.js");
       });
+
+      it("Complex class components folding into functional root component #2", async () => {
+        await runTest(directory, "complex-class-into-functional-root2.js");
+      });
+
+      it("Complex class components folding into functional root component #3", async () => {
+        await runTest(directory, "complex-class-into-functional-root3.js");
+      });
+
+      it("Complex class components folding into functional root component #4", async () => {
+        await runTest(directory, "complex-class-into-functional-root4.js");
+      });
+
+      it("Complex class components folding into functional root component #5", async () => {
+        await runTest(directory, "complex-class-into-functional-root5.js");
+      });
     });
 
     describe("Factory class component folding", () => {

@@ -1,29 +1,43 @@
 const React = require("react");
 this['React'] = React;
 
+function Child2(props) {
+  return <span {...props}></span>;
+}
+
 class Child extends React.Component {
   constructor() {
     super();
-    this.handleClick = this.handleClick.bind(this);
   }
-  handleClick() {
-    // works
+  componentDidMount() {
+    // NO-OP
+  }
+  componentDidUpdate() {
+    // NO-OP
   }
   render() {
-    return <div onClick={this.handleClick}>Numbers: {this.props.x} {this.props.y}</div>;
+    return (
+      <div><Child2 {...this.props} /></div>
+    );
   }
 }
 
+Child.defaultProps = {
+  className: "class-name",
+};
+
 function App(props) {
-  return <div><Child x={10} y={props.y} /></div>;
+  return <div><Child {...props} /></div>;
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
 
-  renderer.update(<Root y={20} />);
+  renderer.update(<Root children={"Hello world"} />);
   results.push(['render complex class component into functional component', renderer.toJSON()]);
-  renderer.update(<Root y={40} />);
+  renderer.update(<Root children={"Hello world"} />);
+  results.push(['update complex class component into functional component', renderer.toJSON()]);
+  renderer.update(<Root children={"Hello world"} />);
   results.push(['update complex class component into functional component', renderer.toJSON()]);
 
   return results;

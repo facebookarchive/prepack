@@ -7,6 +7,34 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component #3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component #4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component #5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
@@ -465,6 +493,34 @@ ReactStatistics {
 exports[`Test React with JSX input, create-element output Class component folding Classes with state 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component #3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component #4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component #5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
   "optimizedTrees": 1,
 }
 `;
@@ -931,6 +987,34 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component #3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component #4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component #5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component 1`] = `
 ReactStatistics {
   "inlinedComponents": 1,
@@ -1389,6 +1473,34 @@ ReactStatistics {
 exports[`Test React with create-element input, create-element output Class component folding Classes with state 1`] = `
 ReactStatistics {
   "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component #2 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component #3 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component #4 1`] = `
+ReactStatistics {
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component #5 1`] = `
+ReactStatistics {
+  "inlinedComponents": 2,
   "optimizedTrees": 1,
 }
 `;

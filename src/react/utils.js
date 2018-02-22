@@ -22,7 +22,7 @@ import {
   ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
-import type { Descriptor, ReactHint } from "../types";
+import type { Descriptor, ReactHint, PropertyBinding } from "../types";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
@@ -268,16 +268,28 @@ export function convertSimpleClassComponentToFunctionalComponent(
   });
 }
 
+function createBinding(descriptor: void | Descriptor, key: string | SymbolValue, object: ObjectValue) {
+  return {
+    descriptor,
+    key,
+    object,
+  };
+}
+
 function cloneProperties(realm: Realm, properties: Map<string, any>, object: ObjectValue): Map<string, any> {
   let newProperties = new Map();
   for (let [propertyName, { descriptor }] of properties) {
-    newProperties.set(propertyName, {
-      descriptor: cloneDescriptor(descriptor),
-      key: propertyName,
-      object,
-    });
+    newProperties.set(propertyName, createBinding(cloneDescriptor(descriptor), propertyName, object));
   }
   return newProperties;
+}
+
+function cloneSymbols(realm: Realm, symbols: Map<SymbolValue, any>, object: ObjectValue): Map<SymbolValue, any> {
+  let newSymbols = new Map();
+  for (let [symbol, { descriptor }] of symbols) {
+    newSymbols.set(symbol, createBinding(cloneDescriptor(descriptor), symbol, object));
+  }
+  return newSymbols;
 }
 
 function cloneValue(
@@ -306,6 +318,8 @@ function cloneFunction(
     Object.assign(newValue, originalValue);
     let properties = cloneProperties(realm, originalValue.properties, newValue);
     newValue.properties = properties;
+    let symbols = cloneSymbols(realm, originalValue.symbols, newValue);
+    newValue.symbols = symbols;
 
     // handle home object + prototype
     let originalPrototype = originalValue.$HomeObject;
@@ -335,8 +349,15 @@ function clonePrototype(realm: Realm, prototype: Value): ObjectValue {
       Properties.Set(realm, newPrototype, propertyName, newValue, false);
     }
   }
+  for (let [symbol] of prototype.symbols) {
+    let originalValue = Get(realm, prototype, symbol);
+    let newValue = cloneValue(realm, originalValue, prototype);
+    Properties.Set(realm, newPrototype, symbol, newValue, false);
+  }
   return newPrototype;
 }
+
+const skipFunctionProperties = new Set(["length", "prototype", "arguments", "name", "caller"]);
 
 export function convertFunctionalComponentToComplexClassComponent(
   realm: Realm,
@@ -345,7 +366,34 @@ export function convertFunctionalComponentToComplexClassComponent(
   additionalFunctionEffects: AdditionalFunctionEffects
 ): void {
   invariant(complexComponentType instanceof ECMAScriptSourceFunctionValue);
+  // get all properties on the functional component that were added in user-code
+  // we add defaultProps as undefined, as merging a class component's defaultProps on to
+  // a differnet component isn't right, we can discard defaultProps instead via folding
+  // we also don't want propTypes from the class component, so we remove that too
+  let userCodePropertiesToAdd: Map<string, PropertyBinding> = new Map([
+    ["defaultProps", createBinding(undefined, "defaultProps", functionalComponentType)],
+    ["propTypes", createBinding(undefined, "propTypes", functionalComponentType)],
+  ]);
+  let userCodeSymbolsToAdd: Map<SymbolValue, PropertyBinding> = new Map();
+
+  for (let [propertyName, binding] of functionalComponentType.properties) {
+    if (!skipFunctionProperties.has(propertyName)) {
+      userCodePropertiesToAdd.set(propertyName, binding);
+    }
+  }
+  for (let [symbol, binding] of functionalComponentType.symbols) {
+    userCodeSymbolsToAdd.set(symbol, binding);
+  }
+
   cloneValue(realm, complexComponentType, null, functionalComponentType);
+  // then copy back and properties that were on the original functional component
+  // ensuring we overwrite any existing ones
+  for (let [propertyName, binding] of userCodePropertiesToAdd) {
+    functionalComponentType.properties.set(propertyName, binding);
+  }
+  for (let [symbol, binding] of userCodeSymbolsToAdd) {
+    functionalComponentType.symbols.set(symbol, binding);
+  }
   // add a transform to occur after the additional function has serialized the body of the class
   additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
     // as we've converted a functional component to a complex one, we are going to have issues with
