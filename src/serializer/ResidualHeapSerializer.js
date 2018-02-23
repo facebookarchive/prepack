@@ -10,6 +10,7 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
+import type { Effects } from "../realm";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsArray, Get } from "../methods/index.js";
 import {
@@ -172,6 +173,7 @@ export class ResidualHeapSerializer {
     this.activeGeneratorBodies = new Map();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
+    this.rewrittenAdditionalFunctions = new Map();
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
   }
 
@@ -214,6 +216,7 @@ export class ResidualHeapSerializer {
   activeGeneratorBodies: Map<Generator, SerializedBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
+  rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
   react: ReactSerializerState;
   residualReactElementSerializer: ResidualReactElementSerializer;
@@ -1656,20 +1659,6 @@ export class ResidualHeapSerializer {
     return context;
   }
 
-  _serializeAdditionalFunction(generator: Generator, postGeneratorCallback: () => void) {
-    let context = this._getContext();
-    return this._withGeneratorScope(generator, newBody => {
-      let oldCurBody = this.currentFunctionBody;
-      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
-      this.currentFunctionBody = newBody;
-      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
-      generator.serialize(context);
-      if (postGeneratorCallback) postGeneratorCallback();
-      this.currentFunctionBody = oldCurBody;
-      this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
-    });
-  }
-
   _shouldBeWrapped(body: Array<any>) {
     for (let i = 0; i < body.length; i++) {
       let item = body[i];
@@ -1697,91 +1686,98 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
-    let rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
-    let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
-    let processAdditionalFunctionValuesFn = () => {
-      let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-      if (additionalFVEffects) {
-        for (let [additionalFunctionValue, { effects, transforms }] of additionalFVEffects.entries()) {
-          let [
-            result,
-            generator,
-            modifiedBindings,
-            modifiedProperties: Map<PropertyBinding, void | Descriptor>,
-            createdObjects,
-          ] = effects;
-          let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
-          // result -- ignore TODO: return the result from the function somehow
-          // Generator -- visit all entries
-          // Bindings -- only need to serialize bindings if they're captured by some nested function?
-          //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
-          //          -- we don't overwrite anything they capture
-          //          -- TODO: deal with these properly
-          // PropertyBindings -- visit any property bindings that aren't to createdobjects
-          // CreatedObjects -- should take care of itself
-          this.realm.applyEffects([
-            result,
-            new Generator(this.realm),
-            modifiedBindings,
-            modifiedProperties,
-            createdObjects,
-          ]);
-          // Allows us to emit function declarations etc. inside of this additional
-          // function instead of adding them at global scope
-          // TODO: make sure this generator isn't getting mutated oddly
-          ((nestedFunctions: any): Set<FunctionValue>).forEach(val =>
-            this.additionalFunctionValueNestedFunctions.add(val)
-          );
-          let serializePropertiesAndBindings = () => {
-            for (let propertyBinding of modifiedProperties.keys()) {
-              let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
-              let object = binding.object;
-              if (object instanceof ObjectValue && createdObjects.has(object)) continue;
-              if (object.refuseSerialization) continue;
-              if (object.isIntrinsic()) continue;
-              invariant(object instanceof ObjectValue);
-              this._emitProperty(object, binding.key, binding.descriptor, true);
-            }
-            invariant(result instanceof Value);
-            // Handle ModifiedBindings
-            let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
-            invariant(additionalFunctionValueInfo);
-            for (let [modifiedBinding, residualBinding] of additionalFunctionValueInfo.modifiedBindings) {
-              let newVal = modifiedBinding.value;
-              invariant(newVal);
-              residualBinding.additionalValueSerialized = this.serializeValue(newVal);
-            }
-            if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
-
-            const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
-            Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
-          };
-          this.currentAdditionalFunction = additionalFunctionValue;
-          let body = this._serializeAdditionalFunction(generator, serializePropertiesAndBindings);
-          invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
-          for (let transform of transforms) {
-            transform(body);
-          }
-          rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
-          // re-resolve initialized modules to include things from additional functions
-          this.modules.resolveInitializedModules();
-          if (shouldEmitLog && this.modules.moduleIds.size > 0)
-            console.log(
-              `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
-                .size} modules initialized after additional function ${additionalFunctionValue.intrinsicName
-                ? additionalFunctionValue.intrinsicName
-                : ""}`
-            );
-          // These don't restore themselves properly otherwise.
-          this.realm.restoreBindings(modifiedBindings);
-          this.realm.restoreProperties(modifiedProperties);
-        }
+  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, postGeneratorCallback: () => void) {
+    let context = this._getContext();
+    return this._withGeneratorScope(generator, newBody => {
+      let oldCurBody = this.currentFunctionBody;
+      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
+      this.currentFunctionBody = newBody;
+      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
+      try {
+        generator.serialize(context);
+        if (postGeneratorCallback) postGeneratorCallback();
+      } finally {
+        this.currentFunctionBody = oldCurBody;
+        this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
-      return this.realm.intrinsics.undefined;
-    };
-    this.realm.evaluateForEffectsInGlobalEnv(processAdditionalFunctionValuesFn);
-    return rewrittenAdditionalFunctions;
+    });
+  }
+
+  // result -- serialize it, a return statement will be generated later, must be a Value
+  // Generator -- visit all entries
+  // Bindings -- only need to serialize bindings if they're captured by some nested function?
+  //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
+  //          -- we don't overwrite anything they capture
+  // PropertyBindings -- visit any property bindings that aren't to createdobjects
+  // CreatedObjects -- should take care of itself
+  _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, effects: Effects) {
+    let [result, , , modifiedProperties, createdObjects] = effects;
+    for (let propertyBinding of modifiedProperties.keys()) {
+      let object = propertyBinding.object;
+      if (object instanceof ObjectValue && createdObjects.has(object)) continue;
+      if (object.refuseSerialization) continue;
+      if (object.isIntrinsic()) continue;
+      invariant(object instanceof ObjectValue);
+      this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
+    }
+    invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
+    // Handle ModifiedBindings
+    let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
+    invariant(additionalFunctionValueInfo);
+    for (let [modifiedBinding, residualBinding] of additionalFunctionValueInfo.modifiedBindings) {
+      let newVal = modifiedBinding.value;
+      invariant(newVal);
+      residualBinding.additionalValueSerialized = this.serializeValue(newVal);
+    }
+    if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+
+    const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
+    Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
+  }
+
+  _serializeAdditionalFunction(
+    additionalFunctionValue: FunctionValue,
+    { effects, transforms }: AdditionalFunctionEffects
+  ) {
+    let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
+    let [, generator, , , createdObjects] = effects;
+    this.currentAdditionalFunction = additionalFunctionValue;
+    let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
+    // Allows us to emit function declarations etc. inside of this additional
+    // function instead of adding them at global scope
+    // TODO: make sure this generator isn't getting mutated oddly
+    ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
+    let body = this.realm.withEffectsAppliedInGlobalEnv(
+      this._serializeAdditionalFunctionGeneratorAndEffects.bind(
+        this,
+        generator,
+        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
+      ),
+      effects
+    );
+    invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
+    for (let transform of transforms) {
+      transform(body);
+    }
+    this.rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
+    // re-resolve initialized modules to include things from additional functions
+    this.modules.resolveInitializedModules();
+    if (shouldEmitLog && this.modules.moduleIds.size > 0)
+      console.log(
+        `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
+          .size} modules initialized after additional function ${additionalFunctionValue.intrinsicName
+          ? additionalFunctionValue.intrinsicName
+          : ""}`
+      );
+  }
+
+  processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
+    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    if (!additionalFVEffects) return this.rewrittenAdditionalFunctions;
+    for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
+      this._serializeAdditionalFunction(additionalFunctionValue, effects);
+    }
+    return this.rewrittenAdditionalFunctions;
   }
 
   // Hook point for any serialization needs to be done after generator serialization is complete.

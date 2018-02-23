@@ -12,6 +12,7 @@
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
+import type { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import { HashSet, IsArray, Get } from "../methods/index.js";
 import {
@@ -835,6 +836,73 @@ export class ResidualHeapVisitor {
     });
   }
 
+  // result -- serialized as a return statement
+  // Generator -- visit all entries
+  // Bindings -- (modifications to named variables) only need to serialize bindings if they're
+  //             captured by a residual function
+  //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
+  //             we don't overwrite anything they capture
+  // PropertyBindings -- (property modifications) visit any property bindings to pre-existing objects
+  // CreatedObjects -- should take care of itself
+  _visitEffects(additionalFunctionInfo: AdditionalFunctionInfo, effects: Effects) {
+    let functionValue = additionalFunctionInfo.functionValue;
+    invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+    let code = functionValue.$ECMAScriptCode;
+    let functionInfo = this.functionInfos.get(code);
+    invariant(functionInfo !== undefined);
+    let [result, , modifiedBindings, modifiedProperties, createdObjects] = effects;
+    for (let propertyBinding of modifiedProperties.keys()) {
+      let object = propertyBinding.object;
+      if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
+      if (object.refuseSerialization) continue; // modification to internal state
+      if (object.intrinsicName === "global") continue; // Avoid double-counting
+      this.visitObjectProperty(propertyBinding);
+    }
+    // Handing of ModifiedBindings
+    for (let [additionalBinding, previousValue] of modifiedBindings) {
+      let modifiedBinding = additionalBinding;
+      let residualBinding;
+      this._withScope(functionValue, () => {
+        // Also visit the original value of the binding
+        residualBinding = this.visitBinding(functionValue, modifiedBinding.name);
+        invariant(residualBinding !== undefined);
+        // named functions inside an additional function that have a global binding
+        // can be skipped, as we don't want them to bind to the global
+        if (
+          residualBinding.declarativeEnvironmentRecord === null &&
+          modifiedBinding.value instanceof ECMAScriptSourceFunctionValue
+        ) {
+          residualBinding = null;
+          return;
+        }
+        // Fixup the binding to have the correct value
+        // No previousValue means this is a binding for a nested function
+        if (previousValue && previousValue.value)
+          residualBinding.value = this.visitEquivalentValue(previousValue.value);
+        invariant(functionInfo !== undefined);
+        if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
+      });
+      if (residualBinding === null) continue;
+      invariant(residualBinding);
+      let funcInstance = additionalFunctionInfo.instance;
+      invariant(funcInstance !== undefined);
+      funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
+      let newValue = modifiedBinding.value;
+      invariant(newValue);
+      this.visitValue(newValue);
+      residualBinding.modified = true;
+      // This should be enforced by checkThatFunctionsAreIndependent
+      invariant(
+        !residualBinding.additionalFunctionOverridesValue,
+        "We should only have one additional function value modifying any given residual binding"
+      );
+      if (previousValue && previousValue.value) residualBinding.additionalFunctionOverridesValue = functionValue;
+      additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
+    }
+    invariant(result instanceof Value);
+    if (!(result instanceof UndefinedValue)) this.visitValue(result);
+  }
+
   _visitAdditionalFunction(
     functionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects,
@@ -860,111 +928,27 @@ export class ResidualHeapVisitor {
     let prevReVisit = this.additionalRoots;
     this.additionalRoots = new Set();
 
-    let _visitAdditionalFunctionEffects = () => {
-      let { effects } = additionalEffects;
-      let [
-        result,
-        generator,
-        modifiedBindings,
-        modifiedProperties: Map<PropertyBinding, void | Descriptor>,
-        createdObjects,
-      ] = effects;
-      let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
-      this.additionalFunctionToNestedFunctions.set(functionValue, ((nestedFunctions: any): Set<FunctionValue>));
-      // result -- ignore TODO: return the result from the function somehow
-      // Generator -- visit all entries
-      // Bindings -- (modifications to named variables) only need to serialize bindings if they're
-      //             captured by a residual function
-      //          -- need to apply them and maybe need to revisit functions in ancestors to make sure
-      //             we don't overwrite anything they capture
-      //          -- TODO: deal with these properly
-      // PropertyBindings -- (property modifications) visit any property bindings to pre-existing objects
-      // CreatedObjects -- should take care of itself
-      this.realm.applyEffects([
-        result,
-        new Generator(this.realm),
-        modifiedBindings,
-        modifiedProperties,
-        createdObjects,
-      ]);
-      let modifiedBindingInfo = new Map();
-      let visitPropertiesAndBindings = () => {
-        for (let propertyBinding of modifiedProperties.keys()) {
-          let binding: PropertyBinding = ((propertyBinding: any): PropertyBinding);
-          let object = binding.object;
-          if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
-          if (object.refuseSerialization) continue; // modification to internal state
-          if (object.intrinsicName === "global") continue; // Avoid double-counting
-          this.visitObjectProperty(binding);
-        }
-        // Handing of ModifiedBindings
-        for (let [additionalBinding, previousValue] of modifiedBindings) {
-          let modifiedBinding = additionalBinding;
-          let residualBinding;
-          this._withScope(functionValue, () => {
-            // Also visit the original value of the binding
-            residualBinding = this.visitBinding(functionValue, modifiedBinding.name);
-            invariant(residualBinding !== undefined);
-            // named functions inside an additional function that have a global binding
-            // can be skipped, as we don't want them to bind to the global
-            if (
-              residualBinding.declarativeEnvironmentRecord === null &&
-              modifiedBinding.value instanceof ECMAScriptSourceFunctionValue
-            ) {
-              residualBinding = null;
-              return;
-            }
-            // Fixup the binding to have the correct value
-            // No previousValue means this is a binding for a nested function
-            if (previousValue && previousValue.value)
-              residualBinding.value = this.visitEquivalentValue(previousValue.value);
-            invariant(functionInfo !== undefined);
-            if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
-          });
-          if (residualBinding === null) {
-            continue;
-          }
-          invariant(residualBinding !== undefined);
-          invariant(funcInstance !== undefined);
-          funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
-          let newValue = modifiedBinding.value;
-          invariant(newValue);
-          this.visitValue(newValue);
-          residualBinding.modified = true;
-          // This should be enforced by checkThatFunctionsAreIndependent
-          invariant(
-            !residualBinding.additionalFunctionOverridesValue,
-            "We should only have one additional function value modifying any given residual binding"
-          );
-          if (previousValue && previousValue.value) residualBinding.additionalFunctionOverridesValue = functionValue;
-          modifiedBindingInfo.set(modifiedBinding, residualBinding);
-        }
-        invariant(result instanceof Value);
-        if (!(result instanceof UndefinedValue)) this.visitValue(result);
-      };
-      invariant(funcInstance !== undefined);
-      invariant(functionInfo !== undefined);
-      this.additionalFunctionValueInfos.set(functionValue, {
-        functionValue,
-        captures: functionInfo.unbound,
-        modifiedBindings: modifiedBindingInfo,
-        instance: funcInstance,
-      });
+    let modifiedBindingInfo = new Map();
+    let [, generator, , , createdObjects] = additionalEffects.effects;
 
-      try {
-        this.visitGenerator(generator);
-        // All modified properties and bindings should be accessible
-        // from its containing additional function scope.
-        this._withScope(functionValue, visitPropertiesAndBindings);
-      } finally {
-        // Remove any modifications to CreatedObjects -- these are fine being serialized inside the additional function
-        this.additionalRoots = new Set([...this.additionalRoots].filter(x => !createdObjects.has(x)));
-        this.realm.restoreBindings(modifiedBindings);
-        this.realm.restoreProperties(modifiedProperties);
-      }
-      return this.realm.intrinsics.undefined;
+    invariant(funcInstance !== undefined);
+    invariant(functionInfo !== undefined);
+    let additionalFunctionInfo = {
+      functionValue,
+      captures: functionInfo.unbound,
+      modifiedBindings: modifiedBindingInfo,
+      instance: funcInstance,
     };
-    this.realm.evaluateForEffectsInGlobalEnv(_visitAdditionalFunctionEffects);
+    this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
+
+    this.realm.withEffectsAppliedInGlobalEnv((effects: Effects) => {
+      this.visitGenerator(generator);
+      // All modified properties and bindings should be accessible
+      // from its containing additional function scope.
+      this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, effects));
+      return this.realm.intrinsics.undefined;
+    }, additionalEffects.effects);
+    this.additionalRoots = new Set([...this.additionalRoots].filter(x => !createdObjects.has(x)));
 
     // Cleanup
     this.commonScope = prevCommonScope;
