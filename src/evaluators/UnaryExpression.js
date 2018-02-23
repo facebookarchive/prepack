@@ -113,10 +113,7 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
   } catch (error) {
     if (error instanceof FatalError) {
       return realm.evaluateWithPossibleThrowCompletion(
-        () => {
-          invariant(expr instanceof Reference);
-          return generateRuntimeCall(expr, ast, realm);
-        },
+        () => generateRuntimeCall(expr, ast, realm),
         TypesDomain.topVal,
         ValuesDomain.topVal
       );
