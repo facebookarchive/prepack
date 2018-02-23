@@ -31,15 +31,14 @@ import {
 import { Reference, EnvironmentRecord } from "../environment.js";
 import invariant from "../invariant.js";
 import { IsCallable } from "../methods/index.js";
-import { Environment, To, Leak } from "../singletons.js";
-import * as t from "babel-types";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeUnaryExpression } from "babel-types";
 
 function isInstance(proto, Constructor): boolean {
   return proto instanceof Constructor || proto === Constructor.prototype;
 }
 
-function evaluateDeleteOperation(expr: Value | Reference, ast: BabelNodeUnaryExpression, realm: Realm) {
+function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
   // ECMA262 12.5.3.2
 
   // 1. Let ref be the result of evaluating UnaryExpression.
@@ -68,15 +67,6 @@ function evaluateDeleteOperation(expr: Value | Reference, ast: BabelNodeUnaryExp
 
     // b. Let baseObj be ! ToObject(GetBase(ref)).
     let base = Environment.GetBase(realm, ref);
-    if (base instanceof AbstractValue && !(base instanceof AbstractObjectValue)) {
-      let error = new CompilerDiagnostic(
-        "might not be an object, hence this unary operation might throw a runtime TypeError",
-        ast.argument.loc,
-        "PP0027",
-        "RecoverableError"
-      );
-      if (realm.handleError(error) === "Fail") throw new FatalError();
-    }
     // Constructing the reference checks that base is coercible to an object hence
     invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
     let baseObj = base instanceof ConcreteValue ? To.ToObject(realm, base) : base;
@@ -104,39 +94,10 @@ function evaluateDeleteOperation(expr: Value | Reference, ast: BabelNodeUnaryExp
   return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
 }
 
-function generateRuntimeCall(ref: Reference, ast: BabelNodeUnaryExpression, strictCode: boolean, realm: Realm) {
-  let value;
-  let propertyName;
-
-  // the base reference might be an EnvironmentRecord or a ObjectValue
-  // if it is a EnvironmentRecord, we don't serialize a member expression below
-  if (Environment.IsPropertyReference(realm, ref)) {
-    value = Environment.GetBase(realm, ref);
-    invariant(value instanceof Value);
-    if (value.mightBeObject() && !value.isSimpleObject()) {
-      Leak.leakValue(realm, value, ast.loc);
-    }
-    propertyName = Environment.GetReferencedName(realm, ref);
-  } else {
-    value = Environment.GetValue(realm, ref);
-    Leak.leakValue(realm, value, ast.loc);
-  }
-
-  return AbstractValue.createTemporalFromBuildFunction(realm, Value, [value], nodes => {
-    let arg;
-    if (propertyName) {
-      if (typeof propertyName === "string") {
-        arg = t.isValidIdentifier(propertyName)
-          ? t.memberExpression(nodes[0], t.identifier(propertyName), false)
-          : t.memberExpression(nodes[0], t.stringLiteral(propertyName), true);
-      } else {
-        arg = t.memberExpression(nodes[0], nodes[1], true);
-      }
-    } else {
-      arg = nodes[0];
-    }
-    return t.unaryExpression(ast.operator, arg, ast.prefix);
-  });
+function generateRuntimeCall(expr: Value | Reference, ast: BabelNodeUnaryExpression, realm: Realm) {
+  let value = Environment.GetValue(realm, expr);
+  invariant(value instanceof AbstractValue);
+  return AbstractValue.createFromUnaryOp(realm, ast.operator, value);
 }
 
 function tryToEvaluateOperationOrLeaveAsAbstract(
@@ -154,7 +115,7 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
       return realm.evaluateWithPossibleThrowCompletion(
         () => {
           invariant(expr instanceof Reference);
-          return generateRuntimeCall(expr, ast, strictCode, realm);
+          return generateRuntimeCall(expr, ast, realm);
         },
         TypesDomain.topVal,
         ValuesDomain.topVal
@@ -277,7 +238,8 @@ function evaluateOperation(
 
     // 3. Return undefined.
     return realm.intrinsics.undefined;
-  } else if (ast.operator === "typeof") {
+  } else {
+    invariant(ast.operator === "typeof");
     // ECMA262 12.6.5
 
     // 1. Let val be the result of evaluating UnaryExpression.
@@ -317,9 +279,6 @@ function evaluateOperation(
       invariant(val instanceof AbstractValue);
       return AbstractValue.createFromUnaryOp(realm, "typeof", val);
     }
-  } else {
-    invariant(ast.operator === "delete");
-    return evaluateDeleteOperation(expr, realm);
   }
 }
 
@@ -331,6 +290,9 @@ export default function(
 ): Value {
   let expr = env.evaluate(ast.argument, strictCode);
 
+  if (ast.operator === "delete") {
+    return evaluateDeleteOperation(expr, realm);
+  }
   if (realm.isInPureScope()) {
     return tryToEvaluateOperationOrLeaveAsAbstract(ast, expr, evaluateOperation, strictCode, realm);
   } else {
