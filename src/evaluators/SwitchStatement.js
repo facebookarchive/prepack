@@ -13,9 +13,10 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbruptCompletion, BreakCompletion } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
-import { EmptyValue, Value } from "../values/index.js";
+import { EmptyValue, AbstractValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
 import { Environment } from "../singletons.js";
+import { FatalError } from "../errors.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -31,6 +32,20 @@ function CaseSelectorEvaluation(
 
   // 2. Return ? GetValue(exprRef).
   return Environment.GetValue(realm, exprRef);
+}
+
+function AbstractCaseBlockEvaluation(
+  cases: Array<BabelNodeSwitchCase>,
+  defaultCaseNum: number,
+  input: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  invariant(realm.useAbstractInterpretation);
+
+  AbstractValue.reportIntrospectionError(input);
+  throw new FatalError();
 }
 
 function CaseBlockEvaluation(
@@ -98,6 +113,12 @@ function CaseBlockEvaluation(
   let default_case_num = cases.findIndex(clause => {
     return clause.test === null;
   });
+
+  // Abstract interpretation of case blocks is a significantly different process
+  // from regular interpretation, so we fork off early to keep things tidily separated.
+  if (input instanceof AbstractValue) {
+    return AbstractCaseBlockEvaluation(cases, default_case_num, input, strictCode, env, realm);
+  }
 
   if (default_case_num !== -1) {
     // 2. Let A be the List of CaseClause items in the first CaseClauses, in source text order. If the first CaseClauses is not present, A is « ».
