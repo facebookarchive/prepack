@@ -69,7 +69,8 @@
     "seedrandom": "^2.4.2",
     "source-map": "^0.5.6",
     "vscode-debugadapter": "^1.24.0",
-    "vscode-debugprotocol": "^1.24.0"
+    "vscode-debugprotocol": "^1.24.0",
+    "node-zip": "^1.1.1"
   },
   "devDependencies": {
     "babel-cli": "^6.18.0",

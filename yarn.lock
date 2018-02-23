@@ -4219,6 +4219,12 @@ jsprim@^1.2.2:
     json-schema "0.2.3"
     verror "1.3.6"
 
+jszip@2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/jszip/-/jszip-2.5.0.tgz#7444fd8551ddf3e5da7198fea0c91bc8308cc274"
+  dependencies:
+    pako "~0.2.5"
+
 jszip@^3.1.3:
   version "3.1.5"
   resolved "https://registry.yarnpkg.com/jszip/-/jszip-3.1.5.tgz#e3c2a6c6d706ac6e603314036d43cd40beefdf37"
@@ -4857,6 +4863,12 @@ node-status-codes@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/node-status-codes/-/node-status-codes-1.0.0.tgz#5ae5541d024645d32a58fcddc9ceecea7ae3ac2f"
 
+node-zip@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/node-zip/-/node-zip-1.1.1.tgz#94d1ad674a3cd46a1588dd736f4a9a78c757eb62"
+  dependencies:
+    jszip "2.5.0"
+
 nopt@3.x:
   version "3.0.6"
   resolved "https://registry.yarnpkg.com/nopt/-/nopt-3.0.6.tgz#c6465dbf08abcd4db359317f79ac68a646b28ff9"
@@ -5077,7 +5089,7 @@ p-locate@^2.0.0:
   dependencies:
     p-limit "^1.1.0"
 
-pako@~0.2.0:
+pako@~0.2.0, pako@~0.2.5:
   version "0.2.9"
   resolved "https://registry.yarnpkg.com/pako/-/pako-0.2.9.tgz#f3f7522f4ef782348da8161bad9ecfd51bf83a75"
 
