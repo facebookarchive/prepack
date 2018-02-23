@@ -97,22 +97,32 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
 
 function generateRuntimeCall(ref: Reference | Value, ast: BabelNodeUnaryExpression, strictCode: boolean, realm: Realm) {
   invariant(ref instanceof Reference);
-  let baseValue = Environment.GetBase(realm, ref);
-  invariant(baseValue instanceof Value);
-  let propertyName = Environment.GetReferencedName(realm, ref);
-  invariant(typeof propertyName === "string");
+  let value;
+  let propertyName;
 
-  if (!baseValue.isSimpleObject()) {
-    Leak.leakValue(realm, baseValue, ast.loc);
+  // the base reference might be an EnvironmentRecord or a ObjectValue
+  // if it is a EnvironmentRecord, we don't serialize a member expression below
+  if (Environment.IsPropertyReference(realm, ref)) {
+    value = Environment.GetBase(realm, ref);
+    invariant(value instanceof Value);
+    if (!value.isSimpleObject()) {
+      Leak.leakValue(realm, value, ast.loc);
+    }
+    propertyName = Environment.GetReferencedName(realm, ref);
+  } else {
+    value = Environment.GetValue(realm, ref);
+    invariant(value instanceof Value);
   }
-  return AbstractValue.createTemporalFromBuildFunction(realm, Value, [baseValue], nodes => {
+
+  return AbstractValue.createTemporalFromBuildFunction(realm, Value, [value], nodes => {
     let arg;
-    if (typeof propertyName === "string") {
+    if (propertyName) {
+      invariant(typeof propertyName === "string");
       arg = t.isValidIdentifier(propertyName)
         ? t.memberExpression(nodes[0], t.identifier(propertyName), false)
         : t.memberExpression(nodes[0], t.stringLiteral(propertyName), true);
     } else {
-      arg = t.memberExpression(nodes[0], nodes[1], true);
+      arg = nodes[0];
     }
     return t.unaryExpression(ast.operator, arg, ast.prefix);
   });
@@ -121,13 +131,13 @@ function generateRuntimeCall(ref: Reference | Value, ast: BabelNodeUnaryExpressi
 function tryToEvaluateOperationOrLeaveAsAbstract(
   ast: BabelNodeUnaryExpression,
   expr: Value | Reference,
-  func: (expr: Value | Reference, realm: Realm) => Value,
+  func: (ast: BabelNodeUnaryExpression, expr: Value | Reference, strictCode: boolean, realm: Realm) => Value,
   strictCode: boolean,
   realm: Realm
 ) {
   let effects;
   try {
-    effects = realm.evaluateForEffects(() => func(expr, realm));
+    effects = realm.evaluateForEffects(() => func(ast, expr, strictCode, realm));
   } catch (error) {
     if (error instanceof FatalError) {
       return realm.evaluateWithPossibleThrowCompletion(
@@ -157,10 +167,10 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
   return completion;
 }
 
-export default function(
+function evaluateOperation(
   ast: BabelNodeUnaryExpression,
+  expr: Value | Reference,
   strictCode: boolean,
-  env: LexicalEnvironment,
   realm: Realm
 ): Value {
   function reportError() {
@@ -172,8 +182,6 @@ export default function(
     );
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
-
-  let expr = env.evaluate(ast.argument, strictCode);
 
   if (ast.operator === "+") {
     // ECMA262 12.5.6.1
@@ -297,10 +305,21 @@ export default function(
     }
   } else {
     invariant(ast.operator === "delete");
-    if (realm.isInPureScope()) {
-      return tryToEvaluateOperationOrLeaveAsAbstract(ast, expr, evaluateDeleteOperation, strictCode, realm);
-    } else {
-      return evaluateDeleteOperation(expr, realm);
-    }
+    return evaluateDeleteOperation(expr, realm);
+  }
+}
+
+export default function(
+  ast: BabelNodeUnaryExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  let expr = env.evaluate(ast.argument, strictCode);
+
+  if (realm.isInPureScope()) {
+    return tryToEvaluateOperationOrLeaveAsAbstract(ast, expr, evaluateOperation, strictCode, realm);
+  } else {
+    return evaluateOperation(ast, expr, strictCode, realm);
   }
 }
