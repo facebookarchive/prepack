@@ -115,9 +115,8 @@ function run(
   let reproArguments = [];
   let reproFileNames = [];
   let inputFile = fileName => {
-    let zippedFileName = `input${reproFileNames.length}` + path.extname(fileName);
-    reproFileNames.push({ fileName, zippedFileName });
-    return zippedFileName;
+    reproFileNames.push(fileName);
+    return path.basename(fileName);
   };
   while (args.length) {
     let arg = args.shift();
@@ -268,9 +267,9 @@ function run(
 
   if (reproFilePath !== undefined) {
     const zip = zipFactory();
-    for (let { fileName, zippedFileName } of reproFileNames) {
+    for (let fileName of reproFileNames) {
       let content = fs.readFileSync(fileName, "utf8");
-      zip.file(zippedFileName, content);
+      zip.file(path.basename(fileName), content);
     }
     zip.file("repro.sh", "prepack " + reproArguments.map(a => `"${a}"`).join(" "));
     const data = zip.generate({ base64: false, compression: "DEFLATE" });
