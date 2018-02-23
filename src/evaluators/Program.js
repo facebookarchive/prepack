@@ -244,7 +244,9 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         // The call to incorporateSavedCompletion above, has taken care of the join because res is abrupt.
         // What remains to be done is to emit throw statements to the generator.
         if (res instanceof JoinedAbruptCompletions) {
-          emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
+          let generator = realm.generator;
+          invariant(generator !== undefined);
+          generator.emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
           res = res.value;
         } else if (res instanceof ThrowCompletion) {
           emitThrow(res.value);
@@ -273,7 +275,9 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       // There are still some conditional throws to emit and state still has to be joined in.
       Join.stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);
       // The global state has now been updated to the join of all the flows reaching this join point
-      emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
+      let generator = realm.generator;
+      invariant(generator !== undefined);
+      generator.emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
       val = val.value;
     }
   } else {
@@ -303,52 +307,5 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
     let generator = realm.generator;
     invariant(generator !== undefined);
     generator.emitStatement([value], ([argument]) => t.throwStatement(argument));
-  }
-
-  function emitConditionalThrow(
-    condition: AbstractValue,
-    trueBranch: Completion | Value,
-    falseBranch: Completion | Value
-  ) {
-    let generator = realm.generator;
-    invariant(generator !== undefined);
-    let [args, buildfunc] = deconstruct(condition, trueBranch, falseBranch);
-    generator.emitStatement(args, buildfunc);
-  }
-
-  function deconstruct(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
-    let targs;
-    let tfunc;
-    let fargs;
-    let ffunc;
-    if (trueBranch instanceof JoinedAbruptCompletions) {
-      [targs, tfunc] = deconstruct(trueBranch.joinCondition, trueBranch.consequent, trueBranch.alternate);
-    } else if (trueBranch instanceof ThrowCompletion) {
-      targs = [trueBranch.value];
-      issueThrowCompilerDiagnostic(trueBranch.value);
-      tfunc = ([argument]) => t.throwStatement(argument);
-    } else {
-      targs = [];
-      tfunc = nodes => t.emptyStatement();
-    }
-    if (falseBranch instanceof JoinedAbruptCompletions) {
-      [fargs, ffunc] = deconstruct(falseBranch.joinCondition, falseBranch.consequent, falseBranch.alternate);
-    } else if (falseBranch instanceof ThrowCompletion) {
-      fargs = [falseBranch.value];
-      issueThrowCompilerDiagnostic(falseBranch.value);
-      ffunc = ([argument]) => t.throwStatement(argument);
-    } else {
-      fargs = [];
-      ffunc = nodes => t.emptyStatement();
-    }
-    let args = [condition].concat(targs).concat(fargs);
-    let func = nodes => {
-      return t.ifStatement(
-        nodes[0],
-        tfunc(nodes.splice(1, targs.length)),
-        ffunc(nodes.splice(targs.length + 1, fargs.length))
-      );
-    };
-    return [args, func];
   }
 }

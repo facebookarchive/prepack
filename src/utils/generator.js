@@ -33,6 +33,14 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as base62 from "base62";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  PossiblyNormalCompletion,
+  ReturnCompletion,
+  ThrowCompletion,
+} from "../completions.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
@@ -260,6 +268,51 @@ export class Generator {
       },
       dependencies: [body],
     });
+  }
+
+  emitConditionalThrow(
+    condition: AbstractValue,
+    trueBranch: Completion | Value,
+    falseBranch: Completion | Value
+  ) {
+    let [args, buildfunc] = this._deconstruct(condition, trueBranch, falseBranch);
+    this.emitStatement(args, buildfunc);
+  }
+
+  _deconstruct(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
+    let targs;
+    let tfunc;
+    let fargs;
+    let ffunc;
+    if (trueBranch instanceof JoinedAbruptCompletions) {
+      [targs, tfunc] = this._deconstruct(trueBranch.joinCondition, trueBranch.consequent, trueBranch.alternate);
+    } else if (trueBranch instanceof ThrowCompletion) {
+      targs = [trueBranch.value];
+      //issueThrowCompilerDiagnostic(trueBranch.value);
+      tfunc = ([argument]) => t.throwStatement(argument);
+    } else {
+      targs = [];
+      tfunc = nodes => t.emptyStatement();
+    }
+    if (falseBranch instanceof JoinedAbruptCompletions) {
+      [fargs, ffunc] = this._deconstruct(falseBranch.joinCondition, falseBranch.consequent, falseBranch.alternate);
+    } else if (falseBranch instanceof ThrowCompletion) {
+      fargs = [falseBranch.value];
+      //issueThrowCompilerDiagnostic(falseBranch.value);
+      ffunc = ([argument]) => t.throwStatement(argument);
+    } else {
+      fargs = [];
+      ffunc = nodes => t.emptyStatement();
+    }
+    let args = [condition].concat(targs).concat(fargs);
+    let func = nodes => {
+      return t.ifStatement(
+        nodes[0],
+        tfunc(nodes.splice(1, targs.length)),
+        ffunc(nodes.splice(targs.length + 1, fargs.length))
+      );
+    };
+    return [args, func];
   }
 
   // Checks the full set of possible concrete values as well as typeof
