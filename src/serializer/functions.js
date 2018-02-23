@@ -270,7 +270,9 @@ export class Functions {
     for (let funcValue of additionalFunctions) {
       invariant(funcValue instanceof FunctionValue);
       let call = this._callOfFunction(funcValue);
-      let effects = this.realm.evaluatePure(() => this.realm.evaluateForEffectsInGlobalEnv(call));
+      let effects = this.realm.evaluatePure(() =>
+        this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
+      );
       invariant(effects);
       let additionalFunctionEffects = this._createAdditionalEffects(effects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);

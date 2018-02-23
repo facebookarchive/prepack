@@ -41,6 +41,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { getOrDefault } from "./utils.js";
 import type { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
+import { Generator } from "../utils/generator.js";
 
 const LAZY_OBJECTS_SERIALIZER_BODY_TYPE = "LazyObjectInitializer";
 
@@ -72,7 +73,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
     statistics: SerializerStatistics,
     react: ReactSerializerState,
-    referentializer: Referentializer
+    referentializer: Referentializer,
+    generatorParents: Map<Generator, Generator>
   ) {
     super(
       realm,
@@ -91,7 +93,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       declarativeEnvironmentRecordsBindings,
       statistics,
       react,
-      referentializer
+      referentializer,
+      generatorParents
     );
     this._lazyObjectIdSeed = 1;
     this._valueLazyIds = new Map();

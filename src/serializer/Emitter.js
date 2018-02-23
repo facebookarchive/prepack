@@ -402,6 +402,11 @@ export class Emitter {
     this._body.declaredAbstractValues.set(value, this._body);
     this._processValue(value);
   }
+  emittingToAdditionalFunction() {
+    // Whether we are directly or indirectly emitting to an additional function
+    for (let b = this._body; b !== undefined; b = b.parentBody) if (b.type === "AdditionalFunction") return true;
+    return false;
+  }
   cannotDeclare(): boolean {
     // Bodies of the following types will never contain any (temporal) abstract value declarations.
     return this._body.type === "DelayInitializations" || this._body.type === "LazyObjectInitializer";

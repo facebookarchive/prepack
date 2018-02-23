@@ -51,7 +51,6 @@ import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { Referentializer } from "./Referentializer.js";
 import type { ReferentializationScope } from "./Referentializer.js";
 import {
-  commonAncestorOf,
   getSuggestedArrayLiteralLength,
   getOrDefault,
   ClassPropertiesToIgnore,
@@ -109,10 +108,10 @@ export class ResidualHeapVisitor {
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
     this.containingAdditionalFunction = undefined;
-    this.additionalRoots = new Set();
+    this.additionalRoots = new Map();
     this.inClass = false;
     this.functionToCapturedScopes = new Map();
-    this.additionalFunctionToNestedFunctions = new Map();
+    this.generatorParents = new Map();
   }
 
   realm: Realm;
@@ -140,16 +139,25 @@ export class ResidualHeapVisitor {
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   someReactElement: void | ObjectValue;
   reactElementEquivalenceSet: ReactElementSet;
+  generatorParents: Map<Generator, Generator>;
 
   // We only want to add to additionalRoots when we're in an additional function
   containingAdditionalFunction: void | FunctionValue;
-  additionalFunctionToNestedFunctions: Map<FunctionValue, Set<FunctionValue>>;
   // Tracks objects + functions that were visited from inside additional functions that need to be serialized in a
   // parent scope of the additional function (e.g. functions/objects only used from additional functions that were
   // declared outside the additional function need to be serialized in the additional function's parent scope for
   // identity to work).
-  additionalRoots: Set<ObjectValue>;
+  additionalRoots: Map<ObjectValue, Set<FunctionValue>>;
   inClass: boolean;
+
+  _registerAdditionalRoot(value: ObjectValue) {
+    let additionalFunction = this.containingAdditionalFunction;
+    if (additionalFunction !== undefined && !this.inClass) {
+      let s = this.additionalRoots.get(value);
+      if (s === undefined) this.additionalRoots.set(value, (s = new Set()));
+      s.add(additionalFunction);
+    }
+  }
 
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
@@ -361,9 +369,7 @@ export class ResidualHeapVisitor {
   visitValueFunction(val: FunctionValue, parentScope: Scope): void {
     let isClass = false;
 
-    if (this.containingAdditionalFunction && !this.inClass) {
-      this.additionalRoots.add(val);
-    }
+    this._registerAdditionalRoot(val);
     if (val.$FunctionKind === "classConstructor") {
       invariant(val instanceof ECMAScriptSourceFunctionValue);
       let homeObject = val.$HomeObject;
@@ -650,7 +656,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    if (this.containingAdditionalFunction && !this.inClass) this.additionalRoots.add(val);
+    this._registerAdditionalRoot(val);
     let kind = val.getKind();
     this.visitObjectProperties(val, kind);
 
@@ -812,19 +818,24 @@ export class ResidualHeapVisitor {
     this.postProcessValue(val);
   }
 
-  createGeneratorVisitCallbacks(generator: Generator, commonScope: Scope): VisitEntryCallbacks {
+  createGeneratorVisitCallbacks(commonScope: Scope): VisitEntryCallbacks {
     return {
       visitValues: (values: Array<Value>) => {
         for (let i = 0, n = values.length; i < n; i++) values[i] = this.visitEquivalentValue(values[i]);
       },
-      visitGenerator: this.visitGenerator.bind(this),
+      visitGenerator: (generator, parent) => {
+        // TODO: The serializer assumes that each generator has a unique parent; however, in the presence of conditional exceptions that is not actually true.
+        // invariant(!this.generatorParents.has(generator));
+        this.generatorParents.set(generator, parent);
+        this.visitGenerator(generator);
+      },
       canSkip: (value: AbstractValue): boolean => {
         return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
       },
       recordDeclaration: (value: AbstractValue) => {
         this.referencedDeclaredValues.add(value);
       },
-      recordDelayedEntry: (entry: GeneratorEntry) => {
+      recordDelayedEntry: (generator, entry: GeneratorEntry) => {
         this.delayedVisitGeneratorEntries.push({ commonScope, generator, entry });
       },
     };
@@ -832,7 +843,7 @@ export class ResidualHeapVisitor {
 
   visitGenerator(generator: Generator): void {
     this._withScope(generator, () => {
-      generator.visit(this.createGeneratorVisitCallbacks(generator, this.commonScope));
+      generator.visit(this.createGeneratorVisitCallbacks(this.commonScope));
     });
   }
 
@@ -926,7 +937,7 @@ export class ResidualHeapVisitor {
     let oldcontainingAdditionalFunction = this.containingAdditionalFunction;
     this.containingAdditionalFunction = functionValue;
     let prevReVisit = this.additionalRoots;
-    this.additionalRoots = new Set();
+    this.additionalRoots = new Map();
 
     let modifiedBindingInfo = new Map();
     let [, generator, , , createdObjects] = additionalEffects.effects;
@@ -948,7 +959,7 @@ export class ResidualHeapVisitor {
       this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, effects));
       return this.realm.intrinsics.undefined;
     }, additionalEffects.effects);
-    this.additionalRoots = new Set([...this.additionalRoots].filter(x => !createdObjects.has(x)));
+    for (let createdObject of createdObjects) this.additionalRoots.delete(createdObject);
 
     // Cleanup
     this.commonScope = prevCommonScope;
@@ -960,9 +971,9 @@ export class ResidualHeapVisitor {
       () => {
         invariant(functionInfo !== undefined);
         invariant(funcInstance !== undefined);
-        for (let value of this.additionalRoots) {
+        for (let [value, additionalParentGenerators] of this.additionalRoots) {
           // Populate old additionalRoots because we switched them out
-          prevReVisit.add(value);
+          prevReVisit.set(value, additionalParentGenerators);
           this.visitValue(value);
         }
         for (let innerName of functionInfo.unbound) {
@@ -978,7 +989,7 @@ export class ResidualHeapVisitor {
     this.containingAdditionalFunction = oldcontainingAdditionalFunction;
   }
 
-  visitRoots(adjustRoots?: boolean): void {
+  visitRoots(): void {
     let generator = this.realm.generator;
     invariant(generator);
     this.visitGenerator(generator);
@@ -996,7 +1007,7 @@ export class ResidualHeapVisitor {
       for (let { commonScope, generator: entryGenerator, entry } of oldDelayedEntries) {
         this.commonScope = commonScope;
         this._withScope(entryGenerator, () => {
-          entryGenerator.visitEntry(entry, this.createGeneratorVisitCallbacks(entryGenerator, commonScope));
+          entryGenerator.visitEntry(entry, this.createGeneratorVisitCallbacks(commonScope));
         });
       }
     }
@@ -1021,22 +1032,6 @@ export class ResidualHeapVisitor {
           instances,
           instance => !this.additionalFunctionValuesAndEffects.has(instance.functionValue)
         );
-      }
-    }
-
-    // Artificially add additionalRoots to generators so that they can get serialized in parent scopes of additionalFunctions
-    // if necessary.
-    if (adjustRoots) {
-      for (let value of this.additionalRoots) {
-        let scopes = this.values.get(value);
-        invariant(scopes);
-        scopes = [...scopes];
-        invariant(scopes.length > 0);
-        invariant(scopes[0]);
-        const firstGenerator = scopes[0] instanceof Generator ? scopes[0] : scopes[0].getParent();
-        let commonAncestor = scopes.reduce((x, y) => commonAncestorOf(x, y), firstGenerator);
-        invariant(commonAncestor instanceof Generator); // every scope is either the root, or a descendant
-        commonAncestor.appendRoots([value]);
       }
     }
   }

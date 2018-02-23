@@ -150,7 +150,7 @@ export class ResidualReactElementSerializer {
 
     let reactLibraryObject = this.realm.fbLibraries.react;
     let shouldHoist =
-      this.residualHeapSerializer.currentFunctionBody !== this.residualHeapSerializer.mainBody &&
+      this.residualHeapSerializer.isReferencedOnlyByAdditionalFunction(val) !== undefined &&
       canHoistReactElement(this.realm, val);
 
     let id = this.residualHeapSerializer.getSerializeObjectIdentifier(val);

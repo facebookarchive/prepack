@@ -105,7 +105,8 @@ export class ResidualHeapSerializer {
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
     statistics: SerializerStatistics,
     react: ReactSerializerState,
-    referentializer: Referentializer
+    referentializer: Referentializer,
+    generatorParents: Map<Generator, Generator>
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -146,7 +147,8 @@ export class ResidualHeapSerializer {
         getLocation: value => this.getSerializeObjectIdentifier(value),
         createLocation: () => {
           let location = t.identifier(this.initializeConditionNameGenerator.generate());
-          this.currentFunctionBody.entries.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
+          // TODO: This function may get to create locations to be used in additional functions; is the global prelude the right place?
+          this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
           return location;
         },
       },
@@ -162,7 +164,6 @@ export class ResidualHeapSerializer {
     );
     this.emitter = new Emitter(this.residualFunctions);
     this.mainBody = this.emitter.getBody();
-    this.currentFunctionBody = this.mainBody;
     this.residualHeapInspector = residualHeapInspector;
     this.residualValues = residualValues;
     this.residualFunctionInstances = residualFunctionInstances;
@@ -175,6 +176,9 @@ export class ResidualHeapSerializer {
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
     this.rewrittenAdditionalFunctions = new Map();
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
+    this.getGeneratorParent = generatorParents.get.bind(generatorParents);
+    this.additionalFunctionGenerators = new Map();
+    this.additionalFunctionGeneratorsInverse = new Map();
   }
 
   emitter: Emitter;
@@ -183,9 +187,6 @@ export class ResidualHeapSerializer {
   prelude: Array<BabelNodeStatement>;
   body: Array<BabelNodeStatement>;
   mainBody: SerializedBody;
-  // if we're in an additional function we need to access both mainBody and the
-  // additional function's body which will be currentFunctionBody.
-  currentFunctionBody: SerializedBody;
   realm: Realm;
   preludeGenerator: PreludeGenerator;
   generator: Generator;
@@ -221,11 +222,14 @@ export class ResidualHeapSerializer {
   react: ReactSerializerState;
   residualReactElementSerializer: ResidualReactElementSerializer;
   referentializer: Referentializer;
+  additionalFunctionGenerators: Map<FunctionValue, Generator>;
+  additionalFunctionGeneratorsInverse: Map<Generator, FunctionValue>;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
-  currentAdditionalFunction: void | FunctionValue;
+
+  getGeneratorParent: Generator => void | Generator;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -583,6 +587,61 @@ export class ResidualHeapSerializer {
     }
   }
 
+  // Augments an initial set of generators with all generators from
+  // which any of a given set of function values is referenced.
+  _getReferencingGenerators(
+    initialGenerators: Array<Generator>,
+    functionValues: Array<FunctionValue>
+  ): Array<Generator> {
+    let result = new Set(initialGenerators);
+    let activeFunctions = functionValues.slice();
+    let visitedFunctions = new Set();
+    while (activeFunctions.length > 0) {
+      let last = activeFunctions.pop();
+      let scopes = this.residualValues.get(last);
+      invariant(scopes);
+      for (let scope of scopes)
+        if (scope instanceof FunctionValue) {
+          if (!visitedFunctions.has(scope)) {
+            visitedFunctions.add(scope);
+            activeFunctions.push(scope);
+          }
+        } else {
+          invariant(scope instanceof Generator);
+          result.add(scope);
+        }
+    }
+    return Array.from(result);
+  }
+
+  // Determine if a value is effectively referenced by a single additional function.
+  isReferencedOnlyByAdditionalFunction(val: Value): void | FunctionValue {
+    let scopes = this.residualValues.get(val);
+    invariant(scopes !== undefined);
+    let additionalFunction;
+    for (let scope of scopes)
+      if (scope instanceof Generator) {
+        let f;
+        for (let g = scope; g !== undefined && f === undefined; g = this.getGeneratorParent(g))
+          f = this.additionalFunctionGeneratorsInverse.get(g);
+        if (f === undefined) return undefined;
+        if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
+        additionalFunction = f;
+      } else {
+        invariant(scope instanceof FunctionValue);
+        if (this.additionalFunctionGenerators.has(scope)) {
+          if (additionalFunction !== undefined && additionalFunction !== scope) return undefined;
+          additionalFunction = scope;
+        } else {
+          let f = this.isReferencedOnlyByAdditionalFunction(scope);
+          if (f === undefined) return undefined;
+          if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
+          additionalFunction = f;
+        }
+      }
+    return additionalFunction;
+  }
+
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
   _getTarget(
     val: Value
@@ -603,31 +662,19 @@ export class ResidualHeapSerializer {
     let functionValues = [];
     let generators = [];
     for (let scope of scopes) {
-      if (scope instanceof FunctionValue) functionValues.push(scope);
-      else {
+      if (scope instanceof FunctionValue) {
+        functionValues.push(scope);
+      } else {
         invariant(scope instanceof Generator);
         generators.push(scope);
       }
     }
 
-    let usedOnlyByAdditionalFunctions = false;
+    let additionalFunctionValue = this.isReferencedOnlyByAdditionalFunction(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
-      invariant(functionValues.length > 0);
-      let additionalFunctionValuesAndEffects = this.additionalFunctionValuesAndEffects;
-      let numAdditionalFunctionReferences = 0;
-      // Make sure we don't delay things referenced by additional functions or nested functions
-      if (additionalFunctionValuesAndEffects) {
-        // flow forces me to do this
-        let additionalFuncValuesAndEffects = additionalFunctionValuesAndEffects;
-        numAdditionalFunctionReferences = functionValues.filter(
-          funcValue =>
-            additionalFuncValuesAndEffects.has(funcValue) || this.additionalFunctionValueNestedFunctions.has(funcValue)
-        ).length;
-      }
-
       if (
-        numAdditionalFunctionReferences === 0 &&
+        additionalFunctionValue === undefined &&
         this._options.delayInitializations &&
         !this._options.simpleClosures
       ) {
@@ -636,30 +683,53 @@ export class ResidualHeapSerializer {
           functionValues,
           val
         );
+
         return { body, usedOnlyByResidualFunctions: true, description: "delay_initializer" };
       }
+    }
 
-      usedOnlyByAdditionalFunctions = numAdditionalFunctionReferences === functionValues.length;
+    if (additionalFunctionValue !== undefined) {
+      let additionalFunctionGenerator = this.additionalFunctionGenerators.get(additionalFunctionValue);
+      invariant(additionalFunctionGenerator !== undefined);
+      let body = this.activeGeneratorBodies.get(additionalFunctionGenerator);
+      invariant(body !== undefined);
+      return { body, usedOnlyByAdditionalFunctions: true };
     }
 
     let getBody = s => {
-      if (s === this.generator || s instanceof FunctionValue) {
-        return this.currentFunctionBody;
+      if (s === this.generator) {
+        return this.mainBody;
       } else {
         return this.activeGeneratorBodies.get(s);
       }
     };
 
+    // flatten all function values into the scopes that use them
+    generators = this._getReferencingGenerators(generators, functionValues);
+
+    // Remove all generators rooted in additional functions,
+    // since we know that there's at least one root that's not in an additional function
+    // which requires the value to be emitted outside of the additional function.
+    generators = generators.filter(generator => {
+      for (let g = generator; g !== undefined; g = this.getGeneratorParent(g))
+        if (this.additionalFunctionGeneratorsInverse.has(g)) return false;
+      return true;
+    });
+    invariant(generators.length > 0);
+
     // This value is referenced from more than one generator or function.
     // Let's find the body associated with their common ancestor.
-    let firstScope = scopes.values().next().value;
-    let commonAncestor = Array.from(scopes).reduce((x, y) => commonAncestorOf(x, y), firstScope);
+    let commonAncestor = Array.from(generators).reduce(
+      (x, y) => commonAncestorOf(x, y, this.getGeneratorParent),
+      generators[0]
+    );
     invariant(commonAncestor);
+
     let body;
     while (true) {
       body = getBody(commonAncestor);
       if (body !== undefined) break;
-      commonAncestor = commonAncestor.parent;
+      commonAncestor = this.getGeneratorParent(commonAncestor);
       invariant(commonAncestor !== undefined);
     }
 
@@ -683,8 +753,8 @@ export class ResidualHeapSerializer {
           }
       },
     });
-    for (let s of scopes)
-      for (let g = s; g !== undefined; g = g.parent) {
+    for (let s of generators)
+      for (let g = s; g !== undefined; g = this.getGeneratorParent(g)) {
         let scopeBody = getBody(g);
         if (
           scopeBody !== undefined &&
@@ -697,7 +767,7 @@ export class ResidualHeapSerializer {
         }
       }
 
-    return { body, usedOnlyByAdditionalFunctions, commonAncestor };
+    return { body, commonAncestor };
   }
 
   _getValueDebugName(val: Value) {
@@ -843,7 +913,11 @@ export class ResidualHeapSerializer {
       return this.preludeGenerator.convertStringToMember(intrinsicName);
     } else {
       // The intrinsic conceptually exists ahead of time.
-      invariant(this.emitter.getBody() === this.currentFunctionBody);
+      invariant(
+        this.emitter.getBody().type === "MainGenerator" ||
+          this.emitter.getBody().type === "AdditionalFunction" ||
+          this.emitter.getBody().type === "DelayInitializations"
+      );
       return this.preludeGenerator.memoizeReference(intrinsicName);
     }
   }
@@ -1136,14 +1210,14 @@ export class ResidualHeapSerializer {
     invariant(instance !== undefined);
     let residualBindings = instance.residualFunctionBindings;
 
-    let inAdditionalFunction = this.currentFunctionBody !== this.mainBody;
-    if (inAdditionalFunction) instance.containingAdditionalFunction = this.currentAdditionalFunction;
+    let inAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(val);
+    if (inAdditionalFunction !== undefined) instance.containingAdditionalFunction = inAdditionalFunction;
     let delayed = 1;
     let undelay = () => {
       if (--delayed === 0) {
         invariant(instance);
         // hoist if we are in an additionalFunction
-        if (this.currentFunctionBody !== this.mainBody && canHoistFunction(this.realm, val, undefined, new Set())) {
+        if (inAdditionalFunction !== undefined && canHoistFunction(this.realm, val, undefined, new Set())) {
           instance.insertionPoint = new BodyReference(this.mainBody, this.mainBody.entries.length);
           instance.containingAdditionalFunction = undefined;
         } else {
@@ -1164,10 +1238,10 @@ export class ResidualHeapSerializer {
         let bindingValue = residualBinding.value;
         invariant(bindingValue !== undefined);
         referencedValues.push(bindingValue);
-        if (inAdditionalFunction) {
-          let { usedOnlyByAdditionalFunctions } = this._getTarget(bindingValue);
-          if (usedOnlyByAdditionalFunctions)
-            residualBinding.referencedOnlyFromAdditionalFunctions = this.currentAdditionalFunction;
+        if (inAdditionalFunction !== undefined) {
+          let bindingAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(bindingValue);
+          if (bindingAdditionalFunction !== undefined)
+            residualBinding.referencedOnlyFromAdditionalFunctions = bindingAdditionalFunction;
         }
       }
       delayed++;
@@ -1529,7 +1603,8 @@ export class ResidualHeapSerializer {
       invariant(
         !this.preludeGenerator.derivedIds.has(id.name) ||
           this.emitter.cannotDeclare() ||
-          this.emitter.hasBeenDeclared(val)
+          this.emitter.hasBeenDeclared(val) ||
+          this.emitter.emittingToAdditionalFunction()
       );
     }
     return serializedValue;
@@ -1618,17 +1693,23 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _withGeneratorScope(generator: Generator, callback: SerializedBody => void): Array<BabelNodeStatement> {
-    let newBody = { type: "Generator", parentBody: undefined, entries: [], done: false };
-    let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ true);
+  _withGeneratorScope(
+    type: "Generator" | "AdditionalFunction",
+    generator: Generator,
+    callback: SerializedBody => void
+  ): Array<BabelNodeStatement> {
+    let newBody = { type, parentBody: undefined, entries: [], done: false };
+    let isChild = type === "Generator";
+    let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ isChild);
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
-    const statements = this.emitter.endEmitting(generator, oldBody, /*isChild*/ true).entries;
+    const statements = this.emitter.endEmitting(generator, oldBody, /*isChild*/ isChild).entries;
     if (this._options.debugScopes) {
       let comment = `generator "${generator.getName()}"`;
-      if (generator.parent !== undefined) {
-        comment = `${comment} with parent "${generator.parent.getName()}"`;
+      let parent = this.getGeneratorParent(generator);
+      if (parent !== undefined) {
+        comment = `${comment} with parent "${parent.getName()}"`;
       }
       statements.unshift(commentStatement("begin " + comment));
       statements.push(commentStatement("end " + comment));
@@ -1644,7 +1725,7 @@ export class ResidualHeapSerializer {
       serializeValue: this.serializeValue.bind(this),
       serializeBinding: this.serializeBinding.bind(this),
       serializeGenerator: (generator: Generator): Array<BabelNodeStatement> =>
-        this._withGeneratorScope(generator, () => generator.serialize(context)),
+        this._withGeneratorScope("Generator", generator, () => generator.serialize(context)),
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
@@ -1688,16 +1769,13 @@ export class ResidualHeapSerializer {
 
   _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, postGeneratorCallback: () => void) {
     let context = this._getContext();
-    return this._withGeneratorScope(generator, newBody => {
-      let oldCurBody = this.currentFunctionBody;
+    return this._withGeneratorScope("AdditionalFunction", generator, newBody => {
       let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
-      this.currentFunctionBody = newBody;
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {
         generator.serialize(context);
         if (postGeneratorCallback) postGeneratorCallback();
       } finally {
-        this.currentFunctionBody = oldCurBody;
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
     });
@@ -1741,7 +1819,6 @@ export class ResidualHeapSerializer {
   ) {
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let [, generator, , , createdObjects] = effects;
-    this.currentAdditionalFunction = additionalFunctionValue;
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
@@ -1771,6 +1848,18 @@ export class ResidualHeapSerializer {
       );
   }
 
+  prepareAdditionalFunctionValues() {
+    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    if (additionalFVEffects)
+      for (let [additionalFunctionValue, { effects }] of additionalFVEffects.entries()) {
+        let generator = effects[1];
+        invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
+        this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
+        invariant(!this.additionalFunctionGeneratorsInverse.has(generator));
+        this.additionalFunctionGeneratorsInverse.set(generator, additionalFunctionValue);
+      }
+  }
+
   processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     if (!additionalFVEffects) return this.rewrittenAdditionalFunctions;
@@ -1786,6 +1875,8 @@ export class ResidualHeapSerializer {
   }
 
   serialize(): BabelNodeFile {
+    this.prepareAdditionalFunctionValues();
+
     this.generator.serialize(this._getContext());
     invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
 

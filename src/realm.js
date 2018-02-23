@@ -509,8 +509,8 @@ export class Realm {
     return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
-  evaluateForEffectsInGlobalEnv(func: () => Value): Effects {
-    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
+  evaluateForEffectsInGlobalEnv(func: () => Value, state?: any, generatorName?: string): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func, state, generatorName));
   }
 
   // NB: does not apply generators because there's no way to cleanly revert them.
