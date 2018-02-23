@@ -21,7 +21,7 @@ import {
   SymbolValue,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { isReactElement } from "./utils";
+import { isReactElement, getProperty } from "./utils";
 import { HashSet } from "../methods/index.js";
 
 type ReactElementValueMapKey = Value | number | string;
@@ -93,27 +93,6 @@ export default class ReactElementSet {
     return ((map.get(val): any): ReactElementNode);
   }
 
-  _getProperty(object: ObjectValue, property: string | SymbolValue): Value {
-    let binding;
-    if (typeof property === "string") {
-      binding = object.properties.get(property);
-    } else {
-      binding = object.symbols.get(property);
-    }
-    invariant(binding);
-    let descriptor = binding.descriptor;
-
-    if (!descriptor) {
-      return this.realm.intrinsics.undefined;
-    }
-    let value;
-    if (descriptor.value) {
-      value = descriptor.value;
-    }
-    invariant(value instanceof Value, `ReactElementSet could not get value for`, object, property);
-    return value;
-  }
-
   // for objects: [key/symbol] -> [key/symbol]... as nodes
   _getObjectValue(object: ObjectValue): ObjectValue {
     if (isReactElement(object)) {
@@ -124,13 +103,13 @@ export default class ReactElementSet {
 
     for (let [propName] of object.properties) {
       currentMap = this._getKey(propName, currentMap);
-      let prop = this._getProperty(object, propName);
+      let prop = getProperty(this.realm, object, propName);
       result = this._getValue(prop, currentMap);
       currentMap = result.map;
     }
     for (let [symbol] of object.symbols) {
       currentMap = this._getKey(symbol, currentMap);
-      let prop = this._getProperty(object, symbol);
+      let prop = getProperty(this.realm, object, symbol);
       result = this._getValue(prop, currentMap);
       currentMap = result.map;
     }
@@ -145,7 +124,7 @@ export default class ReactElementSet {
 
   // for arrays: [0] -> [1] -> [2]... as nodes
   _getArrayValue(array: ArrayValue): ArrayValue {
-    let lengthValue = this._getProperty(array, "length");
+    let lengthValue = getProperty(this.realm, array, "length");
     invariant(lengthValue instanceof NumberValue);
     let length = lengthValue.value;
     let currentMap = this.arrayRoot;
@@ -153,7 +132,7 @@ export default class ReactElementSet {
 
     for (let i = 0; i < length; i++) {
       currentMap = this._getKey(i, currentMap);
-      let element = this._getProperty(array, "" + i);
+      let element = getProperty(this.realm, array, "" + i);
       result = this._getValue(element, currentMap);
       currentMap = result.map;
     }
@@ -171,22 +150,22 @@ export default class ReactElementSet {
 
     // type
     currentMap = this._getKey("type", currentMap);
-    let type = this._getProperty(reactElement, "type");
+    let type = getProperty(this.realm, reactElement, "type");
     let result = this._getValue(type, currentMap);
     currentMap = result.map;
     // key
     currentMap = this._getKey("key", currentMap);
-    let key = this._getProperty(reactElement, "key");
+    let key = getProperty(this.realm, reactElement, "key");
     result = this._getValue(key, currentMap);
     currentMap = result.map;
     // ref
     currentMap = this._getKey("ref", currentMap);
-    let ref = this._getProperty(reactElement, "ref");
+    let ref = getProperty(this.realm, reactElement, "ref");
     result = this._getValue(ref, currentMap);
     currentMap = result.map;
     // props
     currentMap = this._getKey("props", currentMap);
-    let props = this._getProperty(reactElement, "props");
+    let props = getProperty(this.realm, reactElement, "props");
     result = this._getValue(props, currentMap);
     currentMap = result.map;
 
