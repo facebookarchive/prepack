@@ -94,12 +94,6 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
   return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
 }
 
-function generateRuntimeCall(expr: Value | Reference, ast: BabelNodeUnaryExpression, realm: Realm) {
-  let value = Environment.GetValue(realm, expr);
-  invariant(value instanceof AbstractValue);
-  return AbstractValue.createFromUnaryOp(realm, ast.operator, value);
-}
-
 function tryToEvaluateOperationOrLeaveAsAbstract(
   ast: BabelNodeUnaryExpression,
   expr: Value | Reference,
@@ -113,7 +107,17 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
   } catch (error) {
     if (error instanceof FatalError) {
       return realm.evaluateWithPossibleThrowCompletion(
-        () => generateRuntimeCall(expr, ast, realm),
+        () => {
+          let value = Environment.GetValue(realm, expr);
+
+          // if the value is abstract, then create a unary op for it,
+          // otherwise we rethrow the error as we don't handle it at this
+          // point in time
+          if (value instanceof AbstractValue) {
+            return AbstractValue.createFromUnaryOp(realm, ast.operator, value);
+          }
+          throw error;
+        },
         TypesDomain.topVal,
         ValuesDomain.topVal
       );
