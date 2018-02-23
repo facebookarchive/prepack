@@ -883,6 +883,7 @@ export class ResidualHeapVisitor {
         if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
       });
       if (residualBinding === null) continue;
+      invariant(residualBinding);
       let funcInstance = additionalFunctionInfo.instance;
       invariant(funcInstance !== undefined);
       funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
