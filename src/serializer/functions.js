@@ -39,7 +39,7 @@ import {
 } from "../react/utils.js";
 import * as t from "babel-types";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
-import { Program } from "../evaluators/index.js"
+import { Program } from "../evaluators/index.js";
 
 export class Functions {
   constructor(realm: Realm, functions: ?Array<string>, moduleTracer: ModuleTracer) {
@@ -126,9 +126,9 @@ export class Functions {
 
   // This will also handle postprocessing for PossiblyNormalCompletion
   _createAdditionalEffects(effects: Effects): AdditionalFunctionEffects {
-    let [result,generator] = effects;
+    let [result, generator] = effects;
     if (result instanceof PossiblyNormalCompletion) {
-      let {joinCondition, consequent, alternate} = result;
+      let { joinCondition, consequent, alternate } = result;
       generator.emitConditionalThrow(joinCondition, consequent, alternate);
     }
     return {
@@ -272,7 +272,7 @@ export class Functions {
     for (let funcValue of additionalFunctions) {
       invariant(funcValue instanceof FunctionValue);
       let call = this._callOfFunction(funcValue);
-      let effects = this.realm.evaluatePure(() => this.realm.evaluateForEffectsInGlobalEnv(call));
+      let effects = this.realm.evaluateForEffectsInGlobalEnv(call);
       invariant(effects);
       let additionalFunctionEffects = this._createAdditionalEffects(effects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);

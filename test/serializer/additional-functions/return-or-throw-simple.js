@@ -1,7 +1,12 @@
 // does not contain:x = 5;
+// add at runtime: x = 3;
+var x;
+if (global.__abstract) x = __abstract("number");
+else x = 3;
 
-function func1(x) {
-  if (x > 10) throw new Error("Value greater than 10: " + x);
+function func1() {
+  if (x > 10)
+    throw new Error("X greater than 10 " + x);
   return x;
 }
 

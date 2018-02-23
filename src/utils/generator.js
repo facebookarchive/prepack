@@ -26,6 +26,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
+import { CompilerDiagnostic } from "../errors.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import { hashString } from "../methods/index.js";
 import type { Descriptor } from "../types.js";
@@ -270,11 +271,7 @@ export class Generator {
     });
   }
 
-  emitConditionalThrow(
-    condition: AbstractValue,
-    trueBranch: Completion | Value,
-    falseBranch: Completion | Value
-  ) {
+  emitConditionalThrow(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
     let [args, buildfunc] = this._deconstruct(condition, trueBranch, falseBranch);
     this.emitStatement(args, buildfunc);
   }
@@ -288,7 +285,7 @@ export class Generator {
       [targs, tfunc] = this._deconstruct(trueBranch.joinCondition, trueBranch.consequent, trueBranch.alternate);
     } else if (trueBranch instanceof ThrowCompletion) {
       targs = [trueBranch.value];
-      //issueThrowCompilerDiagnostic(trueBranch.value);
+      this._issueThrowCompilerDiagnostic(trueBranch.value);
       tfunc = ([argument]) => t.throwStatement(argument);
     } else {
       targs = [];
@@ -298,7 +295,7 @@ export class Generator {
       [fargs, ffunc] = this._deconstruct(falseBranch.joinCondition, falseBranch.consequent, falseBranch.alternate);
     } else if (falseBranch instanceof ThrowCompletion) {
       fargs = [falseBranch.value];
-      //issueThrowCompilerDiagnostic(falseBranch.value);
+      this._issueThrowCompilerDiagnostic(falseBranch.value);
       ffunc = ([argument]) => t.throwStatement(argument);
     } else {
       fargs = [];
@@ -313,6 +310,26 @@ export class Generator {
       );
     };
     return [args, func];
+  }
+
+  _issueThrowCompilerDiagnostic(value: Value) {
+    let message = "Program may terminate with exception";
+    if (value instanceof ObjectValue) {
+      let object = ((value: any): ObjectValue);
+      let objectMessage = this.realm.evaluateWithUndo(() => object.$Get("message", value));
+      if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
+      const objectStack = this.realm.evaluateWithUndo(() => object.$Get("stack", value));
+      if (objectStack instanceof StringValue)
+        message += `
+  ${objectStack.value}`;
+    }
+    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
+    this.realm.handleError(diagnostic);
+  }
+
+  emitThrow(value: Value) {
+    this._issueThrowCompilerDiagnostic(value);
+    this.emitStatement([value], ([argument]) => t.throwStatement(argument));
   }
 
   // Checks the full set of possible concrete values as well as typeof

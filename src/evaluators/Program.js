@@ -232,6 +232,8 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);
 
   let val;
+  let generator = realm.generator;
+  invariant(generator !== undefined);
 
   for (let node of ast.body) {
     if (node.type !== "FunctionDeclaration") {
@@ -244,12 +246,10 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         // The call to incorporateSavedCompletion above, has taken care of the join because res is abrupt.
         // What remains to be done is to emit throw statements to the generator.
         if (res instanceof JoinedAbruptCompletions) {
-          let generator = realm.generator;
-          invariant(generator !== undefined);
           generator.emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
           res = res.value;
         } else if (res instanceof ThrowCompletion) {
-          emitThrow(res.value);
+          generator.emitThrow(res.value);
           res = realm.intrinsics.undefined;
         } else {
           invariant(false); // other kinds of abrupt completions should not get this far
@@ -286,26 +286,4 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   invariant(val === undefined || val instanceof Value);
   return val || realm.intrinsics.empty;
-
-  function issueThrowCompilerDiagnostic(value: Value) {
-    let message = "Program may terminate with exception";
-    if (value instanceof ObjectValue) {
-      let object = ((value: any): ObjectValue);
-      let objectMessage = realm.evaluateWithUndo(() => object.$Get("message", value));
-      if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
-      const objectStack = realm.evaluateWithUndo(() => object.$Get("stack", value));
-      if (objectStack instanceof StringValue)
-        message += `
-  ${objectStack.value}`;
-    }
-    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
-    realm.handleError(diagnostic);
-  }
-
-  function emitThrow(value: Value) {
-    issueThrowCompilerDiagnostic(value);
-    let generator = realm.generator;
-    invariant(generator !== undefined);
-    generator.emitStatement([value], ([argument]) => t.throwStatement(argument));
-  }
 }
