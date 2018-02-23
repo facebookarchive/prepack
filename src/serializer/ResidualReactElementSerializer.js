@@ -127,7 +127,23 @@ export class ResidualReactElementSerializer {
       }
       // handle children
       if (propsValue.properties.has("children")) {
-        let childrenValue = Get(this.realm, propsValue, "children");
+        let childrenValue;
+        // if the props are partial, we need to not use the normal Get
+        // as this will lead to returing a new abstract if the original
+        // children property is also abstract
+        if (propsValue.isPartialObject()) {
+          let childrenBinding = propsValue.properties.get("children");
+
+          if (childrenBinding && childrenBinding.descriptor) {
+            let descriptor = childrenBinding.descriptor;
+
+            childrenValue = descriptor.value;
+          }
+          invariant(childrenValue instanceof Value);
+        } else {
+          childrenValue = Get(this.realm, propsValue, "children");
+        }
+
         this.residualHeapSerializer.serializedValues.add(childrenValue);
 
         if (childrenValue !== this.realm.intrinsics.undefined && childrenValue !== this.realm.intrinsics.null) {
