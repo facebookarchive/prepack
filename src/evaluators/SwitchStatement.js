@@ -13,9 +13,10 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbruptCompletion, BreakCompletion } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
-import { EmptyValue, Value } from "../values/index.js";
+import { EmptyValue, AbstractValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
 import { Environment } from "../singletons.js";
+import { FatalError } from "../errors.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -43,7 +44,8 @@ function AbstractCaseBlockEvaluation(
 ): Value {
   invariant(realm.useAbstractInterpretation);
 
-  invariant(false, "Can't do abstract interpretation of switch blocks yet.");
+  AbstractValue.reportIntrospectionError(input);
+  throw new FatalError();
 }
 
 function CaseBlockEvaluation(
@@ -114,7 +116,7 @@ function CaseBlockEvaluation(
 
   // Abstract interpretation of case blocks is a significantly different process
   // from regular interpretation, so we fork off early to keep things tidily separated.
-  if (realm.useAbstractInterpretation) {
+  if (input instanceof AbstractValue) {
     return AbstractCaseBlockEvaluation(cases, default_case_num, input, strictCode, env, realm);
   }
 
