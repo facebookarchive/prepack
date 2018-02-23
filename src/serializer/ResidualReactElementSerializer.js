@@ -12,7 +12,6 @@
 import { Realm } from "../realm.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
-import { Get } from "../methods/index.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
 import {
@@ -28,7 +27,7 @@ import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from 
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors";
-import { getReactSymbol } from "../react/utils.js";
+import { getReactSymbol, getProperty } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
 
@@ -48,10 +47,11 @@ export class ResidualReactElementSerializer {
   _lazilyHoistedNodes: void | LazilyHoistedNodes;
 
   serializeReactElement(val: ObjectValue): BabelNodeExpression {
-    let typeValue = Get(this.realm, val, "type");
-    let keyValue = Get(this.realm, val, "key");
-    let refValue = Get(this.realm, val, "ref");
-    let propsValue = Get(this.realm, val, "props");
+    let typeValue = getProperty(this.realm, val, "type");
+    let keyValue = getProperty(this.realm, val, "key");
+    let refValue = getProperty(this.realm, val, "ref");
+    let propsValue = getProperty(this.realm, val, "props");
+    let waitForProperties = [val, typeValue, keyValue, refValue, propsValue];
 
     invariant(typeValue !== null, "ReactElement type of null");
 
@@ -107,39 +107,32 @@ export class ResidualReactElementSerializer {
         for (let [propName, binding] of propsValue.properties) {
           if (binding.descriptor !== undefined && propName !== "children") {
             invariant(propName !== "key" && propName !== "ref", `"${propName}" is a reserved prop name`);
-            let value = Get(this.realm, propsValue, propName);
+            let value = getProperty(this.realm, propsValue, propName);
+            let serializedValue = this._serializeValue(value, waitForProperties);
 
             if (this.reactOutput === "jsx") {
-              this._addSerializedValueToJSXAttriutes(
-                propName,
-                this.residualHeapSerializer.serializeValue(value),
-                attributes
-              );
+              this._addSerializedValueToJSXAttriutes(propName, serializedValue, attributes);
             } else if (this.reactOutput === "create-element") {
-              this._addSerializedValueToObjectProperty(
-                propName,
-                this.residualHeapSerializer.serializeValue(value),
-                attributes
-              );
+              this._addSerializedValueToObjectProperty(propName, serializedValue, attributes);
             }
           }
         }
       }
       // handle children
       if (propsValue.properties.has("children")) {
-        let childrenValue = Get(this.realm, propsValue, "children");
+        let childrenValue = getProperty(this.realm, propsValue, "children");
         this.residualHeapSerializer.serializedValues.add(childrenValue);
 
         if (childrenValue !== this.realm.intrinsics.undefined && childrenValue !== this.realm.intrinsics.null) {
           if (childrenValue instanceof ArrayValue) {
-            let childrenLength = Get(this.realm, childrenValue, "length");
+            let childrenLength = getProperty(this.realm, childrenValue, "length");
             let childrenLengthValue = 0;
             if (childrenLength instanceof NumberValue) {
               childrenLengthValue = childrenLength.value;
               for (let i = 0; i < childrenLengthValue; i++) {
-                let child = Get(this.realm, childrenValue, "" + i);
+                let child = getProperty(this.realm, childrenValue, "" + i);
                 if (child instanceof Value) {
-                  children.push(this._serializeReactElementChild(child));
+                  children.push(this._serializeReactElementChild(child, waitForProperties));
                 } else {
                   this.logger.logError(
                     val,
@@ -149,7 +142,7 @@ export class ResidualReactElementSerializer {
               }
             }
           } else {
-            children.push(this._serializeReactElementChild(childrenValue));
+            children.push(this._serializeReactElementChild(childrenValue, waitForProperties));
           }
         }
       }
@@ -174,7 +167,7 @@ export class ResidualReactElementSerializer {
       if (reactLibraryObject === undefined) {
         throw new FatalError("unable to serialize JSX to createElement due to React not being referenced in scope");
       }
-      let createElement = Get(this.realm, reactLibraryObject, "createElement");
+      let createElement = getProperty(this.realm, reactLibraryObject, "createElement");
       originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
       if (shouldHoist) {
         // if we haven't created a _lazilyHoistedNodes before, then this is the first time
@@ -226,10 +219,41 @@ export class ResidualReactElementSerializer {
       invariant(Array.isArray(this._lazilyHoistedNodes.nodes));
       this._lazilyHoistedNodes.nodes.push({ id, astNode: reactElement });
     } else {
+      let reason = this.residualHeapSerializer.emitter.getReasonToWaitForDependencies(val);
       let declar = t.variableDeclaration("var", [t.variableDeclarator(id, reactElement)]);
-      this.residualHeapSerializer.emitter.emit(declar);
+
+      if (!reason) {
+        this.residualHeapSerializer.emitter.emit(declar);
+      } else {
+        this.residualHeapSerializer.emitter.emitAfterWaiting(reason, waitForProperties, () => {
+          this.residualHeapSerializer.emitter.emit(declar);
+        });
+
+        return id;
+      }
     }
     return reactElement;
+  }
+
+  _serializeValue(value: Value, waitForProperties: Array<Value>) {
+    let serializedValue;
+    let reason = this.residualHeapSerializer.emitter.getReasonToWaitForDependencies(value);
+
+    if (reason) {
+      waitForProperties.push(value);
+      this.residualHeapSerializer.emitter.emitAfterWaiting(reason, [value], () => {
+        this.residualHeapSerializer.serializeValue(value);
+      });
+      invariant(value instanceof AbstractValue);
+      if (value.hasIdentifier()) {
+        serializedValue = value.getIdentifier();
+      } else {
+        serializedValue = this.residualHeapSerializer.getSerializeObjectIdentifier(value);
+      }
+    } else {
+      serializedValue = this.residualHeapSerializer.serializeValue(value);
+    }
+    return serializedValue;
   }
 
   _addSerializedValueToJSXAttriutes(prop: string | null, expr: any, attributes: Array<BabelNode>): void {
@@ -333,8 +357,8 @@ export class ResidualReactElementSerializer {
     }
   }
 
-  _serializeReactElementChild(child: Value): BabelNode {
-    let expr = this.residualHeapSerializer.serializeValue(child);
+  _serializeReactElementChild(child: Value, waitForProperties: Array<Value>): BabelNode {
+    let expr = this._serializeValue(child, waitForProperties);
 
     if (this.reactOutput === "jsx") {
       if (t.isStringLiteral(expr) || t.isNumericLiteral(expr)) {
