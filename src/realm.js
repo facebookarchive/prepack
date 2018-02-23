@@ -513,6 +513,24 @@ export class Realm {
     return this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
   }
 
+  // NB: does not apply generators because there's no way to cleanly revert them.
+  // func should not return undefined
+  withEffectsAppliedInGlobalEnv<T>(func: Effects => T, effects: Effects): T {
+    let result: T;
+    this.evaluateForEffectsInGlobalEnv(() => {
+      try {
+        this.applyEffects(effects);
+        result = func(effects);
+        return this.intrinsics.undefined;
+      } finally {
+        this.restoreBindings(effects[2]);
+        this.restoreProperties(effects[3]);
+      }
+    });
+    invariant(result !== undefined, "If we get here, func must have returned undefined.");
+    return result;
+  }
+
   evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any, generatorName?: string): Effects {
     return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state, generatorName));
   }
