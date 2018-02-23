@@ -34,6 +34,7 @@ import {
   valueIsKnownReactAbstraction,
   getReactSymbol,
   flattenChildren,
+  getProperty,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -404,7 +405,7 @@ export class Reconciler {
       const resolveChildren = () => {
         // terminal host component. Start evaluating its children.
         if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
-          let childrenValue = Get(this.realm, propsValue, "children");
+          let childrenValue = getProperty(this.realm, propsValue, "children");
 
           if (childrenValue instanceof Value) {
             let resolvedChildren = this._resolveDeeply(childrenValue, context, branchStatus, branchState);
