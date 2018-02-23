@@ -116,6 +116,7 @@ function generateRuntimeCall(ref: Reference | Value, ast: BabelNodeUnaryExpressi
   } else {
     value = Environment.GetValue(realm, ref);
     invariant(value instanceof Value);
+    Leak.leakValue(realm, value, ast.loc);
   }
 
   return AbstractValue.createTemporalFromBuildFunction(realm, Value, [value], nodes => {
