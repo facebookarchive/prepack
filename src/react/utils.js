@@ -374,3 +374,24 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   recursivelyFlattenArray(realm, array, flattenedChildren);
   return flattenedChildren;
 }
+
+export function getProperty(realm: Realm, object: ObjectValue, property: string | SymbolValue): Value {
+  let binding;
+  if (typeof property === "string") {
+    binding = object.properties.get(property);
+  } else {
+    binding = object.symbols.get(property);
+  }
+  invariant(binding);
+  let descriptor = binding.descriptor;
+
+  if (!descriptor) {
+    return realm.intrinsics.undefined;
+  }
+  let value;
+  if (descriptor.value) {
+    value = descriptor.value;
+  }
+  invariant(value instanceof Value, `ReactElementSet could not get value for`, object, property);
+  return value;
+}
