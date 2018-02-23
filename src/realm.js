@@ -181,14 +181,14 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.react = {
+      abstractHints: new WeakMap(),
       classComponentMetadata: new Map(),
+      currentOwner: undefined,
       enabled: opts.reactEnabled || false,
       output: opts.reactOutput || "create-element",
-      symbols: new Map(),
-      currentOwner: undefined,
-      abstractHints: new WeakMap(),
-      hoistableReactElements: new WeakMap(),
       hoistableFunctions: new WeakMap(),
+      hoistableReactElements: new WeakMap(),
+      symbols: new Map(),
     };
 
     this.stripFlow = opts.stripFlow || false;
@@ -243,17 +243,17 @@ export class Realm {
   intrinsics: Intrinsics;
 
   react: {
-    classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
-    currentOwner?: ObjectValue,
-    enabled: boolean,
-    hoistableFunctions: WeakMap<FunctionValue, boolean>,
-    hoistableReactElements: WeakMap<ObjectValue, boolean>,
     // reactHints are generated to help improve the effeciency of the React reconciler when
     // operating on a tree of React components. We can use reactHint to mark AbstractValues
     // with extra data that helps us traverse through the tree that would otherwise not be possible
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
-    abstractHints: WeakMap<AbstractValue, ReactHint>,
+    abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
+    classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
+    currentOwner?: ObjectValue,
+    enabled: boolean,
+    hoistableFunctions: WeakMap<FunctionValue, boolean>,
+    hoistableReactElements: WeakMap<ObjectValue, boolean>,
     output?: ReactOutputTypes,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
@@ -1134,13 +1134,6 @@ export class Realm {
     if (abstractValue.values.isTop()) return;
     let template = abstractValue.getTemplate();
     invariant(!template.intrinsicName || template.intrinsicName === path);
-    // TODO #882: We are using the concept of "intrinsic values" to mark the template
-    // object as intrinsic, so that we'll never emit code that creates it, as it instead is used
-    // to refer to an unknown but existing object.
-    // However, it's not really an intrinsic object, and it might not exist ahead of time, but only starting
-    // from this point on, which might be tied to some nested generator.
-    // Which we currently don't track, and that needs to get fixed.
-    // For now, we use intrinsicNameGenerated to mark this case.
     template.intrinsicName = path;
     template.intrinsicNameGenerated = true;
     for (let [key, binding] of template.properties) {
@@ -1209,8 +1202,7 @@ export class Realm {
   }
 
   // Pass the error to the realm's error-handler
-  // Return value indicates whether the caller should try to recover from the
-  // error or not ('true' means recover if possible).
+  // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
       let error = Construct(this, this.intrinsics.Error);

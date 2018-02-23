@@ -47,7 +47,7 @@ function getDataFile(directory, name) {
   return data;
 }
 
-function runTestSuite(outputJsx) {
+function runTestSuite(outputJsx, shouldTranspileSource) {
   let reactTestRoot = path.join(__dirname, "../test/react/");
   let prepackOptions = {
     compatibility: "fb-www",
@@ -75,11 +75,15 @@ function runTestSuite(outputJsx) {
     };
   }
 
-  function runSource(source) {
-    let transformedSource = babel.transform(source, {
+  function transpileSource(source) {
+    return babel.transform(source, {
       presets: ["babel-preset-react"],
       plugins: ["transform-object-rest-spread"],
     }).code;
+  }
+
+  function runSource(source) {
+    let transformedSource = transpileSource(source);
     /* eslint-disable no-new-func */
     let fn = new Function("require", "module", transformedSource);
     let moduleShim = { exports: null };
@@ -113,6 +117,9 @@ function runTestSuite(outputJsx) {
 
   async function runTest(directory, name, data) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
+    if (shouldTranspileSource) {
+      source = transpileSource(source);
+    }
     let { compiledSource, statistics } = compileSourceWithPrepack(source);
 
     expect(statistics).toMatchSnapshot();
@@ -168,7 +175,9 @@ function runTestSuite(outputJsx) {
   // Jest tests
   let originalConsoleError = console.error;
 
-  describe(`Test React (${outputJsx ? "JSX" : "create-element"})`, () => {
+  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${outputJsx
+    ? "JSX output"
+    : "create-element output"}`, () => {
     describe("Functional component folding", () => {
       let directory = "functional-components";
 
@@ -212,12 +221,52 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "simple-refs.js");
       });
 
+      it("Simple with abstract props", async () => {
+        await runTest(directory, "simple-with-abstract-props.js");
+      });
+
+      it("Simple with multiple JSX spreads", async () => {
+        await runTest(directory, "simple-with-jsx-spread.js");
+      });
+
+      it("Simple with multiple JSX spreads #2", async () => {
+        await runTest(directory, "simple-with-jsx-spread2.js");
+      });
+
+      it("Simple with multiple JSX spreads #3", async () => {
+        await runTest(directory, "simple-with-jsx-spread3.js");
+      });
+
+      it("Simple with multiple JSX spreads #4", async () => {
+        await runTest(directory, "simple-with-jsx-spread4.js");
+      });
+
+      it("Simple with multiple JSX spreads #5", async () => {
+        await runTest(directory, "simple-with-jsx-spread5.js");
+      });
+
+      it("Simple with multiple JSX spreads #6", async () => {
+        await runTest(directory, "simple-with-jsx-spread6.js");
+      });
+
       it("Simple with Object.assign", async () => {
         await runTest(directory, "simple-assign.js");
       });
 
       it("Simple with Object.assign #2", async () => {
         await runTest(directory, "simple-assign2.js");
+      });
+
+      it("Simple with Object.assign #3", async () => {
+        await runTest(directory, "simple-assign3.js");
+      });
+
+      it("Simple with Object.assign #4", async () => {
+        await runTest(directory, "simple-assign4.js");
+      });
+
+      it("Simple with Object.assign #5", async () => {
+        await runTest(directory, "simple-assign5.js");
       });
 
       it("Circular reference", async () => {
@@ -294,6 +343,10 @@ function runTestSuite(outputJsx) {
         } finally {
           global.console.error = originalConsoleError;
         }
+      });
+
+      it("Event handlers", async () => {
+        await runTest(directory, "event-handlers.js");
       });
 
       it("Class component as root", async () => {
@@ -406,6 +459,10 @@ function runTestSuite(outputJsx) {
         await runTest(directory, "fb8.js");
       });
 
+      it("fb-www 9", async () => {
+        await runTest(directory, "fb9.js");
+      });
+
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
       });
@@ -418,5 +475,9 @@ function runTestSuite(outputJsx) {
   });
 }
 
-runTestSuite(true);
-runTestSuite(false);
+// pre non-transpiled
+runTestSuite(true, false);
+runTestSuite(false, false);
+// pre transpiled
+runTestSuite(true, true);
+runTestSuite(false, true);

@@ -81,6 +81,25 @@ export default class AbstractObjectValue extends AbstractValue {
     return result;
   }
 
+  isFinalObject(): boolean {
+    if (this.values.isTop()) return false;
+    let result;
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      if (result === undefined) {
+        result = element.isFinalObject();
+      } else if (result !== element.isFinalObject()) {
+        AbstractValue.reportIntrospectionError(this);
+        throw new FatalError();
+      }
+    }
+    if (result === undefined) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
+    return result;
+  }
+
   mightBeFalse(): boolean {
     return false;
   }
@@ -111,21 +130,33 @@ export default class AbstractObjectValue extends AbstractValue {
     }
   }
 
-  makeSimple(): void {
+  makeSimple(option?: string | Value): void {
     if (this.values.isTop() && this.getType() === ObjectValue) {
       let obj = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
       obj.intrinsicName = this.intrinsicName;
       obj.intrinsicNameGenerated = true;
       obj.makePartial();
+      obj._templateFor = this;
       this.values = new ValuesDomain(obj);
     }
     if (!this.values.isTop()) {
       for (let element of this.values.getElements()) {
         invariant(element instanceof ObjectValue);
-        element.makeSimple();
+        element.makeSimple(option);
       }
     }
     this.cachedIsSimpleObject = true;
+  }
+
+  makeFinal(): void {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      element.makeFinal();
+    }
   }
 
   throwIfNotObject(): AbstractObjectValue {

@@ -14,6 +14,7 @@ import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import {
   AbstractValue,
+  AbstractObjectValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
@@ -88,6 +89,13 @@ export default function(realm: Realm): NativeFunctionValue {
             throw new FatalError();
           }
 
+          to_must_be_partial = true;
+          // Make this temporally not partial
+          // so that we can call frm.$OwnPropertyKeys below.
+          frm.makeNotPartial();
+        }
+
+        if (to_must_be_partial) {
           // Generate a residual Object.assign call that copies the
           // partial properties that we don't know about.
           AbstractValue.createTemporalFromBuildFunction(
@@ -99,14 +107,19 @@ export default function(realm: Realm): NativeFunctionValue {
             }
           );
 
-          to_must_be_partial = true;
-          frm.makeNotPartial();
+          if (frm instanceof ObjectValue || frm instanceof AbstractObjectValue) {
+            // At this point any further mutations to the source would be unsafe
+            // because the Object.assign() call operates on the snapshot of the
+            // object at this point in time. We can't mutate that snapshot.
+            frm.makeFinal();
+          }
         }
 
         // ii. Let keys be ? from.[[OwnPropertyKeys]]().
         keys = frm.$OwnPropertyKeys();
         if (frm_was_partial) frm.makePartial();
       }
+
       if (to_must_be_partial) {
         // Only OK if to is an empty object because nextSource might have
         // properties at runtime that will overwrite current properties in to.
@@ -116,6 +129,12 @@ export default function(realm: Realm): NativeFunctionValue {
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
+        // If `to` is going to be a partial, we are emitting Object.assign()
+        // calls for each argument. At this point we should not be trying to
+        // assign keys below because that will change the order of the keys on
+        // the resulting object (i.e. the keys assigned later would already be
+        // on the serialized version from the heap).
+        continue;
       }
 
       invariant(frm, "from required");
@@ -152,6 +171,13 @@ export default function(realm: Realm): NativeFunctionValue {
       // We already established above that `to` is simple,
       // so set the `_isSimple` flag.
       to.makeSimple();
+
+      if (to instanceof ObjectValue || to instanceof AbstractObjectValue) {
+        // At this point any further mutations to the target would be unsafe
+        // because the Object.assign() call operates on the snapshot of the
+        // object at this point in time. We can't mutate that snapshot.
+        to.makeFinal();
+      }
     }
     return to;
   });

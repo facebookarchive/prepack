@@ -278,7 +278,7 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   });
 }
 
-export function createReactHint(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
+export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
   return {
     object,
     propertyName,
@@ -297,7 +297,7 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
     let reactHint = realm.react.abstractHints.get(value);
 
     invariant(reactHint);
-    if (reactHint.object === realm.fbLibraries.reactRelay) {
+    if (typeof reactHint !== "string" && reactHint.object === realm.fbLibraries.reactRelay) {
       switch (reactHint.propertyName) {
         case "createFragmentContainer":
         case "createPaginationContainer":
@@ -319,6 +319,42 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
     invariant(value instanceof ECMAScriptSourceFunctionValue);
     return value;
   }
+}
+
+// props should never have "ref" or "key" properties, as they're part of ReactElement
+// object instead. to ensure that we can give this hint, we create them and then
+// delete them, so their descriptor is left undefined. we use this knowledge later
+// to ensure that when dealing with creating ReactElements with partial config,
+// we don't have to bail out becuase "config" may or may not have "key" or/and "ref"
+export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
+  let objectValue;
+  if (props instanceof AbstractObjectValue) {
+    let elements = props.values.getElements();
+    if (elements && elements.size > 0) {
+      objectValue = Array.from(elements)[0];
+    }
+    // we don't want to serialize in the output that we're making these deletes
+    invariant(objectValue instanceof ObjectValue);
+    objectValue.refuseSerialization = true;
+  }
+  Properties.Set(realm, props, "ref", realm.intrinsics.undefined, true);
+  props.$Delete("ref");
+  Properties.Set(realm, props, "key", realm.intrinsics.undefined, true);
+  props.$Delete("key");
+  if (props instanceof AbstractObjectValue) {
+    invariant(objectValue instanceof ObjectValue);
+    objectValue.refuseSerialization = false;
+  }
+}
+
+export function objectHasNoPartialKeyAndRef(
+  realm: Realm,
+  object: ObjectValue | AbstractValue | AbstractObjectValue
+): boolean {
+  if (object instanceof AbstractValue) {
+    return true;
+  }
+  return !(Get(realm, object, "key") instanceof AbstractValue || Get(realm, object, "ref") instanceof AbstractValue);
 }
 
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {

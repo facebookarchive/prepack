@@ -185,6 +185,7 @@ export function canHoistReactElement(
     !(ref instanceof String || ref instanceof AbstractValue) &&
     canHoistValue(realm, ref, residualHeapVisitor, visitedValues) &&
     canHoistValue(realm, key, residualHeapVisitor, visitedValues) &&
+    !props.isPartialObject() &&
     canHoistValue(realm, props, residualHeapVisitor, visitedValues)
   ) {
     realm.react.hoistableReactElements.set(reactElement, true);

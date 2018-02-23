@@ -19,6 +19,9 @@ let chalk = require("chalk");
 let path = require("path");
 let fs = require("fs");
 let vm = require("vm");
+let os = require("os");
+let minimist = require("minimist");
+const EOL = os.EOL;
 
 function search(dir, relative) {
   let tests = [];
@@ -79,7 +82,7 @@ function exec(code) {
   return result + logOutput;
 }
 
-function runTest(name, code) {
+function runTest(name, code, args) {
   let realmOptions = { residual: true };
   let sources = [{ filePath: name, fileContents: code }];
   console.log(chalk.inverse(name));
@@ -106,8 +109,12 @@ function runTest(name, code) {
       }
     }
     try {
-      expected = exec(`(function () { ${code}; // keep newline here as code may end with comment
-return __result; }).call(this);`);
+      try {
+        expected = exec(`(function () { ${code}; // keep newline here as code may end with comment
+        return __result; }).call(this);`);
+      } catch (e) {
+        expected = "" + e;
+      }
 
       let i = 0;
       let max = 4;
@@ -119,6 +126,7 @@ return __result; }).call(this);`);
         if (result instanceof ThrowCompletion) throw result.value;
         if (result instanceof AbruptCompletion) throw result;
         let newCode = result.code;
+        if (args.verbose && i === 0) console.log(newCode);
         codeIterations.push(newCode);
         let markersIssue = false;
         for (let { positive, value, start } of markersToFind) {
@@ -129,8 +137,12 @@ return __result; }).call(this);`);
           }
         }
         if (markersIssue) break;
-        actual = exec(`(function () { ${newCode}; // keep newline here as code may end with comment
-          return __result; }).call(this);`);
+        try {
+          actual = exec(`(function () { ${newCode}; // keep newline here as code may end with comment
+            return __result; }).call(this);`);
+        } catch (e) {
+          actual = "" + e;
+        }
         if (expected !== actual) {
           console.error(chalk.red("Output mismatch!"));
           break;
@@ -160,7 +172,7 @@ return __result; }).call(this);`);
     return false;
   }
 }
-function run() {
+function run(args) {
   let failed = 0;
   let passed = 0;
   let total = 0;
@@ -170,9 +182,10 @@ function run() {
     if (path.basename(test.name)[0] === ".") continue;
     if (test.name.endsWith("~")) continue;
     if (test.file.includes("// skip")) continue;
+    if (!test.name.includes(args.filter)) continue;
 
     total++;
-    if (runTest(test.name, test.file)) passed++;
+    if (runTest(test.name, test.file, args)) passed++;
     else failed++;
   }
 
@@ -180,4 +193,70 @@ function run() {
   return failed === 0;
 }
 
-if (!run()) process.exit(1);
+// Object to store all command line arguments
+class ProgramArgs {
+  verbose: boolean;
+  filter: string;
+  constructor(verbose: boolean, filter: string) {
+    this.verbose = verbose;
+    this.filter = filter; //lets user choose specific test files, runs all tests if omitted
+  }
+}
+
+// Execution of tests begins here
+function main(): number {
+  try {
+    let args = argsParse();
+    if (!run(args)) {
+      process.exit(1);
+    } else {
+      return 0;
+    }
+  } catch (e) {
+    if (e instanceof ArgsParseError) {
+      console.error("Illegal argument: %s.\n%s", e.message, usage());
+    } else {
+      console.error(e);
+    }
+    return 1;
+  }
+  return 0;
+}
+
+// Helper function to provide correct usage information to the user
+function usage(): string {
+  return `Usage: ${process.argv[0]} ${process.argv[1]} ` + EOL + `[--verbose] [--filter <string>]`;
+}
+
+// NOTE: inheriting from Error does not seem to pass through an instanceof
+// check
+class ArgsParseError {
+  message: string;
+  constructor(message: string) {
+    this.message = message;
+  }
+}
+
+// Parses through the command line arguments and throws errors if usage is incorrect
+function argsParse(): ProgramArgs {
+  let parsedArgs = minimist(process.argv.slice(2), {
+    string: ["filter"],
+    boolean: ["verbose"],
+    default: {
+      verbose: false,
+      filter: "",
+    },
+  });
+  if (typeof parsedArgs.verbose !== "boolean") {
+    throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
+  }
+  if (typeof parsedArgs.filter !== "string") {
+    throw new ArgsParseError(
+      "filter must be a string (relative path from serialize directory) (--filter abstract/Residual.js)"
+    );
+  }
+  let programArgs = new ProgramArgs(parsedArgs.verbose, parsedArgs.filter);
+  return programArgs;
+}
+
+main();

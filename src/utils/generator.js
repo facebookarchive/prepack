@@ -109,7 +109,7 @@ export class Generator {
     return this._name || `#${this.id}`;
   }
 
-  getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
+  getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true): BabelNodeExpression {
     // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
     let index = Number.parseInt(key, 10);
     if (index >= 0 && index.toString() === key) {

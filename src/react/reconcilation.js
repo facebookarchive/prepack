@@ -37,6 +37,7 @@ import {
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
+import { Properties } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import {
@@ -162,7 +163,7 @@ export class Reconciler {
 
   _renderComplexClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     classMetadata: ClassComponentMetadata,
     branchStatus: BranchStatusEnum,
@@ -204,7 +205,7 @@ export class Reconciler {
 
   _renderSimpleClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
@@ -223,7 +224,7 @@ export class Reconciler {
 
   _renderFunctionalComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
     invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
@@ -232,7 +233,7 @@ export class Reconciler {
 
   _getClassComponentMetadata(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ): ClassComponentMetadata {
     if (this.realm.react.classComponentMetadata.has(componentType)) {
@@ -248,7 +249,7 @@ export class Reconciler {
 
   _renderRelayQueryRendererComponent(
     reactElement: ObjectValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
     // TODO: for now we do nothing, in the future we want to evaluate the render prop of this component
@@ -260,7 +261,7 @@ export class Reconciler {
 
   _renderComponent(
     componentType: Value,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
@@ -402,21 +403,19 @@ export class Reconciler {
 
       const resolveChildren = () => {
         // terminal host component. Start evaluating its children.
-        if (propsValue instanceof ObjectValue) {
-          let childrenProperty = propsValue.properties.get("children");
-          if (childrenProperty) {
-            let childrenPropertyDescriptor = childrenProperty.descriptor;
-            // if the descriptor is undefined, the property is likely deleted, if it exists
-            // proceed to resolve the children
-            if (childrenPropertyDescriptor !== undefined) {
-              let childrenPropertyValue = childrenPropertyDescriptor.value;
-              invariant(childrenPropertyValue instanceof Value, `Bad "children" prop passed in JSXElement`);
-              let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus, branchState);
-              // we can optimize further and flatten arrays on non-composite components
-              if (resolvedChildren instanceof ArrayValue) {
-                resolvedChildren = flattenChildren(this.realm, resolvedChildren);
-              }
-              childrenPropertyDescriptor.value = resolvedChildren;
+        if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
+          let childrenValue = Get(this.realm, propsValue, "children");
+
+          if (childrenValue instanceof Value) {
+            let resolvedChildren = this._resolveDeeply(childrenValue, context, branchStatus, branchState);
+            // we can optimize further and flatten arrays on non-composite components
+            if (resolvedChildren instanceof ArrayValue) {
+              resolvedChildren = flattenChildren(this.realm, resolvedChildren);
+            }
+            if (propsValue.properties.has("children")) {
+              propsValue.refuseSerialization = true;
+              Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
+              propsValue.refuseSerialization = false;
             }
           }
         }
@@ -432,7 +431,13 @@ export class Reconciler {
         this._assignBailOutMessage(reactElement, `Bail-out: refs are not supported on <Components />`);
         return reactElement;
       }
-      if (!(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue)) {
+      if (
+        !(
+          propsValue instanceof ObjectValue ||
+          propsValue instanceof AbstractObjectValue ||
+          propsValue instanceof AbstractValue
+        )
+      ) {
         this._assignBailOutMessage(
           reactElement,
           `Bail-out: props on <Component /> was not not an ObjectValue or an AbstractValue`
