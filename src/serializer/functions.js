@@ -143,6 +143,11 @@ export class Functions {
       // in the reconciler
       return;
     }
+    if (value instanceof Completion) {
+      // TODO we don't support this yet, but will do very soon
+      // to unblock work, we'll just return at this point right now
+      return;
+    }
     invariant(value instanceof Value);
     if (simpleClassComponents.has(value)) {
       // if the root component was a class and is now simple, we can convert it from a class
