@@ -68,6 +68,10 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
 
     // b. Let baseObj be ! ToObject(GetBase(ref)).
     let base = Environment.GetBase(realm, ref);
+    if (base instanceof AbstractValue && !(base instanceof AbstractObjectValue)) {
+      // if the base is abstract but not an abstract object, we have a type error
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
     // Constructing the reference checks that base is coercible to an object hence
     invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
     let baseObj = base instanceof ConcreteValue ? To.ToObject(realm, base) : base;

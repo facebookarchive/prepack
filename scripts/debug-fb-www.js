@@ -33,7 +33,7 @@ let prepackOptions = {
   abstractEffectsInAdditionalFunctions: true,
   simpleClosures: true,
 };
-let inputPath = path.resolve("fb-www/input.js");
+let inputPath = path.resolve("fb-www/input3.js");
 let outputPath = path.resolve("fb-www/output.js");
 
 function compileSource(source) {
