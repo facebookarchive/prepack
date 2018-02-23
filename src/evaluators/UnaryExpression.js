@@ -39,7 +39,7 @@ function isInstance(proto, Constructor): boolean {
   return proto instanceof Constructor || proto === Constructor.prototype;
 }
 
-function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
+function evaluateDeleteOperation(expr: Value | Reference, ast: BabelNodeUnaryExpression, realm: Realm) {
   // ECMA262 12.5.3.2
 
   // 1. Let ref be the result of evaluating UnaryExpression.
@@ -69,8 +69,13 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
     // b. Let baseObj be ! ToObject(GetBase(ref)).
     let base = Environment.GetBase(realm, ref);
     if (base instanceof AbstractValue && !(base instanceof AbstractObjectValue)) {
-      // if the base is abstract but not an abstract object, we have a type error
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      let error = new CompilerDiagnostic(
+        "might not be an object, hence this unary operation might throw a runtime TypeError",
+        ast.argument.loc,
+        "PP0027",
+        "RecoverableError"
+      );
+      if (realm.handleError(error) === "Fail") throw new FatalError();
     }
     // Constructing the reference checks that base is coercible to an object hence
     invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
@@ -99,8 +104,7 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
   return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
 }
 
-function generateRuntimeCall(ref: Reference | Value, ast: BabelNodeUnaryExpression, strictCode: boolean, realm: Realm) {
-  invariant(ref instanceof Reference);
+function generateRuntimeCall(ref: Reference, ast: BabelNodeUnaryExpression, strictCode: boolean, realm: Realm) {
   let value;
   let propertyName;
 
@@ -109,23 +113,25 @@ function generateRuntimeCall(ref: Reference | Value, ast: BabelNodeUnaryExpressi
   if (Environment.IsPropertyReference(realm, ref)) {
     value = Environment.GetBase(realm, ref);
     invariant(value instanceof Value);
-    if (!value.isSimpleObject()) {
+    if (value.mightBeObject() && !value.isSimpleObject()) {
       Leak.leakValue(realm, value, ast.loc);
     }
     propertyName = Environment.GetReferencedName(realm, ref);
   } else {
     value = Environment.GetValue(realm, ref);
-    invariant(value instanceof Value);
     Leak.leakValue(realm, value, ast.loc);
   }
 
   return AbstractValue.createTemporalFromBuildFunction(realm, Value, [value], nodes => {
     let arg;
     if (propertyName) {
-      invariant(typeof propertyName === "string");
-      arg = t.isValidIdentifier(propertyName)
-        ? t.memberExpression(nodes[0], t.identifier(propertyName), false)
-        : t.memberExpression(nodes[0], t.stringLiteral(propertyName), true);
+      if (typeof propertyName === "string") {
+        arg = t.isValidIdentifier(propertyName)
+          ? t.memberExpression(nodes[0], t.identifier(propertyName), false)
+          : t.memberExpression(nodes[0], t.stringLiteral(propertyName), true);
+      } else {
+        arg = t.memberExpression(nodes[0], nodes[1], true);
+      }
     } else {
       arg = nodes[0];
     }
@@ -146,7 +152,10 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
   } catch (error) {
     if (error instanceof FatalError) {
       return realm.evaluateWithPossibleThrowCompletion(
-        () => generateRuntimeCall(expr, ast, strictCode, realm),
+        () => {
+          invariant(expr instanceof Reference);
+          return generateRuntimeCall(expr, ast, strictCode, realm);
+        },
         TypesDomain.topVal,
         ValuesDomain.topVal
       );
