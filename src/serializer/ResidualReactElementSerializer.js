@@ -219,20 +219,14 @@ export class ResidualReactElementSerializer {
       invariant(Array.isArray(this._lazilyHoistedNodes.nodes));
       this._lazilyHoistedNodes.nodes.push({ id, astNode: reactElement });
     } else {
-      let reason = this.residualHeapSerializer.emitter.getReasonToWaitForDependencies(val);
       let declar = t.variableDeclaration("var", [t.variableDeclarator(id, reactElement)]);
+      this.residualHeapSerializer.emitter.emit(declar);
 
-      if (!reason) {
-        this.residualHeapSerializer.emitter.emit(declar);
-      } else {
-        this.residualHeapSerializer.emitter.emitAfterWaiting(reason, waitForProperties, () => {
-          this.residualHeapSerializer.emitter.emit(declar);
-        });
-
-        return id;
-      }
+      this.residualHeapSerializer.emitter.emitNowOrAfterWaitingForDependencies(waitForProperties, () => {
+        this.residualHeapSerializer.emitter.emit(t.expressionStatement(t.assignmentExpression("=", id, reactElement)));
+      });
     }
-    return reactElement;
+    return id;
   }
 
   _serializeValue(value: Value, waitForProperties: Array<Value>) {
