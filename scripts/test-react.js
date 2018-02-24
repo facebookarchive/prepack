@@ -225,6 +225,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-with-abstract-props.js");
       });
 
+      it("Simple with unary expressions", async () => {
+        await runTest(directory, "simple-with-unary.js");
+      });
+
       it("Simple with multiple JSX spreads", async () => {
         await runTest(directory, "simple-with-jsx-spread.js");
       });
