@@ -65,12 +65,12 @@
     "babel-traverse": "^6.9.0",
     "babel-types": "^6.9.0",
     "babylon": "^6.18.0",
+    "node-zip": "^1.1.1",
     "queue-fifo": "^0.2.3",
     "seedrandom": "^2.4.2",
     "source-map": "^0.5.6",
     "vscode-debugadapter": "^1.24.0",
-    "vscode-debugprotocol": "^1.24.0",
-    "node-zip": "^1.1.1"
+    "vscode-debugprotocol": "^1.24.0"
   },
   "devDependencies": {
     "babel-cli": "^6.18.0",
@@ -89,6 +89,7 @@
     "eslint-plugin-header": "^1.0.0",
     "eslint-plugin-prettier": "^2.1.2",
     "flow-bin": "^0.61.0",
+    "flow-typed": "^2.3.0",
     "graceful-fs": "^4.1.11",
     "invariant": "^2.2.0",
     "istanbul": "^0.4.5",
