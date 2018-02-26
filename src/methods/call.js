@@ -477,10 +477,10 @@ export function EvaluateDirectCallWithArgList(
   argList: Array<Value>,
   tailPosition?: boolean
 ): Value {
-  if (func instanceof AbstractValue && Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
+  if (func instanceof AbstractObjectValue && Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
     return AbstractValue.createTemporalFromBuildFunction(
       realm,
-      Value,
+      func.functionResultType || Value,
       [func].concat(argList),
       (nodes: Array<BabelNodeExpression>) => {
         let fun_args = nodes.slice(1);

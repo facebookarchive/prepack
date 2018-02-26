@@ -52,13 +52,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 5. Repeat, while items is not empty
     while (items.length) {
       // a. Remove the first element from items and let E be the value of the element.
-      let E = items.shift().throwIfNotConcrete();
+      let E = items.shift();
 
       // b. Let spreadable be ? IsConcatSpreadable(E).
       let spreadable = IsConcatSpreadable(realm, E);
 
       // c. If spreadable is true, then
       if (spreadable) {
+        E = E.throwIfNotConcrete();
         invariant(E instanceof ObjectValue);
         // i. Let k be 0.
         let k = 0;

@@ -34,7 +34,7 @@ const throwTemplate = buildExpressionTemplate(throwTemplateSrc);
 export function parseTypeNameOrTemplate(
   realm: Realm,
   typeNameOrTemplate: void | Value | string
-): { type: typeof Value, template: void | ObjectValue } {
+): { type: typeof Value, template: void | ObjectValue, functionResultType?: typeof Value } {
   if (typeNameOrTemplate === undefined || typeNameOrTemplate instanceof UndefinedValue) {
     return { type: Value, template: undefined };
   } else if (typeof typeNameOrTemplate === "string") {
@@ -45,11 +45,15 @@ export function parseTypeNameOrTemplate(
     return { type, template: undefined };
   } else if (typeNameOrTemplate instanceof StringValue) {
     let typeNameString = To.ToStringPartial(realm, typeNameOrTemplate);
+    let hasFunctionResultType = typeNameString.startsWith(":");
+    if (hasFunctionResultType) typeNameString = typeNameString.substring(1);
     let type = Utils.getTypeFromName(typeNameString);
     if (type === undefined) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown typeNameOrTemplate");
     }
-    return { type, template: undefined };
+    return hasFunctionResultType
+      ? { type: FunctionValue, template: undefined, functionResultType: type }
+      : { type, template: undefined };
   } else if (typeNameOrTemplate instanceof FunctionValue) {
     return { type: FunctionValue, template: typeNameOrTemplate };
   } else if (typeNameOrTemplate instanceof ObjectValue) {
@@ -84,7 +88,7 @@ export function createAbstract(
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
   }
 
-  let { type, template } = parseTypeNameOrTemplate(realm, typeNameOrTemplate);
+  let { type, template, functionResultType } = parseTypeNameOrTemplate(realm, typeNameOrTemplate);
 
   let result;
   let locString,
@@ -123,6 +127,7 @@ export function createAbstract(
     template.makePartial();
     if (name) realm.rebuildNestedProperties(result, name);
   }
+  if (functionResultType) result.functionResultType = functionResultType;
 
   if (additionalValues.length > 0)
     result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
