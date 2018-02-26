@@ -27,6 +27,7 @@ import AbstractObjectValue from "../../values/AbstractObjectValue";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import { Utils } from "../../singletons";
 import type { BabelNodeSourceLocation } from "babel-types";
+import invariant from "../../invariant.js";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
 const throwTemplate = buildExpressionTemplate(throwTemplateSrc);
@@ -127,7 +128,10 @@ export function createAbstract(
     template.makePartial();
     if (name) realm.rebuildNestedProperties(result, name);
   }
-  if (functionResultType) result.functionResultType = functionResultType;
+  if (functionResultType) {
+    invariant(result instanceof AbstractObjectValue);
+    result.functionResultType = functionResultType;
+  }
 
   if (additionalValues.length > 0)
     result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
