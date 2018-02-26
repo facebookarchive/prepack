@@ -100,7 +100,7 @@ export class ResidualHeapVisitor {
     invariant(generator);
     this.scope = this.commonScope = generator;
     this.inspector = new ResidualHeapInspector(realm, logger);
-    this.referencedDeclaredValues = new Set();
+    this.referencedDeclaredValues = new Map();
     this.delayedVisitGeneratorEntries = [];
     this.someReactElement = undefined;
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
@@ -130,7 +130,7 @@ export class ResidualHeapVisitor {
   commonScope: Scope;
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
-  referencedDeclaredValues: Set<AbstractValue>;
+  referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>;
   delayedVisitGeneratorEntries: Array<{| commonScope: Scope, generator: Generator, entry: GeneratorEntry |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
@@ -833,7 +833,7 @@ export class ResidualHeapVisitor {
         return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
       },
       recordDeclaration: (value: AbstractValue) => {
-        this.referencedDeclaredValues.add(value);
+        this.referencedDeclaredValues.set(value, this.containingAdditionalFunction);
       },
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {
         this.delayedVisitGeneratorEntries.push({ commonScope, generator, entry });

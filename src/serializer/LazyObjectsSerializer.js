@@ -67,7 +67,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
-    referencedDeclaredValues: Set<AbstractValue>,
+    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,

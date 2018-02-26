@@ -99,7 +99,7 @@ export class ResidualHeapSerializer {
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
-    referencedDeclaredValues: Set<AbstractValue>,
+    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
@@ -162,7 +162,7 @@ export class ResidualHeapSerializer {
       this.additionalFunctionValueNestedFunctions,
       referentializer
     );
-    this.emitter = new Emitter(this.residualFunctions);
+    this.emitter = new Emitter(this.residualFunctions, referencedDeclaredValues);
     this.mainBody = this.emitter.getBody();
     this.residualHeapInspector = residualHeapInspector;
     this.residualValues = residualValues;
@@ -213,7 +213,7 @@ export class ResidualHeapSerializer {
   _serializedValueWithIdentifiers: Set<Value>;
   residualFunctions: ResidualFunctions;
   _options: SerializerOptions;
-  referencedDeclaredValues: Set<AbstractValue>;
+  referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>;
   activeGeneratorBodies: Map<Generator, SerializedBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
@@ -1604,7 +1604,7 @@ export class ResidualHeapSerializer {
         !this.preludeGenerator.derivedIds.has(id.name) ||
           this.emitter.cannotDeclare() ||
           this.emitter.hasBeenDeclared(val) ||
-          this.emitter.emittingToAdditionalFunction()
+          (this.emitter.emittingToAdditionalFunction() && this.referencedDeclaredValues.get(val) === undefined)
       );
     }
     return serializedValue;

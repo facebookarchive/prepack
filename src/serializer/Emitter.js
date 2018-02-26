@@ -58,7 +58,10 @@ type EmitterDependenciesVisitorCallbacks<T> = {
 //    the lower body entry is finished.
 //    To this end, the emitter maintains the `_activeGeneratorStack` and `_waitingForBodies` datastructures.
 export class Emitter {
-  constructor(residualFunctions: ResidualFunctions) {
+  constructor(
+    residualFunctions: ResidualFunctions,
+    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>
+  ) {
     this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
     this._waitingForBodies = new Map();
@@ -77,7 +80,12 @@ export class Emitter {
       },
       onAbstractValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
-        if (!this.cannotDeclare() && !this.hasBeenDeclared(val)) return val;
+        if (
+          !this.cannotDeclare() &&
+          !this.hasBeenDeclared(val) &&
+          (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
+        )
+          return val;
         else return undefined;
       },
     };
