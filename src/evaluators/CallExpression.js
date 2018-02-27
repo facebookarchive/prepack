@@ -16,7 +16,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value } from "../values/index.js";
-import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
+import { AbstractValue, AbstractObjectValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment, Functions, Join, Leak } from "../singletons.js";
 import {
@@ -116,7 +116,8 @@ function generateRuntimeCall(
       Leak.leakValue(realm, arg, ast.loc);
     }
   }
-  return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {
+  let resultType = (func instanceof AbstractObjectValue ? func.functionResultType : undefined) || Value;
+  return AbstractValue.createTemporalFromBuildFunction(realm, resultType, args, nodes => {
     let callFunc;
     let argStart = 1;
     if (thisArg instanceof Value) {
