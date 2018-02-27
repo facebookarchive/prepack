@@ -58,7 +58,11 @@ export default function(realm: Realm): void {
   // Helper function to model values that are obtained from the environment,
   // and whose concrete values are not known at Prepack-time.
   // __abstract(typeNameOrTemplate, name, options) creates a new abstract value
-  // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
+  // where typeNameOrTemplate can be...
+  // - 'string', 'boolean', 'number', 'object', 'function' or
+  // - ':string', ':boolean', ':number', ':object', ':function' to indicate that
+  //   the abstract value represents a function that only returns values of the specified type, or
+  // - an actual object defining known properties.
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {

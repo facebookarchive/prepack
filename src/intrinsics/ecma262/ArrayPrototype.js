@@ -59,8 +59,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
       // c. If spreadable is true, then
       if (spreadable) {
-        E = E.throwIfNotConcrete();
-        invariant(E instanceof ObjectValue);
+        E = E.throwIfNotConcreteObject();
+
         // i. Let k be 0.
         let k = 0;
 
