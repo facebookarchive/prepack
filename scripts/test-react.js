@@ -297,6 +297,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "key-change.js");
       });
 
+      it("Delete element prop key", async () => {
+        await runTest(directory, "delete-element-prop-key.js");
+      });
+
       it("Key change with fragments", async () => {
         await runTest(directory, "key-change-fragments.js");
       });

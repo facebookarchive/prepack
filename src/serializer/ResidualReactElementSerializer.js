@@ -53,30 +53,24 @@ export class ResidualReactElementSerializer {
     let propsValue = getProperty(this.realm, val, "props");
     let waitForProperties = [val, typeValue, keyValue, refValue, propsValue];
 
-    invariant(typeValue !== null, "ReactElement type of null");
-
     let attributes = [];
     let children = [];
 
-    if (keyValue !== null) {
+    if (keyValue !== this.realm.intrinsics.null) {
       let keyExpr = this.residualHeapSerializer.serializeValue(keyValue);
-      if (keyExpr.type !== "NullLiteral") {
-        if (this.reactOutput === "jsx") {
-          this._addSerializedValueToJSXAttriutes("key", keyExpr, attributes);
-        } else if (this.reactOutput === "create-element") {
-          this._addSerializedValueToObjectProperty("key", keyExpr, attributes);
-        }
+      if (this.reactOutput === "jsx") {
+        this._addSerializedValueToJSXAttriutes("key", keyExpr, attributes);
+      } else if (this.reactOutput === "create-element") {
+        this._addSerializedValueToObjectProperty("key", keyExpr, attributes);
       }
     }
 
-    if (refValue !== null) {
+    if (refValue !== this.realm.intrinsics.null) {
       let refExpr = this.residualHeapSerializer.serializeValue(refValue);
-      if (refExpr.type !== "NullLiteral") {
-        if (this.reactOutput === "jsx") {
-          this._addSerializedValueToJSXAttriutes("ref", refExpr, attributes);
-        } else if (this.reactOutput === "create-element") {
-          this._addSerializedValueToObjectProperty("ref", refExpr, attributes);
-        }
+      if (this.reactOutput === "jsx") {
+        this._addSerializedValueToJSXAttriutes("ref", refExpr, attributes);
+      } else if (this.reactOutput === "create-element") {
+        this._addSerializedValueToObjectProperty("ref", refExpr, attributes);
       }
     }
 

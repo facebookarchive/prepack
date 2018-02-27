@@ -38,7 +38,13 @@ import AbstractValue from "../values/AbstractValue";
 export type ReactSymbolTypes = "react.element" | "react.fragment" | "react.portal" | "react.return" | "react.call";
 
 export function isReactElement(val: Value): boolean {
-  if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
+  if (!(val instanceof ObjectValue)) {
+    return false;
+  }
+  if (val.kind === "reactEnabled") {
+    return true;
+  }
+  if (val.properties.has("$$typeof")) {
     let realm = val.$Realm;
     let $$typeof = Get(realm, val, "$$typeof");
     let globalObject = realm.$GlobalObject;
@@ -382,7 +388,9 @@ export function getProperty(realm: Realm, object: ObjectValue, property: string 
   } else {
     binding = object.symbols.get(property);
   }
-  invariant(binding);
+  if (!binding) {
+    return realm.intrinsics.undefined;
+  }
   let descriptor = binding.descriptor;
 
   if (!descriptor) {
@@ -391,7 +399,13 @@ export function getProperty(realm: Realm, object: ObjectValue, property: string 
   let value;
   if (descriptor.value) {
     value = descriptor.value;
+  } else if (descriptor.get || descriptor.set) {
+    AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
+    throw new FatalError();
   }
-  invariant(value instanceof Value, `ReactElementSet could not get value for`, object, property);
+  if (value === undefined) {
+    return realm.intrinsics.undefined;
+  }
+  invariant(value instanceof Value, `react/utils/getProperty should not be called on internal properties`);
   return value;
 }

@@ -27,6 +27,7 @@ import {
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { Logger } from "../utils/logger.js";
+import { isReactElement } from "../react/utils.js";
 
 type TargetIntegrityCommand = "freeze" | "seal" | "preventExtensions" | "";
 
@@ -127,6 +128,16 @@ export class ResidualHeapInspector {
     if (IsArray(this.realm, val)) {
       if (key === "length" && desc.writable === targetDescriptor.writable && !desc.enumerable && !desc.configurable) {
         // length property has the correct descriptor values
+        return true;
+      }
+    } else if (isReactElement(val)) {
+      // we don't want to the $$typeof or _owner/_store properties
+      // as this is contained within the JSXElement, otherwise
+      // they we be need to be emitted during serialization
+      if (key === "$$typeof" || key === "_owner" || key === "_store") {
+        return true;
+      }
+      if ((key === "ref" || key === "key") && desc.value === this.realm.intrinsics.null) {
         return true;
       }
     } else if (val instanceof FunctionValue) {
