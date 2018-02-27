@@ -124,13 +124,6 @@ export class Serializer {
     }
 
     let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
-    for (let [functionValue, effectsAndTransforms] of additionalFunctionValuesAndEffects) {
-      // Need to do this fixup because otherwise we will skip over this function's
-      // generator in the _getTarget scope lookup
-      let generator = effectsAndTransforms.effects[1];
-      generator.parent = functionValue.parent;
-      functionValue.parent = generator;
-    }
 
     // Deep traversal of the heap to identify the necessary scope of residual functions
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
@@ -150,7 +143,7 @@ export class Serializer {
       additionalFunctionValuesAndEffects,
       referentializer
     );
-    residualHeapVisitor.visitRoots(true);
+    residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
@@ -209,7 +202,8 @@ export class Serializer {
         residualHeapVisitor.declarativeEnvironmentRecordsBindings,
         this.statistics,
         this.react,
-        referentializer
+        referentializer,
+        residualHeapVisitor.generatorParents
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -236,7 +230,8 @@ export class Serializer {
       residualHeapVisitor.declarativeEnvironmentRecordsBindings,
       this.statistics,
       this.react,
-      referentializer
+      referentializer,
+      residualHeapVisitor.generatorParents
     );
 
     let ast = residualHeapSerializer.serialize();

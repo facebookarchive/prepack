@@ -23,6 +23,7 @@ export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 export type SerializedBodyType =
   | "MainGenerator"
   | "Generator"
+  | "AdditionalFunction"
   | "DelayInitializations"
   | "ConditionalAssignmentBranch"
   | "LazyObjectInitializer";
