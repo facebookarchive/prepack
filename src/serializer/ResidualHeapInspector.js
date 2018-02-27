@@ -131,9 +131,8 @@ export class ResidualHeapInspector {
         return true;
       }
     } else if (isReactElement(val)) {
-      // we don't want to the $$typeof or _owner/_store properties
-      // as this is contained within the JSXElement, otherwise
-      // they we be need to be emitted during serialization
+      // we don't want to visit/serialize $$typeof, _owner and _store properties
+      // as these are all internals of JSX/createElement
       if (key === "$$typeof" || key === "_owner" || key === "_store") {
         return true;
       }

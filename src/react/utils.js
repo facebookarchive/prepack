@@ -41,11 +41,14 @@ export function isReactElement(val: Value): boolean {
   if (!(val instanceof ObjectValue)) {
     return false;
   }
-  if (val.kind === "reactEnabled") {
+  let realm = val.$Realm;
+  if (!realm.react.enabled) {
+    return false;
+  }
+  if (realm.react.reactElements.has(val)) {
     return true;
   }
   if (val.properties.has("$$typeof")) {
-    let realm = val.$Realm;
     let $$typeof = Get(realm, val, "$$typeof");
     let globalObject = realm.$GlobalObject;
     let globalSymbolValue = Get(realm, globalObject, "Symbol");
@@ -56,7 +59,12 @@ export function isReactElement(val: Value): boolean {
       }
     } else if ($$typeof instanceof SymbolValue) {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
-      return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+      let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+      if (_isReactElement) {
+        // add to Set to speed up future lookups
+        realm.react.reactElements.add(val);
+        return true;
+      }
     }
   }
   return false;
@@ -402,9 +410,6 @@ export function getProperty(realm: Realm, object: ObjectValue, property: string 
   } else if (descriptor.get || descriptor.set) {
     AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
     throw new FatalError();
-  }
-  if (value === undefined) {
-    return realm.intrinsics.undefined;
   }
   invariant(value instanceof Value, `react/utils/getProperty should not be called on internal properties`);
   return value;
