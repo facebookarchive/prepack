@@ -38,6 +38,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   cachedIsSimpleObject: void | boolean;
+  functionResultType: void | typeof Value;
 
   getTemplate(): ObjectValue {
     for (let element of this.values.getElements()) {
