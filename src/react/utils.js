@@ -38,8 +38,17 @@ import AbstractValue from "../values/AbstractValue";
 export type ReactSymbolTypes = "react.element" | "react.fragment" | "react.portal" | "react.return" | "react.call";
 
 export function isReactElement(val: Value): boolean {
-  if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
-    let realm = val.$Realm;
+  if (!(val instanceof ObjectValue)) {
+    return false;
+  }
+  let realm = val.$Realm;
+  if (!realm.react.enabled) {
+    return false;
+  }
+  if (realm.react.reactElements.has(val)) {
+    return true;
+  }
+  if (val.properties.has("$$typeof")) {
     let $$typeof = Get(realm, val, "$$typeof");
     let globalObject = realm.$GlobalObject;
     let globalSymbolValue = Get(realm, globalObject, "Symbol");
@@ -50,7 +59,12 @@ export function isReactElement(val: Value): boolean {
       }
     } else if ($$typeof instanceof SymbolValue) {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
-      return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+      let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+      if (_isReactElement) {
+        // add to Set to speed up future lookups
+        realm.react.reactElements.add(val);
+        return true;
+      }
     }
   }
   return false;
@@ -382,7 +396,9 @@ export function getProperty(realm: Realm, object: ObjectValue, property: string 
   } else {
     binding = object.symbols.get(property);
   }
-  invariant(binding);
+  if (!binding) {
+    return realm.intrinsics.undefined;
+  }
   let descriptor = binding.descriptor;
 
   if (!descriptor) {
@@ -391,7 +407,10 @@ export function getProperty(realm: Realm, object: ObjectValue, property: string 
   let value;
   if (descriptor.value) {
     value = descriptor.value;
+  } else if (descriptor.get || descriptor.set) {
+    AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
+    throw new FatalError();
   }
-  invariant(value instanceof Value, `ReactElementSet could not get value for`, object, property);
+  invariant(value instanceof Value, `react/utils/getProperty should not be called on internal properties`);
   return value;
 }
