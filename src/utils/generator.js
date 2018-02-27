@@ -73,10 +73,10 @@ export type GeneratorEntry = {
 
 export type VisitEntryCallbacks = {|
   visitValues: (Array<Value>) => void,
-  visitGenerator: Generator => void,
+  visitGenerator: (Generator, Generator) => void,
   canSkip: AbstractValue => boolean,
   recordDeclaration: AbstractValue => void,
-  recordDelayedEntry: GeneratorEntry => void,
+  recordDelayedEntry: (Generator, GeneratorEntry) => void,
 |};
 
 function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
@@ -91,7 +91,6 @@ export class Generator {
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
-    this.parent = realm.generator;
     this.realm = realm;
     this._entries = [];
     this.id = realm.nextGeneratorId++;
@@ -101,7 +100,7 @@ export class Generator {
   realm: Realm;
   _entries: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
-  parent: void | Generator;
+
   id: number;
   _name: void | string;
 
@@ -125,19 +124,8 @@ export class Generator {
     return t.stringLiteral(key);
   }
 
-  getParent(): void | Generator {
-    return this.parent;
-  }
-
   empty() {
     return this._entries.length === 0;
-  }
-
-  // Will force the array of Values to be serialized but not emit anything for a buildNode
-  appendRoots(values: Array<Value>) {
-    this._addEntry({
-      args: values,
-    });
   }
 
   emitGlobalDeclaration(key: string, value: Value) {
@@ -508,11 +496,11 @@ export class Generator {
 
   visitEntry(entry: GeneratorEntry, callbacks: VisitEntryCallbacks) {
     if (entry.isPure && entry.declared && callbacks.canSkip(entry.declared)) {
-      callbacks.recordDelayedEntry(entry);
+      callbacks.recordDelayedEntry(this, entry);
     } else {
       if (entry.declared) callbacks.recordDeclaration(entry.declared);
       callbacks.visitValues(entry.args);
-      if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency);
+      if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency, this);
     }
   }
 
