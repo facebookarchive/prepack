@@ -30,7 +30,6 @@ import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js"
 import { hashString } from "../methods/index.js";
 import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import * as base62 from "base62";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import type {
@@ -563,9 +562,22 @@ export class Generator {
 
 // some characters are invalid within a JavaScript identifier,
 // such as: . , : ( ) ' " ` [ ] -
-// so we replace these character instacnes with an underscore
+// so we replace these character instances with an underscore
 function replaceInvalidCharactersWithUnderscore(string: string) {
   return string.replace(/[.,:\(\)\"\'\`\[\]\-]/g, "_");
+}
+
+const base62characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+function base62encode(n: number): string {
+  invariant((n | 0) === n && n >= 0);
+  if (n === 0) return "0";
+  let s = "";
+  while (n > 0) {
+    let f = n % base62characters.length;
+    s = base62characters[f] + s;
+    n = (n - f) / base62characters.length;
+  }
+  return s;
 }
 
 export class NameGenerator {
@@ -584,7 +596,7 @@ export class NameGenerator {
   generate(debugSuffix: ?string): string {
     let id;
     do {
-      id = this.prefix + base62.encode(this.uidCounter++);
+      id = this.prefix + base62encode(this.uidCounter++);
       if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
       if (this.debugNames) {
         if (debugSuffix) id += "_" + replaceInvalidCharactersWithUnderscore(debugSuffix);
