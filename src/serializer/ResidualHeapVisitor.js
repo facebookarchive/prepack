@@ -174,7 +174,7 @@ export class ResidualHeapVisitor {
     let { skipPrototype, constructor } = getObjectPrototypeMetadata(this.realm, obj);
 
     // visit properties
-    if (kind !== "ReactElement") {
+    if (!isReactElement(obj)) {
       for (let [symbol, propertyBinding] of obj.symbols) {
         invariant(propertyBinding);
         let desc = propertyBinding.descriptor;
@@ -186,15 +186,6 @@ export class ResidualHeapVisitor {
 
     // visit properties
     for (let [propertyBindingKey, propertyBindingValue] of obj.properties) {
-      // we don't want to the $$typeof or _owner/_store properties
-      // as this is contained within the JSXElement, otherwise
-      // they we be need to be emitted during serialization
-      if (
-        kind === "ReactElement" &&
-        (propertyBindingKey === "$$typeof" || propertyBindingKey === "_owner" || propertyBindingKey === "_store")
-      ) {
-        continue;
-      }
       // we don't want to visit these as we handle the serialization ourselves
       // via a different logic route for classes
       let descriptor = propertyBindingValue.descriptor;
@@ -221,7 +212,7 @@ export class ResidualHeapVisitor {
     }
 
     // prototype
-    if (kind !== "ReactElement" && !skipPrototype) {
+    if (!isReactElement(obj) && !skipPrototype) {
       // we don't want to the ReactElement prototype visited
       // as this is contained within the JSXElement, otherwise
       // they we be need to be emitted during serialization

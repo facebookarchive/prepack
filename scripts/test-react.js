@@ -225,6 +225,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-with-abstract-props.js");
       });
 
+      it("Simple with unary expressions", async () => {
+        await runTest(directory, "simple-with-unary.js");
+      });
+
       it("Simple with multiple JSX spreads", async () => {
         await runTest(directory, "simple-with-jsx-spread.js");
       });
@@ -291,6 +295,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Key change", async () => {
         await runTest(directory, "key-change.js");
+      });
+
+      it("Delete element prop key", async () => {
+        await runTest(directory, "delete-element-prop-key.js");
       });
 
       it("Key change with fragments", async () => {
