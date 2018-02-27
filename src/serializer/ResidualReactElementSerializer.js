@@ -305,7 +305,9 @@ export class ResidualReactElementSerializer {
   _serializeReactElementChildren(reactElement: ReactElement): void {
     let { value } = reactElement;
     let propsValue = getProperty(this.realm, value, "props");
-    invariant(propsValue instanceof ObjectValue);
+    if (!(propsValue instanceof ObjectValue)) {
+      return;
+    }
     // handle children
     if (propsValue.properties.has("children")) {
       let childrenValue = getProperty(this.realm, propsValue, "children");
