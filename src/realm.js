@@ -188,6 +188,7 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
+      reactElements: new Set(),
       symbols: new Map(),
     };
 
@@ -255,6 +256,7 @@ export class Realm {
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     output?: ReactOutputTypes,
+    reactElements: Set<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
   stripFlow: boolean;
