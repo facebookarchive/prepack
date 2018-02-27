@@ -138,11 +138,11 @@ function run(
             process.exit(1);
           }
           compatibility = (arg: any);
-          reproArguments.push("--compatibility", arg);
+          reproArguments.push("--compatibility", compatibility);
           break;
         case "mathRandomSeed":
           mathRandomSeed = args.shift();
-          reproArguments.push("--mathRandomSeed", arg);
+          reproArguments.push("--mathRandomSeed", mathRandomSeed);
           break;
         case "srcmapIn":
           inputSourceMap = args.shift();
@@ -223,7 +223,7 @@ function run(
             process.exit(1);
           }
           reactOutput = (arg: any);
-          reproArguments.push("--reactOutput", arg);
+          reproArguments.push("--reactOutput", reactOutput);
           break;
         case "repro":
           reproFilePath = args.shift();
@@ -271,7 +271,16 @@ function run(
       let content = fs.readFileSync(fileName, "utf8");
       zip.file(path.basename(fileName), content);
     }
-    zip.file("repro.sh", "prepack " + reproArguments.map(a => `"${a}"`).join(" "));
+    zip.file(
+      "repro.sh",
+      `#!/bin/bash
+if [ -z "$PREPACK" ]; then
+  echo "Set environment variable PREPACK to bin/prepack.js in your Prepack directory."
+else
+  node "$PREPACK" ${reproArguments.map(a => `"${a}"`).join(" ")}
+fi
+`
+    );
     const data = zip.generate({ base64: false, compression: "DEFLATE" });
     fs.writeFileSync(reproFilePath, data, "binary");
   }
