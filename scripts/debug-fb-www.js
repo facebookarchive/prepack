@@ -52,11 +52,25 @@ async function compileFile() {
   return stats;
 }
 
+function printReactEvaluationGraph(evaluatedRootNode, depth) {
+  if (Array.isArray(evaluatedRootNode)) {
+    for (let child of evaluatedRootNode) {
+      printReactEvaluationGraph(child, depth);
+    }
+  } else {
+    let line = `- ${evaluatedRootNode.name} (${evaluatedRootNode.status.toLowerCase()})`;
+    console.log(line.padStart(line.length + depth));
+    printReactEvaluationGraph(evaluatedRootNode.children, depth + 2);
+  }
+}
+
 compileFile()
   .then(result => {
     console.log("\nCompilation complete!");
     console.log(`Optimized Trees: ${result.optimizedTrees}`);
-    console.log(`Inlined Components: ${result.inlinedComponents}`);
+    console.log(`Inlined Components: ${result.inlinedComponents}\n`);
+    console.log(`Evaluated Tree:`);
+    printReactEvaluationGraph(result.evaluatedRootNodes, 0);
   })
   .catch(e => {
     console.error(e.natickStack || e.stack);
