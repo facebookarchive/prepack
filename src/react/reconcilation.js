@@ -240,16 +240,21 @@ export class Reconciler {
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
-    // get the "render" method off the instance
-    invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
-    let renderProp = Get(this.realm, props, "render");
-    invariant(
-      renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call,
-      "Expected render method to be a FunctionValue with $Call method"
-    );
-    // ensure the render prop function makes no access to the immediate closure
-    if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
-      this._queueNewComponentTree(renderProp, true);
+    if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
+      // get the "render" method off the instance
+      let renderProp = Get(this.realm, props, "render");
+      if (renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call) {
+        // if the render prop function is self contained, we can make it a new component tree root
+        // and this also has a nice side-effect of hoisting the function up to the top scope
+        if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
+          this._queueNewComponentTree(renderProp, true);
+        } else {
+          // TODO
+          // we don't have nested additional function support right now
+          // but the render prop is likely to have references to other components
+          // that we need to also evaluate. given we can't find those components
+        }
+      }
     }
     return {
       result: reactElement,

@@ -512,7 +512,7 @@ export function isRenderPropFunctionSelfContained(
   parentFunc: Value,
   renderProp: FunctionValue,
   logger: any // otherwise Flow cycles increases
-) {
+): boolean {
   let { unboundReads, unboundWrites } = getFunctionBindingInfo(renderProp);
   let bindings = Array.from(unboundReads).concat(Array.from(unboundWrites));
 
@@ -527,6 +527,6 @@ export function isRenderPropFunctionSelfContained(
     if (reference.base instanceof FunctionEnvironmentRecord && reference.base.$FunctionObject === parentFunc) {
       return false;
     }
-    return true;
   }
+  return true;
 }
