@@ -129,7 +129,7 @@ export class ResidualReactElementSerializer {
   _emitReactElement(reactElement: ReactElement): BabelNodeExpression {
     let { value } = reactElement;
     let shouldHoist =
-      this.residualHeapSerializer.currentFunctionBody !== this.residualHeapSerializer.mainBody &&
+      this.residualHeapSerializer.isReferencedOnlyByAdditionalFunction(value) !== undefined &&
       canHoistReactElement(this.realm, value);
 
     let id = this.residualHeapSerializer.getSerializeObjectIdentifier(value);
