@@ -23,6 +23,7 @@ import {
   ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
+import type { BabelTraversePath } from "babel-traverse";
 import { Generator } from "../utils/generator.js";
 import type { Descriptor, ReactHint } from "../types";
 import { Get } from "../methods/index.js";
@@ -36,7 +37,6 @@ import type { BabelNodeStatement } from "babel-types";
 import { FatalError } from "../errors.js";
 import { To } from "../singletons.js";
 import AbstractValue from "../values/AbstractValue";
-import { getLeakedFunctionInfo } from "../utils/leak.js";
 
 export type ReactSymbolTypes = "react.element" | "react.fragment" | "react.portal" | "react.return" | "react.call";
 
@@ -437,6 +437,65 @@ export function getProperty(realm: Realm, object: ObjectValue, property: string 
   return value;
 }
 
+type FunctionBindingInfo = {
+  unboundReads: Set<string>,
+  unboundWrites: Set<string>,
+};
+
+function visitName(path, state, name, read, write) {
+  // Is the name bound to some local identifier? If so, we don't need to do anything
+  if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
+
+  // Otherwise, let's record that there's an unbound identifier
+  if (read) state.unboundReads.add(name);
+  if (write) state.unboundWrites.add(name);
+}
+
+function ignorePath(path: BabelTraversePath) {
+  let parent = path.parent;
+  return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
+}
+
+let LeakedClosureRefVisitor = {
+  ReferencedIdentifier(path: BabelTraversePath, state: FunctionBindingInfo) {
+    if (ignorePath(path)) return;
+
+    let innerName = path.node.name;
+    if (innerName === "arguments") {
+      return;
+    }
+    visitName(path, state, innerName, true, false);
+  },
+
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: FunctionBindingInfo) {
+    let doesRead = path.node.operator !== "=";
+    for (let name in path.getBindingIdentifiers()) {
+      visitName(path, state, name, doesRead, true);
+    }
+  },
+};
+
+function getFunctionBindingInfo(value: FunctionValue) {
+  invariant(value instanceof ECMAScriptSourceFunctionValue);
+  invariant(value.constructor === ECMAScriptSourceFunctionValue);
+  let functionInfo = {
+    unboundReads: new Set(),
+    unboundWrites: new Set(),
+  };
+  let formalParameters = value.$FormalParameters;
+  invariant(formalParameters != null);
+  let code = value.$ECMAScriptCode;
+  invariant(code != null);
+
+  traverse(
+    t.file(t.program([t.expressionStatement(t.functionExpression(null, formalParameters, code))])),
+    LeakedClosureRefVisitor,
+    null,
+    functionInfo
+  );
+  return functionInfo;
+}
+
 // if a render prop function (a nested additional function) makes
 // no accesses to bindings in the parent additional function scope
 // we can determine if the function is self contained
@@ -446,7 +505,7 @@ export function isRenderPropFunctionSelfContained(
   renderProp: FunctionValue,
   logger: any // otherwise Flow cycles increases
 ) {
-  let { unboundReads, unboundWrites } = getLeakedFunctionInfo(renderProp);
+  let { unboundReads, unboundWrites } = getFunctionBindingInfo(renderProp);
   let bindings = Array.from(unboundReads).concat(Array.from(unboundWrites));
 
   for (let name of bindings) {

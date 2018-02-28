@@ -76,7 +76,7 @@ let LeakedClosureRefVisitor = {
   },
 };
 
-export function getLeakedFunctionInfo(value: FunctionValue) {
+function getLeakedFunctionInfo(value: FunctionValue) {
   // TODO: This should really be cached on a per AST basis in case we have
   // many uses of the same closure. It should ideally share this cache
   // and data with ResidualHeapVisitor.
