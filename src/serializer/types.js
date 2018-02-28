@@ -151,13 +151,21 @@ export class TimingStatistics {
   serializePassTime: number;
 }
 
+export type ReactEvaluatedNode = {
+  name: string,
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "RENDER_PROPS",
+  children: Array<ReactEvaluatedNode>,
+};
+
 export class ReactStatistics {
   constructor() {
     this.optimizedTrees = 0;
     this.inlinedComponents = 0;
+    this.evaluatedRootNodes = [];
   }
   optimizedTrees: number;
   inlinedComponents: number;
+  evaluatedRootNodes: Array<ReactEvaluatedNode>;
 }
 
 export class SerializerStatistics {
