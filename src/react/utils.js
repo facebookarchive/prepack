@@ -25,7 +25,7 @@ import {
 import type { Descriptor, ReactHint } from "../types";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
+import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
 import { Create, Properties } from "../singletons.js";
 import traverse from "babel-traverse";
@@ -413,4 +413,25 @@ export function getProperty(realm: Realm, object: ObjectValue, property: string 
   }
   invariant(value instanceof Value, `react/utils/getProperty should not be called on internal properties`);
   return value;
+}
+
+export function createReactEvaluatedNode(
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "RENDER_PROPS",
+  name: string
+): ReactEvaluatedNode {
+  return {
+    name,
+    status,
+    children: [],
+  };
+}
+
+export function getComponentName(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue | AbstractObjectValue
+): string {
+  if (componentType.__originalName) {
+    return componentType.__originalName;
+  }
+  return "Unknown";
 }
