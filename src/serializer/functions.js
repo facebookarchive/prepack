@@ -39,6 +39,7 @@ import {
   evaluateComponentTreeBranch,
 } from "../react/utils.js";
 import * as t from "babel-types";
+import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
 
 export class Functions {
   constructor(realm: Realm, functions: ?Array<string>, moduleTracer: ModuleTracer) {
@@ -143,6 +144,11 @@ export class Functions {
       // in the reconciler
       return;
     }
+    if (value instanceof Completion) {
+      // TODO we don't support this yet, but will do very soon
+      // to unblock work, we'll just return at this point right now
+      return;
+    }
     invariant(value instanceof Value);
     if (simpleClassComponents.has(value)) {
       // if the root component was a class and is now simple, we can convert it from a class
@@ -228,7 +234,35 @@ export class Functions {
     const globalThis = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
     let call = funcValue.$Call;
     invariant(call);
-    return call.bind(this, globalThis, []);
+    let numArgs = funcValue.getLength();
+    let args = [];
+    invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
+    let params = funcValue.$FormalParameters;
+    if (numArgs && numArgs > 0 && params) {
+      for (let parameterId of params) {
+        if (t.isIdentifier(parameterId)) {
+          // Create an AbstractValue similar to __abstract being called
+          args.push(
+            createAbstractArgument(
+              this.realm,
+              ((parameterId: any): BabelNodeIdentifier).name,
+              funcValue.expressionLocation
+            )
+          );
+        } else {
+          this.realm.handleError(
+            new CompilerDiagnostic(
+              "Non-identifier args to additional functions unsupported",
+              funcValue.expressionLocation,
+              "PP1005",
+              "FatalError"
+            )
+          );
+          throw new FatalError("Non-identifier args to additional functions unsupported");
+        }
+      }
+    }
+    return call.bind(this, globalThis, args);
   }
 
   checkThatFunctionsAreIndependent() {
@@ -251,18 +285,6 @@ export class Functions {
       invariant(fun1 instanceof FunctionValue);
       let fun1Name = this.functionExpressions.get(fun1) || fun1.intrinsicName || "(unknown function)";
       // Also do argument validation here
-      let funcLength = fun1.getLength();
-      if (funcLength && funcLength > 0) {
-        // TODO #987: Make Additional Functions work with arguments
-        let error = new CompilerDiagnostic(
-          `Additional function ${fun1Name} has parameters, which is not yet supported`,
-          fun1.expressionLocation,
-          "PP1005",
-          "FatalError"
-        );
-        this.realm.handleError(error);
-        throw new FatalError();
-      }
       let additionalFunctionEffects = this.writeEffects.get(fun1);
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;

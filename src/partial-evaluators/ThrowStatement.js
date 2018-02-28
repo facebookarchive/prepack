@@ -9,19 +9,24 @@
 
 /* @flow */
 
-import type { BabelNodeThrowStatement, BabelNodeStatement } from "babel-types";
+import type { BabelNode, BabelNodeStatement, BabelNodeThrowStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
-
-import { AbruptCompletion } from "../completions.js";
+import { Completion, ThrowCompletion } from "../completions.js";
 import { Value } from "../values/index.js";
+import * as t from "babel-types";
 
 export default function(
   ast: BabelNodeThrowStatement,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): [AbruptCompletion | Value, BabelNodeThrowStatement, Array<BabelNodeStatement>] {
-  let result = env.evaluateCompletionDeref(ast, strictCode);
-  return [result, ast, []];
+): [Completion | Value, BabelNode, Array<BabelNodeStatement>] {
+  let [argValue, argAst, io] = env.partiallyEvaluateCompletionDeref(ast.argument, strictCode);
+  if (argValue instanceof Value) {
+    let c = new ThrowCompletion(argValue, ast.loc);
+    let s = t.throwStatement((argAst: any)); // will be an expression because argValue is a Value
+    return [c, s, io];
+  }
+  return [argValue, argAst, io];
 }

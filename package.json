@@ -54,7 +54,8 @@
     "prepublish": "yarn build",
     "depcheck": "babel-node scripts/detect_bad_deps.js",
     "prettier": "node ./scripts/prettier.js write-changed",
-    "prettier-all": "node ./scripts/prettier.js write"
+    "prettier-all": "node ./scripts/prettier.js write",
+    "debug-fb-www": "node ./scripts/debug-fb-www.js"
   },
   "dependencies": {
     "babel-core": "^6.26.0",

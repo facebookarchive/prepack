@@ -552,6 +552,7 @@ export default class AbstractValue extends Value {
     prefix?: boolean,
     loc?: ?BabelNodeSourceLocation
   ): Value {
+    invariant(op !== "delete" && op !== "++" && op !== "--"); // The operation must be pure
     let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
     let result = new AbstractValue(realm, resultTypes, resultValues, hashUnary(op, operand), [operand], ([x]) =>
@@ -624,6 +625,24 @@ export default class AbstractValue extends Value {
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
     return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
+  }
+
+  static createFromBuildFunction(
+    realm: Realm,
+    resultType: typeof Value,
+    args: Array<Value>,
+    buildFunction: AbstractValueBuildNodeFunction,
+    optionalArgs?: {| kind?: string |}
+  ): AbstractValue | UndefinedValue {
+    let types = new TypesDomain(resultType);
+    let values = ValuesDomain.topVal;
+    let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let kind = (optionalArgs && optionalArgs.kind) || "build function";
+    let hash;
+    [hash, args] = hashCall(kind, ...args);
+    let result = new Constructor(realm, types, values, hash, args, buildFunction);
+    result.kind = kind;
+    return result;
   }
 
   static createTemporalFromBuildFunction(

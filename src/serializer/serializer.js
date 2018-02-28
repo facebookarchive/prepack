@@ -32,6 +32,7 @@ import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
 import * as t from "babel-types";
 import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
+import { Referentializer } from "./Referentializer.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -133,11 +134,21 @@ export class Serializer {
 
     // Deep traversal of the heap to identify the necessary scope of residual functions
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
+    let preludeGenerator = this.realm.preludeGenerator;
+    invariant(preludeGenerator !== undefined);
+    let referentializer = new Referentializer(
+      this.realm,
+      this.options,
+      preludeGenerator.createNameGenerator("__scope_"),
+      preludeGenerator.createNameGenerator("$"),
+      this.statistics
+    );
     let residualHeapVisitor = new ResidualHeapVisitor(
       this.realm,
       this.logger,
       this.modules,
-      additionalFunctionValuesAndEffects
+      additionalFunctionValuesAndEffects,
+      referentializer
     );
     residualHeapVisitor.visitRoots(true);
     if (this.logger.hasErrors()) return undefined;
@@ -156,7 +167,8 @@ export class Serializer {
         this.realm,
         this.logger,
         this.modules,
-        additionalFunctionValuesAndEffects
+        additionalFunctionValuesAndEffects,
+        referentializer
       );
       heapRefCounter.visitRoots();
 
@@ -166,7 +178,8 @@ export class Serializer {
         this.modules,
         additionalFunctionValuesAndEffects,
         residualHeapValueIdentifiers,
-        heapRefCounter.getResult()
+        heapRefCounter.getResult(),
+        referentializer
       );
       heapGraphGenerator.visitRoots();
       invariant(this.options.heapGraphFormat);
@@ -195,7 +208,8 @@ export class Serializer {
         residualHeapVisitor.additionalFunctionValueInfos,
         residualHeapVisitor.declarativeEnvironmentRecordsBindings,
         this.statistics,
-        this.react
+        this.react,
+        referentializer
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -221,7 +235,8 @@ export class Serializer {
       residualHeapVisitor.additionalFunctionValueInfos,
       residualHeapVisitor.declarativeEnvironmentRecordsBindings,
       this.statistics,
-      this.react
+      this.react,
+      referentializer
     );
 
     let ast = residualHeapSerializer.serialize();

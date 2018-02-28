@@ -11,7 +11,9 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
   AbstractObjectValue,
   Value,
@@ -36,10 +38,115 @@ function isInstance(proto, Constructor): boolean {
   return proto instanceof Constructor || proto === Constructor.prototype;
 }
 
-export default function(
+function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
+  // ECMA262 12.5.3.2
+
+  // 1. Let ref be the result of evaluating UnaryExpression.
+  let ref = expr;
+
+  // 2. ReturnIfAbrupt(ref).
+
+  // 3. If Type(ref) is not Reference, return true.
+  if (!(ref instanceof Reference)) return realm.intrinsics.true;
+
+  // 4. If IsUnresolvableReference(ref) is true, then
+  if (Environment.IsUnresolvableReference(realm, ref)) {
+    // a. Assert: IsStrictReference(ref) is false.
+    invariant(!Environment.IsStrictReference(realm, ref), "did not expect a strict reference");
+
+    // b. Return true.
+    return realm.intrinsics.true;
+  }
+
+  // 5. If IsPropertyReference(ref) is true, then
+  if (Environment.IsPropertyReference(realm, ref)) {
+    // a. If IsSuperReference(ref) is true, throw a ReferenceError exception.
+    if (Environment.IsSuperReference(realm, ref)) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError);
+    }
+
+    // b. Let baseObj be ! ToObject(GetBase(ref)).
+    let base = Environment.GetBase(realm, ref);
+    // Constructing the reference checks that base is coercible to an object hence
+    invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
+    let baseObj = base instanceof ConcreteValue ? To.ToObject(realm, base) : base;
+
+    // c. Let deleteStatus be ? baseObj.[[Delete]](GetReferencedName(ref)).
+    let deleteStatus = baseObj.$Delete(Environment.GetReferencedName(realm, ref));
+
+    // d. If deleteStatus is false and IsStrictReference(ref) is true, throw a TypeError exception.
+    if (!deleteStatus && Environment.IsStrictReference(realm, ref)) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
+
+    // e. Return deleteStatus.
+    return new BooleanValue(realm, deleteStatus);
+  }
+
+  // 6. Else ref is a Reference to an Environment Record binding,
+  // a. Let bindings be GetBase(ref).
+  let bindings = Environment.GetBase(realm, ref);
+  invariant(bindings instanceof EnvironmentRecord);
+
+  // b. Return ? bindings.DeleteBinding(GetReferencedName(ref)).
+  let referencedName = Environment.GetReferencedName(realm, ref);
+  invariant(typeof referencedName === "string");
+  return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
+}
+
+function tryToEvaluateOperationOrLeaveAsAbstract(
   ast: BabelNodeUnaryExpression,
+  expr: Value | Reference,
+  func: (ast: BabelNodeUnaryExpression, expr: Value | Reference, strictCode: boolean, realm: Realm) => Value,
   strictCode: boolean,
-  env: LexicalEnvironment,
+  realm: Realm
+) {
+  let effects;
+  try {
+    effects = realm.evaluateForEffects(() => func(ast, expr, strictCode, realm));
+  } catch (error) {
+    if (error instanceof FatalError) {
+      return realm.evaluateWithPossibleThrowCompletion(
+        () => {
+          let value = Environment.GetValue(realm, expr);
+
+          // if the value is abstract, then create a unary op for it,
+          // otherwise we rethrow the error as we don't handle it at this
+          // point in time
+          if (value instanceof AbstractValue) {
+            return AbstractValue.createFromUnaryOp(realm, ast.operator, value);
+          }
+          throw error;
+        },
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
+    } else {
+      throw error;
+    }
+  }
+  let completion = effects[0];
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof Value);
+  return completion;
+}
+
+function evaluateOperation(
+  ast: BabelNodeUnaryExpression,
+  expr: Value | Reference,
+  strictCode: boolean,
   realm: Realm
 ): Value {
   function reportError() {
@@ -51,8 +158,6 @@ export default function(
     );
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
-
-  let expr = env.evaluate(ast.argument, strictCode);
 
   if (ast.operator === "+") {
     // ECMA262 12.5.6.1
@@ -134,7 +239,8 @@ export default function(
 
     // 3. Return undefined.
     return realm.intrinsics.undefined;
-  } else if (ast.operator === "typeof") {
+  } else {
+    invariant(ast.operator === "typeof");
     // ECMA262 12.6.5
 
     // 1. Let val be the result of evaluating UnaryExpression.
@@ -174,60 +280,23 @@ export default function(
       invariant(val instanceof AbstractValue);
       return AbstractValue.createFromUnaryOp(realm, "typeof", val);
     }
+  }
+}
+
+export default function(
+  ast: BabelNodeUnaryExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  let expr = env.evaluate(ast.argument, strictCode);
+
+  if (ast.operator === "delete") {
+    return evaluateDeleteOperation(expr, realm);
+  }
+  if (realm.isInPureScope()) {
+    return tryToEvaluateOperationOrLeaveAsAbstract(ast, expr, evaluateOperation, strictCode, realm);
   } else {
-    invariant(ast.operator === "delete");
-    // ECMA262 12.5.3.2
-
-    // 1. Let ref be the result of evaluating UnaryExpression.
-    let ref = expr;
-
-    // 2. ReturnIfAbrupt(ref).
-
-    // 3. If Type(ref) is not Reference, return true.
-    if (!(ref instanceof Reference)) return realm.intrinsics.true;
-
-    // 4. If IsUnresolvableReference(ref) is true, then
-    if (Environment.IsUnresolvableReference(realm, ref)) {
-      // a. Assert: IsStrictReference(ref) is false.
-      invariant(!Environment.IsStrictReference(realm, ref), "did not expect a strict reference");
-
-      // b. Return true.
-      return realm.intrinsics.true;
-    }
-
-    // 5. If IsPropertyReference(ref) is true, then
-    if (Environment.IsPropertyReference(realm, ref)) {
-      // a. If IsSuperReference(ref) is true, throw a ReferenceError exception.
-      if (Environment.IsSuperReference(realm, ref)) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError);
-      }
-
-      // b. Let baseObj be ! ToObject(GetBase(ref)).
-      let base = Environment.GetBase(realm, ref);
-      // Constructing the reference checks that base is coercible to an object hence
-      invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
-      let baseObj = base instanceof ConcreteValue ? To.ToObject(realm, base) : base;
-
-      // c. Let deleteStatus be ? baseObj.[[Delete]](GetReferencedName(ref)).
-      let deleteStatus = baseObj.$Delete(Environment.GetReferencedName(realm, ref));
-
-      // d. If deleteStatus is false and IsStrictReference(ref) is true, throw a TypeError exception.
-      if (!deleteStatus && Environment.IsStrictReference(realm, ref)) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-      }
-
-      // e. Return deleteStatus.
-      return new BooleanValue(realm, deleteStatus);
-    }
-
-    // 6. Else ref is a Reference to an Environment Record binding,
-    // a. Let bindings be GetBase(ref).
-    let bindings = Environment.GetBase(realm, ref);
-    invariant(bindings instanceof EnvironmentRecord);
-
-    // b. Return ? bindings.DeleteBinding(GetReferencedName(ref)).
-    let referencedName = Environment.GetReferencedName(realm, ref);
-    invariant(typeof referencedName === "string");
-    return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
+    return evaluateOperation(ast, expr, strictCode, realm);
   }
 }

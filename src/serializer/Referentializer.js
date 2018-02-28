@@ -10,7 +10,7 @@
 /* @flow */
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
-import { FatalError } from "../errors.js";
+import { FatalError, CompilerDiagnostic } from "../errors.js";
 import { FunctionValue } from "../values/index.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
@@ -20,6 +20,7 @@ import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
 import { SerializerStatistics } from "./types.js";
 import { getOrDefault } from "./utils.js";
+import { Realm } from "../realm.js";
 
 // Each of these will correspond to a different preludeGenerator and thus will
 // have different values available for initialization. FunctionValues should
@@ -42,6 +43,7 @@ type ReferentializationState = {|
  */
 export class Referentializer {
   constructor(
+    realm: Realm,
     options: SerializerOptions,
     scopeNameGenerator: NameGenerator,
     referentializedNameGenerator: NameGenerator,
@@ -53,11 +55,13 @@ export class Referentializer {
 
     this.referentializationState = new Map();
     this._referentializedNameGenerator = referentializedNameGenerator;
+    this.realm = realm;
   }
 
   _options: SerializerOptions;
   scopeNameGenerator: NameGenerator;
   statistics: SerializerStatistics;
+  realm: Realm;
 
   _newCapturedScopeInstanceIdx: number;
   referentializationState: Map<ReferentializationScope, ReferentializationState>;
@@ -136,6 +140,7 @@ export class Referentializer {
       serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
 
+    invariant(!residualBinding.scope || residualBinding.scope === scope);
     residualBinding.scope = scope;
     return scope;
   }
@@ -190,8 +195,29 @@ export class Referentializer {
       );
     }
 
-    residualBinding.referentialized = true;
     this.statistics.referentialized++;
+  }
+
+  // Cleans all scopes between passes of the serializer
+  cleanInstance(instance: FunctionInstance) {
+    instance.initializationStatements = [];
+    for (let b of ((instance: any): FunctionInstance).residualFunctionBindings.values()) {
+      let binding = ((b: any): ResidualFunctionBinding);
+      if (binding.referentialized && binding.declarativeEnvironmentRecord) {
+        let declarativeEnvironmentRecord = binding.declarativeEnvironmentRecord;
+        let referentializationScope = binding.referencedOnlyFromAdditionalFunctions || "GLOBAL";
+
+        let refState = this.referentializationState.get(referentializationScope);
+        if (refState) {
+          let scope = refState.serializedScopes.get(declarativeEnvironmentRecord);
+          if (scope) {
+            scope.initializationValues = [];
+          }
+        }
+      }
+      delete binding.serializedValue;
+      delete binding.referentialized;
+    }
   }
 
   referentialize(
@@ -207,12 +233,22 @@ export class Referentializer {
         invariant(residualBinding !== undefined);
         if (residualBinding.modified) {
           // Initialize captured scope at function call instead of globally
+          if (!residualBinding.declarativeEnvironmentRecord) residualBinding.referentialized = true;
           if (!residualBinding.referentialized) {
             if (!shouldReferentializeInstanceFn(instance)) {
               // TODO #989: Fix additional functions and referentialization
+              this.realm.handleError(
+                new CompilerDiagnostic(
+                  "Referentialization for prepacked functions unimplemented",
+                  instance.functionValue.loc,
+                  "PP1005",
+                  "FatalError"
+                )
+              );
               throw new FatalError("TODO: implement referentialization for prepacked functions");
             }
-            this.referentializeBinding(residualBinding, name, instance);
+            if (!this._options.simpleClosures) this._getSerializedBindingScopeInstance(residualBinding);
+            residualBinding.referentialized = true;
           }
 
           invariant(residualBinding.referentialized);

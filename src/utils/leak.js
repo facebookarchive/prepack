@@ -76,7 +76,7 @@ let LeakedClosureRefVisitor = {
   },
 };
 
-function getLeakedFunctionInfo(value: FunctionValue) {
+export function getLeakedFunctionInfo(value: FunctionValue) {
   // TODO: This should really be cached on a per AST basis in case we have
   // many uses of the same closure. It should ideally share this cache
   // and data with ResidualHeapVisitor.
@@ -387,7 +387,7 @@ class ObjectValueLeakingVisitor {
       if (this.mustVisit(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
-      // ...except for a few that come into existance as templates for abstract objects (TODO #882).
+      // ...except for a few that come into existance as templates for abstract objects.
       this.mustVisit(val);
     } else if (val instanceof EmptyValue) {
       this.mustVisit(val);
