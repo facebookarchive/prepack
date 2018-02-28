@@ -10,7 +10,8 @@
 /* @flow */
 
 import { Realm, type Effects } from "../realm.js";
-import { FunctionEnvironmentRecord } from "../environment.js";
+import { FunctionEnvironmentRecord, Reference } from "../environment.js";
+import { Completion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
@@ -392,7 +393,12 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateComponentTreeBranch(realm: Realm, effects: Effects, nested: boolean, f: Function) {
+export function evaluateComponentTreeBranch(
+  realm: Realm,
+  effects: Effects,
+  nested: boolean,
+  f: (generator?: Generator, value?: Value | Reference | Completion) => void | Value
+) {
   let [
     value,
     generator,
@@ -403,12 +409,14 @@ export function evaluateComponentTreeBranch(realm: Realm, effects: Effects, nest
   if (nested) {
     realm.applyEffects([value, new Generator(realm), modifiedBindings, modifiedProperties, createdObjects]);
   }
-  let val = f(generator, value);
-  if (nested) {
-    realm.restoreBindings(modifiedBindings);
-    realm.restoreProperties(modifiedProperties);
+  try {
+    return f(generator, value);
+  } finally {
+    if (nested) {
+      realm.restoreBindings(modifiedBindings);
+      realm.restoreProperties(modifiedProperties);
+    }
   }
-  return val;
 }
 
 export function getProperty(realm: Realm, object: ObjectValue, property: string | SymbolValue): Value {
