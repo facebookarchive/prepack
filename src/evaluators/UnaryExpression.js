@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
@@ -31,8 +31,7 @@ import {
 import { Reference, EnvironmentRecord } from "../environment.js";
 import invariant from "../invariant.js";
 import { IsCallable } from "../methods/index.js";
-import { Environment, To, Leak } from "../singletons.js";
-import * as t from "babel-types";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeUnaryExpression } from "babel-types";
 
 function isInstance(proto, Constructor): boolean {
@@ -95,43 +94,30 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
   return new BooleanValue(realm, bindings.DeleteBinding(referencedName));
 }
 
-function generateRuntimeCall(ref: Reference | Value, ast: BabelNodeUnaryExpression, strictCode: boolean, realm: Realm) {
-  invariant(ref instanceof Reference);
-  let baseValue = Environment.GetBase(realm, ref);
-  invariant(baseValue instanceof Value);
-  let propertyName = Environment.GetReferencedName(realm, ref);
-  invariant(typeof propertyName === "string");
-
-  if (!baseValue.isSimpleObject()) {
-    Leak.leakValue(realm, baseValue, ast.loc);
-  }
-  return AbstractValue.createTemporalFromBuildFunction(realm, Value, [baseValue], nodes => {
-    let arg;
-    if (typeof propertyName === "string") {
-      arg = t.isValidIdentifier(propertyName)
-        ? t.memberExpression(nodes[0], t.identifier(propertyName), false)
-        : t.memberExpression(nodes[0], t.stringLiteral(propertyName), true);
-    } else {
-      arg = t.memberExpression(nodes[0], nodes[1], true);
-    }
-    return t.unaryExpression(ast.operator, arg, ast.prefix);
-  });
-}
-
 function tryToEvaluateOperationOrLeaveAsAbstract(
   ast: BabelNodeUnaryExpression,
   expr: Value | Reference,
-  func: (expr: Value | Reference, realm: Realm) => Value,
+  func: (ast: BabelNodeUnaryExpression, expr: Value | Reference, strictCode: boolean, realm: Realm) => Value,
   strictCode: boolean,
   realm: Realm
 ) {
   let effects;
   try {
-    effects = realm.evaluateForEffects(() => func(expr, realm));
+    effects = realm.evaluateForEffects(() => func(ast, expr, strictCode, realm));
   } catch (error) {
     if (error instanceof FatalError) {
       return realm.evaluateWithPossibleThrowCompletion(
-        () => generateRuntimeCall(expr, ast, strictCode, realm),
+        () => {
+          let value = Environment.GetValue(realm, expr);
+
+          // if the value is abstract, then create a unary op for it,
+          // otherwise we rethrow the error as we don't handle it at this
+          // point in time
+          if (value instanceof AbstractValue) {
+            return AbstractValue.createFromUnaryOp(realm, ast.operator, value);
+          }
+          throw error;
+        },
         TypesDomain.topVal,
         ValuesDomain.topVal
       );
@@ -139,18 +125,28 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
       throw error;
     }
   }
-  realm.applyEffects(effects);
   let completion = effects[0];
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);
   return completion;
 }
 
-export default function(
+function evaluateOperation(
   ast: BabelNodeUnaryExpression,
+  expr: Value | Reference,
   strictCode: boolean,
-  env: LexicalEnvironment,
   realm: Realm
 ): Value {
   function reportError() {
@@ -162,8 +158,6 @@ export default function(
     );
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
-
-  let expr = env.evaluate(ast.argument, strictCode);
 
   if (ast.operator === "+") {
     // ECMA262 12.5.6.1
@@ -245,7 +239,8 @@ export default function(
 
     // 3. Return undefined.
     return realm.intrinsics.undefined;
-  } else if (ast.operator === "typeof") {
+  } else {
+    invariant(ast.operator === "typeof");
     // ECMA262 12.6.5
 
     // 1. Let val be the result of evaluating UnaryExpression.
@@ -285,12 +280,23 @@ export default function(
       invariant(val instanceof AbstractValue);
       return AbstractValue.createFromUnaryOp(realm, "typeof", val);
     }
+  }
+}
+
+export default function(
+  ast: BabelNodeUnaryExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  let expr = env.evaluate(ast.argument, strictCode);
+
+  if (ast.operator === "delete") {
+    return evaluateDeleteOperation(expr, realm);
+  }
+  if (realm.isInPureScope()) {
+    return tryToEvaluateOperationOrLeaveAsAbstract(ast, expr, evaluateOperation, strictCode, realm);
   } else {
-    invariant(ast.operator === "delete");
-    if (realm.isInPureScope()) {
-      return tryToEvaluateOperationOrLeaveAsAbstract(ast, expr, evaluateDeleteOperation, strictCode, realm);
-    } else {
-      return evaluateDeleteOperation(expr, realm);
-    }
+    return evaluateOperation(ast, expr, strictCode, realm);
   }
 }

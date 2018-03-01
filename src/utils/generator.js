@@ -30,7 +30,6 @@ import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js"
 import { hashString } from "../methods/index.js";
 import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import * as base62 from "base62";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import type {
@@ -73,10 +72,10 @@ export type GeneratorEntry = {
 
 export type VisitEntryCallbacks = {|
   visitValues: (Array<Value>) => void,
-  visitGenerator: Generator => void,
+  visitGenerator: (Generator, Generator) => void,
   canSkip: AbstractValue => boolean,
   recordDeclaration: AbstractValue => void,
-  recordDelayedEntry: GeneratorEntry => void,
+  recordDelayedEntry: (Generator, GeneratorEntry) => void,
 |};
 
 function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
@@ -91,7 +90,6 @@ export class Generator {
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
-    this.parent = realm.generator;
     this.realm = realm;
     this._entries = [];
     this.id = realm.nextGeneratorId++;
@@ -101,7 +99,7 @@ export class Generator {
   realm: Realm;
   _entries: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
-  parent: void | Generator;
+
   id: number;
   _name: void | string;
 
@@ -109,7 +107,7 @@ export class Generator {
     return this._name || `#${this.id}`;
   }
 
-  getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true) {
+  getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true): BabelNodeExpression {
     // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
     let index = Number.parseInt(key, 10);
     if (index >= 0 && index.toString() === key) {
@@ -125,19 +123,8 @@ export class Generator {
     return t.stringLiteral(key);
   }
 
-  getParent(): void | Generator {
-    return this.parent;
-  }
-
   empty() {
     return this._entries.length === 0;
-  }
-
-  // Will force the array of Values to be serialized but not emit anything for a buildNode
-  appendRoots(values: Array<Value>) {
-    this._addEntry({
-      args: values,
-    });
   }
 
   emitGlobalDeclaration(key: string, value: Value) {
@@ -508,11 +495,11 @@ export class Generator {
 
   visitEntry(entry: GeneratorEntry, callbacks: VisitEntryCallbacks) {
     if (entry.isPure && entry.declared && callbacks.canSkip(entry.declared)) {
-      callbacks.recordDelayedEntry(entry);
+      callbacks.recordDelayedEntry(this, entry);
     } else {
       if (entry.declared) callbacks.recordDeclaration(entry.declared);
       callbacks.visitValues(entry.args);
-      if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency);
+      if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency, this);
     }
   }
 
@@ -575,9 +562,22 @@ export class Generator {
 
 // some characters are invalid within a JavaScript identifier,
 // such as: . , : ( ) ' " ` [ ] -
-// so we replace these character instacnes with an underscore
+// so we replace these character instances with an underscore
 function replaceInvalidCharactersWithUnderscore(string: string) {
   return string.replace(/[.,:\(\)\"\'\`\[\]\-]/g, "_");
+}
+
+const base62characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+function base62encode(n: number): string {
+  invariant((n | 0) === n && n >= 0);
+  if (n === 0) return "0";
+  let s = "";
+  while (n > 0) {
+    let f = n % base62characters.length;
+    s = base62characters[f] + s;
+    n = (n - f) / base62characters.length;
+  }
+  return s;
 }
 
 export class NameGenerator {
@@ -596,7 +596,7 @@ export class NameGenerator {
   generate(debugSuffix: ?string): string {
     let id;
     do {
-      id = this.prefix + base62.encode(this.uidCounter++);
+      id = this.prefix + base62encode(this.uidCounter++);
       if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
       if (this.debugNames) {
         if (debugSuffix) id += "_" + replaceInvalidCharactersWithUnderscore(debugSuffix);

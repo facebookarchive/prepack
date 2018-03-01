@@ -54,7 +54,8 @@
     "prepublish": "yarn build",
     "depcheck": "babel-node scripts/detect_bad_deps.js",
     "prettier": "node ./scripts/prettier.js write-changed",
-    "prettier-all": "node ./scripts/prettier.js write"
+    "prettier-all": "node ./scripts/prettier.js write",
+    "debug-fb-www": "node ./scripts/debug-fb-www.js"
   },
   "dependencies": {
     "babel-core": "^6.26.0",
@@ -64,7 +65,6 @@
     "babel-traverse": "^6.9.0",
     "babel-types": "^6.9.0",
     "babylon": "^6.18.0",
-    "base62": "^1.1.2",
     "queue-fifo": "^0.2.3",
     "seedrandom": "^2.4.2",
     "source-map": "^0.5.6",

@@ -175,7 +175,7 @@ function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnal
     else return "Recover";
   };
   modules.resolveInitializedModules();
-  let residualHeapVisitor = new ResidualHeapVisitor(realm, modules.logger, modules, new Map());
+  let residualHeapVisitor = new ResidualHeapVisitor(realm, modules.logger, modules, new Map(), "NO_REFERENTIALIZE");
   residualHeapVisitor.visitRoots();
   if (modules.logger.hasErrors()) return;
   let totalFunctions = 0;
@@ -191,7 +191,7 @@ function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnal
     for (let i = 0; i < n; i++) {
       let name = "dummy parameter";
       let ob: AbstractObjectValue = (AbstractValue.createFromType(realm, ObjectValue, name): any);
-      ob.makeSimple();
+      ob.makeSimple("transitive");
       ob.intrinsicName = name;
       args[i] = ob;
     }

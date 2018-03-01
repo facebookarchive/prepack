@@ -1149,7 +1149,7 @@ export class PropertiesImplementation {
     if (!realm.ignoreLeakLogic && O.isLeakedObject()) {
       invariant(realm.generator);
       let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
-      let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
+      let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O._templateFor || O], ([node]) =>
         t.memberExpression(node, pname, !t.isIdentifier(pname))
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
@@ -1170,9 +1170,44 @@ export class PropertiesImplementation {
             // In this case it is safe to defer the property access to runtime (at this point in time)
             invariant(realm.generator);
             let pname = realm.generator.getAsPropertyNameExpression(P);
-            let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([node]) =>
-              t.memberExpression(node, pname, !t.isIdentifier(pname))
-            );
+            let absVal;
+            function createAbstractPropertyValue(type: typeof Value) {
+              if (O.isTransitivelySimple()) {
+                invariant(typeof P === "string");
+                return AbstractValue.createFromBuildFunction(
+                  realm,
+                  type,
+                  [O._templateFor || O],
+                  ([node]) => {
+                    return t.memberExpression(node, pname, !t.isIdentifier(pname));
+                  },
+                  { kind: P }
+                );
+              } else {
+                return AbstractValue.createTemporalFromBuildFunction(
+                  realm,
+                  type,
+                  [O._templateFor || O],
+                  ([node]) => {
+                    return t.memberExpression(node, pname, !t.isIdentifier(pname));
+                  },
+                  { skipInvariant: true }
+                );
+              }
+            }
+            if (O.isTransitivelySimple()) {
+              absVal = createAbstractPropertyValue(ObjectValue);
+              invariant(absVal instanceof AbstractObjectValue);
+              absVal.makeSimple("transitive");
+              absVal = AbstractValue.createAbstractConcreteUnion(
+                realm,
+                absVal,
+                realm.intrinsics.undefined,
+                realm.intrinsics.null
+              );
+            } else {
+              absVal = createAbstractPropertyValue(Value);
+            }
             return { configurable: true, enumerable: true, value: absVal, writable: true };
           } else {
             invariant(P instanceof SymbolValue);

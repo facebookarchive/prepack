@@ -58,7 +58,11 @@ export default function(realm: Realm): void {
   // Helper function to model values that are obtained from the environment,
   // and whose concrete values are not known at Prepack-time.
   // __abstract(typeNameOrTemplate, name, options) creates a new abstract value
-  // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
+  // where typeNameOrTemplate can be...
+  // - 'string', 'boolean', 'number', 'object', 'function' or
+  // - ':string', ':boolean', ':number', ':object', ':function' to indicate that
+  //   the abstract value represents a function that only returns values of the specified type, or
+  // - an actual object defining known properties.
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
@@ -276,9 +280,8 @@ export default function(realm: Realm): void {
   // __makePartial(object) marks an (abstract) object as partial.
   global.$DefineOwnProperty("__makePartial", {
     value: new NativeFunctionValue(realm, "global.__makePartial", "__makePartial", 1, (context, [object]) => {
-      // casting to any to avoid Flow bug
-      if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
-        (object: any).makePartial();
+      if (object instanceof AbstractObjectValue || object instanceof ObjectValue) {
+        object.makePartial();
         return object;
       }
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
@@ -290,10 +293,9 @@ export default function(realm: Realm): void {
 
   // __makeSimple(object) marks an (abstract) object as one that has no getters or setters.
   global.$DefineOwnProperty("__makeSimple", {
-    value: new NativeFunctionValue(realm, "global.__makeSimple", "__makeSimple", 1, (context, [object]) => {
-      // casting to any to avoid Flow bug
-      if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
-        (object: any).makeSimple();
+    value: new NativeFunctionValue(realm, "global.__makeSimple", "__makeSimple", 1, (context, [object, option]) => {
+      if (object instanceof AbstractObjectValue || object instanceof ObjectValue) {
+        object.makeSimple(option);
         return object;
       }
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
@@ -315,8 +317,7 @@ export default function(realm: Realm): void {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
         }
 
-        // casting to any to avoid Flow bug "*** Recursion limit exceeded ***"
-        if ((object: any) instanceof AbstractObjectValue || (object: any) instanceof ObjectValue) {
+        if (object instanceof AbstractObjectValue || object instanceof ObjectValue) {
           let generator = realm.generator;
           invariant(generator);
 

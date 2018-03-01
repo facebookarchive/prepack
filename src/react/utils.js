@@ -25,7 +25,7 @@ import {
 import type { Descriptor, ReactHint } from "../types";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
+import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
 import { Create, Properties } from "../singletons.js";
 import traverse from "babel-traverse";
@@ -38,8 +38,17 @@ import AbstractValue from "../values/AbstractValue";
 export type ReactSymbolTypes = "react.element" | "react.fragment" | "react.portal" | "react.return" | "react.call";
 
 export function isReactElement(val: Value): boolean {
-  if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
-    let realm = val.$Realm;
+  if (!(val instanceof ObjectValue)) {
+    return false;
+  }
+  let realm = val.$Realm;
+  if (!realm.react.enabled) {
+    return false;
+  }
+  if (realm.react.reactElements.has(val)) {
+    return true;
+  }
+  if (val.properties.has("$$typeof")) {
     let $$typeof = Get(realm, val, "$$typeof");
     let globalObject = realm.$GlobalObject;
     let globalSymbolValue = Get(realm, globalObject, "Symbol");
@@ -50,7 +59,12 @@ export function isReactElement(val: Value): boolean {
       }
     } else if ($$typeof instanceof SymbolValue) {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
-      return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+      let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+      if (_isReactElement) {
+        // add to Set to speed up future lookups
+        realm.react.reactElements.add(val);
+        return true;
+      }
     }
   }
   return false;
@@ -278,7 +292,7 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   });
 }
 
-export function createReactHint(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
+export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
   return {
     object,
     propertyName,
@@ -297,7 +311,7 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
     let reactHint = realm.react.abstractHints.get(value);
 
     invariant(reactHint);
-    if (reactHint.object === realm.fbLibraries.reactRelay) {
+    if (typeof reactHint !== "string" && reactHint.object === realm.fbLibraries.reactRelay) {
       switch (reactHint.propertyName) {
         case "createFragmentContainer":
         case "createPaginationContainer":
@@ -321,6 +335,42 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
   }
 }
 
+// props should never have "ref" or "key" properties, as they're part of ReactElement
+// object instead. to ensure that we can give this hint, we create them and then
+// delete them, so their descriptor is left undefined. we use this knowledge later
+// to ensure that when dealing with creating ReactElements with partial config,
+// we don't have to bail out becuase "config" may or may not have "key" or/and "ref"
+export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
+  let objectValue;
+  if (props instanceof AbstractObjectValue) {
+    let elements = props.values.getElements();
+    if (elements && elements.size > 0) {
+      objectValue = Array.from(elements)[0];
+    }
+    // we don't want to serialize in the output that we're making these deletes
+    invariant(objectValue instanceof ObjectValue);
+    objectValue.refuseSerialization = true;
+  }
+  Properties.Set(realm, props, "ref", realm.intrinsics.undefined, true);
+  props.$Delete("ref");
+  Properties.Set(realm, props, "key", realm.intrinsics.undefined, true);
+  props.$Delete("key");
+  if (props instanceof AbstractObjectValue) {
+    invariant(objectValue instanceof ObjectValue);
+    objectValue.refuseSerialization = false;
+  }
+}
+
+export function objectHasNoPartialKeyAndRef(
+  realm: Realm,
+  object: ObjectValue | AbstractValue | AbstractObjectValue
+): boolean {
+  if (object instanceof AbstractValue) {
+    return true;
+  }
+  return !(Get(realm, object, "key") instanceof AbstractValue || Get(realm, object, "ref") instanceof AbstractValue);
+}
+
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
   forEachArrayValue(realm, array, item => {
     if (item instanceof ArrayValue) {
@@ -337,4 +387,51 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   let flattenedChildren = Create.ArrayCreate(realm, 0);
   recursivelyFlattenArray(realm, array, flattenedChildren);
   return flattenedChildren;
+}
+
+export function getProperty(realm: Realm, object: ObjectValue, property: string | SymbolValue): Value {
+  let binding;
+  if (typeof property === "string") {
+    binding = object.properties.get(property);
+  } else {
+    binding = object.symbols.get(property);
+  }
+  if (!binding) {
+    return realm.intrinsics.undefined;
+  }
+  let descriptor = binding.descriptor;
+
+  if (!descriptor) {
+    return realm.intrinsics.undefined;
+  }
+  let value;
+  if (descriptor.value) {
+    value = descriptor.value;
+  } else if (descriptor.get || descriptor.set) {
+    AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
+    throw new FatalError();
+  }
+  invariant(value instanceof Value, `react/utils/getProperty should not be called on internal properties`);
+  return value;
+}
+
+export function createReactEvaluatedNode(
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "RENDER_PROPS",
+  name: string
+): ReactEvaluatedNode {
+  return {
+    name,
+    status,
+    children: [],
+  };
+}
+
+export function getComponentName(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue | AbstractObjectValue
+): string {
+  if (componentType.__originalName) {
+    return componentType.__originalName;
+  }
+  return "Unknown";
 }

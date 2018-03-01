@@ -45,6 +45,12 @@ var optionsConfig = [
     description: "The target environment for Prepack"
   },
   {
+    type: "string",
+    name: "lazyObjectsRuntime",
+    defaultVal: "",
+    description: "Enable lazy objects feature and specify the JS runtime that supports this feature."
+  },
+  {
     type: "boolean",
     name: "omitInvariants",
     defaultVal: true,

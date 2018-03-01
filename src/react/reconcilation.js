@@ -24,7 +24,7 @@ import {
   ObjectValue,
   AbstractObjectValue,
 } from "../values/index.js";
-import { ReactStatistics, type ReactSerializerState } from "../serializer/types.js";
+import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
   isReactElement,
   valueIsClassComponent,
@@ -34,9 +34,13 @@ import {
   valueIsKnownReactAbstraction,
   getReactSymbol,
   flattenChildren,
+  getProperty,
+  createReactEvaluatedNode,
+  getComponentName,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
+import { Properties } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import {
@@ -54,9 +58,10 @@ import type { ClassComponentMetadata } from "../types.js";
 type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
 export type BranchReactComponentTree = {
+  context: ObjectValue | AbstractObjectValue | null,
+  evaluatedNode: ReactEvaluatedNode,
   props: ObjectValue | AbstractObjectValue | null,
   rootValue: ECMAScriptSourceFunctionValue | AbstractValue,
-  context: ObjectValue | AbstractObjectValue | null,
 };
 
 export class Reconciler {
@@ -89,7 +94,8 @@ export class Reconciler {
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue | null,
     context: ObjectValue | AbstractObjectValue | null,
-    isRoot: boolean
+    isRoot: boolean,
+    evaluatedRootNode: ReactEvaluatedNode
   ): Effects {
     return this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
@@ -107,7 +113,14 @@ export class Reconciler {
             try {
               let initialProps = props || getInitialProps(this.realm, componentType);
               let initialContext = context || getInitialContext(this.realm, componentType);
-              let { result } = this._renderComponent(componentType, initialProps, initialContext, "ROOT", null);
+              let { result } = this._renderComponent(
+                componentType,
+                initialProps,
+                initialContext,
+                "ROOT",
+                null,
+                evaluatedRootNode
+              );
               this.statistics.optimizedTrees++;
               return result;
             } catch (error) {
@@ -149,11 +162,13 @@ export class Reconciler {
 
   _queueNewComponentTree(
     rootValue: Value,
+    evaluatedNode: ReactEvaluatedNode,
     props?: ObjectValue | AbstractObjectValue | null = null,
     context?: ObjectValue | AbstractObjectValue | null = null
   ) {
     invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
     this.branchReactComponentTrees.push({
+      evaluatedNode,
       props,
       rootValue,
       context,
@@ -162,14 +177,16 @@ export class Reconciler {
 
   _renderComplexClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     classMetadata: ClassComponentMetadata,
     branchStatus: BranchStatusEnum,
-    branchState: BranchState | null
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
   ): Value {
     if (branchStatus !== "ROOT") {
-      this._queueNewComponentTree(componentType);
+      this._queueNewComponentTree(componentType, evaluatedNode);
+      evaluatedNode.status = "NEW_TREE";
       throw new NewComponentTreeBranch();
     }
     // create a new instance of this React class component
@@ -204,7 +221,7 @@ export class Reconciler {
 
   _renderSimpleClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
@@ -223,7 +240,7 @@ export class Reconciler {
 
   _renderFunctionalComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
     invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
@@ -232,7 +249,7 @@ export class Reconciler {
 
   _getClassComponentMetadata(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ): ClassComponentMetadata {
     if (this.realm.react.classComponentMetadata.has(componentType)) {
@@ -248,7 +265,7 @@ export class Reconciler {
 
   _renderRelayQueryRendererComponent(
     reactElement: ObjectValue,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
     // TODO: for now we do nothing, in the future we want to evaluate the render prop of this component
@@ -260,14 +277,16 @@ export class Reconciler {
 
   _renderComponent(
     componentType: Value,
-    props: ObjectValue | AbstractObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    branchState: BranchState | null
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
   ) {
     if (valueIsKnownReactAbstraction(this.realm, componentType)) {
       invariant(componentType instanceof AbstractValue);
-      this._queueNewComponentTree(componentType);
+      this._queueNewComponentTree(componentType, evaluatedNode);
+      evaluatedNode.status = "NEW_TREE";
       throw new NewComponentTreeBranch();
     }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
@@ -322,7 +341,8 @@ export class Reconciler {
           context,
           classMetadata,
           branchStatus,
-          branchState
+          branchState,
+          evaluatedNode
         );
       }
     } else {
@@ -343,7 +363,13 @@ export class Reconciler {
     }
     invariant(value !== undefined);
     return {
-      result: this._resolveDeeply(value, context, branchStatus === "ROOT" ? "NO_BRANCH" : branchStatus, branchState),
+      result: this._resolveDeeply(
+        value,
+        context,
+        branchStatus === "ROOT" ? "NO_BRANCH" : branchStatus,
+        branchState,
+        evaluatedNode
+      ),
       childContext,
     };
   }
@@ -365,7 +391,8 @@ export class Reconciler {
     value: Value,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    branchState: BranchState | null
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
   ) {
     if (
       value instanceof StringValue ||
@@ -382,7 +409,7 @@ export class Reconciler {
         let newBranchState = new BranchState();
         // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
         for (let i = 0; i < length; i++) {
-          value.args[i] = this._resolveDeeply(value.args[i], context, "NEW_BRANCH", newBranchState);
+          value.args[i] = this._resolveDeeply(value.args[i], context, "NEW_BRANCH", newBranchState, evaluatedNode);
         }
         newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
       }
@@ -390,7 +417,7 @@ export class Reconciler {
     }
     // TODO investigate what about other iterables type objects
     if (value instanceof ArrayValue) {
-      this._resolveArray(value, context, branchStatus, branchState);
+      this._resolveArray(value, context, branchStatus, branchState, evaluatedNode);
       return value;
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
@@ -402,21 +429,25 @@ export class Reconciler {
 
       const resolveChildren = () => {
         // terminal host component. Start evaluating its children.
-        if (propsValue instanceof ObjectValue) {
-          let childrenProperty = propsValue.properties.get("children");
-          if (childrenProperty) {
-            let childrenPropertyDescriptor = childrenProperty.descriptor;
-            // if the descriptor is undefined, the property is likely deleted, if it exists
-            // proceed to resolve the children
-            if (childrenPropertyDescriptor !== undefined) {
-              let childrenPropertyValue = childrenPropertyDescriptor.value;
-              invariant(childrenPropertyValue instanceof Value, `Bad "children" prop passed in JSXElement`);
-              let resolvedChildren = this._resolveDeeply(childrenPropertyValue, context, branchStatus, branchState);
-              // we can optimize further and flatten arrays on non-composite components
-              if (resolvedChildren instanceof ArrayValue) {
-                resolvedChildren = flattenChildren(this.realm, resolvedChildren);
-              }
-              childrenPropertyDescriptor.value = resolvedChildren;
+        if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
+          let childrenValue = getProperty(this.realm, propsValue, "children");
+
+          if (childrenValue instanceof Value) {
+            let resolvedChildren = this._resolveDeeply(
+              childrenValue,
+              context,
+              branchStatus,
+              branchState,
+              evaluatedNode
+            );
+            // we can optimize further and flatten arrays on non-composite components
+            if (resolvedChildren instanceof ArrayValue) {
+              resolvedChildren = flattenChildren(this.realm, resolvedChildren);
+            }
+            if (propsValue.properties.has("children")) {
+              propsValue.refuseSerialization = true;
+              Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
+              propsValue.refuseSerialization = false;
             }
           }
         }
@@ -428,11 +459,20 @@ export class Reconciler {
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
-        this._queueNewComponentTree(typeValue);
+        invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
+        let evaluatedChildRootNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+        evaluatedNode.children.push(evaluatedChildRootNode);
+        this._queueNewComponentTree(typeValue, evaluatedChildRootNode);
         this._assignBailOutMessage(reactElement, `Bail-out: refs are not supported on <Components />`);
         return reactElement;
       }
-      if (!(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue)) {
+      if (
+        !(
+          propsValue instanceof ObjectValue ||
+          propsValue instanceof AbstractObjectValue ||
+          propsValue instanceof AbstractValue
+        )
+      ) {
         this._assignBailOutMessage(
           reactElement,
           `Bail-out: props on <Component /> was not not an ObjectValue or an AbstractValue`
@@ -457,17 +497,28 @@ export class Reconciler {
         let result;
         switch (renderStrategy) {
           case "NORMAL": {
+            invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
+            let evaluatedChildRootNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
+            evaluatedNode.children.push(evaluatedChildRootNode);
             let render = this._renderComponent(
               typeValue,
               propsValue,
               context,
               branchStatus === "NEW_BRANCH" ? "BRANCH" : branchStatus,
-              null
+              null,
+              evaluatedChildRootNode
             );
             result = render.result;
+            this.statistics.inlinedComponents++;
             break;
           }
           case "RELAY_QUERY_RENDERER": {
+            invariant(typeValue instanceof AbstractObjectValue);
+            let evaluatedChildRootNode = createReactEvaluatedNode(
+              "RENDER_PROPS",
+              getComponentName(this.realm, typeValue)
+            );
+            evaluatedNode.children.push(evaluatedChildRootNode);
             let render = this._renderRelayQueryRendererComponent(reactElement, propsValue, context);
             result = render.result;
             break;
@@ -483,7 +534,6 @@ export class Reconciler {
           }
           return reactElement;
         }
-        this.statistics.inlinedComponents++;
         if (branchStatus === "NEW_BRANCH" && branchState) {
           return branchState.captureBranchedValue(typeValue, result);
         }
@@ -493,7 +543,10 @@ export class Reconciler {
         if (error instanceof NewComponentTreeBranch) {
           // NO-OP (we don't queue a newComponentTree as this was already done)
         } else {
-          this._queueNewComponentTree(typeValue);
+          invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
+          let evaluatedChildRootNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+          evaluatedNode.children.push(evaluatedChildRootNode);
+          this._queueNewComponentTree(typeValue, evaluatedChildRootNode);
           if (error instanceof ExpectedBailOut) {
             this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
           } else if (error instanceof FatalError) {
@@ -528,10 +581,17 @@ export class Reconciler {
     arrayValue: ArrayValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    branchState: BranchState | null
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
   ) {
     forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
-      elementPropertyDescriptor.value = this._resolveDeeply(elementValue, context, branchStatus, branchState);
+      elementPropertyDescriptor.value = this._resolveDeeply(
+        elementValue,
+        context,
+        branchStatus,
+        branchState,
+        evaluatedNode
+      );
     });
   }
 }
