@@ -11,11 +11,13 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, BreakCompletion } from "../completions.js";
+import { Reference } from "../environment.js";
+import { computeBinary } from "./BinaryExpression.js";
+import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion, Completion } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
-import { EmptyValue, AbstractValue, Value } from "../values/index.js";
+import { EmptyValue, AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
-import { Environment } from "../singletons.js";
+import { Environment, To, Path, Join } from "../singletons.js";
 import { FatalError } from "../errors.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
@@ -34,18 +36,170 @@ function CaseSelectorEvaluation(
   return Environment.GetValue(realm, exprRef);
 }
 
+function GetValue(input: Value | Completion, defaultValue: Value, realm: Realm): Value | Completion {
+  // extract the internal value
+  let value;
+  if (input instanceof Completion) {
+    value = input.value;
+  } else {
+    value = input;
+  }
+
+  // if the value we got was not empty, let's use it as the new propagating value
+  if (!(value instanceof EmptyValue)) {
+    defaultValue = value;
+  }
+
+  return UpdateEmpty(realm, input, defaultValue);
+}
+
 function AbstractCaseBlockEvaluation(
   cases: Array<BabelNodeSwitchCase>,
-  defaultCaseNum: number,
+  defaultCaseIndex: number,
   input: Value,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
   invariant(realm.useAbstractInterpretation);
+  let ReportNoReferenceError = () => {
+    let msg = "This operation is not yet supported on case blocks that result in a Reference.";
+    realm.reportIntrospectionError(msg);
+    return new FatalError(msg);
+  };
 
-  AbstractValue.reportIntrospectionError(input);
-  throw new FatalError();
+  let ReportNoPossiblyNormalCompletionError = () => {
+    let msg = "This operation is not yet supported on case blocks that result in a PossiblyNormalCompletion.";
+    realm.reportIntrospectionError(msg);
+    return new FatalError(msg);
+  };
+
+  let ReportNoAbruptCompletionError = () => {
+    let msg = "This operation is not yet supported on case blocks that result in an AbruptCompletino (by throwing).";
+    realm.reportIntrospectionError(msg);
+    return new FatalError(msg);
+  };
+
+  let DefiniteCaseEvaluation = (caseIndex: number): Value => {
+    let result = realm.intrinsics.undefined;
+    // we start at the case we've been asked to evaluate, and process statements
+    // until there is either a break statement or exception thrown (this means we
+    // implicitly fall through correctly in the absence of a break statement).
+    while (caseIndex < cases.length && !(result instanceof Completion)) {
+      let c = cases[caseIndex];
+      for (let i = 0; i < c.consequent.length && !(result instanceof Completion); ++i) {
+        let node = c.consequent[i];
+        let r = env.evaluateCompletion(node, strictCode);
+
+        // TODO understand Reference and how to deal with it better
+        // TODO come up with a strategy for handling PossiblyNormalCompletion correctly
+        if (r instanceof Reference) {
+          throw ReportNoReferenceError();
+        } else if (r instanceof PossiblyNormalCompletion) {
+          throw ReportNoPossiblyNormalCompletionError();
+        }
+
+        result = GetValue(r, result, realm);
+      }
+      caseIndex++;
+    }
+
+    // TODO work out what to do with Reference
+    if (result instanceof Reference) {
+      throw ReportNoReferenceError();
+    }
+
+    if (result instanceof BreakCompletion) {
+      return result.value;
+    } else if (result instanceof AbruptCompletion) {
+      throw ReportNoAbruptCompletionError();
+    } else if (result instanceof Completion) {
+      return result.value;
+    } else {
+      return result;
+    }
+  };
+
+  let AbstractCaseEvaluation = (caseIndex: number): Value => {
+    if (caseIndex === defaultCaseIndex) {
+      // skip the default case until we've exhausted all other options
+      return AbstractCaseEvaluation(caseIndex + 1);
+    } else if (caseIndex >= cases.length) {
+      // this is the stop condition for our recursive search for a matching case.
+      // we tried every available case index and if nothing matches we return
+      // the default (and if none exists....just empty)
+      if (defaultCaseIndex !== -1) {
+        return DefiniteCaseEvaluation(defaultCaseIndex);
+      } else {
+        return realm.intrinsics.empty;
+      }
+    }
+    // else we have a normal in-range case index
+
+    let c = cases[caseIndex];
+    let test = c.test;
+    invariant(test);
+
+    let selector = CaseSelectorEvaluation(test, strictCode, env, realm);
+    let selectionResult = computeBinary(realm, "===", input, selector);
+    if (selectionResult instanceof ConcreteValue) {
+      //  we have a winning result for the switch case, bubble it back up!
+      if (To.ToBoolean(realm, selectionResult)) {
+        return DefiniteCaseEvaluation(caseIndex);
+      } else {
+        // we have a case that is definitively *not* taken
+        // so we go and look at the next one in the hope of finding a match
+        return AbstractCaseEvaluation(caseIndex + 1);
+      }
+    }
+
+    invariant(selectionResult instanceof AbstractValue);
+
+    if (!selectionResult.mightNotBeTrue()) {
+      //  we have a winning result for the switch case, bubble it back up!
+      return DefiniteCaseEvaluation(caseIndex);
+    } else if (!selectionResult.mightNotBeFalse()) {
+      // we have a case that is definitely *not* taken
+      // so we go and look at the next one in the hope of finding a match
+      return AbstractCaseEvaluation(caseIndex + 1);
+    } else {
+      // we can't be sure whether the case selector evaluates true or not
+      // so we evaluate the case in the abstract as an if-else with the else
+      // leading to the next case statement
+      let trueEffects = Path.withCondition(selectionResult, () => {
+        return realm.evaluateForEffects(() => {
+          return DefiniteCaseEvaluation(caseIndex);
+        });
+      });
+
+      let falseEffects = Path.withInverseCondition(selectionResult, () => {
+        return realm.evaluateForEffects(() => {
+          return AbstractCaseEvaluation(caseIndex + 1);
+        });
+      });
+
+      let joinedEffects = Join.joinEffects(realm, selectionResult, trueEffects, falseEffects);
+      let completion = joinedEffects[0];
+      if (completion instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        completion = realm.composeWithSavedCompletion(completion);
+      }
+      // Note that the effects of (non joining) abrupt branches are not included
+      // in joinedEffects, but are tracked separately inside completion.
+      realm.applyEffects(joinedEffects);
+
+      // return or throw completion
+      if (completion instanceof AbruptCompletion) throw completion;
+      invariant(completion instanceof Value);
+      return completion;
+    }
+  };
+
+  // let the recursive search for a matching case begin!
+  return AbstractCaseEvaluation(0);
 }
 
 function CaseBlockEvaluation(
