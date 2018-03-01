@@ -82,6 +82,7 @@ export class Reconciler {
     this.simpleClassComponents = simpleClassComponents;
     this.logger = moduleTracer.modules.logger;
     this.branchReactComponentTrees = branchReactComponentTrees;
+    this.alreadyEvaluatedRootNodes = new Map();
   }
 
   realm: Realm;
@@ -91,6 +92,7 @@ export class Reconciler {
   simpleClassComponents: Set<Value>;
   logger: Logger;
   branchReactComponentTrees: Array<BranchReactComponentTree>;
+  alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
 
   render(
     componentType: ECMAScriptSourceFunctionValue,
@@ -124,6 +126,7 @@ export class Reconciler {
                 evaluatedRootNode
               );
               this.statistics.optimizedTrees++;
+              this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
               return result;
             } catch (error) {
               // if we get an error and we're not dealing with the root
@@ -616,5 +619,17 @@ export class Reconciler {
         evaluatedNode
       );
     });
+  }
+
+  hasEvaluatedRootNode(componentType: ECMAScriptSourceFunctionValue, evaluateNode: ReactEvaluatedNode): boolean {
+    if (this.alreadyEvaluatedRootNodes.has(componentType)) {
+      let alreadyEvaluatedNode = this.alreadyEvaluatedRootNodes.get(componentType);
+      invariant(alreadyEvaluatedNode);
+      evaluateNode.children = alreadyEvaluatedNode.children;
+      evaluateNode.status = alreadyEvaluatedNode.status;
+      evaluateNode.name = alreadyEvaluatedNode.name;
+      return true;
+    }
+    return false;
   }
 }
