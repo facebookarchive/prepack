@@ -187,22 +187,24 @@ export class Functions {
       );
       let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
+      statistics.evaluatedRootNodes.push(evaluatedRootNode);
+      if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
+        continue;
+      }
       let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
       this._generateWriteEffectsForReactComponentTree(componentType, effects, simpleClassComponents);
-      statistics.evaluatedRootNodes.push(evaluatedRootNode);
 
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
-      let alreadyGeneratedEffects = new Set();
       for (let { rootValue: branchRootValue, nested, evaluatedNode } of branchReactComponentTrees) {
         evaluateComponentTreeBranch(this.realm, effects, nested, () => {
           let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
           // so we don't process the same component multiple times (we might change this logic later)
-          if (!alreadyGeneratedEffects.has(branchComponentType)) {
-            alreadyGeneratedEffects.add(branchComponentType);
-            let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
-            this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, simpleClassComponents);
+          if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
+            return;
           }
+          let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
+          this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, simpleClassComponents);
         });
       }
       if (this.realm.react.output === "bytecode") {

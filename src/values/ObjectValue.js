@@ -75,7 +75,7 @@ export default class ObjectValue extends ConcreteValue {
     this.$Prototype = proto || realm.intrinsics.null;
     this.$Extensible = realm.intrinsics.true;
     this._isPartial = realm.intrinsics.false;
-    this._hasLeaked = realm.intrinsics.false;
+    this._isHavoced = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
     this._simplicityIsTransitive = realm.intrinsics.false;
     this._isFinal = realm.intrinsics.false;
@@ -87,7 +87,7 @@ export default class ObjectValue extends ConcreteValue {
 
   static trackedPropertyNames = [
     "_isPartial",
-    "_hasLeaked",
+    "_isHavoced",
     "_isSimple",
     "_isFinal",
     "_simplicityIsTransitive",
@@ -133,7 +133,7 @@ export default class ObjectValue extends ConcreteValue {
           return binding.descriptor.value;
         },
         set: function(v) {
-          invariant(!this.isLeakedObject(), "cannot mutate a leaked object");
+          invariant(!this.isHavocedObject(), "cannot mutate a havoced object");
           let binding = this[propName + "_binding"];
           this.$Realm.recordModifiedProperty(binding);
           binding.descriptor.value = v;
@@ -243,7 +243,7 @@ export default class ObjectValue extends ConcreteValue {
   _isPartial: void | AbstractValue | BooleanValue;
 
   // tainted objects
-  _hasLeaked: void | AbstractValue | BooleanValue;
+  _isHavoced: void | AbstractValue | BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
@@ -335,12 +335,12 @@ export default class ObjectValue extends ConcreteValue {
     return !!this._isFinal && this._isFinal.mightBeTrue();
   }
 
-  leak(): void {
-    this._hasLeaked = this.$Realm.intrinsics.true;
+  havoc(): void {
+    this._isHavoced = this.$Realm.intrinsics.true;
   }
 
-  isLeakedObject(): boolean {
-    return !!this._hasLeaked && this._hasLeaked.mightBeTrue();
+  isHavocedObject(): boolean {
+    return !!this._isHavoced && this._isHavoced.mightBeTrue();
   }
 
   isSimpleObject(): boolean {
@@ -457,7 +457,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   getOwnPropertyKeysArray(): Array<string> {
-    if (this.isPartialObject() || this.isLeakedObject() || this.unknownProperty !== undefined) {
+    if (this.isPartialObject() || this.isHavocedObject() || this.unknownProperty !== undefined) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }

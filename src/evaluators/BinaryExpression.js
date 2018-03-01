@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Environment, To, Leak } from "../singletons.js";
+import { Environment, Havoc, To } from "../singletons.js";
 import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -57,14 +57,18 @@ export function getPureBinaryOperationResultType(
   lloc: ?BabelNodeSourceLocation,
   rloc: ?BabelNodeSourceLocation
 ): typeof Value {
-  function leakOrReportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
+  function havocIfPureAndReportErrorIfNot(
+    purityTest: (Realm, Value) => boolean,
+    typeIfPure: typeof Value
+  ): typeof Value {
     let leftPure = purityTest(realm, lval);
     let rightPure = purityTest(realm, rval);
     if (leftPure && rightPure) return typeIfPure;
 
     if (realm.isInPureScope()) {
-      if (!leftPure) Leak.leakValue(realm, lval);
-      if (!rightPure) Leak.leakValue(realm, rval);
+      // Allow unknown side effects on lval/rval, but assume no other side effects will occur
+      if (!leftPure) Havoc.value(realm, lval);
+      if (!rightPure) Havoc.value(realm, rval);
       return typeIfPure;
     }
 
@@ -93,8 +97,9 @@ export function getPureBinaryOperationResultType(
     }
 
     if (realm.isInPureScope()) {
-      if (!ltype) Leak.leakValue(realm, lval);
-      if (!rtype) Leak.leakValue(realm, rval);
+      // Allow unknown side effects on lval/rval, but assume no other side effects will occur
+      if (!ltype) Havoc.value(realm, lval);
+      if (!rtype) Havoc.value(realm, rval);
       return recoverWithValue();
     }
 
@@ -109,13 +114,13 @@ export function getPureBinaryOperationResultType(
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
-    return leakOrReportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
+    return havocIfPureAndReportErrorIfNot(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "!=" || op === "==") {
     let ltype = lval.getType();
     let rtype = rval.getType();
     if (ltype === NullValue || ltype === UndefinedValue || rtype === NullValue || rtype === UndefinedValue)
       return BooleanValue;
-    return leakOrReportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
+    return havocIfPureAndReportErrorIfNot(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "===" || op === "!==") {
     return BooleanValue;
   } else if (
@@ -131,7 +136,7 @@ export function getPureBinaryOperationResultType(
     op === "*" ||
     op === "-"
   ) {
-    return leakOrReportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
+    return havocIfPureAndReportErrorIfNot(To.IsToNumberPure.bind(To), NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
       let error = new CompilerDiagnostic(
