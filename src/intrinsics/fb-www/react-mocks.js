@@ -30,7 +30,21 @@ import invariant from "../../invariant";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
 let reactCode = `
-  function createReact(REACT_ELEMENT_TYPE, REACT_FRAGMENT_TYPE, ReactCurrentOwner) {
+  function createReact(REACT_ELEMENT_TYPE, REACT_FRAGMENT_TYPE, REACT_PORTAL_TYPE, ReactCurrentOwner) {
+    function makeEmptyFunction(arg) {
+      return function() {
+        return arg;
+      };
+    }
+    var emptyFunction = function() {};
+    
+    emptyFunction.thatReturns = makeEmptyFunction;
+    emptyFunction.thatReturnsFalse = makeEmptyFunction(false);
+    emptyFunction.thatReturnsTrue = makeEmptyFunction(true);
+    emptyFunction.thatReturnsNull = makeEmptyFunction(null);
+    emptyFunction.thatReturnsThis = function() { return this; };
+    emptyFunction.thatReturnsArgument = function(arg) { return arg; };
+
     var hasOwnProperty = Object.prototype.hasOwnProperty;
     var RESERVED_PROPS = {
       key: true,
@@ -85,24 +99,233 @@ let reactCode = `
     PureComponent.prototype.isReactComponent = {};
     PureComponent.prototype.isPureReactComponent = true;
 
-    function forEachChildren() {
-      throw new Error("TODO: React.Children.forEach is not yet supported");
+    var userProvidedKeyEscapeRegex = /\/+/g;
+
+    function escapeUserProvidedKey(text) {
+      return ('' + text).replace(userProvidedKeyEscapeRegex, '$&/');
     }
 
-    function mapChildren() {
-      throw new Error("TODO: React.Children.map is not yet supported");
+    function escape(key) {
+      const escapeRegex = /[=:]/g;
+      const escaperLookup = {
+        '=': '=0',
+        ':': '=2',
+      };
+      const escapedString = ('' + key).replace(escapeRegex, function(match) {
+        return escaperLookup[match];
+      });
+    
+      return '$' + escapedString;
     }
 
-    function countChildren() {
-      throw new Error("TODO: React.Children.count is not yet supported");
+    var SEPARATOR = '.';
+    var SUBSEPARATOR = ':';
+    var POOL_SIZE = 10;
+    var traverseContextPool = [];
+    function getPooledTraverseContext(
+      mapResult,
+      keyPrefix,
+      mapFunction,
+      mapContext,
+    ) {
+      if (traverseContextPool.length) {
+        const traverseContext = traverseContextPool.pop();
+        traverseContext.result = mapResult;
+        traverseContext.keyPrefix = keyPrefix;
+        traverseContext.func = mapFunction;
+        traverseContext.context = mapContext;
+        traverseContext.count = 0;
+        return traverseContext;
+      } else {
+        return {
+          result: mapResult,
+          keyPrefix: keyPrefix,
+          func: mapFunction,
+          context: mapContext,
+          count: 0,
+        };
+      }
     }
 
-    function onlyChild() {
-      throw new Error("TODO: React.Children.only is not yet supported");
+    function releaseTraverseContext(traverseContext) {
+      traverseContext.result = null;
+      traverseContext.keyPrefix = null;
+      traverseContext.func = null;
+      traverseContext.context = null;
+      traverseContext.count = 0;
+      if (traverseContextPool.length < POOL_SIZE) {
+        traverseContextPool.push(traverseContext);
+      }
     }
 
-    function toArray() {
-      throw new Error("TODO: React.Children.toArray is not yet supported");
+    function traverseAllChildren(children, callback, traverseContext) {
+      if (children == null) {
+        return 0;
+      }
+    
+      return traverseAllChildrenImpl(children, '', callback, traverseContext);
+    }
+
+    function getComponentKey(component, index) {
+      // Do some typechecking here since we call this blindly. We want to ensure
+      // that we don't block potential future ES APIs.
+      if (
+        typeof component === 'object' &&
+        component !== null &&
+        component.key != null
+      ) {
+        // Explicit key
+        return escape(component.key);
+      }
+      // Implicit key determined by the index in the set
+      return index.toString(36);
+    }
+
+    function traverseAllChildrenImpl(
+      children,
+      nameSoFar,
+      callback,
+      traverseContext,
+    ) {
+      const type = typeof children;
+    
+      if (type === 'undefined' || type === 'boolean') {
+        // All of the above are perceived as null.
+        children = null;
+      }
+    
+      let invokeCallback = false;
+    
+      if (children === null) {
+        invokeCallback = true;
+      } else {
+        switch (type) {
+          case 'string':
+          case 'number':
+            invokeCallback = true;
+            break;
+          case 'object':
+            switch (children.$$typeof) {
+              case REACT_ELEMENT_TYPE:
+              case REACT_PORTAL_TYPE:
+                invokeCallback = true;
+            }
+        }
+      }
+    
+      if (invokeCallback) {
+        callback(
+          traverseContext,
+          children,
+          // If it's the only child, treat the name as if it was wrapped in an array
+          // so that it's consistent if the number of children grows.
+          nameSoFar === '' ? SEPARATOR + getComponentKey(children, 0) : nameSoFar,
+        );
+        return 1;
+      }
+    
+      let child;
+      let nextName;
+      let subtreeCount = 0; // Count of children found in the current subtree.
+      const nextNamePrefix =
+        nameSoFar === '' ? SEPARATOR : nameSoFar + SUBSEPARATOR;
+    
+      if (Array.isArray(children)) {
+        for (let i = 0; i < children.length; i++) {
+          child = children[i];
+          nextName = nextNamePrefix + getComponentKey(child, i);
+          subtreeCount += traverseAllChildrenImpl(
+            child,
+            nextName,
+            callback,
+            traverseContext,
+          );
+        }
+      } else {
+        const iteratorFn = getIteratorFn(children);
+        if (typeof iteratorFn === 'function') {    
+          var iterator = iteratorFn.call(children);
+          let step;
+          let ii = 0;
+          while (!(step = iterator.next()).done) {
+            child = step.value;
+            nextName = nextNamePrefix + getComponentKey(child, ii++);
+            subtreeCount += traverseAllChildrenImpl(
+              child,
+              nextName,
+              callback,
+              traverseContext,
+            );
+          }
+        } else if (type === 'object') {
+          let addendum = '';
+          var childrenString = '' + children;
+        }
+      }
+    
+      return subtreeCount;
+    }
+
+    function mapIntoWithKeyPrefixInternal(children, array, prefix, func, context) {
+      var escapedPrefix = '';
+      if (prefix != null) {
+        escapedPrefix = escapeUserProvidedKey(prefix) + '/';
+      }
+      const traverseContext = getPooledTraverseContext(
+        array,
+        escapedPrefix,
+        func,
+        context,
+      );
+      traverseAllChildren(children, mapSingleChildIntoContext, traverseContext);
+      releaseTraverseContext(traverseContext);
+    }
+
+    function forEachSingleChild(bookKeeping, child, name) {
+      const {func, context} = bookKeeping;
+      func.call(context, child, bookKeeping.count++);
+    }
+
+    function forEachChildren(children, forEachFunc, forEachContext) {
+      if (children == null) {
+        return children;
+      }
+      var traverseContext = getPooledTraverseContext(
+        null,
+        null,
+        forEachFunc,
+        forEachContext,
+      );
+      traverseAllChildren(children, forEachSingleChild, traverseContext);
+      releaseTraverseContext(traverseContext);
+    }
+
+    function mapChildren(children, func, context) {
+      if (children == null) {
+        return children;
+      }
+      var result = [];
+      mapIntoWithKeyPrefixInternal(children, result, null, func, context);
+      return result;
+    }
+
+    function countChildren(children) {
+      return traverseAllChildren(children, emptyFunction.thatReturnsNull, null);
+    }
+
+    function onlyChild(children) {
+      return children;
+    }
+
+    function toArray(children) {
+      var result = [];
+      mapIntoWithKeyPrefixInternal(
+        children,
+        result,
+        null,
+        emptyFunction.thatReturnsArgument,
+      );
+      return result;
     }
 
     function cloneElement(element, config, children) {
@@ -247,6 +470,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   let reactValue = factory(realm.intrinsics.undefined, [
     getReactSymbol("react.element", realm),
     getReactSymbol("react.fragment", realm),
+    getReactSymbol("react.portal", realm),
     currentOwner,
   ]);
   invariant(reactValue instanceof ObjectValue);
