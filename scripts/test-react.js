@@ -426,6 +426,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
     });
 
+    describe("Render props", () => {
+      let directory = "render-props";
+
+      it("Relay QueryRenderer", async () => {
+        await runTest(directory, "relay-query-renderer.js");
+      });
+
+      it("Relay QueryRenderer 2", async () => {
+        await runTest(directory, "relay-query-renderer2.js");
+      });
+    });
+
     describe("fb-www mocks", () => {
       let directory = "mocks";
 

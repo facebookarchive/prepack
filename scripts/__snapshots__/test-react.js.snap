@@ -5,7 +5,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -21,11 +21,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -39,7 +39,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -55,11 +55,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -328,7 +328,7 @@ ReactStatistics {
           "status": "INLINED",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -858,7 +858,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -878,7 +878,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -887,7 +887,7 @@ ReactStatistics {
     },
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "Child",
       "status": "ROOT",
     },
   ],
@@ -1242,6 +1242,46 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Render props Relay QueryRenderer 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Render props Relay QueryRenderer 2 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -1260,7 +1300,7 @@ ReactStatistics {
               "status": "INLINED",
             },
           ],
-          "name": "Unknown",
+          "name": "AppBody",
           "status": "INLINED",
         },
       ],
@@ -1280,7 +1320,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
@@ -1289,7 +1329,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
@@ -1473,7 +1513,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -1489,11 +1529,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -1507,7 +1547,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -1523,11 +1563,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -1796,7 +1836,7 @@ ReactStatistics {
           "status": "INLINED",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -2326,7 +2366,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -2346,7 +2386,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -2355,7 +2395,7 @@ ReactStatistics {
     },
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "Child",
       "status": "ROOT",
     },
   ],
@@ -2710,6 +2750,46 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Render props Relay QueryRenderer 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Render props Relay QueryRenderer 2 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -2728,7 +2808,7 @@ ReactStatistics {
               "status": "INLINED",
             },
           ],
-          "name": "Unknown",
+          "name": "AppBody",
           "status": "INLINED",
         },
       ],
@@ -2748,7 +2828,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
@@ -2757,7 +2837,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
@@ -2941,7 +3021,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -2957,11 +3037,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -2975,7 +3055,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -2991,11 +3071,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -3264,7 +3344,7 @@ ReactStatistics {
           "status": "INLINED",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -3794,7 +3874,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -3814,7 +3894,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -3823,7 +3903,7 @@ ReactStatistics {
     },
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "Child",
       "status": "ROOT",
     },
   ],
@@ -4148,6 +4228,46 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Render props Relay QueryRenderer 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Render props Relay QueryRenderer 2 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -4166,7 +4286,7 @@ ReactStatistics {
               "status": "INLINED",
             },
           ],
-          "name": "Unknown",
+          "name": "AppBody",
           "status": "INLINED",
         },
       ],
@@ -4186,7 +4306,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
@@ -4195,7 +4315,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
@@ -4379,7 +4499,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4395,11 +4515,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4413,7 +4533,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4429,11 +4549,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4702,7 +4822,7 @@ ReactStatistics {
           "status": "INLINED",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -5232,7 +5352,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -5252,7 +5372,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -5261,7 +5381,7 @@ ReactStatistics {
     },
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "Child",
       "status": "ROOT",
     },
   ],
@@ -5586,6 +5706,46 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output Render props Relay QueryRenderer 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Render props Relay QueryRenderer 2 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, create-element output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -5604,7 +5764,7 @@ ReactStatistics {
               "status": "INLINED",
             },
           ],
-          "name": "Unknown",
+          "name": "AppBody",
           "status": "INLINED",
         },
       ],
@@ -5624,7 +5784,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
@@ -5633,7 +5793,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
