@@ -43,7 +43,7 @@ type HavocedFunctionInfo = {
   unboundWrites: Set<string>,
 };
 
-function visitName(path, state, name, read, write) {
+function visitName(path: BabelTraversePath, state: HavocedFunctionInfo, name: string, read: boolean, write: boolean) {
   // Is the name bound to some local identifier? If so, we don't need to do anything
   if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
 
@@ -154,6 +154,8 @@ class ObjectValueHavocingVisitor {
 
     // prototype
     this.visitObjectPrototype(obj);
+
+    if (TestIntegrityLevel(obj.$Realm, obj, "frozen")) return;
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
@@ -321,10 +323,6 @@ class ObjectValueHavocingVisitor {
     if (val.isHavocedObject()) {
       return;
     }
-
-    // TODO: if this object is frozen there is no need to havoc it.
-    // TODO: if the object is not extensible, just havoc the known properties
-    // TODO: if a property is readonly and not configurable, leave it alone
 
     let kind = val.getKind();
     this.visitObjectProperties(val, kind);
