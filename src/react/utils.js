@@ -554,5 +554,12 @@ export function getComponentName(
       return "QueryRenderer";
     }
   }
+  if (componentType instanceof ECMAScriptSourceFunctionValue) {
+    let name = Get(realm, componentType, "name");
+
+    if (name instanceof StringValue) {
+      return name.value;
+    }
+  }
   return "Unknown";
 }

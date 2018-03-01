@@ -5,7 +5,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -21,11 +21,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -39,7 +39,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -55,11 +55,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -328,7 +328,7 @@ ReactStatistics {
           "status": "INLINED",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -858,7 +858,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -878,7 +878,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -887,7 +887,7 @@ ReactStatistics {
     },
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "Child",
       "status": "ROOT",
     },
   ],
@@ -1300,7 +1300,7 @@ ReactStatistics {
               "status": "INLINED",
             },
           ],
-          "name": "Unknown",
+          "name": "AppBody",
           "status": "INLINED",
         },
       ],
@@ -1513,7 +1513,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -1529,11 +1529,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -1547,7 +1547,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -1563,11 +1563,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -1836,7 +1836,7 @@ ReactStatistics {
           "status": "INLINED",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -2366,7 +2366,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -2386,7 +2386,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -2395,7 +2395,7 @@ ReactStatistics {
     },
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "Child",
       "status": "ROOT",
     },
   ],
@@ -2808,7 +2808,7 @@ ReactStatistics {
               "status": "INLINED",
             },
           ],
-          "name": "Unknown",
+          "name": "AppBody",
           "status": "INLINED",
         },
       ],
@@ -3021,7 +3021,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -3037,11 +3037,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -3055,7 +3055,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -3071,11 +3071,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -3344,7 +3344,7 @@ ReactStatistics {
           "status": "INLINED",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -3874,7 +3874,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -3894,7 +3894,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -3903,7 +3903,7 @@ ReactStatistics {
     },
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "Child",
       "status": "ROOT",
     },
   ],
@@ -4286,7 +4286,7 @@ ReactStatistics {
               "status": "INLINED",
             },
           ],
-          "name": "Unknown",
+          "name": "AppBody",
           "status": "INLINED",
         },
       ],
@@ -4499,7 +4499,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4515,11 +4515,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4533,7 +4533,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4549,11 +4549,11 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4822,7 +4822,7 @@ ReactStatistics {
           "status": "INLINED",
         },
       ],
-      "name": "Unknown",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -5352,7 +5352,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -5372,7 +5372,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "name": "Unknown",
+          "name": "Child",
           "status": "NEW_TREE",
         },
       ],
@@ -5381,7 +5381,7 @@ ReactStatistics {
     },
     Object {
       "children": Array [],
-      "name": "Unknown",
+      "name": "Child",
       "status": "ROOT",
     },
   ],
@@ -5764,7 +5764,7 @@ ReactStatistics {
               "status": "INLINED",
             },
           ],
-          "name": "Unknown",
+          "name": "AppBody",
           "status": "INLINED",
         },
       ],
