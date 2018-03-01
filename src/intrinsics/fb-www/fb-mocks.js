@@ -61,7 +61,6 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
 
     invariant(superClass instanceof ObjectValue);
     let superClassPrototype = Get(realm, superClass, "prototype");
-
     invariant(objectCreate instanceof NativeFunctionValue);
     let objectCreateCall = objectCreate.$Call;
     invariant(typeof objectCreateCall === "function");
