@@ -45,6 +45,12 @@ var optionsConfig = [
     description: "The target environment for Prepack"
   },
   {
+    type: "string",
+    name: "lazyObjectsRuntime",
+    defaultVal: "",
+    description: "Enable lazy objects feature and specify the JS runtime that supports this feature."
+  },
+  {
     type: "boolean",
     name: "omitInvariants",
     defaultVal: true,
@@ -62,6 +68,12 @@ var optionsConfig = [
     choices: ["jsx", "create-element"],
     defaultVal: "jsx",
     description: "Specifies the serialization output of JSX nodes when React mode is enabled."
+  },
+  {
+    type: "boolean",
+    name: "stripFlow",
+    defaultVal: true,
+    description: "Removes Flow type annotations from the output."
   },
 ];
 
