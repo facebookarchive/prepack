@@ -54,21 +54,6 @@ function GetValue(input: Value | Completion, defaultValue: Value, realm: Realm):
   return UpdateEmpty(realm, input, defaultValue);
 }
 
-function EvaluateCase(
-  c: BabelNodeSwitchCase,
-  env: LexicalEnvironment,
-  realm: Realm,
-  strictCode: boolean
-): Value | AbruptCompletion {
-  let r = realm.intrinsics.empty;
-  for (let node of c.consequent) {
-    let res = env.evaluateCompletion(node, strictCode);
-    if (res instanceof AbruptCompletion) return (UpdateEmpty(realm, res, r): any);
-    if (!(res instanceof EmptyValue)) r = res;
-  }
-  return r;
-}
-
 function AbstractCaseBlockEvaluation(
   cases: Array<BabelNodeSwitchCase>,
   defaultCaseIndex: number,
@@ -272,6 +257,16 @@ function CaseBlockEvaluation(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
+  let EvaluateCase = (c: BabelNodeSwitchCase): Value | AbruptCompletion => {
+    let r = realm.intrinsics.empty;
+    for (let node of c.consequent) {
+      let res = env.evaluateCompletion(node, strictCode);
+      if (res instanceof AbruptCompletion) return (UpdateEmpty(realm, res, r): any);
+      if (!(res instanceof EmptyValue)) r = res;
+    }
+    return r;
+  };
+
   let EvaluateCaseClauses = (A: Array<BabelNodeSwitchCase>, V: Value): [boolean, Value] => {
     // 2. Let A be the List of CaseClause items in CaseClauses, in source text order.
     // A is passed in
@@ -297,7 +292,7 @@ function CaseBlockEvaluation(
       if (found) {
         // b. If found is true, then
         // i. Let R be the result of evaluating C.
-        let R = EvaluateCase(C, env, realm, strictCode);
+        let R = EvaluateCase(C);
 
         // ii. If R.[[Value]] is not empty, let V be R.[[Value]].
         let val = InternalGetResultValue(realm, R);
@@ -348,7 +343,7 @@ function CaseBlockEvaluation(
     if (foundInB) return V;
 
     // 9. Let R be the result of evaluating DefaultClause.
-    let R = EvaluateCase(cases[default_case_num], env, realm, strictCode);
+    let R = EvaluateCase(cases[default_case_num]);
 
     // 10. If R.[[Value]] is not empty, let V be R.[[Value]].
     let val = InternalGetResultValue(realm, R);
@@ -362,7 +357,7 @@ function CaseBlockEvaluation(
     // 12: Repeat for each CaseClause C in B (NOTE this is another complete iteration of the second CaseClauses)
     for (let C of B) {
       // a. Let R be the result of evaluating CaseClause C.
-      R = EvaluateCase(C, env, realm, strictCode);
+      R = EvaluateCase(C);
 
       // b. If R.[[Value]] is not empty, let V be R.[[Value]].
       let value = InternalGetResultValue(realm, R);
