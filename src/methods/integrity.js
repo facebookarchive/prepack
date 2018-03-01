@@ -20,7 +20,8 @@ type IntegrityLevels = "sealed" | "frozen";
 
 // ECMA262 9.1.4.1
 export function OrdinaryPreventExtensions(realm: Realm, O: ObjectValue): boolean {
-  if (O.isLeakedObject() && O.getExtensible()) {
+  if (O.isHavocedObject() && O.getExtensible()) {
+    // todo: emit a diagnostic messsage
     throw new FatalError();
   }
 
