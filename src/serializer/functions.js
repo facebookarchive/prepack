@@ -36,6 +36,7 @@ import {
   normalizeFunctionalComponentParamaters,
   getComponentTypeFromRootValue,
   valueIsKnownReactAbstraction,
+  evaluateComponentTreeBranch,
   createReactEvaluatedNode,
   getComponentName,
 } from "../react/utils.js";
@@ -193,14 +194,16 @@ export class Functions {
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
       let alreadyGeneratedEffects = new Set();
-      for (let { rootValue: branchRootValue, evaluatedNode } of branchReactComponentTrees) {
-        let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
-        // so we don't process the same component multiple times (we might change this logic later)
-        if (!alreadyGeneratedEffects.has(branchComponentType)) {
-          alreadyGeneratedEffects.add(branchComponentType);
-          let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
-          this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, simpleClassComponents);
-        }
+      for (let { rootValue: branchRootValue, nested, evaluatedNode } of branchReactComponentTrees) {
+        evaluateComponentTreeBranch(this.realm, effects, nested, () => {
+          let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
+          // so we don't process the same component multiple times (we might change this logic later)
+          if (!alreadyGeneratedEffects.has(branchComponentType)) {
+            alreadyGeneratedEffects.add(branchComponentType);
+            let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
+            this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, simpleClassComponents);
+          }
+        });
       }
       if (this.realm.react.output === "bytecode") {
         throw new FatalError("TODO: implement React bytecode output format");
