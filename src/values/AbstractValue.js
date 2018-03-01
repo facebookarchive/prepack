@@ -552,6 +552,7 @@ export default class AbstractValue extends Value {
     prefix?: boolean,
     loc?: ?BabelNodeSourceLocation
   ): Value {
+    invariant(op !== "delete" && op !== "++" && op !== "--"); // The operation must be pure
     let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
     let result = new AbstractValue(realm, resultTypes, resultValues, hashUnary(op, operand), [operand], ([x]) =>

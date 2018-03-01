@@ -225,6 +225,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-with-abstract-props.js");
       });
 
+      it("Simple with unary expressions", async () => {
+        await runTest(directory, "simple-with-unary.js");
+      });
+
       it("Simple with multiple JSX spreads", async () => {
         await runTest(directory, "simple-with-jsx-spread.js");
       });
@@ -293,6 +297,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "key-change.js");
       });
 
+      it("Delete element prop key", async () => {
+        await runTest(directory, "delete-element-prop-key.js");
+      });
+
       it("Key change with fragments", async () => {
         await runTest(directory, "key-change-fragments.js");
       });
@@ -343,6 +351,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         } finally {
           global.console.error = originalConsoleError;
         }
+      });
+
+      it("Event handlers", async () => {
+        await runTest(directory, "event-handlers.js");
       });
 
       it("Class component as root", async () => {
@@ -431,6 +443,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple factory classes 2", async () => {
         await runTest(directory, "simple2.js");
+      });
+    });
+
+    describe("Render props", () => {
+      let directory = "render-props";
+
+      it("Relay QueryRenderer", async () => {
+        await runTest(directory, "relay-query-renderer.js");
+      });
+
+      it("Relay QueryRenderer 2", async () => {
+        await runTest(directory, "relay-query-renderer2.js");
       });
     });
 

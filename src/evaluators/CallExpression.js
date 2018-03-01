@@ -16,7 +16,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { Value } from "../values/index.js";
-import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
+import { AbstractValue, AbstractObjectValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment, Functions, Join, Leak } from "../singletons.js";
 import {
@@ -116,7 +116,8 @@ function generateRuntimeCall(
       Leak.leakValue(realm, arg, ast.loc);
     }
   }
-  return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {
+  let resultType = (func instanceof AbstractObjectValue ? func.functionResultType : undefined) || Value;
+  return AbstractValue.createTemporalFromBuildFunction(realm, resultType, args, nodes => {
     let callFunc;
     let argStart = 1;
     if (thisArg instanceof Value) {
@@ -162,8 +163,17 @@ function tryToEvaluateCallOrLeaveAsAbstract(
       throw error;
     }
   }
-  realm.applyEffects(effects);
   let completion = effects[0];
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in effects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);

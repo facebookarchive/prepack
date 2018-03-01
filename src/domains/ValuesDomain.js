@@ -386,12 +386,7 @@ export default class ValuesDomain {
       invariant(typeString !== undefined);
       return new StringValue(realm, typeString);
     } else {
-      invariant(op === "delete");
-      // ECMA262 12.5.3.2
-      // 1. Let ref be the result of evaluating UnaryExpression.
-      // 2. ReturnIfAbrupt(ref).
-      // 3. If Type(ref) is not Reference, return true.
-      return realm.intrinsics.true;
+      invariant(false, `${op} is a state update, not a pure operation, so we don't support it`);
     }
   }
 

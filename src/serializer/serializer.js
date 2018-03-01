@@ -32,6 +32,7 @@ import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
 import * as t from "babel-types";
 import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
+import { Referentializer } from "./Referentializer.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -123,23 +124,26 @@ export class Serializer {
     }
 
     let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
-    for (let [functionValue, effectsAndTransforms] of additionalFunctionValuesAndEffects) {
-      // Need to do this fixup because otherwise we will skip over this function's
-      // generator in the _getTarget scope lookup
-      let generator = effectsAndTransforms.effects[1];
-      generator.parent = functionValue.parent;
-      functionValue.parent = generator;
-    }
 
     // Deep traversal of the heap to identify the necessary scope of residual functions
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
+    let preludeGenerator = this.realm.preludeGenerator;
+    invariant(preludeGenerator !== undefined);
+    let referentializer = new Referentializer(
+      this.realm,
+      this.options,
+      preludeGenerator.createNameGenerator("__scope_"),
+      preludeGenerator.createNameGenerator("$"),
+      this.statistics
+    );
     let residualHeapVisitor = new ResidualHeapVisitor(
       this.realm,
       this.logger,
       this.modules,
-      additionalFunctionValuesAndEffects
+      additionalFunctionValuesAndEffects,
+      referentializer
     );
-    residualHeapVisitor.visitRoots(true);
+    residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
@@ -156,7 +160,8 @@ export class Serializer {
         this.realm,
         this.logger,
         this.modules,
-        additionalFunctionValuesAndEffects
+        additionalFunctionValuesAndEffects,
+        referentializer
       );
       heapRefCounter.visitRoots();
 
@@ -166,7 +171,8 @@ export class Serializer {
         this.modules,
         additionalFunctionValuesAndEffects,
         residualHeapValueIdentifiers,
-        heapRefCounter.getResult()
+        heapRefCounter.getResult(),
+        referentializer
       );
       heapGraphGenerator.visitRoots();
       invariant(this.options.heapGraphFormat);
@@ -195,7 +201,9 @@ export class Serializer {
         residualHeapVisitor.additionalFunctionValueInfos,
         residualHeapVisitor.declarativeEnvironmentRecordsBindings,
         this.statistics,
-        this.react
+        this.react,
+        referentializer,
+        residualHeapVisitor.generatorParents
       ).serialize();
       if (this.logger.hasErrors()) return undefined;
       if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
@@ -221,7 +229,9 @@ export class Serializer {
       residualHeapVisitor.additionalFunctionValueInfos,
       residualHeapVisitor.declarativeEnvironmentRecordsBindings,
       this.statistics,
-      this.react
+      this.react,
+      referentializer,
+      residualHeapVisitor.generatorParents
     );
 
     let ast = residualHeapSerializer.serialize();

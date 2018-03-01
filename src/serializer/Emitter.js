@@ -58,7 +58,10 @@ type EmitterDependenciesVisitorCallbacks<T> = {
 //    the lower body entry is finished.
 //    To this end, the emitter maintains the `_activeGeneratorStack` and `_waitingForBodies` datastructures.
 export class Emitter {
-  constructor(residualFunctions: ResidualFunctions) {
+  constructor(
+    residualFunctions: ResidualFunctions,
+    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>
+  ) {
     this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
     this._waitingForBodies = new Map();
@@ -77,7 +80,12 @@ export class Emitter {
       },
       onAbstractValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
-        if (!this.ignoreDeclarations() && !this.hasBeenDeclared(val)) return val;
+        if (
+          !this.cannotDeclare() &&
+          !this.hasBeenDeclared(val) &&
+          (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
+        )
+          return val;
         else return undefined;
       },
     };
@@ -396,13 +404,18 @@ export class Emitter {
     invariant(!this._activeValues.has(value));
     invariant(value.hasIdentifier());
     invariant(this._isEmittingActiveGenerator());
-    invariant(!this.ignoreDeclarations());
+    invariant(!this.cannotDeclare());
     invariant(!this._body.done);
     if (this._body.declaredAbstractValues === undefined) this._body.declaredAbstractValues = new Map();
     this._body.declaredAbstractValues.set(value, this._body);
     this._processValue(value);
   }
-  ignoreDeclarations(): boolean {
+  emittingToAdditionalFunction() {
+    // Whether we are directly or indirectly emitting to an additional function
+    for (let b = this._body; b !== undefined; b = b.parentBody) if (b.type === "AdditionalFunction") return true;
+    return false;
+  }
+  cannotDeclare(): boolean {
     // Bodies of the following types will never contain any (temporal) abstract value declarations.
     return this._body.type === "DelayInitializations" || this._body.type === "LazyObjectInitializer";
   }

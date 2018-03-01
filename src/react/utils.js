@@ -9,7 +9,9 @@
 
 /* @flow */
 
-import { Realm } from "../realm.js";
+import { Realm, type Effects } from "../realm.js";
+import { FunctionEnvironmentRecord, Reference } from "../environment.js";
+import { Completion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
@@ -22,12 +24,14 @@ import {
   ArrayValue,
   ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
+import type { BabelTraversePath } from "babel-traverse";
+import { Generator } from "../utils/generator.js";
 import type { Descriptor, ReactHint, PropertyBinding } from "../types";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
+import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
-import { Create, Properties } from "../singletons.js";
+import { Create, Properties, Environment } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
@@ -38,8 +42,17 @@ import AbstractValue from "../values/AbstractValue";
 export type ReactSymbolTypes = "react.element" | "react.fragment" | "react.portal" | "react.return" | "react.call";
 
 export function isReactElement(val: Value): boolean {
-  if (val instanceof ObjectValue && val.properties.has("$$typeof")) {
-    let realm = val.$Realm;
+  if (!(val instanceof ObjectValue)) {
+    return false;
+  }
+  let realm = val.$Realm;
+  if (!realm.react.enabled) {
+    return false;
+  }
+  if (realm.react.reactElements.has(val)) {
+    return true;
+  }
+  if (val.properties.has("$$typeof")) {
     let $$typeof = Get(realm, val, "$$typeof");
     let globalObject = realm.$GlobalObject;
     let globalSymbolValue = Get(realm, globalObject, "Symbol");
@@ -50,7 +63,12 @@ export function isReactElement(val: Value): boolean {
       }
     } else if ($$typeof instanceof SymbolValue) {
       let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
-      return symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+      let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+      if (_isReactElement) {
+        // add to Set to speed up future lookups
+        realm.react.reactElements.add(val);
+        return true;
+      }
     }
   }
   return false;
@@ -514,4 +532,175 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   let flattenedChildren = Create.ArrayCreate(realm, 0);
   recursivelyFlattenArray(realm, array, flattenedChildren);
   return flattenedChildren;
+}
+
+export function evaluateComponentTreeBranch(
+  realm: Realm,
+  effects: Effects,
+  nested: boolean,
+  f: (generator?: Generator, value?: Value | Reference | Completion) => void | Value
+) {
+  let [
+    value,
+    generator,
+    modifiedBindings,
+    modifiedProperties: Map<PropertyBinding, void | Descriptor>,
+    createdObjects,
+  ] = effects;
+  if (nested) {
+    realm.applyEffects([value, new Generator(realm), modifiedBindings, modifiedProperties, createdObjects]);
+  }
+  try {
+    return f(generator, value);
+  } finally {
+    if (nested) {
+      realm.restoreBindings(modifiedBindings);
+      realm.restoreProperties(modifiedProperties);
+    }
+  }
+}
+
+export function getProperty(realm: Realm, object: ObjectValue, property: string | SymbolValue): Value {
+  let binding;
+  if (typeof property === "string") {
+    binding = object.properties.get(property);
+  } else {
+    binding = object.symbols.get(property);
+  }
+  if (!binding) {
+    return realm.intrinsics.undefined;
+  }
+  let descriptor = binding.descriptor;
+
+  if (!descriptor) {
+    return realm.intrinsics.undefined;
+  }
+  let value;
+  if (descriptor.value) {
+    value = descriptor.value;
+  } else if (descriptor.get || descriptor.set) {
+    AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
+    throw new FatalError();
+  }
+  invariant(value instanceof Value, `react/utils/getProperty should not be called on internal properties`);
+  return value;
+}
+
+type FunctionBindingInfo = {
+  unboundReads: Set<string>,
+  unboundWrites: Set<string>,
+};
+
+function visitName(path, state, name, read, write) {
+  // Is the name bound to some local identifier? If so, we don't need to do anything
+  if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
+
+  // Otherwise, let's record that there's an unbound identifier
+  if (read) state.unboundReads.add(name);
+  if (write) state.unboundWrites.add(name);
+}
+
+function ignorePath(path: BabelTraversePath) {
+  let parent = path.parent;
+  return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
+}
+
+let LeakedClosureRefVisitor = {
+  ReferencedIdentifier(path: BabelTraversePath, state: FunctionBindingInfo) {
+    if (ignorePath(path)) return;
+
+    let innerName = path.node.name;
+    if (innerName === "arguments") {
+      return;
+    }
+    visitName(path, state, innerName, true, false);
+  },
+
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: FunctionBindingInfo) {
+    let doesRead = path.node.operator !== "=";
+    for (let name in path.getBindingIdentifiers()) {
+      visitName(path, state, name, doesRead, true);
+    }
+  },
+};
+
+function getFunctionBindingInfo(value: FunctionValue) {
+  invariant(value instanceof ECMAScriptSourceFunctionValue);
+  invariant(value.constructor === ECMAScriptSourceFunctionValue);
+  let functionInfo = {
+    unboundReads: new Set(),
+    unboundWrites: new Set(),
+  };
+  let formalParameters = value.$FormalParameters;
+  invariant(formalParameters != null);
+  let code = value.$ECMAScriptCode;
+  invariant(code != null);
+
+  traverse(
+    t.file(t.program([t.expressionStatement(t.functionExpression(null, formalParameters, code))])),
+    LeakedClosureRefVisitor,
+    null,
+    functionInfo
+  );
+  return functionInfo;
+}
+
+// if a render prop function (a nested additional function) makes
+// no accesses to bindings in the parent additional function scope
+// we can determine if the function is self contained
+export function isRenderPropFunctionSelfContained(
+  realm: Realm,
+  parentFunc: Value,
+  renderProp: FunctionValue,
+  logger: any // otherwise Flow cycles increases
+): boolean {
+  let { unboundReads, unboundWrites } = getFunctionBindingInfo(renderProp);
+  let bindings = Array.from(unboundReads).concat(Array.from(unboundWrites));
+
+  for (let name of bindings) {
+    let reference = logger.tryQuery(
+      () => Environment.ResolveBinding(realm, name, true, renderProp.$Environment),
+      undefined
+    );
+    if (!reference) {
+      return false;
+    }
+    if (reference.base instanceof FunctionEnvironmentRecord && reference.base.$FunctionObject === parentFunc) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function createReactEvaluatedNode(
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "RENDER_PROPS",
+  name: string
+): ReactEvaluatedNode {
+  return {
+    name,
+    status,
+    children: [],
+  };
+}
+
+export function getComponentName(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue | AbstractObjectValue
+): string {
+  if (componentType.__originalName) {
+    return componentType.__originalName;
+  }
+  if (realm.fbLibraries.reactRelay !== undefined) {
+    if (componentType === Get(realm, realm.fbLibraries.reactRelay, "QueryRenderer")) {
+      return "QueryRenderer";
+    }
+  }
+  if (componentType instanceof ECMAScriptSourceFunctionValue) {
+    let name = Get(realm, componentType, "name");
+
+    if (name instanceof StringValue) {
+      return name.value;
+    }
+  }
+  return "Unknown";
 }

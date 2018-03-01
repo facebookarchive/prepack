@@ -37,6 +37,7 @@ export class ResidualFunctionInitializers {
     this.prelude = prelude;
   }
 
+  // ownId: uid of the FunctionValue, initializer ids are strings of sorted lists of FunctionValues referencing the value
   functionInitializerInfos: Map<FunctionValue, { ownId: string, initializerIds: Set<string> }>;
   initializers: Map<string, { id: string, order: number, body: SerializedBody, values: Array<Value> }>;
   sharedInitializers: Map<string, BabelNodeStatement>;

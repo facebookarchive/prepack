@@ -240,24 +240,25 @@ export default class ObjectValue extends ConcreteValue {
   originalConstructor: void | ECMAScriptSourceFunctionValue;
 
   // partial objects
-  _isPartial: BooleanValue;
+  _isPartial: void | AbstractValue | BooleanValue;
 
   // tainted objects
-  _hasLeaked: AbstractValue | BooleanValue;
+  _hasLeaked: void | AbstractValue | BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
-  _isSimple: BooleanValue;
+  _isSimple: void | AbstractValue | BooleanValue;
 
   // If true, it is not safe to perform any more mutations that would change
   // the object's serialized form.
-  _isFinal: AbstractValue | BooleanValue;
+  _isFinal: void | AbstractValue | BooleanValue;
 
   // Specifies whether the object is a template that needs to be created in a scope
+  // If set, this happened during object initialization and the value is never changed again, so not tracked.
   _isScopedTemplate: void | true;
 
   // If true, then unknown properties should return transitively simple abstract object values
-  _simplicityIsTransitive: BooleanValue;
+  _simplicityIsTransitive: void | AbstractValue | BooleanValue;
 
   // The abstract object for which this object is the template.
   // Use this instead of the object itself when deriving temporal values for object properties.
@@ -327,17 +328,11 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isPartialObject(): boolean {
-    return this._isPartial.value;
+    return !!this._isPartial && this._isPartial.mightBeTrue();
   }
 
   isFinalObject(): boolean {
-    if (this._isFinal instanceof BooleanValue) {
-      return this._isFinal.value;
-    }
-    if (this._isFinal === undefined) {
-      return false;
-    }
-    return true;
+    return !!this._isFinal && this._isFinal.mightBeTrue();
   }
 
   leak(): void {
@@ -345,17 +340,11 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isLeakedObject(): boolean {
-    if (this._hasLeaked instanceof BooleanValue) {
-      return this._hasLeaked.value;
-    }
-    if (this._hasLeaked === undefined) {
-      return false;
-    }
-    return true;
+    return !!this._hasLeaked && this._hasLeaked.mightBeTrue();
   }
 
   isSimpleObject(): boolean {
-    if (this._isSimple.value) return true;
+    if (this._isSimple && !this._isSimple.mightNotBeTrue()) return true;
     if (this.isPartialObject()) return false;
     if (this.symbols.size > 0) return false;
     for (let propertyBinding of this.properties.values()) {
@@ -370,7 +359,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isTransitivelySimple(): boolean {
-    return this._simplicityIsTransitive.value;
+    return !!this._simplicityIsTransitive && !this._simplicityIsTransitive.mightNotBeTrue();
   }
 
   getExtensible(): boolean {

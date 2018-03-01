@@ -188,6 +188,7 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
+      reactElements: new WeakSet(),
       symbols: new Map(),
     };
 
@@ -255,6 +256,7 @@ export class Realm {
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     output?: ReactOutputTypes,
+    reactElements: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
   };
   stripFlow: boolean;
@@ -509,8 +511,26 @@ export class Realm {
     return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
-  evaluateForEffectsInGlobalEnv(func: () => Value): Effects {
-    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func));
+  evaluateForEffectsInGlobalEnv(func: () => Value, state?: any, generatorName?: string): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func, state, generatorName));
+  }
+
+  // NB: does not apply generators because there's no way to cleanly revert them.
+  // func should not return undefined
+  withEffectsAppliedInGlobalEnv<T>(func: Effects => T, effects: Effects): T {
+    let result: T;
+    this.evaluateForEffectsInGlobalEnv(() => {
+      try {
+        this.applyEffects(effects);
+        result = func(effects);
+        return this.intrinsics.undefined;
+      } finally {
+        this.restoreBindings(effects[2]);
+        this.restoreProperties(effects[3]);
+      }
+    });
+    invariant(result !== undefined, "If we get here, func must have returned undefined.");
+    return result;
   }
 
   evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any, generatorName?: string): Effects {
@@ -1184,8 +1204,7 @@ export class Realm {
   }
 
   // Pass the error to the realm's error-handler
-  // Return value indicates whether the caller should try to recover from the
-  // error or not ('true' means recover if possible).
+  // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
       let error = Construct(this, this.intrinsics.Error);
