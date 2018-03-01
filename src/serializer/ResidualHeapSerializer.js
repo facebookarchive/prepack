@@ -1016,7 +1016,7 @@ export class ResidualHeapSerializer {
   ): void {
     const realm = this.realm;
     let lenProperty;
-    if (val.isLeakedObject()) {
+    if (val.isHavocedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");

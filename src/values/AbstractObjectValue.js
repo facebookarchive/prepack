@@ -16,7 +16,7 @@ import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value, NumberValue
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
-import { Join, Widen, Leak } from "../singletons.js";
+import { Havoc, Join, Widen } from "../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -375,7 +375,7 @@ export default class AbstractObjectValue extends AbstractValue {
         return generateAbstractGet();
       } else if (this.$Realm.isInPureScope()) {
         // This object might have leaked to a getter.
-        Leak.leakValue(this.$Realm, this);
+        Havoc.value(this.$Realm, this);
         // The getter might throw anything.
         return this.$Realm.evaluateWithPossibleThrowCompletion(
           generateAbstractGet,
