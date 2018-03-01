@@ -240,6 +240,11 @@ export class Reconciler {
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
+    let renderResult = {
+      result: reactElement,
+      childContext: context,
+    };
+
     if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
       // get the "render" method off the instance
       let renderProp = Get(this.realm, props, "render");
@@ -248,18 +253,19 @@ export class Reconciler {
         // and this also has a nice side-effect of hoisting the function up to the top scope
         if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
           this._queueNewComponentTree(renderProp, true);
+          return renderResult;
         } else {
-          // TODO
           // we don't have nested additional function support right now
           // but the render prop is likely to have references to other components
           // that we need to also evaluate. given we can't find those components
+          return renderResult;
         }
       }
     }
-    return {
-      result: reactElement,
-      childContext: context,
-    };
+    // this is the worst case, we were unable to find the render prop function
+    // and won't be able to find any further components to evaluate as trees
+    // because of that
+    return renderResult;
   }
 
   _renderComponent(
