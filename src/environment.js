@@ -51,7 +51,7 @@ import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
-import { Environment, Leak, Properties, To } from "./singletons.js";
+import { Environment, Havoc, Properties, To } from "./singletons.js";
 import * as t from "babel-types";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import PrimitiveValue from "./values/PrimitiveValue";
@@ -65,7 +65,7 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
   return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
 }
 
-export function leakBinding(binding: Binding) {
+export function havocBinding(binding: Binding) {
   let realm = binding.environment.realm;
   if (!binding.hasLeaked) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
@@ -247,7 +247,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
       if (binding.hasLeaked) {
-        Leak.leakValue(realm, V);
+        Havoc.value(realm, V);
         invariant(realm.generator);
         realm.generator.emitBindingAssignment(binding, V);
       } else {
