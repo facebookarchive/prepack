@@ -87,6 +87,7 @@ function runTest(name: string, code: string): boolean {
   } catch (e) {
     if (!(e instanceof FatalError)) {
       console.error(chalk.red(`Unexpected error: ${e.message}`));
+      return false;
     }
   }
   if (errors.length !== expectedErrors.length) {
