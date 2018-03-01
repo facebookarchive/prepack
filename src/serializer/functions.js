@@ -37,6 +37,8 @@ import {
   getComponentTypeFromRootValue,
   valueIsKnownReactAbstraction,
   evaluateComponentTreeBranch,
+  createReactEvaluatedNode,
+  getComponentName,
 } from "../react/utils.js";
 import * as t from "babel-types";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
@@ -184,19 +186,21 @@ export class Functions {
         branchReactComponentTrees
       );
       let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
-      let effects = reconciler.render(componentType, null, null, true);
+      let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
+      let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
       this._generateWriteEffectsForReactComponentTree(componentType, effects, simpleClassComponents);
+      statistics.evaluatedRootNodes.push(evaluatedRootNode);
 
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
       let alreadyGeneratedEffects = new Set();
-      for (let { rootValue: branchRootValue, nested } of branchReactComponentTrees) {
+      for (let { rootValue: branchRootValue, nested, evaluatedNode } of branchReactComponentTrees) {
         evaluateComponentTreeBranch(this.realm, effects, nested, () => {
           let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
           // so we don't process the same component multiple times (we might change this logic later)
           if (!alreadyGeneratedEffects.has(branchComponentType)) {
             alreadyGeneratedEffects.add(branchComponentType);
-            let branchEffects = reconciler.render(branchComponentType, null, null, false);
+            let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
             this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, simpleClassComponents);
           }
         });

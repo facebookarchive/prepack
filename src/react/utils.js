@@ -29,7 +29,7 @@ import { Generator } from "../utils/generator.js";
 import type { Descriptor, ReactHint } from "../types";
 import { Get } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import { type ReactSerializerState, type AdditionalFunctionEffects } from "../serializer/types.js";
+import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
 import { Create, Properties, Environment } from "../singletons.js";
 import traverse from "babel-traverse";
@@ -529,4 +529,30 @@ export function isRenderPropFunctionSelfContained(
     }
   }
   return true;
+}
+
+export function createReactEvaluatedNode(
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "RENDER_PROPS",
+  name: string
+): ReactEvaluatedNode {
+  return {
+    name,
+    status,
+    children: [],
+  };
+}
+
+export function getComponentName(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue | AbstractObjectValue
+): string {
+  if (componentType.__originalName) {
+    return componentType.__originalName;
+  }
+  if (realm.fbLibraries.reactRelay !== undefined) {
+    if (componentType === Get(realm, realm.fbLibraries.reactRelay, "QueryRenderer")) {
+      return "QueryRenderer";
+    }
+  }
+  return "Unknown";
 }
