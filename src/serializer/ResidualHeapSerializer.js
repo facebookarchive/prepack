@@ -1803,7 +1803,7 @@ export class ResidualHeapSerializer {
       invariant(object instanceof ObjectValue);
       this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
     }
-    invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
+    //invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
     // Handle ModifiedBindings
     let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
     invariant(additionalFunctionValueInfo);
@@ -1812,7 +1812,8 @@ export class ResidualHeapSerializer {
       invariant(newVal);
       residualBinding.additionalValueSerialized = this.serializeValue(newVal);
     }
-    if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+    if (!(result instanceof UndefinedValue) && result instanceof Value)
+      this.emitter.emit(t.returnStatement(this.serializeValue(result)));
 
     const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
     Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
@@ -1820,7 +1821,7 @@ export class ResidualHeapSerializer {
 
   _serializeAdditionalFunction(
     additionalFunctionValue: FunctionValue,
-    { effects, transforms }: AdditionalFunctionEffects
+    { effects, transforms, additionalEffects }: AdditionalFunctionEffects
   ) {
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let [, generator, , , createdObjects] = effects;
@@ -1829,14 +1830,29 @@ export class ResidualHeapSerializer {
     // function instead of adding them at global scope
     // TODO: make sure this generator isn't getting mutated oddly
     ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
-    let body = this.realm.withEffectsAppliedInGlobalEnv(
-      this._serializeAdditionalFunctionGeneratorAndEffects.bind(
-        this,
-        generator,
-        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
-      ),
-      effects
-    );
+    let body;
+    if (additionalEffects)
+      body = this.realm.withEffectsAppliedInGlobalEnv(
+        () =>
+          this.realm.withEffectsAppliedInGlobalEnv(
+            this._serializeAdditionalFunctionGeneratorAndEffects.bind(
+              this,
+              generator,
+              this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
+            ),
+            additionalEffects
+          ),
+        effects
+      );
+    else
+      body = this.realm.withEffectsAppliedInGlobalEnv(
+        this._serializeAdditionalFunctionGeneratorAndEffects.bind(
+          this,
+          generator,
+          this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
+        ),
+        effects
+      );
     invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
     for (let transform of transforms) {
       transform(body);

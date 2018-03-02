@@ -175,6 +175,7 @@ export function OrdinaryGet(
         return Join.joinValuesAsConditional(realm, cond, descValue, parentVal);
       }
       invariant(!desc || descValue instanceof EmptyValue);
+      invariant(parent && parent.$Get);
       return parent.$Get(P, Receiver);
     }
 

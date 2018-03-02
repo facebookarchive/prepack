@@ -355,6 +355,7 @@ export default class ObjectValue extends ConcreteValue {
     }
     if (this.$Prototype instanceof NullValue) return true;
     if (this.$Prototype === this.$Realm.intrinsics.ObjectPrototype) return true;
+    invariant(this.$Prototype);
     return this.$Prototype.isSimpleObject();
   }
 

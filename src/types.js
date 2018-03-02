@@ -754,7 +754,7 @@ export type JoinType = {
   // Creates a single map that joins together maps m1 and m2 using the given join
   // operator. If an entry is present in one map but not the other, the missing
   // entry is treated as if it were there and its value were undefined.
-  joinMaps<K, V>(m1: Map<K, void | V>, m2: Map<K, void | V>, join: (K, void | V, void | V) => V): Map<K, void | V>,
+  joinMaps<K, V>(m1: Map<K, V>, m2: Map<K, V>, join: (K, void | V, void | V) => V): Map<K, V>,
 
   // Creates a single map that has an key, value pair for the union of the key
   // sets of m1 and m2. The value of a pair is the join of m1[key] and m2[key]

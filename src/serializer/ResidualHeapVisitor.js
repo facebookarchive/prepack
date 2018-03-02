@@ -764,6 +764,8 @@ export class ResidualHeapVisitor {
 
   visitValue(val: Value): void {
     invariant(!val.refuseSerialization);
+    invariant(val.isIntrinsic);
+    if (val === this.scope || val === this.commonScope) return;
     if (val instanceof AbstractValue) {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
@@ -903,8 +905,8 @@ export class ResidualHeapVisitor {
       if (previousValue && previousValue.value) residualBinding.additionalFunctionOverridesValue = functionValue;
       additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
     }
-    invariant(result instanceof Value);
-    if (!(result instanceof UndefinedValue)) this.visitValue(result);
+    //invariant(result instanceof Value);
+    if (!(result instanceof UndefinedValue) && result instanceof Value) this.visitValue(result);
   }
 
   _visitAdditionalFunction(
@@ -945,13 +947,25 @@ export class ResidualHeapVisitor {
     };
     this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 
-    this.realm.withEffectsAppliedInGlobalEnv((effects: Effects) => {
-      this.visitGenerator(generator);
-      // All modified properties and bindings should be accessible
-      // from its containing additional function scope.
-      this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, effects));
-      return this.realm.intrinsics.undefined;
-    }, additionalEffects.effects);
+    if (additionalEffects.additionalEffects)
+      this.realm.withEffectsAppliedInGlobalEnv(() => {
+        invariant(additionalEffects.additionalEffects);
+        return this.realm.withEffectsAppliedInGlobalEnv(() => {
+          this.visitGenerator(generator);
+          // All modified properties and bindings should be accessible
+          // from its containing additional function scope.
+          this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, effects));
+          return this.realm.intrinsics.undefined;
+        }, additionalEffects.additionalEffects);
+      }, additionalEffects.effects);
+    else
+      this.realm.withEffectsAppliedInGlobalEnv((effects: Effects) => {
+        this.visitGenerator(generator);
+        // All modified properties and bindings should be accessible
+        // from its containing additional function scope.
+        this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, effects));
+        return this.realm.intrinsics.undefined;
+      }, additionalEffects.effects);
     for (let createdObject of createdObjects) this.additionalRoots.delete(createdObject);
 
     // Cleanup

@@ -10,10 +10,11 @@
 /* @flow */
 
 import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
-import { Completion, ThrowCompletion } from "../completions.js";
+import { Completion, ThrowCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { Join } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { type Effects, type PropertyBindings, Realm } from "../realm.js";
+import { type Effects, type Bindings, type PropertyBindings, Realm } from "../realm.js";
 import type { AdditionalFunctionEffects } from "./types.js";
 import type { PropertyBinding } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
@@ -42,6 +43,7 @@ import {
 } from "../react/utils.js";
 import * as t from "babel-types";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
+import { Program } from "../evaluators/index.js";
 
 export class Functions {
   constructor(realm: Realm, functions: ?Array<string>, moduleTracer: ModuleTracer) {
@@ -126,11 +128,54 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
+  joinKeysVerifySame<K, V>(_key: K, v1: void | V, v2: void | V): V {
+    if (v1 && v2) {
+      invariant(v1 === v2);
+      return v1;
+    }
+    let res = v1 || v2;
+    invariant(res !== undefined);
+    return res;
+  }
+
+  // This will also handle postprocessing for PossiblyNormalCompletion
   _createAdditionalEffects(effects: Effects): AdditionalFunctionEffects {
-    return {
-      effects,
-      transforms: [],
-    };
+    let [result, generator] = effects;
+    if (result instanceof PossiblyNormalCompletion) {
+      let { joinCondition, consequent, alternate, consequentEffects, alternateEffects } = result;
+      let joinedEffects = Join.joinEffects(this.realm, joinCondition, consequentEffects, alternateEffects);
+      this.realm.withEffectsAppliedInGlobalEnv(() => {
+        this.realm.withEffectsAppliedInGlobalEnv(() => {
+          generator.emitThrowOrReturn(joinCondition, consequent, alternate);
+          return null;
+        }, joinedEffects);
+        return null;
+      }, effects);
+      let returnEntry = generator._entries.pop();
+      let [oldResult, oldGenerator, oldModifiedBindings, oldModifiedProperties, oldCreatedObjects] = effects;
+      let [newResult, newGenerator, newModifiedBindings, newModifiedProperties, newCreatedObjects] = joinedEffects;
+      let joinedModifiedBindings: Bindings = Join.joinMaps(
+        oldModifiedBindings,
+        newModifiedBindings,
+        this.joinKeysVerifySame
+      );
+      let joinedModifiedProps: PropertyBindings = Join.joinMaps(
+        oldModifiedProperties,
+        newModifiedProperties,
+        this.joinKeysVerifySame
+      );
+      let joinedGenerators = oldGenerator;
+      newGenerator._entries.forEach(entry => joinedGenerators._entries.push(entry));
+      joinedGenerators._entries.push(returnEntry);
+      effects = [
+        newResult,
+        joinedGenerators,
+        joinedModifiedBindings,
+        joinedModifiedProps,
+        new Set([...oldCreatedObjects, ...newCreatedObjects]),
+      ];
+    }
+    return { effects, transforms: [] };
   }
 
   _generateWriteEffectsForReactComponentTree(
@@ -279,9 +324,13 @@ export class Functions {
     for (let funcValue of additionalFunctions) {
       invariant(funcValue instanceof FunctionValue);
       let call = this._callOfFunction(funcValue);
+<<<<<<< Updated upstream
       let effects = this.realm.evaluatePure(() =>
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
+=======
+      let effects = this.realm.evaluateForEffectsInGlobalEnv(call);
+>>>>>>> Stashed changes
       invariant(effects);
       let additionalFunctionEffects = this._createAdditionalEffects(effects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);
@@ -297,7 +346,7 @@ export class Functions {
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
-      if (e1[0] instanceof Completion) {
+      if (e1[0] instanceof Completion && !e1[0] instanceof PossiblyNormalCompletion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fun1Name} may terminate abruptly`,
           e1[0].location,

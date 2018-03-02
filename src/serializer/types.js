@@ -39,6 +39,7 @@ export type SerializedBody = {
 
 export type AdditionalFunctionEffects = {
   effects: Effects,
+  additionalEffects?: Effects,
   transforms: Array<Function>,
 };
 
