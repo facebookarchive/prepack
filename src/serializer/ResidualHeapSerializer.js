@@ -29,6 +29,7 @@ import {
   NativeFunctionValue,
   UndefinedValue,
 } from "../values/index.js";
+import { PossiblyNormalCompletion } from "../completions.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -1793,7 +1794,8 @@ export class ResidualHeapSerializer {
   //          -- we don't overwrite anything they capture
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
-  _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, effects: Effects) {
+  _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
+    let { effects, joinedEffects, returnArguments, returnBuildNode } = additionalEffects;
     let [result, , , modifiedProperties, createdObjects] = effects;
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
@@ -1814,6 +1816,20 @@ export class ResidualHeapSerializer {
     }
     if (!(result instanceof UndefinedValue) && result instanceof Value)
       this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+    else if (result instanceof PossiblyNormalCompletion) {
+      invariant(joinedEffects !== undefined);
+      invariant(returnArguments !== undefined);
+      invariant(returnBuildNode !== undefined);
+
+      this.realm.withEffectsAppliedInGlobalEnv(
+        () => {
+          let args = returnArguments.map((arg) => this.serializeValue(arg));
+          this.emitter.emit(returnBuildNode(args));
+          return null;
+        },
+        joinedEffects
+      );
+    }
 
     const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
     Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
@@ -1821,8 +1837,9 @@ export class ResidualHeapSerializer {
 
   _serializeAdditionalFunction(
     additionalFunctionValue: FunctionValue,
-    { effects, transforms, additionalEffects }: AdditionalFunctionEffects
+    additionalEffects: AdditionalFunctionEffects
   ) {
+    let { effects, transforms } = additionalEffects;
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let [, generator, , , createdObjects] = effects;
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
@@ -1830,29 +1847,14 @@ export class ResidualHeapSerializer {
     // function instead of adding them at global scope
     // TODO: make sure this generator isn't getting mutated oddly
     ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
-    let body;
-    if (additionalEffects)
-      body = this.realm.withEffectsAppliedInGlobalEnv(
-        () =>
-          this.realm.withEffectsAppliedInGlobalEnv(
-            this._serializeAdditionalFunctionGeneratorAndEffects.bind(
-              this,
-              generator,
-              this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
-            ),
-            additionalEffects
-          ),
-        effects
-      );
-    else
-      body = this.realm.withEffectsAppliedInGlobalEnv(
-        this._serializeAdditionalFunctionGeneratorAndEffects.bind(
-          this,
-          generator,
-          this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
-        ),
-        effects
-      );
+    let body = this.realm.withEffectsAppliedInGlobalEnv(
+      this._serializeAdditionalFunctionGeneratorAndEffects.bind(
+        this,
+        generator,
+        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, additionalEffects)
+      ),
+      effects
+    );
     invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
     for (let transform of transforms) {
       transform(body);

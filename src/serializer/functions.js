@@ -128,19 +128,10 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
-  joinKeysVerifySame<K, V>(_key: K, v1: void | V, v2: void | V): V {
-    if (v1 && v2) {
-      invariant(v1 === v2);
-      return v1;
-    }
-    let res = v1 || v2;
-    invariant(res !== undefined);
-    return res;
-  }
-
   // This will also handle postprocessing for PossiblyNormalCompletion
   _createAdditionalEffects(effects: Effects): AdditionalFunctionEffects {
     let [result, generator] = effects;
+    let retValue = { effects, transforms: [] };
     if (result instanceof PossiblyNormalCompletion) {
       let { joinCondition, consequent, alternate, consequentEffects, alternateEffects } = result;
       let joinedEffects = Join.joinEffects(this.realm, joinCondition, consequentEffects, alternateEffects);
@@ -152,17 +143,31 @@ export class Functions {
         return null;
       }, effects);
       let returnEntry = generator._entries.pop();
-      let [oldResult, oldGenerator, oldModifiedBindings, oldModifiedProperties, oldCreatedObjects] = effects;
+      retValue.joinedEffects = joinedEffects;
+      retValue.returnArguments = returnEntry.args;
+      retValue.returnBuildNode = returnEntry.buildNode;
+      /*let [oldResult, oldGenerator, oldModifiedBindings, oldModifiedProperties, oldCreatedObjects] = effects;
       let [newResult, newGenerator, newModifiedBindings, newModifiedProperties, newCreatedObjects] = joinedEffects;
+      // We need to make sure the joined effects will undo all the way back to old effects, so if we ever have 2
+      // previous values, oldest wins.
+      function joinKeysFirstWins<K, V>(_key: K, v1: void | V, v2: void | V): V {
+        if (v1 && v2) {
+          return v1;
+        }
+        let res = v1 || v2;
+        invariant(res !== undefined);
+        return res;
+      }
+
       let joinedModifiedBindings: Bindings = Join.joinMaps(
         oldModifiedBindings,
         newModifiedBindings,
-        this.joinKeysVerifySame
+        joinKeysFirstWins
       );
       let joinedModifiedProps: PropertyBindings = Join.joinMaps(
         oldModifiedProperties,
         newModifiedProperties,
-        this.joinKeysVerifySame
+        joinKeysFirstWins
       );
       let joinedGenerators = oldGenerator;
       newGenerator._entries.forEach(entry => joinedGenerators._entries.push(entry));
@@ -173,9 +178,9 @@ export class Functions {
         joinedModifiedBindings,
         joinedModifiedProps,
         new Set([...oldCreatedObjects, ...newCreatedObjects]),
-      ];
+      ];*/
     }
-    return { effects, transforms: [] };
+    return retValue;
   }
 
   _generateWriteEffectsForReactComponentTree(
@@ -324,13 +329,9 @@ export class Functions {
     for (let funcValue of additionalFunctions) {
       invariant(funcValue instanceof FunctionValue);
       let call = this._callOfFunction(funcValue);
-<<<<<<< Updated upstream
       let effects = this.realm.evaluatePure(() =>
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
-=======
-      let effects = this.realm.evaluateForEffectsInGlobalEnv(call);
->>>>>>> Stashed changes
       invariant(effects);
       let additionalFunctionEffects = this._createAdditionalEffects(effects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);

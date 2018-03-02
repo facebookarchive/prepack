@@ -39,8 +39,10 @@ export type SerializedBody = {
 
 export type AdditionalFunctionEffects = {
   effects: Effects,
-  additionalEffects?: Effects,
   transforms: Array<Function>,
+  joinedEffects?: Effects,
+  returnArguments?: Array<Value>,
+  returnBuildNode?: (Array<BabelNodeExpression>) => BabelNodeExpression,
 };
 
 export type AdditionalFunctionInfo = {
