@@ -15,9 +15,9 @@ import { Reference } from "../environment.js";
 import { computeBinary } from "./BinaryExpression.js";
 import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion, Completion } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
-import { EmptyValue, AbstractValue, ConcreteValue, Value } from "../values/index.js";
+import { EmptyValue, AbstractValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
-import { Environment, To, Path, Join } from "../singletons.js";
+import { Environment, Path, Join } from "../singletons.js";
 import { FatalError } from "../errors.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
@@ -36,23 +36,6 @@ function CaseSelectorEvaluation(
   return Environment.GetValue(realm, exprRef);
 }
 
-function GetValue(input: Value | Completion, defaultValue: Value, realm: Realm): Value | Completion {
-  // extract the internal value
-  let value;
-  if (input instanceof Completion) {
-    value = input.value;
-  } else {
-    value = input;
-  }
-
-  // if the value we got was not empty, let's use it as the new propagating value
-  if (!(value instanceof EmptyValue)) {
-    defaultValue = value;
-  }
-
-  return UpdateEmpty(realm, input, defaultValue);
-}
-
 function AbstractCaseBlockEvaluation(
   cases: Array<BabelNodeSwitchCase>,
   defaultCaseIndex: number,
@@ -62,23 +45,6 @@ function AbstractCaseBlockEvaluation(
   realm: Realm
 ): Value {
   invariant(realm.useAbstractInterpretation);
-  let ReportNoReferenceError = () => {
-    let msg = "This operation is not yet supported on case blocks that result in a Reference.";
-    realm.reportIntrospectionError(msg);
-    return new FatalError(msg);
-  };
-
-  let ReportNoPossiblyNormalCompletionError = () => {
-    let msg = "This operation is not yet supported on case blocks that result in a PossiblyNormalCompletion.";
-    realm.reportIntrospectionError(msg);
-    return new FatalError(msg);
-  };
-
-  let ReportNoAbruptCompletionError = () => {
-    let msg = "This operation is not yet supported on case blocks that result in an AbruptCompletino (by throwing).";
-    realm.reportIntrospectionError(msg);
-    return new FatalError(msg);
-  };
 
   let DefiniteCaseEvaluation = (caseIndex: number): Value => {
     let result = realm.intrinsics.undefined;
@@ -90,32 +56,32 @@ function AbstractCaseBlockEvaluation(
       for (let i = 0; i < c.consequent.length && !(result instanceof Completion); ++i) {
         let node = c.consequent[i];
         let r = env.evaluateCompletion(node, strictCode);
+        invariant(!(r instanceof Reference));
 
-        // TODO understand Reference and how to deal with it better
         // TODO come up with a strategy for handling PossiblyNormalCompletion correctly
-        if (r instanceof Reference) {
-          throw ReportNoReferenceError();
-        } else if (r instanceof PossiblyNormalCompletion) {
-          throw ReportNoPossiblyNormalCompletionError();
+        if (r instanceof PossiblyNormalCompletion) {
+          let msg = "This operation is not yet supported on case blocks that result in a PossiblyNormalCompletion.";
+          realm.reportIntrospectionError(msg);
+          throw new FatalError(msg);
         }
 
-        result = GetValue(r, result, realm);
+        result = UpdateEmpty(realm, r, result);
+        if (result instanceof Completion) break;
       }
-      caseIndex++;
-    }
 
-    // TODO work out what to do with Reference
-    if (result instanceof Reference) {
-      throw ReportNoReferenceError();
+      if (result instanceof Completion) break;
+      caseIndex++;
     }
 
     if (result instanceof BreakCompletion) {
       return result.value;
     } else if (result instanceof AbruptCompletion) {
-      throw ReportNoAbruptCompletionError();
-    } else if (result instanceof Completion) {
-      return result.value;
+      // TODO correct handling of PossiblyNormal and AbruptCompletion
+      let msg = "This operation is not yet supported on case blocks that throw.";
+      realm.reportIntrospectionError(msg);
+      throw new FatalError(msg);
     } else {
+      invariant(result instanceof Value);
       return result;
     }
   };
@@ -142,18 +108,6 @@ function AbstractCaseBlockEvaluation(
 
     let selector = CaseSelectorEvaluation(test, strictCode, env, realm);
     let selectionResult = computeBinary(realm, "===", input, selector);
-    if (selectionResult instanceof ConcreteValue) {
-      //  we have a winning result for the switch case, bubble it back up!
-      if (To.ToBoolean(realm, selectionResult)) {
-        return DefiniteCaseEvaluation(caseIndex);
-      } else {
-        // we have a case that is definitively *not* taken
-        // so we go and look at the next one in the hope of finding a match
-        return AbstractCaseEvaluation(caseIndex + 1);
-      }
-    }
-
-    invariant(selectionResult instanceof AbstractValue);
 
     if (!selectionResult.mightNotBeTrue()) {
       //  we have a winning result for the switch case, bubble it back up!
@@ -163,6 +117,7 @@ function AbstractCaseBlockEvaluation(
       // so we go and look at the next one in the hope of finding a match
       return AbstractCaseEvaluation(caseIndex + 1);
     } else {
+      invariant(selectionResult instanceof AbstractValue);
       // we can't be sure whether the case selector evaluates true or not
       // so we evaluate the case in the abstract as an if-else with the else
       // leading to the next case statement

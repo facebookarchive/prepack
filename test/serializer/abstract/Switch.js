@@ -61,12 +61,11 @@ switch (x) {
   default: throw 2;
 }
 
-// throws introspection error
-switch (x) {
-  case 1: if (z10 === 13) z11 = 12; else throw 3; break;
-  case 0: throw 1; break;
-  case 2: z11 = 13; break;
-  default: throw 2; break;
-}
+// switch (x) {
+//   case 1: if (z10 === 13) z11 = 12; else throw 3; break;
+//   case 0: throw 1; break;
+//   case 2: z11 = 13; break;
+//   default: throw 2; break;
+// }
 
 inspect = function() { return "" + z1 + " " + z2 + " " + z3 + " " + z4 + " " + z5 + " " + z6 + " " + z7 + " " + z8 + " " + z9 + " " + z10 + " "  + z11; }
