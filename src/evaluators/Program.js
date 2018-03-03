@@ -240,14 +240,12 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         res = Functions.incorporateSavedCompletion(realm, res);
         // The call to incorporateSavedCompletion above, has taken care of the join because res is abrupt.
         // What remains to be done is to emit throw statements to the generator.
+        let generator = realm.generator;
+        invariant(generator !== undefined);
         if (res instanceof JoinedAbruptCompletions) {
-          let generator = realm.generator;
-          invariant(generator !== undefined);
           generator.emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
           res = res.value;
         } else if (res instanceof ThrowCompletion) {
-          let generator = realm.generator;
-          invariant(generator !== undefined);
           generator.emitThrow(res.value);
           res = realm.intrinsics.undefined;
         } else {

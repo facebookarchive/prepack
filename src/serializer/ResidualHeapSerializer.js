@@ -28,7 +28,7 @@ import {
   NativeFunctionValue,
   UndefinedValue,
 } from "../values/index.js";
-import { PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -1808,8 +1808,9 @@ export class ResidualHeapSerializer {
       this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
     }
     invariant(
-      result instanceof Value || result instanceof PossiblyNormalCompletion,
-      "TODO: support non-value non-PossiblyNormalCompletion return from additional function"
+      //result instanceof Value || result instanceof PossiblyNormalCompletion,
+      !(result instanceof AbruptCompletion),
+      "Should not be serializing an additional function with an unconditional throw."
     );
     // Handle ModifiedBindings
     let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
