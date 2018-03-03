@@ -33,14 +33,7 @@ import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
-import {
-  AbruptCompletion,
-  Completion,
-  JoinedAbruptCompletions,
-  PossiblyNormalCompletion,
-  ReturnCompletion,
-  ThrowCompletion,
-} from "../completions.js";
+import { Completion, JoinedAbruptCompletions, ThrowCompletion } from "../completions.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
@@ -267,16 +260,16 @@ export class Generator {
       falseBranch,
       completion => {
         this._issueThrowCompilerDiagnostic(completion.value);
-        let args = [completion.value];
+        let serializationArgs = [completion.value];
         let func = ([arg]) => t.throwStatement(arg);
-        return [args, func];
+        return [serializationArgs, func];
       },
       () => [[], () => t.emptyStatement()]
     );
     this.emitStatement(args, buildfunc);
   }
 
-  emitThrowOrReturn(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
+  getThrowOrReturn(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
     let [args, buildfunc] = this._deconstruct(
       condition,
       trueBranch,
@@ -286,7 +279,7 @@ export class Generator {
       },
       value => [[value], ([returnValue]) => t.returnStatement(returnValue)]
     );
-    this.emitStatement(args, buildfunc);
+    return [args, buildfunc];
   }
 
   _deconstruct(

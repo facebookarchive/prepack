@@ -765,8 +765,6 @@ export class ResidualHeapVisitor {
 
   visitValue(val: Value): void {
     invariant(!val.refuseSerialization);
-    invariant(val.isIntrinsic);
-    if (val === this.scope || val === this.commonScope) return;
     if (val instanceof AbstractValue) {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
@@ -907,20 +905,16 @@ export class ResidualHeapVisitor {
       if (previousValue && previousValue.value) residualBinding.additionalFunctionOverridesValue = functionValue;
       additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
     }
-    //invariant(result instanceof Value);
     if (!(result instanceof UndefinedValue) && result instanceof Value) this.visitValue(result);
     else if (result instanceof PossiblyNormalCompletion) {
       invariant(joinedEffects !== undefined);
-      invariant(returnArguments !== undefined);
-      invariant(returnBuildNode !== undefined);
 
-      this.realm.withEffectsAppliedInGlobalEnv(
-        () => {
-          returnArguments.forEach((arg) => this.visitValue(arg));
-          return null;
-        },
-        joinedEffects
-      );
+      this.realm.withEffectsAppliedInGlobalEnv(() => {
+        invariant(returnArguments !== undefined);
+        invariant(returnBuildNode !== undefined);
+        returnArguments.forEach(arg => this.visitValue(arg));
+        return null;
+      }, joinedEffects);
     }
   }
 
@@ -970,6 +964,8 @@ export class ResidualHeapVisitor {
       return this.realm.intrinsics.undefined;
     }, additionalEffects.effects);
     for (let createdObject of createdObjects) this.additionalRoots.delete(createdObject);
+    if (additionalEffects.joinedEffects)
+      for (let createdObject of additionalEffects.joinedEffects[4]) this.additionalRoots.delete(createdObject);
 
     // Cleanup
     this.commonScope = prevCommonScope;

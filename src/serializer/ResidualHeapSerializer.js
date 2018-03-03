@@ -10,7 +10,6 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import type { Effects } from "../realm";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsArray, Get } from "../methods/index.js";
 import {
@@ -1794,7 +1793,10 @@ export class ResidualHeapSerializer {
   //          -- we don't overwrite anything they capture
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
-  _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
+  _serializeAdditionalFunctionEffects(
+    additionalFunctionValue: FunctionValue,
+    additionalEffects: AdditionalFunctionEffects
+  ) {
     let { effects, joinedEffects, returnArguments, returnBuildNode } = additionalEffects;
     let [result, , , modifiedProperties, createdObjects] = effects;
     for (let propertyBinding of modifiedProperties.keys()) {
@@ -1805,7 +1807,10 @@ export class ResidualHeapSerializer {
       invariant(object instanceof ObjectValue);
       this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
     }
-    //invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
+    invariant(
+      result instanceof Value || result instanceof PossiblyNormalCompletion,
+      "TODO: support non-value non-PossiblyNormalCompletion return from additional function"
+    );
     // Handle ModifiedBindings
     let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
     invariant(additionalFunctionValueInfo);
@@ -1814,31 +1819,25 @@ export class ResidualHeapSerializer {
       invariant(newVal);
       residualBinding.additionalValueSerialized = this.serializeValue(newVal);
     }
-    if (!(result instanceof UndefinedValue) && result instanceof Value)
+    if (result instanceof Value && !(result instanceof UndefinedValue)) {
       this.emitter.emit(t.returnStatement(this.serializeValue(result)));
-    else if (result instanceof PossiblyNormalCompletion) {
+    } else if (result instanceof PossiblyNormalCompletion) {
       invariant(joinedEffects !== undefined);
-      invariant(returnArguments !== undefined);
-      invariant(returnBuildNode !== undefined);
 
-      this.realm.withEffectsAppliedInGlobalEnv(
-        () => {
-          let args = returnArguments.map((arg) => this.serializeValue(arg));
-          this.emitter.emit(returnBuildNode(args));
-          return null;
-        },
-        joinedEffects
-      );
+      this.realm.withEffectsAppliedInGlobalEnv(() => {
+        invariant(returnArguments !== undefined);
+        invariant(returnBuildNode !== undefined);
+        let args = returnArguments.map(arg => this.serializeValue(arg));
+        this.emitter.emit(returnBuildNode(args));
+        return null;
+      }, joinedEffects);
     }
 
     const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
     Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
   }
 
-  _serializeAdditionalFunction(
-    additionalFunctionValue: FunctionValue,
-    additionalEffects: AdditionalFunctionEffects
-  ) {
+  _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
     let { effects, transforms } = additionalEffects;
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let [, generator, , , createdObjects] = effects;

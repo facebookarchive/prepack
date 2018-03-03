@@ -42,7 +42,7 @@ export type AdditionalFunctionEffects = {
   transforms: Array<Function>,
   joinedEffects?: Effects,
   returnArguments?: Array<Value>,
-  returnBuildNode?: (Array<BabelNodeExpression>) => BabelNodeExpression,
+  returnBuildNode?: (Array<BabelNodeExpression>) => BabelNodeStatement,
 };
 
 export type AdditionalFunctionInfo = {

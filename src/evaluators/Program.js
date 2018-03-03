@@ -11,7 +11,6 @@
 
 import {
   AbruptCompletion,
-  Completion,
   JoinedAbruptCompletions,
   PossiblyNormalCompletion,
   ReturnCompletion,
@@ -19,15 +18,13 @@ import {
 } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbstractValue, ObjectValue, StringValue, Value, EmptyValue } from "../values/index.js";
+import { Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { Environment, Functions, Join } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeProgram } from "babel-types";
-import * as t from "babel-types";
-import { CompilerDiagnostic } from "../errors.js";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(
@@ -275,8 +272,6 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       // There are still some conditional throws to emit and state still has to be joined in.
       Join.stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);
       // The global state has now been updated to the join of all the flows reaching this join point
-      let generator = realm.generator;
-      invariant(generator !== undefined);
       generator.emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
       val = val.value;
     }

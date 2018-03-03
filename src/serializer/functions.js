@@ -14,7 +14,7 @@ import { Completion, ThrowCompletion, PossiblyNormalCompletion } from "../comple
 import { Join } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { type Effects, type Bindings, type PropertyBindings, Realm } from "../realm.js";
+import { type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { AdditionalFunctionEffects } from "./types.js";
 import type { PropertyBinding } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
@@ -43,7 +43,6 @@ import {
 } from "../react/utils.js";
 import * as t from "babel-types";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
-import { Program } from "../evaluators/index.js";
 
 export class Functions {
   constructor(realm: Realm, functions: ?Array<string>, moduleTracer: ModuleTracer) {
@@ -131,54 +130,22 @@ export class Functions {
   // This will also handle postprocessing for PossiblyNormalCompletion
   _createAdditionalEffects(effects: Effects): AdditionalFunctionEffects {
     let [result, generator] = effects;
-    let retValue = { effects, transforms: [] };
+    let retValue: AdditionalFunctionEffects = { effects, transforms: [] };
+    // Create the effects, arguments and buildNode for the return value, saving them in AdditionalFunctionEffects
     if (result instanceof PossiblyNormalCompletion) {
       let { joinCondition, consequent, alternate, consequentEffects, alternateEffects } = result;
-      let joinedEffects = Join.joinEffects(this.realm, joinCondition, consequentEffects, alternateEffects);
+      let joinedEffects = Join.joinEffects(this.realm, joinCondition, consequentEffects, alternateEffects, true);
+      let args, buildNode;
       this.realm.withEffectsAppliedInGlobalEnv(() => {
         this.realm.withEffectsAppliedInGlobalEnv(() => {
-          generator.emitThrowOrReturn(joinCondition, consequent, alternate);
+          [args, buildNode] = generator.getThrowOrReturn(joinCondition, consequent, alternate);
           return null;
         }, joinedEffects);
         return null;
       }, effects);
-      let returnEntry = generator._entries.pop();
       retValue.joinedEffects = joinedEffects;
-      retValue.returnArguments = returnEntry.args;
-      retValue.returnBuildNode = returnEntry.buildNode;
-      /*let [oldResult, oldGenerator, oldModifiedBindings, oldModifiedProperties, oldCreatedObjects] = effects;
-      let [newResult, newGenerator, newModifiedBindings, newModifiedProperties, newCreatedObjects] = joinedEffects;
-      // We need to make sure the joined effects will undo all the way back to old effects, so if we ever have 2
-      // previous values, oldest wins.
-      function joinKeysFirstWins<K, V>(_key: K, v1: void | V, v2: void | V): V {
-        if (v1 && v2) {
-          return v1;
-        }
-        let res = v1 || v2;
-        invariant(res !== undefined);
-        return res;
-      }
-
-      let joinedModifiedBindings: Bindings = Join.joinMaps(
-        oldModifiedBindings,
-        newModifiedBindings,
-        joinKeysFirstWins
-      );
-      let joinedModifiedProps: PropertyBindings = Join.joinMaps(
-        oldModifiedProperties,
-        newModifiedProperties,
-        joinKeysFirstWins
-      );
-      let joinedGenerators = oldGenerator;
-      newGenerator._entries.forEach(entry => joinedGenerators._entries.push(entry));
-      joinedGenerators._entries.push(returnEntry);
-      effects = [
-        newResult,
-        joinedGenerators,
-        joinedModifiedBindings,
-        joinedModifiedProps,
-        new Set([...oldCreatedObjects, ...newCreatedObjects]),
-      ];*/
+      retValue.returnArguments = args;
+      retValue.returnBuildNode = buildNode;
     }
     return retValue;
   }
