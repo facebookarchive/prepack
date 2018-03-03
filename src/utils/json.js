@@ -51,7 +51,9 @@ export function mergeAdacentJSONTextNodes(node: JSON, visitedNodes?: Set<JSON>) 
   } else {
     for (let key in node) {
       let value = node[key];
-      if (typeof value === "object" && value !== null) {
+      if (typeof value === "function") {
+        node[key] = value.toString();
+      } else if (typeof value === "object" && value !== null) {
         node[key] = mergeAdacentJSONTextNodes(((value: any): JSON), visitedNodes);
       }
     }
