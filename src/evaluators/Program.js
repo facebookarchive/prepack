@@ -229,8 +229,6 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);
 
   let val;
-  let generator = realm.generator;
-  invariant(generator !== undefined);
 
   for (let node of ast.body) {
     if (node.type !== "FunctionDeclaration") {
@@ -243,9 +241,13 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         // The call to incorporateSavedCompletion above, has taken care of the join because res is abrupt.
         // What remains to be done is to emit throw statements to the generator.
         if (res instanceof JoinedAbruptCompletions) {
+          let generator = realm.generator;
+          invariant(generator !== undefined);
           generator.emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
           res = res.value;
         } else if (res instanceof ThrowCompletion) {
+          let generator = realm.generator;
+          invariant(generator !== undefined);
           generator.emitThrow(res.value);
           res = realm.intrinsics.undefined;
         } else {
@@ -272,6 +274,8 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       // There are still some conditional throws to emit and state still has to be joined in.
       Join.stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);
       // The global state has now been updated to the join of all the flows reaching this join point
+      let generator = realm.generator;
+      invariant(generator !== undefined);
       generator.emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
       val = val.value;
     }
