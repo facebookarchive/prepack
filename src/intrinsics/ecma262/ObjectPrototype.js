@@ -10,7 +10,14 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, ObjectValue, BooleanValue, NullValue } from "../../values/index.js";
+import {
+  AbstractValue,
+  NativeFunctionValue,
+  ObjectValue,
+  BooleanValue,
+  NullValue,
+  StringValue,
+} from "../../values/index.js";
 import { SameValuePartial, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { Invoke } from "../../methods/call.js";
@@ -19,14 +26,16 @@ import { FatalError } from "../../errors.js";
 import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.2
   const ObjectPrototypeHasOwnPrototype = obj.defineNativeMethod("hasOwnProperty", 1, (context, [V]) => {
-    try {
-      // 1. Let P be ? ToPropertyKey(V).
-      let P = To.ToPropertyKey(realm, V.throwIfNotConcrete());
+    // 1. Let P be ? ToPropertyKey(V).
+    let P = To.ToPropertyKey(realm, V.throwIfNotConcrete());
 
+    // The pure parts are wrapped with a recovery mode.
+    try {
       // 2. Let O be ? ToObject(this value).
       let O = To.ToObjectPartial(realm, context);
 
@@ -38,15 +47,19 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // leaving the call in place which we do by default, but we don't
         // have to havoc the state of any arguments since this function is pure.
         // This also lets us define the return type properly.
-        return realm.evaluateWithPossibleThrowCompletion(() =>
-          AbstractValue.createTemporalFromBuildFunction(
-            realm,
-            BooleanValue,
-            [ObjectPrototypeHasOwnPrototype, context, V],
-            ([methodNode, objectNode, nameNode]: Array<BabelNodeExpression>) => {
-              return t.callExpression(t.memberExpression(methodNode, t.identifier("call")), [objectNode, nameNode]);
-            }
-          )
+        const key = typeof P === "string" ? new StringValue(realm, P) : P;
+        return realm.evaluateWithPossibleThrowCompletion(
+          () =>
+            AbstractValue.createTemporalFromBuildFunction(
+              realm,
+              BooleanValue,
+              [ObjectPrototypeHasOwnPrototype, context, key],
+              ([methodNode, objectNode, nameNode]: Array<BabelNodeExpression>) => {
+                return t.callExpression(t.memberExpression(methodNode, t.identifier("call")), [objectNode, nameNode]);
+              }
+            ),
+          TypesDomain.topVal,
+          ValuesDomain.topVal
         );
       }
       throw x;
