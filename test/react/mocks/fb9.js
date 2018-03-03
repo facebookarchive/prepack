@@ -75,8 +75,8 @@ module.exports = this.__evaluatePureFunction(() => {
     return [['simple render', renderer.toJSON()]];
   };
 
-  if (this.__registerReactComponentRoot) {
-    __registerReactComponentRoot(App);
+  if (this.__optimizeReactComponentTree) {
+    __optimizeReactComponentTree(App);
   }
 
   return App;

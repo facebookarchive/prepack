@@ -32,8 +32,8 @@ module.exports = this.__evaluatePureFunction(() => {
     return [['fb1 mocks', renderer.toJSON()]];
   };
 
-  if (this.__registerReactComponentRoot) {
-    __registerReactComponentRoot(App);
+  if (this.__optimizeReactComponentTree) {
+    __optimizeReactComponentTree(App);
   }
 
   return App;

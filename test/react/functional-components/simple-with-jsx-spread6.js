@@ -10,8 +10,8 @@ App.getTrials = function(renderer, Root) {
   return [['simple render with jsx spread 6', renderer.toJSON()]];
 };
 
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(App);
+if (this.__optimizeReactComponentTree) {
+  __optimizeReactComponentTree(App);
 }
 
 module.exports = App;

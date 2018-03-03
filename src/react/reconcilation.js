@@ -54,7 +54,7 @@ import {
 import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
 import { Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
-import type { ClassComponentMetadata } from "../types.js";
+import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
 
 type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
 
@@ -77,7 +77,8 @@ export class Reconciler {
     realm: Realm,
     moduleTracer: ModuleTracer,
     statistics: ReactStatistics,
-    reactSerializerState: ReactSerializerState
+    reactSerializerState: ReactSerializerState,
+    componentTreeConfig: ReactComponentTreeConfig
   ) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
@@ -86,6 +87,7 @@ export class Reconciler {
     this.logger = moduleTracer.modules.logger;
     this.componentTreeState = this._createComponentTreeState();
     this.alreadyEvaluatedRootNodes = new Map();
+    this.componentTreeConfig = componentTreeConfig;
   }
 
   realm: Realm;
@@ -95,6 +97,7 @@ export class Reconciler {
   logger: Logger;
   componentTreeState: ComponentTreeState;
   alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
+  componentTreeConfig: ReactComponentTreeConfig;
 
   render(
     componentType: ECMAScriptSourceFunctionValue,
@@ -132,7 +135,7 @@ export class Reconciler {
         if (!isRoot) {
           this.logger.logWarning(
             componentType,
-            `__registerReactComponentRoot() React component tree (branch) failed due to - ${error.message}`
+            `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
           );
           return this.realm.intrinsics.undefined;
         }
@@ -143,7 +146,7 @@ export class Reconciler {
           throw error;
         } else if (error instanceof ExpectedBailOut) {
           let diagnostic = new CompilerDiagnostic(
-            `__registerReactComponentRoot() React component tree (root) failed due to - ${error.message}`,
+            `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
             this.realm.currentLocation,
             "PP0020",
             "FatalError"

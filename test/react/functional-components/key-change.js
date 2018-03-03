@@ -64,8 +64,8 @@ App.getTrials = function(renderer, Root) {
   return results;
 };
 
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(App);
+if (this.__optimizeReactComponentTree) {
+  __optimizeReactComponentTree(App);
 }
 
 module.exports = App;

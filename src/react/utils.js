@@ -23,10 +23,11 @@ import {
   StringValue,
   ArrayValue,
   ECMAScriptSourceFunctionValue,
+  UndefinedValue,
 } from "../values/index.js";
 import type { BabelTraversePath } from "babel-traverse";
 import { Generator } from "../utils/generator.js";
-import type { Descriptor, ReactHint, PropertyBinding } from "../types";
+import type { Descriptor, ReactHint, PropertyBinding, ReactComponentTreeConfig } from "../types";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
@@ -703,4 +704,14 @@ export function getComponentName(
     }
   }
   return "Unknown";
+}
+
+export function convertConfigObjectToReactComponentTreeConfig(
+  realm: Realm,
+  config: ObjectValue | UndefinedValue
+): ReactComponentTreeConfig {
+  // TODO get values from config object
+  return {
+    serverSideRenderOnly: false,
+  };
 }
