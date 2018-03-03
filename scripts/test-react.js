@@ -412,6 +412,26 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
       });
+
+      it("Complex class components folding into functional root component", async () => {
+        await runTest(directory, "complex-class-into-functional-root.js");
+      });
+
+      it("Complex class components folding into functional root component #2", async () => {
+        await runTest(directory, "complex-class-into-functional-root2.js");
+      });
+
+      it("Complex class components folding into functional root component #3", async () => {
+        await runTest(directory, "complex-class-into-functional-root3.js");
+      });
+
+      it("Complex class components folding into functional root component #4", async () => {
+        await runTest(directory, "complex-class-into-functional-root4.js");
+      });
+
+      it("Complex class components folding into functional root component #5", async () => {
+        await runTest(directory, "complex-class-into-functional-root5.js");
+      });
     });
 
     describe("Factory class component folding", () => {
@@ -435,6 +455,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Relay QueryRenderer 2", async () => {
         await runTest(directory, "relay-query-renderer2.js");
+      });
+
+      it("Relay QueryRenderer 3", async () => {
+        await runTest(directory, "relay-query-renderer3.js");
       });
     });
 

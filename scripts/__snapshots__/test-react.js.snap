@@ -14,6 +14,169 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component #2 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component #3 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component #4 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component #5 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Class component folding Complex class components folding into functional root component 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Class component folding Inheritance chaining 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -1282,6 +1445,32 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Render props Relay QueryRenderer 3 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "SomeClassThatShouldNotMakeRootAClass",
+              "status": "NEW_TREE",
+            },
+          ],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React with JSX input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -1613,6 +1802,169 @@ ReactStatistics {
   ],
   "inlinedComponents": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component #2 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component #3 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component #4 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component #5 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Class component folding Complex class components folding into functional root component 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
 }
 `;
 
@@ -2884,6 +3236,32 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Render props Relay QueryRenderer 3 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "SomeClassThatShouldNotMakeRootAClass",
+              "status": "NEW_TREE",
+            },
+          ],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React with JSX input, create-element output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -3215,6 +3593,169 @@ ReactStatistics {
   ],
   "inlinedComponents": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component #2 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component #3 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component #4 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component #5 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Class component folding Complex class components folding into functional root component 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
 }
 `;
 
@@ -4456,6 +4997,32 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Render props Relay QueryRenderer 3 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "SomeClassThatShouldNotMakeRootAClass",
+              "status": "NEW_TREE",
+            },
+          ],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React with create-element input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -4787,6 +5354,169 @@ ReactStatistics {
   ],
   "inlinedComponents": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component #2 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component #3 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component #4 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component #5 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Class component folding Complex class components folding into functional root component 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Child",
+          "status": "NEW_TREE",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
 }
 `;
 
@@ -6025,6 +6755,32 @@ ReactStatistics {
   ],
   "inlinedComponents": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Render props Relay QueryRenderer 3 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "SomeClassThatShouldNotMakeRootAClass",
+              "status": "NEW_TREE",
+            },
+          ],
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 2,
 }
 `;
 
