@@ -77,8 +77,7 @@ export class Reconciler {
     realm: Realm,
     moduleTracer: ModuleTracer,
     statistics: ReactStatistics,
-    reactSerializerState: ReactSerializerState,
-    reactRootValues: Set<ECMAScriptSourceFunctionValue | AbstractValue>
+    reactSerializerState: ReactSerializerState
   ) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
@@ -86,7 +85,7 @@ export class Reconciler {
     this.reactSerializerState = reactSerializerState;
     this.logger = moduleTracer.modules.logger;
     this.componentTreeState = this._createComponentTreeState();
-    this.reactRootValues = reactRootValues;
+    this.alreadyEvaluatedRootNodes = new Map();
   }
 
   realm: Realm;
@@ -95,7 +94,7 @@ export class Reconciler {
   reactSerializerState: ReactSerializerState;
   logger: Logger;
   componentTreeState: ComponentTreeState;
-  reactRootValues: Set<ECMAScriptSourceFunctionValue | AbstractValue>;
+  alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
 
   render(
     componentType: ECMAScriptSourceFunctionValue,
@@ -123,6 +122,7 @@ export class Reconciler {
           evaluatedRootNode
         );
         this.statistics.optimizedTrees++;
+        this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         return result;
       } catch (error) {
         // if we get an error and we're not dealing with the root
@@ -202,7 +202,13 @@ export class Reconciler {
     if (branchStatus !== "ROOT") {
       // if the tree is simple and we're not in a branch, we can make this tree complex
       // and make this complex component the root
-      if (branchStatus === "NO_BRANCH" && this.componentTreeState.status === "SIMPLE") {
+      let evaluatedComplexNode = this.alreadyEvaluatedRootNodes.get(componentType);
+      if (
+        branchStatus === "NO_BRANCH" &&
+        this.componentTreeState.status === "SIMPLE" &&
+        evaluatedComplexNode &&
+        evaluatedComplexNode.status !== "RENDER_PROPS"
+      ) {
         this.componentTreeState.componentType = componentType;
       } else {
         this._queueNewComponentTree(componentType, evaluatedNode);
@@ -317,11 +323,6 @@ export class Reconciler {
       throw new NewComponentTreeBranch();
     }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
-    // if this component we are trying to render is in the reactRootValues, we remove it
-    // to avoid future conflicts trying to re-render the same root twice
-    if (this.reactRootValues.has(componentType)) {
-      this.reactRootValues.delete(componentType);
-    }
     let value;
     let childContext = context;
 
@@ -646,5 +647,17 @@ export class Reconciler {
         evaluatedNode
       );
     });
+  }
+
+  hasEvaluatedRootNode(componentType: ECMAScriptSourceFunctionValue, evaluateNode: ReactEvaluatedNode): boolean {
+    if (this.alreadyEvaluatedRootNodes.has(componentType)) {
+      let alreadyEvaluatedNode = this.alreadyEvaluatedRootNodes.get(componentType);
+      invariant(alreadyEvaluatedNode);
+      evaluateNode.children = alreadyEvaluatedNode.children;
+      evaluateNode.status = alreadyEvaluatedNode.status;
+      evaluateNode.name = alreadyEvaluatedNode.name;
+      return true;
+    }
+    return false;
   }
 }

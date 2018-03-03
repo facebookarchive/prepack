@@ -189,35 +189,33 @@ export class Functions {
 
   checkRootReactComponentTrees(statistics: ReactStatistics, react: ReactSerializerState): void {
     let recordedReactRootValues = this.__generateAdditionalFunctions("__reactComponentRoots");
-    let reactRootValues = new Set(Array.from(recordedReactRootValues.keys()));
     // Get write effects of the components
-    for (let rootValue of reactRootValues) {
-      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react, reactRootValues);
+    for (let [rootValue] of recordedReactRootValues) {
+      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react);
       let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
+      statistics.evaluatedRootNodes.push(evaluatedRootNode);
+      if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
+        continue;
+      }
       let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
       let componentTreeState = reconciler.componentTreeState;
       this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState);
-      statistics.evaluatedRootNodes.push(evaluatedRootNode);
 
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
-      let alreadyGeneratedEffects = new Set();
       for (let { rootValue: branchRootValue, nested, evaluatedNode } of componentTreeState.branchedComponentTrees) {
         evaluateComponentTreeBranch(this.realm, effects, nested, () => {
           let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
 
           // so we don't process the same component multiple times (we might change this logic later)
-          if (!alreadyGeneratedEffects.has(branchComponentType)) {
-            alreadyGeneratedEffects.add(branchComponentType);
-            reconciler.clearComponentTreeState();
-            let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
-            this._generateWriteEffectsForReactComponentTree(
-              branchComponentType,
-              branchEffects,
-              reconciler.componentTreeState
-            );
+          if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
+            return;
           }
+          reconciler.clearComponentTreeState();
+          let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
+          let branchComponentTreeState = reconciler.componentTreeState;
+          this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, branchComponentTreeState);
         });
       }
       if (this.realm.react.output === "bytecode") {

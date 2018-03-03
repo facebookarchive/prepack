@@ -715,7 +715,12 @@ export class ResidualHeapSerializer {
         if (this.additionalFunctionGeneratorsInverse.has(g)) return false;
       return true;
     });
-    invariant(generators.length > 0);
+    if (generators.length === 0) {
+      // This means that the value was referenced by multiple additional functions, and thus it must have existed at the end of global code execution.
+      // TODO: Emit to the end, not somewhere in the middle of the mainBody.
+      // TODO: Revisit for nested additional functions
+      return { body: this.mainBody };
+    }
 
     // This value is referenced from more than one generator or function.
     // Let's find the body associated with their common ancestor.
@@ -1016,7 +1021,7 @@ export class ResidualHeapSerializer {
   ): void {
     const realm = this.realm;
     let lenProperty;
-    if (val.isLeakedObject()) {
+    if (val.isHavocedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");

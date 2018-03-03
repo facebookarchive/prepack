@@ -301,7 +301,7 @@ export class ResidualHeapVisitor {
     this.visitObjectProperties(val);
     const realm = this.realm;
     let lenProperty;
-    if (val.isLeakedObject()) {
+    if (val.isHavocedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");
@@ -786,10 +786,12 @@ export class ResidualHeapVisitor {
     } else if (val instanceof FunctionValue) {
       // Function declarations should get hoisted in common scope so that instances only get allocated once
       let parentScope = this.scope;
-      this._withScope(this.commonScope, () => {
-        invariant(val instanceof FunctionValue);
-        if (this.preProcessValue(val)) this.visitValueFunction(val, parentScope);
-      });
+      // Every function references itself through arguments, prevent the recursive double-visit
+      if (this.scope !== val && this.commonScope !== val)
+        this._withScope(this.commonScope, () => {
+          invariant(val instanceof FunctionValue);
+          if (this.preProcessValue(val)) this.visitValueFunction(val, parentScope);
+        });
     } else if (val instanceof SymbolValue) {
       if (this.preProcessValue(val)) this.visitValueSymbol(val);
     } else {

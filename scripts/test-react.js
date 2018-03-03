@@ -456,6 +456,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Relay QueryRenderer 2", async () => {
         await runTest(directory, "relay-query-renderer2.js");
       });
+
+      it("Relay QueryRenderer 3", async () => {
+        await runTest(directory, "relay-query-renderer3.js");
+      });
     });
 
     describe("fb-www mocks", () => {
@@ -501,6 +505,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 9", async () => {
         await runTest(directory, "fb9.js");
+      });
+
+      it("fb-www 10", async () => {
+        await runTest(directory, "fb10.js");
+      });
+
+      it("fb-www 11", async () => {
+        await runTest(directory, "fb11.js");
       });
 
       it("repl example", async () => {
