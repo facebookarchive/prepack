@@ -10,6 +10,13 @@ function additional1() {
 }
 
 function additional2() {
+  var foo = obj.foo;
+  var dontHavocThis = { bar: 2, toString: function() { return 'bar'; } };
+  Object.prototype.hasOwnProperty.call(foo, dontHavocThis);
+  if (global.__isAbstract && __isAbstract(dontHavocThis.bar)) {
+    return 'This should not be abstract.';
+  }
+  return dontHavocThis.bar;
 }
 
 inspect = function() {
