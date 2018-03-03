@@ -38,13 +38,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // leaving the call in place which we do by default, but we don't
         // have to havoc the state of any arguments since this function is pure.
         // This also lets us define the return type properly.
-        return AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          BooleanValue,
-          [ObjectPrototypeHasOwnPrototype, context, V],
-          ([methodNode, objectNode, nameNode]: Array<BabelNodeExpression>) => {
-            return t.callExpression(t.memberExpression(methodNode, t.identifier("call")), [objectNode, nameNode]);
-          }
+        return realm.evaluateWithPossibleThrowCompletion(() =>
+          AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            BooleanValue,
+            [ObjectPrototypeHasOwnPrototype, context, V],
+            ([methodNode, objectNode, nameNode]: Array<BabelNodeExpression>) => {
+              return t.callExpression(t.memberExpression(methodNode, t.identifier("call")), [objectNode, nameNode]);
+            }
+          )
         );
       }
       throw x;
