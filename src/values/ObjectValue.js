@@ -48,6 +48,7 @@ import {
 import { Join, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
+import { Havoc } from "../singletons.js";
 import * as t from "babel-types";
 
 function isWidenedValue(v: void | Value) {
@@ -585,8 +586,12 @@ export default class ObjectValue extends ConcreteValue {
       !this.isSimpleObject() ||
       (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject())
     ) {
-      AbstractValue.reportIntrospectionError(P, "TODO: #1021");
-      throw new FatalError();
+      if (this.$Realm.isInPureScope() && !this.isPartialObject() && this.isSimpleObject() && this === Receiver) {
+        Havoc.value(this.$Realm, P);
+      } else {
+        AbstractValue.reportIntrospectionError(P, "TODO: #1021");
+        throw new FatalError();
+      }
     }
     // If all else fails, use this expression
     let result;

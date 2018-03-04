@@ -1376,7 +1376,12 @@ export class Reference {
     this.referencedName = refName;
     invariant(
       !(refName instanceof AbstractValue) ||
-        !(refName.mightNotBeString() && refName.mightNotBeNumber() && !refName.isSimpleObject())
+        !(
+          refName.mightNotBeString() &&
+          refName.mightNotBeNumber() &&
+          !refName.isSimpleObject() &&
+          (base instanceof AbstractValue && !base.isSimpleObject())
+        )
     );
     this.strict = strict;
     this.thisValue = thisValue;
