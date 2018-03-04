@@ -14,8 +14,7 @@ import { Completion, ThrowCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
-import type { AdditionalFunctionEffects } from "./types.js";
-import type { PropertyBinding } from "../types.js";
+import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
   Value,
@@ -24,11 +23,12 @@ import {
   ObjectValue,
   AbstractValue,
   ECMAScriptSourceFunctionValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
 import buildTemplate from "babel-template";
-import { ReactStatistics, type ReactSerializerState } from "./types";
+import { ReactStatistics, type ReactSerializerState, type AdditionalFunctionEffects } from "./types";
 import { Reconciler, type ComponentTreeState } from "../react/reconcilation.js";
 import {
   valueIsClassComponent,
@@ -40,6 +40,7 @@ import {
   evaluateComponentTreeBranch,
   createReactEvaluatedNode,
   getComponentName,
+  convertConfigObjectToReactComponentTreeConfig,
 } from "../react/utils.js";
 import * as t from "babel-types";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
@@ -90,8 +91,11 @@ export class Functions {
     return additionalFunctions;
   }
 
-  __generateAdditionalFunctions(globalKey: string) {
-    let recordedAdditionalFunctions: Map<ECMAScriptSourceFunctionValue | AbstractValue, string> = new Map();
+  __generateAdditionalFunctionsMap(globalKey: string) {
+    let recordedAdditionalFunctions: Map<
+      ECMAScriptSourceFunctionValue | AbstractValue,
+      { funcId: string, config?: ReactComponentTreeConfig }
+    > = new Map();
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
       () => Get(realm, realm.$GlobalObject, globalKey),
@@ -103,25 +107,39 @@ export class Functions {
       if (property) {
         let value = property.descriptor && property.descriptor.value;
 
-        if (
-          !(
-            value instanceof FunctionValue ||
-            (value instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, value))
-          )
-        ) {
-          invariant(value instanceof AbstractValue);
-          realm.handleError(
-            new CompilerDiagnostic(
-              `Additional Function Value ${funcId} is an AbstractValue which is not allowed (unless a React known abstract)`,
-              undefined,
-              "PP0001",
-              "FatalError"
-            )
-          );
-          throw new FatalError("Additional Function values cannot be AbstractValues");
+        if (value instanceof ECMAScriptSourceFunctionValue) {
+          // additional function logic
+          recordedAdditionalFunctions.set(value, { funcId });
+          continue;
+        } else if (value instanceof ObjectValue) {
+          // React component tree logic
+          let config = Get(realm, value, "config");
+          let rootComponent = Get(realm, value, "rootComponent");
+          let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
+          let validRootComponent =
+            rootComponent instanceof ECMAScriptSourceFunctionValue ||
+            (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
+
+          if (validConfig && validRootComponent) {
+            recordedAdditionalFunctions.set(((rootComponent: any): ECMAScriptSourceFunctionValue | AbstractValue), {
+              funcId,
+              config: convertConfigObjectToReactComponentTreeConfig(
+                realm,
+                ((config: any): ObjectValue | UndefinedValue)
+              ),
+            });
+          }
+          continue;
         }
-        invariant(value instanceof AbstractValue || value instanceof ECMAScriptSourceFunctionValue);
-        recordedAdditionalFunctions.set(value, funcId);
+        realm.handleError(
+          new CompilerDiagnostic(
+            `Additional Function Value ${funcId} is an invalid value`,
+            undefined,
+            "PP0001",
+            "FatalError"
+          )
+        );
+        throw new FatalError("invalidf Additional Function value");
       }
     }
     return recordedAdditionalFunctions;
@@ -188,11 +206,12 @@ export class Functions {
   }
 
   checkRootReactComponentTrees(statistics: ReactStatistics, react: ReactSerializerState): void {
-    let recordedReactRootValues = this.__generateAdditionalFunctions("__reactComponentRoots");
+    let recordedReactRootValues = this.__generateAdditionalFunctionsMap("__reactComponentTrees");
     // Get write effects of the components
-    for (let [rootValue] of recordedReactRootValues) {
-      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react);
-      let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
+    for (let [componentRoot, { config }] of recordedReactRootValues) {
+      invariant(config);
+      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react, config);
+      let componentType = getComponentTypeFromRootValue(this.realm, componentRoot);
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
       statistics.evaluatedRootNodes.push(evaluatedRootNode);
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
@@ -225,12 +244,12 @@ export class Functions {
   }
 
   _generateAdditionalFunctionCallsFromDirective(): Array<[FunctionValue, BabelNodeCallExpression]> {
-    let recordedAdditionalFunctions = this.__generateAdditionalFunctions("__additionalFunctions");
+    let recordedAdditionalFunctions = this.__generateAdditionalFunctionsMap("__additionalFunctions");
 
     // The additional functions we registered at runtime are recorded at:
     // global.__additionalFunctions.id
     let calls = [];
-    for (let [funcValue, funcId] of recordedAdditionalFunctions) {
+    for (let [funcValue, { funcId }] of recordedAdditionalFunctions) {
       // TODO #987: Make Additional Functions work with arguments
       invariant(funcValue instanceof FunctionValue);
       calls.push([
@@ -284,7 +303,7 @@ export class Functions {
 
   checkThatFunctionsAreIndependent() {
     let inputFunctions = this._generateAdditionalFunctionCallsFromInput();
-    let recordedAdditionalFunctions = this.__generateAdditionalFunctions("__additionalFunctions");
+    let recordedAdditionalFunctions = this.__generateAdditionalFunctionsMap("__additionalFunctions");
     let additionalFunctions = inputFunctions.concat([...recordedAdditionalFunctions.keys()]);
 
     for (let funcValue of additionalFunctions) {

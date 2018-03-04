@@ -27,8 +27,8 @@ App.getTrials = function(renderer, Root) {
   return [['render with class root and props', renderer.toJSON()]];
 };
 
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(App);
+if (this.__optimizeReactComponentTree) {
+  __optimizeReactComponentTree(App);
 }
 
 module.exports = App;

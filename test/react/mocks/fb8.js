@@ -42,8 +42,8 @@ module.exports = this.__evaluatePureFunction(() => {
     return <span>This contains a ReactRelay container:<WrappedApp /></span>;
   }
 
-  if (this.__registerReactComponentRoot) {
-    __registerReactComponentRoot(App);
+  if (this.__optimizeReactComponentTree) {
+    __optimizeReactComponentTree(App);
   }
 
   // this is a mocked out relay mock for this test

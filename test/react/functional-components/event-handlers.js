@@ -20,8 +20,8 @@ App.getTrials = function(renderer, Root) {
   ];
 };
 
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(App);
+if (this.__optimizeReactComponentTree) {
+  __optimizeReactComponentTree(App);
 }
 
 module.exports = App;
