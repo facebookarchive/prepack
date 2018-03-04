@@ -40,8 +40,8 @@ var optionsConfig = [
   {
     type: "choice",
     name: "compatibility",
-    choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli", "fb-wwww"],
-    defaultVal: "browser",
+    choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-cli", "node-react"],
+    defaultVal: "node-react",
     description: "The target environment for Prepack"
   },
   {
