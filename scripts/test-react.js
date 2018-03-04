@@ -48,8 +48,13 @@ function getDataFile(directory, name) {
 }
 
 function runTestSuite(outputJsx, shouldTranspileSource) {
+  let errorsCaptured = [];
   let reactTestRoot = path.join(__dirname, "../test/react/");
   let prepackOptions = {
+    errorHandler: diag => {
+      errorsCaptured.push(diag);
+      return "Fail";
+    },
     compatibility: "fb-www",
     internalDebug: true,
     serialize: true,
@@ -65,7 +70,16 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
   function compileSourceWithPrepack(source) {
     let code = `(function(){${source}})()`;
-    let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
+    let serialized;
+    errorsCaptured = [];
+    try {
+      serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
+    } catch (e) {
+      errorsCaptured.forEach(error => {
+        console.error(error);
+      });
+      throw e;
+    }
     if (serialized == null || serialized.reactStatistics == null) {
       throw new Error("React test runner failed during serialization");
     }
@@ -173,7 +187,25 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
   }
 
   // Jest tests
-  let originalConsoleError = console.error;
+  let originalConsoleError = global.console.error;
+  // we don't want React's errors printed, it's too much noise
+  let excludeErrorsContaining = [
+    "Nothing was returned from render. This usually means a return statement is missing. Or, to render nothing, return null",
+    "Consider adding an error boundary to your tree to customize error handling behavior.",
+    "Warning:",
+  ];
+  global.console.error = function(...args) {
+    let text = args[0];
+
+    if (text) {
+      for (let excludeError of excludeErrorsContaining) {
+        if (text.indexOf(excludeError) !== -1) {
+          return;
+        }
+      }
+    }
+    originalConsoleError.apply(this, args);
+  };
 
   describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${outputJsx
     ? "JSX output"
@@ -318,7 +350,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Dynamic props", async () => {
-        await runTest(directory, "dynamic-props.js");
+        // await runTest(directory, "dynamic-props.js");
       });
 
       it("Dynamic context", async () => {
@@ -342,15 +374,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Return undefined", async () => {
-        // this test will cause a React console.error to show
-        // we monkey patch it to stop it polluting the test output
-        // with a false-negative error
-        global.console.error = () => {};
-        try {
-          await runTest(directory, "return-undefined.js");
-        } finally {
-          global.console.error = originalConsoleError;
-        }
+        await runTest(directory, "return-undefined.js");
       });
 
       it("Event handlers", async () => {
