@@ -84,6 +84,7 @@ function run(
   let maxStackDepth: number;
   let timeout: number;
   let additionalFunctions: void | Array<string>;
+  let debugIdentifiers: void | Array<string>;
   let lazyObjectsRuntime: string;
   let heapGraphFilePath: void | string;
   let debugInFilePath: string;
@@ -175,9 +176,14 @@ function run(
           reproArguments.push("--timeout", timeout.toString());
           break;
         case "additionalFunctions":
-          let line = args.shift();
-          additionalFunctions = line.split(",");
-          reproArguments.push("--additionalFunctions", line);
+          let additionalFunctionsString = args.shift();
+          additionalFunctions = additionalFunctionsString.split(",");
+          reproArguments.push("--additionalFunctions", additionalFunctionsString);
+          break;
+        case "debugIdentifiers":
+          let debugIdentifiersString = args.shift();
+          debugIdentifiers = debugIdentifiersString.split(",");
+          reproArguments.push("--debugIdentifiers", debugIdentifiersString);
           break;
         case "check":
           let range = args.shift();
@@ -240,6 +246,7 @@ function run(
             "--maxStackDepth depthValue",
             "--timeout seconds",
             "--additionalFunctions fnc1,fnc2,...",
+            "--debugIdentifiers id1,id2,...",
             "--check [start[, number]]",
             "--lazyObjectsRuntime lazyObjectsRuntimeName",
             "--heapGraphFilePath heapGraphFilePath",
@@ -297,16 +304,17 @@ fi
       compatibility,
       mathRandomSeed,
       inputSourceMapFilename: inputSourceMap,
-      errorHandler: errorHandler,
+      errorHandler,
       sourceMaps: !!outputSourceMap,
-      maxStackDepth: maxStackDepth,
-      timeout: timeout,
-      additionalFunctions: additionalFunctions,
-      check: check,
-      lazyObjectsRuntime: lazyObjectsRuntime,
-      debugInFilePath: debugInFilePath,
-      debugOutFilePath: debugOutFilePath,
-      reactOutput: reactOutput,
+      maxStackDepth,
+      timeout,
+      additionalFunctions,
+      debugIdentifiers,
+      check,
+      lazyObjectsRuntime,
+      debugInFilePath,
+      debugOutFilePath,
+      reactOutput,
     },
     flags
   );
