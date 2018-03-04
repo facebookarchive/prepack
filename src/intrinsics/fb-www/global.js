@@ -86,5 +86,7 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  createFbMocks(realm, global);
+  if (realm.isCompatibleWith("fb-www")) {
+    createFbMocks(realm, global);
+  }
 }
