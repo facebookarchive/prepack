@@ -37,7 +37,7 @@ import { Create, Properties, Environment } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { To } from "../singletons.js";
 import AbstractValue from "../values/AbstractValue";
 
@@ -717,16 +717,24 @@ export function convertConfigObjectToReactComponentTreeConfig(
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
       let propValue = getProperty(realm, config, key);
-      invariant(
-        propValue instanceof StringValue || propValue instanceof NumberValue || propValue instanceof BooleanValue
-      );
-      let value = propValue.value;
+      if (propValue instanceof StringValue || propValue instanceof NumberValue || propValue instanceof BooleanValue) {
+        let value = propValue.value;
 
-      // boolean options
-      if (typeof value === "boolean") {
-        if (key === serverSideRenderOnly) {
-          serverSideRenderOnly = value;
+        // boolean options
+        if (typeof value === "boolean") {
+          if (key === serverSideRenderOnly) {
+            serverSideRenderOnly = value;
+          }
         }
+      } else {
+        let diagnostic = new CompilerDiagnostic(
+          "__optimizeReactComponentTree(rootComponent, config) has been called with invalid arguments",
+          realm.currentLocation,
+          "PP0024",
+          "FatalError"
+        );
+        realm.handleError(diagnostic);
+        if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
       }
     }
   }
