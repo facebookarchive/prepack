@@ -591,25 +591,31 @@ export class ResidualHeapSerializer {
   // which any of a given set of function values is referenced.
   _getReferencingGenerators(
     initialGenerators: Array<Generator>,
-    functionValues: Array<FunctionValue>
+    functionValues: Array<FunctionValue>,
+    referencingOnlyAdditionalFunction: void | FunctionValue
   ): Array<Generator> {
     let result = new Set(initialGenerators);
     let activeFunctions = functionValues.slice();
     let visitedFunctions = new Set();
     while (activeFunctions.length > 0) {
-      let last = activeFunctions.pop();
-      let scopes = this.residualValues.get(last);
-      invariant(scopes);
-      for (let scope of scopes)
-        if (scope instanceof FunctionValue) {
-          if (!visitedFunctions.has(scope)) {
-            visitedFunctions.add(scope);
+      let f = activeFunctions.pop();
+      if (visitedFunctions.has(f)) continue;
+      visitedFunctions.add(f);
+      if (f === referencingOnlyAdditionalFunction) {
+        let g = this.additionalFunctionGenerators.get(f);
+        invariant(g !== undefined);
+        result.add(g);
+      } else {
+        let scopes = this.residualValues.get(f);
+        invariant(scopes);
+        for (let scope of scopes)
+          if (scope instanceof FunctionValue) {
             activeFunctions.push(scope);
+          } else {
+            invariant(scope instanceof Generator);
+            result.add(scope);
           }
-        } else {
-          invariant(scope instanceof Generator);
-          result.add(scope);
-        }
+      }
     }
     return Array.from(result);
   }
@@ -644,11 +650,11 @@ export class ResidualHeapSerializer {
 
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
   _getTarget(
-    val: Value
+    val: Value,
+    trace?: true
   ): {
     body: SerializedBody,
     usedOnlyByResidualFunctions?: true,
-    usedOnlyByAdditionalFunctions?: boolean,
     commonAncestor?: Scope,
     description?: string,
   } {
@@ -657,6 +663,7 @@ export class ResidualHeapSerializer {
 
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
+    if (trace) console.log(`  referenced by ${scopes.size} scopes`);
 
     // First, let's figure out from which function and generator scopes this value is referenced.
     let functionValues = [];
@@ -670,11 +677,23 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let additionalFunctionValue = this.isReferencedOnlyByAdditionalFunction(val);
+    if (trace) {
+      console.log(`    containing ${generators.length} generators:`);
+      for (let g of generators) {
+        let s = "";
+        for (let h = g; h !== undefined; h = this.getGeneratorParent(h)) s += "=>" + h.getName();
+        console.log(`      ${s}`);
+      }
+      console.log(`    containing ${functionValues.length} function values:`);
+      for (let fv of functionValues)
+        console.log(`      ${fv.__originalName || JSON.stringify(fv.expressionLocation) || fv.constructor.name}`);
+    }
+
+    let referencingOnlyAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       if (
-        additionalFunctionValue === undefined &&
+        referencingOnlyAdditionalFunction === undefined &&
         this._options.delayInitializations &&
         !this._options.simpleClosures
       ) {
@@ -688,13 +707,10 @@ export class ResidualHeapSerializer {
       }
     }
 
-    if (additionalFunctionValue !== undefined) {
-      let additionalFunctionGenerator = this.additionalFunctionGenerators.get(additionalFunctionValue);
-      invariant(additionalFunctionGenerator !== undefined);
-      let body = this.activeGeneratorBodies.get(additionalFunctionGenerator);
-      invariant(body !== undefined);
-      return { body, usedOnlyByAdditionalFunctions: true };
-    }
+    if (trace)
+      console.log(
+        `  is referenced only by additional function? ${referencingOnlyAdditionalFunction !== undefined ? "yes" : "no"}`
+      );
 
     let getBody = s => {
       if (s === this.generator) {
@@ -705,30 +721,33 @@ export class ResidualHeapSerializer {
     };
 
     // flatten all function values into the scopes that use them
-    generators = this._getReferencingGenerators(generators, functionValues);
+    generators = this._getReferencingGenerators(generators, functionValues, referencingOnlyAdditionalFunction);
 
-    // Remove all generators rooted in additional functions,
-    // since we know that there's at least one root that's not in an additional function
-    // which requires the value to be emitted outside of the additional function.
-    generators = generators.filter(generator => {
-      for (let g = generator; g !== undefined; g = this.getGeneratorParent(g))
-        if (this.additionalFunctionGeneratorsInverse.has(g)) return false;
-      return true;
-    });
-    if (generators.length === 0) {
-      // This means that the value was referenced by multiple additional functions, and thus it must have existed at the end of global code execution.
-      // TODO: Emit to the end, not somewhere in the middle of the mainBody.
-      // TODO: Revisit for nested additional functions
-      return { body: this.mainBody };
+    if (referencingOnlyAdditionalFunction === undefined) {
+      // Remove all generators rooted in additional functions,
+      // since we know that there's at least one root that's not in an additional function
+      // which requires the value to be emitted outside of the additional function.
+      generators = generators.filter(generator => {
+        for (let g = generator; g !== undefined; g = this.getGeneratorParent(g))
+          if (this.additionalFunctionGeneratorsInverse.has(g)) return false;
+        return true;
+      });
+      if (generators.length === 0) {
+        // This means that the value was referenced by multiple additional functions, and thus it must have existed at the end of global code execution.
+        // TODO: Emit to the end, not somewhere in the middle of the mainBody.
+        // TODO: Revisit for nested additional functions
+        return { body: this.mainBody };
+      }
     }
 
-    // This value is referenced from more than one generator or function.
+    // This value is referenced from more than one generator.
     // Let's find the body associated with their common ancestor.
     let commonAncestor = Array.from(generators).reduce(
       (x, y) => commonAncestorOf(x, y, this.getGeneratorParent),
       generators[0]
     );
     invariant(commonAncestor);
+    if (trace) console.log(`  common ancestor: ${commonAncestor.getName()}`);
 
     let body;
     while (true) {
@@ -750,14 +769,18 @@ export class ResidualHeapSerializer {
     let notYetDoneBodies = new Set();
     this.emitter.dependenciesVisitor(val, {
       onAbstractValueWithIdentifier: dependency => {
+        if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
         let declarationBody = this.emitter.getDeclarationBody(dependency);
-        if (declarationBody !== undefined)
+        if (declarationBody !== undefined) {
+          if (trace) console.log(`    has declaration body`);
           for (let b = declarationBody; b !== undefined; b = b.parentBody) {
             if (notYetDoneBodies.has(b)) break;
             notYetDoneBodies.add(b);
           }
+        }
       },
     });
+    if (trace) console.log(`  got ${notYetDoneBodies.size} not yet done bodies`);
     for (let s of generators)
       for (let g = s; g !== undefined; g = this.getGeneratorParent(g)) {
         let scopeBody = getBody(g);
@@ -877,6 +900,10 @@ export class ResidualHeapSerializer {
     let init = this._serializeValue(val);
 
     let id = this.residualHeapValueIdentifiers.getIdentifier(val);
+    if (this._options.debugIdentifiers !== undefined && this._options.debugIdentifiers.includes(id.name)) {
+      console.log(`Tracing value with identifier ${id.name} (${val.constructor.name}) targetting ${target.body.type}`);
+      this._getTarget(val, true);
+    }
     let result = id;
     this.residualHeapValueIdentifiers.incrementReferenceCount(val);
 
