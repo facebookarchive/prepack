@@ -20,7 +20,13 @@ let { promisify } = require("util");
 let readFileAsync = promisify(readFile);
 let writeFileAsync = promisify(writeFile);
 
+let errorsCaptured = [];
+
 let prepackOptions = {
+  errorHandler: diag => {
+    errorsCaptured.push(diag);
+    return "Fail";
+  },
   compatibility: "fb-www",
   internalDebug: true,
   serialize: true,
@@ -37,7 +43,15 @@ let inputPath = path.resolve("fb-www/input.js");
 let outputPath = path.resolve("fb-www/output.js");
 
 function compileSource(source) {
-  let serialized = prepackSources([{ filePath: "", fileContents: source, sourceMapContents: "" }], prepackOptions);
+  let serialized;
+  try {
+    serialized = prepackSources([{ filePath: "", fileContents: source, sourceMapContents: "" }], prepackOptions);
+  } catch (e) {
+    errorsCaptured.forEach(error => {
+      console.error(error);
+    });
+    throw e;
+  }
   return {
     // $FlowFixMe: reactStatistics do exist as we're passing reactEnabled in config
     stats: serialized.reactStatistics,
