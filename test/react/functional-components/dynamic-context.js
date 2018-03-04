@@ -46,8 +46,8 @@ App.getTrials = function(renderer, Root) {
   return [['render with dynamic context access', renderer.toJSON()]];
 };
 
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(Child);
+if (this.__optimizeReactComponentTree) {
+  __optimizeReactComponentTree(Child);
 }
 
 module.exports = App;

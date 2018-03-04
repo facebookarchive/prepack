@@ -28,8 +28,8 @@ function Foo(props: {href: string}) {
 
 // this is a special Prepack function hook
 // that tells Prepack the root of a React component tree
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(Foo);
+if (this.__optimizeReactComponentTree) {
+  __optimizeReactComponentTree(Foo);
 }
 
 window.Foo = Foo;

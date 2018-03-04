@@ -15,8 +15,8 @@ FactoryComponent.getTrials = function(renderer, Root) {
   return [['render simple factory classes', renderer.toJSON()]];
 };
 
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(FactoryComponent);
+if (this.__optimizeReactComponentTree) {
+  __optimizeReactComponentTree(FactoryComponent);
 }
 
 module.exports = FactoryComponent;

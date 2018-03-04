@@ -38,8 +38,8 @@ module.exports = this.__evaluatePureFunction(() => {
     },
   })
 
-  if (this.__registerReactComponentRoot) {
-    __registerReactComponentRoot(WrappedApp);
+  if (this.__optimizeReactComponentTree) {
+    __optimizeReactComponentTree(WrappedApp);
   }
 
   // this is a mocked out relay mock for this test

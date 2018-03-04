@@ -130,24 +130,28 @@ export default function(realm: Realm): void {
   });
 
   if (realm.react.enabled) {
-    global.$DefineOwnProperty("__reactComponentRoots", {
-      value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__reactComponentRoots", true),
+    global.$DefineOwnProperty("__reactComponentTrees", {
+      value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__reactComponentTrees", true),
       writable: true,
       enumerable: false,
       configurable: true,
     });
     let reactComponentRootUid = 0;
-    // this is almost a copy of the additionalFunctions code above
-    global.$DefineOwnProperty("__registerReactComponentRoot", {
+    global.$DefineOwnProperty("__optimizeReactComponentTree", {
       value: new NativeFunctionValue(
         realm,
-        "global.__registerReactComponentRoot",
-        "__registerReactComponentRoot",
+        "global.__optimizeReactComponentTree",
+        "__optimizeReactComponentTree",
         0,
-        (context, [value]) => {
-          if (!(value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(realm, value))) {
+        (context, [component, config]) => {
+          let hasValidComponent =
+            component instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(realm, component);
+          let hasValidConfig =
+            config instanceof ObjectValue || config === realm.intrinsics.undefined || config === undefined;
+
+          if (!hasValidComponent || !hasValidConfig) {
             let diagnostic = new CompilerDiagnostic(
-              "a value has been passed to __registerReactComponentRoot() that is not a function value or a known React abstract value",
+              "__optimizeReactComponentTree(rootComponent, config) has been called with invalid arguments",
               realm.currentLocation,
               "PP0024",
               "FatalError"
@@ -155,14 +159,18 @@ export default function(realm: Realm): void {
             realm.handleError(diagnostic);
             if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
           }
+          let reactComponentTree = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+          reactComponentTree.$Set("rootComponent", component, reactComponentTree);
+          reactComponentTree.$Set("config", config || realm.intrinsics.undefined, reactComponentTree);
+
           realm.assignToGlobal(
             t.memberExpression(
-              t.memberExpression(t.identifier("global"), t.identifier("__reactComponentRoots")),
+              t.memberExpression(t.identifier("global"), t.identifier("__reactComponentTrees")),
               t.identifier("" + reactComponentRootUid++)
             ),
-            value
+            reactComponentTree
           );
-          return realm.intrinsics.undefined;
+          return component;
         }
       ),
       writable: true,
