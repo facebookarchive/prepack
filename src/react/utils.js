@@ -24,6 +24,7 @@ import {
   ArrayValue,
   ECMAScriptSourceFunctionValue,
   UndefinedValue,
+  BooleanValue,
 } from "../values/index.js";
 import type { BabelTraversePath } from "babel-traverse";
 import { Generator } from "../utils/generator.js";
@@ -710,8 +711,26 @@ export function convertConfigObjectToReactComponentTreeConfig(
   realm: Realm,
   config: ObjectValue | UndefinedValue
 ): ReactComponentTreeConfig {
-  // TODO get values from config object
+  // defaults
+  let serverSideRenderOnly = false;
+
+  if (!(config instanceof UndefinedValue)) {
+    for (let [key] of config.properties) {
+      let propValue = getProperty(realm, config, key);
+      invariant(
+        propValue instanceof StringValue || propValue instanceof NumberValue || propValue instanceof BooleanValue
+      );
+      let value = propValue.value;
+
+      // boolean options
+      if (typeof value === "boolean") {
+        if (key === serverSideRenderOnly) {
+          serverSideRenderOnly = value;
+        }
+      }
+    }
+  }
   return {
-    serverSideRenderOnly: false,
+    serverSideRenderOnly,
   };
 }
