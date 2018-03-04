@@ -586,6 +586,9 @@ export default class ObjectValue extends ConcreteValue {
       !this.isSimpleObject() ||
       (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject())
     ) {
+      // if P is an abstract value that we don't know about, but wee're in pure scope
+      // then if the object is **not** partial, but is simple, then we can
+      // safely continue without throwing the beelow introspection error
       if (this.$Realm.isInPureScope() && !this.isPartialObject() && this.isSimpleObject() && this === Receiver) {
         Havoc.value(this.$Realm, P);
       } else {
