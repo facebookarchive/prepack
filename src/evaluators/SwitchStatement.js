@@ -104,7 +104,7 @@ function AbstractCaseBlockEvaluation(
     } else if (caseIndex >= cases.length) {
       // this is the stop condition for our recursive search for a matching case.
       // we tried every available case index and if nothing matches we return
-      // the default (and if none exists....just empty)
+      // the default (and since none exists....just empty)
       if (defaultCaseIndex !== -1) {
         return DefiniteCaseEvaluation(defaultCaseIndex);
       } else {
