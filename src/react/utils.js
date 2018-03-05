@@ -757,8 +757,8 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
       invariant(propsValue instanceof ObjectValue);
       let value = getProperty(realm, propsValue, propName);
 
-      // skip children
-      if (propName === "children") {
+      // skip children and style
+      if (propName === "children" || propName === "style") {
         continue;
       }
       if (!(value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue)) {
