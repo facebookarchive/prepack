@@ -48,7 +48,6 @@ import {
 import { Join, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
-import { Havoc } from "../singletons.js";
 import * as t from "babel-types";
 
 function isWidenedValue(v: void | Value) {

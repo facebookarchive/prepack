@@ -781,7 +781,7 @@ export class ToImplementation {
   ToPropertyKeyPartial(realm: Realm, arg: Value): AbstractValue | SymbolValue | string /* but not StringValue */ {
     if (arg instanceof ConcreteValue) return this.ToPropertyKey(realm, arg);
     // if we are in pure scope, we can assume that the property
-      // won't cause side-effects if it's not simple
+    // won't cause side-effects if it's not simple
     if (arg.mightNotBeString() && arg.mightNotBeNumber() && !arg.isSimpleObject() && !realm.isInPureScope()) {
       arg.throwIfNotConcrete();
     }
