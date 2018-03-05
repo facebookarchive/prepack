@@ -11,6 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
+import { CompilerDiagnostic } from "../errors.js";
 import { Reference } from "../environment.js";
 import { computeBinary } from "./BinaryExpression.js";
 import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion, Completion } from "../completions.js";
@@ -58,11 +59,16 @@ function AbstractCaseBlockEvaluation(
         let r = env.evaluateCompletion(node, strictCode);
         invariant(!(r instanceof Reference));
 
-        // TODO come up with a strategy for handling PossiblyNormalCompletion correctly
         if (r instanceof PossiblyNormalCompletion) {
-          let msg = "This operation is not yet supported on case blocks that result in a PossiblyNormalCompletion.";
-          realm.reportIntrospectionError(msg);
-          throw new FatalError(msg);
+          // TODO correct handling of PossiblyNormal and AbruptCompletion
+          let diagnostic = new CompilerDiagnostic(
+            "case block containing a throw, return or continue is not yet supported",
+            r.location,
+            "PP0027",
+            "FatalError"
+          );
+          realm.handleError(diagnostic);
+          throw new FatalError();
         }
 
         result = UpdateEmpty(realm, r, result);
@@ -77,9 +83,14 @@ function AbstractCaseBlockEvaluation(
       return result.value;
     } else if (result instanceof AbruptCompletion) {
       // TODO correct handling of PossiblyNormal and AbruptCompletion
-      let msg = "This operation is not yet supported on case blocks that throw.";
-      realm.reportIntrospectionError(msg);
-      throw new FatalError(msg);
+      let diagnostic = new CompilerDiagnostic(
+        "case block containing a throw, return or continue is not yet supported",
+        result.location,
+        "PP0027",
+        "FatalError"
+      );
+      realm.handleError(diagnostic);
+      throw new FatalError();
     } else {
       invariant(result instanceof Value);
       return result;
