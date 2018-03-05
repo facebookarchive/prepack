@@ -712,7 +712,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   config: ObjectValue | UndefinedValue
 ): ReactComponentTreeConfig {
   // defaults
-  let serverSideRenderOnly = false;
+  let firstRenderOnly = false;
 
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
@@ -722,8 +722,8 @@ export function convertConfigObjectToReactComponentTreeConfig(
 
         // boolean options
         if (typeof value === "boolean") {
-          if (key === serverSideRenderOnly) {
-            serverSideRenderOnly = value;
+          if (key === "firstRenderOnly") {
+            firstRenderOnly = value;
           }
         }
       } else {
@@ -739,6 +739,32 @@ export function convertConfigObjectToReactComponentTreeConfig(
     }
   }
   return {
-    serverSideRenderOnly,
+    firstRenderOnly,
   };
+}
+
+export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
+  let typeValue = Get(realm, reactElement, "type");
+
+  // ensure ref is null, as we don't use that on first render
+  Properties.Set(realm, reactElement, "ref", realm.intrinsics.null, false);
+  // when dealing with host nodes, we want to sanitize them futher
+  if (typeValue instanceof StringValue) {
+    let propsValue = Get(realm, reactElement, "props");
+    invariant(propsValue instanceof ObjectValue);
+    // remove all values that apart from string/number/boolean
+    for (let [propName] of propsValue.properties) {
+      invariant(propsValue instanceof ObjectValue);
+      let value = getProperty(realm, propsValue, propName);
+
+      // skip children
+      if (propName === "children") {
+        continue;
+      }
+      if (!(value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue)) {
+        propsValue.$Delete(propName);
+      }
+    }
+  }
+  return reactElement;
 }

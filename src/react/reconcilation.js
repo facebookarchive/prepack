@@ -38,6 +38,7 @@ import {
   isRenderPropFunctionSelfContained,
   createReactEvaluatedNode,
   getComponentName,
+  sanitizeReactElementForFirstRenderOnly,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -50,6 +51,7 @@ import {
   createClassInstance,
   createSimpleClassInstance,
   evaluateClassConstructor,
+  createClassInstanceForFirstRenderOnly,
 } from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
 import { Completion } from "../completions.js";
@@ -311,6 +313,91 @@ export class Reconciler {
     return renderResult;
   }
 
+  _renderClassComponent(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ): Value {
+    let value;
+
+    let classMetadata = this._getClassComponentMetadata(componentType, props, context);
+    let { instanceProperties, instanceSymbols } = classMetadata;
+
+    // if there were no this assignments we can try and render it as a simple class component
+    if (instanceProperties.size === 0 && instanceSymbols.size === 0) {
+      // We first need to know what type of class component we're dealing with.
+      // A "simple" class component is defined as:
+      //
+      // - having only a "render" method
+      // - having no lifecycle events
+      // - having no state
+      // - having no instance variables
+      //
+      // the only things a class component should be able to access on "this" are:
+      // - this.props
+      // - this.context
+      // - this._someRenderMethodX() etc
+      //
+      // Otherwise, the class component is a "complex" one.
+      // To begin with, we don't know what type of component it is, so we try and render it as if it were
+      // a simple component using the above heuristics. If an error occurs during this process, we assume
+      // that the class wasn't simple, then try again with the "complex" heuristics.
+      try {
+        value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
+      } catch (error) {
+        // if we get back a SimpleClassBailOut error, we know that this class component
+        // wasn't a simple one and is likely to be a complex class component instead
+        if (error instanceof SimpleClassBailOut) {
+          // the component was not simple, so we continue with complex case
+        } else {
+          // else we rethrow the error
+          throw error;
+        }
+      }
+    }
+    // handle the complex class component if there is not value
+    if (value === undefined) {
+      value = this._renderComplexClassComponent(
+        componentType,
+        props,
+        context,
+        classMetadata,
+        branchStatus,
+        branchState,
+        evaluatedNode
+      );
+    }
+    return value;
+  }
+
+  _renderClassComponentForFirstRenderOnly(
+    componentType: ECMAScriptSourceFunctionValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ): Value {
+    // create a new simple instance of this React class component
+    let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context);
+    // get the "componentWillMount" method off the instance
+    let componentWillMount = Get(this.realm, instance, "componentWillMount");
+    if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
+      componentWillMount.$Call(instance, []);
+    }
+    // get the "render" method off the instance
+    let renderMethod = Get(this.realm, instance, "render");
+    invariant(
+      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
+      "Expected render method to be a FunctionValue with $Call method"
+    );
+    // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
+    return renderMethod.$Call(instance, []);
+  }
+
   _renderComponent(
     componentType: Value,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
@@ -333,52 +420,17 @@ export class Reconciler {
     if (valueIsLegacyCreateClassComponent(this.realm, componentType)) {
       throw new ExpectedBailOut("components created with create-react-class are not supported");
     } else if (valueIsClassComponent(this.realm, componentType)) {
-      let classMetadata = this._getClassComponentMetadata(componentType, props, context);
-      let { instanceProperties, instanceSymbols } = classMetadata;
-
-      // if there were no this assignments we can try and render it as a simple class component
-      if (instanceProperties.size === 0 && instanceSymbols.size === 0) {
-        // We first need to know what type of class component we're dealing with.
-        // A "simple" class component is defined as:
-        //
-        // - having only a "render" method
-        // - having no lifecycle events
-        // - having no state
-        // - having no instance variables
-        //
-        // the only things a class component should be able to access on "this" are:
-        // - this.props
-        // - this.context
-        // - this._someRenderMethodX() etc
-        //
-        // Otherwise, the class component is a "complex" one.
-        // To begin with, we don't know what type of component it is, so we try and render it as if it were
-        // a simple component using the above heuristics. If an error occurs during this process, we assume
-        // that the class wasn't simple, then try again with the "complex" heuristics.
-        try {
-          value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
-        } catch (error) {
-          // if we get back a SimpleClassBailOut error, we know that this class component
-          // wasn't a simple one and is likely to be a complex class component instead
-          if (error instanceof SimpleClassBailOut) {
-            // the component was not simple, so we continue with complex case
-          } else {
-            // else we rethrow the error
-            throw error;
-          }
-        }
-      }
-      // handle the complex class component if there is not value
-      if (value === undefined) {
-        value = this._renderComplexClassComponent(
+      if (this.componentTreeConfig.firstRenderOnly) {
+        value = this._renderClassComponentForFirstRenderOnly(
           componentType,
           props,
           context,
-          classMetadata,
           branchStatus,
           branchState,
           evaluatedNode
         );
+      } else {
+        value = this._renderClassComponent(componentType, props, context, branchStatus, branchState, evaluatedNode);
       }
     } else {
       value = this._renderFunctionalComponent(componentType, props, context);
@@ -473,7 +525,9 @@ export class Reconciler {
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
       // we call value reactElement, to make it clearer what we're dealing with in this block
-      let reactElement = value;
+      let reactElement = this.componentTreeConfig.firstRenderOnly
+        ? sanitizeReactElementForFirstRenderOnly(this.realm, value)
+        : value;
       let typeValue = Get(this.realm, reactElement, "type");
       let propsValue = Get(this.realm, reactElement, "props");
       let refValue = Get(this.realm, reactElement, "ref");

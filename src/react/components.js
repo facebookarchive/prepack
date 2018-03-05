@@ -16,10 +16,11 @@ import {
   ObjectValue,
   AbstractObjectValue,
   SymbolValue,
+  NativeFunctionValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { valueIsClassComponent, deleteRefAndKeyFromProps } from "./utils";
+import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
@@ -153,6 +154,47 @@ function deeplyApplyInstancePrototypeProperties(
   }
 }
 
+export function createClassInstanceForFirstRenderOnly(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue,
+  props: ObjectValue | AbstractValue,
+  context: ObjectValue | AbstractValue
+): ObjectValue {
+  let instance = Construct(realm, componentType, [props, context]);
+  invariant(instance instanceof ObjectValue);
+  instance.refuseSerialization = true;
+  // assign props
+  Properties.Set(realm, instance, "props", props, true);
+  // assign context
+  Properties.Set(realm, instance, "context", context, true);
+  // assign a mocked setState
+  let setState = new NativeFunctionValue(realm, undefined, `setState`, 1, (_context, [state, callback]) => {
+    let stateToUpdate = state;
+    let currentState = Get(realm, instance, "state");
+    invariant(currentState instanceof ObjectValue);
+
+    if (state instanceof ECMAScriptSourceFunctionValue && state.$Call) {
+      stateToUpdate = state.$Call(instance, [currentState]);
+    }
+    if (stateToUpdate instanceof ObjectValue) {
+      for (let [key, binding] of stateToUpdate.properties) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
+          let value = getProperty(realm, stateToUpdate, key);
+          Properties.Set(realm, currentState, key, value, true);
+        }
+      }
+    }
+    if (callback instanceof ECMAScriptSourceFunctionValue && callback.$Call) {
+      callback.$Call(instance, []);
+    }
+    return realm.intrinsics.undefined;
+  });
+  Properties.Set(realm, instance, "setState", setState, true);
+
+  instance.refuseSerialization = false;
+  return instance;
+}
+
 export function createClassInstance(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue,
@@ -192,17 +234,17 @@ export function evaluateClassConstructor(
   realm.evaluatePure(() =>
     realm.evaluateForEffects(
       () => {
-        let instanceObject = Construct(realm, constructorFunc, [props, context]);
-        invariant(instanceObject instanceof ObjectValue);
-        for (let [propertyName] of instanceObject.properties) {
+        let instance = Construct(realm, constructorFunc, [props, context]);
+        invariant(instance instanceof ObjectValue);
+        for (let [propertyName] of instance.properties) {
           if (!whitelistedProperties.has(propertyName)) {
             instanceProperties.add(propertyName);
           }
         }
-        for (let [symbol] of instanceObject.symbols) {
+        for (let [symbol] of instance.symbols) {
           instanceSymbols.add(symbol);
         }
-        return instanceObject;
+        return instance;
       },
       /*state*/ null,
       `react component constructor: ${constructorFunc.getName()}`
