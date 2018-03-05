@@ -52,9 +52,9 @@ function AbstractCaseBlockEvaluation(
     // we start at the case we've been asked to evaluate, and process statements
     // until there is either a break statement or exception thrown (this means we
     // implicitly fall through correctly in the absence of a break statement).
-    while (caseIndex < cases.length && !(result instanceof Completion)) {
+    while (caseIndex < cases.length) {
       let c = cases[caseIndex];
-      for (let i = 0; i < c.consequent.length && !(result instanceof Completion); ++i) {
+      for (let i = 0; i < c.consequent.length; i += 1) {
         let node = c.consequent[i];
         let r = env.evaluateCompletion(node, strictCode);
         invariant(!(r instanceof Reference));
