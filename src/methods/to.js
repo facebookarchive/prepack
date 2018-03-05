@@ -34,7 +34,6 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { Havoc } from "../singletons.js";
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,
@@ -781,13 +780,10 @@ export class ToImplementation {
 
   ToPropertyKeyPartial(realm: Realm, arg: Value): AbstractValue | SymbolValue | string /* but not StringValue */ {
     if (arg instanceof ConcreteValue) return this.ToPropertyKey(realm, arg);
-    if (arg.mightNotBeString() && arg.mightNotBeNumber() && !arg.isSimpleObject()) {
-      // if we are in pure scope, we can assume that the property
+    // if we are in pure scope, we can assume that the property
       // won't cause side-effects if it's not simple
-      if (!realm.isInPureScope()) {
-        arg.throwIfNotConcrete();
-      }
-      Havoc.value(realm, arg);
+    if (arg.mightNotBeString() && arg.mightNotBeNumber() && !arg.isSimpleObject() && !realm.isInPureScope()) {
+      arg.throwIfNotConcrete();
     }
     invariant(arg instanceof AbstractValue);
     return arg;

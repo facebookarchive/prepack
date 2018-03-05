@@ -1380,6 +1380,8 @@ export class Reference {
           refName.mightNotBeString() &&
           refName.mightNotBeNumber() &&
           !refName.isSimpleObject() &&
+          // if the base is a simple abstract object we but
+          // the refName is not simple, this is also okay
           (base instanceof AbstractValue && !base.isSimpleObject())
         )
     );

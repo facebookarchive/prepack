@@ -29,8 +29,6 @@ function createPropsObject(
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   // start by having key and ref deleted, if they actually exist, they will be add later
   deleteRefAndKeyFromProps(realm, props);
-  // props can never have getters or setters on them
-  props.makeSimple();
   let key = realm.intrinsics.null;
   let ref = realm.intrinsics.null;
 
