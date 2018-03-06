@@ -77,23 +77,18 @@ let reactCode = `
       return config.key !== undefined;
     }
 
-    class Component {
-      constructor(props, context) {
-        this.props = props;
-        this.context = context;
-        this.refs = {};
-      }
-      getChildContext() {}
+    function Component(props, context) {
+      this.props = props;
+      this.context = context;
+      this.refs = {};
     }
-
+    
     Component.prototype.isReactComponent = {};
 
-    class PureComponent {
-      constructor(props, context) {
-        this.props = props;
-        this.context = context;
-        this.refs = {};
-      }
+    function PureComponent(props, context) {
+      this.props = props;
+      this.context = context;
+      this.refs = {};
     }
 
     PureComponent.prototype.isReactComponent = {};

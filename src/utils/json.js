@@ -12,7 +12,7 @@ type JSONValue = Array<JSONValue> | string | number | JSON;
 type JSON = { [key: string]: JSONValue };
 
 // this will mutate the original JSON object
-export function mergeAdacentJSONTextNodes(node: JSON, firstRenderOnly: boolean, visitedNodes?: Set<JSON>) {
+export function mergeAdacentJSONTextNodes(node: JSON, includeFunctionBodies: boolean, visitedNodes?: Set<JSON>) {
   if (visitedNodes === undefined) {
     visitedNodes = new Set();
   }
@@ -41,7 +41,7 @@ export function mergeAdacentJSONTextNodes(node: JSON, firstRenderOnly: boolean, 
           arr.push(concatString);
           concatString = null;
         }
-        arr.push(mergeAdacentJSONTextNodes(child, firstRenderOnly, visitedNodes));
+        arr.push(mergeAdacentJSONTextNodes(child, includeFunctionBodies, visitedNodes));
       }
     }
     if (concatString !== null) {
@@ -52,13 +52,13 @@ export function mergeAdacentJSONTextNodes(node: JSON, firstRenderOnly: boolean, 
     for (let key in node) {
       let value = node[key];
       if (typeof value === "function") {
-        if (!firstRenderOnly) {
+        if (!includeFunctionBodies) {
           node[key] = value.toString();
         } else {
           delete node[key];
         }
       } else if (typeof value === "object" && value !== null) {
-        node[key] = mergeAdacentJSONTextNodes(((value: any): JSON), firstRenderOnly, visitedNodes);
+        node[key] = mergeAdacentJSONTextNodes(((value: any): JSON), includeFunctionBodies, visitedNodes);
       }
     }
   }

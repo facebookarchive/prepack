@@ -189,6 +189,7 @@ export function createClassInstanceForFirstRenderOnly(
     }
     return realm.intrinsics.undefined;
   });
+  setState.intrinsicName = "this.setState";
   Properties.Set(realm, instance, "setState", setState, true);
 
   instance.refuseSerialization = false;
