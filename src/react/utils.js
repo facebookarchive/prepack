@@ -447,12 +447,11 @@ export function createReactHintObject(object: ObjectValue, propertyName: string,
   };
 }
 
-export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAScriptSourceFunctionValue {
+export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAScriptSourceFunctionValue | null {
   let _valueIsKnownReactAbstraction = valueIsKnownReactAbstraction(realm, value);
-  invariant(
-    value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction,
-    "only ECMAScriptSourceFunctionValue function values or known React abstract values are supported as React root components"
-  );
+  if (!(value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction)) {
+    return null;
+  }
   if (_valueIsKnownReactAbstraction) {
     invariant(value instanceof AbstractValue);
     let reactHint = realm.react.abstractHints.get(value);
@@ -675,7 +674,7 @@ export function isRenderPropFunctionSelfContained(
 }
 
 export function createReactEvaluatedNode(
-  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "RENDER_PROPS",
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS" | "UNSUPPORTED_COMPLETION",
   name: string
 ): ReactEvaluatedNode {
   return {
@@ -685,10 +684,12 @@ export function createReactEvaluatedNode(
   };
 }
 
-export function getComponentName(
-  realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue | AbstractObjectValue
-): string {
+export function getComponentName(realm: Realm, componentType: Value): string {
+  invariant(
+    componentType instanceof ECMAScriptSourceFunctionValue ||
+      componentType instanceof AbstractObjectValue ||
+      componentType instanceof AbstractValue
+  );
   if (componentType.__originalName) {
     return componentType.__originalName;
   }
@@ -751,18 +752,19 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
   // when dealing with host nodes, we want to sanitize them futher
   if (typeValue instanceof StringValue) {
     let propsValue = Get(realm, reactElement, "props");
-    invariant(propsValue instanceof ObjectValue);
-    // remove all values that apart from string/number/boolean
-    for (let [propName] of propsValue.properties) {
-      invariant(propsValue instanceof ObjectValue);
-      let value = getProperty(realm, propsValue, propName);
+    if (propsValue instanceof ObjectValue) {
+      // remove all values apart from string/number/boolean
+      for (let [propName] of propsValue.properties) {
+        invariant(propsValue instanceof ObjectValue);
+        let value = getProperty(realm, propsValue, propName);
 
-      // skip children and style
-      if (propName === "children" || propName === "style") {
-        continue;
-      }
-      if (!(value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue)) {
-        propsValue.$Delete(propName);
+        // skip children and style
+        if (propName === "children" || propName === "style") {
+          continue;
+        }
+        if (!(value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue)) {
+          propsValue.$Delete(propName);
+        }
       }
     }
   }

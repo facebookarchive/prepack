@@ -130,31 +130,33 @@ export class Reconciler {
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         return result;
       } catch (error) {
-        // if we get an error and we're not dealing with the root
-        // rather than throw a FatalError, we log the error as a warning
-        // and continue with the other tree roots
-        // TODO: maybe control what levels gets treated as warning/error?
-        if (!isRoot) {
-          this.logger.logWarning(
-            componentType,
-            `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
-          );
-          return this.realm.intrinsics.undefined;
-        }
-        // if there was a bail-out on the root component in this reconcilation process, then this
-        // should be an invariant as the user has explicitly asked for this component to get folded
         if (error instanceof Completion) {
-          this.logger.logCompletion(error);
-          throw error;
-        } else if (error instanceof ExpectedBailOut) {
-          let diagnostic = new CompilerDiagnostic(
-            `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
-            this.realm.currentLocation,
-            "PP0020",
-            "FatalError"
-          );
-          this.realm.handleError(diagnostic);
-          if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
+          // this.logger.logCompletion(error);
+          evaluatedRootNode.status = "UNSUPPORTED_COMPLETION";
+          return this.realm.intrinsics.undefined;
+        } else {
+          // if we get an error and we're not dealing with the root
+          // rather than throw a FatalError, we log the error as a warning
+          // and continue with the other tree roots
+          // TODO: maybe control what levels gets treated as warning/error?
+          if (!isRoot) {
+            this.logger.logWarning(
+              componentType,
+              `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
+            );
+            evaluatedRootNode.status = "BAIL-OUT";
+            return this.realm.intrinsics.undefined;
+          }
+          if (error instanceof ExpectedBailOut) {
+            let diagnostic = new CompilerDiagnostic(
+              `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
+              this.realm.currentLocation,
+              "PP0020",
+              "FatalError"
+            );
+            this.realm.handleError(diagnostic);
+            if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
+          }
         }
         throw error;
       }
@@ -383,13 +385,13 @@ export class Reconciler {
   ): Value {
     // create a new simple instance of this React class component
     let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context);
-    // get the "componentWillMount" method off the instance
+    // get the "componentWillMount" and "render" methods off the instance
     let componentWillMount = Get(this.realm, instance, "componentWillMount");
+    let renderMethod = Get(this.realm, instance, "render");
+
     if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
       componentWillMount.$Call(instance, []);
     }
-    // get the "render" method off the instance
-    let renderMethod = Get(this.realm, instance, "render");
     invariant(
       renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
       "Expected render method to be a FunctionValue with $Call method"
@@ -406,6 +408,7 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ) {
+    this.statistics.componentsEvaluated++;
     if (valueIsKnownReactAbstraction(this.realm, componentType)) {
       invariant(componentType instanceof AbstractValue);
       this._queueNewComponentTree(componentType, evaluatedNode);
@@ -565,9 +568,9 @@ export class Reconciler {
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
-        invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
         let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
         evaluatedNode.children.push(evaluatedChildNode);
+        evaluatedChildNode.status = "BAIL-OUT";
         this._queueNewComponentTree(typeValue, evaluatedChildNode);
         this._assignBailOutMessage(reactElement, `Bail-out: refs are not supported on <Components />`);
         return reactElement;
@@ -603,7 +606,6 @@ export class Reconciler {
         let result;
         switch (renderStrategy) {
           case "NORMAL": {
-            invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
             let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
             evaluatedNode.children.push(evaluatedChildNode);
             let render = this._renderComponent(
@@ -652,7 +654,6 @@ export class Reconciler {
         if (error instanceof NewComponentTreeBranch) {
           // NO-OP (we don't queue a newComponentTree as this was already done)
         } else {
-          invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
           let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
           evaluatedNode.children.push(evaluatedChildNode);
           this._queueNewComponentTree(typeValue, evaluatedChildNode);
