@@ -753,7 +753,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
   if (typeValue instanceof StringValue) {
     let propsValue = Get(realm, reactElement, "props");
     if (propsValue instanceof ObjectValue) {
-      // remove all values that apart from string/number/boolean
+      // remove all values apart from string/number/boolean
       for (let [propName] of propsValue.properties) {
         invariant(propsValue instanceof ObjectValue);
         let value = getProperty(realm, propsValue, propName);
