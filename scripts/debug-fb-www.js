@@ -25,7 +25,9 @@ let errorsCaptured = [];
 let prepackOptions = {
   errorHandler: diag => {
     errorsCaptured.push(diag);
-    return "Fail";
+    if (diag.severity !== "Warning" && diag.severity !== "Information") {
+      return "Fail";
+    }
   },
   compatibility: "fb-www",
   internalDebug: true,
@@ -39,7 +41,7 @@ let prepackOptions = {
   abstractEffectsInAdditionalFunctions: true,
   simpleClosures: true,
 };
-let inputPath = path.resolve("fb-www/input.js");
+let inputPath = path.resolve("fb-www/ufi.js");
 let outputPath = path.resolve("fb-www/output.js");
 
 function compileSource(source) {
@@ -81,6 +83,7 @@ function printReactEvaluationGraph(evaluatedRootNode, depth) {
 compileFile()
   .then(result => {
     console.log("\nCompilation complete!");
+    console.log(`Evaluated Components: ${result.componentsEvaluated}`);
     console.log(`Optimized Trees: ${result.optimizedTrees}`);
     console.log(`Inlined Components: ${result.inlinedComponents}\n`);
     console.log(`Evaluated Tree:`);

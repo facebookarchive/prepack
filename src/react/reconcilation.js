@@ -139,6 +139,7 @@ export class Reconciler {
             componentType,
             `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
           );
+          evaluatedRootNode.status = "BAIL-OUT";
           return this.realm.intrinsics.undefined;
         }
         // if there was a bail-out on the root component in this reconcilation process, then this
@@ -383,13 +384,13 @@ export class Reconciler {
   ): Value {
     // create a new simple instance of this React class component
     let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context);
-    // get the "componentWillMount" method off the instance
+    // get the "componentWillMount" and "render" methods off the instance
     let componentWillMount = Get(this.realm, instance, "componentWillMount");
+    let renderMethod = Get(this.realm, instance, "render");
+
     if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
       componentWillMount.$Call(instance, []);
     }
-    // get the "render" method off the instance
-    let renderMethod = Get(this.realm, instance, "render");
     invariant(
       renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
       "Expected render method to be a FunctionValue with $Call method"
@@ -406,6 +407,7 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ) {
+    this.statistics.componentsEvaluated++;
     if (valueIsKnownReactAbstraction(this.realm, componentType)) {
       invariant(componentType instanceof AbstractValue);
       this._queueNewComponentTree(componentType, evaluatedNode);
@@ -565,7 +567,6 @@ export class Reconciler {
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
-        invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
         let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
         evaluatedNode.children.push(evaluatedChildNode);
         this._queueNewComponentTree(typeValue, evaluatedChildNode);
@@ -603,7 +604,6 @@ export class Reconciler {
         let result;
         switch (renderStrategy) {
           case "NORMAL": {
-            invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
             let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
             evaluatedNode.children.push(evaluatedChildNode);
             let render = this._renderComponent(
@@ -652,7 +652,6 @@ export class Reconciler {
         if (error instanceof NewComponentTreeBranch) {
           // NO-OP (we don't queue a newComponentTree as this was already done)
         } else {
-          invariant(typeValue instanceof ECMAScriptSourceFunctionValue || typeValue instanceof AbstractObjectValue);
           let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
           evaluatedNode.children.push(evaluatedChildNode);
           this._queueNewComponentTree(typeValue, evaluatedChildNode);

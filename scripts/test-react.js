@@ -53,7 +53,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
   let prepackOptions = {
     errorHandler: diag => {
       errorsCaptured.push(diag);
-      return "Fail";
+      if (diag.severity !== "Warning" && diag.severity !== "Information") {
+        return "Fail";
+      }
     },
     compatibility: "fb-www",
     internalDebug: true,
