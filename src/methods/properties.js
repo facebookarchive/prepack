@@ -1007,7 +1007,7 @@ export class PropertiesImplementation {
       }
       if (!(base instanceof ObjectValue || base instanceof AbstractObjectValue)) {
         let diagnostic = new CompilerDiagnostic(
-          "cannot PutValue on a base value that is not an object or abstract object",
+          "cannot put a value on a base value that is not an object or abstract object",
           realm.currentLocation,
           "PP0027",
           "FatalError"
