@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { ValuesDomain } from "../domains/index.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
@@ -25,8 +25,14 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Environment, To } from "../singletons.js";
-import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
+import { Environment, Havoc, To } from "../singletons.js";
+import type {
+  BabelBinaryOperator,
+  BabelNodeBinaryExpression,
+  BabelNodeExpression,
+  BabelNodeSourceLocation,
+} from "babel-types";
+import * as t from "babel-types";
 import invariant from "../invariant.js";
 
 export default function(
@@ -167,8 +173,47 @@ export function computeBinary(
   }
 
   if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
-    // generate error if binary operation might throw or have side effects
-    getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+    if (realm.isInPureScope()) {
+      // If we're in pure mode we can recover even if this operation might not be pure.
+      // To do that, we'll temporarily override the error handler.
+      const previousErrorHandler = realm.errorHandler;
+      let isPure = true;
+      realm.errorHandler = diagnostic => {
+        isPure = false;
+        return "Recover";
+      };
+      try {
+        const valueType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+        if (!isPure) {
+          // If this ended up reporting an error, it might not be pure, so we'll leave it in
+          // as a temporal operation with a known return type.
+
+          // Some of these values may trigger side-effectful user code such as valueOf.
+          // To be safe, we have to Havoc them. However, "in" and "instanceof" cannot
+          // have side-effects other than throw so we don't need to havoc them.
+          if (op !== "in" && op !== "instanceof") {
+            Havoc.value(realm, lval, loc);
+            Havoc.value(realm, rval, loc);
+          }
+          return realm.evaluateWithPossibleThrowCompletion(
+            () =>
+              AbstractValue.createTemporalFromBuildFunction(
+                realm,
+                valueType,
+                [lval, rval],
+                ([lnode, rnode]: Array<BabelNodeExpression>) => t.binaryExpression(op, lnode, rnode)
+              ),
+            TypesDomain.topVal,
+            ValuesDomain.topVal
+          );
+        }
+      } finally {
+        realm.errorHandler = previousErrorHandler;
+      }
+    } else {
+      // generate error if binary operation might throw or have side effects
+      getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+    }
     return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
   }
 
