@@ -684,10 +684,12 @@ export function createReactEvaluatedNode(
   };
 }
 
-export function getComponentName(
-  realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue | AbstractObjectValue | AbstractValue
-): string {
+export function getComponentName(realm: Realm, componentType: Value): string {
+  invariant(
+    componentType instanceof ECMAScriptSourceFunctionValue ||
+      componentType instanceof AbstractObjectValue ||
+      componentType instanceof AbstractValue
+  );
   if (componentType.__originalName) {
     return componentType.__originalName;
   }

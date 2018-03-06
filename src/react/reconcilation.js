@@ -130,32 +130,32 @@ export class Reconciler {
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         return result;
       } catch (error) {
-        // if we get an error and we're not dealing with the root
-        // rather than throw a FatalError, we log the error as a warning
-        // and continue with the other tree roots
-        // TODO: maybe control what levels gets treated as warning/error?
-        if (!isRoot) {
-          this.logger.logWarning(
-            componentType,
-            `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
-          );
-          evaluatedRootNode.status = "BAIL-OUT";
-          return this.realm.intrinsics.undefined;
-        }
-        // if there was a bail-out on the root component in this reconcilation process, then this
-        // should be an invariant as the user has explicitly asked for this component to get folded
         if (error instanceof Completion) {
           this.logger.logCompletion(error);
           throw error;
-        } else if (error instanceof ExpectedBailOut) {
-          let diagnostic = new CompilerDiagnostic(
-            `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
-            this.realm.currentLocation,
-            "PP0020",
-            "FatalError"
-          );
-          this.realm.handleError(diagnostic);
-          if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
+        } else {
+          // if we get an error and we're not dealing with the root
+          // rather than throw a FatalError, we log the error as a warning
+          // and continue with the other tree roots
+          // TODO: maybe control what levels gets treated as warning/error?
+          if (!isRoot) {
+            this.logger.logWarning(
+              componentType,
+              `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
+            );
+            evaluatedRootNode.status = "BAIL-OUT";
+            return this.realm.intrinsics.undefined;
+          }
+          if (error instanceof ExpectedBailOut) {
+            let diagnostic = new CompilerDiagnostic(
+              `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
+              this.realm.currentLocation,
+              "PP0020",
+              "FatalError"
+            );
+            this.realm.handleError(diagnostic);
+            if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
+          }
         }
         throw error;
       }

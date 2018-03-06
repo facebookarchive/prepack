@@ -56,6 +56,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       if (diag.severity !== "Warning" && diag.severity !== "Information") {
         return "Fail";
       }
+      return "Recover";
     },
     compatibility: "fb-www",
     internalDebug: true,
