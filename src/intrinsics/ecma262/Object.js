@@ -9,6 +9,8 @@
 
 /* @flow */
 
+import { AbruptCompletion, PossiblyNormalCompletion } from "../../completions.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
@@ -21,6 +23,7 @@ import {
   StringValue,
   BooleanValue,
   SymbolValue,
+  Value,
 } from "../../values/index.js";
 import {
   IsExtensible,
@@ -34,7 +37,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties as Props, To } from "../../singletons.js";
-import type { BabelNodeExpression } from "babel-types";
+import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
@@ -57,7 +60,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
+  let ObjectAssignInner = (context, [target, ...sources]) => {
     // 1. Let to be ? ToObject(target).
     let to = To.ToObjectPartial(realm, target);
     let to_must_be_partial = false;
@@ -180,6 +183,60 @@ export default function(realm: Realm): NativeFunctionValue {
       }
     }
     return to;
+  };
+  let ObjectAssign = func.defineNativeMethod("assign", 2, (context, args) => {
+    if (!realm.useAbstractInterpretation) {
+      return ObjectAssignInner(context, args);
+    }
+    let effects;
+    try {
+      effects = realm.evaluateForEffects(() => {
+        return ObjectAssignInner(context, args);
+      });
+    } catch (e) {
+      if (realm.isInPureScope() && e instanceof FatalError) {
+        return realm.evaluateWithPossibleThrowCompletion(
+          () => {
+            let result = AbstractValue.createTemporalFromBuildFunction(
+              realm,
+              ObjectValue,
+              [ObjectAssign, ...args],
+              ([methodNode, ..._args]: Array<BabelNodeExpression>) => {
+                return t.callExpression(
+                  methodNode,
+                  // t.callExpression should take a $ReadOnlyArray but doesn't,
+                  // so the type parameter is invariant and we need a cast
+                  ((_args: any): Array<BabelNodeExpression | BabelNodeSpreadElement>)
+                );
+              }
+            );
+            invariant(result instanceof AbstractObjectValue);
+            if (args[0].isSimpleObject()) {
+              result.makeSimple();
+            }
+            return result;
+          },
+          TypesDomain.topVal,
+          ValuesDomain.topVal
+        );
+      }
+      throw e;
+    }
+    let completion = effects[0];
+    if (completion instanceof PossiblyNormalCompletion) {
+      // in this case one of the branches may complete abruptly, which means that
+      // not all control flow branches join into one flow at this point.
+      // Consequently we have to continue tracking changes until the point where
+      // all the branches come together into one.
+      completion = realm.composeWithSavedCompletion(completion);
+    }
+    // Note that the effects of (non joining) abrupt branches are not included
+    // in effects, but are tracked separately inside completion.
+    realm.applyEffects(effects);
+    // return or throw completion
+    if (completion instanceof AbruptCompletion) throw completion;
+    invariant(completion instanceof Value);
+    return completion;
   });
 
   // ECMA262 19.1.2.2
