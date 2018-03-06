@@ -587,7 +587,8 @@ export default class ObjectValue extends ConcreteValue {
     ) {
       // if P is an abstract value that we don't know about, but we're in pure scope
       // then if the object is simple, then we can safely continue without throwing
-      // the below introspection error
+      // the introspection error below, since converting P to a string is assumed to
+      // be well behaved in a pure scope
       if (!(this.$Realm.isInPureScope() && this.isSimpleObject() && this === Receiver)) {
         AbstractValue.reportIntrospectionError(P, "TODO: #1021");
         throw new FatalError();
