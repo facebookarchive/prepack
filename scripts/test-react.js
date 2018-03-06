@@ -129,7 +129,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     return moduleShim.exports;
   }
 
-  async function runTest(directory, name, data) {
+  async function runTest(directory, name, firstRenderOnly = false, data) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
     if (shouldTranspileSource) {
       source = transpileSource(source);
@@ -161,7 +161,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
-      expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
+      expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+        mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+      );
       expect(nameB).toEqual(nameA);
     }
   }
@@ -197,7 +199,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
   global.console.error = function(...args) {
     let text = args[0];
 
-    if (text) {
+    if (typeof text === "string") {
       for (let excludeError of excludeErrorsContaining) {
         if (text.indexOf(excludeError) !== -1) {
           return;
@@ -486,6 +488,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
     });
 
+    describe("First render only", () => {
+      let directory = "first-render-only";
+
+      it("Simple", async () => {
+        await runTest(directory, "simple.js", true);
+      });
+
+      it("componentWillMount", async () => {
+        await runTest(directory, "will-mount.js", true);
+      });
+    });
+
     describe("fb-www mocks", () => {
       let directory = "mocks";
 
@@ -545,7 +559,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Hacker News app", async () => {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
-        await runTest(directory, "hacker-news.js", data);
+        await runTest(directory, "hacker-news.js", false, data);
       });
     });
   });
