@@ -674,7 +674,7 @@ export function isRenderPropFunctionSelfContained(
 }
 
 export function createReactEvaluatedNode(
-  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS",
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS" | "UNSUPPORTED_COMPLETION",
   name: string
 ): ReactEvaluatedNode {
   return {

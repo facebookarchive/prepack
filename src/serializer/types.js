@@ -153,7 +153,7 @@ export class TimingStatistics {
 
 export type ReactEvaluatedNode = {
   name: string,
-  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS",
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS" | "UNSUPPORTED_COMPLETION",
   children: Array<ReactEvaluatedNode>,
 };
 

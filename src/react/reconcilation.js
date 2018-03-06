@@ -131,8 +131,9 @@ export class Reconciler {
         return result;
       } catch (error) {
         if (error instanceof Completion) {
-          this.logger.logCompletion(error);
-          throw error;
+          // this.logger.logCompletion(error);
+          evaluatedRootNode.status = "UNSUPPORTED_COMPLETION";
+          return this.realm.intrinsics.undefined;
         } else {
           // if we get an error and we're not dealing with the root
           // rather than throw a FatalError, we log the error as a warning
@@ -569,6 +570,7 @@ export class Reconciler {
       if (!(refValue instanceof NullValue)) {
         let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
         evaluatedNode.children.push(evaluatedChildNode);
+        evaluatedChildNode.status = "BAIL-OUT";
         this._queueNewComponentTree(typeValue, evaluatedChildNode);
         this._assignBailOutMessage(reactElement, `Bail-out: refs are not supported on <Components />`);
         return reactElement;
