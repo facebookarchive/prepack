@@ -290,6 +290,58 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output First render only Simple 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output First render only componentWillMount 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Additional functions closure scope capturing 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -2053,6 +2105,58 @@ ReactStatistics {
   ],
   "inlinedComponents": 0,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only Simple 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only componentWillMount 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -3822,6 +3926,58 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output First render only Simple 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output First render only componentWillMount 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Additional functions closure scope capturing 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -5555,6 +5711,58 @@ ReactStatistics {
   ],
   "inlinedComponents": 0,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only Simple 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only componentWillMount 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
 }
 `;
 

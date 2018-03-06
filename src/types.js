@@ -327,7 +327,7 @@ export type ClassComponentMetadata = {
 export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |};
 
 export type ReactComponentTreeConfig = {
-  serverSideRenderOnly: boolean,
+  firstRenderOnly: boolean,
 };
 
 export type DebugServerType = {
