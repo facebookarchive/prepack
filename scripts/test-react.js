@@ -352,7 +352,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Dynamic props", async () => {
-        // await runTest(directory, "dynamic-props.js");
+        await runTest(directory, "dynamic-props.js");
       });
 
       it("Dynamic context", async () => {

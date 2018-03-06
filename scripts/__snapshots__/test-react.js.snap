@@ -684,6 +684,26 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Dynamic props 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Fn",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Event handlers 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -2494,6 +2514,26 @@ ReactStatistics {
         },
       ],
       "name": "Child",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Dynamic props 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Fn",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -4320,6 +4360,26 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Dynamic props 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Fn",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Event handlers 1`] = `
 ReactStatistics {
   "evaluatedRootNodes": Array [
@@ -6100,6 +6160,26 @@ ReactStatistics {
         },
       ],
       "name": "Child",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Dynamic props 1`] = `
+ReactStatistics {
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "name": "Fn",
+          "status": "INLINED",
+        },
+      ],
+      "name": "App",
       "status": "ROOT",
     },
   ],
