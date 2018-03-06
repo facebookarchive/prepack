@@ -285,6 +285,28 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
+  // Internal helper function for tests.
+  // __isAbstractObject(value) checks if a given value is abstract.
+  global.$DefineOwnProperty("__isAbstractObject", {
+    value: new NativeFunctionValue(realm, "global.__isAbstractObject", "__isAbstractObject", 1, (context, [value]) => {
+      return new BooleanValue(realm, value instanceof AbstractObjectValue);
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  // Internal helper function for tests.
+  // __isSimpleObject(value) checks if a given value is abstract.
+  global.$DefineOwnProperty("__isSimpleObject", {
+    value: new NativeFunctionValue(realm, "global.__isSimpleObject", "__isSimpleObject", 1, (context, [value]) => {
+      return new BooleanValue(realm, value.isSimpleObject());
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // __makePartial(object) marks an (abstract) object as partial.
   global.$DefineOwnProperty("__makePartial", {
     value: new NativeFunctionValue(realm, "global.__makePartial", "__makePartial", 1, (context, [object]) => {
