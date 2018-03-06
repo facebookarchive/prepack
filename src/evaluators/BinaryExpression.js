@@ -172,58 +172,64 @@ export function computeBinary(
     }
   }
 
-  if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
-    if (realm.isInPureScope()) {
-      // If we're in pure mode we can recover even if this operation might not be pure.
-      // To do that, we'll temporarily override the error handler.
-      const previousErrorHandler = realm.errorHandler;
-      let isPure = true;
-      realm.errorHandler = diagnostic => {
-        isPure = false;
-        return "Recover";
-      };
-      try {
-        const valueType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-        if (!isPure) {
-          // If this ended up reporting an error, it might not be pure, so we'll leave it in
-          // as a temporal operation with a known return type.
+  const previousErrorHandler = realm.errorHandler;
 
-          // Some of these values may trigger side-effectful user code such as valueOf.
-          // To be safe, we have to Havoc them. However, "in" and "instanceof" cannot
-          // have side-effects other than throw so we don't need to havoc them.
-          if (op !== "in" && op !== "instanceof") {
-            Havoc.value(realm, lval, loc);
-            Havoc.value(realm, rval, loc);
-          }
-          return realm.evaluateWithPossibleThrowCompletion(
-            () =>
-              AbstractValue.createTemporalFromBuildFunction(
-                realm,
-                valueType,
-                [lval, rval],
-                ([lnode, rnode]: Array<BabelNodeExpression>) => t.binaryExpression(op, lnode, rnode)
-              ),
-            TypesDomain.topVal,
-            ValuesDomain.topVal
-          );
-        }
-      } finally {
-        realm.errorHandler = previousErrorHandler;
-      }
-    } else {
+  let isPure = true;
+  if (realm.isInPureScope()) {
+    // If we're in pure mode we can recover even if this operation might not be pure.
+    // To do that, we'll temporarily override the error handler.
+    realm.errorHandler = diagnostic => {
+      isPure = false;
+      return "Recover";
+    };
+  }
+
+  let result;
+  let resultType;
+  try {
+    if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
       // generate error if binary operation might throw or have side effects
-      getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+      resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+      result = AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+    } else {
+      // ECMA262 12.10.3
+
+      // 5. If Type(rval) is not Object, throw a TypeError exception.
+      if (op === "in" && !(rval instanceof ObjectValue)) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
+      invariant(lval instanceof ConcreteValue);
+      invariant(rval instanceof ConcreteValue);
+      result = ValuesDomain.computeBinary(realm, op, lval, rval);
+      resultType = result.getType();
     }
-    return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+  } finally {
+    realm.errorHandler = previousErrorHandler;
   }
 
-  // ECMA262 12.10.3
-
-  // 5. If Type(rval) is not Object, throw a TypeError exception.
-  if (op === "in" && !(rval instanceof ObjectValue)) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+  if (isPure) {
+    return result;
   }
-  invariant(lval instanceof ConcreteValue);
-  invariant(rval instanceof ConcreteValue);
-  return ValuesDomain.computeBinary(realm, op, lval, rval);
+
+  // If this ended up reporting an error, it might not be pure, so we'll leave it in
+  // as a temporal operation with a known return type.
+
+  // Some of these values may trigger side-effectful user code such as valueOf.
+  // To be safe, we have to Havoc them. However, "in" and "instanceof" cannot
+  // have side-effects other than throw so we don't need to havoc them.
+  if (op !== "in" && op !== "instanceof") {
+    Havoc.value(realm, lval, loc);
+    Havoc.value(realm, rval, loc);
+  }
+  return realm.evaluateWithPossibleThrowCompletion(
+    () =>
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        resultType,
+        [lval, rval],
+        ([lnode, rnode]: Array<BabelNodeExpression>) => t.binaryExpression(op, lnode, rnode)
+      ),
+    TypesDomain.topVal,
+    ValuesDomain.topVal
+  );
 }
