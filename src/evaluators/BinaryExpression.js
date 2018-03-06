@@ -173,81 +173,82 @@ export function computeBinary(
     }
   }
 
-  const previousErrorHandler = realm.errorHandler;
+  let resultType;
+  const compute = () => {
+    if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
+      // generate error if binary operation might throw or have side effects
+      resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+      return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+    } else {
+      // ECMA262 12.10.3
 
-  let isPure = true;
+      // 5. If Type(rval) is not Object, throw a TypeError exception.
+      if (op === "in" && !(rval instanceof ObjectValue)) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
+      invariant(lval instanceof ConcreteValue);
+      invariant(rval instanceof ConcreteValue);
+      const result = ValuesDomain.computeBinary(realm, op, lval, rval);
+      resultType = result.getType();
+      return result;
+    }
+  };
+
   if (realm.isInPureScope()) {
     // If we're in pure mode we can recover even if this operation might not be pure.
     // To do that, we'll temporarily override the error handler.
+    const previousErrorHandler = realm.errorHandler;
+    let isPure = true;
     realm.errorHandler = diagnostic => {
       isPure = false;
       return "Recover";
     };
-  }
-
-  let resultType;
-  let effects;
-  try {
-    effects = realm.evaluateForEffects(() => {
-      if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
-        // generate error if binary operation might throw or have side effects
-        resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-        return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
-      } else {
-        // ECMA262 12.10.3
-
-        // 5. If Type(rval) is not Object, throw a TypeError exception.
-        if (op === "in" && !(rval instanceof ObjectValue)) {
-          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-        }
-        invariant(lval instanceof ConcreteValue);
-        invariant(rval instanceof ConcreteValue);
-        const result = ValuesDomain.computeBinary(realm, op, lval, rval);
-        resultType = result.getType();
-        return result;
-      }
-    });
-  } finally {
-    realm.errorHandler = previousErrorHandler;
-  }
-
-  if (isPure) {
-    let completion = effects[0];
-    if (completion instanceof PossiblyNormalCompletion) {
-      // in this case one of the branches may complete abruptly, which means that
-      // not all control flow branches join into one flow at this point.
-      // Consequently we have to continue tracking changes until the point where
-      // all the branches come together into one.
-      completion = realm.composeWithSavedCompletion(completion);
+    let effects;
+    try {
+      effects = realm.evaluateForEffects(compute);
+    } finally {
+      realm.errorHandler = previousErrorHandler;
     }
-    // Note that the effects of (non joining) abrupt branches are not included
-    // in effects, but are tracked separately inside completion.
-    realm.applyEffects(effects);
-    // return or throw completion
-    if (completion instanceof AbruptCompletion) throw completion;
-    invariant(completion instanceof Value);
-    return completion;
-  }
 
-  // If this ended up reporting an error, it might not be pure, so we'll leave it in
-  // as a temporal operation with a known return type.
+    if (isPure) {
+      let completion = effects[0];
+      if (completion instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        completion = realm.composeWithSavedCompletion(completion);
+      }
+      // Note that the effects of (non joining) abrupt branches are not included
+      // in effects, but are tracked separately inside completion.
+      realm.applyEffects(effects);
+      // return or throw completion
+      if (completion instanceof AbruptCompletion) throw completion;
+      invariant(completion instanceof Value);
+      return completion;
+    }
 
-  // Some of these values may trigger side-effectful user code such as valueOf.
-  // To be safe, we have to Havoc them. However, "in" and "instanceof" cannot
-  // have side-effects other than throw so we don't need to havoc them.
-  if (op !== "in" && op !== "instanceof") {
-    Havoc.value(realm, lval, loc);
-    Havoc.value(realm, rval, loc);
+    // If this ended up reporting an error, it might not be pure, so we'll leave it in
+    // as a temporal operation with a known return type.
+
+    // Some of these values may trigger side-effectful user code such as valueOf.
+    // To be safe, we have to Havoc them. However, "in" and "instanceof" cannot
+    // have side-effects other than throw so we don't need to havoc them.
+    if (op !== "in" && op !== "instanceof") {
+      Havoc.value(realm, lval, loc);
+      Havoc.value(realm, rval, loc);
+    }
+    return realm.evaluateWithPossibleThrowCompletion(
+      () =>
+        AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          resultType,
+          [lval, rval],
+          ([lnode, rnode]: Array<BabelNodeExpression>) => t.binaryExpression(op, lnode, rnode)
+        ),
+      TypesDomain.topVal,
+      ValuesDomain.topVal
+    );
   }
-  return realm.evaluateWithPossibleThrowCompletion(
-    () =>
-      AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        resultType,
-        [lval, rval],
-        ([lnode, rnode]: Array<BabelNodeExpression>) => t.binaryExpression(op, lnode, rnode)
-      ),
-    TypesDomain.topVal,
-    ValuesDomain.topVal
-  );
+  return compute();
 }
