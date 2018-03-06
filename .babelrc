@@ -1,9 +1,16 @@
 {
   "presets": [
-    "env",
-    "react"
+    ["env", {
+      "targets": {
+        "node": "6.10"
+      }
+    }]
   ],
   "plugins": [
+    "syntax-jsx",
+    "transform-flow-strip-types",
+    "transform-react-jsx",
+    "transform-react-display-name",
     "transform-class-properties",
     "transform-object-rest-spread"
   ]
