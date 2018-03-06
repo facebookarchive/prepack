@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { ValuesDomain, TypesDomain } from "../domains/index.js";
+import { ValuesDomain } from "../domains/index.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Environment, Havoc, To } from "../singletons.js";
+import { Environment, To } from "../singletons.js";
 import type { BabelNodeBinaryExpression, BabelBinaryOperator, BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 
@@ -57,21 +57,10 @@ export function getPureBinaryOperationResultType(
   lloc: ?BabelNodeSourceLocation,
   rloc: ?BabelNodeSourceLocation
 ): typeof Value {
-  function havocIfPureAndReportErrorIfNot(
-    purityTest: (Realm, Value) => boolean,
-    typeIfPure: typeof Value
-  ): typeof Value {
+  function reportErrorIfNotPure(purityTest: (Realm, Value) => boolean, typeIfPure: typeof Value): typeof Value {
     let leftPure = purityTest(realm, lval);
     let rightPure = purityTest(realm, rval);
     if (leftPure && rightPure) return typeIfPure;
-
-    if (realm.isInPureScope()) {
-      // Allow unknown side effects on lval/rval, but assume no other side effects will occur
-      if (!leftPure) Havoc.value(realm, lval);
-      if (!rightPure) Havoc.value(realm, rval);
-      return typeIfPure;
-    }
-
     let loc = !leftPure ? lloc : rloc;
     let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
     if (realm.handleError(error) === "Recover") {
@@ -83,44 +72,32 @@ export function getPureBinaryOperationResultType(
   if (op === "+") {
     let ltype = To.GetToPrimitivePureResultType(realm, lval);
     let rtype = To.GetToPrimitivePureResultType(realm, rval);
-
-    function recoverWithValue() {
-      // Assume that the unknown value is actually a primitive or otherwise a well behaved object.
-      ltype = lval.getType();
-      rtype = rval.getType();
-      if (ltype === StringValue || rtype === StringValue) return StringValue;
-      if (ltype === IntegralValue && rtype === IntegralValue) return IntegralValue;
-      if ((ltype === NumberValue || ltype === IntegralValue) && (rtype === NumberValue || rtype === IntegralValue))
-        return NumberValue;
-
-      return Value;
-    }
-
-    if (realm.isInPureScope()) {
-      // Allow unknown side effects on lval/rval, but assume no other side effects will occur
-      if (!ltype) Havoc.value(realm, lval);
-      if (!rtype) Havoc.value(realm, rval);
-      return recoverWithValue();
-    }
-
     if (ltype === undefined || rtype === undefined) {
       let loc = ltype === undefined ? lloc : rloc;
       let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
       if (realm.handleError(error) === "Recover") {
-        return recoverWithValue();
+        // Assume that the unknown value is actually a primitive or otherwise a well behaved object.
+        ltype = lval.getType();
+        rtype = rval.getType();
+        if (ltype === StringValue || rtype === StringValue) return StringValue;
+        if (ltype === IntegralValue && rtype === IntegralValue) return IntegralValue;
+        if ((ltype === NumberValue || ltype === IntegralValue) && (rtype === NumberValue || rtype === IntegralValue))
+          return NumberValue;
+
+        return Value;
       }
       throw new FatalError();
     }
     if (ltype === StringValue || rtype === StringValue) return StringValue;
     return NumberValue;
   } else if (op === "<" || op === ">" || op === ">=" || op === "<=") {
-    return havocIfPureAndReportErrorIfNot(To.IsToPrimitivePure.bind(To), BooleanValue);
+    return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "!=" || op === "==") {
     let ltype = lval.getType();
     let rtype = rval.getType();
     if (ltype === NullValue || ltype === UndefinedValue || rtype === NullValue || rtype === UndefinedValue)
       return BooleanValue;
-    return havocIfPureAndReportErrorIfNot(To.IsToPrimitivePure.bind(To), BooleanValue);
+    return reportErrorIfNotPure(To.IsToPrimitivePure.bind(To), BooleanValue);
   } else if (op === "===" || op === "!==") {
     return BooleanValue;
   } else if (
@@ -136,7 +113,7 @@ export function getPureBinaryOperationResultType(
     op === "*" ||
     op === "-"
   ) {
-    return havocIfPureAndReportErrorIfNot(To.IsToNumberPure.bind(To), NumberValue);
+    return reportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
       let error = new CompilerDiagnostic(
@@ -191,18 +168,7 @@ export function computeBinary(
 
   if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
     // generate error if binary operation might throw or have side effects
-    if (realm.isInPureScope()) {
-      realm.evaluateWithPossibleThrowCompletion(
-        () => {
-          getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-          return realm.intrinsics.undefined;
-        },
-        TypesDomain.topVal,
-        ValuesDomain.topVal
-      );
-    } else {
-      getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-    }
+    getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
     return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
   }
 
