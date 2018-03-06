@@ -452,12 +452,6 @@ export class ResidualHeapVisitor {
     if (isClass && val.$HomeObject instanceof ObjectValue) {
       this._visitClass(val, val.$HomeObject);
     }
-    this.functionInstances.set(val, {
-      residualFunctionBindings,
-      initializationStatements: [],
-      functionValue: val,
-      scopeInstances: new Map(),
-    });
   }
 
   // Addresses the case:
@@ -944,7 +938,7 @@ export class ResidualHeapVisitor {
     this.additionalRoots = new Map();
 
     let modifiedBindingInfo = new Map();
-    let [, generator, , , createdObjects] = additionalEffects.effects;
+    let [result, generator, , , createdObjects] = additionalEffects.effects;
 
     invariant(funcInstance !== undefined);
     invariant(functionInfo !== undefined);
@@ -953,6 +947,7 @@ export class ResidualHeapVisitor {
       captures: functionInfo.unbound,
       modifiedBindings: modifiedBindingInfo,
       instance: funcInstance,
+      hasReturn: !(result instanceof UndefinedValue),
     };
     this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 
