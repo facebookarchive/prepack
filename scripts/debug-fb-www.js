@@ -25,7 +25,10 @@ let errorsCaptured = [];
 let prepackOptions = {
   errorHandler: diag => {
     errorsCaptured.push(diag);
-    return "Fail";
+    if (diag.severity !== "Warning" && diag.severity !== "Information") {
+      return "Fail";
+    }
+    return "Recover";
   },
   compatibility: "fb-www",
   internalDebug: true,
@@ -81,6 +84,7 @@ function printReactEvaluationGraph(evaluatedRootNode, depth) {
 compileFile()
   .then(result => {
     console.log("\nCompilation complete!");
+    console.log(`Evaluated Components: ${result.componentsEvaluated}`);
     console.log(`Optimized Trees: ${result.optimizedTrees}`);
     console.log(`Inlined Components: ${result.inlinedComponents}\n`);
     console.log(`Evaluated Tree:`);

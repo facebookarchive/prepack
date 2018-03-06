@@ -212,6 +212,9 @@ export class Functions {
       invariant(config);
       let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react, config);
       let componentType = getComponentTypeFromRootValue(this.realm, componentRoot);
+      if (componentType === null) {
+        continue;
+      }
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
       statistics.evaluatedRootNodes.push(evaluatedRootNode);
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
@@ -226,7 +229,10 @@ export class Functions {
       for (let { rootValue: branchRootValue, nested, evaluatedNode } of componentTreeState.branchedComponentTrees) {
         evaluateComponentTreeBranch(this.realm, effects, nested, () => {
           let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
-
+          if (branchComponentType === null) {
+            evaluatedNode.status = "UNKNOWN_TYPE";
+            return;
+          }
           // so we don't process the same component multiple times (we might change this logic later)
           if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
             return;
