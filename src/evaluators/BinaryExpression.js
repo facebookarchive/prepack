@@ -230,12 +230,11 @@ export function computeBinary(
 
     // If this ended up reporting an error, it might not be pure, so we'll leave it in
     // as a temporal operation with a known return type.
-
     // Some of these values may trigger side-effectful user code such as valueOf.
-    // To be safe, we have to Havoc them. However, "in" and "instanceof" cannot
-    // have side-effects other than throw so we don't need to havoc them.
-    if (op !== "in" && op !== "instanceof") {
-      Havoc.value(realm, lval, loc);
+    // To be safe, we have to Havoc them.
+    Havoc.value(realm, lval, loc);
+    if (op !== "in") {
+      // The "in" operator have side-effects on its right val other than throw.
       Havoc.value(realm, rval, loc);
     }
     return realm.evaluateWithPossibleThrowCompletion(
