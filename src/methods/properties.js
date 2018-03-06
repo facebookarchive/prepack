@@ -1005,16 +1005,17 @@ export class PropertiesImplementation {
         // ii. Set base to ToObject(base).
         base = To.ToObjectPartial(realm, base);
       }
-      if (!(base instanceof ObjectValue || base instanceof AbstractObjectValue)) {
+      if (!(base instanceof AbstractObjectValue) && base instanceof AbstractValue) {
         let diagnostic = new CompilerDiagnostic(
-          "cannot put a value on a base value that is not an object or abstract object",
+          `member expression object ${AbstractValue.describe(base)} is unknown`,
           realm.currentLocation,
-          "PP0027",
+          "PP0012",
           "FatalError"
         );
         realm.handleError(diagnostic);
         throw new FatalError();
       }
+      invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
       // b. Let succeeded be ? base.[[Set]](GetReferencedName(V), W, GetThisValue(V)).
       let succeeded = base.$SetPartial(Environment.GetReferencedNamePartial(realm, V), W, GetThisValue(realm, V));
