@@ -677,10 +677,7 @@ export class ToImplementation {
             "PP0028",
             "RecoverableError"
           );
-          if (realm.handleError(error) === "Recover") {
-            // A well behaved toString or valueOf is assumed to return a primitive.
-            return result;
-          }
+          realm.handleError(error);
           throw new FatalError();
         }
         if (Value.isTypeCompatibleWith(resultType, PrimitiveValue)) {

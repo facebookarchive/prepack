@@ -206,11 +206,17 @@ export function computeBinary(
     let effects;
     try {
       effects = realm.evaluateForEffects(compute);
+    } catch (x) {
+      if (x instanceof FatalError) {
+        isPure = false;
+      } else {
+        throw x;
+      }
     } finally {
       realm.errorHandler = previousErrorHandler;
     }
 
-    if (isPure) {
+    if (isPure && effects) {
       let completion = effects[0];
       if (completion instanceof PossiblyNormalCompletion) {
         // in this case one of the branches may complete abruptly, which means that
