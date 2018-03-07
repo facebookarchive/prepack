@@ -497,7 +497,14 @@ export class JoinImplementation {
         }
       }
     }
-    return this.joinEffects(realm, c.joinCondition, e1, e2);
+    let e3 = this.joinEffects(realm, c.joinCondition, e1, e2);
+    let [r3] = e3;
+    if (r3 instanceof JoinedAbruptCompletions) {
+      let [joinedEffects, possiblyNormalCompletion] = this.unbundleReturnCompletion(realm, r3);
+      realm.composeWithSavedCompletion(possiblyNormalCompletion);
+      return joinedEffects;
+    }
+    return e3;
   }
 
   unbundleReturnCompletion(realm: Realm, c: JoinedAbruptCompletions): [Effects, PossiblyNormalCompletion] {
