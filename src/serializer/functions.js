@@ -134,7 +134,18 @@ export class Functions {
     // Create the effects, arguments and buildNode for the return value, saving them in AdditionalFunctionEffects
     if (result instanceof PossiblyNormalCompletion) {
       let { joinCondition, consequent, alternate, consequentEffects, alternateEffects } = result;
-      let joinedEffects = Join.joinEffects(this.realm, joinCondition, consequentEffects, alternateEffects, true);
+      // Here we join the two sets of Effects from the PossiblyNormalCompletion after
+      // the additional function's return so that the serializer can emit the proper
+      // throw and return values.
+
+      // Force joinEffects to join the effects by changing result.
+      let consequentResult = consequentEffects[0];
+      let alternateResult = alternateEffects[0];
+      consequentEffects[0] = this.realm.intrinsics.undefined;
+      alternateEffects[0] = this.realm.intrinsics.undefined;
+      let joinedEffects = Join.joinEffects(this.realm, joinCondition, consequentEffects, alternateEffects);
+      consequentEffects[0] = consequentResult;
+      alternateEffects[0] = alternateResult;
       let args, buildNode;
       this.realm.withEffectsAppliedInGlobalEnv(() => {
         this.realm.withEffectsAppliedInGlobalEnv(() => {

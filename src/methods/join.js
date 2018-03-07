@@ -563,21 +563,19 @@ export class JoinImplementation {
     }
   }
 
-  joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects, forceJoin?: boolean): Effects {
+  joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects {
     let [result1, gen1, bindings1, properties1, createdObj1] = e1;
     let [result2, gen2, bindings2, properties2, createdObj2] = e2;
 
     let result = this.joinResults(realm, joinCondition, result1, result2, e1, e2);
-    if (!forceJoin) {
-      if (result1 instanceof AbruptCompletion) {
-        if (!(result2 instanceof AbruptCompletion)) {
-          invariant(result instanceof PossiblyNormalCompletion);
-          return [result, gen2, bindings2, properties2, createdObj2];
-        }
-      } else if (result2 instanceof AbruptCompletion) {
+    if (result1 instanceof AbruptCompletion) {
+      if (!(result2 instanceof AbruptCompletion)) {
         invariant(result instanceof PossiblyNormalCompletion);
-        return [result, gen1, bindings1, properties1, createdObj1];
+        return [result, gen2, bindings2, properties2, createdObj2];
       }
+    } else if (result2 instanceof AbruptCompletion) {
+      invariant(result instanceof PossiblyNormalCompletion);
+      return [result, gen1, bindings1, properties1, createdObj1];
     }
 
     let bindings = this.joinBindings(realm, joinCondition, bindings1, bindings2);

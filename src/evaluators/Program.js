@@ -270,7 +270,19 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
     val = Functions.incorporateSavedCompletion(realm, val);
     if (val instanceof PossiblyNormalCompletion) {
       // There are still some conditional throws to emit and state still has to be joined in.
-      Join.stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);
+      // Get state to be joined in
+      let e = realm.getCapturedEffects(val);
+      invariant(e !== undefined);
+      realm.stopEffectCaptureAndUndoEffects(val);
+      let joinedEffects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
+        realm,
+        val,
+        new ReturnCompletion(realm.intrinsics.undefined),
+        e
+      );
+      // apply joined state because the serializer expects a single end program-state. It will
+      // handle conditionally emitting the abrupt and normal paths
+      realm.applyEffects(joinedEffects);
       // The global state has now been updated to the join of all the flows reaching this join point
       let generator = realm.generator;
       invariant(generator !== undefined);

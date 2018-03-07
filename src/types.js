@@ -738,7 +738,7 @@ export type JoinType = {
 
   removeNormalEffects(realm: Realm, c: PossiblyNormalCompletion): Effects,
 
-  joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects, forceJoin?: boolean): Effects,
+  joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects,
 
   joinResults(
     realm: Realm,
