@@ -1436,34 +1436,38 @@ export class ResidualHeapSerializer {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
-    for (let [key, propertyBinding] of val.properties) {
-      if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
-      let descriptor = propertyBinding.descriptor;
-      if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
-      if (this._canEmbedProperty(val, key, descriptor)) {
-        let propValue = descriptor.value;
-        invariant(propValue instanceof Value);
-        if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
-        let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
-        let serializedKey = this.generator.getAsPropertyNameExpression(key);
-        let delayReason =
-          this.emitter.getReasonToWaitForDependencies(propValue) ||
-          this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
-        // Although the property needs to be delayed, we still want to emit dummy "undefined"
-        // value as part of the object literal to ensure a consistent property ordering.
-        let serializedValue = voidExpression;
-        if (delayReason) {
-          // May need to be cleaned up later.
+    if (val.temporalAlias !== undefined) {
+      return t.objectExpression(props);
+    } else {
+      for (let [key, propertyBinding] of val.properties) {
+        if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
+        let descriptor = propertyBinding.descriptor;
+        if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
+        if (this._canEmbedProperty(val, key, descriptor)) {
+          let propValue = descriptor.value;
+          invariant(propValue instanceof Value);
+          if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
+          let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
+          let serializedKey = this.generator.getAsPropertyNameExpression(key);
+          let delayReason =
+            this.emitter.getReasonToWaitForDependencies(propValue) ||
+            this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
+          // Although the property needs to be delayed, we still want to emit dummy "undefined"
+          // value as part of the object literal to ensure a consistent property ordering.
+          let serializedValue = voidExpression;
+          if (delayReason) {
+            // May need to be cleaned up later.
+            dummyProperties.add(key);
+          } else {
+            remainingProperties.delete(key);
+            serializedValue = this.serializeValue(propValue);
+          }
+          props.push(t.objectProperty(serializedKey, serializedValue));
+        } else if (descriptor.value instanceof Value && descriptor.value.mightHaveBeenDeleted()) {
           dummyProperties.add(key);
-        } else {
-          remainingProperties.delete(key);
-          serializedValue = this.serializeValue(propValue);
+          let serializedKey = this.generator.getAsPropertyNameExpression(key);
+          props.push(t.objectProperty(serializedKey, voidExpression));
         }
-        props.push(t.objectProperty(serializedKey, serializedValue));
-      } else if (descriptor.value instanceof Value && descriptor.value.mightHaveBeenDeleted()) {
-        dummyProperties.add(key);
-        let serializedKey = this.generator.getAsPropertyNameExpression(key);
-        props.push(t.objectProperty(serializedKey, voidExpression));
       }
     }
     this._emitObjectProperties(
@@ -1485,16 +1489,29 @@ export class ResidualHeapSerializer {
       undefined,
       skipPrototype
     );
-    this.needsAuxiliaryConstructor = true;
     let serializedProto = this.serializeValue(classConstructor ? classConstructor : proto);
-    return t.sequenceExpression([
-      t.assignmentExpression(
-        "=",
-        t.memberExpression(constructorExpression, t.identifier("prototype")),
-        classConstructor ? t.memberExpression(serializedProto, t.identifier("prototype")) : serializedProto
-      ),
-      t.newExpression(constructorExpression, []),
-    ]);
+    if (val.temporalAlias === undefined) {
+      this.needsAuxiliaryConstructor = true;
+      return t.sequenceExpression([
+        t.assignmentExpression(
+          "=",
+          t.memberExpression(constructorExpression, t.identifier("prototype")),
+          classConstructor ? t.memberExpression(serializedProto, t.identifier("prototype")) : serializedProto
+        ),
+        t.newExpression(constructorExpression, []),
+      ]);
+    } else {
+      this.emitter.emitAfterWaiting(val.temporalAlias, [], () => {
+        invariant(val.temporalAlias !== undefined);
+        let uid = this.serializeValue(val.temporalAlias);
+        this.emitter.emit(
+          t.expressionStatement(
+            t.callExpression(this.preludeGenerator.memoizeReference("Object.setPrototypeOf"), [uid, serializedProto])
+          )
+        );
+      });
+      return t.objectExpression([]);
+    }
   }
 
   serializeValueObject(val: ObjectValue): BabelNodeExpression | void {
@@ -1575,6 +1592,7 @@ export class ResidualHeapSerializer {
 
         let proto = val.$Prototype;
         let createViaAuxiliaryConstructor =
+          val.temporalAlias === undefined &&
           proto !== this.realm.intrinsics.ObjectPrototype &&
           this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
           proto instanceof ObjectValue;

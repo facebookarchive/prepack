@@ -192,6 +192,7 @@ export class ResidualHeapVisitor {
 
   visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
     let { skipPrototype, constructor } = getObjectPrototypeMetadata(this.realm, obj);
+    if (obj.temporalAlias !== undefined) return;
 
     // visit properties
     if (!isReactElement(obj)) {
