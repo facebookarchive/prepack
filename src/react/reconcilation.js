@@ -35,6 +35,7 @@ import {
   getReactSymbol,
   flattenChildren,
   getProperty,
+  setProperty,
   isRenderPropFunctionSelfContained,
   createReactEvaluatedNode,
   getComponentName,
@@ -58,7 +59,7 @@ import { Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
 
-type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER";
+type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER" | "CONTEXT_PROVIDER" | "CONTEXT_CONSUMER";
 
 export type BranchReactComponentTree = {
   context: ObjectValue | AbstractObjectValue | null,
@@ -280,6 +281,44 @@ export class Reconciler {
     return classMetadata;
   }
 
+  _renderContextConsumerComponent(
+    componentType: Value,
+    reactElement: ObjectValue,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    let renderResult = {
+      result: reactElement,
+      childContext: context,
+    };
+
+    if (this.componentTreeConfig.firstRenderOnly) {
+      // TODO, just inline it
+      throw new ExpectedBailOut("TODO");
+    } else {
+      if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
+        // get the "render" prop child off the instance
+        let renderProp = Get(this.realm, props, "children");
+        if (renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call) {
+          // if the render prop function is self contained, we can make it a new component tree root
+          // and this also has a nice side-effect of hoisting the function up to the top scope
+          if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
+            this._queueNewComponentTree(renderProp, evaluatedNode, true);
+            return renderResult;
+          } else {
+            // we don't have nested additional function support right now
+            // but the render prop is likely to have references to other components
+            // that we need to also evaluate. given we can't find those components
+            return renderResult;
+          }
+        }
+      }
+    }
+
+    return renderResult;
+  }
+
   _renderRelayQueryRendererComponent(
     componentType: Value,
     reactElement: ObjectValue,
@@ -479,8 +518,19 @@ export class Reconciler {
       if (value === QueryRenderer) {
         return "RELAY_QUERY_RENDERER";
       }
-    } else if (value === getReactSymbol("react.fragment", this.realm)) {
+    }
+    if (value === getReactSymbol("react.fragment", this.realm)) {
       return "FRAGMENT";
+    }
+    if (value instanceof ObjectValue || value instanceof AbstractObjectValue) {
+      let $$typeof = Get(this.realm, value, "$$typeof");
+
+      if ($$typeof === getReactSymbol("react.context", this.realm)) {
+        return "CONTEXT_CONSUMER";
+      }
+      if ($$typeof === getReactSymbol("react.provider", this.realm)) {
+        return "CONTEXT_PROVIDER";
+      }
     }
     return "NORMAL";
   }
@@ -492,7 +542,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ) {
+  ): Value {
     if (
       value instanceof StringValue ||
       value instanceof NumberValue ||
@@ -601,6 +651,26 @@ export class Reconciler {
         return reactElement;
       } else if (renderStrategy === "FRAGMENT") {
         return resolveChildren();
+      } else if (renderStrategy === "CONTEXT_PROVIDER") {
+        // if we have a value prop
+        if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
+          let valueProp = Get(this.realm, propsValue, "value");
+          if (valueProp instanceof Value) {
+            invariant(typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue);
+            // update the currentValue
+            let contextConsumer = Get(this.realm, typeValue, "context");
+            invariant(contextConsumer instanceof ObjectValue || contextConsumer instanceof AbstractObjectValue);
+            setProperty(this.realm, contextConsumer, "currentValue", valueProp);
+          }
+        }
+        if (this.componentTreeConfig.firstRenderOnly) {
+          if (propsValue instanceof ObjectValue) {
+            resolveChildren();
+            let childrenValue = getProperty(this.realm, propsValue, "children");
+            return childrenValue;
+          }
+        }
+        return resolveChildren();
       }
       try {
         let result;
@@ -625,6 +695,19 @@ export class Reconciler {
             let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", getComponentName(this.realm, typeValue));
             evaluatedNode.children.push(evaluatedChildNode);
             let render = this._renderRelayQueryRendererComponent(
+              componentType,
+              reactElement,
+              propsValue,
+              context,
+              evaluatedChildNode
+            );
+            result = render.result;
+            break;
+          }
+          case "CONTEXT_CONSUMER": {
+            let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", "Context.Consumer");
+            evaluatedNode.children.push(evaluatedChildNode);
+            let render = this._renderContextConsumerComponent(
               componentType,
               reactElement,
               propsValue,

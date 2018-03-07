@@ -489,6 +489,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Relay QueryRenderer 3", async () => {
         await runTest(directory, "relay-query-renderer3.js");
       });
+
+      it("React Context", async () => {
+        await runTest(directory, "react-context.js");
+      });
+
+      it.only("React Context 2", async () => {
+        await runTest(directory, "react-context2.js");
+      });
     });
 
     describe("First render only", () => {
