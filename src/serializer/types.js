@@ -152,6 +152,8 @@ export class TimingStatistics {
 }
 
 export type ReactEvaluatedNode = {
+  children: Array<ReactEvaluatedNode>,
+  message: string,
   name: string,
   status:
     | "ROOT"
@@ -162,7 +164,6 @@ export type ReactEvaluatedNode = {
     | "RENDER_PROPS"
     | "UNSUPPORTED_COMPLETION"
     | "ABRUPT_COMPLETION",
-  children: Array<ReactEvaluatedNode>,
 };
 
 export class ReactStatistics {

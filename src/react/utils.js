@@ -686,9 +686,10 @@ export function createReactEvaluatedNode(
   name: string
 ): ReactEvaluatedNode {
   return {
+    children: [],
+    message: "",
     name,
     status,
-    children: [],
   };
 }
 
