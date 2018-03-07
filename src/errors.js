@@ -35,12 +35,10 @@ export class CompilerDiagnostic extends Error {
 // This error is thrown to exit Prepack when an ErrorHandler returns 'FatalError'
 // This should just be a class but Babel classes doesn't work with
 // built-in super classes.
-export function FatalError(message?: string) {
-  let self = new Error(message || "A fatal error occurred while prepacking.");
-  Object.setPrototypeOf(self, FatalError.prototype);
-  return self;
+export class FatalError extends Error {
+  constructor(message?: string) {
+    super(message || "A fatal error occurred while prepacking.");
+  }
 }
-Object.setPrototypeOf(FatalError, Error);
-Object.setPrototypeOf(FatalError.prototype, Error.prototype);
 
 export type ErrorHandler = (error: CompilerDiagnostic) => ErrorHandlerResult;
