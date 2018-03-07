@@ -15,7 +15,7 @@ import { GetMethod, Get } from "./get.js";
 import { Create } from "../singletons.js";
 import { HasProperty } from "./has.js";
 import { Call } from "./call.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { IsCallable } from "./is.js";
 import { SameValue, SameValueZero } from "./abstract.js";
 import {
@@ -669,6 +669,17 @@ export class ToImplementation {
         let resultType = result.getType();
 
         // ii. If Type(result) is not Object, return result.
+        if (resultType === Value) {
+          invariant(result instanceof AbstractValue);
+          let error = new CompilerDiagnostic(
+            `${name} might return either an object or primitive`,
+            realm.currentLocation,
+            "PP0028",
+            "RecoverableError"
+          );
+          realm.handleError(error);
+          throw new FatalError();
+        }
         if (Value.isTypeCompatibleWith(resultType, PrimitiveValue)) {
           invariant(result instanceof AbstractValue || result instanceof PrimitiveValue);
           return result;
