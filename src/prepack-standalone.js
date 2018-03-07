@@ -33,17 +33,6 @@ import { Logger } from "./utils/logger.js";
 import { Generator } from "./utils/generator.js";
 import { AbstractObjectValue, AbstractValue, ObjectValue } from "./values/index.js";
 
-// IMPORTANT: This function is now deprecated and will go away in a future release.
-// Please use FatalError instead.
-export function InitializationError() {
-  let self = new Error("An error occurred while prepacking. See the error logs.");
-  Object.setPrototypeOf(self, InitializationError.prototype);
-  return self;
-}
-Object.setPrototypeOf(InitializationError, Error);
-Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
-Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
-
 export function prepackSources(
   sources: Array<SourceFile>,
   options: PrepackOptions = defaultOptions,
