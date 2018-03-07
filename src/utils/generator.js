@@ -9,7 +9,8 @@
 
 /* @flow */
 
-import type { Realm } from "../realm.js";
+import type { Realm, Effects } from "../realm.js";
+import type { PropertyBinding } from "../types.js";
 import type { Binding } from "../environment.js";
 import {
   AbstractObjectValue,
@@ -61,13 +62,67 @@ export type DerivedExpressionBuildNodeFunction = (
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
-export type GeneratorEntry = {
+export type GeneratorEntry = TemporalBuildNodeEntry;
+
+type TemporalBuildNodeEntryArgs = {
   declared?: AbstractValue,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
+};
+
+class TemporalBuildNodeEntry {
+  constructor(generator: Generator, args: TemporalBuildNodeEntryArgs) {
+    this.containingGenerator = generator;
+    Object.assign(this, args);
+  }
+
+  containingGenerator: Generator;
+  declared: void | AbstractValue;
+  args: Array<Value>;
+  // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
+  buildNode: void | GeneratorBuildNodeFunction;
+  dependencies: void | Array<Generator>;
+  isPure: void | boolean;
+
+  visit(callbacks: VisitEntryCallbacks) {
+    if (this.isPure && this.declared && callbacks.canSkip(this.declared)) {
+      callbacks.recordDelayedEntry(this.containingGenerator, this);
+    } else {
+      if (this.declared) callbacks.recordDeclaration(this.declared);
+      callbacks.visitValues(this.args);
+      if (this.dependencies)
+        for (let dependency of this.dependencies) callbacks.visitGenerator(dependency, this.containingGenerator);
+    }
+  }
+
+  serialize(context: SerializationContext) {
+    if (!this.isPure || !this.declared || !context.canOmit(this.declared)) {
+      let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
+      if (this.buildNode) {
+        let node = this.buildNode(nodes, context);
+        if (node.type === "BlockStatement") {
+          let block: BabelNodeBlockStatement = (node: any);
+          let statements = block.body;
+          if (statements.length === 0) return;
+          if (statements.length === 1) {
+            node = statements[0];
+          }
+        }
+        context.emit(node);
+      }
+      if (this.declared !== undefined) context.declare(this.declared);
+    }
+  }
+}
+
+export type ModifiedPropertyEntry = {
+  propertyBinding: PropertyBinding,
+  // TODO make these mutable?
+  newValue: void | Descriptor,
+  oldValue: void | Descriptor,
 };
 
 export type VisitEntryCallbacks = {|
@@ -84,8 +139,10 @@ function serializeBody(generator: Generator, context: SerializationContext): Bab
   return t.blockStatement(statements);
 }
 
+let additionalFunctionUID = 0;
+
 export class Generator {
-  constructor(realm: Realm, name: void | string) {
+  constructor(realm: Realm, name: void | string, effects?: Effects) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -94,14 +151,41 @@ export class Generator {
     this._entries = [];
     this.id = realm.nextGeneratorId++;
     this._name = name;
+    this.effectsToApply = effects;
   }
 
   realm: Realm;
   _entries: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
+  effectsToApply: void | Effects;
 
   id: number;
   _name: void | string;
+
+  // Make sure to to fixup
+  static fromEffects(effects: Effects, realm: Realm): Generator {
+    let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
+
+    let output = new Generator(realm, "AdditionalFunctionEffects" + additionalFunctionUID++, effects);
+    output.appendGenerator(generator, "Additional function generator");
+
+    for (let [propertyBinding, newValue] of modifiedProperties) {
+      let object = propertyBinding.object;
+      if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
+      if (object.refuseSerialization) continue; // modification to internal state
+      if (object.isIntrinsic()) continue; // Avoid double-counting
+      //output.appendProperty(propertyBinding, newValue);
+    }
+    return output;
+  }
+
+  /*appendPropertyModification(propertyBinding: PropertyBinding, newValue: void | Descriptor) {
+    this._entries.push({
+      propertyBinding,
+      oldValue: propertyBinding.value,
+      newValue,
+    });
+  }*/
 
   getName(): string {
     return this._name || `#${this.id}`;
@@ -472,43 +556,16 @@ export class Generator {
     return res;
   }
 
-  serialize(context: SerializationContext) {
-    for (let entry of this._entries) {
-      if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
-        let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
-        if (entry.buildNode) {
-          let node = entry.buildNode(nodes, context);
-          if (node.type === "BlockStatement") {
-            let block: BabelNodeBlockStatement = (node: any);
-            let statements = block.body;
-            if (statements.length === 0) continue;
-            if (statements.length === 1) {
-              node = statements[0];
-            }
-          }
-          context.emit(node);
-        }
-        if (entry.declared !== undefined) context.declare(entry.declared);
-      }
-    }
-  }
-
-  visitEntry(entry: GeneratorEntry, callbacks: VisitEntryCallbacks) {
-    if (entry.isPure && entry.declared && callbacks.canSkip(entry.declared)) {
-      callbacks.recordDelayedEntry(this, entry);
-    } else {
-      if (entry.declared) callbacks.recordDeclaration(entry.declared);
-      callbacks.visitValues(entry.args);
-      if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency, this);
-    }
-  }
-
   visit(callbacks: VisitEntryCallbacks) {
-    for (let entry of this._entries) this.visitEntry(entry, callbacks);
+    for (let entry of this._entries) entry.visit(callbacks);
   }
 
-  _addEntry(entry: GeneratorEntry) {
-    this._entries.push(entry);
+  serialize(context: SerializationContext) {
+    for (let entry of this._entries) entry.serialize(context);
+  }
+
+  _addEntry(entry: TemporalBuildNodeEntryArgs) {
+    this._entries.push(new TemporalBuildNodeEntry(this, entry));
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {

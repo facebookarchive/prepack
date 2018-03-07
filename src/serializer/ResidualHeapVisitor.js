@@ -1000,7 +1000,7 @@ export class ResidualHeapVisitor {
       for (let { commonScope, generator: entryGenerator, entry } of oldDelayedEntries) {
         this.commonScope = commonScope;
         this._withScope(entryGenerator, () => {
-          entryGenerator.visitEntry(entry, this.createGeneratorVisitCallbacks(commonScope));
+          entry.visit(this.createGeneratorVisitCallbacks(commonScope));
         });
       }
     }
