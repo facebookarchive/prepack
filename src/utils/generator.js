@@ -174,18 +174,18 @@ export class Generator {
       if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
       if (object.refuseSerialization) continue; // modification to internal state
       if (object.isIntrinsic()) continue; // Avoid double-counting
-      //output.appendProperty(propertyBinding, newValue);
+      output.appendProperty(propertyBinding, newValue);
     }
     return output;
   }
 
-  /*appendPropertyModification(propertyBinding: PropertyBinding, newValue: void | Descriptor) {
+  appendPropertyModification(propertyBinding: PropertyBinding, newValue: void | Descriptor) {
     this._entries.push({
       propertyBinding,
       oldValue: propertyBinding.value,
       newValue,
     });
-  }*/
+  }
 
   getName(): string {
     return this._name || `#${this.id}`;

@@ -848,20 +848,22 @@ export class ResidualHeapVisitor {
   //             we don't overwrite anything they capture
   // PropertyBindings -- (property modifications) visit any property bindings to pre-existing objects
   // CreatedObjects -- should take care of itself
-  _visitEffects(additionalFunctionInfo: AdditionalFunctionInfo, effects: Effects) {
+  _visitEffects(additionalFunctionInfo: AdditionalFunctionInfo, additionalEffects: AdditionalFunctionEffects) {
+    let { effects, effectsGenerator: generator } = additionalEffects;
     let functionValue = additionalFunctionInfo.functionValue;
     invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
     let code = functionValue.$ECMAScriptCode;
     let functionInfo = this.functionInfos.get(code);
     invariant(functionInfo !== undefined);
     let [result, , modifiedBindings, modifiedProperties, createdObjects] = effects;
-    for (let propertyBinding of modifiedProperties.keys()) {
+    /*for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
       if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
       if (object.refuseSerialization) continue; // modification to internal state
       if (object.intrinsicName === "global") continue; // Avoid double-counting
       this.visitObjectProperty(propertyBinding);
-    }
+    }*/
+    effectsGenerator.visit(this.createGeneratorVisitCallbacks(this.commonScope));
     // Handing of ModifiedBindings
     for (let [additionalBinding, previousValue] of modifiedBindings) {
       let modifiedBinding = additionalBinding;
@@ -949,7 +951,7 @@ export class ResidualHeapVisitor {
       this.visitGenerator(generator);
       // All modified properties and bindings should be accessible
       // from its containing additional function scope.
-      this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, effects));
+      this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, additionalEffects));
       return this.realm.intrinsics.undefined;
     }, additionalEffects.effects);
     for (let createdObject of createdObjects) this.additionalRoots.delete(createdObject);

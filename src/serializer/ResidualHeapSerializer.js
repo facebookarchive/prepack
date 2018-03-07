@@ -1820,7 +1820,8 @@ export class ResidualHeapSerializer {
   //          -- we don't overwrite anything they capture
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
-  _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, effects: Effects) {
+  _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
+    let { effects } = additionalEffects;
     let [result, , , modifiedProperties, createdObjects] = effects;
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
