@@ -459,7 +459,10 @@ export class JoinImplementation {
     let e2 = this.joinEffectsAndPromoteNestedReturnCompletions(realm, c.alternate, e, c.alternateEffects);
     let [r1, r2] = [e1[0], e2[0]];
     if (r1 instanceof ReturnCompletion) {
-      invariant(!(r2 instanceof ReturnCompletion)); // Otherwise their values should have been joined
+      // this can happen because joinEffectsAndPromoteNestedReturnCompletions above both had nested ReturnCompletions
+      if (r2 instanceof ReturnCompletion) {
+        return this.joinEffects(realm, c.joinCondition, e1, e2);
+      }
       if (r2 instanceof JoinedAbruptCompletions) {
         if (r2.consequent instanceof ReturnCompletion) {
           let r1jr2c = this.joinEffects(realm, c.joinCondition, e1, r2.consequentEffects);
