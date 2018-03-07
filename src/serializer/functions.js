@@ -25,6 +25,7 @@ import {
   ECMAScriptSourceFunctionValue,
   UndefinedValue,
 } from "../values/index.js";
+import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
 import buildTemplate from "babel-template";
@@ -148,6 +149,7 @@ export class Functions {
   _createAdditionalEffects(effects: Effects): AdditionalFunctionEffects {
     return {
       effects,
+      generator: Generator.fromEffects(effects, this.realm),
       transforms: [],
     };
   }

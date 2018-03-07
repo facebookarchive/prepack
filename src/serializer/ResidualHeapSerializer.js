@@ -1768,6 +1768,11 @@ export class ResidualHeapSerializer {
       declare: (value: AbstractValue) => {
         this.emitter.declare(value);
       },
+      emitPropertyModification: (propertyBinding: PropertyBinding) => {
+        let object = propertyBinding.object;
+        invariant(object instanceof ObjectValue);
+        this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
+      }
     };
     return context;
   }
@@ -1821,24 +1826,17 @@ export class ResidualHeapSerializer {
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
   _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
-    let { effects } = additionalEffects;
+    let { effects, generator: effectsGenerator } = additionalEffects;
     let [result, , , modifiedProperties, createdObjects] = effects;
-    for (let propertyBinding of modifiedProperties.keys()) {
-      let object = propertyBinding.object;
-      if (object instanceof ObjectValue && createdObjects.has(object)) continue;
-      if (object.refuseSerialization) continue;
-      if (object.isIntrinsic()) continue;
-      invariant(object instanceof ObjectValue);
-      this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
-    }
+    effectsGenerator.serialize(this._getContext());
     invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
     // Handle ModifiedBindings
     let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
     invariant(additionalFunctionValueInfo);
     for (let [modifiedBinding, residualBinding] of additionalFunctionValueInfo.modifiedBindings) {
-      let newVal = modifiedBinding.value;
+      /*let newVal = modifiedBinding.value;
       invariant(newVal);
-      residualBinding.additionalValueSerialized = this.serializeValue(newVal);
+      residualBinding.additionalValueSerialized = this.serializeValue(newVal);*/
     }
     if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
 
@@ -1848,8 +1846,9 @@ export class ResidualHeapSerializer {
 
   _serializeAdditionalFunction(
     additionalFunctionValue: FunctionValue,
-    { effects, transforms }: AdditionalFunctionEffects
+    additionalEffects: AdditionalFunctionEffects
   ) {
+    let { effects, transforms } = additionalEffects;
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let [, generator, , , createdObjects] = effects;
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
@@ -1861,7 +1860,7 @@ export class ResidualHeapSerializer {
       this._serializeAdditionalFunctionGeneratorAndEffects.bind(
         this,
         generator,
-        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
+        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, additionalEffects)
       ),
       effects
     );

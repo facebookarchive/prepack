@@ -16,6 +16,7 @@ import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
+import type { Generator } from "../utils/generator.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
@@ -39,6 +40,7 @@ export type SerializedBody = {
 
 export type AdditionalFunctionEffects = {
   effects: Effects,
+  generator: Generator,
   transforms: Array<Function>,
 };
 

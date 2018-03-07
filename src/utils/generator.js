@@ -9,8 +9,9 @@
 
 /* @flow */
 
-import type { Realm, Effects } from "../realm.js";
-import type { PropertyBinding } from "../types.js";
+import type { Realm, Effects, BindingEntry } from "../realm.js";
+import type { PropertyBinding, Descriptor } from "../types.js";
+import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
 import {
   AbstractObjectValue,
@@ -29,7 +30,6 @@ import {
 } from "../values/index.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import { hashString } from "../methods/index.js";
-import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
@@ -45,7 +45,7 @@ import type {
 import { nullExpression } from "./internalizer.js";
 import { Utils, concretize } from "../singletons.js";
 
-export type SerializationContext = {
+export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
@@ -53,7 +53,18 @@ export type SerializationContext = {
   emit: BabelNodeStatement => void,
   canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
-};
+  emitPropertyModification: PropertyBinding => void,
+|};
+
+export type VisitEntryCallbacks = {|
+  visitValues: (Array<Value>) => void,
+  visitGenerator: (Generator, Generator) => void,
+  canSkip: AbstractValue => boolean,
+  recordDeclaration: AbstractValue => void,
+  recordDelayedEntry: (Generator, GeneratorEntry) => void,
+  visitObjectProperty: (PropertyBinding) => void,
+  visitModifiedBinding: (Binding, Value | void) => void | ResidualFunctionBinding,
+|};
 
 export type DerivedExpressionBuildNodeFunction = (
   Array<BabelNodeExpression>,
@@ -62,7 +73,7 @@ export type DerivedExpressionBuildNodeFunction = (
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
-export type GeneratorEntry = TemporalBuildNodeEntry;
+export type GeneratorEntry = TemporalBuildNodeEntry | ModifiedPropertyEntry | ModifiedBindingEntry;
 
 type TemporalBuildNodeEntryArgs = {
   declared?: AbstractValue,
@@ -118,20 +129,69 @@ class TemporalBuildNodeEntry {
   }
 }
 
-export type ModifiedPropertyEntry = {
+type ModifiedPropertyEntryArgs = {|
   propertyBinding: PropertyBinding,
   // TODO make these mutable?
   newValue: void | Descriptor,
   oldValue: void | Descriptor,
-};
-
-export type VisitEntryCallbacks = {|
-  visitValues: (Array<Value>) => void,
-  visitGenerator: (Generator, Generator) => void,
-  canSkip: AbstractValue => boolean,
-  recordDeclaration: AbstractValue => void,
-  recordDelayedEntry: (Generator, GeneratorEntry) => void,
 |};
+
+class ModifiedPropertyEntry {
+  constructor(generator: Generator, args: ModifiedPropertyEntryArgs) {
+    this.containingGenerator = generator;
+    Object.assign(this, args);
+  }
+
+  containingGenerator: Generator;
+  propertyBinding: PropertyBinding;
+  // TODO make these mutable?
+  newValue: void | Descriptor;
+  oldValue: void | Descriptor;
+
+  serialize(context: SerializationContext) {
+    let desc = this.propertyBinding.descriptor;
+    invariant(desc === this.newValue);
+    context.emitPropertyModification(this.propertyBinding);
+  }
+
+  visit(context: VisitEntryCallbacks) {
+    let desc = this.propertyBinding.descriptor;
+    invariant(desc === this.newValue);
+    context.visitObjectProperty(this.propertyBinding);
+  }
+}
+
+type ModifiedBindingEntryArgs = {|
+  modifiedBinding: Binding,
+  newValue: BindingEntry,
+  oldValue: void | Value,
+|};
+
+class ModifiedBindingEntry {
+  constructor(generator: Generator, args: ModifiedBindingEntryArgs) {
+    this.containingGenerator = generator;
+    Object.assign(this, args);
+  }
+
+  containingGenerator: Generator;
+  modifiedBinding: Binding;
+  newValue: BindingEntry;
+  oldValue: void | Value;
+  residualFunctionBinding: ?ResidualFunctionBinding;
+
+  serialize(context: SerializationContext) {
+    let residualFunctionBinding = this.residualFunctionBinding;
+    if (!residualFunctionBinding) return;
+    invariant(this.modifiedBinding.value === this.newValue.value);
+    if (this.newValue.value)
+      residualFunctionBinding.additionalValueSerialized = context.serializeValue(this.newValue.value);
+  }
+
+  visit(context: VisitEntryCallbacks) {
+    invariant(this.modifiedBinding.value === this.newValue.value);
+    this.residualFunctionBinding = context.visitModifiedBinding(this.modifiedBinding, this.oldValue);
+  }
+}
 
 function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
   let statements = context.serializeGenerator(generator);
@@ -167,24 +227,40 @@ export class Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
 
     let output = new Generator(realm, "AdditionalFunctionEffects" + additionalFunctionUID++, effects);
-    output.appendGenerator(generator, "Additional function generator");
+    //output.appendGenerator(generator, "Additional function generator");
 
     for (let [propertyBinding, newValue] of modifiedProperties) {
       let object = propertyBinding.object;
       if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
       if (object.refuseSerialization) continue; // modification to internal state
       if (object.isIntrinsic()) continue; // Avoid double-counting
-      output.appendProperty(propertyBinding, newValue);
+      output.appendPropertyModification(propertyBinding, newValue);
+    }
+
+    for (let [modifiedBinding, newValue] of modifiedBindings) {
+      output.appendBindingModification(modifiedBinding, newValue);
     }
     return output;
   }
 
   appendPropertyModification(propertyBinding: PropertyBinding, newValue: void | Descriptor) {
-    this._entries.push({
-      propertyBinding,
-      oldValue: propertyBinding.value,
-      newValue,
-    });
+    this._entries.push(
+      new ModifiedPropertyEntry(this, {
+        propertyBinding,
+        oldValue: propertyBinding.descriptor,
+        newValue,
+      })
+    );
+  }
+
+  appendBindingModification(modifiedBinding: Binding, newValue: BindingEntry) {
+    this._entries.push(
+      new ModifiedBindingEntry(this, {
+        modifiedBinding,
+        newValue,
+        oldValue: modifiedBinding.value,
+      })
+    );
   }
 
   getName(): string {

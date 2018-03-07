@@ -14,6 +14,7 @@ import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
+import type { Binding } from "../environment.js";
 import { HashSet, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
@@ -764,6 +765,7 @@ export class ResidualHeapVisitor {
 
   visitValue(val: Value): void {
     invariant(!val.refuseSerialization);
+    invariant(val.isIntrinsic);
     if (val instanceof AbstractValue) {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
@@ -811,7 +813,7 @@ export class ResidualHeapVisitor {
     this.postProcessValue(val);
   }
 
-  createGeneratorVisitCallbacks(commonScope: Scope): VisitEntryCallbacks {
+  createGeneratorVisitCallbacks(commonScope: Scope, additionalFunctionInfo?: AdditionalFunctionInfo): VisitEntryCallbacks {
     return {
       visitValues: (values: Array<Value>) => {
         for (let i = 0, n = values.length; i < n; i++) values[i] = this.visitEquivalentValue(values[i]);
@@ -831,6 +833,54 @@ export class ResidualHeapVisitor {
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {
         this.delayedVisitGeneratorEntries.push({ commonScope, generator, entry });
       },
+      visitObjectProperty: (binding: PropertyBinding) => {
+        this.visitObjectProperty(binding);
+      },
+      visitModifiedBinding: (modifiedBinding: Binding, previousValue: void | Value) => {
+        invariant(additionalFunctionInfo);
+        let { functionValue } = additionalFunctionInfo;
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        let code = functionValue.$ECMAScriptCode;
+        let functionInfo = this.functionInfos.get(code);
+        let residualBinding;
+        this._withScope(functionValue, () => {
+          // Also visit the original value of the binding
+          residualBinding = this.visitBinding(functionValue, modifiedBinding.name);
+          invariant(residualBinding !== undefined);
+          // named functions inside an additional function that have a global binding
+          // can be skipped, as we don't want them to bind to the global
+          if (
+            residualBinding.declarativeEnvironmentRecord === null &&
+            modifiedBinding.value instanceof ECMAScriptSourceFunctionValue
+          ) {
+            residualBinding = null;
+            return;
+          }
+          // Fixup the binding to have the correct value
+          // No previousValue means this is a binding for a nested function
+          if (previousValue)
+            residualBinding.value = this.visitEquivalentValue(previousValue);
+          invariant(functionInfo !== undefined);
+          if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
+        });
+        if (residualBinding === null) return;
+        invariant(residualBinding);
+        let funcInstance = additionalFunctionInfo.instance;
+        invariant(funcInstance !== undefined);
+        funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
+        let newValue = modifiedBinding.value;
+        invariant(newValue);
+        this.visitValue(newValue);
+        residualBinding.modified = true;
+        // This should be enforced by checkThatFunctionsAreIndependent
+        invariant(
+          !residualBinding.additionalFunctionOverridesValue,
+          "We should only have one additional function value modifying any given residual binding"
+        );
+        if (previousValue && previousValue.value) residualBinding.additionalFunctionOverridesValue = functionValue;
+        additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
+        return residualBinding;
+      },
     };
   }
 
@@ -849,61 +899,15 @@ export class ResidualHeapVisitor {
   // PropertyBindings -- (property modifications) visit any property bindings to pre-existing objects
   // CreatedObjects -- should take care of itself
   _visitEffects(additionalFunctionInfo: AdditionalFunctionInfo, additionalEffects: AdditionalFunctionEffects) {
-    let { effects, effectsGenerator: generator } = additionalEffects;
+    let { effects, generator: effectsGenerator } = additionalEffects;
     let functionValue = additionalFunctionInfo.functionValue;
-    invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-    let code = functionValue.$ECMAScriptCode;
-    let functionInfo = this.functionInfos.get(code);
-    invariant(functionInfo !== undefined);
     let [result, , modifiedBindings, modifiedProperties, createdObjects] = effects;
-    /*for (let propertyBinding of modifiedProperties.keys()) {
-      let object = propertyBinding.object;
-      if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
-      if (object.refuseSerialization) continue; // modification to internal state
-      if (object.intrinsicName === "global") continue; // Avoid double-counting
-      this.visitObjectProperty(propertyBinding);
-    }*/
-    effectsGenerator.visit(this.createGeneratorVisitCallbacks(this.commonScope));
+    let callbacks = this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo);
+    effectsGenerator.visit(callbacks);
     // Handing of ModifiedBindings
     for (let [additionalBinding, previousValue] of modifiedBindings) {
       let modifiedBinding = additionalBinding;
       let residualBinding;
-      this._withScope(functionValue, () => {
-        // Also visit the original value of the binding
-        residualBinding = this.visitBinding(functionValue, modifiedBinding.name);
-        invariant(residualBinding !== undefined);
-        // named functions inside an additional function that have a global binding
-        // can be skipped, as we don't want them to bind to the global
-        if (
-          residualBinding.declarativeEnvironmentRecord === null &&
-          modifiedBinding.value instanceof ECMAScriptSourceFunctionValue
-        ) {
-          residualBinding = null;
-          return;
-        }
-        // Fixup the binding to have the correct value
-        // No previousValue means this is a binding for a nested function
-        if (previousValue && previousValue.value)
-          residualBinding.value = this.visitEquivalentValue(previousValue.value);
-        invariant(functionInfo !== undefined);
-        if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
-      });
-      if (residualBinding === null) continue;
-      invariant(residualBinding);
-      let funcInstance = additionalFunctionInfo.instance;
-      invariant(funcInstance !== undefined);
-      funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
-      let newValue = modifiedBinding.value;
-      invariant(newValue);
-      this.visitValue(newValue);
-      residualBinding.modified = true;
-      // This should be enforced by checkThatFunctionsAreIndependent
-      invariant(
-        !residualBinding.additionalFunctionOverridesValue,
-        "We should only have one additional function value modifying any given residual binding"
-      );
-      if (previousValue && previousValue.value) residualBinding.additionalFunctionOverridesValue = functionValue;
-      additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
     }
     invariant(result instanceof Value);
     if (!(result instanceof UndefinedValue)) this.visitValue(result);
