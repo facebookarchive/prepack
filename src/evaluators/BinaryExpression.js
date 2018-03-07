@@ -205,7 +205,7 @@ export function computeBinary(
     };
     let effects;
     try {
-      effects = realm.evaluateForEffects(compute);
+      effects = realm.evaluateForEffects(compute, undefined, "computeBinary");
     } catch (x) {
       if (x instanceof FatalError) {
         isPure = false;

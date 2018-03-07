@@ -139,7 +139,7 @@ export class ExecutionContext {
 }
 
 export function construct_empty_effects(realm: Realm): Effects {
-  return [realm.intrinsics.empty, new Generator(realm), new Map(), new Map(), new Set()];
+  return [realm.intrinsics.empty, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set()];
 }
 
 export class Realm {
@@ -563,11 +563,17 @@ export class Realm {
     state?: any,
     generatorName?: string
   ): Effects {
-    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
+    return this.evaluateForEffects(
+      () => env.evaluateCompletionDeref(ast, strictCode),
+      state,
+      generatorName || "evaluateNodeForEffects"
+    );
   }
 
   evaluateForEffectsInGlobalEnv(func: () => Value, state?: any, generatorName?: string): Effects {
-    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func, state, generatorName));
+    return this.wrapInGlobalEnv(() =>
+      this.evaluateForEffects(func, state, generatorName || "evaluateForEffectsInGlobalEnv")
+    );
   }
 
   // NB: does not apply generators because there's no way to cleanly revert them.
@@ -603,12 +609,12 @@ export class Realm {
       [result, nodeAst, nodeIO] = env.partiallyEvaluateCompletionDeref(ast, strictCode);
       return result;
     }
-    let effects = this.evaluateForEffects(partialEval);
+    let effects = this.evaluateForEffects(partialEval, undefined, "partiallyEvaluateNodeForEffects");
     invariant(nodeAst !== undefined && nodeIO !== undefined);
     return [effects, nodeAst, nodeIO];
   }
 
-  evaluateForEffects(f: () => Completion | Value, state: any, generatorName: void | string): Effects {
+  evaluateForEffects(f: () => Completion | Value, state: any, generatorName: string): Effects {
     // Save old state and set up empty state for ast
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
@@ -685,19 +691,23 @@ export class Realm {
       return "Fail";
     };
     try {
-      let effects = this.evaluateForEffects(() => {
-        try {
-          return f();
-        } catch (e) {
-          if (e instanceof Completion) {
-            return defaultValue;
-          } else if (e instanceof FatalError) {
-            return defaultValue;
-          } else {
-            throw e;
+      let effects = this.evaluateForEffects(
+        () => {
+          try {
+            return f();
+          } catch (e) {
+            if (e instanceof Completion) {
+              return defaultValue;
+            } else if (e instanceof FatalError) {
+              return defaultValue;
+            } else {
+              throw e;
+            }
           }
-        }
-      });
+        },
+        undefined,
+        "evaluateWithUndo"
+      );
       return effects[0] instanceof Value ? effects[0] : defaultValue;
     } finally {
       this.errorHandler = oldErrorHandler;
@@ -713,7 +723,7 @@ export class Realm {
         diagnostic = d;
         return "Fail";
       };
-      let effects = this.evaluateForEffects(f);
+      let effects = this.evaluateForEffects(f, undefined, "evaluateWithUndoForDiagnostic");
       this.applyEffects(effects);
       let resultVal = effects[0];
       if (resultVal instanceof AbruptCompletion) throw resultVal;
@@ -739,15 +749,19 @@ export class Realm {
     loopBody: () => EvaluationResult
   ): void | [Effects, Effects] {
     try {
-      let effects1 = this.evaluateForEffects((loopBody: any));
+      let effects1 = this.evaluateForEffects((loopBody: any), undefined, "evaluateForFixpointEffects/1");
       while (true) {
         this.restoreBindings(effects1[2]);
         this.restoreProperties(effects1[3]);
-        let effects2 = this.evaluateForEffects(() => {
-          let test = loopContinueTest();
-          if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
-          return (loopBody(): any);
-        });
+        let effects2 = this.evaluateForEffects(
+          () => {
+            let test = loopContinueTest();
+            if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
+            return (loopBody(): any);
+          },
+          undefined,
+          "evaluateForFixpointEffects/2"
+        );
         this.restoreBindings(effects1[2]);
         this.restoreProperties(effects1[3]);
         if (Widen.containsEffects(effects1, effects2)) {
@@ -960,7 +974,7 @@ export class Realm {
       (this.modifiedProperties: any),
       (this.createdObjects: any),
     ];
-    this.generator = new Generator(this);
+    this.generator = new Generator(this, "captured");
     this.modifiedBindings = new Map();
     this.modifiedProperties = new Map();
     this.createdObjects = new Set();
