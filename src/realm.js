@@ -33,7 +33,13 @@ import {
   Value,
 } from "./values/index.js";
 import type { TypesDomain, ValuesDomain } from "./domains/index.js";
-import { LexicalEnvironment, Reference, GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
+import {
+  LexicalEnvironment,
+  Reference,
+  GlobalEnvironmentRecord,
+  FunctionEnvironmentRecord,
+  DeclarativeEnvironmentRecord,
+} from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
@@ -652,6 +658,12 @@ export class Realm {
         let astBindings = this.modifiedBindings;
         let astProperties = this.modifiedProperties;
         let astCreatedObjects = this.createdObjects;
+
+        // Check invariant that modified bindings to not refer to environment record belonging to
+        // newly created closure objects.
+        for (let binding of astBindings.keys())
+          if (binding.environment instanceof FunctionEnvironmentRecord)
+            invariant(!astCreatedObjects.has(binding.environment.$FunctionObject));
 
         // Return the captured state changes and evaluation result
         result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
