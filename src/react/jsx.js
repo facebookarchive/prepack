@@ -16,6 +16,7 @@ import type {
   BabelNodeJSXIdentifier,
   BabelNodeIdentifier,
   BabelNodeMemberExpression,
+  BabelNodeStringLiteral,
 } from "babel-types";
 import invariant from "../invariant.js";
 import { isReactComponent } from "./utils";
@@ -74,5 +75,14 @@ export function convertJSXExpressionToIdentifier(
 }
 
 export function convertKeyValueToJSXAttribute(key: string, expr: BabelNodeExpression) {
-  return t.jSXAttribute(t.jSXIdentifier(key), expr.type === "StringLiteral" ? expr : t.jSXExpressionContainer(expr));
+  let wrapInContainer = true;
+
+  if (expr && t.isStringLiteral(expr) && typeof expr.value === "string") {
+    let value = expr.value;
+    wrapInContainer = !value.includes('"') && !value.includes("'");
+  }
+  return t.jSXAttribute(
+    t.jSXIdentifier(key),
+    wrapInContainer ? ((expr: any): BabelNodeStringLiteral) : t.jSXExpressionContainer(expr)
+  );
 }
