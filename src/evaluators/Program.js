@@ -345,8 +345,8 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
     let func = nodes => {
       return t.ifStatement(
         nodes[0],
-        tfunc(nodes.splice(1, targs.length)),
-        ffunc(nodes.splice(targs.length + 1, fargs.length))
+        tfunc(nodes.slice().splice(1, targs.length)),
+        ffunc(nodes.slice().splice(targs.length + 1, fargs.length))
       );
     };
     return [args, func];
