@@ -494,7 +494,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "react-context.js");
       });
 
-      it.only("React Context 2", async () => {
+      it("React Context 2", async () => {
         await runTest(directory, "react-context2.js");
       });
     });
@@ -508,6 +508,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("componentWillMount", async () => {
         await runTest(directory, "will-mount.js", true);
+      });
+
+      it("React Context", async () => {
+        await runTest(directory, "react-context.js");
+      });
+
+      it("React Context 2", async () => {
+        await runTest(directory, "react-context2.js");
       });
     });
 
