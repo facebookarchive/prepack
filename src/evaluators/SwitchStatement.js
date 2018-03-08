@@ -133,15 +133,23 @@ function AbstractCaseBlockEvaluation(
       // so we evaluate the case in the abstract as an if-else with the else
       // leading to the next case statement
       let trueEffects = Path.withCondition(selectionResult, () => {
-        return realm.evaluateForEffects(() => {
-          return DefiniteCaseEvaluation(caseIndex);
-        });
+        return realm.evaluateForEffects(
+          () => {
+            return DefiniteCaseEvaluation(caseIndex);
+          },
+          undefined,
+          "AbstractCaseEvaluation/1"
+        );
       });
 
       let falseEffects = Path.withInverseCondition(selectionResult, () => {
-        return realm.evaluateForEffects(() => {
-          return AbstractCaseEvaluation(caseIndex + 1);
-        });
+        return realm.evaluateForEffects(
+          () => {
+            return AbstractCaseEvaluation(caseIndex + 1);
+          },
+          undefined,
+          "AbstractCaseEvaluation/2"
+        );
       });
 
       let joinedEffects = Join.joinEffects(realm, selectionResult, trueEffects, falseEffects);

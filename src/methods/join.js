@@ -47,7 +47,7 @@ function joinGenerators(
   generator1: Generator,
   generator2: Generator
 ): Generator {
-  let result = new Generator(realm);
+  let result = new Generator(realm, "joined");
   if (!generator1.empty() || !generator2.empty()) {
     result.joinGenerators(joinCondition, generator1, generator2);
   }
@@ -722,7 +722,7 @@ export class JoinImplementation {
   }
 
   composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator {
-    let result = new Generator(realm);
+    let result = new Generator(realm, "composed");
     if (!generator1.empty() || !generator2.empty()) {
       result.composeGenerators(generator1, generator2);
     }

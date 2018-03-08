@@ -100,10 +100,14 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
   func: (ast: BabelNodeUnaryExpression, expr: Value | Reference, strictCode: boolean, realm: Realm) => Value,
   strictCode: boolean,
   realm: Realm
-) {
+): Value {
   let effects;
   try {
-    effects = realm.evaluateForEffects(() => func(ast, expr, strictCode, realm));
+    effects = realm.evaluateForEffects(
+      () => func(ast, expr, strictCode, realm),
+      undefined,
+      "tryToEvaluateOperationOrLeaveAsAbstract"
+    );
   } catch (error) {
     if (error instanceof FatalError) {
       return realm.evaluateWithPossibleThrowCompletion(

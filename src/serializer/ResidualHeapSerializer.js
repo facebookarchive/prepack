@@ -759,6 +759,7 @@ export class ResidualHeapSerializer {
     this.emitter.dependenciesVisitor(val, {
       onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
+        invariant(referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction());
         let declarationBody = this.emitter.getDeclarationBody(dependency);
         if (declarationBody !== undefined) {
           if (trace) console.log(`    has declaration body`);
@@ -1795,7 +1796,7 @@ export class ResidualHeapSerializer {
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {
         generator.serialize(context);
-        if (postGeneratorCallback) postGeneratorCallback();
+        postGeneratorCallback();
       } finally {
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
