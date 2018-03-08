@@ -11,7 +11,7 @@
 
 import { Realm, type Effects } from "../realm.js";
 import { FunctionEnvironmentRecord, Reference } from "../environment.js";
-import { Completion } from "../completions.js";
+import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
@@ -722,13 +722,22 @@ export function isRenderPropFunctionSelfContained(
 }
 
 export function createReactEvaluatedNode(
-  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS" | "UNSUPPORTED_COMPLETION",
+  status:
+    | "ROOT"
+    | "NEW_TREE"
+    | "INLINED"
+    | "BAIL-OUT"
+    | "UNKNOWN_TYPE"
+    | "RENDER_PROPS"
+    | "UNSUPPORTED_COMPLETION"
+    | "ABRUPT_COMPLETION",
   name: string
 ): ReactEvaluatedNode {
   return {
+    children: [],
+    message: "",
     name,
     status,
-    children: [],
   };
 }
 
@@ -790,6 +799,37 @@ export function convertConfigObjectToReactComponentTreeConfig(
   return {
     firstRenderOnly,
   };
+}
+
+export function getValueFromRenderCall(
+  realm: Realm,
+  renderFunction: ECMAScriptSourceFunctionValue,
+  instance: ObjectValue | AbstractObjectValue | UndefinedValue,
+  args: Array<Value>
+): Value {
+  invariant(renderFunction.$Call, "Expected render function to be a FunctionValue with $Call method");
+  let funcCall = renderFunction.$Call;
+  let effects;
+  try {
+    effects = realm.evaluateForEffects(() => funcCall(instance, args));
+  } catch (error) {
+    throw error;
+  }
+  let completion = effects[0];
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof Value);
+  return completion;
 }
 
 export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {

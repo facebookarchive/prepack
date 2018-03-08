@@ -75,7 +75,9 @@ function printReactEvaluationGraph(evaluatedRootNode, depth) {
       printReactEvaluationGraph(child, depth);
     }
   } else {
-    let line = `- ${evaluatedRootNode.name} (${evaluatedRootNode.status.toLowerCase()})`;
+    let status = evaluatedRootNode.status.toLowerCase();
+    let message = evaluatedRootNode.message !== "" ? `: ${evaluatedRootNode.message}` : "";
+    let line = `- ${evaluatedRootNode.name} (${status}${message})`;
     console.log(line.padStart(line.length + depth));
     printReactEvaluationGraph(evaluatedRootNode.children, depth + 2);
   }

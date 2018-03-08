@@ -6,6 +6,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -25,14 +26,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -52,14 +56,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -77,55 +84,66 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -145,14 +163,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -170,10 +191,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -191,10 +214,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -210,6 +235,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -227,10 +253,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -248,10 +276,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -267,6 +297,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "FactoryComponent",
       "status": "ROOT",
     },
@@ -284,15 +315,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "FactoryComponent",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "non-root factory class components are not suppoted",
           "name": "FactoryComponent",
           "status": "BAIL-OUT",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -312,14 +346,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child1",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -339,14 +376,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child1",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -362,6 +402,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -377,6 +418,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -396,14 +438,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -423,14 +468,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -450,14 +498,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -477,14 +528,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -504,14 +558,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -531,14 +588,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -558,14 +618,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -585,10 +648,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "MessagePane",
           "status": "INLINED",
         },
@@ -596,14 +661,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "SettingsPane",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -621,15 +689,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Foo",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Foo",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -647,10 +718,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "MaybeShow",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -668,20 +741,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -699,10 +776,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "SubChild",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "Child",
       "status": "ROOT",
     },
@@ -720,10 +799,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Fn",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -739,6 +820,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -756,15 +838,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -782,15 +867,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -810,10 +898,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "MessagePane",
           "status": "INLINED",
         },
@@ -821,14 +911,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "SettingsPane",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -846,15 +939,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -872,15 +968,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -898,15 +997,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -926,14 +1028,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "MaybeShow",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Override",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -951,10 +1056,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -972,10 +1079,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -993,15 +1102,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1019,10 +1131,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
+        Object {
+          "children": Array [],
+          "message": "undefined was returned from render",
+          "name": "A",
+          "status": "BAIL-OUT",
+        },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1040,20 +1160,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1071,10 +1195,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1092,10 +1218,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1113,10 +1241,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1134,15 +1264,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
     Object {
       "children": Array [],
+      "message": "",
       "name": "Child",
       "status": "ROOT",
     },
@@ -1158,6 +1291,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1173,6 +1307,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1192,14 +1327,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "A",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1217,20 +1355,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1248,10 +1390,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1269,10 +1413,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1288,6 +1434,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1303,6 +1450,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1318,6 +1466,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1335,10 +1484,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1358,14 +1509,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "IWantThisToBeInlined",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1385,14 +1539,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "IWantThisToBeInlined",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1410,10 +1567,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1429,6 +1588,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1444,6 +1604,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1459,6 +1620,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1478,14 +1640,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "IWantThisToBeInlined",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1503,10 +1668,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1578,10 +1745,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1599,10 +1768,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1622,14 +1793,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SomeClassThatShouldNotMakeRootAClass",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1649,19 +1823,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "HeaderBar",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "StoryList",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "AppBody",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1679,10 +1857,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1698,6 +1878,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "Hello",
       "status": "ROOT",
     },
@@ -1749,6 +1930,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1766,10 +1948,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "WrappedApp",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1789,15 +1973,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -1805,19 +1992,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1837,19 +2028,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1869,15 +2064,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -1885,15 +2083,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -1901,19 +2102,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1933,10 +2138,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -1944,10 +2151,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -1955,14 +2164,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "Foo",
       "status": "ROOT",
     },
@@ -1978,6 +2190,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -1997,14 +2210,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2024,14 +2240,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2049,55 +2268,66 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2117,14 +2347,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2142,10 +2375,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2163,10 +2398,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2182,6 +2419,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2199,10 +2437,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2220,10 +2460,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2239,6 +2481,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "FactoryComponent",
       "status": "ROOT",
     },
@@ -2256,15 +2499,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "FactoryComponent",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "non-root factory class components are not suppoted",
           "name": "FactoryComponent",
           "status": "BAIL-OUT",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2284,14 +2530,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child1",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2311,14 +2560,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child1",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2334,6 +2586,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2349,6 +2602,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2368,14 +2622,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2395,14 +2652,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2422,14 +2682,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2449,14 +2712,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2476,14 +2742,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2503,14 +2772,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2530,14 +2802,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2557,10 +2832,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "MessagePane",
           "status": "INLINED",
         },
@@ -2568,14 +2845,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "SettingsPane",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2593,15 +2873,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Foo",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Foo",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2619,10 +2902,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "MaybeShow",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2640,20 +2925,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2671,10 +2960,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "SubChild",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "Child",
       "status": "ROOT",
     },
@@ -2692,10 +2983,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Fn",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2711,6 +3004,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2728,15 +3022,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2754,15 +3051,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2782,10 +3082,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "MessagePane",
           "status": "INLINED",
         },
@@ -2793,14 +3095,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "SettingsPane",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2818,15 +3123,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2844,15 +3152,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2870,15 +3181,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2898,14 +3212,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "MaybeShow",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Override",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2923,10 +3240,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2944,10 +3263,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2965,15 +3286,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -2991,10 +3315,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
+        Object {
+          "children": Array [],
+          "message": "undefined was returned from render",
+          "name": "A",
+          "status": "BAIL-OUT",
+        },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3012,20 +3344,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3043,10 +3379,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3064,10 +3402,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3085,10 +3425,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3106,15 +3448,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
     Object {
       "children": Array [],
+      "message": "",
       "name": "Child",
       "status": "ROOT",
     },
@@ -3130,6 +3475,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3145,6 +3491,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3164,14 +3511,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "A",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3189,20 +3539,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3220,10 +3574,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3241,10 +3597,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3260,6 +3618,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3275,6 +3634,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3290,6 +3650,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3307,10 +3668,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3330,14 +3693,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "IWantThisToBeInlined",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3357,14 +3723,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "IWantThisToBeInlined",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3382,10 +3751,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3401,6 +3772,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3416,6 +3788,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3431,6 +3804,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3450,14 +3824,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "IWantThisToBeInlined",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3475,10 +3852,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3550,10 +3929,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3571,10 +3952,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3594,14 +3977,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SomeClassThatShouldNotMakeRootAClass",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3621,19 +4007,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "HeaderBar",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "StoryList",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "AppBody",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3651,10 +4041,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3670,6 +4062,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "Hello",
       "status": "ROOT",
     },
@@ -3721,6 +4114,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3738,10 +4132,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "WrappedApp",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3761,15 +4157,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -3777,19 +4176,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3809,19 +4212,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3841,15 +4248,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -3857,15 +4267,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -3873,19 +4286,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3905,10 +4322,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -3916,10 +4335,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -3927,14 +4348,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "Foo",
       "status": "ROOT",
     },
@@ -3950,6 +4374,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3969,14 +4394,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -3996,14 +4424,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4021,55 +4452,66 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4089,14 +4531,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4114,10 +4559,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4135,10 +4582,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4154,6 +4603,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4171,10 +4621,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4192,10 +4644,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4211,6 +4665,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "FactoryComponent",
       "status": "ROOT",
     },
@@ -4228,15 +4683,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "FactoryComponent",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "non-root factory class components are not suppoted",
           "name": "FactoryComponent",
           "status": "BAIL-OUT",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4256,14 +4714,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child1",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4283,14 +4744,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child1",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4306,6 +4770,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4321,6 +4786,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4340,14 +4806,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4367,14 +4836,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4394,14 +4866,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4421,14 +4896,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4448,14 +4926,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4475,14 +4956,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4502,14 +4986,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4529,10 +5016,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "MessagePane",
           "status": "INLINED",
         },
@@ -4540,14 +5029,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "SettingsPane",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4565,15 +5057,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Foo",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Foo",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4591,10 +5086,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "MaybeShow",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4612,20 +5109,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4643,10 +5144,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "SubChild",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "Child",
       "status": "ROOT",
     },
@@ -4664,10 +5167,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Fn",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4683,6 +5188,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4700,15 +5206,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4726,15 +5235,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4754,10 +5266,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "MessagePane",
           "status": "INLINED",
         },
@@ -4765,14 +5279,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "SettingsPane",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4790,15 +5307,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4816,15 +5336,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4842,15 +5365,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4870,14 +5396,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "MaybeShow",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Override",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4895,10 +5424,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4916,10 +5447,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4937,15 +5470,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4963,10 +5499,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
+        Object {
+          "children": Array [],
+          "message": "undefined was returned from render",
+          "name": "A",
+          "status": "BAIL-OUT",
+        },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -4984,20 +5528,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5015,10 +5563,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5036,10 +5586,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5057,10 +5609,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5078,15 +5632,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
     Object {
       "children": Array [],
+      "message": "",
       "name": "Child",
       "status": "ROOT",
     },
@@ -5102,6 +5659,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5117,6 +5675,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5136,14 +5695,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "A",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5161,20 +5723,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5192,10 +5758,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5213,10 +5781,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5232,6 +5802,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5247,6 +5818,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5262,6 +5834,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5279,10 +5852,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5302,14 +5877,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "IWantThisToBeInlined",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5325,6 +5903,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5340,6 +5919,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5355,6 +5935,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5370,6 +5951,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5385,6 +5967,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5400,6 +5983,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5417,10 +6001,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5492,10 +6078,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5513,10 +6101,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5536,14 +6126,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SomeClassThatShouldNotMakeRootAClass",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5563,19 +6156,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "HeaderBar",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "StoryList",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "AppBody",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5593,10 +6190,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5612,6 +6211,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "Hello",
       "status": "ROOT",
     },
@@ -5663,6 +6263,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5680,10 +6281,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "WrappedApp",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5703,15 +6306,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -5719,19 +6325,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5751,19 +6361,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5783,15 +6397,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -5799,15 +6416,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -5815,19 +6435,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5847,10 +6471,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -5858,10 +6484,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -5869,14 +6497,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "Foo",
       "status": "ROOT",
     },
@@ -5892,6 +6523,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5911,14 +6543,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5938,14 +6573,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -5963,55 +6601,66 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6031,14 +6680,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6056,10 +6708,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6077,10 +6731,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6096,6 +6752,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6113,10 +6770,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6134,10 +6793,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6153,6 +6814,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "FactoryComponent",
       "status": "ROOT",
     },
@@ -6170,15 +6832,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "FactoryComponent",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "non-root factory class components are not suppoted",
           "name": "FactoryComponent",
           "status": "BAIL-OUT",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6198,14 +6863,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child1",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6225,14 +6893,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Child2",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child1",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6248,6 +6919,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6263,6 +6935,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6282,14 +6955,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6309,14 +6985,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6336,14 +7015,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6363,14 +7045,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6390,14 +7075,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6417,14 +7105,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6444,14 +7135,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SubChild",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6471,10 +7165,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "MessagePane",
           "status": "INLINED",
         },
@@ -6482,14 +7178,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "SettingsPane",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6507,15 +7206,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Foo",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Foo",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6533,10 +7235,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "MaybeShow",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6554,20 +7258,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6585,10 +7293,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "SubChild",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "Child",
       "status": "ROOT",
     },
@@ -6606,10 +7316,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Fn",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6625,6 +7337,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6642,15 +7355,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6668,15 +7384,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6696,10 +7415,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "MessagePane",
           "status": "INLINED",
         },
@@ -6707,14 +7428,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Stateful",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "SettingsPane",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6732,15 +7456,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6758,15 +7485,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6784,15 +7514,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "Stateful",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6812,14 +7545,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "MaybeShow",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Override",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6837,10 +7573,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6858,10 +7596,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6879,15 +7619,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6905,10 +7648,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
+        Object {
+          "children": Array [],
+          "message": "undefined was returned from render",
+          "name": "A",
+          "status": "BAIL-OUT",
+        },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6926,20 +7677,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6957,10 +7712,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6978,10 +7735,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -6999,10 +7758,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7020,15 +7781,18 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
     Object {
       "children": Array [],
+      "message": "",
       "name": "Child",
       "status": "ROOT",
     },
@@ -7044,6 +7808,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7059,6 +7824,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7078,14 +7844,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "A",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7103,20 +7872,24 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "B",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
+          "message": "",
           "name": "C",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7134,10 +7907,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7155,10 +7930,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7174,6 +7951,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7189,6 +7967,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7204,6 +7983,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7221,10 +8001,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7244,14 +8026,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "IWantThisToBeInlined",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Button",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7267,6 +8052,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7282,6 +8068,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7297,6 +8084,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7312,6 +8100,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7327,6 +8116,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7342,6 +8132,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7359,10 +8150,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "Child",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7434,10 +8227,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7455,10 +8250,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7478,14 +8275,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "SomeClassThatShouldNotMakeRootAClass",
               "status": "NEW_TREE",
             },
           ],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7505,19 +8305,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "HeaderBar",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "StoryList",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "AppBody",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7535,10 +8339,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "QueryRenderer",
           "status": "RENDER_PROPS",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7554,6 +8360,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "Hello",
       "status": "ROOT",
     },
@@ -7605,6 +8412,7 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7622,10 +8430,12 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
+          "message": "",
           "name": "WrappedApp",
           "status": "NEW_TREE",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7645,15 +8455,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -7661,19 +8474,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7693,19 +8510,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7725,15 +8546,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -7741,15 +8565,18 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
@@ -7757,19 +8584,23 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "B",
               "status": "INLINED",
             },
             Object {
               "children": Array [],
+              "message": "",
               "name": "C",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "A",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "App",
       "status": "ROOT",
     },
@@ -7789,10 +8620,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -7800,10 +8633,12 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -7811,14 +8646,17 @@ ReactStatistics {
           "children": Array [
             Object {
               "children": Array [],
+              "message": "",
               "name": "Yar",
               "status": "INLINED",
             },
           ],
+          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
       ],
+      "message": "",
       "name": "Foo",
       "status": "ROOT",
     },

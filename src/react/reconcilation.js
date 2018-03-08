@@ -40,6 +40,7 @@ import {
   createReactEvaluatedNode,
   getComponentName,
   sanitizeReactElementForFirstRenderOnly,
+  getValueFromRenderCall,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -55,7 +56,7 @@ import {
   createClassInstanceForFirstRenderOnly,
 } from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
-import { Completion } from "../completions.js";
+import { AbruptCompletion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
 
@@ -131,33 +132,36 @@ export class Reconciler {
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         return result;
       } catch (error) {
-        if (error instanceof Completion) {
-          // this.logger.logCompletion(error);
-          evaluatedRootNode.status = "UNSUPPORTED_COMPLETION";
-          return this.realm.intrinsics.undefined;
-        } else {
-          // if we get an error and we're not dealing with the root
-          // rather than throw a FatalError, we log the error as a warning
-          // and continue with the other tree roots
-          // TODO: maybe control what levels gets treated as warning/error?
-          if (!isRoot) {
+        // if we get an error and we're not dealing with the root
+        // rather than throw a FatalError, we log the error as a warning
+        // and continue with the other tree roots
+        // TODO: maybe control what levels gets treated as warning/error?
+        if (!isRoot) {
+          if (error instanceof AbruptCompletion) {
+            this.logger.logWarning(
+              componentType,
+              `__optimizeReactComponentTree() React component tree (branch) failed due runtime runtime exception thrown`
+            );
+            evaluatedRootNode.status = "ABRUPT_COMPLETION";
+          } else {
             this.logger.logWarning(
               componentType,
               `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
             );
+            evaluatedRootNode.message = "evaluation failed on new component tree branch";
             evaluatedRootNode.status = "BAIL-OUT";
-            return this.realm.intrinsics.undefined;
           }
-          if (error instanceof ExpectedBailOut) {
-            let diagnostic = new CompilerDiagnostic(
-              `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
-              this.realm.currentLocation,
-              "PP0020",
-              "FatalError"
-            );
-            this.realm.handleError(diagnostic);
-            if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
-          }
+          return this.realm.intrinsics.undefined;
+        }
+        if (error instanceof ExpectedBailOut) {
+          let diagnostic = new CompilerDiagnostic(
+            `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
+            this.realm.currentLocation,
+            "PP0020",
+            "FatalError"
+          );
+          this.realm.handleError(diagnostic);
+          if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
         }
         throw error;
       }
@@ -229,12 +233,9 @@ export class Reconciler {
     let instance = createClassInstance(this.realm, componentType, props, context, classMetadata);
     // get the "render" method off the instance
     let renderMethod = Get(this.realm, instance, "render");
-    invariant(
-      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
-      "Expected render method to be a FunctionValue with $Call method"
-    );
+    invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return renderMethod.$Call(instance, []);
+    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
   }
 
   _renderSimpleClassComponent(
@@ -248,12 +249,9 @@ export class Reconciler {
     let instance = createSimpleClassInstance(this.realm, componentType, props, context);
     // get the "render" method off the instance
     let renderMethod = Get(this.realm, instance, "render");
-    invariant(
-      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
-      "Expected render method to be a FunctionValue with $Call method"
-    );
+    invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return renderMethod.$Call(instance, []);
+    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
   }
 
   _renderFunctionalComponent(
@@ -261,8 +259,7 @@ export class Reconciler {
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
-    invariant(componentType.$Call, "Expected componentType to be a FunctionValue with $Call method");
-    return componentType.$Call(this.realm.intrinsics.undefined, [props, context]);
+    return getValueFromRenderCall(this.realm, componentType, this.realm.intrinsics.undefined, [props, context]);
   }
 
   _getClassComponentMetadata(
@@ -346,6 +343,8 @@ export class Reconciler {
           // that we need to also evaluate. given we can't find those components
           return renderResult;
         }
+      } else {
+        this._findReactComponentTrees(props, evaluatedNode);
       }
     }
     // this is the worst case, we were unable to find the render prop function
@@ -431,12 +430,9 @@ export class Reconciler {
     if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
       componentWillMount.$Call(instance, []);
     }
-    invariant(
-      renderMethod instanceof ECMAScriptSourceFunctionValue && renderMethod.$Call,
-      "Expected render method to be a FunctionValue with $Call method"
-    );
+    invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return renderMethod.$Call(instance, []);
+    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
   }
 
   _renderComponent(
@@ -535,6 +531,33 @@ export class Reconciler {
     return "NORMAL";
   }
 
+  _resolveAbstractValue(
+    componentType: Value,
+    value: AbstractValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    let length = value.args.length;
+    if (length > 0) {
+      let newBranchState = new BranchState();
+      // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
+      for (let i = 0; i < length; i++) {
+        value.args[i] = this._resolveDeeply(
+          componentType,
+          value.args[i],
+          context,
+          "NEW_BRANCH",
+          newBranchState,
+          evaluatedNode
+        );
+      }
+      newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+    }
+    return value;
+  }
+
   _resolveDeeply(
     componentType: Value,
     value: Value,
@@ -553,23 +576,7 @@ export class Reconciler {
       // terminal values
       return value;
     } else if (value instanceof AbstractValue) {
-      let length = value.args.length;
-      if (length > 0) {
-        let newBranchState = new BranchState();
-        // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
-        for (let i = 0; i < length; i++) {
-          value.args[i] = this._resolveDeeply(
-            componentType,
-            value.args[i],
-            context,
-            "NEW_BRANCH",
-            newBranchState,
-            evaluatedNode
-          );
-        }
-        newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
-      }
-      return value;
+      return this._resolveAbstractValue(componentType, value, context, branchStatus, branchState, evaluatedNode);
     }
     // TODO investigate what about other iterables type objects
     if (value instanceof ArrayValue) {
@@ -620,9 +627,11 @@ export class Reconciler {
       if (!(refValue instanceof NullValue)) {
         let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
         evaluatedNode.children.push(evaluatedChildNode);
-        evaluatedChildNode.status = "BAIL-OUT";
+        let bailOutMessage = `refs are not supported on <Components />`;
+        evaluatedChildNode.message = bailOutMessage;
         this._queueNewComponentTree(typeValue, evaluatedChildNode);
-        this._assignBailOutMessage(reactElement, `Bail-out: refs are not supported on <Components />`);
+        this._findReactComponentTrees(propsValue, evaluatedNode);
+        this._assignBailOutMessage(reactElement, bailOutMessage);
         return reactElement;
       }
       if (
@@ -634,7 +643,7 @@ export class Reconciler {
       ) {
         this._assignBailOutMessage(
           reactElement,
-          `Bail-out: props on <Component /> was not not an ObjectValue or an AbstractValue`
+          `props on <Component /> was not not an ObjectValue or an AbstractValue`
         );
         return reactElement;
       }
@@ -644,11 +653,18 @@ export class Reconciler {
         renderStrategy === "NORMAL" &&
         !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
       ) {
-        this._assignBailOutMessage(
-          reactElement,
-          `Bail-out: type on <Component /> was not a ECMAScriptSourceFunctionValue`
-        );
-        return reactElement;
+        this._findReactComponentTrees(propsValue, evaluatedNode);
+        if (typeValue instanceof AbstractValue) {
+          this._findReactComponentTrees(typeValue, evaluatedNode);
+          return reactElement;
+        } else {
+          let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+          evaluatedNode.children.push(evaluatedChildNode);
+          let bailOutMessage = `type on <Component /> was not a ECMAScriptSourceFunctionValue`;
+          evaluatedChildNode.message = bailOutMessage;
+          this._assignBailOutMessage(reactElement, bailOutMessage);
+          return reactElement;
+        }
       } else if (renderStrategy === "FRAGMENT") {
         return resolveChildren();
       } else if (renderStrategy === "CONTEXT_PROVIDER") {
@@ -722,7 +738,12 @@ export class Reconciler {
         }
 
         if (result instanceof UndefinedValue) {
-          this._assignBailOutMessage(reactElement, `Bail-out: undefined was returned from render`);
+          let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+          evaluatedNode.children.push(evaluatedChildNode);
+          let bailOutMessage = `undefined was returned from render`;
+          evaluatedChildNode.message = bailOutMessage;
+          this._assignBailOutMessage(reactElement, bailOutMessage);
+          this._findReactComponentTrees(propsValue, evaluatedNode);
           if (branchStatus === "NEW_BRANCH" && branchState) {
             return branchState.captureBranchedValue(typeValue, reactElement);
           }
@@ -737,15 +758,29 @@ export class Reconciler {
         if (error instanceof NewComponentTreeBranch) {
           // NO-OP (we don't queue a newComponentTree as this was already done)
         } else {
-          let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
-          evaluatedNode.children.push(evaluatedChildNode);
-          this._queueNewComponentTree(typeValue, evaluatedChildNode);
-          if (error instanceof ExpectedBailOut) {
-            this._assignBailOutMessage(reactElement, "Bail-out: " + error.message);
-          } else if (error instanceof FatalError) {
-            this._assignBailOutMessage(reactElement, "Evaluation bail-out");
+          // handle abrupt completions
+          if (error instanceof AbruptCompletion) {
+            let evaluatedChildNode = createReactEvaluatedNode(
+              "ABRUPT_COMPLETION",
+              getComponentName(this.realm, typeValue)
+            );
+            evaluatedNode.children.push(evaluatedChildNode);
           } else {
-            throw error;
+            let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+            evaluatedNode.children.push(evaluatedChildNode);
+            this._queueNewComponentTree(typeValue, evaluatedChildNode);
+            this._findReactComponentTrees(propsValue, evaluatedNode);
+            if (error instanceof ExpectedBailOut) {
+              evaluatedChildNode.message = error.message;
+              this._assignBailOutMessage(reactElement, error.message);
+            } else if (error instanceof FatalError) {
+              let message = "evaluation failed";
+              evaluatedChildNode.message = message;
+              this._assignBailOutMessage(reactElement, message);
+            } else {
+              evaluatedChildNode.message = `unknown error`;
+              throw error;
+            }
           }
         }
         // a child component bailed out during component folding, so return the function value and continue
@@ -762,6 +797,7 @@ export class Reconciler {
   _assignBailOutMessage(reactElement: ObjectValue, message: string): void {
     // $BailOutReason is a field on ObjectValue that allows us to specify a message
     // that gets serialized as a comment node during the ReactElement serialization stage
+    message = `Bail-out: ${message}`;
     if (reactElement.$BailOutReason !== undefined) {
       // merge bail out messages if one already exists
       reactElement.$BailOutReason += `, ${message}`;
@@ -800,5 +836,23 @@ export class Reconciler {
       return true;
     }
     return false;
+  }
+
+  _findReactComponentTrees(value: Value, evaluatedNode: ReactEvaluatedNode): void {
+    if (value instanceof AbstractValue) {
+      for (let arg of value.args) {
+        this._findReactComponentTrees(arg, evaluatedNode);
+      }
+    } else if (value instanceof ObjectValue) {
+      for (let [propName, binding] of value.properties) {
+        if (binding && binding.descriptor && binding.enumerable) {
+          this._findReactComponentTrees(getProperty(this.realm, value, propName), evaluatedNode);
+        }
+      }
+    } else if (value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, value)) {
+      let evaluatedChildNode = createReactEvaluatedNode("NEW_TREE", getComponentName(this.realm, value));
+      evaluatedNode.children.push(evaluatedChildNode);
+      this._queueNewComponentTree(value, evaluatedChildNode);
+    }
   }
 }
