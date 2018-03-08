@@ -331,7 +331,7 @@ export function OrdinaryCallEvaluateBody(
       let savedIsSelfRecursive = F.isSelfRecursive;
       try {
         F.isSelfRecursive = false;
-        let effects = realm.evaluateForEffects(guardedCall);
+        let effects = realm.evaluateForEffects(guardedCall, undefined, "OrdinaryCallEvaluateBody");
         if (F.isSelfRecursive) {
           AbstractValue.reportIntrospectionError(F, "call to function that calls itself");
           throw new FatalError();

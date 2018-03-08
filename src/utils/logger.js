@@ -46,20 +46,24 @@ export class Logger {
     };
     try {
       let result;
-      let effects = realm.evaluateForEffects(() => {
-        try {
-          result = f();
-        } catch (e) {
-          if (e instanceof Completion) {
-            result = defaultValue;
-          } else if (e instanceof FatalError) {
-            result = defaultValue;
-          } else {
-            throw e;
+      let effects = realm.evaluateForEffects(
+        () => {
+          try {
+            result = f();
+          } catch (e) {
+            if (e instanceof Completion) {
+              result = defaultValue;
+            } else if (e instanceof FatalError) {
+              result = defaultValue;
+            } else {
+              throw e;
+            }
           }
-        }
-        return realm.intrinsics.undefined;
-      });
+          return realm.intrinsics.undefined;
+        },
+        undefined,
+        "tryQuery"
+      );
       invariant(effects[0] === realm.intrinsics.undefined);
       return ((result: any): T);
     } finally {

@@ -549,7 +549,13 @@ export function evaluateComponentTreeBranch(
     createdObjects,
   ] = effects;
   if (nested) {
-    realm.applyEffects([value, new Generator(realm), modifiedBindings, modifiedProperties, createdObjects]);
+    realm.applyEffects([
+      value,
+      new Generator(realm, "evaluateComponentTreeBranch"),
+      modifiedBindings,
+      modifiedProperties,
+      createdObjects,
+    ]);
   }
   try {
     return f(generator, value);
