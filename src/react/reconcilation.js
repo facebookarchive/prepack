@@ -285,19 +285,23 @@ export class Reconciler {
     context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    let renderResult = {
+    let renderResult: { result: Value, childContext: ObjectValue | AbstractObjectValue } = {
       result: reactElement,
       childContext: context,
     };
 
-    if (this.componentTreeConfig.firstRenderOnly) {
-      // TODO, just inline it
-      throw new ExpectedBailOut("TODO");
-    } else {
-      if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
-        // get the "render" prop child off the instance
-        let renderProp = Get(this.realm, props, "children");
-        if (renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call) {
+    if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
+      // get the "render" prop child off the instance
+      let renderProp = Get(this.realm, props, "children");
+      if (renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call) {
+        if (this.componentTreeConfig.firstRenderOnly) {
+          let typeValue = Get(this.realm, reactElement, "type");
+          if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
+            let valueProp = Get(this.realm, typeValue, "currentValue");
+            let result = getValueFromRenderCall(this.realm, renderProp, this.realm.intrinsics.undefined, [valueProp]);
+            renderResult.result = result;
+          }
+        } else {
           // if the render prop function is self contained, we can make it a new component tree root
           // and this also has a nice side-effect of hoisting the function up to the top scope
           if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
