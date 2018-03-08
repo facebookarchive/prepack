@@ -497,6 +497,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 2", async () => {
         await runTest(directory, "react-context2.js");
       });
+
+      it("React Context 3", async () => {
+        await runTest(directory, "react-context3.js");
+      });
     });
 
     describe("First render only", () => {
@@ -516,6 +520,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("React Context 2", async () => {
         await runTest(directory, "react-context2.js");
+      });
+
+      it("React Context 3", async () => {
+        await runTest(directory, "react-context3.js");
       });
     });
 

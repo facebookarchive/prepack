@@ -73,6 +73,7 @@ export type BranchReactComponentTree = {
 export type ComponentTreeState = {
   branchedComponentTrees: Array<BranchReactComponentTree>,
   componentType: void | ECMAScriptSourceFunctionValue,
+  deadEnds: number,
   status: "SIMPLE" | "COMPLEX",
 };
 
@@ -193,6 +194,7 @@ export class Reconciler {
     context?: ObjectValue | AbstractObjectValue | null = null
   ) {
     invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
+    this.componentTreeState.deadEnds++;
     this.componentTreeState.branchedComponentTrees.push({
       context,
       evaluatedNode,
@@ -283,6 +285,7 @@ export class Reconciler {
     reactElement: ObjectValue,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
+    branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ) {
     let renderResult: { result: Value, childContext: ObjectValue | AbstractObjectValue } = {
@@ -297,26 +300,34 @@ export class Reconciler {
         if (this.componentTreeConfig.firstRenderOnly) {
           let typeValue = Get(this.realm, reactElement, "type");
           if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
-            let valueProp = Get(this.realm, typeValue, "currentValue");
-            let result = getValueFromRenderCall(this.realm, renderProp, this.realm.intrinsics.undefined, [valueProp]);
-            renderResult.result = result;
-          }
-        } else {
-          // if the render prop function is self contained, we can make it a new component tree root
-          // and this also has a nice side-effect of hoisting the function up to the top scope
-          if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
-            this._queueNewComponentTree(renderProp, evaluatedNode, true);
-            return renderResult;
-          } else {
-            // we don't have nested additional function support right now
-            // but the render prop is likely to have references to other components
-            // that we need to also evaluate. given we can't find those components
-            return renderResult;
+            // make sure this context is in our tree
+            if (branchState !== null && branchState.hasContext(typeValue)) {
+              let valueProp = Get(this.realm, typeValue, "currentValue");
+              let result = getValueFromRenderCall(this.realm, renderProp, this.realm.intrinsics.undefined, [valueProp]);
+              renderResult.result = result;
+              this.statistics.inlinedComponents++;
+              this.statistics.componentsEvaluated++;
+              return renderResult;
+            }
           }
         }
+        // if the render prop function is self contained, we can make it a new component tree root
+        // and this also has a nice side-effect of hoisting the function up to the top scope
+        if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
+          this._queueNewComponentTree(renderProp, evaluatedNode, true);
+          return renderResult;
+        } else {
+          // we don't have nested additional function support right now
+          // but the render prop is likely to have references to other components
+          // that we need to also evaluate. given we can't find those components
+          return renderResult;
+        }
+      } else {
+        this._findReactComponentTrees(props, evaluatedNode);
+        return renderResult;
       }
     }
-
+    this.componentTreeState.deadEnds++;
     return renderResult;
   }
 
@@ -345,15 +356,18 @@ export class Reconciler {
           // we don't have nested additional function support right now
           // but the render prop is likely to have references to other components
           // that we need to also evaluate. given we can't find those components
+          this.componentTreeState.deadEnds++;
           return renderResult;
         }
       } else {
         this._findReactComponentTrees(props, evaluatedNode);
+        return renderResult;
       }
     }
     // this is the worst case, we were unable to find the render prop function
     // and won't be able to find any further components to evaluate as trees
     // because of that
+    this.componentTreeState.deadEnds++;
     return renderResult;
   }
 
@@ -507,6 +521,7 @@ export class Reconciler {
     return {
       branchedComponentTrees: [],
       componentType: undefined,
+      deadEnds: 0,
       status: "SIMPLE",
     };
   }
@@ -546,6 +561,9 @@ export class Reconciler {
     let length = value.args.length;
     if (length > 0) {
       let newBranchState = new BranchState();
+      if (branchState !== null) {
+        newBranchState.useBranchContext(branchState);
+      }
       // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
       for (let i = 0; i < length; i++) {
         value.args[i] = this._resolveDeeply(
@@ -558,6 +576,8 @@ export class Reconciler {
         );
       }
       newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+    } else {
+      this.componentTreeState.deadEnds++;
     }
     return value;
   }
@@ -596,7 +616,7 @@ export class Reconciler {
       let propsValue = Get(this.realm, reactElement, "props");
       let refValue = Get(this.realm, reactElement, "ref");
 
-      const resolveChildren = () => {
+      const resolveChildren = (childrenBranchState: BranchState | null) => {
         // terminal host component. Start evaluating its children.
         if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
           let childrenValue = getProperty(this.realm, propsValue, "children");
@@ -607,7 +627,7 @@ export class Reconciler {
               childrenValue,
               context,
               branchStatus,
-              branchState,
+              childrenBranchState,
               evaluatedNode
             );
             // we can optimize further and flatten arrays on non-composite components
@@ -625,7 +645,7 @@ export class Reconciler {
       };
 
       if (typeValue instanceof StringValue) {
-        return resolveChildren();
+        return resolveChildren(branchState);
       }
       // we do not support "ref" on <Component /> ReactElements
       if (!(refValue instanceof NullValue)) {
@@ -667,30 +687,47 @@ export class Reconciler {
           let bailOutMessage = `type on <Component /> was not a ECMAScriptSourceFunctionValue`;
           evaluatedChildNode.message = bailOutMessage;
           this._assignBailOutMessage(reactElement, bailOutMessage);
+          this.componentTreeState.deadEnds++;
           return reactElement;
         }
       } else if (renderStrategy === "FRAGMENT") {
-        return resolveChildren();
+        this.statistics.componentsEvaluated++;
+        return resolveChildren(branchState);
       } else if (renderStrategy === "CONTEXT_PROVIDER") {
+        this.statistics.componentsEvaluated++;
+        let newBranchState = new BranchState();
+        invariant(typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue);
+        let contextConsumer = Get(this.realm, typeValue, "context");
+        invariant(contextConsumer instanceof ObjectValue || contextConsumer instanceof AbstractObjectValue);
         // if we have a value prop
         if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
           let valueProp = Get(this.realm, propsValue, "value");
           if (valueProp instanceof Value) {
-            invariant(typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue);
             // update the currentValue
-            let contextConsumer = Get(this.realm, typeValue, "context");
-            invariant(contextConsumer instanceof ObjectValue || contextConsumer instanceof AbstractObjectValue);
             setProperty(this.realm, contextConsumer, "currentValue", valueProp);
           }
         }
+        newBranchState.addContext(contextConsumer);
         if (this.componentTreeConfig.firstRenderOnly) {
           if (propsValue instanceof ObjectValue) {
-            resolveChildren();
-            let childrenValue = getProperty(this.realm, propsValue, "children");
-            return childrenValue;
+            resolveChildren(newBranchState);
+            if (branchState !== null) {
+              branchState.mergeBranchState(newBranchState);
+            }
+            // if we no dead ends, we know the rest of the tree and can safely remove the provider
+            if (this.componentTreeState.deadEnds === 0) {
+              let childrenValue = getProperty(this.realm, propsValue, "children");
+              this.statistics.inlinedComponents++;
+              return childrenValue;
+            }
+            return reactElement;
           }
         }
-        return resolveChildren();
+        let children = resolveChildren(newBranchState);
+        if (branchState !== null) {
+          branchState.mergeBranchState(newBranchState);
+        }
+        return children;
       }
       try {
         let result;
@@ -732,6 +769,7 @@ export class Reconciler {
               reactElement,
               propsValue,
               context,
+              branchState,
               evaluatedChildNode
             );
             result = render.result;
@@ -844,8 +882,12 @@ export class Reconciler {
 
   _findReactComponentTrees(value: Value, evaluatedNode: ReactEvaluatedNode): void {
     if (value instanceof AbstractValue) {
-      for (let arg of value.args) {
-        this._findReactComponentTrees(arg, evaluatedNode);
+      if (value.args.length > 0) {
+        for (let arg of value.args) {
+          this._findReactComponentTrees(arg, evaluatedNode);
+        }
+      } else {
+        this.componentTreeState.deadEnds++;
       }
     } else if (value instanceof ObjectValue) {
       for (let [propName, binding] of value.properties) {

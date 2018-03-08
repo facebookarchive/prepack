@@ -338,7 +338,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output First render only React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -362,13 +362,13 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Test React with JSX input, JSX output First render only React Context 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -392,13 +392,43 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output First render only React Context 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Context.Consumer",
+              "status": "RENDER_PROPS",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Test React with JSX input, JSX output First render only Simple 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -428,7 +458,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output First render only componentWillMount 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -921,7 +951,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Functional component folding Key change with fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -1051,7 +1081,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Functional component folding Key not changing with fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -1409,7 +1439,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Functional component folding Simple fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -1745,7 +1775,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Render props React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -1774,6 +1804,36 @@ ReactStatistics {
 `;
 
 exports[`Test React with JSX input, JSX output Render props React Context 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Context.Consumer",
+              "status": "RENDER_PROPS",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Render props React Context 3 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1881,7 +1941,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2031,7 +2091,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 9 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 9,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2086,7 +2146,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 10 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2122,7 +2182,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 11 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 10,
+  "componentsEvaluated": 13,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2588,7 +2648,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output First render only React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2612,13 +2672,13 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Test React with JSX input, create-element output First render only React Context 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2642,13 +2702,43 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only React Context 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Context.Consumer",
+              "status": "RENDER_PROPS",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Test React with JSX input, create-element output First render only Simple 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2678,7 +2768,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output First render only componentWillMount 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3171,7 +3261,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output Functional component folding Key change with fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3301,7 +3391,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output Functional component folding Key not changing with fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3659,7 +3749,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output Functional component folding Simple fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3995,7 +4085,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output Render props React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4024,6 +4114,36 @@ ReactStatistics {
 `;
 
 exports[`Test React with JSX input, create-element output Render props React Context 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Context.Consumer",
+              "status": "RENDER_PROPS",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Render props React Context 3 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -4131,7 +4251,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4281,7 +4401,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 9 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 9,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4336,7 +4456,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 10 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4372,7 +4492,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 11 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 10,
+  "componentsEvaluated": 13,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4838,7 +4958,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output First render only React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4862,13 +4982,13 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Test React with create-element input, JSX output First render only React Context 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4892,13 +5012,43 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output First render only React Context 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Context.Consumer",
+              "status": "RENDER_PROPS",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Test React with create-element input, JSX output First render only Simple 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4928,7 +5078,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output First render only componentWillMount 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -5421,7 +5571,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Functional component folding Key change with fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -5551,7 +5701,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Functional component folding Key not changing with fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -5909,7 +6059,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Functional component folding Simple fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -6210,7 +6360,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Render props React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -6239,6 +6389,36 @@ ReactStatistics {
 `;
 
 exports[`Test React with create-element input, JSX output Render props React Context 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Context.Consumer",
+              "status": "RENDER_PROPS",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Render props React Context 3 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -6346,7 +6526,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -6496,7 +6676,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 9 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 9,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -6551,7 +6731,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 10 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -6587,7 +6767,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 11 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 10,
+  "componentsEvaluated": 13,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7053,7 +7233,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output First render only React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7077,13 +7257,13 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Test React with create-element input, create-element output First render only React Context 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7107,13 +7287,43 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only React Context 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Context.Consumer",
+              "status": "RENDER_PROPS",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Test React with create-element input, create-element output First render only Simple 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7143,7 +7353,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output First render only componentWillMount 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7636,7 +7846,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Functional component folding Key change with fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7766,7 +7976,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Functional component folding Key not changing with fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8124,7 +8334,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple fragments 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8425,7 +8635,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Render props React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8454,6 +8664,36 @@ ReactStatistics {
 `;
 
 exports[`Test React with create-element input, create-element output Render props React Context 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Context.Consumer",
+              "status": "RENDER_PROPS",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Render props React Context 3 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -8561,7 +8801,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8711,7 +8951,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 9 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 9,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8766,7 +9006,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 10 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8802,7 +9042,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 11 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 10,
+  "componentsEvaluated": 13,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
