@@ -11,7 +11,7 @@
 
 import { Realm, type Effects } from "../realm.js";
 import { FunctionEnvironmentRecord, Reference } from "../environment.js";
-import { Completion } from "../completions.js";
+import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
@@ -23,11 +23,13 @@ import {
   StringValue,
   ArrayValue,
   ECMAScriptSourceFunctionValue,
+  UndefinedValue,
+  BooleanValue,
 } from "../values/index.js";
 import type { BabelTraversePath } from "babel-traverse";
 import { Generator } from "../utils/generator.js";
-import type { Descriptor, ReactHint } from "../types";
-import { Get } from "../methods/index.js";
+import type { Descriptor, ReactHint, PropertyBinding, ReactComponentTreeConfig } from "../types";
+import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
@@ -35,7 +37,7 @@ import { Create, Properties, Environment } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { To } from "../singletons.js";
 import AbstractValue from "../values/AbstractValue";
 
@@ -227,32 +229,32 @@ function GetDescriptorForProperty(value: ObjectValue, propertyName: string): ?De
 
 export function convertSimpleClassComponentToFunctionalComponent(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue,
+  complexComponentType: ECMAScriptSourceFunctionValue,
   additionalFunctionEffects: AdditionalFunctionEffects
 ): void {
-  let prototype = componentType.properties.get("prototype");
+  let prototype = complexComponentType.properties.get("prototype");
   invariant(prototype);
   invariant(prototype.descriptor);
   prototype.descriptor.configurable = true;
-  Properties.DeletePropertyOrThrow(realm, componentType, "prototype");
+  Properties.DeletePropertyOrThrow(realm, complexComponentType, "prototype");
 
   // fix the length as we've changed the arguments
-  let lengthProperty = GetDescriptorForProperty(componentType, "length");
+  let lengthProperty = GetDescriptorForProperty(complexComponentType, "length");
   invariant(lengthProperty);
   lengthProperty.writable = false;
   lengthProperty.enumerable = false;
   lengthProperty.configurable = true;
   // ensure the length value is set to the new value
-  let lengthValue = Get(realm, componentType, "length");
+  let lengthValue = Get(realm, complexComponentType, "length");
   invariant(lengthValue instanceof NumberValue);
   lengthValue.value = 2;
 
   // change the function kind
-  componentType.$FunctionKind = "normal";
+  complexComponentType.$FunctionKind = "normal";
   // set the prototype back to an object
-  componentType.$Prototype = realm.intrinsics.FunctionPrototype;
+  complexComponentType.$Prototype = realm.intrinsics.FunctionPrototype;
   // give the function the functional components params
-  componentType.$FormalParameters = [t.identifier("props"), t.identifier("context")];
+  complexComponentType.$FormalParameters = [t.identifier("props"), t.identifier("context")];
   // add a transform to occur after the additional function has serialized the body of the class
   additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
     // as this was a class before and is now a functional component, we need to replace
@@ -286,6 +288,147 @@ export function convertSimpleClassComponentToFunctionalComponent(
   });
 }
 
+function createBinding(descriptor: void | Descriptor, key: string | SymbolValue, object: ObjectValue) {
+  return {
+    descriptor,
+    key,
+    object,
+  };
+}
+
+function cloneProperties(realm: Realm, properties: Map<string, any>, object: ObjectValue): Map<string, any> {
+  let newProperties = new Map();
+  for (let [propertyName, { descriptor }] of properties) {
+    newProperties.set(propertyName, createBinding(cloneDescriptor(descriptor), propertyName, object));
+  }
+  return newProperties;
+}
+
+function cloneSymbols(realm: Realm, symbols: Map<SymbolValue, any>, object: ObjectValue): Map<SymbolValue, any> {
+  let newSymbols = new Map();
+  for (let [symbol, { descriptor }] of symbols) {
+    newSymbols.set(symbol, createBinding(cloneDescriptor(descriptor), symbol, object));
+  }
+  return newSymbols;
+}
+
+function cloneValue(
+  realm: Realm,
+  originalValue: Value,
+  _prototype: null | ObjectValue,
+  copyToObject?: ObjectValue
+): Value {
+  if (originalValue instanceof FunctionValue) {
+    return cloneFunction(realm, originalValue, _prototype, copyToObject);
+  }
+  invariant(false, "TODO: add support to cloneValue() for more value types");
+}
+
+function cloneFunction(
+  realm: Realm,
+  originalValue: Value,
+  _prototype: null | ObjectValue,
+  copyToObject?: ObjectValue
+): FunctionValue {
+  let newValue;
+  if (originalValue instanceof ECMAScriptSourceFunctionValue) {
+    newValue = copyToObject || new ECMAScriptSourceFunctionValue(realm, originalValue.intrinsicName);
+    invariant(newValue instanceof ECMAScriptSourceFunctionValue);
+    // $FlowFixMe: complains about Object.assign
+    Object.assign(newValue, originalValue);
+    let properties = cloneProperties(realm, originalValue.properties, newValue);
+    newValue.properties = properties;
+    let symbols = cloneSymbols(realm, originalValue.symbols, newValue);
+    newValue.symbols = symbols;
+
+    // handle home object + prototype
+    let originalPrototype = originalValue.$HomeObject;
+    invariant(originalPrototype instanceof ObjectValue);
+    let prototype = _prototype || clonePrototype(realm, originalPrototype);
+    newValue.$HomeObject = prototype;
+    if (originalPrototype.properties.has("constructor")) {
+      Properties.Set(realm, prototype, "constructor", newValue, false);
+    }
+    if (originalValue.properties.has("prototype")) {
+      Properties.Set(realm, newValue, "prototype", prototype, false);
+    }
+  }
+  invariant(newValue instanceof FunctionValue, "TODO: add support to cloneValue() for more function types");
+  return newValue;
+}
+
+function clonePrototype(realm: Realm, prototype: Value): ObjectValue {
+  invariant(prototype instanceof ObjectValue);
+  let newPrototype = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, prototype.intrinsicName);
+
+  Object.assign(newPrototype, prototype);
+  for (let [propertyName] of prototype.properties) {
+    if (propertyName !== "constructor") {
+      let originalValue = Get(realm, prototype, propertyName);
+      let newValue = cloneValue(realm, originalValue, prototype);
+      Properties.Set(realm, newPrototype, propertyName, newValue, false);
+    }
+  }
+  for (let [symbol] of prototype.symbols) {
+    let originalValue = Get(realm, prototype, symbol);
+    let newValue = cloneValue(realm, originalValue, prototype);
+    Properties.Set(realm, newPrototype, symbol, newValue, false);
+  }
+  return newPrototype;
+}
+
+const skipFunctionProperties = new Set(["length", "prototype", "arguments", "name", "caller"]);
+
+export function convertFunctionalComponentToComplexClassComponent(
+  realm: Realm,
+  functionalComponentType: ECMAScriptSourceFunctionValue,
+  complexComponentType: void | ECMAScriptSourceFunctionValue,
+  additionalFunctionEffects: AdditionalFunctionEffects
+): void {
+  invariant(complexComponentType instanceof ECMAScriptSourceFunctionValue);
+  // get all properties on the functional component that were added in user-code
+  // we add defaultProps as undefined, as merging a class component's defaultProps on to
+  // a differnet component isn't right, we can discard defaultProps instead via folding
+  // we also don't want propTypes from the class component, so we remove that too
+  let userCodePropertiesToAdd: Map<string, PropertyBinding> = new Map([
+    ["defaultProps", createBinding(undefined, "defaultProps", functionalComponentType)],
+    ["propTypes", createBinding(undefined, "propTypes", functionalComponentType)],
+  ]);
+  let userCodeSymbolsToAdd: Map<SymbolValue, PropertyBinding> = new Map();
+
+  for (let [propertyName, binding] of functionalComponentType.properties) {
+    if (!skipFunctionProperties.has(propertyName)) {
+      userCodePropertiesToAdd.set(propertyName, binding);
+    }
+  }
+  for (let [symbol, binding] of functionalComponentType.symbols) {
+    userCodeSymbolsToAdd.set(symbol, binding);
+  }
+
+  cloneValue(realm, complexComponentType, null, functionalComponentType);
+  // then copy back and properties that were on the original functional component
+  // ensuring we overwrite any existing ones
+  for (let [propertyName, binding] of userCodePropertiesToAdd) {
+    functionalComponentType.properties.set(propertyName, binding);
+  }
+  for (let [symbol, binding] of userCodeSymbolsToAdd) {
+    functionalComponentType.symbols.set(symbol, binding);
+  }
+  // add a transform to occur after the additional function has serialized the body of the class
+  additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
+    // as we've converted a functional component to a complex one, we are going to have issues with
+    // "props" and "context" references, as they're now going to be "this.props" and "this.context".
+    // we simply need a to add to vars to beginning of the body to get around this
+    // if they're not used, any DCE tool post-Prepack (GCC or Uglify) will remove them
+    body.unshift(
+      t.variableDeclaration("var", [
+        t.variableDeclarator(t.identifier("props"), t.memberExpression(t.thisExpression(), t.identifier("props"))),
+        t.variableDeclarator(t.identifier("context"), t.memberExpression(t.thisExpression(), t.identifier("context"))),
+      ])
+    );
+  });
+}
+
 export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFunctionValue): void {
   func.$FormalParameters = func.$FormalParameters.map((param, i) => {
     if (i === 0) {
@@ -304,12 +447,11 @@ export function createReactHintObject(object: ObjectValue, propertyName: string,
   };
 }
 
-export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAScriptSourceFunctionValue {
+export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAScriptSourceFunctionValue | null {
   let _valueIsKnownReactAbstraction = valueIsKnownReactAbstraction(realm, value);
-  invariant(
-    value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction,
-    "only ECMAScriptSourceFunctionValue function values or known React abstract values are supported as React root components"
-  );
+  if (!(value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction)) {
+    return null;
+  }
   if (_valueIsKnownReactAbstraction) {
     invariant(value instanceof AbstractValue);
     let reactHint = realm.react.abstractHints.get(value);
@@ -407,7 +549,13 @@ export function evaluateComponentTreeBranch(
     createdObjects,
   ] = effects;
   if (nested) {
-    realm.applyEffects([value, new Generator(realm), modifiedBindings, modifiedProperties, createdObjects]);
+    realm.applyEffects([
+      value,
+      new Generator(realm, "evaluateComponentTreeBranch"),
+      modifiedBindings,
+      modifiedProperties,
+      createdObjects,
+    ]);
   }
   try {
     return f(generator, value);
@@ -532,20 +680,31 @@ export function isRenderPropFunctionSelfContained(
 }
 
 export function createReactEvaluatedNode(
-  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "RENDER_PROPS",
+  status:
+    | "ROOT"
+    | "NEW_TREE"
+    | "INLINED"
+    | "BAIL-OUT"
+    | "UNKNOWN_TYPE"
+    | "RENDER_PROPS"
+    | "UNSUPPORTED_COMPLETION"
+    | "ABRUPT_COMPLETION",
   name: string
 ): ReactEvaluatedNode {
   return {
+    children: [],
+    message: "",
     name,
     status,
-    children: [],
   };
 }
 
-export function getComponentName(
-  realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue | AbstractObjectValue
-): string {
+export function getComponentName(realm: Realm, componentType: Value): string {
+  invariant(
+    componentType instanceof ECMAScriptSourceFunctionValue ||
+      componentType instanceof AbstractObjectValue ||
+      componentType instanceof AbstractValue
+  );
   if (componentType.__originalName) {
     return componentType.__originalName;
   }
@@ -562,4 +721,98 @@ export function getComponentName(
     }
   }
   return "Unknown";
+}
+
+export function convertConfigObjectToReactComponentTreeConfig(
+  realm: Realm,
+  config: ObjectValue | UndefinedValue
+): ReactComponentTreeConfig {
+  // defaults
+  let firstRenderOnly = false;
+
+  if (!(config instanceof UndefinedValue)) {
+    for (let [key] of config.properties) {
+      let propValue = getProperty(realm, config, key);
+      if (propValue instanceof StringValue || propValue instanceof NumberValue || propValue instanceof BooleanValue) {
+        let value = propValue.value;
+
+        // boolean options
+        if (typeof value === "boolean") {
+          if (key === "firstRenderOnly") {
+            firstRenderOnly = value;
+          }
+        }
+      } else {
+        let diagnostic = new CompilerDiagnostic(
+          "__optimizeReactComponentTree(rootComponent, config) has been called with invalid arguments",
+          realm.currentLocation,
+          "PP0024",
+          "FatalError"
+        );
+        realm.handleError(diagnostic);
+        if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+      }
+    }
+  }
+  return {
+    firstRenderOnly,
+  };
+}
+
+export function getValueFromRenderCall(
+  realm: Realm,
+  renderFunction: ECMAScriptSourceFunctionValue,
+  instance: ObjectValue | AbstractObjectValue | UndefinedValue,
+  args: Array<Value>
+): Value {
+  invariant(renderFunction.$Call, "Expected render function to be a FunctionValue with $Call method");
+  let funcCall = renderFunction.$Call;
+  let effects;
+  try {
+    effects = realm.evaluateForEffects(() => funcCall(instance, args));
+  } catch (error) {
+    throw error;
+  }
+  let completion = effects[0];
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof Value);
+  return completion;
+}
+
+export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
+  let typeValue = Get(realm, reactElement, "type");
+
+  // ensure ref is null, as we don't use that on first render
+  Properties.Set(realm, reactElement, "ref", realm.intrinsics.null, false);
+  // when dealing with host nodes, we want to sanitize them futher
+  if (typeValue instanceof StringValue) {
+    let propsValue = Get(realm, reactElement, "props");
+    if (propsValue instanceof ObjectValue) {
+      // remove all values apart from string/number/boolean
+      for (let [propName] of propsValue.properties) {
+        invariant(propsValue instanceof ObjectValue);
+        let value = getProperty(realm, propsValue, propName);
+
+        // skip children and style
+        if (propName === "children" || propName === "style") {
+          continue;
+        }
+        if (!(value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue)) {
+          propsValue.$Delete(propName);
+        }
+      }
+    }
+  }
+  return reactElement;
 }

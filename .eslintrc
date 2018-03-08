@@ -11,10 +11,6 @@
     "prettier"
   ],
 
-  "ecmaFeatures": {
-    "jsx": true
-  },
-
   "env": {
     "es6": true,
     "jasmine": true,

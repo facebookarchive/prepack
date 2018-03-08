@@ -212,8 +212,8 @@ module.exports = this.__evaluatePureFunction(() => {
     stories: PropTypes.array.isRequired,
   };
 
-  if (this.__registerReactComponentRoot) {
-  	__registerReactComponentRoot(App);
+  if (this.__optimizeReactComponentTree) {
+  	__optimizeReactComponentTree(App);
   }
 
   return App;

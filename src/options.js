@@ -11,8 +11,23 @@
 
 import type { ErrorHandler } from "./errors.js";
 
-export type Compatibility = "browser" | "jsc-600-1-4-17" | "mobile" | "node-source-maps" | "node-cli" | "fb-www";
-export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "mobile", "node-source-maps", "node-cli", "fb-www"];
+export type Compatibility =
+  | "browser"
+  | "jsc-600-1-4-17"
+  | "mobile"
+  | "node-source-maps"
+  | "node-cli"
+  | "fb-www"
+  | "node-react";
+export const CompatibilityValues = [
+  "browser",
+  "jsc-600-1-4-17",
+  "mobile",
+  "node-source-maps",
+  "node-cli",
+  "fb-www",
+  "node-react",
+];
 
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
@@ -46,6 +61,7 @@ export type SerializerOptions = {
   initializeMoreModules?: boolean,
   internalDebug?: boolean,
   debugScopes?: boolean,
+  debugIdentifiers?: Array<string>,
   logStatistics?: boolean,
   logModules?: boolean,
   profile?: boolean,

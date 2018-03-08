@@ -156,9 +156,18 @@ export class TimingStatistics {
 }
 
 export type ReactEvaluatedNode = {
-  name: string,
-  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "RENDER_PROPS",
   children: Array<ReactEvaluatedNode>,
+  message: string,
+  name: string,
+  status:
+    | "ROOT"
+    | "NEW_TREE"
+    | "INLINED"
+    | "BAIL-OUT"
+    | "UNKNOWN_TYPE"
+    | "RENDER_PROPS"
+    | "UNSUPPORTED_COMPLETION"
+    | "ABRUPT_COMPLETION",
 };
 
 export class ReactStatistics {
@@ -166,10 +175,12 @@ export class ReactStatistics {
     this.optimizedTrees = 0;
     this.inlinedComponents = 0;
     this.evaluatedRootNodes = [];
+    this.componentsEvaluated = 0;
   }
   optimizedTrees: number;
   inlinedComponents: number;
   evaluatedRootNodes: Array<ReactEvaluatedNode>;
+  componentsEvaluated: number;
 }
 
 export class SerializerStatistics {

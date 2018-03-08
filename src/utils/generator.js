@@ -89,7 +89,7 @@ function serializeBody(generator: Generator, context: SerializationContext): Bab
 }
 
 export class Generator {
-  constructor(realm: Realm, name: void | string) {
+  constructor(realm: Realm, name: string) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -105,10 +105,10 @@ export class Generator {
   preludeGenerator: PreludeGenerator;
 
   id: number;
-  _name: void | string;
+  _name: string;
 
   getName(): string {
-    return this._name || `#${this.id}`;
+    return `${this._name}(#${this.id})`;
   }
 
   getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true): BabelNodeExpression {
@@ -323,7 +323,9 @@ export class Generator {
     }
     let args = [condition].concat(targs).concat(fargs);
     let func = nodes => {
-      return t.ifStatement(nodes[0], tfunc(nodes.slice(1, targs.length + 1)), ffunc(nodes.slice(targs.length + 1)));
+      return t.ifStatement(nodes[0],
+        tfunc(nodes.slice().splice(1, targs.length)),
+        ffunc(nodes.slice().splice(targs.length + 1, fargs.length)));
     };
     return [args, func];
   }

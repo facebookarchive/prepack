@@ -48,8 +48,16 @@ function getDataFile(directory, name) {
 }
 
 function runTestSuite(outputJsx, shouldTranspileSource) {
+  let errorsCaptured = [];
   let reactTestRoot = path.join(__dirname, "../test/react/");
   let prepackOptions = {
+    errorHandler: diag => {
+      errorsCaptured.push(diag);
+      if (diag.severity !== "Warning" && diag.severity !== "Information") {
+        return "Fail";
+      }
+      return "Recover";
+    },
     compatibility: "fb-www",
     internalDebug: true,
     serialize: true,
@@ -65,7 +73,16 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
   function compileSourceWithPrepack(source) {
     let code = `(function(){${source}})()`;
-    let serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
+    let serialized;
+    errorsCaptured = [];
+    try {
+      serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
+    } catch (e) {
+      errorsCaptured.forEach(error => {
+        console.error(error);
+      });
+      throw e;
+    }
     if (serialized == null || serialized.reactStatistics == null) {
       throw new Error("React test runner failed during serialization");
     }
@@ -115,7 +132,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     return moduleShim.exports;
   }
 
-  async function runTest(directory, name, data) {
+  async function runTest(directory, name, firstRenderOnly = false, data) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
     if (shouldTranspileSource) {
       source = transpileSource(source);
@@ -147,7 +164,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
-      expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
+      expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+        mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+      );
       expect(nameB).toEqual(nameA);
     }
   }
@@ -173,7 +192,25 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
   }
 
   // Jest tests
-  let originalConsoleError = console.error;
+  let originalConsoleError = global.console.error;
+  // we don't want React's errors printed, it's too much noise
+  let excludeErrorsContaining = [
+    "Nothing was returned from render. This usually means a return statement is missing. Or, to render nothing, return null",
+    "Consider adding an error boundary to your tree to customize error handling behavior.",
+    "Warning:",
+  ];
+  global.console.error = function(...args) {
+    let text = args[0];
+
+    if (typeof text === "string") {
+      for (let excludeError of excludeErrorsContaining) {
+        if (text.indexOf(excludeError) !== -1) {
+          return;
+        }
+      }
+    }
+    originalConsoleError.apply(this, args);
+  };
 
   describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${outputJsx
     ? "JSX output"
@@ -342,15 +379,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Return undefined", async () => {
-        // this test will cause a React console.error to show
-        // we monkey patch it to stop it polluting the test output
-        // with a false-negative error
-        global.console.error = () => {};
-        try {
-          await runTest(directory, "return-undefined.js");
-        } finally {
-          global.console.error = originalConsoleError;
-        }
+        await runTest(directory, "return-undefined.js");
       });
 
       it("Event handlers", async () => {
@@ -412,6 +441,26 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Classes with state", async () => {
         await runTest(directory, "classes-with-state.js");
       });
+
+      it("Complex class components folding into functional root component", async () => {
+        await runTest(directory, "complex-class-into-functional-root.js");
+      });
+
+      it("Complex class components folding into functional root component #2", async () => {
+        await runTest(directory, "complex-class-into-functional-root2.js");
+      });
+
+      it("Complex class components folding into functional root component #3", async () => {
+        await runTest(directory, "complex-class-into-functional-root3.js");
+      });
+
+      it("Complex class components folding into functional root component #4", async () => {
+        await runTest(directory, "complex-class-into-functional-root4.js");
+      });
+
+      it("Complex class components folding into functional root component #5", async () => {
+        await runTest(directory, "complex-class-into-functional-root5.js");
+      });
     });
 
     describe("Factory class component folding", () => {
@@ -435,6 +484,22 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Relay QueryRenderer 2", async () => {
         await runTest(directory, "relay-query-renderer2.js");
+      });
+
+      it("Relay QueryRenderer 3", async () => {
+        await runTest(directory, "relay-query-renderer3.js");
+      });
+    });
+
+    describe("First render only", () => {
+      let directory = "first-render-only";
+
+      it("Simple", async () => {
+        await runTest(directory, "simple.js", true);
+      });
+
+      it("componentWillMount", async () => {
+        await runTest(directory, "will-mount.js", true);
       });
     });
 
@@ -483,13 +548,21 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb9.js");
       });
 
+      it("fb-www 10", async () => {
+        await runTest(directory, "fb10.js");
+      });
+
+      it("fb-www 11", async () => {
+        await runTest(directory, "fb11.js");
+      });
+
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
       });
 
       it("Hacker News app", async () => {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
-        await runTest(directory, "hacker-news.js", data);
+        await runTest(directory, "hacker-news.js", false, data);
       });
     });
   });

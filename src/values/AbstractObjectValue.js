@@ -173,6 +173,11 @@ export default class AbstractObjectValue extends AbstractValue {
   $GetOwnProperty(P: PropertyKeyValue): Descriptor | void {
     if (P instanceof StringValue) P = P.value;
 
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this, P);
+      throw new FatalError();
+    }
+
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {

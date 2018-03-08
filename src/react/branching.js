@@ -45,6 +45,11 @@ export class BranchState {
   constructor() {
     this._branchesToValidate = [];
   }
+  _branchesToValidate: Array<{
+    type: StringValue | ECMAScriptSourceFunctionValue,
+    value: Value,
+  }>;
+
   _applyBranchedLogicValue(realm: Realm, reactSerializerState: ReactSerializerState, value: Value): void {
     if (
       value instanceof StringValue ||
@@ -71,6 +76,7 @@ export class BranchState {
       throw new ExpectedBailOut("Unsupported value encountered when applying branched logic to values");
     }
   }
+
   applyBranchedLogic(realm: Realm, reactSerializerState: ReactSerializerState): void {
     let reactElementType;
     let applyBranchedLogic = false;
@@ -91,13 +97,10 @@ export class BranchState {
       }
     }
   }
+
   captureBranchedValue(type: Value, value: Value): Value {
     invariant(type instanceof ECMAScriptSourceFunctionValue || type instanceof StringValue);
     this._branchesToValidate.push({ type, value });
     return value;
   }
-  _branchesToValidate: Array<{
-    type: StringValue | ECMAScriptSourceFunctionValue,
-    value: Value,
-  }>;
 }

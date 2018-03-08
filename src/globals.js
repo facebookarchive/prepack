@@ -20,7 +20,7 @@ export default function(realm: Realm): Realm {
   if (realm.isCompatibleWith("browser")) {
     initializeDOMGlobals(realm);
   }
-  if (realm.isCompatibleWith("fb-www")) {
+  if (realm.isCompatibleWith("fb-www") || realm.isCompatibleWith("node-react")) {
     initializeDOMGlobals(realm);
     initializeReactMocks(realm);
   }

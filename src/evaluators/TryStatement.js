@@ -111,11 +111,15 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (consequent instanceof JoinedAbruptCompletions || consequent instanceof PossiblyNormalCompletion) {
       consequentEffects = composeNestedThrowEffectsWithHandler(consequent, priorEffects);
     } else if (consequent instanceof ThrowCompletion) {
-      consequentEffects = realm.evaluateForEffects(() => {
-        for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
-        invariant(ast.handler);
-        return env.evaluateCompletionDeref(ast.handler, strictCode, consequent);
-      });
+      consequentEffects = realm.evaluateForEffects(
+        () => {
+          for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
+          invariant(ast.handler);
+          return env.evaluateCompletionDeref(ast.handler, strictCode, consequent);
+        },
+        undefined,
+        "composeNestedThrowEffectsWithHandler/1"
+      );
     }
     priorEffects.pop();
     let alternate = c.alternate;
@@ -124,11 +128,15 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (alternate instanceof PossiblyNormalCompletion || alternate instanceof JoinedAbruptCompletions) {
       alternateEffects = composeNestedThrowEffectsWithHandler(alternate, priorEffects);
     } else if (alternate instanceof ThrowCompletion) {
-      alternateEffects = realm.evaluateForEffects(() => {
-        for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
-        invariant(ast.handler);
-        return env.evaluateCompletionDeref(ast.handler, strictCode, alternate);
-      });
+      alternateEffects = realm.evaluateForEffects(
+        () => {
+          for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
+          invariant(ast.handler);
+          return env.evaluateCompletionDeref(ast.handler, strictCode, alternate);
+        },
+        undefined,
+        "composeNestedThrowEffectsWithHandler/2"
+      );
     }
     priorEffects.pop();
     return Join.joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
@@ -148,11 +156,15 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (consequent instanceof JoinedAbruptCompletions || consequent instanceof PossiblyNormalCompletion) {
       consequentEffects = composeNestedThrowEffectsWithHandler(consequent, priorEffects);
     } else {
-      consequentEffects = realm.evaluateForEffects(() => {
-        for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
-        invariant(ast.finalizer);
-        return env.evaluateCompletionDeref(ast.finalizer, strictCode);
-      });
+      consequentEffects = realm.evaluateForEffects(
+        () => {
+          for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
+          invariant(ast.finalizer);
+          return env.evaluateCompletionDeref(ast.finalizer, strictCode);
+        },
+        undefined,
+        "composeNestedEffectsWithFinalizer/1"
+      );
       if (!(consequentEffects[0] instanceof AbruptCompletion)) consequentEffects[0] = consequent;
     }
     priorEffects.pop();
@@ -162,11 +174,15 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (alternate instanceof PossiblyNormalCompletion || alternate instanceof JoinedAbruptCompletions) {
       alternateEffects = composeNestedThrowEffectsWithHandler(alternate, priorEffects);
     } else {
-      alternateEffects = realm.evaluateForEffects(() => {
-        for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
-        invariant(ast.finalizer);
-        return env.evaluateCompletionDeref(ast.finalizer, strictCode);
-      });
+      alternateEffects = realm.evaluateForEffects(
+        () => {
+          for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
+          invariant(ast.finalizer);
+          return env.evaluateCompletionDeref(ast.finalizer, strictCode);
+        },
+        undefined,
+        "composeNestedThrowEffectsWithHandler"
+      );
       if (!(alternateEffects[0] instanceof AbruptCompletion)) alternateEffects[0] = alternate;
     }
     priorEffects.pop();

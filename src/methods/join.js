@@ -47,7 +47,7 @@ function joinGenerators(
   generator1: Generator,
   generator2: Generator
 ): Generator {
-  let result = new Generator(realm);
+  let result = new Generator(realm, "joined");
   if (!generator1.empty() || !generator2.empty()) {
     result.joinGenerators(joinCondition, generator1, generator2);
   }
@@ -459,7 +459,10 @@ export class JoinImplementation {
     let e2 = this.joinEffectsAndPromoteNestedReturnCompletions(realm, c.alternate, e, c.alternateEffects);
     let [r1, r2] = [e1[0], e2[0]];
     if (r1 instanceof ReturnCompletion) {
-      invariant(!(r2 instanceof ReturnCompletion)); // Otherwise their values should have been joined
+      // this can happen because joinEffectsAndPromoteNestedReturnCompletions above both had nested ReturnCompletions
+      if (r2 instanceof ReturnCompletion) {
+        return this.joinEffects(realm, c.joinCondition, e1, e2);
+      }
       if (r2 instanceof JoinedAbruptCompletions) {
         if (r2.consequent instanceof ReturnCompletion) {
           let r1jr2c = this.joinEffects(realm, c.joinCondition, e1, r2.consequentEffects);
@@ -497,7 +500,14 @@ export class JoinImplementation {
         }
       }
     }
-    return this.joinEffects(realm, c.joinCondition, e1, e2);
+    let e3 = this.joinEffects(realm, c.joinCondition, e1, e2);
+    let [r3] = e3;
+    if (r3 instanceof JoinedAbruptCompletions) {
+      let [joinedEffects, possiblyNormalCompletion] = this.unbundleReturnCompletion(realm, r3);
+      realm.composeWithSavedCompletion(possiblyNormalCompletion);
+      return joinedEffects;
+    }
+    return e3;
   }
 
   unbundleReturnCompletion(realm: Realm, c: JoinedAbruptCompletions): [Effects, PossiblyNormalCompletion] {
@@ -712,7 +722,7 @@ export class JoinImplementation {
   }
 
   composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator {
-    let result = new Generator(realm);
+    let result = new Generator(realm, "composed");
     if (!generator1.empty() || !generator2.empty()) {
       result.composeGenerators(generator1, generator2);
     }

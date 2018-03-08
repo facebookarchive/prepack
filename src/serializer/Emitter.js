@@ -199,7 +199,7 @@ export class Emitter {
     return this._activeGeneratorStack[this._activeGeneratorStack.length - 1] === this._body;
   }
   _isGeneratorBody(body: SerializedBody): boolean {
-    return body.type === "MainGenerator" || body.type === "Generator";
+    return body.type === "MainGenerator" || body.type === "Generator" || body.type === "AdditionalFunction";
   }
   _processCurrentBody() {
     if (!this._isEmittingActiveGenerator()) {

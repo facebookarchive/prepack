@@ -15,8 +15,7 @@ import { Join } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
-import type { AdditionalFunctionEffects } from "./types.js";
-import type { PropertyBinding } from "../types.js";
+import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
   Value,
@@ -25,21 +24,29 @@ import {
   ObjectValue,
   AbstractValue,
   ECMAScriptSourceFunctionValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
 import buildTemplate from "babel-template";
-import { ReactStatistics, type ReactSerializerState } from "./types";
-import { Reconciler } from "../react/reconcilation.js";
+import {
+  ReactStatistics,
+  type ReactSerializerState,
+  type AdditionalFunctionEffects,
+  type ReactEvaluatedNode,
+} from "./types";
+import { Reconciler, type ComponentTreeState } from "../react/reconcilation.js";
 import {
   valueIsClassComponent,
   convertSimpleClassComponentToFunctionalComponent,
+  convertFunctionalComponentToComplexClassComponent,
   normalizeFunctionalComponentParamaters,
   getComponentTypeFromRootValue,
   valueIsKnownReactAbstraction,
   evaluateComponentTreeBranch,
   createReactEvaluatedNode,
   getComponentName,
+  convertConfigObjectToReactComponentTreeConfig,
 } from "../react/utils.js";
 import * as t from "babel-types";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
@@ -90,8 +97,11 @@ export class Functions {
     return additionalFunctions;
   }
 
-  __generateAdditionalFunctions(globalKey: string) {
-    let recordedAdditionalFunctions: Map<FunctionValue | AbstractValue, string> = new Map();
+  __generateAdditionalFunctionsMap(globalKey: string) {
+    let recordedAdditionalFunctions: Map<
+      ECMAScriptSourceFunctionValue | AbstractValue,
+      { funcId: string, config?: ReactComponentTreeConfig }
+    > = new Map();
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
       () => Get(realm, realm.$GlobalObject, globalKey),
@@ -103,25 +113,39 @@ export class Functions {
       if (property) {
         let value = property.descriptor && property.descriptor.value;
 
-        if (
-          !(
-            value instanceof FunctionValue ||
-            (value instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, value))
-          )
-        ) {
-          invariant(value instanceof AbstractValue);
-          realm.handleError(
-            new CompilerDiagnostic(
-              `Additional Function Value ${funcId} is an AbstractValue which is not allowed (unless a React known abstract)`,
-              undefined,
-              "PP0001",
-              "FatalError"
-            )
-          );
-          throw new FatalError("Additional Function values cannot be AbstractValues");
+        if (value instanceof ECMAScriptSourceFunctionValue) {
+          // additional function logic
+          recordedAdditionalFunctions.set(value, { funcId });
+          continue;
+        } else if (value instanceof ObjectValue) {
+          // React component tree logic
+          let config = Get(realm, value, "config");
+          let rootComponent = Get(realm, value, "rootComponent");
+          let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
+          let validRootComponent =
+            rootComponent instanceof ECMAScriptSourceFunctionValue ||
+            (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
+
+          if (validConfig && validRootComponent) {
+            recordedAdditionalFunctions.set(((rootComponent: any): ECMAScriptSourceFunctionValue | AbstractValue), {
+              funcId,
+              config: convertConfigObjectToReactComponentTreeConfig(
+                realm,
+                ((config: any): ObjectValue | UndefinedValue)
+              ),
+            });
+          }
+          continue;
         }
-        invariant(value instanceof AbstractValue || value instanceof FunctionValue);
-        recordedAdditionalFunctions.set(value, funcId);
+        realm.handleError(
+          new CompilerDiagnostic(
+            `Additional Function Value ${funcId} is an invalid value`,
+            undefined,
+            "PP0001",
+            "FatalError"
+          )
+        );
+        throw new FatalError("invalidf Additional Function value");
       }
     }
     return recordedAdditionalFunctions;
@@ -164,7 +188,8 @@ export class Functions {
   _generateWriteEffectsForReactComponentTree(
     componentType: ECMAScriptSourceFunctionValue,
     effects: Effects,
-    simpleClassComponents: Set<Value>
+    componentTreeState: ComponentTreeState,
+    evaluatedNode: ReactEvaluatedNode
   ): void {
     let additionalFunctionEffects = this._createAdditionalEffects(effects);
     let value = effects[0];
@@ -177,62 +202,85 @@ export class Functions {
     if (value instanceof Completion) {
       // TODO we don't support this yet, but will do very soon
       // to unblock work, we'll just return at this point right now
+      evaluatedNode.status = "UNSUPPORTED_COMPLETION";
       return;
     }
     invariant(value instanceof Value);
-    if (simpleClassComponents.has(value)) {
-      // if the root component was a class and is now simple, we can convert it from a class
-      // component to a functional component
-      convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
-      normalizeFunctionalComponentParamaters(componentType);
-      this.writeEffects.set(componentType, additionalFunctionEffects);
-    } else if (valueIsClassComponent(this.realm, componentType)) {
-      let prototype = Get(this.realm, componentType, "prototype");
-      invariant(prototype instanceof ObjectValue);
-      let renderMethod = Get(this.realm, prototype, "render");
-      invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-      this.writeEffects.set(renderMethod, additionalFunctionEffects);
+    if (valueIsClassComponent(this.realm, componentType)) {
+      if (componentTreeState.status === "SIMPLE") {
+        // if the root component was a class and is now simple, we can convert it from a class
+        // component to a functional component
+        convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
+        normalizeFunctionalComponentParamaters(componentType);
+        this.writeEffects.set(componentType, additionalFunctionEffects);
+      } else {
+        let prototype = Get(this.realm, componentType, "prototype");
+        invariant(prototype instanceof ObjectValue);
+        let renderMethod = Get(this.realm, prototype, "render");
+        invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
+        this.writeEffects.set(renderMethod, additionalFunctionEffects);
+      }
     } else {
-      normalizeFunctionalComponentParamaters(componentType);
-      this.writeEffects.set(componentType, additionalFunctionEffects);
+      if (componentTreeState.status === "COMPLEX") {
+        convertFunctionalComponentToComplexClassComponent(
+          this.realm,
+          componentType,
+          componentTreeState.componentType,
+          additionalFunctionEffects
+        );
+        let prototype = Get(this.realm, componentType, "prototype");
+        invariant(prototype instanceof ObjectValue);
+        let renderMethod = Get(this.realm, prototype, "render");
+        invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
+        this.writeEffects.set(renderMethod, additionalFunctionEffects);
+      } else {
+        normalizeFunctionalComponentParamaters(componentType);
+        this.writeEffects.set(componentType, additionalFunctionEffects);
+      }
     }
   }
 
   checkRootReactComponentTrees(statistics: ReactStatistics, react: ReactSerializerState): void {
-    let recordedReactRootComponents = this.__generateAdditionalFunctions("__reactComponentRoots");
-
+    let recordedReactRootValues = this.__generateAdditionalFunctionsMap("__reactComponentTrees");
     // Get write effects of the components
-    for (let [rootValue] of recordedReactRootComponents) {
-      let simpleClassComponents = new Set();
-      let branchReactComponentTrees = [];
-      let reconciler = new Reconciler(
-        this.realm,
-        this.moduleTracer,
-        statistics,
-        react,
-        simpleClassComponents,
-        branchReactComponentTrees
-      );
-      let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
+    for (let [componentRoot, { config }] of recordedReactRootValues) {
+      invariant(config);
+      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react, config);
+      let componentType = getComponentTypeFromRootValue(this.realm, componentRoot);
+      if (componentType === null) {
+        continue;
+      }
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
       statistics.evaluatedRootNodes.push(evaluatedRootNode);
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
       }
       let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
-      this._generateWriteEffectsForReactComponentTree(componentType, effects, simpleClassComponents);
+      let componentTreeState = reconciler.componentTreeState;
+      this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState, evaluatedRootNode);
 
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
-      for (let { rootValue: branchRootValue, nested, evaluatedNode } of branchReactComponentTrees) {
+      for (let { rootValue: branchRootValue, nested, evaluatedNode } of componentTreeState.branchedComponentTrees) {
         evaluateComponentTreeBranch(this.realm, effects, nested, () => {
           let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
+          if (branchComponentType === null) {
+            evaluatedNode.status = "UNKNOWN_TYPE";
+            return;
+          }
           // so we don't process the same component multiple times (we might change this logic later)
           if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
             return;
           }
+          reconciler.clearComponentTreeState();
           let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
-          this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, simpleClassComponents);
+          let branchComponentTreeState = reconciler.componentTreeState;
+          this._generateWriteEffectsForReactComponentTree(
+            branchComponentType,
+            branchEffects,
+            branchComponentTreeState,
+            evaluatedNode
+          );
         });
       }
       if (this.realm.react.output === "bytecode") {
@@ -242,12 +290,12 @@ export class Functions {
   }
 
   _generateAdditionalFunctionCallsFromDirective(): Array<[FunctionValue, BabelNodeCallExpression]> {
-    let recordedAdditionalFunctions = this.__generateAdditionalFunctions("__additionalFunctions");
+    let recordedAdditionalFunctions = this.__generateAdditionalFunctionsMap("__additionalFunctions");
 
     // The additional functions we registered at runtime are recorded at:
     // global.__additionalFunctions.id
     let calls = [];
-    for (let [funcValue, funcId] of recordedAdditionalFunctions) {
+    for (let [funcValue, { funcId }] of recordedAdditionalFunctions) {
       // TODO #987: Make Additional Functions work with arguments
       invariant(funcValue instanceof FunctionValue);
       calls.push([
@@ -301,7 +349,7 @@ export class Functions {
 
   checkThatFunctionsAreIndependent() {
     let inputFunctions = this._generateAdditionalFunctionCallsFromInput();
-    let recordedAdditionalFunctions = this.__generateAdditionalFunctions("__additionalFunctions");
+    let recordedAdditionalFunctions = this.__generateAdditionalFunctionsMap("__additionalFunctions");
     let additionalFunctions = inputFunctions.concat([...recordedAdditionalFunctions.keys()]);
 
     for (let funcValue of additionalFunctions) {

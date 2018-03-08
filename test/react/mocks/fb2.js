@@ -58,8 +58,8 @@ Hello.getTrials = function(renderer, Root) {
   return [['fb2 mocks', renderer.toJSON()]];
 };
 
-if (this.__registerReactComponentRoot) {
-  __registerReactComponentRoot(Hello);
+if (this.__optimizeReactComponentTree) {
+  __optimizeReactComponentTree(Hello);
 }
 
 module.exports = Hello;

@@ -20,7 +20,16 @@ let { promisify } = require("util");
 let readFileAsync = promisify(readFile);
 let writeFileAsync = promisify(writeFile);
 
+let errorsCaptured = [];
+
 let prepackOptions = {
+  errorHandler: diag => {
+    errorsCaptured.push(diag);
+    if (diag.severity !== "Warning" && diag.severity !== "Information") {
+      return "Fail";
+    }
+    return "Recover";
+  },
   compatibility: "fb-www",
   internalDebug: true,
   serialize: true,
@@ -37,7 +46,15 @@ let inputPath = path.resolve("fb-www/input.js");
 let outputPath = path.resolve("fb-www/output.js");
 
 function compileSource(source) {
-  let serialized = prepackSources([{ filePath: "", fileContents: source, sourceMapContents: "" }], prepackOptions);
+  let serialized;
+  try {
+    serialized = prepackSources([{ filePath: "", fileContents: source, sourceMapContents: "" }], prepackOptions);
+  } catch (e) {
+    errorsCaptured.forEach(error => {
+      console.error(error);
+    });
+    throw e;
+  }
   return {
     // $FlowFixMe: reactStatistics do exist as we're passing reactEnabled in config
     stats: serialized.reactStatistics,
@@ -58,7 +75,9 @@ function printReactEvaluationGraph(evaluatedRootNode, depth) {
       printReactEvaluationGraph(child, depth);
     }
   } else {
-    let line = `- ${evaluatedRootNode.name} (${evaluatedRootNode.status.toLowerCase()})`;
+    let status = evaluatedRootNode.status.toLowerCase();
+    let message = evaluatedRootNode.message !== "" ? `: ${evaluatedRootNode.message}` : "";
+    let line = `- ${evaluatedRootNode.name} (${status}${message})`;
     console.log(line.padStart(line.length + depth));
     printReactEvaluationGraph(evaluatedRootNode.children, depth + 2);
   }
@@ -67,6 +86,7 @@ function printReactEvaluationGraph(evaluatedRootNode, depth) {
 compileFile()
   .then(result => {
     console.log("\nCompilation complete!");
+    console.log(`Evaluated Components: ${result.componentsEvaluated}`);
     console.log(`Optimized Trees: ${result.optimizedTrees}`);
     console.log(`Inlined Components: ${result.inlinedComponents}\n`);
     console.log(`Evaluated Tree:`);

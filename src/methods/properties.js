@@ -303,13 +303,13 @@ export class PropertiesImplementation {
       ownDesc = ownDesc.descriptor1;
       let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
         return ownDesc !== undefined
-          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()))
+          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
           : construct_empty_effects(realm);
       });
       ownDesc = descriptor2;
       let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
-          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()))
+          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
           : construct_empty_effects(realm);
       });
 
@@ -1004,6 +1004,16 @@ export class PropertiesImplementation {
 
         // ii. Set base to ToObject(base).
         base = To.ToObjectPartial(realm, base);
+      }
+      if (!(base instanceof AbstractObjectValue) && base instanceof AbstractValue) {
+        let diagnostic = new CompilerDiagnostic(
+          `member expression object ${AbstractValue.describe(base)} is unknown`,
+          realm.currentLocation,
+          "PP0012",
+          "FatalError"
+        );
+        realm.handleError(diagnostic);
+        throw new FatalError();
       }
       invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 

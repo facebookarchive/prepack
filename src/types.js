@@ -326,6 +326,10 @@ export type ClassComponentMetadata = {
 
 export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |};
 
+export type ReactComponentTreeConfig = {
+  firstRenderOnly: boolean,
+};
+
 export type DebugServerType = {
   checkForActions: BabelNode => void,
   shutdown: () => void,
