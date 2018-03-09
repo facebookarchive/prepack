@@ -1,4 +1,3 @@
-// additional functions
 
 AGlobalObject = {};
 AGlobalValue = 5;
@@ -31,6 +30,11 @@ function additional2() {
   let tmp = hello() + world();
   let bigfib = fib(10);
   BGlobalValue = tmp + bigfib;
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

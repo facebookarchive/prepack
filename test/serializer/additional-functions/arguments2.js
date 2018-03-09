@@ -12,9 +12,9 @@ function additional2(argument) {
   return z;
 }
 
-if (global.__registerAdditionalFunctionToPrepack) {
-  __registerAdditionalFunctionToPrepack(additional1);
-  __registerAdditionalFunctionToPrepack(additional2);
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function inspect() {

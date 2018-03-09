@@ -1,4 +1,3 @@
-// additional functions
 // abstract effects
 
 let obj = global.__abstract ? __abstract('object', '({foo: function() { return 1; }})') : {foo: function() { return 1; }};
@@ -17,6 +16,11 @@ function additional2() {
   }
   let fnOrString = condition ? fn : 'string';
   return fnOrString();
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {
