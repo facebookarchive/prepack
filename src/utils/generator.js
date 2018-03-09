@@ -223,11 +223,12 @@ export class Generator {
   _name: void | string;
 
   // Make sure to to fixup
+  // how to apply things around sets of things
   static fromEffects(effects: Effects, realm: Realm): Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
 
     let output = new Generator(realm, "AdditionalFunctionEffects" + additionalFunctionUID++, effects);
-    //output.appendGenerator(generator, "Additional function generator");
+    output.appendGenerator(generator, "Additional function generator");
 
     for (let [propertyBinding, newValue] of modifiedProperties) {
       let object = propertyBinding.object;

@@ -1810,7 +1810,7 @@ export class ResidualHeapSerializer {
       let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {
-        generator.serialize(context);
+        //generator.serialize(context);
         if (postGeneratorCallback) postGeneratorCallback();
       } finally {
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
@@ -1848,9 +1848,9 @@ export class ResidualHeapSerializer {
     additionalFunctionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects
   ) {
-    let { effects, transforms } = additionalEffects;
+    let { effects, transforms, generator } = additionalEffects;
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
-    let [, generator, , , createdObjects] = effects;
+    let [, , , , createdObjects] = effects;
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
@@ -1883,8 +1883,8 @@ export class ResidualHeapSerializer {
   prepareAdditionalFunctionValues() {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     if (additionalFVEffects)
-      for (let [additionalFunctionValue, { effects }] of additionalFVEffects.entries()) {
-        let generator = effects[1];
+      for (let [additionalFunctionValue, { effects, generator }] of additionalFVEffects.entries()) {
+        //let generator = effects[1];
         invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
         this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
         invariant(!this.additionalFunctionGeneratorsInverse.has(generator));

@@ -952,7 +952,7 @@ export class ResidualHeapVisitor {
     this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 
     this.realm.withEffectsAppliedInGlobalEnv((effects: Effects) => {
-      this.visitGenerator(generator);
+      //this._withScope(functionValue, () => this.visitGenerator(generator));
       // All modified properties and bindings should be accessible
       // from its containing additional function scope.
       this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, additionalEffects));
