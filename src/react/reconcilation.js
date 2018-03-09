@@ -650,7 +650,6 @@ export class Reconciler {
       }
       newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
     } else {
-      debugger;
       this.componentTreeState.deadEnds++;
     }
     return value;
