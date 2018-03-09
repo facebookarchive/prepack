@@ -13,8 +13,8 @@
         return ++top;
     };
     global.f = af1;
-    if (global.__registerAdditionalFunctionToPrepack)
-      global.__registerAdditionalFunctionToPrepack(af1);
+    if (global.__optimize)
+      global.__optimize(af1);
     inspect = function() {
         return f()() + residual();
     }

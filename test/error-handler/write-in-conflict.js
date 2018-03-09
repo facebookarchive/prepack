@@ -1,6 +1,5 @@
-// additional functions
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":10,"column":20},"end":{"line":10,"column":26},"identifierName":"global","source":"test/error-handler/write-in-conflict.js"},"severity":"FatalError","errorCode":"PP1003"}]
+// expected errors: [{"location":{"start":{"line":9,"column":20},"end":{"line":9,"column":26},"identifierName":"global","source":"test/error-handler/write-in-conflict.js"},"severity":"FatalError","errorCode":"PP1003"}]
 
 function additional1() {
   global.a = "foo";
@@ -8,6 +7,11 @@ function additional1() {
 
 function additional2() {
   global.b = "a" in global;
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

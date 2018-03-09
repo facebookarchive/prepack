@@ -1,4 +1,3 @@
-// additional functions
 // does not contain:x = 5;
 // does not contain:y = 10;
 
@@ -12,6 +11,11 @@ function additional2() {
   var z = { bar: 6 };
   global.y = z;
   var y = 10;
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

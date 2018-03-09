@@ -1,6 +1,5 @@
-// additional functions
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":13,"column":16},"end":{"line":13,"column":21},"source":"test/error-handler/write-write-unknown-prop-conflict.js"},"severity":"FatalError","errorCode":"PP1003"},{"location":{"start":{"line":9,"column":16},"end":{"line":9,"column":21},"source":"test/error-handler/write-write-unknown-prop-conflict.js"},"severity":"FatalError","errorCode":"PP1003"}]
+// expected errors: [{"location":{"start":{"line":12,"column":16},"end":{"line":12,"column":21},"source":"test/error-handler/write-write-unknown-prop-conflict.js"},"severity":"FatalError","errorCode":"PP1003"},{"location":{"start":{"line":8,"column":16},"end":{"line":8,"column":21},"source":"test/error-handler/write-write-unknown-prop-conflict.js"},"severity":"FatalError","errorCode":"PP1003"}]
 
 let i = global.__abstract ? __abstract("string", "x") : "x";
 global.a = { x: "" }
@@ -11,6 +10,11 @@ function additional1() {
 
 function additional2() {
   global.a[i] = "bar";
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

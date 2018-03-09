@@ -4,8 +4,8 @@ function additional1() {
   }};
 }
 
-if (this.__registerAdditionalFunctionToPrepack) {
-  __registerAdditionalFunctionToPrepack(additional1);
+if (this.__optimize) {
+  __optimize(additional1);
 }
 
 inspect = function() {

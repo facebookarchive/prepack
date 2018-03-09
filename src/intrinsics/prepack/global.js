@@ -93,37 +93,33 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  global.$DefineOwnProperty("__additionalFunctions", {
-    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__additionalFunctions", true),
+  global.$DefineOwnProperty("__optimizedFunctions", {
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__optimizedFunctions", true),
     writable: true,
     enumerable: false,
     configurable: true,
   });
 
   let additonalFunctionUid = 0;
-  // Allows dynamically registering additional functions.
+  // Allows dynamically registering optimized functions.
   // WARNING: these functions will get exposed at global scope and called there.
   // NB: If we interpret one of these calls in an evaluateForEffects context
   //     that is not subsequently applied, the function will not be registered
   //     (because prepack won't have a correct value for the FunctionValue itself)
-  global.$DefineOwnProperty("__registerAdditionalFunctionToPrepack", {
-    value: new NativeFunctionValue(
-      realm,
-      "global.__registerAdditionalFunctionToPrepack",
-      "__registerAdditionalFunctionToPrepack",
-      0,
-      (context, [functionValue]) => {
-        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+  global.$DefineOwnProperty("__optimize", {
+    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 0, (context, [value, config]) => {
+      // only optimize functions for now
+      if (value instanceof ECMAScriptSourceFunctionValue) {
         realm.assignToGlobal(
           t.memberExpression(
-            t.memberExpression(t.identifier("global"), t.identifier("__additionalFunctions")),
+            t.memberExpression(t.identifier("global"), t.identifier("__optimizedFunctions")),
             t.identifier("" + additonalFunctionUid++)
           ),
-          functionValue
+          value
         );
-        return realm.intrinsics.undefined;
       }
-    ),
+      return value;
+    }),
     writable: true,
     enumerable: false,
     configurable: true,
