@@ -70,22 +70,22 @@ export default class ReactElementSet {
     };
   }
 
-  _getKey(key: ReactElementKeyMapKey, map: ReactElementKeyMap): ReactElementValueMap {
+  _getKey(key: ReactElementKeyMapKey, map: ReactElementKeyMap, visitedValues: Set<Value>): ReactElementValueMap {
     if (!map.has(key)) {
       map.set(key, new Map());
     }
     return ((map.get(key): any): ReactElementValueMap);
   }
 
-  _getValue(val: ReactElementValueMapKey, map: ReactElementValueMap): ReactElementNode {
+  _getValue(val: ReactElementValueMapKey, map: ReactElementValueMap, visitedValues: Set<Value>): ReactElementNode {
     if (val instanceof StringValue || val instanceof NumberValue) {
       val = val.value;
     } else if (val instanceof AbstractValue) {
       val = this.equivalenceSet.add(val);
     } else if (val instanceof ArrayValue) {
-      val = this._getArrayValue(val);
+      val = this._getArrayValue(val, visitedValues);
     } else if (val instanceof ObjectValue && !(val instanceof FunctionValue)) {
-      val = this._getObjectValue(val);
+      val = this._getObjectValue(val, visitedValues);
     }
     if (!map.has(val)) {
       map.set(val, this._createNode());
@@ -94,7 +94,10 @@ export default class ReactElementSet {
   }
 
   // for objects: [key/symbol] -> [key/symbol]... as nodes
-  _getObjectValue(object: ObjectValue): ObjectValue {
+  _getObjectValue(object: ObjectValue, visitedValues: Set<Value>): ObjectValue {
+    if (visitedValues.has(object)) return object;
+    visitedValues.add(object);
+
     if (isReactElement(object)) {
       return this.add(object);
     }
@@ -102,15 +105,15 @@ export default class ReactElementSet {
     let result;
 
     for (let [propName] of object.properties) {
-      currentMap = this._getKey(propName, currentMap);
+      currentMap = this._getKey(propName, currentMap, visitedValues);
       let prop = getProperty(this.realm, object, propName);
-      result = this._getValue(prop, currentMap);
+      result = this._getValue(prop, currentMap, visitedValues);
       currentMap = result.map;
     }
     for (let [symbol] of object.symbols) {
-      currentMap = this._getKey(symbol, currentMap);
+      currentMap = this._getKey(symbol, currentMap, visitedValues);
       let prop = getProperty(this.realm, object, symbol);
-      result = this._getValue(prop, currentMap);
+      result = this._getValue(prop, currentMap, visitedValues);
       currentMap = result.map;
     }
     if (result === undefined) {
@@ -123,7 +126,9 @@ export default class ReactElementSet {
   }
 
   // for arrays: [0] -> [1] -> [2]... as nodes
-  _getArrayValue(array: ArrayValue): ArrayValue {
+  _getArrayValue(array: ArrayValue, visitedValues: Set<Value>): ArrayValue {
+    if (visitedValues.has(array)) return array;
+    visitedValues.add(array);
     let lengthValue = getProperty(this.realm, array, "length");
     invariant(lengthValue instanceof NumberValue);
     let length = lengthValue.value;
@@ -131,9 +136,9 @@ export default class ReactElementSet {
     let result;
 
     for (let i = 0; i < length; i++) {
-      currentMap = this._getKey(i, currentMap);
+      currentMap = this._getKey(i, currentMap, visitedValues);
       let element = getProperty(this.realm, array, "" + i);
-      result = this._getValue(element, currentMap);
+      result = this._getValue(element, currentMap, visitedValues);
       currentMap = result.map;
     }
     if (result === undefined) {
@@ -145,28 +150,29 @@ export default class ReactElementSet {
     return result.value;
   }
 
-  add(reactElement: ObjectValue): ObjectValue {
+  add(reactElement: ObjectValue, visitedValues: Set<Value> | void): ObjectValue {
+    if (!visitedValues) visitedValues = new Set();
     let currentMap = this.reactElementRoot;
 
     // type
-    currentMap = this._getKey("type", currentMap);
+    currentMap = this._getKey("type", currentMap, visitedValues);
     let type = getProperty(this.realm, reactElement, "type");
-    let result = this._getValue(type, currentMap);
+    let result = this._getValue(type, currentMap, visitedValues);
     currentMap = result.map;
     // key
-    currentMap = this._getKey("key", currentMap);
+    currentMap = this._getKey("key", currentMap, visitedValues);
     let key = getProperty(this.realm, reactElement, "key");
-    result = this._getValue(key, currentMap);
+    result = this._getValue(key, currentMap, visitedValues);
     currentMap = result.map;
     // ref
-    currentMap = this._getKey("ref", currentMap);
+    currentMap = this._getKey("ref", currentMap, visitedValues);
     let ref = getProperty(this.realm, reactElement, "ref");
-    result = this._getValue(ref, currentMap);
+    result = this._getValue(ref, currentMap, visitedValues);
     currentMap = result.map;
     // props
-    currentMap = this._getKey("props", currentMap);
+    currentMap = this._getKey("props", currentMap, visitedValues);
     let props = getProperty(this.realm, reactElement, "props");
-    result = this._getValue(props, currentMap);
+    result = this._getValue(props, currentMap, visitedValues);
     currentMap = result.map;
 
     if (result.value === null) {
