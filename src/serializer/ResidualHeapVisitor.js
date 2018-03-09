@@ -28,7 +28,6 @@ import {
   ObjectValue,
   AbstractObjectValue,
   NativeFunctionValue,
-  UndefinedValue,
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
@@ -807,7 +806,10 @@ export class ResidualHeapVisitor {
     this.postProcessValue(val);
   }
 
-  createGeneratorVisitCallbacks(commonScope: Scope, additionalFunctionInfo?: AdditionalFunctionInfo): VisitEntryCallbacks {
+  createGeneratorVisitCallbacks(
+    commonScope: Scope,
+    additionalFunctionInfo?: AdditionalFunctionInfo
+  ): VisitEntryCallbacks {
     return {
       visitValues: (values: Array<Value>) => {
         for (let i = 0, n = values.length; i < n; i++) values[i] = this.visitEquivalentValue(values[i]);
@@ -852,8 +854,7 @@ export class ResidualHeapVisitor {
           }
           // Fixup the binding to have the correct value
           // No previousValue means this is a binding for a nested function
-          if (previousValue)
-            residualBinding.value = this.visitEquivalentValue(previousValue);
+          if (previousValue) residualBinding.value = this.visitEquivalentValue(previousValue);
           invariant(functionInfo !== undefined);
           if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
         });
@@ -892,14 +893,6 @@ export class ResidualHeapVisitor {
   //             we don't overwrite anything they capture
   // PropertyBindings -- (property modifications) visit any property bindings to pre-existing objects
   // CreatedObjects -- should take care of itself
-  _visitEffects(additionalFunctionInfo: AdditionalFunctionInfo, additionalEffects: AdditionalFunctionEffects) {
-    let { effects, generator: effectsGenerator } = additionalEffects;
-    let functionValue = additionalFunctionInfo.functionValue;
-    let [result, , modifiedBindings, modifiedProperties, createdObjects] = effects;
-    let callbacks = this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo);
-    effectsGenerator.visit(callbacks);
-  }
-
   _visitAdditionalFunction(
     functionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects,
@@ -926,7 +919,7 @@ export class ResidualHeapVisitor {
     this.additionalRoots = new Map();
 
     let modifiedBindingInfo = new Map();
-    let [, generator, , , createdObjects] = additionalEffects.effects;
+    let createdObjects = additionalEffects.effects[4];
 
     invariant(funcInstance !== undefined);
     invariant(functionInfo !== undefined);
@@ -939,10 +932,13 @@ export class ResidualHeapVisitor {
     this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 
     this.realm.withEffectsAppliedInGlobalEnv((effects: Effects) => {
-      //this._withScope(functionValue, () => this.visitGenerator(generator));
       // All modified properties and bindings should be accessible
       // from its containing additional function scope.
-      this._withScope(functionValue, this._visitEffects.bind(this, additionalFunctionInfo, additionalEffects));
+      this._withScope(functionValue, () => {
+        let effectsGenerator = additionalEffects.generator;
+        let callbacks = this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo);
+        effectsGenerator.visit(callbacks);
+      });
       return this.realm.intrinsics.undefined;
     }, additionalEffects.effects);
     for (let createdObject of createdObjects) this.additionalRoots.delete(createdObject);

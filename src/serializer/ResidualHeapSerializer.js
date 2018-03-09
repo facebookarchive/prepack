@@ -10,7 +10,6 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import type { Effects } from "../realm";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsArray, Get } from "../methods/index.js";
 import {
@@ -1762,7 +1761,7 @@ export class ResidualHeapSerializer {
         let object = propertyBinding.object;
         invariant(object instanceof ObjectValue);
         this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
-      }
+      },
     };
     return context;
   }
@@ -1794,13 +1793,16 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, postGeneratorCallback: () => void) {
-    let context = this._getContext();
+  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, additionalEffects: AdditionalFunctionEffects) {
     return this._withGeneratorScope("AdditionalFunction", generator, newBody => {
       let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {
-        postGeneratorCallback();
+        let effectsGenerator = additionalEffects.generator;
+        effectsGenerator.serialize(this._getContext());
+
+        const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
+        Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
       } finally {
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
@@ -1814,20 +1816,7 @@ export class ResidualHeapSerializer {
   //          -- we don't overwrite anything they capture
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
-  _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
-    let { effects, generator: effectsGenerator } = additionalEffects;
-    let [result, , , modifiedProperties, createdObjects] = effects;
-    invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
-    effectsGenerator.serialize(this._getContext());
-
-    const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
-    Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
-  }
-
-  _serializeAdditionalFunction(
-    additionalFunctionValue: FunctionValue,
-    additionalEffects: AdditionalFunctionEffects
-  ) {
+  _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
     let { effects, transforms, generator } = additionalEffects;
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let createdObjects = effects[4];
@@ -1837,11 +1826,7 @@ export class ResidualHeapSerializer {
     // TODO: make sure this generator isn't getting mutated oddly
     ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
     let body = this.realm.withEffectsAppliedInGlobalEnv(
-      this._serializeAdditionalFunctionGeneratorAndEffects.bind(
-        this,
-        generator,
-        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, additionalEffects)
-      ),
+      this._serializeAdditionalFunctionGeneratorAndEffects.bind(this, generator, additionalEffects),
       effects
     );
     invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
@@ -1863,8 +1848,7 @@ export class ResidualHeapSerializer {
   prepareAdditionalFunctionValues() {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     if (additionalFVEffects)
-      for (let [additionalFunctionValue, { effects, generator }] of additionalFVEffects.entries()) {
-        //let generator = effects[1];
+      for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
         invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
         this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
         invariant(!this.additionalFunctionGeneratorsInverse.has(generator));

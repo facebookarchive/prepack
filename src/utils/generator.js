@@ -62,7 +62,7 @@ export type VisitEntryCallbacks = {|
   canSkip: AbstractValue => boolean,
   recordDeclaration: AbstractValue => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
-  visitObjectProperty: (PropertyBinding) => void,
+  visitObjectProperty: PropertyBinding => void,
   visitModifiedBinding: (Binding, Value | void) => void | ResidualFunctionBinding,
 |};
 
@@ -299,9 +299,7 @@ export class Generator {
   }
 
   appendReturnValue(result: Value) {
-    this._entries.push(
-      new ReturnValueEntry(this, result)
-    );
+    this._entries.push(new ReturnValueEntry(this, result));
   }
 
   getName(): string {
