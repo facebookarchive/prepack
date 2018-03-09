@@ -35,7 +35,9 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__optimizeReactComponentTree) {
-  __optimizeReactComponentTree(App);
+  __optimizeReactComponentTree(App, {
+    firstRenderOnly: true,
+  });
 }
 
 module.exports = App;

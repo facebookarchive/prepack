@@ -20,12 +20,12 @@ function Child(props) {
 
 function App(props) {
   return (
-    <Provider value="a">
+    <div>
       <Provider value="b">
         <Child />
       </Provider>
       <Child />
-    </Provider>
+    </div>
   );
 }
 

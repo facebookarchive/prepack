@@ -303,14 +303,20 @@ export class Reconciler {
     invariant(typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue);
     let contextConsumer = Get(this.realm, typeValue, "context");
     invariant(contextConsumer instanceof ObjectValue || contextConsumer instanceof AbstractObjectValue);
-    // if we have a value prop
+    let lastValueProp = getProperty(this.realm, contextConsumer, "currentValue");
+
+    const setContextCurrentValue = value => {
+      if (value instanceof Value) {
+        // update the currentValue
+        setProperty(this.realm, contextConsumer, "currentValue", value);
+      }
+    };
+    // if we have a value prop, set it
     if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
       let valueProp = Get(this.realm, propsValue, "value");
-      if (valueProp instanceof Value) {
-        // update the currentValue
-        setProperty(this.realm, contextConsumer, "currentValue", valueProp);
-      }
+      setContextCurrentValue(valueProp);
     }
+
     newBranchState.addContext(contextConsumer);
     if (this.componentTreeConfig.firstRenderOnly) {
       if (propsValue instanceof ObjectValue) {
@@ -325,6 +331,7 @@ export class Reconciler {
         if (branchState !== null) {
           branchState.mergeBranchState(newBranchState);
         }
+        setContextCurrentValue(lastValueProp);
         // if we no dead ends, we know the rest of the tree and can safely remove the provider
         if (this.componentTreeState.deadEnds === 0) {
           let childrenValue = getProperty(this.realm, propsValue, "children");
@@ -346,6 +353,7 @@ export class Reconciler {
     if (branchState !== null) {
       branchState.mergeBranchState(newBranchState);
     }
+    setContextCurrentValue(lastValueProp);
     return children;
   }
 
@@ -642,6 +650,7 @@ export class Reconciler {
       }
       newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
     } else {
+      debugger;
       this.componentTreeState.deadEnds++;
     }
     return value;
@@ -818,7 +827,7 @@ export class Reconciler {
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
 
     try {
-      let result = reactElement;
+      let result;
 
       switch (componentResolutionStrategy) {
         case "NORMAL": {
@@ -829,12 +838,16 @@ export class Reconciler {
           }
           let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
           evaluatedNode.children.push(evaluatedChildNode);
+          let newBranchState = new BranchState();
+          if (branchState !== null) {
+            newBranchState.useBranchContext(branchState);
+          }
           let render = this._renderComponent(
             typeValue,
             propsValue,
             context,
             branchStatus === "NEW_BRANCH" ? "BRANCH" : branchStatus,
-            null,
+            newBranchState,
             evaluatedChildNode
           );
           result = render.result;
@@ -853,7 +866,7 @@ export class Reconciler {
         }
         case "RELAY_QUERY_RENDERER": {
           invariant(typeValue instanceof AbstractObjectValue);
-          this._resolveRelayQueryRendererComponent(componentType, reactElement, evaluatedNode);
+          result = this._resolveRelayQueryRendererComponent(componentType, reactElement, evaluatedNode);
           break;
         }
         case "CONTEXT_PROVIDER": {
@@ -867,13 +880,16 @@ export class Reconciler {
           );
         }
         case "CONTEXT_CONSUMER": {
-          this._resolveContextConsumerComponent(componentType, reactElement, branchState, evaluatedNode);
+          result = this._resolveContextConsumerComponent(componentType, reactElement, branchState, evaluatedNode);
           break;
         }
         default:
           invariant(false, "unsupported component resolution strategy");
       }
 
+      if (result === undefined) {
+        result = reactElement;
+      }
       if (result instanceof UndefinedValue) {
         return this._resolveReactElementUndefinedRender(reactElement, evaluatedNode, branchStatus, branchState);
       }
