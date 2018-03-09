@@ -43,13 +43,11 @@ export type BranchStatusEnum = "ROOT" | "NO_BRANCH" | "NEW_BRANCH" | "BRANCH";
 export class BranchState {
   constructor() {
     this._branchesToValidate = [];
-    this._contexts = new Set();
   }
   _branchesToValidate: Array<{
     type: Value,
     value: Value,
   }>;
-  _contexts: Set<ObjectValue | AbstractObjectValue>;
 
   _applyBranchedLogicValue(realm: Realm, reactSerializerState: ReactSerializerState, value: Value): void {
     if (
@@ -102,28 +100,5 @@ export class BranchState {
   captureBranchedValue(type: Value, value: Value): Value {
     this._branchesToValidate.push({ type, value });
     return value;
-  }
-
-  addContext(value: ObjectValue | AbstractObjectValue): void {
-    this._contexts.add(value);
-  }
-
-  hasContext(value: ObjectValue | AbstractObjectValue): boolean {
-    return this._contexts.has(value);
-  }
-
-  getBranches(): Array<{
-    type: Value,
-    value: Value,
-  }> {
-    return this._branchesToValidate;
-  }
-
-  mergeBranchState(branchToMerge: BranchState): void {
-    this._branchesToValidate.push(...branchToMerge.getBranches());
-  }
-
-  useBranchContext(branchToUse: BranchState): void {
-    this._contexts = branchToUse._contexts;
   }
 }
