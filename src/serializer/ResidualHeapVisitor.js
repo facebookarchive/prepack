@@ -452,12 +452,6 @@ export class ResidualHeapVisitor {
     if (isClass && val.$HomeObject instanceof ObjectValue) {
       this._visitClass(val, val.$HomeObject);
     }
-    this.functionInstances.set(val, {
-      residualFunctionBindings,
-      initializationStatements: [],
-      functionValue: val,
-      scopeInstances: new Map(),
-    });
   }
 
   // Addresses the case:

@@ -234,7 +234,7 @@ function serializeBody(generator: Generator, context: SerializationContext): Bab
 let additionalFunctionUID = 0;
 
 export class Generator {
-  constructor(realm: Realm, name: void | string, effects?: Effects) {
+  constructor(realm: Realm, name: string, effects?: Effects) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -252,7 +252,7 @@ export class Generator {
   effectsToApply: void | Effects;
 
   id: number;
-  _name: void | string;
+  _name: string;
 
   // Make sure to to fixup
   // how to apply things around sets of things
@@ -305,7 +305,7 @@ export class Generator {
   }
 
   getName(): string {
-    return this._name || `#${this.id}`;
+    return `${this._name}(#${this.id})`;
   }
 
   getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true): BabelNodeExpression {

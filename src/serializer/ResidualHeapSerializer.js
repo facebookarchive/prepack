@@ -28,6 +28,7 @@ import {
   ObjectValue,
   NativeFunctionValue,
   UndefinedValue,
+  PrimitiveValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type {
@@ -663,7 +664,7 @@ export class ResidualHeapSerializer {
 
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
-    if (trace) console.log(`  referenced by ${scopes.size} scopes`);
+    if (trace) this._logScopes(scopes);
 
     // First, let's figure out from which function and generator scopes this value is referenced.
     let functionValues = [];
@@ -675,18 +676,6 @@ export class ResidualHeapSerializer {
         invariant(scope instanceof Generator);
         generators.push(scope);
       }
-    }
-
-    if (trace) {
-      console.log(`    containing ${generators.length} generators:`);
-      for (let g of generators) {
-        let s = "";
-        for (let h = g; h !== undefined; h = this.getGeneratorParent(h)) s += "=>" + h.getName();
-        console.log(`      ${s}`);
-      }
-      console.log(`    containing ${functionValues.length} function values:`);
-      for (let fv of functionValues)
-        console.log(`      ${fv.__originalName || JSON.stringify(fv.expressionLocation) || fv.constructor.name}`);
     }
 
     let referencingOnlyAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(val);
@@ -770,6 +759,7 @@ export class ResidualHeapSerializer {
     this.emitter.dependenciesVisitor(val, {
       onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
+        invariant(referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction());
         let declarationBody = this.emitter.getDeclarationBody(dependency);
         if (declarationBody !== undefined) {
           if (trace) console.log(`    has declaration body`);
@@ -1810,8 +1800,7 @@ export class ResidualHeapSerializer {
       let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {
-        //generator.serialize(context);
-        if (postGeneratorCallback) postGeneratorCallback();
+        postGeneratorCallback();
       } finally {
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
@@ -2009,10 +1998,10 @@ export class ResidualHeapSerializer {
     }
 
     // Make sure that the visitor visited as many values as the serializer
-    invariant(
-      this.serializedValues.size === this.residualValues.size,
-      "serialized " + this.serializedValues.size + " of " + this.residualValues.size
-    );
+    if (this.serializedValues.size !== this.residualValues.size) {
+      this._logSerializedResidualMismatches();
+      invariant(false, "serialized " + this.serializedValues.size + " of " + this.residualValues.size);
+    }
 
     // TODO: find better way to do this?
     // revert changes to functionInstances in case we do multiple serialization passes
@@ -2023,5 +2012,34 @@ export class ResidualHeapSerializer {
     let program_directives = [];
     if (this.realm.isStrict) program_directives.push(strictDirective);
     return t.file(t.program(ast_body, program_directives));
+  }
+
+  _logScopes(scopes: Set<Scope>) {
+    console.log(`  referenced by ${scopes.size} scopes`);
+    for (let s of scopes)
+      if (s instanceof Generator) {
+        let text = "";
+        for (let g = s; g !== undefined; g = this.getGeneratorParent(g)) text += "=>" + g.getName();
+        console.log(`      ${text}`);
+      } else {
+        invariant(s instanceof FunctionValue);
+        console.log(`      ${s.__originalName || JSON.stringify(s.expressionLocation) || s.constructor.name}`);
+      }
+  }
+
+  _logSerializedResidualMismatches() {
+    let logValue = value => {
+      console.log(
+        `${value.constructor.name} ${value.intrinsicName || "(no intrinsic name)"} ${value instanceof PrimitiveValue
+          ? value.toDisplayString()
+          : "(cannot print value)"}`
+      );
+      let scopes = this.residualValues.get(value);
+      if (scopes !== undefined) this._logScopes(scopes);
+    };
+    console.log("=== serialized but not visited values");
+    for (let value of this.serializedValues) if (!this.residualValues.has(value)) logValue(value);
+    console.log("=== visited but serialized values");
+    for (let value of this.residualValues.keys()) if (!this.serializedValues.has(value)) logValue(value);
   }
 }

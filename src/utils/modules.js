@@ -145,7 +145,7 @@ export class ModuleTracer extends Tracer {
     let acceleratedModuleIds, effects;
     do {
       try {
-        effects = realm.evaluateForEffects(() => performCall(), this);
+        effects = realm.evaluateForEffects(() => performCall(), this, "_callRequireAndAccelerate");
       } catch (e) {
         e;
       }

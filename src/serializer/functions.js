@@ -29,7 +29,12 @@ import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
 import buildTemplate from "babel-template";
-import { ReactStatistics, type ReactSerializerState, type AdditionalFunctionEffects } from "./types";
+import {
+  ReactStatistics,
+  type ReactSerializerState,
+  type AdditionalFunctionEffects,
+  type ReactEvaluatedNode,
+} from "./types";
 import { Reconciler, type ComponentTreeState } from "../react/reconcilation.js";
 import {
   valueIsClassComponent,
@@ -157,7 +162,8 @@ export class Functions {
   _generateWriteEffectsForReactComponentTree(
     componentType: ECMAScriptSourceFunctionValue,
     effects: Effects,
-    componentTreeState: ComponentTreeState
+    componentTreeState: ComponentTreeState,
+    evaluatedNode: ReactEvaluatedNode
   ): void {
     let additionalFunctionEffects = this._createAdditionalEffects(effects);
     let value = effects[0];
@@ -170,6 +176,7 @@ export class Functions {
     if (value instanceof Completion) {
       // TODO we don't support this yet, but will do very soon
       // to unblock work, we'll just return at this point right now
+      evaluatedNode.status = "UNSUPPORTED_COMPLETION";
       return;
     }
     invariant(value instanceof Value);
@@ -224,7 +231,7 @@ export class Functions {
       }
       let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
       let componentTreeState = reconciler.componentTreeState;
-      this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState);
+      this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState, evaluatedRootNode);
 
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
@@ -242,7 +249,12 @@ export class Functions {
           reconciler.clearComponentTreeState();
           let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
           let branchComponentTreeState = reconciler.componentTreeState;
-          this._generateWriteEffectsForReactComponentTree(branchComponentType, branchEffects, branchComponentTreeState);
+          this._generateWriteEffectsForReactComponentTree(
+            branchComponentType,
+            branchEffects,
+            branchComponentTreeState,
+            evaluatedNode
+          );
         });
       }
       if (this.realm.react.output === "bytecode") {
