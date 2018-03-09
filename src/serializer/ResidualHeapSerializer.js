@@ -29,7 +29,7 @@ import {
   UndefinedValue,
   PrimitiveValue,
 } from "../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { PossiblyNormalCompletion } from "../completions.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -1825,9 +1825,8 @@ export class ResidualHeapSerializer {
       this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
     }
     invariant(
-      //result instanceof Value || result instanceof PossiblyNormalCompletion,
-      !(result instanceof AbruptCompletion),
-      "Should not be serializing an additional function with an unconditional throw."
+      result instanceof Value || result instanceof PossiblyNormalCompletion,
+      "Should not be serializing an additional function with an unconditional throw, JoinedAbruptCompletions not yet supported"
     );
     // Handle ModifiedBindings
     let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
