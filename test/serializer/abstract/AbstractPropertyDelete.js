@@ -1,4 +1,3 @@
-// additional functions
 // add at runtime:global.obj1 = { a: 1 }; global.obj2 = { a: 2 };
 
 let obj1 = global.__abstract ? __abstract({}, 'obj1') : { a: 1 };
@@ -23,6 +22,11 @@ function additional2() {
   obj2.c = 5;
   delete obj2.b;
   return obj2;
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

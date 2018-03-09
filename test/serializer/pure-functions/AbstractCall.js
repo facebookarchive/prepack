@@ -1,4 +1,3 @@
-// additional functions
 // abstract effects
 
 let forEach = global.__abstract ? __abstract('function', '(function(callback) { callback("a", 0); callback("b", 1); })') : function(callback) { callback("a", 0); callback("b", 1); };
@@ -17,6 +16,11 @@ function additional2() {
   set(obj, 'x', 2);
   set(obj, 'y', obj.x);
   bar = function() { return obj; }
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

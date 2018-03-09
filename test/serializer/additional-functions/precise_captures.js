@@ -7,7 +7,7 @@ function Foo() {
   return Bar();
 }
 
-if (global.__registerAdditionalFunctionToPrepack) __registerAdditionalFunctionToPrepack(Foo);
+if (global.__optimize) __optimize(Foo);
 
 global.Foo = Foo;
 

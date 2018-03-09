@@ -130,7 +130,6 @@ export function getSerializerOptions({
     simpleClosures,
     trace,
   };
-  if (additionalFunctions) result.additionalFunctions = additionalFunctions;
   if (lazyObjectsRuntime !== undefined) {
     result.lazyObjectsRuntime = lazyObjectsRuntime;
   }
