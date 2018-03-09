@@ -301,7 +301,7 @@ export class Reconciler {
     this.statistics.componentsEvaluated++;
     let newBranchState = new BranchState();
     invariant(typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue);
-    let contextConsumer = Get(this.realm, typeValue, "context");
+    const contextConsumer = Get(this.realm, typeValue, "context");
     invariant(contextConsumer instanceof ObjectValue || contextConsumer instanceof AbstractObjectValue);
     let lastValueProp = getProperty(this.realm, contextConsumer, "currentValue");
 
