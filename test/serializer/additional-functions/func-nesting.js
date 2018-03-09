@@ -1,4 +1,3 @@
-// additional functions
 inspect = undefined;
 (function(){
   var Super =
@@ -27,6 +26,11 @@ inspect = undefined;
   }
 
   function additional2() {
+  }
+
+  if (global.__optimize) {
+    __optimize(additional1);
+    __optimize(additional2);
   }
 
   global.additional1 = additional1;
