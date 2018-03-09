@@ -26,7 +26,7 @@ function App(props) {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['render props relay', renderer.toJSON()]];
+  return [['render props context', renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

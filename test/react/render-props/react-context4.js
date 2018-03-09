@@ -3,13 +3,15 @@ var React = require('React');
 this['React'] = React;
 
 var { Provider, Consumer } = React.createContext(null);
+// this is done otherwise the test fails
+this['_Consumer'] = Consumer;
 
 function Child(props) {
   return (
     <div>
       <Consumer>
-        {context => {
-          return <span>123</span>
+        {value => {
+          return <span>{value}</span>
         }}
       </Consumer>
     </div>
@@ -18,8 +20,15 @@ function Child(props) {
 
 function App(props) {
   return (
-    <Provider>
-      <Child />
+    <Provider value="a">
+      <Provider value="b">
+        <Child />
+      </Provider>
+      <Consumer>
+        {value => {
+          return <span>{value}</span>
+        }}
+      </Consumer>
     </Provider>
   );
 }

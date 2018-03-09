@@ -501,6 +501,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 3", async () => {
         await runTest(directory, "react-context3.js");
       });
+
+      it("React Context 4", async () => {
+        await runTest(directory, "react-context4.js");
+      });
     });
 
     describe("First render only", () => {

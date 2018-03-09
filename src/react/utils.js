@@ -730,7 +730,8 @@ export function createReactEvaluatedNode(
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
     | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION",
+    | "ABRUPT_COMPLETION"
+    | "NORMAL",
   name: string
 ): ReactEvaluatedNode {
   return {

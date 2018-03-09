@@ -56,11 +56,16 @@ import {
   createClassInstanceForFirstRenderOnly,
 } from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
-import { AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
 
-type RenderStrategy = "NORMAL" | "FRAGMENT" | "RELAY_QUERY_RENDERER" | "CONTEXT_PROVIDER" | "CONTEXT_CONSUMER";
+type ComponentResolutionStrategy =
+  | "NORMAL"
+  | "FRAGMENT"
+  | "RELAY_QUERY_RENDERER"
+  | "CONTEXT_PROVIDER"
+  | "CONTEXT_CONSUMER";
 
 export type BranchReactComponentTree = {
   context: ObjectValue | AbstractObjectValue | null,
@@ -280,95 +285,155 @@ export class Reconciler {
     return classMetadata;
   }
 
-  _renderContextConsumerComponent(
+  _resolveContextProviderComponent(
     componentType: Value,
     reactElement: ObjectValue,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ) {
-    let renderResult: { result: Value, childContext: ObjectValue | AbstractObjectValue } = {
-      result: reactElement,
-      childContext: context,
-    };
+  ): Value {
+    let typeValue = Get(this.realm, reactElement, "type");
+    let propsValue = Get(this.realm, reactElement, "props");
 
-    if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
+    let evaluatedChildNode = createReactEvaluatedNode("NORMAL", "Context.Provider");
+    evaluatedNode.children.push(evaluatedChildNode);
+    this.statistics.componentsEvaluated++;
+    let newBranchState = new BranchState();
+    invariant(typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue);
+    let contextConsumer = Get(this.realm, typeValue, "context");
+    invariant(contextConsumer instanceof ObjectValue || contextConsumer instanceof AbstractObjectValue);
+    // if we have a value prop
+    if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
+      let valueProp = Get(this.realm, propsValue, "value");
+      if (valueProp instanceof Value) {
+        // update the currentValue
+        setProperty(this.realm, contextConsumer, "currentValue", valueProp);
+      }
+    }
+    newBranchState.addContext(contextConsumer);
+    if (this.componentTreeConfig.firstRenderOnly) {
+      if (propsValue instanceof ObjectValue) {
+        this._resolveReactElementHostChildren(
+          componentType,
+          reactElement,
+          context,
+          branchStatus,
+          newBranchState,
+          evaluatedChildNode
+        );
+        if (branchState !== null) {
+          branchState.mergeBranchState(newBranchState);
+        }
+        // if we no dead ends, we know the rest of the tree and can safely remove the provider
+        if (this.componentTreeState.deadEnds === 0) {
+          let childrenValue = getProperty(this.realm, propsValue, "children");
+          evaluatedChildNode.status = "INLINED";
+          this.statistics.inlinedComponents++;
+          return childrenValue;
+        }
+        return reactElement;
+      }
+    }
+    let children = this._resolveReactElementHostChildren(
+      componentType,
+      reactElement,
+      context,
+      branchStatus,
+      newBranchState,
+      evaluatedChildNode
+    );
+    if (branchState !== null) {
+      branchState.mergeBranchState(newBranchState);
+    }
+    return children;
+  }
+
+  _resolveContextConsumerComponent(
+    componentType: Value,
+    reactElement: ObjectValue,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ): Value | void {
+    let typeValue = Get(this.realm, reactElement, "type");
+    let propsValue = Get(this.realm, reactElement, "props");
+    let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", "Context.Consumer");
+    evaluatedNode.children.push(evaluatedChildNode);
+
+    if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
       // get the "render" prop child off the instance
-      let renderProp = Get(this.realm, props, "children");
+      let renderProp = Get(this.realm, propsValue, "children");
       if (renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call) {
         if (this.componentTreeConfig.firstRenderOnly) {
-          let typeValue = Get(this.realm, reactElement, "type");
           if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
             // make sure this context is in our tree
             if (branchState !== null && branchState.hasContext(typeValue)) {
               let valueProp = Get(this.realm, typeValue, "currentValue");
               let result = getValueFromRenderCall(this.realm, renderProp, this.realm.intrinsics.undefined, [valueProp]);
-              renderResult.result = result;
               this.statistics.inlinedComponents++;
               this.statistics.componentsEvaluated++;
-              return renderResult;
+              evaluatedChildNode.status = "INLINED";
+              return result;
             }
           }
         }
         // if the render prop function is self contained, we can make it a new component tree root
         // and this also has a nice side-effect of hoisting the function up to the top scope
         if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
-          this._queueNewComponentTree(renderProp, evaluatedNode, true);
-          return renderResult;
+          this._queueNewComponentTree(renderProp, evaluatedChildNode, true);
+          return;
         } else {
           // we don't have nested additional function support right now
           // but the render prop is likely to have references to other components
           // that we need to also evaluate. given we can't find those components
-          return renderResult;
+          return;
         }
       } else {
-        this._findReactComponentTrees(props, evaluatedNode);
-        return renderResult;
+        this._findReactComponentTrees(propsValue, evaluatedChildNode);
+        return;
       }
     }
     this.componentTreeState.deadEnds++;
-    return renderResult;
+    return;
   }
 
-  _renderRelayQueryRendererComponent(
+  _resolveRelayQueryRendererComponent(
     componentType: Value,
     reactElement: ObjectValue,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
-    context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode
-  ) {
-    let renderResult = {
-      result: reactElement,
-      childContext: context,
-    };
+  ): Value | void {
+    let typeValue = Get(this.realm, reactElement, "type");
+    let propsValue = Get(this.realm, reactElement, "props");
 
-    if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
+    let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", getComponentName(this.realm, typeValue));
+    evaluatedNode.children.push(evaluatedChildNode);
+
+    if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
       // get the "render" method off the instance
-      let renderProp = Get(this.realm, props, "render");
+      let renderProp = Get(this.realm, propsValue, "render");
       if (renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call) {
         // if the render prop function is self contained, we can make it a new component tree root
         // and this also has a nice side-effect of hoisting the function up to the top scope
         if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
-          this._queueNewComponentTree(renderProp, evaluatedNode, true);
-          return renderResult;
+          this._queueNewComponentTree(renderProp, evaluatedChildNode, true);
+          return;
         } else {
           // we don't have nested additional function support right now
           // but the render prop is likely to have references to other components
           // that we need to also evaluate. given we can't find those components
           this.componentTreeState.deadEnds++;
-          return renderResult;
+          return;
         }
       } else {
-        this._findReactComponentTrees(props, evaluatedNode);
-        return renderResult;
+        this._findReactComponentTrees(propsValue, evaluatedChildNode);
+        return;
       }
     }
     // this is the worst case, we were unable to find the render prop function
     // and won't be able to find any further components to evaluate as trees
     // because of that
     this.componentTreeState.deadEnds++;
-    return renderResult;
+    return;
   }
 
   _renderClassComponent(
@@ -526,7 +591,7 @@ export class Reconciler {
     };
   }
 
-  _getRenderStrategy(value: Value): RenderStrategy {
+  _getComponentResolutionStrategy(value: Value): ComponentResolutionStrategy {
     // check if it's a ReactRelay.QueryRenderer
     if (this.realm.fbLibraries.reactRelay !== undefined) {
       let QueryRenderer = Get(this.realm, this.realm.fbLibraries.reactRelay, "QueryRenderer");
@@ -582,6 +647,286 @@ export class Reconciler {
     return value;
   }
 
+  _resolveUnknownComponentType(reactElement: ObjectValue, evaluatedNode: ReactEvaluatedNode) {
+    let typeValue = Get(this.realm, reactElement, "type");
+    let propsValue = Get(this.realm, reactElement, "props");
+
+    this._findReactComponentTrees(propsValue, evaluatedNode);
+    if (typeValue instanceof AbstractValue) {
+      this._findReactComponentTrees(typeValue, evaluatedNode);
+      return reactElement;
+    } else {
+      let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+      evaluatedNode.children.push(evaluatedChildNode);
+      let bailOutMessage = `type on <Component /> was not a ECMAScriptSourceFunctionValue`;
+      evaluatedChildNode.message = bailOutMessage;
+      this._assignBailOutMessage(reactElement, bailOutMessage);
+      this.componentTreeState.deadEnds++;
+      return reactElement;
+    }
+  }
+
+  _resolveReactElementBadRef(reactElement: ObjectValue, evaluatedNode: ReactEvaluatedNode) {
+    let typeValue = Get(this.realm, reactElement, "type");
+    let propsValue = Get(this.realm, reactElement, "props");
+
+    let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+    evaluatedNode.children.push(evaluatedChildNode);
+    let bailOutMessage = `refs are not supported on <Components />`;
+    evaluatedChildNode.message = bailOutMessage;
+
+    this._queueNewComponentTree(typeValue, evaluatedChildNode);
+    this._findReactComponentTrees(propsValue, evaluatedNode);
+    this._assignBailOutMessage(reactElement, bailOutMessage);
+    return reactElement;
+  }
+
+  _resolveReactElementUndefinedRender(
+    reactElement: ObjectValue,
+    evaluatedNode: ReactEvaluatedNode,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
+  ) {
+    let typeValue = Get(this.realm, reactElement, "type");
+    let propsValue = Get(this.realm, reactElement, "props");
+
+    let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+    evaluatedNode.children.push(evaluatedChildNode);
+    let bailOutMessage = `undefined was returned from render`;
+    evaluatedChildNode.message = bailOutMessage;
+
+    this._assignBailOutMessage(reactElement, bailOutMessage);
+    this._findReactComponentTrees(propsValue, evaluatedNode);
+    if (branchStatus === "NEW_BRANCH" && branchState) {
+      return branchState.captureBranchedValue(typeValue, reactElement);
+    }
+    return reactElement;
+  }
+
+  _resolveReactElementHostChildren(
+    componentType: Value,
+    reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    let propsValue = Get(this.realm, reactElement, "props");
+    // terminal host component. Start evaluating its children.
+    if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
+      let childrenValue = getProperty(this.realm, propsValue, "children");
+
+      if (childrenValue instanceof Value) {
+        let resolvedChildren = this._resolveDeeply(
+          componentType,
+          childrenValue,
+          context,
+          branchStatus,
+          branchState,
+          evaluatedNode
+        );
+        // we can optimize further and flatten arrays on non-composite components
+        if (resolvedChildren instanceof ArrayValue) {
+          resolvedChildren = flattenChildren(this.realm, resolvedChildren);
+        }
+        if (propsValue.properties.has("children")) {
+          propsValue.refuseSerialization = true;
+          Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
+          propsValue.refuseSerialization = false;
+        }
+      }
+    }
+    return reactElement;
+  }
+
+  _resolveFragmentComponent(
+    componentType: Value,
+    reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    this.statistics.componentsEvaluated++;
+    if (this.componentTreeConfig.firstRenderOnly) {
+      let evaluatedChildNode = createReactEvaluatedNode("INLINED", "React.Fragment");
+      evaluatedNode.children.push(evaluatedChildNode);
+      this.statistics.inlinedComponents++;
+      let children = this._resolveReactElementHostChildren(
+        componentType,
+        reactElement,
+        context,
+        branchStatus,
+        branchState,
+        evaluatedChildNode
+      );
+      return children;
+    } else {
+      let evaluatedChildNode = createReactEvaluatedNode("NORMAL", "React.Fragment");
+      evaluatedNode.children.push(evaluatedChildNode);
+      return this._resolveReactElementHostChildren(
+        componentType,
+        reactElement,
+        context,
+        branchStatus,
+        branchState,
+        evaluatedChildNode
+      );
+    }
+  }
+
+  _resolveReactElement(
+    componentType: Value,
+    reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    reactElement = this.componentTreeConfig.firstRenderOnly
+      ? sanitizeReactElementForFirstRenderOnly(this.realm, reactElement)
+      : reactElement;
+
+    let typeValue = Get(this.realm, reactElement, "type");
+    let propsValue = Get(this.realm, reactElement, "props");
+    let refValue = Get(this.realm, reactElement, "ref");
+
+    if (typeValue instanceof StringValue) {
+      return this._resolveReactElementHostChildren(
+        componentType,
+        reactElement,
+        context,
+        branchStatus,
+        branchState,
+        evaluatedNode
+      );
+    }
+    // we do not support "ref" on <Component /> ReactElements
+    if (!(refValue instanceof NullValue)) {
+      this._resolveReactElementBadRef(reactElement, evaluatedNode);
+    }
+    if (
+      !(
+        propsValue instanceof ObjectValue ||
+        propsValue instanceof AbstractObjectValue ||
+        propsValue instanceof AbstractValue
+      )
+    ) {
+      this._assignBailOutMessage(reactElement, `props on <Component /> was not not an ObjectValue or an AbstractValue`);
+      return reactElement;
+    }
+    let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
+
+    try {
+      let result = reactElement;
+
+      switch (componentResolutionStrategy) {
+        case "NORMAL": {
+          if (
+            !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
+          ) {
+            return this._resolveUnknownComponentType(reactElement, evaluatedNode);
+          }
+          let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
+          evaluatedNode.children.push(evaluatedChildNode);
+          let render = this._renderComponent(
+            typeValue,
+            propsValue,
+            context,
+            branchStatus === "NEW_BRANCH" ? "BRANCH" : branchStatus,
+            null,
+            evaluatedChildNode
+          );
+          result = render.result;
+          this.statistics.inlinedComponents++;
+          break;
+        }
+        case "FRAGMENT": {
+          return this._resolveFragmentComponent(
+            componentType,
+            reactElement,
+            context,
+            branchStatus,
+            branchState,
+            evaluatedNode
+          );
+        }
+        case "RELAY_QUERY_RENDERER": {
+          invariant(typeValue instanceof AbstractObjectValue);
+          this._resolveRelayQueryRendererComponent(componentType, reactElement, evaluatedNode);
+          break;
+        }
+        case "CONTEXT_PROVIDER": {
+          return this._resolveContextProviderComponent(
+            componentType,
+            reactElement,
+            context,
+            branchStatus,
+            branchState,
+            evaluatedNode
+          );
+        }
+        case "CONTEXT_CONSUMER": {
+          this._resolveContextConsumerComponent(componentType, reactElement, branchState, evaluatedNode);
+          break;
+        }
+        default:
+          invariant(false, "unsupported component resolution strategy");
+      }
+
+      if (result instanceof UndefinedValue) {
+        return this._resolveReactElementUndefinedRender(reactElement, evaluatedNode, branchStatus, branchState);
+      }
+      if (branchStatus === "NEW_BRANCH" && branchState) {
+        return branchState.captureBranchedValue(typeValue, result);
+      }
+      return result;
+    } catch (error) {
+      return this._resolveComponentResolutionFailure(error, reactElement, evaluatedNode, branchStatus, branchState);
+    }
+  }
+
+  _resolveComponentResolutionFailure(
+    error: Error | Completion,
+    reactElement: ObjectValue,
+    evaluatedNode: ReactEvaluatedNode,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null
+  ): Value {
+    let typeValue = Get(this.realm, reactElement, "type");
+    let propsValue = Get(this.realm, reactElement, "props");
+    // assign a bail out message
+    if (error instanceof NewComponentTreeBranch) {
+      // NO-OP (we don't queue a newComponentTree as this was already done)
+    } else {
+      // handle abrupt completions
+      if (error instanceof AbruptCompletion) {
+        let evaluatedChildNode = createReactEvaluatedNode("ABRUPT_COMPLETION", getComponentName(this.realm, typeValue));
+        evaluatedNode.children.push(evaluatedChildNode);
+      } else {
+        let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+        evaluatedNode.children.push(evaluatedChildNode);
+        this._queueNewComponentTree(typeValue, evaluatedChildNode);
+        this._findReactComponentTrees(propsValue, evaluatedNode);
+        if (error instanceof ExpectedBailOut) {
+          evaluatedChildNode.message = error.message;
+          this._assignBailOutMessage(reactElement, error.message);
+        } else if (error instanceof FatalError) {
+          let message = "evaluation failed";
+          evaluatedChildNode.message = message;
+          this._assignBailOutMessage(reactElement, message);
+        } else {
+          evaluatedChildNode.message = `unknown error`;
+          throw error;
+        }
+      }
+    }
+    // a child component bailed out during component folding, so return the function value and continue
+    if (branchStatus === "NEW_BRANCH" && branchState) {
+      return branchState.captureBranchedValue(typeValue, reactElement);
+    }
+    return reactElement;
+  }
   _resolveDeeply(
     componentType: Value,
     value: Value,
@@ -608,229 +953,7 @@ export class Reconciler {
       return value;
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
-      // we call value reactElement, to make it clearer what we're dealing with in this block
-      let reactElement = this.componentTreeConfig.firstRenderOnly
-        ? sanitizeReactElementForFirstRenderOnly(this.realm, value)
-        : value;
-      let typeValue = Get(this.realm, reactElement, "type");
-      let propsValue = Get(this.realm, reactElement, "props");
-      let refValue = Get(this.realm, reactElement, "ref");
-
-      const resolveChildren = (childrenBranchState: BranchState | null) => {
-        // terminal host component. Start evaluating its children.
-        if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
-          let childrenValue = getProperty(this.realm, propsValue, "children");
-
-          if (childrenValue instanceof Value) {
-            let resolvedChildren = this._resolveDeeply(
-              componentType,
-              childrenValue,
-              context,
-              branchStatus,
-              childrenBranchState,
-              evaluatedNode
-            );
-            // we can optimize further and flatten arrays on non-composite components
-            if (resolvedChildren instanceof ArrayValue) {
-              resolvedChildren = flattenChildren(this.realm, resolvedChildren);
-            }
-            if (propsValue.properties.has("children")) {
-              propsValue.refuseSerialization = true;
-              Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
-              propsValue.refuseSerialization = false;
-            }
-          }
-        }
-        return reactElement;
-      };
-
-      if (typeValue instanceof StringValue) {
-        return resolveChildren(branchState);
-      }
-      // we do not support "ref" on <Component /> ReactElements
-      if (!(refValue instanceof NullValue)) {
-        let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
-        evaluatedNode.children.push(evaluatedChildNode);
-        let bailOutMessage = `refs are not supported on <Components />`;
-        evaluatedChildNode.message = bailOutMessage;
-        this._queueNewComponentTree(typeValue, evaluatedChildNode);
-        this._findReactComponentTrees(propsValue, evaluatedNode);
-        this._assignBailOutMessage(reactElement, bailOutMessage);
-        return reactElement;
-      }
-      if (
-        !(
-          propsValue instanceof ObjectValue ||
-          propsValue instanceof AbstractObjectValue ||
-          propsValue instanceof AbstractValue
-        )
-      ) {
-        this._assignBailOutMessage(
-          reactElement,
-          `props on <Component /> was not not an ObjectValue or an AbstractValue`
-        );
-        return reactElement;
-      }
-      let renderStrategy = this._getRenderStrategy(typeValue);
-
-      if (
-        renderStrategy === "NORMAL" &&
-        !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
-      ) {
-        this._findReactComponentTrees(propsValue, evaluatedNode);
-        if (typeValue instanceof AbstractValue) {
-          this._findReactComponentTrees(typeValue, evaluatedNode);
-          return reactElement;
-        } else {
-          let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
-          evaluatedNode.children.push(evaluatedChildNode);
-          let bailOutMessage = `type on <Component /> was not a ECMAScriptSourceFunctionValue`;
-          evaluatedChildNode.message = bailOutMessage;
-          this._assignBailOutMessage(reactElement, bailOutMessage);
-          this.componentTreeState.deadEnds++;
-          return reactElement;
-        }
-      } else if (renderStrategy === "FRAGMENT") {
-        this.statistics.componentsEvaluated++;
-        return resolveChildren(branchState);
-      } else if (renderStrategy === "CONTEXT_PROVIDER") {
-        this.statistics.componentsEvaluated++;
-        let newBranchState = new BranchState();
-        invariant(typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue);
-        let contextConsumer = Get(this.realm, typeValue, "context");
-        invariant(contextConsumer instanceof ObjectValue || contextConsumer instanceof AbstractObjectValue);
-        // if we have a value prop
-        if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
-          let valueProp = Get(this.realm, propsValue, "value");
-          if (valueProp instanceof Value) {
-            // update the currentValue
-            setProperty(this.realm, contextConsumer, "currentValue", valueProp);
-          }
-        }
-        newBranchState.addContext(contextConsumer);
-        if (this.componentTreeConfig.firstRenderOnly) {
-          if (propsValue instanceof ObjectValue) {
-            resolveChildren(newBranchState);
-            if (branchState !== null) {
-              branchState.mergeBranchState(newBranchState);
-            }
-            // if we no dead ends, we know the rest of the tree and can safely remove the provider
-            if (this.componentTreeState.deadEnds === 0) {
-              let childrenValue = getProperty(this.realm, propsValue, "children");
-              this.statistics.inlinedComponents++;
-              return childrenValue;
-            }
-            return reactElement;
-          }
-        }
-        let children = resolveChildren(newBranchState);
-        if (branchState !== null) {
-          branchState.mergeBranchState(newBranchState);
-        }
-        return children;
-      }
-      try {
-        let result;
-        switch (renderStrategy) {
-          case "NORMAL": {
-            let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
-            evaluatedNode.children.push(evaluatedChildNode);
-            let render = this._renderComponent(
-              typeValue,
-              propsValue,
-              context,
-              branchStatus === "NEW_BRANCH" ? "BRANCH" : branchStatus,
-              null,
-              evaluatedChildNode
-            );
-            result = render.result;
-            this.statistics.inlinedComponents++;
-            break;
-          }
-          case "RELAY_QUERY_RENDERER": {
-            invariant(typeValue instanceof AbstractObjectValue);
-            let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", getComponentName(this.realm, typeValue));
-            evaluatedNode.children.push(evaluatedChildNode);
-            let render = this._renderRelayQueryRendererComponent(
-              componentType,
-              reactElement,
-              propsValue,
-              context,
-              evaluatedChildNode
-            );
-            result = render.result;
-            break;
-          }
-          case "CONTEXT_CONSUMER": {
-            let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", "Context.Consumer");
-            evaluatedNode.children.push(evaluatedChildNode);
-            let render = this._renderContextConsumerComponent(
-              componentType,
-              reactElement,
-              propsValue,
-              context,
-              branchState,
-              evaluatedChildNode
-            );
-            result = render.result;
-            break;
-          }
-          default:
-            invariant(false, "unsupported render strategy");
-        }
-
-        if (result instanceof UndefinedValue) {
-          let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
-          evaluatedNode.children.push(evaluatedChildNode);
-          let bailOutMessage = `undefined was returned from render`;
-          evaluatedChildNode.message = bailOutMessage;
-          this._assignBailOutMessage(reactElement, bailOutMessage);
-          this._findReactComponentTrees(propsValue, evaluatedNode);
-          if (branchStatus === "NEW_BRANCH" && branchState) {
-            return branchState.captureBranchedValue(typeValue, reactElement);
-          }
-          return reactElement;
-        }
-        if (branchStatus === "NEW_BRANCH" && branchState) {
-          return branchState.captureBranchedValue(typeValue, result);
-        }
-        return result;
-      } catch (error) {
-        // assign a bail out message
-        if (error instanceof NewComponentTreeBranch) {
-          // NO-OP (we don't queue a newComponentTree as this was already done)
-        } else {
-          // handle abrupt completions
-          if (error instanceof AbruptCompletion) {
-            let evaluatedChildNode = createReactEvaluatedNode(
-              "ABRUPT_COMPLETION",
-              getComponentName(this.realm, typeValue)
-            );
-            evaluatedNode.children.push(evaluatedChildNode);
-          } else {
-            let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
-            evaluatedNode.children.push(evaluatedChildNode);
-            this._queueNewComponentTree(typeValue, evaluatedChildNode);
-            this._findReactComponentTrees(propsValue, evaluatedNode);
-            if (error instanceof ExpectedBailOut) {
-              evaluatedChildNode.message = error.message;
-              this._assignBailOutMessage(reactElement, error.message);
-            } else if (error instanceof FatalError) {
-              let message = "evaluation failed";
-              evaluatedChildNode.message = message;
-              this._assignBailOutMessage(reactElement, message);
-            } else {
-              evaluatedChildNode.message = `unknown error`;
-              throw error;
-            }
-          }
-        }
-        // a child component bailed out during component folding, so return the function value and continue
-        if (branchStatus === "NEW_BRANCH" && branchState) {
-          return branchState.captureBranchedValue(typeValue, reactElement);
-        }
-        return reactElement;
-      }
+      return this._resolveReactElement(componentType, value, context, branchStatus, branchState, evaluatedNode);
     } else {
       throw new ExpectedBailOut("unsupported value type during reconcilation");
     }
