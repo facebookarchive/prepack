@@ -904,13 +904,6 @@ export class ResidualHeapVisitor {
     let [result, , modifiedBindings, modifiedProperties, createdObjects] = effects;
     let callbacks = this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo);
     effectsGenerator.visit(callbacks);
-    // Handing of ModifiedBindings
-    for (let [additionalBinding, previousValue] of modifiedBindings) {
-      let modifiedBinding = additionalBinding;
-      let residualBinding;
-    }
-    invariant(result instanceof Value);
-    if (!(result instanceof UndefinedValue)) this.visitValue(result);
   }
 
   _visitAdditionalFunction(

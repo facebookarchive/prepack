@@ -1828,17 +1828,8 @@ export class ResidualHeapSerializer {
   _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
     let { effects, generator: effectsGenerator } = additionalEffects;
     let [result, , , modifiedProperties, createdObjects] = effects;
-    effectsGenerator.serialize(this._getContext());
     invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
-    // Handle ModifiedBindings
-    let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
-    invariant(additionalFunctionValueInfo);
-    for (let [modifiedBinding, residualBinding] of additionalFunctionValueInfo.modifiedBindings) {
-      /*let newVal = modifiedBinding.value;
-      invariant(newVal);
-      residualBinding.additionalValueSerialized = this.serializeValue(newVal);*/
-    }
-    if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+    effectsGenerator.serialize(this._getContext());
 
     const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
     Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
@@ -1850,7 +1841,7 @@ export class ResidualHeapSerializer {
   ) {
     let { effects, transforms, generator } = additionalEffects;
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
-    let [, , , , createdObjects] = effects;
+    let createdObjects = effects[4];
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope

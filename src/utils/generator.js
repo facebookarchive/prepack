@@ -73,7 +73,23 @@ export type DerivedExpressionBuildNodeFunction = (
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
-export type GeneratorEntry = TemporalBuildNodeEntry | ModifiedPropertyEntry | ModifiedBindingEntry;
+//export type GeneratorEntry = TemporalBuildNodeEntry | ModifiedPropertyEntry | ModifiedBindingEntry;
+
+export class GeneratorEntry {
+  constructor(generator: Generator) {
+    this.containingGenerator = generator;
+  }
+
+  containingGenerator: Generator;
+
+  visit(callbacks: VisitEntryCallbacks) {
+    invariant(false, "GeneratorEntry is an abstract base class");
+  }
+
+  serialize(context: SerializationContext) {
+    invariant(false, "GeneratorEntry is an abstract base class");
+  }
+}
 
 type TemporalBuildNodeEntryArgs = {
   declared?: AbstractValue,
@@ -84,13 +100,12 @@ type TemporalBuildNodeEntryArgs = {
   isPure?: boolean,
 };
 
-class TemporalBuildNodeEntry {
+class TemporalBuildNodeEntry extends GeneratorEntry {
   constructor(generator: Generator, args: TemporalBuildNodeEntryArgs) {
-    this.containingGenerator = generator;
+    super(generator);
     Object.assign(this, args);
   }
 
-  containingGenerator: Generator;
   declared: void | AbstractValue;
   args: Array<Value>;
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
@@ -136,13 +151,12 @@ type ModifiedPropertyEntryArgs = {|
   oldValue: void | Descriptor,
 |};
 
-class ModifiedPropertyEntry {
+class ModifiedPropertyEntry extends GeneratorEntry {
   constructor(generator: Generator, args: ModifiedPropertyEntryArgs) {
-    this.containingGenerator = generator;
+    super(generator);
     Object.assign(this, args);
   }
 
-  containingGenerator: Generator;
   propertyBinding: PropertyBinding;
   // TODO make these mutable?
   newValue: void | Descriptor;
@@ -167,9 +181,9 @@ type ModifiedBindingEntryArgs = {|
   oldValue: void | Value,
 |};
 
-class ModifiedBindingEntry {
+class ModifiedBindingEntry extends GeneratorEntry {
   constructor(generator: Generator, args: ModifiedBindingEntryArgs) {
-    this.containingGenerator = generator;
+    super(generator);
     Object.assign(this, args);
   }
 
@@ -190,6 +204,24 @@ class ModifiedBindingEntry {
   visit(context: VisitEntryCallbacks) {
     invariant(this.modifiedBinding.value === this.newValue.value);
     this.residualFunctionBinding = context.visitModifiedBinding(this.modifiedBinding, this.oldValue);
+  }
+}
+
+class ReturnValueEntry extends GeneratorEntry {
+  constructor(generator: Generator, returnValue: Value) {
+    super(generator);
+    this.returnValue = returnValue;
+  }
+
+  returnValue: Value;
+
+  visit(context: VisitEntryCallbacks) {
+    context.visitValues([this.returnValue]);
+  }
+
+  serialize(context: SerializationContext) {
+    let result = context.serializeValue(this.returnValue);
+    context.emit(t.returnStatement(result));
   }
 }
 
@@ -241,6 +273,8 @@ export class Generator {
     for (let [modifiedBinding, newValue] of modifiedBindings) {
       output.appendBindingModification(modifiedBinding, newValue);
     }
+
+    if (!(result instanceof UndefinedValue)) output.appendReturnValue(result);
     return output;
   }
 
@@ -261,6 +295,12 @@ export class Generator {
         newValue,
         oldValue: modifiedBinding.value,
       })
+    );
+  }
+
+  appendReturnValue(result: Value) {
+    this._entries.push(
+      new ReturnValueEntry(this, result)
     );
   }
 
