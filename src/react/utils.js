@@ -769,7 +769,7 @@ export function getValueFromRenderCall(
   let funcCall = renderFunction.$Call;
   let effects;
   try {
-    effects = realm.evaluateForEffects(() => funcCall(instance, args), undefined, "ReactRender");
+    effects = realm.evaluateForEffects(() => funcCall(instance, args), null, "component render");
   } catch (error) {
     throw error;
   }
