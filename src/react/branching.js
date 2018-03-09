@@ -20,7 +20,6 @@ import {
   AbstractValue,
   ArrayValue,
   ObjectValue,
-  AbstractObjectValue,
 } from "../values/index.js";
 import { type ReactSerializerState } from "../serializer/types.js";
 import { isReactElement, addKeyToReactElement, forEachArrayValue } from "./utils";
