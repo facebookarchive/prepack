@@ -79,10 +79,10 @@ export function convertKeyValueToJSXAttribute(key: string, expr: BabelNodeExpres
 
   if (expr && t.isStringLiteral(expr) && typeof expr.value === "string") {
     let value = expr.value;
-    wrapInContainer = !value.includes('"') && !value.includes("'");
+    wrapInContainer = value.includes('"') || value.includes("'");
   }
   return t.jSXAttribute(
     t.jSXIdentifier(key),
-    wrapInContainer ? ((expr: any): BabelNodeStringLiteral) : t.jSXExpressionContainer(expr)
+    wrapInContainer ? t.jSXExpressionContainer(expr) : ((expr: any): BabelNodeStringLiteral)
   );
 }
