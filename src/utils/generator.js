@@ -33,7 +33,7 @@ import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
-import { Completion, JoinedAbruptCompletions, ThrowCompletion } from "../completions.js";
+import { Completion, JoinedAbruptCompletions, ThrowCompletion, ReturnCompletion } from "../completions.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
@@ -304,8 +304,9 @@ export class Generator {
     } else if (trueBranch instanceof ThrowCompletion) {
       [targs, tfunc] = onThrowCompletion(trueBranch);
     } else {
-      invariant(trueBranch instanceof Value);
-      [targs, tfunc] = onNormalValue(trueBranch);
+      let value = trueBranch instanceof ReturnCompletion ? trueBranch.value : trueBranch;
+      invariant(value instanceof Value);
+      [targs, tfunc] = onNormalValue(value);
     }
     if (falseBranch instanceof JoinedAbruptCompletions) {
       [fargs, ffunc] = this._deconstruct(
@@ -323,9 +324,11 @@ export class Generator {
     }
     let args = [condition].concat(targs).concat(fargs);
     let func = nodes => {
-      return t.ifStatement(nodes[0],
+      return t.ifStatement(
+        nodes[0],
         tfunc(nodes.slice().splice(1, targs.length)),
-        ffunc(nodes.slice().splice(targs.length + 1, fargs.length)));
+        ffunc(nodes.slice().splice(targs.length + 1, fargs.length))
+      );
     };
     return [args, func];
   }

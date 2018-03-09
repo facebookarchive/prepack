@@ -10,7 +10,13 @@
 /* @flow */
 
 import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
-import { Completion, ThrowCompletion, PossiblyNormalCompletion } from "../completions.js";
+import {
+  Completion,
+  ThrowCompletion,
+  PossiblyNormalCompletion,
+  JoinedAbruptCompletions,
+  ReturnCompletion,
+} from "../completions.js";
 import { Join } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -158,6 +164,24 @@ export class Functions {
     // Create the effects, arguments and buildNode for the return value, saving them in AdditionalFunctionEffects
     if (result instanceof PossiblyNormalCompletion) {
       let { joinCondition, consequent, alternate, consequentEffects, alternateEffects } = result;
+      let containsValue =
+        consequent instanceof Value ||
+        consequent instanceof ReturnCompletion ||
+        alternate instanceof Value ||
+        alternate instanceof ReturnCompletion;
+      let containsJoinedAbrupt =
+        consequent instanceof JoinedAbruptCompletions || alternate instanceof JoinedAbruptCompletions;
+      if (!containsValue && !containsJoinedAbrupt) {
+        this.realm.handleError(
+          new CompilerDiagnostic(
+            "Additional function with this type of abrupt exit not supported",
+            result.location,
+            "PP1002",
+            "FatalError"
+          )
+        );
+        throw new FatalError();
+      }
       // Here we join the two sets of Effects from the PossiblyNormalCompletion after
       // the additional function's return so that the serializer can emit the proper
       // throw and return values.
