@@ -1839,6 +1839,10 @@ export class ResidualHeapSerializer {
     additionalFunctionValue: FunctionValue,
     { effects, transforms }: AdditionalFunctionEffects
   ) {
+    if (!this.additionalFunctionValueInfos.has(additionalFunctionValue)) {
+      // the additionalFunction has no info, so it likely has been dead code eliminated
+      return;
+    }
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let [, generator, , , createdObjects] = effects;
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
