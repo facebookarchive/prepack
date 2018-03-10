@@ -1,4 +1,3 @@
-// additional functions
 // does not contain:x = 5;
 // does not contain:y = 10;
 let toCapture1 = {};
@@ -22,6 +21,11 @@ function additional2() {
   y = 5;
   toCapture3 = y;
   global.y = y;
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function inspect() {

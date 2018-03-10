@@ -1,4 +1,3 @@
-// additional functions
 // abstract effects
 
 var obj = global.__abstract && global.__makePartial ? __makePartial(__abstract({}, "({foo:1})")) : {foo:1};
@@ -9,6 +8,11 @@ function additional1() {
 
 function additional2() {
   return Object.assign(obj, {bar:1});
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

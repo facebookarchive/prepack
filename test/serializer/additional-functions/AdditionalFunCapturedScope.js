@@ -7,8 +7,8 @@ var f = function(x) {
     i += 1;
     return i;
   }
-  if (global.__registerAdditionalFunctionToPrepack)
-    __registerAdditionalFunctionToPrepack(fun);
+  if (global.__optimize)
+    __optimize(fun);
   addit_funs.push(fun);
   return fun;
 }

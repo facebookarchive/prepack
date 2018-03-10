@@ -1,4 +1,3 @@
-// additional functions
 // does not contain:var y = 5;
 // does not contain:var y = 10;
 
@@ -16,6 +15,11 @@ function additional2() {
   "use strict";
   let x1 = produceObject();
   global.bar = function() { return x1; }
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

@@ -759,6 +759,7 @@ export class ResidualHeapSerializer {
     this.emitter.dependenciesVisitor(val, {
       onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
+        invariant(referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction());
         let declarationBody = this.emitter.getDeclarationBody(dependency);
         if (declarationBody !== undefined) {
           if (trace) console.log(`    has declaration body`);
@@ -1795,7 +1796,7 @@ export class ResidualHeapSerializer {
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {
         generator.serialize(context);
-        if (postGeneratorCallback) postGeneratorCallback();
+        postGeneratorCallback();
       } finally {
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
@@ -1838,6 +1839,10 @@ export class ResidualHeapSerializer {
     additionalFunctionValue: FunctionValue,
     { effects, transforms }: AdditionalFunctionEffects
   ) {
+    if (!this.additionalFunctionValueInfos.has(additionalFunctionValue)) {
+      // the additionalFunction has no info, so it likely has been dead code eliminated
+      return;
+    }
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let [, generator, , , createdObjects] = effects;
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));

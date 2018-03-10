@@ -8,8 +8,8 @@
     };
     return obj;
   }
-  if (global.__registerAdditionalFunctionToPrepack) {
-    global.__registerAdditionalFunctionToPrepack(additional);
+  if (global.__optimize) {
+    global.__optimize(additional);
   }
   inspect = function() {
     additional();

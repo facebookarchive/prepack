@@ -6,8 +6,8 @@ function func1() {
   return z;
 }
 
-if (global.__registerAdditionalFunctionToPrepack) {
-  __registerAdditionalFunctionToPrepack(func1);
+if (global.__optimize) {
+  __optimize(func1);
 }
 
 inspect = function() {
