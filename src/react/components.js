@@ -162,6 +162,7 @@ export function createClassInstanceForFirstRenderOnly(
 ): ObjectValue {
   let instance = Construct(realm, componentType, [props, context]);
   invariant(instance instanceof ObjectValue);
+  instance.intrinsicName = "this";
   instance.refuseSerialization = true;
   // assign props
   Properties.Set(realm, instance, "props", props, true);

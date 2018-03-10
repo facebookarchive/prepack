@@ -498,6 +498,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple.js", true);
       });
 
+      it("Class component as root with refs", async () => {
+        await runTest(directory, "class-root-with-refs.js", true);
+      });
+
       it("componentWillMount", async () => {
         await runTest(directory, "will-mount.js", true);
       });
