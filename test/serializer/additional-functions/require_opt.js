@@ -1,5 +1,4 @@
 // es6
-// additional functions
 // does not contain:var y = 5;
 // does not contain:var y = 10;
 var modules = Object.create(null);
@@ -123,6 +122,11 @@ function additional1() {
 function additional2() {
   //global.bar = function() { return require(0).baz + "bar"; }
   global.bar = function() { return 5; }
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

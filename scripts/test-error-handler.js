@@ -54,7 +54,6 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
 
   let recover = code.includes("// recover-from-errors");
-  let additionalFunctions = code.includes("// additional functions");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let abstractEffects = code.includes("// abstract effects");
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
@@ -78,7 +77,6 @@ function runTest(name: string, code: string): boolean {
       abstractEffectsInAdditionalFunctions: abstractEffects,
       compatibility,
     };
-    if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
     prepackFileSync([name], options);
     if (!recover) {
       console.error(chalk.red("Serialization succeeded though it should have failed"));
