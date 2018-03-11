@@ -422,6 +422,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     describe("Class component folding", () => {
       let directory = "class-components";
 
+      it("Simple", async () => {
+        await runTest(directory, "simple.js");
+      });
+
       it("Simple classes", async () => {
         await runTest(directory, "simple-classes.js");
       });
