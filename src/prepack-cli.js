@@ -48,7 +48,6 @@ function run(
     --srcmapOut              The output sourcemap filename.
     --maxStackDepth          Specify the maximum call stack depth.
     --timeout                The amount of time in seconds until Prepack should time out.
-    --additionalFunctions    Additional functions that should be prepacked (comma separated).
     --abstractEffectsInAdditionalFunctions Experimental flag to allow abstract effectful function calls.
     --lazyObjectsRuntime     Enable lazy objects feature and specify the JS runtime that support this feature.
     --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
@@ -83,7 +82,6 @@ function run(
   let statsFileName;
   let maxStackDepth: number;
   let timeout: number;
-  let additionalFunctions: void | Array<string>;
   let debugIdentifiers: void | Array<string>;
   let lazyObjectsRuntime: string;
   let heapGraphFilePath: void | string;
@@ -175,11 +173,6 @@ function run(
           timeout = parseInt(seconds, 10) * 1000;
           reproArguments.push("--timeout", timeout.toString());
           break;
-        case "additionalFunctions":
-          let additionalFunctionsString = args.shift();
-          additionalFunctions = additionalFunctionsString.split(",");
-          reproArguments.push("--additionalFunctions", additionalFunctionsString);
-          break;
         case "debugIdentifiers":
           let debugIdentifiersString = args.shift();
           debugIdentifiers = debugIdentifiersString.split(",");
@@ -245,7 +238,6 @@ function run(
             "--srcmapOut outputMap",
             "--maxStackDepth depthValue",
             "--timeout seconds",
-            "--additionalFunctions fnc1,fnc2,...",
             "--debugIdentifiers id1,id2,...",
             "--check [start[, number]]",
             "--lazyObjectsRuntime lazyObjectsRuntimeName",
@@ -308,7 +300,6 @@ fi
       sourceMaps: !!outputSourceMap,
       maxStackDepth,
       timeout,
-      additionalFunctions,
       debugIdentifiers,
       check,
       lazyObjectsRuntime,
@@ -319,13 +310,8 @@ fi
     flags
   );
   if (heapGraphFilePath) resolvedOptions.heapGraphFormat = "DotLanguage";
-  if (
-    lazyObjectsRuntime &&
-    (resolvedOptions.additionalFunctions || resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)
-  ) {
-    console.error(
-      "lazy objects feature is incompatible with additionalFunctions, delayInitializations and inlineExpressions options"
-    );
+  if (lazyObjectsRuntime && (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)) {
+    console.error("lazy objects feature is incompatible with delayInitializations and inlineExpressions options");
     process.exit(1);
   }
 

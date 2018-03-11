@@ -1352,11 +1352,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // 6. Let yString be ? ToString(y).
       let yString = new StringValue(realm, To.ToString(realm, y));
       // 7. Let xSmaller be the result of performing Abstract Relational Comparison xString < yString.
-      let xSmaller = AbstractRelationalComparison(realm, xString, yString, true);
+      let xSmaller = AbstractRelationalComparison(realm, xString, yString, true, "<");
       // 8. If xSmaller is true, return -1.
       if (xSmaller.value) return new NumberValue(realm, -1);
       // 9. Let ySmaller be the result of performing Abstract Relational Comparison yString < xString.
-      let ySmaller = AbstractRelationalComparison(realm, yString, xString, true);
+      let ySmaller = AbstractRelationalComparison(realm, yString, xString, true, "<");
       // 10. If ySmaller is true, return 1.
       if (ySmaller.value) return new NumberValue(realm, 1);
       // 11. Return +0.

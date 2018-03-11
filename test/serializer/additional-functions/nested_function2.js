@@ -1,4 +1,3 @@
-// additional functions
 // does not contain:= 7;
 // does not contain:= 10;
 
@@ -10,6 +9,11 @@ function additional1() {
 
 function additional2() {
   let x = 10;
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

@@ -336,6 +336,36 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output First render only Class component as root with refs 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "SubChild",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output First render only React Context 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -544,6 +574,29 @@ ReactStatistics {
   ],
   "inlinedComponents": 4,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, JSX output First render only Simple #2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -2972,6 +3025,36 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output First render only Class component as root with refs 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "SubChild",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output First render only React Context 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -3180,6 +3263,29 @@ ReactStatistics {
   ],
   "inlinedComponents": 4,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only Simple #2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -5608,6 +5714,36 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output First render only Class component as root with refs 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "SubChild",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output First render only React Context 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -5816,6 +5952,29 @@ ReactStatistics {
   ],
   "inlinedComponents": 4,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, JSX output First render only Simple #2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -8209,6 +8368,36 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output First render only Class component as root with refs 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "SubChild",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, create-element output First render only React Context 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -8417,6 +8606,29 @@ ReactStatistics {
   ],
   "inlinedComponents": 4,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only Simple #2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedTrees": 1,
 }
 `;
 

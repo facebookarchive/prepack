@@ -1,6 +1,5 @@
-// additional functions
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":12,"column":9},"end":{"line":12,"column":15},"identifierName":"global","source":"test/error-handler/write-write-conflict3.js"},"severity":"FatalError","errorCode":"PP1003"},{"location":{"start":{"line":8,"column":13},"end":{"line":8,"column":18},"source":"test/error-handler/write-write-conflict3.js"},"severity":"FatalError","errorCode":"PP1003"}]
+// expected errors: [{"location":{"start":{"line":11,"column":9},"end":{"line":11,"column":15},"identifierName":"global","source":"test/error-handler/write-write-conflict3.js"},"severity":"FatalError","errorCode":"PP1003"},{"location":{"start":{"line":7,"column":13},"end":{"line":7,"column":18},"source":"test/error-handler/write-write-conflict3.js"},"severity":"FatalError","errorCode":"PP1003"}]
 
 global.a = "";
 
@@ -10,6 +9,11 @@ function additional1() {
 
 function additional2() {
   delete global.a;
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {
