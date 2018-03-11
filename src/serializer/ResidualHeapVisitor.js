@@ -919,6 +919,8 @@ export class ResidualHeapVisitor {
     // function instead of adding them at global scope
     let prevCommonScope = this.commonScope;
     this.commonScope = functionValue;
+    let oldEquivalenceSet = this.equivalenceSet;
+    this.equivalenceSet = new HashSet();
     let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
     this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
     let oldcontainingAdditionalFunction = this.containingAdditionalFunction;
@@ -951,6 +953,7 @@ export class ResidualHeapVisitor {
     // Cleanup
     this.commonScope = prevCommonScope;
     this.reactElementEquivalenceSet = oldReactElementEquivalenceSet;
+    this.equivalenceSet = oldEquivalenceSet;
     this._withScope(
       parentScope,
       // Re-visit any bindings corresponding to unbound values or values closed over from outside additional function

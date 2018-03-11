@@ -489,6 +489,26 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Relay QueryRenderer 3", async () => {
         await runTest(directory, "relay-query-renderer3.js");
       });
+
+      it("React Context", async () => {
+        await runTest(directory, "react-context.js");
+      });
+
+      it("React Context 2", async () => {
+        await runTest(directory, "react-context2.js");
+      });
+
+      it("React Context 3", async () => {
+        await runTest(directory, "react-context3.js");
+      });
+
+      it("React Context 4", async () => {
+        await runTest(directory, "react-context4.js");
+      });
+
+      it("React Context 5", async () => {
+        await runTest(directory, "react-context5.js");
+      });
     });
 
     describe("First render only", () => {
@@ -508,6 +528,26 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("componentWillMount", async () => {
         await runTest(directory, "will-mount.js", true);
+      });
+
+      it("React Context", async () => {
+        await runTest(directory, "react-context.js");
+      });
+
+      it("React Context 2", async () => {
+        await runTest(directory, "react-context2.js");
+      });
+
+      it("React Context 3", async () => {
+        await runTest(directory, "react-context3.js");
+      });
+
+      it("React Context 4", async () => {
+        await runTest(directory, "react-context4.js");
+      });
+
+      it("React Context 5", async () => {
+        await runTest(directory, "react-context5.js");
       });
     });
 
