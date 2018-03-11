@@ -11,6 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { parseExpression } from "babylon";
+import { ValuesDomain } from "../../domains/index.js";
 import {
   ObjectValue,
   ECMAScriptFunctionValue,
@@ -20,12 +21,15 @@ import {
   AbstractObjectValue,
   AbstractValue,
   NullValue,
+  FunctionValue,
+  NumberValue,
 } from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import { Environment } from "../../singletons.js";
 import { getReactSymbol } from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
-import { Create } from "../../singletons.js";
+import { Properties, Create } from "../../singletons.js";
+import * as t from "babel-types";
 import invariant from "../../invariant";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
@@ -530,8 +534,60 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     enumerable: false,
     configurable: true,
   });
-  reactValue.refuseSerialization = false;
   reactElementValue.intrinsicName = `require("${reactRequireName}").createElement`;
+
+  let reactContextValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `createContext`,
+    0,
+    (_, [defaultValue = realm.intrinsics.undefined]) => {
+      invariant(defaultValue instanceof Value);
+      let consumerObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      let providerObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      let consumer = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [reactContextValue, defaultValue],
+        ([methodNode, defaultValueNode]) => {
+          return t.callExpression(methodNode, [defaultValueNode]);
+        }
+      );
+      invariant(consumer instanceof AbstractObjectValue);
+      consumer.values = new ValuesDomain(new Set([consumerObject]));
+      
+      let provider = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [consumer],
+        ([consumerNode]) => {
+          return t.memberExpression(consumerNode, t.identifier("Provider"));
+        }
+      );
+      invariant(provider instanceof AbstractObjectValue);
+      provider.values = new ValuesDomain(new Set([providerObject]));
+      
+      Properties.Set(realm, consumerObject, "$$typeof", getReactSymbol("react.context", realm), true);
+      Properties.Set(realm, consumerObject, "currentValue", defaultValue, true);
+      Properties.Set(realm, consumerObject, "defaultValue", defaultValue, true);
+      Properties.Set(realm, consumerObject, "changedBits", new NumberValue(realm, 0), true);
+      Properties.Set(realm, consumerObject, "Consumer", consumer, true);
+
+      Properties.Set(realm, providerObject, "$$typeof", getReactSymbol("react.provider", realm), true);
+      Properties.Set(realm, providerObject, "context", consumer, true);
+
+      Properties.Set(realm, consumerObject, "Provider", provider, true);
+
+      return consumer;
+    }
+  );
+  reactValue.$DefineOwnProperty("createContext", {
+    value: reactContextValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  reactContextValue.intrinsicName = `require("${reactRequireName}").createContext`;
 
   let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
   reactIsValidElementValue.intrinsicName = `require("${reactRequireName}").isValidElement`;
@@ -542,5 +598,6 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   let reactPropTypesValue = Get(realm, reactValue, "PropTypes");
   reactPropTypesValue.intrinsicName = `require("${reactRequireName}").PropTypes`;
 
+  reactValue.refuseSerialization = false;
   return reactValue;
 }
