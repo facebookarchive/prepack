@@ -382,6 +382,35 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output First render only Function bind 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed on new component tree branch",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output First render only React Context 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -2285,6 +2314,35 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output fb-www mocks Function bind 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed on new component tree branch",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
@@ -3083,6 +3141,35 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only Function bind 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed on new component tree branch",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4990,6 +5077,35 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output fb-www mocks Function bind 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed on new component tree branch",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
@@ -5788,6 +5904,35 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output First render only Function bind 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed on new component tree branch",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7660,6 +7805,35 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output fb-www mocks Function bind 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed on new component tree branch",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
@@ -8458,6 +8632,35 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only Function bind 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed on new component tree branch",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10327,6 +10530,35 @@ ReactStatistics {
   ],
   "inlinedComponents": 0,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output fb-www mocks Function bind 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed on new component tree branch",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
 }
 `;
 

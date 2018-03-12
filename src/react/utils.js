@@ -38,6 +38,7 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { ExpectedBailOut } from "./errors.js";
 import { To } from "../singletons.js";
 import AbstractValue from "../values/AbstractValue";
 
@@ -812,7 +813,8 @@ export function getValueFromRenderCall(
   realm: Realm,
   renderFunction: ECMAScriptSourceFunctionValue,
   instance: ObjectValue | AbstractObjectValue | UndefinedValue,
-  args: Array<Value>
+  args: Array<Value>,
+  componentTreeConfig: ReactComponentTreeConfig
 ): Value {
   invariant(renderFunction.$Call, "Expected render function to be a FunctionValue with $Call method");
   let funcCall = renderFunction.$Call;
@@ -829,6 +831,10 @@ export function getValueFromRenderCall(
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
     completion = realm.composeWithSavedCompletion(completion);
+  }
+  // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
+  if (componentTreeConfig.firstRenderOnly && completion instanceof AbstractValue && completion.args.length === 0) {
+    throw new ExpectedBailOut("completely unknown component render currently supported on first render");
   }
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.

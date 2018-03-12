@@ -244,7 +244,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
+    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
   }
 
   _renderSimpleClassComponent(
@@ -260,7 +260,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
+    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
   }
 
   _renderFunctionalComponent(
@@ -268,7 +268,13 @@ export class Reconciler {
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
-    return getValueFromRenderCall(this.realm, componentType, this.realm.intrinsics.undefined, [props, context]);
+    return getValueFromRenderCall(
+      this.realm,
+      componentType,
+      this.realm.intrinsics.undefined,
+      [props, context],
+      this.componentTreeConfig
+    );
   }
 
   _getClassComponentMetadata(
@@ -404,7 +410,13 @@ export class Reconciler {
             // make sure this context is in our tree
             if (this._hasReferenceForContextNode(typeValue)) {
               let valueProp = Get(this.realm, typeValue, "currentValue");
-              let result = getValueFromRenderCall(this.realm, renderProp, this.realm.intrinsics.undefined, [valueProp]);
+              let result = getValueFromRenderCall(
+                this.realm,
+                renderProp,
+                this.realm.intrinsics.undefined,
+                [valueProp],
+                this.componentTreeConfig
+              );
               this.statistics.inlinedComponents++;
               this.statistics.componentsEvaluated++;
               evaluatedChildNode.status = "INLINED";
@@ -549,12 +561,7 @@ export class Reconciler {
       componentWillMount.$Call(instance, []);
     }
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-    // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    let value = getValueFromRenderCall(this.realm, renderMethod, instance, []);
-    if (value instanceof AbstractValue && value.args.length === 0) {
-      throw new ExpectedBailOut("completely unknown component render currently supported on first render");
-    }
-    return value;
+    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
   }
 
   _renderComponent(
