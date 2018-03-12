@@ -1,4 +1,3 @@
-// additional functions
 // abstract effects
 
 let obj1 = global.__abstract ? __abstract('object', '({valueOf() { this.x = 10; return 42; }})') : {valueOf() { this.x = 10; return 42; }};
@@ -19,6 +18,11 @@ function additional2() {
     foo: 0
   };
   return x + '' + x.foo;
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

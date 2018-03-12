@@ -19,6 +19,6 @@
             }
         }
     }
-    if (global.__registerAdditionalFunctionToPrepack) __registerAdditionalFunctionToPrepack(f);
+    if (global.__optimize) __optimize(f);
     inspect = f;
 })();

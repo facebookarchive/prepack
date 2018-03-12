@@ -1,4 +1,3 @@
-// additional functions
 // abstract effects
 
 let obj1 = global.__abstract ? __abstract('object', '({get foo() { return "bar"; }})') : {get foo() { return "bar"; }};
@@ -13,6 +12,11 @@ function additional1() {
 
 function additional2() {
   return obj2.foo["extends"];
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {

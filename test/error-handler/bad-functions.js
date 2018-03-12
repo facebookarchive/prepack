@@ -1,4 +1,3 @@
-// additional functions
 // recover-from-errors
 // expected errors: [{"location":{"start":{"line":10,"column":13},"end":{"line":10,"column":18},"source":"test/error-handler/bad-functions.js"},"severity":"FatalError","errorCode":"PP1003","message":"Property access conflicts with write in additional function global['additional2']"}]
 // skip
@@ -12,6 +11,11 @@ function additional1() {
 
 function additional2() {
   global.a = "foo";
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {
