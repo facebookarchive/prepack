@@ -112,7 +112,7 @@ export class Functions {
             "FatalError"
           )
         );
-        throw new FatalError("invalidf Additional Function value");
+        throw new FatalError("invalid Additional Function value");
       }
     }
     return recordedAdditionalFunctions;
