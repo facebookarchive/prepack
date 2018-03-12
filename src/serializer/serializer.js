@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { EnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { SourceFile } from "../types.js";
@@ -105,6 +106,7 @@ export class Serializer {
       timingStats.globalCodeTime = Date.now();
     }
     let code = this._execute(sources);
+    let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
@@ -141,7 +143,8 @@ export class Serializer {
       this.logger,
       this.modules,
       additionalFunctionValuesAndEffects,
-      referentializer
+      referentializer,
+      environmentRecordIdAfterGlobalCode
     );
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
