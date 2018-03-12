@@ -555,7 +555,7 @@ function run(args) {
     // filter hidden files
     if (path.basename(test.name)[0] === ".") continue;
     if (test.name.endsWith("~")) continue;
-    if (test.file.includes("// skip")) continue;
+    if (test.file.includes("// skip this test for now")) continue;
     if (args.es5 && test.file.includes("// es6")) continue;
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;

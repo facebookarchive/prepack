@@ -768,9 +768,10 @@ export class Realm {
           // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
           // Generate code using effects2 because its expressions have not been widened away.
-          let [, gen, bindings2, pbindings2] = effects2;
-          this._emitPropertAssignments(gen, pbindings2);
-          this._emitLocalAssignments(gen, bindings2);
+          let [, gen, bindings2, pbindings2, createdObjects2] = effects2;
+          this._applyPropertiesToNewlyCreatedObjects(pbindings2, createdObjects2);
+          this._emitPropertAssignments(gen, pbindings2, createdObjects2);
+          this._emitLocalAssignments(gen, bindings2, createdObjects2);
           return [effects1, effects2];
         }
         effects1 = Widen.widenEffects(this, effects1, effects2);
@@ -780,8 +781,20 @@ export class Realm {
     }
   }
 
+  _applyPropertiesToNewlyCreatedObjects(
+    modifiedProperties: void | PropertyBindings,
+    newlyCreatedObjects: CreatedObjects
+  ) {
+    if (modifiedProperties === undefined) return;
+    modifiedProperties.forEach((desc, propertyBinding, m) => {
+      if (propertyBinding.object instanceof ObjectValue && newlyCreatedObjects.has(propertyBinding.object)) {
+        propertyBinding.descriptor = desc;
+      }
+    });
+  }
+
   // populate the loop body generator with assignments that will update the phiNodes
-  _emitLocalAssignments(gen: Generator, bindings: Bindings) {
+  _emitLocalAssignments(gen: Generator, bindings: Bindings, newlyCreatedObjects: CreatedObjects) {
     let tvalFor: Map<any, AbstractValue> = new Map();
     bindings.forEach((binding, key, map) => {
       let val = binding.value;
@@ -805,11 +818,20 @@ export class Realm {
           return t.expressionStatement(t.assignmentExpression("=", (id: any), v));
         });
       }
+
+      if (val instanceof ObjectValue && newlyCreatedObjects.has(val)) {
+        let phiNode = key.phiNode;
+        gen.emitStatement([val], ([v]) => {
+          invariant(phiNode !== undefined);
+          let id = phiNode.buildNode([]);
+          return t.expressionStatement(t.assignmentExpression("=", (id: any), v));
+        });
+      }
     });
   }
 
   // populate the loop body generator with assignments that will update properties modified inside the loop
-  _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings) {
+  _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings, newlyCreatedObjects: CreatedObjects) {
     function isSelfReferential(value: Value, pathNode: void | AbstractValue): boolean {
       if (value === pathNode) return true;
       if (value instanceof AbstractValue && pathNode !== undefined) {
@@ -822,6 +844,9 @@ export class Realm {
 
     let tvalFor: Map<any, AbstractValue> = new Map();
     pbindings.forEach((val, key, map) => {
+      if (key.object instanceof ObjectValue && newlyCreatedObjects.has(key.object)) {
+        return;
+      }
       let value = val && val.value;
       if (value instanceof AbstractValue) {
         invariant(value._buildNode !== undefined);
@@ -846,6 +871,9 @@ export class Realm {
       }
     });
     pbindings.forEach((val, key, map) => {
+      if (key.object instanceof ObjectValue && newlyCreatedObjects.has(key.object)) {
+        return;
+      }
       let path = key.pathNode;
       let tval = tvalFor.get(key);
       invariant(val !== undefined);
