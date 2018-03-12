@@ -216,7 +216,6 @@ export class Referentializer {
         }
       }
       delete binding.serializedValue;
-      delete binding.referentialized;
     }
   }
 
