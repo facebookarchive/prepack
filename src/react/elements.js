@@ -41,6 +41,10 @@ function createPropsObject(
       invariant(props instanceof ObjectValue);
       Properties.Set(realm, props, name, value, true);
     }
+    if (key === "children" && value instanceof ObjectValue) {
+      // ensure the child is marked as shallowly immutable
+      realm.react.immutableObjects.add(value);
+    }
   };
 
   if (
@@ -124,6 +128,10 @@ function createPropsObject(
     }
   }
 
+  if (props instanceof ObjectValue) {
+    // ensure the props is marked as shallowly immutable
+    realm.react.immutableObjects.add(props);
+  }
   return { key, props, ref };
 }
 
@@ -142,5 +150,7 @@ export function createReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
+  // ensure the ReactElement is marked as shallowly immutable
+  realm.react.immutableObjects.add(obj);
   return obj;
 }

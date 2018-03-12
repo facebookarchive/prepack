@@ -98,6 +98,10 @@ export function TestIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrit
   // 2. Assert: level is either "sealed" or "frozen".
   invariant(level === "sealed" || level === "frozen", "invalid level");
 
+  if (realm.react.immutableObjects.has(O)) {
+    return true;
+  }
+
   // 3. Let status be ? IsExtensible(O).
   let status = IsExtensible(realm, O);
 
