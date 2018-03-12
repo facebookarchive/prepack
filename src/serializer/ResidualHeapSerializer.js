@@ -735,7 +735,7 @@ export class ResidualHeapSerializer {
       (x, y) => commonAncestorOf(x, y, this.getGeneratorParent),
       generators[0]
     );
-    invariant(commonAncestor);
+    invariant(commonAncestor !== undefined);
     if (trace) console.log(`  common ancestor: ${commonAncestor.getName()}`);
 
     let body;
