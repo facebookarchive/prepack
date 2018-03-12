@@ -680,8 +680,11 @@ export class ResidualFunctions {
 
     for (let [additionalFunction, body] of rewrittenAdditionalFunctions.entries()) {
       let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
-      let prelude = additionalFunctionPreludes.get(additionalFunction);
-      if (prelude) body.unshift(...prelude);
+      let prelude = additionalFunctionPreludes.get(additionalFunction) || [];
+      let additionalFunctionInfo = this.additionalFunctionValueInfos.get(additionalFunction);
+      invariant(additionalFunctionInfo);
+      prelude.unshift(...getFunctionBody(additionalFunctionInfo.instance));
+      body.unshift(...prelude);
       if (bodySegment) {
         if (body.length > 0 && t.isReturnStatement(body[body.length - 1])) {
           let returnStatement = body.pop();
