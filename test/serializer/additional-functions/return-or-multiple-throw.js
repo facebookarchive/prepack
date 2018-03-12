@@ -1,6 +1,6 @@
 // does not contain:z = 5;
 // add at runtime: x = 3;
-// skip
+// skip this test for now
 
 var x;
 if (global.__abstract) x = __abstract("number", "(11)");
@@ -21,8 +21,8 @@ function func1() {
   return x;
 }
 
-if (global.__registerAdditionalFunctionToPrepack)
-  __registerAdditionalFunctionToPrepack(func1);
+if (global.__optimize)
+  __optimize(func1);
 
 inspect = function() {
   let error;

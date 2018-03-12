@@ -1,6 +1,5 @@
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":10,"column":13},"end":{"line":10,"column":18},"source":"test/error-handler/bad-functions.js"},"severity":"FatalError","errorCode":"PP1003","message":"Property access conflicts with write in additional function global['additional2']"}]
-// skip
+// expected errors: [{"location":{"start":{"line":9,"column":13},"end":{"line":9,"column":18},"source":"test/error-handler/bad-functions.js"}}]
 var wildcard = global.__abstract ? global.__abstract("number", "123") : 123;
 global.a = "";
 

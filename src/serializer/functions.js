@@ -10,13 +10,7 @@
 /* @flow */
 
 import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
-import {
-  Completion,
-  ThrowCompletion,
-  PossiblyNormalCompletion,
-  JoinedAbruptCompletions,
-  ReturnCompletion,
-} from "../completions.js";
+import { Completion, PossiblyNormalCompletion, JoinedAbruptCompletions, ReturnCompletion } from "../completions.js";
 import { Join } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";

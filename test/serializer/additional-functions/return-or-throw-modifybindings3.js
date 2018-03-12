@@ -19,8 +19,8 @@ else x = 3;
   }
   global.func1 = func1;
 
-  if (global.__registerAdditionalFunctionToPrepack)
-    __registerAdditionalFunctionToPrepack(func1);
+  if (global.__optimize)
+    __optimize(func1);
 
   global.inspect = function() {
     let error;
