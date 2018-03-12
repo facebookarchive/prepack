@@ -145,7 +145,7 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
 type ModifiedPropertyEntryArgs = {|
   propertyBinding: PropertyBinding,
   // TODO make these mutable?
-  newValue: void | Descriptor,
+  newDescriptor: void | Descriptor,
 |};
 
 class ModifiedPropertyEntry extends GeneratorEntry {
@@ -156,24 +156,24 @@ class ModifiedPropertyEntry extends GeneratorEntry {
 
   propertyBinding: PropertyBinding;
   // TODO make these mutable?
-  newValue: void | Descriptor;
+  newDescriptor: void | Descriptor;
 
   serialize(context: SerializationContext) {
     let desc = this.propertyBinding.descriptor;
-    invariant(desc === this.newValue);
+    invariant(desc === this.newDescriptor);
     context.emitPropertyModification(this.propertyBinding);
   }
 
   visit(context: VisitEntryCallbacks) {
     let desc = this.propertyBinding.descriptor;
-    invariant(desc === this.newValue);
+    invariant(desc === this.newDescriptor);
     context.visitObjectProperty(this.propertyBinding);
   }
 }
 
 type ModifiedBindingEntryArgs = {|
   modifiedBinding: Binding,
-  newValue: BindingEntry,
+  newBinding: BindingEntry,
   oldValue: void | Value,
 |};
 
@@ -185,24 +185,23 @@ class ModifiedBindingEntry extends GeneratorEntry {
 
   containingGenerator: Generator;
   modifiedBinding: Binding;
-  newValue: BindingEntry;
+  newBinding: BindingEntry;
   oldValue: void | Value;
   residualFunctionBinding: void | ResidualFunctionBinding;
 
   serialize(context: SerializationContext) {
     let residualFunctionBinding = this.residualFunctionBinding;
     if (!residualFunctionBinding) {
-      // FunctionValues don't need to be visited/serialized as bindings
       invariant(this.modifiedBinding.value instanceof FunctionValue);
       return;
     }
-    invariant(this.modifiedBinding.value === this.newValue.value);
-    if (this.newValue.value)
-      residualFunctionBinding.additionalValueSerialized = context.serializeValue(this.newValue.value);
+    invariant(this.modifiedBinding.value === this.newBinding.value);
+    if (this.newBinding.value)
+      residualFunctionBinding.additionalValueSerialized = context.serializeValue(this.newBinding.value);
   }
 
   visit(context: VisitEntryCallbacks) {
-    invariant(this.modifiedBinding.value === this.newValue.value);
+    invariant(this.modifiedBinding.value === this.newBinding.value);
     let residualBinding = context.visitModifiedBinding(this.modifiedBinding, this.oldValue);
     invariant(this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding);
     this.residualFunctionBinding = residualBinding;
@@ -280,20 +279,20 @@ export class Generator {
     return output;
   }
 
-  emitPropertyModification(propertyBinding: PropertyBinding, newValue: void | Descriptor) {
+  emitPropertyModification(propertyBinding: PropertyBinding, newDescriptor: void | Descriptor) {
     this._entries.push(
       new ModifiedPropertyEntry(this, {
         propertyBinding,
-        newValue,
+        newDescriptor,
       })
     );
   }
 
-  emitBindingModification(modifiedBinding: Binding, newValue: BindingEntry) {
+  emitBindingModification(modifiedBinding: Binding, newBinding: BindingEntry) {
     this._entries.push(
       new ModifiedBindingEntry(this, {
         modifiedBinding,
-        newValue,
+        newBinding,
         oldValue: modifiedBinding.value,
       })
     );
