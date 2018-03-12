@@ -10,7 +10,8 @@
 /* @flow */
 
 import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
-import { Completion } from "../completions.js";
+import { Completion, PossiblyNormalCompletion, JoinedAbruptCompletions, ReturnCompletion } from "../completions.js";
+import { Join } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
@@ -111,17 +112,62 @@ export class Functions {
             "FatalError"
           )
         );
-        throw new FatalError("invalidf Additional Function value");
+        throw new FatalError("invalid Additional Function value");
       }
     }
     return recordedAdditionalFunctions;
   }
 
+  // This will also handle postprocessing for PossiblyNormalCompletion
   _createAdditionalEffects(effects: Effects): AdditionalFunctionEffects {
-    return {
-      effects,
-      transforms: [],
-    };
+    let [result, generator] = effects;
+    let retValue: AdditionalFunctionEffects = { effects, transforms: [] };
+    // Create the effects, arguments and buildNode for the return value, saving them in AdditionalFunctionEffects
+    if (result instanceof PossiblyNormalCompletion) {
+      let { joinCondition, consequent, alternate, consequentEffects, alternateEffects } = result;
+      let containsValue =
+        consequent instanceof Value ||
+        consequent instanceof ReturnCompletion ||
+        alternate instanceof Value ||
+        alternate instanceof ReturnCompletion;
+      let containsJoinedAbrupt =
+        consequent instanceof JoinedAbruptCompletions || alternate instanceof JoinedAbruptCompletions;
+      if (!containsValue && !containsJoinedAbrupt) {
+        this.realm.handleError(
+          new CompilerDiagnostic(
+            "Additional function with this type of abrupt exit not supported",
+            result.location,
+            "PP1002",
+            "FatalError"
+          )
+        );
+        throw new FatalError();
+      }
+      // Here we join the two sets of Effects from the PossiblyNormalCompletion after
+      // the additional function's return so that the serializer can emit the proper
+      // throw and return values.
+
+      // Force joinEffects to join the effects by changing result.
+      let consequentResult = consequentEffects[0];
+      let alternateResult = alternateEffects[0];
+      consequentEffects[0] = this.realm.intrinsics.undefined;
+      alternateEffects[0] = this.realm.intrinsics.undefined;
+      let joinedEffects = Join.joinEffects(this.realm, joinCondition, consequentEffects, alternateEffects);
+      consequentEffects[0] = consequentResult;
+      alternateEffects[0] = alternateResult;
+      let args, buildNode;
+      this.realm.withEffectsAppliedInGlobalEnv(() => {
+        this.realm.withEffectsAppliedInGlobalEnv(() => {
+          [args, buildNode] = generator.getThrowOrReturn(joinCondition, consequent, alternate);
+          return null;
+        }, joinedEffects);
+        return null;
+      }, effects);
+      retValue.joinedEffects = joinedEffects;
+      retValue.returnArguments = args;
+      retValue.returnBuildNode = buildNode;
+    }
+    return retValue;
   }
 
   _generateWriteEffectsForReactComponentTree(
@@ -310,7 +356,7 @@ export class Functions {
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
-      if (e1[0] instanceof Completion) {
+      if (e1[0] instanceof Completion && !e1[0] instanceof PossiblyNormalCompletion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fun1Name} may terminate abruptly`,
           e1[0].location,

@@ -26,12 +26,14 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
+import { CompilerDiagnostic } from "../errors.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import { hashString } from "../methods/index.js";
 import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
+import { Completion, JoinedAbruptCompletions, ThrowCompletion, ReturnCompletion } from "../completions.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
@@ -60,6 +62,8 @@ export type DerivedExpressionBuildNodeFunction = (
 ) => BabelNodeExpression;
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
+
+type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
 
 export type GeneratorEntry = {
   declared?: AbstractValue,
@@ -247,6 +251,106 @@ export class Generator {
       },
       dependencies: [body],
     });
+  }
+
+  emitConditionalThrow(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
+    let [args, buildfunc] = this._deconstruct(
+      condition,
+      trueBranch,
+      falseBranch,
+      completion => {
+        this._issueThrowCompilerDiagnostic(completion.value);
+        let serializationArgs = [completion.value];
+        let func = ([arg]) => t.throwStatement(arg);
+        return [serializationArgs, func];
+      },
+      () => [[], () => t.emptyStatement()]
+    );
+    this.emitStatement(args, buildfunc);
+  }
+
+  getThrowOrReturn(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
+    let [args, buildfunc] = this._deconstruct(
+      condition,
+      trueBranch,
+      falseBranch,
+      completion => {
+        return [[completion.value], ([arg]) => t.throwStatement(arg)];
+      },
+      value => [[value], ([returnValue]) => t.returnStatement(returnValue)]
+    );
+    return [args, buildfunc];
+  }
+
+  _deconstruct(
+    condition: AbstractValue,
+    trueBranch: Completion | Value,
+    falseBranch: Completion | Value,
+    onThrowCompletion: ThrowCompletion => ArgsAndBuildNode,
+    onNormalValue: Value => ArgsAndBuildNode
+  ) {
+    let targs;
+    let tfunc;
+    let fargs;
+    let ffunc;
+    if (trueBranch instanceof JoinedAbruptCompletions) {
+      [targs, tfunc] = this._deconstruct(
+        trueBranch.joinCondition,
+        trueBranch.consequent,
+        trueBranch.alternate,
+        onThrowCompletion,
+        onNormalValue
+      );
+    } else if (trueBranch instanceof ThrowCompletion) {
+      [targs, tfunc] = onThrowCompletion(trueBranch);
+    } else {
+      let value = trueBranch instanceof ReturnCompletion ? trueBranch.value : trueBranch;
+      invariant(value instanceof Value);
+      [targs, tfunc] = onNormalValue(value);
+    }
+    if (falseBranch instanceof JoinedAbruptCompletions) {
+      [fargs, ffunc] = this._deconstruct(
+        falseBranch.joinCondition,
+        falseBranch.consequent,
+        falseBranch.alternate,
+        onThrowCompletion,
+        onNormalValue
+      );
+    } else if (falseBranch instanceof ThrowCompletion) {
+      [fargs, ffunc] = onThrowCompletion(falseBranch);
+    } else {
+      invariant(falseBranch instanceof Value);
+      [fargs, ffunc] = onNormalValue(falseBranch);
+    }
+    let args = [condition].concat(targs).concat(fargs);
+    let func = nodes => {
+      return t.ifStatement(
+        nodes[0],
+        tfunc(nodes.slice().splice(1, targs.length)),
+        ffunc(nodes.slice().splice(targs.length + 1, fargs.length))
+      );
+    };
+    return [args, func];
+  }
+
+  _issueThrowCompilerDiagnostic(value: Value) {
+    let message = "Program may terminate with exception";
+    if (value instanceof ObjectValue) {
+      let object = ((value: any): ObjectValue);
+      let objectMessage = this.realm.evaluateWithUndo(() => object.$Get("message", value));
+      if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
+      const objectStack = this.realm.evaluateWithUndo(() => object.$Get("stack", value));
+      if (objectStack instanceof StringValue)
+        message += `
+  ${objectStack.value}`;
+    }
+    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
+    this.realm.handleError(diagnostic);
+  }
+
+  emitThrow(value: Value) {
+    this._issueThrowCompilerDiagnostic(value);
+    this.emitStatement([value], ([argument]) => t.throwStatement(argument));
   }
 
   // Checks the full set of possible concrete values as well as typeof

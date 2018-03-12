@@ -11,7 +11,6 @@
 
 import {
   AbruptCompletion,
-  Completion,
   JoinedAbruptCompletions,
   PossiblyNormalCompletion,
   ReturnCompletion,
@@ -19,15 +18,13 @@ import {
 } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbstractValue, ObjectValue, StringValue, Value, EmptyValue } from "../values/index.js";
+import { Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { Environment, Functions, Join } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeProgram } from "babel-types";
-import * as t from "babel-types";
-import { CompilerDiagnostic } from "../errors.js";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(
@@ -243,11 +240,13 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         res = Functions.incorporateSavedCompletion(realm, res);
         // The call to incorporateSavedCompletion above, has taken care of the join because res is abrupt.
         // What remains to be done is to emit throw statements to the generator.
+        let generator = realm.generator;
+        invariant(generator !== undefined);
         if (res instanceof JoinedAbruptCompletions) {
-          emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
+          generator.emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
           res = res.value;
         } else if (res instanceof ThrowCompletion) {
-          emitThrow(res.value);
+          generator.emitThrow(res.value);
           res = realm.intrinsics.undefined;
         } else {
           invariant(false); // other kinds of abrupt completions should not get this far
@@ -271,9 +270,23 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
     val = Functions.incorporateSavedCompletion(realm, val);
     if (val instanceof PossiblyNormalCompletion) {
       // There are still some conditional throws to emit and state still has to be joined in.
-      Join.stopEffectCaptureJoinApplyAndReturnCompletion(val, new ReturnCompletion(realm.intrinsics.undefined), realm);
+      // Get state to be joined in
+      let e = realm.getCapturedEffects(val);
+      invariant(e !== undefined);
+      realm.stopEffectCaptureAndUndoEffects(val);
+      let joinedEffects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
+        realm,
+        val,
+        new ReturnCompletion(realm.intrinsics.undefined),
+        e
+      );
+      // apply joined state because the serializer expects a single end program-state. It will
+      // handle conditionally emitting the abrupt and normal paths
+      realm.applyEffects(joinedEffects);
       // The global state has now been updated to the join of all the flows reaching this join point
-      emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
+      let generator = realm.generator;
+      invariant(generator !== undefined);
+      generator.emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
       val = val.value;
     }
   } else {
@@ -282,73 +295,4 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   invariant(val === undefined || val instanceof Value);
   return val || realm.intrinsics.empty;
-
-  function issueThrowCompilerDiagnostic(value: Value) {
-    let message = "Program may terminate with exception";
-    if (value instanceof ObjectValue) {
-      let object = ((value: any): ObjectValue);
-      let objectMessage = realm.evaluateWithUndo(() => object.$Get("message", value));
-      if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
-      const objectStack = realm.evaluateWithUndo(() => object.$Get("stack", value));
-      if (objectStack instanceof StringValue)
-        message += `
-  ${objectStack.value}`;
-    }
-    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
-    realm.handleError(diagnostic);
-  }
-
-  function emitThrow(value: Value) {
-    issueThrowCompilerDiagnostic(value);
-    let generator = realm.generator;
-    invariant(generator !== undefined);
-    generator.emitStatement([value], ([argument]) => t.throwStatement(argument));
-  }
-
-  function emitConditionalThrow(
-    condition: AbstractValue,
-    trueBranch: Completion | Value,
-    falseBranch: Completion | Value
-  ) {
-    let generator = realm.generator;
-    invariant(generator !== undefined);
-    let [args, buildfunc] = deconstruct(condition, trueBranch, falseBranch);
-    generator.emitStatement(args, buildfunc);
-  }
-
-  function deconstruct(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
-    let targs;
-    let tfunc;
-    let fargs;
-    let ffunc;
-    if (trueBranch instanceof JoinedAbruptCompletions) {
-      [targs, tfunc] = deconstruct(trueBranch.joinCondition, trueBranch.consequent, trueBranch.alternate);
-    } else if (trueBranch instanceof ThrowCompletion) {
-      targs = [trueBranch.value];
-      issueThrowCompilerDiagnostic(trueBranch.value);
-      tfunc = ([argument]) => t.throwStatement(argument);
-    } else {
-      targs = [];
-      tfunc = nodes => t.emptyStatement();
-    }
-    if (falseBranch instanceof JoinedAbruptCompletions) {
-      [fargs, ffunc] = deconstruct(falseBranch.joinCondition, falseBranch.consequent, falseBranch.alternate);
-    } else if (falseBranch instanceof ThrowCompletion) {
-      fargs = [falseBranch.value];
-      issueThrowCompilerDiagnostic(falseBranch.value);
-      ffunc = ([argument]) => t.throwStatement(argument);
-    } else {
-      fargs = [];
-      ffunc = nodes => t.emptyStatement();
-    }
-    let args = [condition].concat(targs).concat(fargs);
-    let func = nodes => {
-      return t.ifStatement(
-        nodes[0],
-        tfunc(nodes.slice().splice(1, targs.length)),
-        ffunc(nodes.slice().splice(targs.length + 1, fargs.length))
-      );
-    };
-    return [args, func];
-  }
 }
