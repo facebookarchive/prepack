@@ -1,5 +1,5 @@
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":9,"column":13},"end":{"line":9,"column":18},"source":"test/error-handler/bad-functions.js"}}]
+// expected errors: [{location: {"start":{"line":8,"column":13},"end":{"line":8,"column":18},"source":"test/error-handler/bad-functions.js"}}]
 var wildcard = global.__abstract ? global.__abstract("number", "123") : 123;
 global.a = "";
 
