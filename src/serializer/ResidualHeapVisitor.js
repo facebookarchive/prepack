@@ -758,7 +758,6 @@ export class ResidualHeapVisitor {
 
   visitValue(val: Value): void {
     invariant(!val.refuseSerialization);
-    invariant(val.isIntrinsic);
     if (val instanceof AbstractValue) {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
