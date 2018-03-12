@@ -192,6 +192,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
   serialize(context: SerializationContext) {
     let residualFunctionBinding = this.residualFunctionBinding;
     if (!residualFunctionBinding) {
+      // FunctionValues don't need to be visited/serialized as bindings
       invariant(this.modifiedBinding.value instanceof FunctionValue);
       return;
     }
