@@ -23,7 +23,7 @@ import {
   ArrayValue,
   ObjectValue,
   AbstractObjectValue,
-  BoundFunctionValue,
+  FunctionValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
@@ -1052,11 +1052,11 @@ export class Reconciler {
   }
 
   _findReactComponentTrees(value: Value, evaluatedNode: ReactEvaluatedNode): void {
-    if (value instanceof BoundFunctionValue) {
+    if (value instanceof FunctionValue && !(value instanceof ECMAScriptSourceFunctionValue)) {
       // TODO treat as nested additional function
       // until then we don't support this so we need to bail out on first render
       if (this.componentTreeConfig.firstRenderOnly) {
-        throw new ExpectedBailOut("bound function is not currently supported on first render");
+        throw new ExpectedBailOut("non script function is not currently supported on first render");
       }
     } else if (value instanceof AbstractValue) {
       if (value.args.length > 0) {
