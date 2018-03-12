@@ -10,7 +10,6 @@
 /* @flow */
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, EnvironmentRecord } from "../environment.js";
-import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
@@ -525,9 +524,6 @@ export class ResidualHeapVisitor {
       invariant(!Environment.IsUnresolvableReference(this.realm, reference));
       let referencedBase = reference.base;
       let referencedName: string = (reference.referencedName: any);
-      if (typeof referencedName !== "string") {
-        throw new FatalError("TODO: do not know how to visit reference with symbol");
-      }
       invariant(referencedName === name);
       invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
       return referencedBase;
@@ -570,6 +566,7 @@ export class ResidualHeapVisitor {
       residualFunctionBinding = getFromMap(residualFunctionBindings, name, (): ResidualFunctionBinding => {
         invariant(environment instanceof DeclarativeEnvironmentRecord);
         let binding = environment.bindings[name];
+        invariant(binding !== undefined);
         invariant(!binding.deletable);
         return {
           value: (binding.initialized && binding.value) || this.realm.intrinsics.undefined,
