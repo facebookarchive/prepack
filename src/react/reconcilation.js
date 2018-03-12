@@ -23,6 +23,7 @@ import {
   ArrayValue,
   ObjectValue,
   AbstractObjectValue,
+  BoundFunctionValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
@@ -549,7 +550,11 @@ export class Reconciler {
     }
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
+    let value = getValueFromRenderCall(this.realm, renderMethod, instance, []);
+    if (value instanceof AbstractValue && value.args.length === 0) {
+      throw new ExpectedBailOut("completely unknown component render currently supported on first render");
+    }
+    return value;
   }
 
   _renderComponent(
@@ -1040,7 +1045,13 @@ export class Reconciler {
   }
 
   _findReactComponentTrees(value: Value, evaluatedNode: ReactEvaluatedNode): void {
-    if (value instanceof AbstractValue) {
+    if (value instanceof BoundFunctionValue) {
+      // TODO treat as nested additional function
+      // until then we don't support this so we need to bail out on first render
+      if (this.componentTreeConfig.firstRenderOnly) {
+        throw new ExpectedBailOut("bound function is not currently supported on first render");
+      }
+    } else if (value instanceof AbstractValue) {
       if (value.args.length > 0) {
         for (let arg of value.args) {
           this._findReactComponentTrees(arg, evaluatedNode);
@@ -1050,7 +1061,7 @@ export class Reconciler {
       }
     } else if (value instanceof ObjectValue) {
       for (let [propName, binding] of value.properties) {
-        if (binding && binding.descriptor && binding.enumerable) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
           this._findReactComponentTrees(getProperty(this.realm, value, propName), evaluatedNode);
         }
       }
