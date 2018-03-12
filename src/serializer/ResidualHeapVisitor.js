@@ -662,7 +662,9 @@ export class ResidualHeapVisitor {
       case "ArrayBuffer":
         return;
       case "ReactElement":
-        this.someReactElement = val;
+        if (this.realm.react.output === "create-element") {
+          this.someReactElement = val;
+        }
         // check we can hoist a React Element
         canHoistReactElement(this.realm, val, this);
         return;
