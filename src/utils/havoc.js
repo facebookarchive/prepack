@@ -37,6 +37,7 @@ import traverse from "babel-traverse";
 import type { BabelTraversePath } from "babel-traverse";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
+import { isReactElement } from "../react/utils.js";
 
 type HavocedFunctionInfo = {
   unboundReads: Set<string>,
@@ -320,6 +321,9 @@ class ObjectValueHavocingVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
+    if (isReactElement(val)) {
+      return;
+    }
     if (val.isHavocedObject()) {
       return;
     }
