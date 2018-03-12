@@ -165,7 +165,8 @@ export type ReactEvaluatedNode = {
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
     | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION",
+    | "ABRUPT_COMPLETION"
+    | "NORMAL",
 };
 
 export class ReactStatistics {

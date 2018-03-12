@@ -11,7 +11,6 @@
 
 import { Realm } from "../realm.js";
 import {
-  ECMAScriptSourceFunctionValue,
   Value,
   UndefinedValue,
   StringValue,
@@ -25,7 +24,6 @@ import {
 import { type ReactSerializerState } from "../serializer/types.js";
 import { isReactElement, addKeyToReactElement, forEachArrayValue } from "./utils";
 import { ExpectedBailOut } from "./errors.js";
-import invariant from "../invariant";
 
 // Branch status is used for when Prepack returns an abstract value from a render
 // that results in a conditional path occuring. This can be problematic for reconcilation
@@ -46,7 +44,7 @@ export class BranchState {
     this._branchesToValidate = [];
   }
   _branchesToValidate: Array<{
-    type: StringValue | ECMAScriptSourceFunctionValue,
+    type: Value,
     value: Value,
   }>;
 
@@ -99,7 +97,6 @@ export class BranchState {
   }
 
   captureBranchedValue(type: Value, value: Value): Value {
-    invariant(type instanceof ECMAScriptSourceFunctionValue || type instanceof StringValue);
     this._branchesToValidate.push({ type, value });
     return value;
   }

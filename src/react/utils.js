@@ -41,7 +41,14 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { To } from "../singletons.js";
 import AbstractValue from "../values/AbstractValue";
 
-export type ReactSymbolTypes = "react.element" | "react.fragment" | "react.portal" | "react.return" | "react.call";
+export type ReactSymbolTypes =
+  | "react.element"
+  | "react.context"
+  | "react.provider"
+  | "react.fragment"
+  | "react.portal"
+  | "react.return"
+  | "react.call";
 
 export function isReactElement(val: Value): boolean {
   if (!(val instanceof ObjectValue)) {
@@ -567,7 +574,48 @@ export function evaluateComponentTreeBranch(
   }
 }
 
-export function getProperty(realm: Realm, object: ObjectValue, property: string | SymbolValue): Value {
+export function setProperty(
+  realm: Realm,
+  object: ObjectValue | AbstractObjectValue,
+  property: string | SymbolValue,
+  value: Value
+): void {
+  if (object instanceof AbstractObjectValue) {
+    let elements = object.values.getElements();
+    if (elements && elements.size > 0) {
+      object = Array.from(elements)[0];
+    }
+    invariant(object instanceof ObjectValue);
+  }
+  let binding;
+  if (typeof property === "string") {
+    binding = object.properties.get(property);
+  } else {
+    binding = object.symbols.get(property);
+  }
+  if (!binding) {
+    return;
+  }
+  let descriptor = binding.descriptor;
+
+  if (!descriptor) {
+    return;
+  }
+  descriptor.value = value;
+}
+
+export function getProperty(
+  realm: Realm,
+  object: ObjectValue | AbstractObjectValue,
+  property: string | SymbolValue
+): Value {
+  if (object instanceof AbstractObjectValue) {
+    let elements = object.values.getElements();
+    if (elements && elements.size > 0) {
+      object = Array.from(elements)[0];
+    }
+    invariant(object instanceof ObjectValue);
+  }
   let binding;
   if (typeof property === "string") {
     binding = object.properties.get(property);
@@ -688,7 +736,8 @@ export function createReactEvaluatedNode(
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
     | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION",
+    | "ABRUPT_COMPLETION"
+    | "NORMAL",
   name: string
 ): ReactEvaluatedNode {
   return {

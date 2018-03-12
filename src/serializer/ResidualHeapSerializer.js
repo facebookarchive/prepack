@@ -1818,6 +1818,10 @@ export class ResidualHeapSerializer {
   // CreatedObjects -- should take care of itself
   _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
     let { effects, transforms, generator } = additionalEffects;
+    if (!this.additionalFunctionValueInfos.has(additionalFunctionValue)) {
+      // the additionalFunction has no info, so it likely has been dead code eliminated
+      return;
+    }
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let createdObjects = effects[4];
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));

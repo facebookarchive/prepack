@@ -268,7 +268,6 @@ function runTest(name, code, options: PrepackOptions, args) {
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   if (code.includes("// omit invariants")) options.omitInvariants = true;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
-  if (code.includes("// additional functions")) options.additionalFunctions = ["additional1", "additional2"];
   if (code.includes("// abstract effects")) options.abstractEffectsInAdditionalFunctions = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
   if (code.includes("// react")) {
@@ -556,7 +555,7 @@ function run(args) {
     // filter hidden files
     if (path.basename(test.name)[0] === ".") continue;
     if (test.name.endsWith("~")) continue;
-    if (test.file.includes("// skip")) continue;
+    if (test.file.includes("// skip this test for now")) continue;
     if (args.es5 && test.file.includes("// es6")) continue;
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;

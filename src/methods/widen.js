@@ -305,12 +305,12 @@ export class WidenImplementation {
   // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
   // summary of the loop, regardless of how many iterations will be performed at runtime.
   containsEffects(e1: Effects, e2: Effects): boolean {
-    let [result1, , bindings1, properties1] = e1;
-    let [result2, , bindings2, properties2] = e2;
+    let [result1, , bindings1, properties1, createdObj1] = e1;
+    let [result2, , bindings2, properties2, createdObj2] = e2;
 
     if (!this.containsResults(result1, result2)) return false;
     if (!this.containsBindings(bindings1, bindings2)) return false;
-    if (!this.containsPropertyBindings(properties1, properties2)) return false;
+    if (!this.containsPropertyBindings(properties1, properties2, createdObj1, createdObj2)) return false;
     return true;
   }
 
@@ -349,17 +349,39 @@ export class WidenImplementation {
     return this.containsMap(m1, m2, containsBinding);
   }
 
-  containsPropertyBindings(m1: PropertyBindings, m2: PropertyBindings): boolean {
+  containsPropertyBindings(
+    m1: PropertyBindings,
+    m2: PropertyBindings,
+    c1: CreatedObjects,
+    c2: CreatedObjects
+  ): boolean {
     let containsPropertyBinding = (d1: void | Descriptor, d2: void | Descriptor) => {
       let [v1, v2] = [d1 && d1.value, d2 && d2.value];
-      if (v1 === undefined) return v2 === undefined;
+      if (v1 === undefined) {
+        return v2 === undefined;
+      }
       if (v1 instanceof Value && v2 instanceof Value) return this._containsValues(v1, v2);
       if (Array.isArray(v1) && Array.isArray(v2)) {
         return this._containsArray(((v1: any): Array<Value>), ((v2: any): Array<Value>));
       }
       return v2 === undefined;
     };
-    return this.containsMap(m1, m2, containsPropertyBinding);
+    for (const [key1, val1] of m1.entries()) {
+      if (val1 === undefined) continue; // deleted
+      let val2 = m2.get(key1);
+      if (val2 === undefined) continue; // A key that disappears has been widened away into the unknown key
+      if (key1.object instanceof ObjectValue && c1.has(key1.object)) {
+        continue;
+      }
+      if (!containsPropertyBinding(val1, val2)) return false;
+    }
+    for (const key2 of m2.keys()) {
+      if (key2.object instanceof ObjectValue && c2.has(key2.object)) {
+        continue;
+      }
+      if (!m1.has(key2)) return false;
+    }
+    return true;
   }
 
   _containsArray(

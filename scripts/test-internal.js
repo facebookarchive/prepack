@@ -60,19 +60,6 @@ function runTest(name: string, code: string): boolean {
     let modelCode = fs.existsSync(modelName) ? fs.readFileSync(modelName, "utf8") : undefined;
     let sourceMap = fs.existsSync(sourceMapName) ? fs.readFileSync(sourceMapName, "utf8") : undefined;
     let sources = [];
-    let additionalFunctions;
-    if (modelCode) {
-      /* allows specifying additional functions by a comment of the form:
-      // additional function: additional1, additional2
-      */
-      let marker = "// additional functions:";
-      if (modelCode.includes(marker)) {
-        let i = modelCode.indexOf(marker);
-        let value = modelCode.substring(i + marker.length, modelCode.indexOf("\n", i));
-        additionalFunctions = value.split(",").map(funcStr => funcStr.trim());
-      }
-      sources.push({ filePath: modelName, fileContents: modelCode });
-    }
     sources.push({ filePath: name, fileContents: sourceCode, sourceMapContents: sourceMap });
 
     let options = {
@@ -85,7 +72,6 @@ function runTest(name: string, code: string): boolean {
       serialize: true,
       initializeMoreModules: !modelCode,
       sourceMaps: !!sourceMap,
-      additionalFunctions: additionalFunctions,
     };
     let serialized = prepackSources(sources, options);
     let new_map = serialized.map; // force source maps to get computed

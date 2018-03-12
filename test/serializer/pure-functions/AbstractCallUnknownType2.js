@@ -1,4 +1,3 @@
-// additional functions
 // abstract effects
 
 let obj = {};
@@ -20,6 +19,11 @@ function additional2() {
   }
   let fnOrString = condition ? fn : 'string';
   return fnOrString();
+}
+
+if (global.__optimize) {
+  __optimize(additional1);
+  __optimize(additional2);
 }
 
 inspect = function() {
