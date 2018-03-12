@@ -616,6 +616,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
         await runTest(directory, "hacker-news.js", false, data);
       });
+
+      it("Function bind", async () => {
+        await runTest(directory, "function-bind.js");
+      });
     });
   });
 }
