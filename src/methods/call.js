@@ -432,8 +432,6 @@ export function OrdinaryCallEvaluateBody(
             invariant(c instanceof Value || c instanceof AbruptCompletion);
             return c;
           }
-        } catch (e) {
-          throw e;
         } finally {
           realm.incorporatePriorSavedCompletion(priorSavedCompletion);
         }
