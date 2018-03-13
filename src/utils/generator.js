@@ -232,8 +232,6 @@ function serializeBody(generator: Generator, context: SerializationContext): Bab
   return t.blockStatement(statements);
 }
 
-let additionalFunctionUID = 0;
-
 export class Generator {
   constructor(realm: Realm, name: string, effects?: Effects) {
     invariant(realm.useAbstractInterpretation);
@@ -260,14 +258,15 @@ export class Generator {
   static fromEffects(effects: Effects, realm: Realm): Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
 
-    let output = new Generator(realm, "AdditionalFunctionEffects" + additionalFunctionUID++, effects);
+    let output = new Generator(realm, "AdditionalFunctionEffects", effects);
     output.appendGenerator(generator, "Additional function generator");
 
     for (let [propertyBinding, newValue] of modifiedProperties) {
       let object = propertyBinding.object;
       if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
       if (object.refuseSerialization) continue; // modification to internal state
-      if (object.isIntrinsic()) continue; // Avoid double-counting
+      // modifications to intrinsic objects are tracked in the generator
+      if (object.isIntrinsic()) continue;
       output.emitPropertyModification(propertyBinding, newValue);
     }
 
