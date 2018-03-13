@@ -839,6 +839,10 @@ export function getValueFromRenderCall(
   return completion;
 }
 
+function isEventProp(name: string): boolean {
+  return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
+}
+
 export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
   let typeValue = Get(realm, reactElement, "type");
 
@@ -851,8 +855,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
       // remove all values apart from string/number/boolean
       for (let [propName] of propsValue.properties) {
         // check for onSomething prop event handlers, i.e. onClick
-        if (propName.length > 2 && propName[0] === "o" && propName[1] === "n") {
-          invariant(propsValue instanceof ObjectValue);
+        if (isEventProp(propName)) {
           propsValue.$Delete(propName);
         }
       }
