@@ -140,6 +140,9 @@ export class Reconciler {
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         return result;
       } catch (error) {
+        if (error.name === "Invariant Violation") {
+          throw error;
+        }
         // if we get an error and we're not dealing with the root
         // rather than throw a FatalError, we log the error as a warning
         // and continue with the other tree roots
@@ -577,6 +580,7 @@ export class Reconciler {
       invariant(componentType instanceof AbstractValue);
       this._queueNewComponentTree(componentType, evaluatedNode);
       evaluatedNode.status = "NEW_TREE";
+      evaluatedNode.message = "RelayContainer";
       throw new NewComponentTreeBranch();
     }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
@@ -940,6 +944,9 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ): Value {
+    if (error.name === "Invariant Violation") {
+      throw error;
+    }
     let typeValue = Get(this.realm, reactElement, "type");
     let propsValue = Get(this.realm, reactElement, "props");
     // assign a bail out message
