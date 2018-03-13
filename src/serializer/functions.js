@@ -119,7 +119,7 @@ export class Functions {
   }
 
   // This will also handle postprocessing for PossiblyNormalCompletion
-  _createAdditionalEffects(effects: Effects): AdditionalFunctionEffects {
+  _createAdditionalEffects(effects: Effects, fatalOnAbrupt: boolean): AdditionalFunctionEffects | null {
     let [result, generator] = effects;
     let retValue: AdditionalFunctionEffects = { effects, transforms: [] };
     // Create the effects, arguments and buildNode for the return value, saving them in AdditionalFunctionEffects
@@ -133,6 +133,9 @@ export class Functions {
       let containsJoinedAbrupt =
         consequent instanceof JoinedAbruptCompletions || alternate instanceof JoinedAbruptCompletions;
       if (!containsValue && !containsJoinedAbrupt) {
+        if (!fatalOnAbrupt) {
+          return null;
+        }
         this.realm.handleError(
           new CompilerDiagnostic(
             "Additional function with this type of abrupt exit not supported",
@@ -176,7 +179,13 @@ export class Functions {
     componentTreeState: ComponentTreeState,
     evaluatedNode: ReactEvaluatedNode
   ): void {
-    let additionalFunctionEffects = this._createAdditionalEffects(effects);
+    let additionalFunctionEffects = this._createAdditionalEffects(effects, false);
+    if (additionalFunctionEffects === null) {
+      // TODO we don't support this yet, but will do very soon
+      // to unblock work, we'll just return at this point right now
+      evaluatedNode.status = "UNSUPPORTED_COMPLETION";
+      return;
+    }
     let value = effects[0];
 
     if (value === this.realm.intrinsics.undefined) {
@@ -184,13 +193,6 @@ export class Functions {
       // in the reconciler
       return;
     }
-    if (value instanceof Completion) {
-      // TODO we don't support this yet, but will do very soon
-      // to unblock work, we'll just return at this point right now
-      evaluatedNode.status = "UNSUPPORTED_COMPLETION";
-      return;
-    }
-    invariant(value instanceof Value);
     if (valueIsClassComponent(this.realm, componentType)) {
       if (componentTreeState.status === "SIMPLE") {
         // if the root component was a class and is now simple, we can convert it from a class
@@ -342,7 +344,8 @@ export class Functions {
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
       invariant(effects);
-      let additionalFunctionEffects = this._createAdditionalEffects(effects);
+      let additionalFunctionEffects = this._createAdditionalEffects(effects, true);
+      invariant(additionalFunctionEffects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);
     }
 
