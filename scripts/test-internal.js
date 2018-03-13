@@ -60,6 +60,9 @@ function runTest(name: string, code: string): boolean {
     let modelCode = fs.existsSync(modelName) ? fs.readFileSync(modelName, "utf8") : undefined;
     let sourceMap = fs.existsSync(sourceMapName) ? fs.readFileSync(sourceMapName, "utf8") : undefined;
     let sources = [];
+    if (modelCode) {
+      sources.push({ filePath: modelName, fileContents: modelCode });
+    }
     sources.push({ filePath: name, fileContents: sourceCode, sourceMapContents: sourceMap });
 
     let options = {

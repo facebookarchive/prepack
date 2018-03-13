@@ -77,11 +77,15 @@ export class EnvironmentRecord {
   realm: Realm;
   isReadOnly: boolean;
   $NewTarget: void | ObjectValue;
+  id: number;
+
+  static nextId: number = 0;
 
   constructor(realm: Realm) {
     invariant(realm, "expected realm");
     this.realm = realm;
     this.isReadOnly = false;
+    this.id = EnvironmentRecord.nextId++;
   }
 
   +HasBinding: (N: string) => boolean;
