@@ -745,7 +745,6 @@ export class ResidualHeapVisitor {
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression")
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
-    if (val.kind === "sentinel ToObject") this.logger.logError(val, "Unknown object cannot be coerced to Object");
     for (let i = 0, n = val.args.length; i < n; i++) {
       val.args[i] = this.visitEquivalentValue(val.args[i]);
     }
