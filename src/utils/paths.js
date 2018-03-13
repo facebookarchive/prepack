@@ -10,6 +10,7 @@
 /* @flow */
 
 import { AbstractValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 
 export class PathImplementation {
@@ -80,11 +81,20 @@ export class PathImplementation {
 
 // A path condition is an abstract value that is known to be true in a particular code path
 function pushPathCondition(condition: Value) {
-  invariant(condition.mightNotBeFalse(), "pushing false"); // it is mistake to assert that false is true
+  let realm = condition.$Realm;
+  if (!condition.mightNotBeFalse()) {
+    let error = new CompilerDiagnostic(
+      `cannot push false on path condition`,
+      realm.currentLocation,
+      "PP0029",
+      "RecoverableError"
+    );
+    realm.handleError(error);
+    throw new FatalError();
+  }
   if (condition instanceof ConcreteValue) return;
   if (!condition.mightNotBeTrue()) return;
   invariant(condition instanceof AbstractValue);
-  let realm = condition.$Realm;
   if (condition.kind === "&&") {
     let left = condition.args[0];
     let right = condition.args[1];
@@ -113,8 +123,17 @@ function pushPathCondition(condition: Value) {
 
 // An inverse path condition is an abstract value that is known to be false in a particular code path
 function pushInversePathCondition(condition: Value) {
-  // it is mistake to assert that true is false.
-  invariant(condition.mightNotBeTrue());
+  let realm = condition.$Realm;
+  if (!condition.mightNotBeTrue()) {
+    let error = new CompilerDiagnostic(
+      `cannot push true on inverse path condition`,
+      realm.currentLocation,
+      "PP0029",
+      "RecoverableError"
+    );
+    realm.handleError(error);
+    throw new FatalError();
+  }
   if (condition instanceof ConcreteValue) return;
   invariant(condition instanceof AbstractValue);
   if (condition.kind === "||") {
@@ -124,7 +143,6 @@ function pushInversePathCondition(condition: Value) {
     pushInversePathCondition(left);
     if (right.mightNotBeTrue()) pushInversePathCondition(right);
   } else {
-    let realm = condition.$Realm;
     if (condition.kind === "!=" || condition.kind === "==") {
       let left = condition.args[0];
       let right = condition.args[1];
