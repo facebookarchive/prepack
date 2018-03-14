@@ -194,7 +194,6 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
-      immutableObjects: new WeakSet(),
       reactElements: new WeakSet(),
       symbols: new Map(),
     };
@@ -262,7 +261,6 @@ export class Realm {
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
-    immutableObjects: WeakSet<ObjectValue>,
     output?: ReactOutputTypes,
     reactElements: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,

@@ -41,9 +41,9 @@ function createPropsObject(
       invariant(props instanceof ObjectValue);
       Properties.Set(realm, props, name, value, true);
     }
-    if (key === "children" && value instanceof ObjectValue) {
-      // ensure the child is marked as shallowly immutable
-      realm.react.immutableObjects.add(value);
+    if (key === "children" && (value instanceof ObjectValue || value instanceof AbstractObjectValue)) {
+      // ensure the child is marked as final
+      value.makeFinal();
     }
   };
 
@@ -128,9 +128,9 @@ function createPropsObject(
     }
   }
 
-  if (props instanceof ObjectValue) {
-    // ensure the props is marked as shallowly immutable
-    realm.react.immutableObjects.add(props);
+  if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
+    // ensure the props is marked as final
+    props.makeFinal();
   }
   return { key, props, ref };
 }
@@ -150,7 +150,7 @@ export function createReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
-  // ensure the ReactElement is marked as shallowly immutable
-  realm.react.immutableObjects.add(obj);
+  // ensure the ReactElement is marked as final
+  obj.makeFinal();
   return obj;
 }

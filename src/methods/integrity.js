@@ -98,7 +98,8 @@ export function TestIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrit
   // 2. Assert: level is either "sealed" or "frozen".
   invariant(level === "sealed" || level === "frozen", "invalid level");
 
-  if (realm.react.immutableObjects.has(O)) {
+  // if the object isFinal, it's also frozen from changes
+  if (O.isFinalObject()) {
     return true;
   }
 
