@@ -75,6 +75,12 @@ var optionsConfig = [
     defaultVal: true,
     description: "Removes Flow type annotations from the output."
   },
+  {
+    type: "boolean",
+    name: "abstractEffectsInAdditionalFunctions",
+    defaultVal: true,
+    description: "Allows abstract effects in pure functions and React components."
+  },
 ];
 
 var demos = [];
