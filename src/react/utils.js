@@ -38,6 +38,7 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { ExpectedBailOut } from "./errors.js";
 import { To } from "../singletons.js";
 import AbstractValue from "../values/AbstractValue";
 
@@ -812,7 +813,8 @@ export function getValueFromRenderCall(
   realm: Realm,
   renderFunction: ECMAScriptSourceFunctionValue,
   instance: ObjectValue | AbstractObjectValue | UndefinedValue,
-  args: Array<Value>
+  args: Array<Value>,
+  componentTreeConfig: ReactComponentTreeConfig
 ): Value {
   invariant(renderFunction.$Call, "Expected render function to be a FunctionValue with $Call method");
   let funcCall = renderFunction.$Call;
@@ -830,6 +832,10 @@ export function getValueFromRenderCall(
     // all the branches come together into one.
     completion = realm.composeWithSavedCompletion(completion);
   }
+  // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
+  if (componentTreeConfig.firstRenderOnly && completion instanceof AbstractValue && completion.args.length === 0) {
+    throw new ExpectedBailOut("completely unknown component render currently supported on first render");
+  }
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.
   realm.applyEffects(effects);
@@ -839,25 +845,23 @@ export function getValueFromRenderCall(
   return completion;
 }
 
+function isEventProp(name: string): boolean {
+  return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
+}
+
 export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
   let typeValue = Get(realm, reactElement, "type");
 
   // ensure ref is null, as we don't use that on first render
-  Properties.Set(realm, reactElement, "ref", realm.intrinsics.null, false);
+  setProperty(realm, reactElement, "ref", realm.intrinsics.null);
   // when dealing with host nodes, we want to sanitize them futher
   if (typeValue instanceof StringValue) {
     let propsValue = Get(realm, reactElement, "props");
     if (propsValue instanceof ObjectValue) {
       // remove all values apart from string/number/boolean
       for (let [propName] of propsValue.properties) {
-        invariant(propsValue instanceof ObjectValue);
-        let value = getProperty(realm, propsValue, propName);
-
-        // skip children and style
-        if (propName === "children" || propName === "style") {
-          continue;
-        }
-        if (!(value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue)) {
+        // check for onSomething prop event handlers, i.e. onClick
+        if (isEventProp(propName)) {
           propsValue.$Delete(propName);
         }
       }

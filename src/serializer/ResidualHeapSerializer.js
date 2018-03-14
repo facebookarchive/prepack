@@ -10,7 +10,6 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import type { Effects } from "../realm";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsArray, Get } from "../methods/index.js";
 import {
@@ -30,6 +29,7 @@ import {
   UndefinedValue,
   PrimitiveValue,
 } from "../values/index.js";
+import { PossiblyNormalCompletion } from "../completions.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -735,7 +735,7 @@ export class ResidualHeapSerializer {
       (x, y) => commonAncestorOf(x, y, this.getGeneratorParent),
       generators[0]
     );
-    invariant(commonAncestor);
+    invariant(commonAncestor !== undefined);
     if (trace) console.log(`  common ancestor: ${commonAncestor.getName()}`);
 
     let body;
@@ -1619,6 +1619,11 @@ export class ResidualHeapSerializer {
       invariant(abstractIndex >= 0 && abstractIndex < val.args.length);
       return serializedArgs[abstractIndex];
     }
+    if (val.kind === "implicit conversion to object") {
+      let ob = serializedArgs[0];
+      invariant(ob !== undefined);
+      return ob;
+    }
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
@@ -1633,10 +1638,7 @@ export class ResidualHeapSerializer {
   }
 
   _serializeAbstractValue(val: AbstractValue): void | BabelNodeExpression {
-    invariant(
-      val.kind !== "sentinel member expression" && val.kind !== "sentinel ToObject",
-      "invariant established by visitor"
-    );
+    invariant(val.kind !== "sentinel member expression", "invariant established by visitor");
     if (val.hasIdentifier()) {
       return this._serializeAbstractValueHelper(val);
     } else {
@@ -1810,7 +1812,11 @@ export class ResidualHeapSerializer {
   //          -- we don't overwrite anything they capture
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
-  _serializeAdditionalFunctionEffects(additionalFunctionValue: FunctionValue, effects: Effects) {
+  _serializeAdditionalFunctionEffects(
+    additionalFunctionValue: FunctionValue,
+    additionalEffects: AdditionalFunctionEffects
+  ) {
+    let { effects, joinedEffects, returnArguments, returnBuildNode } = additionalEffects;
     let [result, , , modifiedProperties, createdObjects] = effects;
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
@@ -1820,7 +1826,10 @@ export class ResidualHeapSerializer {
       invariant(object instanceof ObjectValue);
       this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
     }
-    invariant(result instanceof Value, "TODO: support PossiblyNormalCompletion return from additional function");
+    invariant(
+      result instanceof Value || result instanceof PossiblyNormalCompletion,
+      "Should not be serializing an additional function with an unconditional throw, JoinedAbruptCompletions not yet supported"
+    );
     // Handle ModifiedBindings
     let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
     invariant(additionalFunctionValueInfo);
@@ -1829,16 +1838,26 @@ export class ResidualHeapSerializer {
       invariant(newVal);
       residualBinding.additionalValueSerialized = this.serializeValue(newVal);
     }
-    if (!(result instanceof UndefinedValue)) this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+    if (result instanceof Value && !(result instanceof UndefinedValue)) {
+      this.emitter.emit(t.returnStatement(this.serializeValue(result)));
+    } else if (result instanceof PossiblyNormalCompletion) {
+      invariant(joinedEffects !== undefined);
+
+      this.realm.withEffectsAppliedInGlobalEnv(() => {
+        invariant(returnArguments !== undefined);
+        invariant(returnBuildNode !== undefined);
+        let args = returnArguments.map(arg => this.serializeValue(arg));
+        this.emitter.emit(returnBuildNode(args));
+        return null;
+      }, joinedEffects);
+    }
 
     const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
     Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
   }
 
-  _serializeAdditionalFunction(
-    additionalFunctionValue: FunctionValue,
-    { effects, transforms }: AdditionalFunctionEffects
-  ) {
+  _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
+    let { effects, transforms } = additionalEffects;
     if (!this.additionalFunctionValueInfos.has(additionalFunctionValue)) {
       // the additionalFunction has no info, so it likely has been dead code eliminated
       return;
@@ -1854,7 +1873,7 @@ export class ResidualHeapSerializer {
       this._serializeAdditionalFunctionGeneratorAndEffects.bind(
         this,
         generator,
-        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, effects)
+        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, additionalEffects)
       ),
       effects
     );

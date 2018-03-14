@@ -301,7 +301,6 @@ function runTest(name, code, options: PrepackOptions, args) {
         initializeMoreModules,
         delayUnsupportedRequires,
         internalDebug: true,
-        additionalFunctions: options.additionalFunctions,
         lazyObjectsRuntime: options.lazyObjectsRuntime,
       };
       let serializer = new Serializer(realm, serializerOptions);
@@ -559,7 +558,7 @@ function run(args) {
     if (args.es5 && test.file.includes("// es6")) continue;
     //only run specific tests if desired
     if (!test.name.includes(args.filter)) continue;
-    const isAdditionalFunctionTest = test.name.includes("additional-functions");
+    const isAdditionalFunctionTest = test.file.includes("__optimize");
     const isPureFunctionTest = test.name.includes("pure-functions");
     const isCaptureTest = test.name.includes("Closure") || test.name.includes("Capture");
     const isSimpleClosureTest = test.file.includes("// simple closures");

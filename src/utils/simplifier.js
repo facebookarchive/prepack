@@ -124,7 +124,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
         let [yc, , z] = y.args;
         if (c.equals(yc)) return AbstractValue.createFromConditionalOp(realm, c, x, z);
       }
-      if (x.getType() === BooleanValue && y.getType() === BooleanValue) {
+      if (isCondition || (x.getType() === BooleanValue && y.getType() === BooleanValue)) {
         // c ? true : false <=> c
         if (!x.mightNotBeTrue() && !y.mightNotBeFalse()) return c;
         // c ? false : true <=> !c

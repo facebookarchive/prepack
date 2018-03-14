@@ -434,7 +434,7 @@ export class ToImplementation {
           // Create a placeholder value to represent the ObjectValue that we would've
           // received, but this object should never leak so as an optimization we will
           // let operations on top of this object force the ToObject operations instead.
-          obj = AbstractValue.createFromType(realm, ObjectValue, "sentinel ToObject");
+          obj = AbstractValue.createFromType(realm, ObjectValue, "implicit conversion to object");
           invariant(obj instanceof AbstractObjectValue);
           obj.args = [arg];
         } else {
