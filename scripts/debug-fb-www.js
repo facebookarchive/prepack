@@ -37,6 +37,7 @@ let prepackOptions = {
   maxStackDepth: 100,
   reactEnabled: true,
   reactOutput: "jsx",
+  reactVerbose: true,
   inlineExpressions: true,
   omitInvariants: true,
   abstractEffectsInAdditionalFunctions: true,

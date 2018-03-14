@@ -230,6 +230,9 @@ export class Functions {
   checkRootReactComponentTrees(statistics: ReactStatistics, react: ReactSerializerState): void {
     let recordedReactRootValues = this.__generateAdditionalFunctionsMap("__reactComponentTrees");
     // Get write effects of the components
+    if (this.realm.react.verbose) {
+      console.log(`Evaluating ${recordedReactRootValues.size} React component tree roots...`);
+    }
     for (let [componentRoot, { config }] of recordedReactRootValues) {
       invariant(config);
       let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react, config);
@@ -238,6 +241,7 @@ export class Functions {
         continue;
       }
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
+      console.log(`- Evaluating ${evaluatedRootNode.name} (root)...`);
       statistics.evaluatedRootNodes.push(evaluatedRootNode);
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
@@ -260,6 +264,7 @@ export class Functions {
             return;
           }
           reconciler.clearComponentTreeState();
+          console.log(`  - Evaluating ${evaluatedNode.name} (branch)...`);
           let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
           let branchComponentTreeState = reconciler.componentTreeState;
           this._generateWriteEffectsForReactComponentTree(

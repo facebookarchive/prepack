@@ -105,6 +105,9 @@ export class Serializer {
       timingStats.totalTime = Date.now();
       timingStats.globalCodeTime = Date.now();
     }
+    if (this.realm.react.verbose) {
+      console.log(`Evaluating initialization path...`);
+    }
     let code = this._execute(sources);
     let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
@@ -138,6 +141,9 @@ export class Serializer {
       preludeGenerator.createNameGenerator("$"),
       this.statistics
     );
+    if (this.realm.react.verbose) {
+      console.log(`Visiting evaluated nodes...`);
+    }
     let residualHeapVisitor = new ResidualHeapVisitor(
       this.realm,
       this.logger,
@@ -150,6 +156,9 @@ export class Serializer {
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
+    if (this.realm.react.verbose) {
+      console.log(`Serializing evaluated nodes...`);
+    }
     const realmPreludeGenerator = this.realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
