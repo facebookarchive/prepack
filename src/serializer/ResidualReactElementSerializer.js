@@ -243,7 +243,7 @@ export class ResidualReactElementSerializer {
     let refValue = getProperty(this.realm, value, "ref");
     let propsValue = getProperty(this.realm, value, "props");
 
-    if (keyValue !== this.realm.intrinsics.null) {
+    if (keyValue !== this.realm.intrinsics.null && keyValue !== this.realm.intrinsics.undefined) {
       let reactElementKey = this._createReactElementAttribute();
       this._serializeNowOrAfterWaitingForDependencies(keyValue, reactElement, () => {
         let expr = this.residualHeapSerializer.serializeValue(keyValue);
@@ -254,7 +254,7 @@ export class ResidualReactElementSerializer {
       reactElement.attributes.push(reactElementKey);
     }
 
-    if (refValue !== this.realm.intrinsics.null) {
+    if (refValue !== this.realm.intrinsics.null && refValue !== this.realm.intrinsics.undefined) {
       let reactElementRef = this._createReactElementAttribute();
       this._serializeNowOrAfterWaitingForDependencies(refValue, reactElement, () => {
         let expr = this.residualHeapSerializer.serializeValue(refValue);

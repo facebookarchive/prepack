@@ -45,7 +45,6 @@ import {
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Properties } from "../singletons.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import {
@@ -319,7 +318,7 @@ export class Reconciler {
     const setContextCurrentValue = value => {
       if (value instanceof Value) {
         // update the currentValue
-        setProperty(this.realm, contextConsumer, "currentValue", value);
+        setProperty(contextConsumer, "currentValue", value);
       }
     };
     // if we have a value prop, set it
@@ -779,7 +778,7 @@ export class Reconciler {
         }
         if (propsValue.properties.has("children")) {
           propsValue.refuseSerialization = true;
-          Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
+          setProperty(propsValue, "children", resolvedChildren);
           propsValue.refuseSerialization = false;
         }
       }

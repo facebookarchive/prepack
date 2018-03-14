@@ -33,9 +33,9 @@ function createPropsObject(
   let ref = realm.intrinsics.null;
 
   const setProp = (name: string, value: Value): void => {
-    if (name === "key" && value !== realm.intrinsics.null) {
+    if (name === "key" && value !== realm.intrinsics.null && value !== realm.intrinsics.undefined) {
       key = computeBinary(realm, "+", realm.intrinsics.emptyString, value);
-    } else if (name === "ref") {
+    } else if (name === "ref" && value !== realm.intrinsics.undefined) {
       ref = value;
     } else if (name !== "__self" && name !== "__source") {
       invariant(props instanceof ObjectValue);
