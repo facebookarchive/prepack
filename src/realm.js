@@ -196,6 +196,7 @@ export class Realm {
       hoistableReactElements: new WeakMap(),
       reactElements: new WeakSet(),
       symbols: new Map(),
+      verbose: opts.reactVerbose || false,
     };
 
     this.stripFlow = opts.stripFlow || false;
@@ -264,6 +265,7 @@ export class Realm {
     output?: ReactOutputTypes,
     reactElements: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
+    verbose: boolean,
   };
   stripFlow: boolean;
 
