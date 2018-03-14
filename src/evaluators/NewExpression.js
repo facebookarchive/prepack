@@ -89,7 +89,8 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
     // otherwise we rethrow the error as we don't handle it at this
     // point in time
     if (error instanceof FatalError && constructor instanceof AbstractValue) {
-      // we need to havoc all the arguments
+      // we need to havoc all the arguments and the constructor
+      Havoc.value(realm, constructor);
       for (let arg of argsList) {
         Havoc.value(realm, arg);
       }
