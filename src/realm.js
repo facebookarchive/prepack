@@ -954,22 +954,23 @@ export class Realm {
     if (this.savedCompletion === undefined) {
       this.savedCompletion = completion;
       this.savedCompletion.savedPathConditions = this.pathConditions;
+      this.pathConditions = [].concat(this.pathConditions);
       this.captureEffects(completion);
     } else {
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
     }
-    if (completion.consequent instanceof AbruptCompletion) {
-      Path.pushInverseAndRefine(completion.joinCondition);
-      if (completion.alternate instanceof PossiblyNormalCompletion) {
-        completion.alternate.pathConditions.forEach(Path.pushAndRefine);
-      }
-    } else if (completion.alternate instanceof AbruptCompletion) {
-      Path.pushAndRefine(completion.joinCondition);
-      if (completion.consequent instanceof PossiblyNormalCompletion) {
-        completion.consequent.pathConditions.forEach(Path.pushAndRefine);
+    pushPathConditionsLeadingToNormalCompletion(completion);
+    return completion.value;
+
+    function pushPathConditionsLeadingToNormalCompletion(c: PossiblyNormalCompletion) {
+      if (c.consequent instanceof AbruptCompletion) {
+        Path.pushInverseAndRefine(c.joinCondition);
+        if (c.alternate instanceof PossiblyNormalCompletion) pushPathConditionsLeadingToNormalCompletion(c.alternate);
+      } else if (c.alternate instanceof AbruptCompletion) {
+        Path.pushAndRefine(c.joinCondition);
+        if (c.consequent instanceof PossiblyNormalCompletion) pushPathConditionsLeadingToNormalCompletion(c.consequent);
       }
     }
-    return completion.value;
   }
 
   incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion) {
