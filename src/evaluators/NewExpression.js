@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ObjectValue, Value, AbstractObjectValue, AbstractValue } from "../values/index.js";
-import { Environment } from "../singletons.js";
+import { Environment, Havoc } from "../singletons.js";
 import { IsConstructor, ArgumentListEvaluation } from "../methods/index.js";
 import { Construct } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -89,6 +89,10 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
     // otherwise we rethrow the error as we don't handle it at this
     // point in time
     if (error instanceof FatalError && constructor instanceof AbstractValue) {
+      // we need to havoc all the arguments
+      for (let arg of argsList) {
+        Havoc.value(realm, arg);
+      }
       let abstractValue = realm.evaluateWithPossibleThrowCompletion(
         () =>
           AbstractValue.createTemporalFromBuildFunction(
