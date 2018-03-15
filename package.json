@@ -23,9 +23,10 @@
   "main": "lib/prepack-node.js",
   "browser": "lib/prepack-standalone.js",
   "scripts": {
-    "build": "babel src --out-dir lib --source-maps && yarn build-bundle",
+    "build": "yarn build-prepack && yarn build-bundle",
     "build-scripts": "babel scripts --out-dir lib --source-maps",
     "build-bundle": "webpack-cli",
+    "build-prepack": "babel src --out-dir lib --source-maps",
     "watch": "babel src scripts --out-dir lib --watch --source-maps",
     "lint": "eslint src scripts",
     "flow": "flow check",
